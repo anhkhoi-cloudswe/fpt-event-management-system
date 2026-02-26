@@ -1,0 +1,45 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+local-api*
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Build artifacts
+/bin/
+/dist/
+
+# Go workspace file
+go.work
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Lambda deployment packages
+*.zip
+
+# SAM & Testing
+bootstrap
+sam-local-*.log
+sam-local-*.err.log
+template.yaml
+sam-env.json

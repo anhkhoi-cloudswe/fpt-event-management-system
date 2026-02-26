@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package walletservice;
+
+option go_package = "github.com/fpt-event-services/services/proto/walletpb;walletpb";
+
+/**
+ * WalletService - gRPC service for wallet operations
+ * 
+ * Replaces REST API calls between ticket-service and auth-service for:
+ * 1. Checking wallet balance (low latency, internal RPC)
+ * 2. Deducting balance atomically with database locks (SELECT ... FOR UPDATE)
+ * 3. Preventing race conditions during concurrent payments
+ * 
+ * Flow:
+ * - ticket-service calls gRPC DeductBalance() instead of REST API
+ * - auth-service handles this with:
+ *   a) SELECT balance FROM users WHERE user_id = ? FOR UPDATE (lock row)
+ *   b) Verify balance >= amount
+ *   c) UPDATE balance = balance - amount
+ *   d) COMMIT transaction
+ *   e) Return success/error
+ * - If timeout/error, ticket-service can retry or fallback
+ */
+
+service WalletService {
+  // GetBalance - Get current wallet balance for a user
+  // Called before payment to check if user has sufficient funds
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+
+  // DeductBalance - Atomically deduct amount from user's balance
+  // Used during ticket payment processing
+  // Returns 402 if insufficient balance
+  // Uses SELECT ... FOR UPDATE to prevent race conditions
+  rpc DeductBalance(DeductBalanceRequest) returns (DeductBalanceResponse);
+
+  // AddBalance - Add amount to user's wallet (for topup/refunds)
+  rpc AddBalance(AddBalanceRequest) returns (AddBalanceResponse);
+}
+
+// Request to get user's wallet balance
+message GetBalanceRequest {
+  int32 user_id = 1;  // User ID
+}
+
+// Response with wallet balance
+message GetBalanceResponse {
+  int32 balance = 1;        // Current balance in VND
+  string error = 2;         // Error message if failed (empty if success)
+}
+
+// Request to deduct from wallet balance
+message DeductBalanceRequest {
+  int32 user_id = 1;           // User ID
+  int32 amount = 2;            // Amount to deduct (in VND)
+  string transaction_id = 3;   // Unique transaction ID for idempotency
+  string reason = 4;           // Reason for deduction (e.g., "ticket_payment", "order_12345")
+}
+
+// Response after deduction attempt
+message DeductBalanceResponse {
+  bool success = 1;              // True if deduction succeeded
+  int32 new_balance = 2;         // New balance after deduction (if success=true)
+  int32 required_amount = 3;     // If failed: how much more is needed (if insufficient)
+  string error = 4;              // Error message
+  string error_code = 5;         // Error code for client handling
+}
+
+// Request to add to wallet balance (for topup/refunds)
+message AddBalanceRequest {
+  int32 user_id = 1;           // User ID
+  int32 amount = 2;            // Amount to add (in VND)
+  string transaction_id = 3;   // Unique transaction ID for idempotency
+  string reason = 4;           // Reason for addition (e.g., "topup", "refund_order_12345")
+}
+
+// Response after adding balance
+message AddBalanceResponse {
+  bool success = 1;        // True if addition succeeded
+  int32 new_balance = 2;   // New balance after addition
+  string error = 3;        // Error message
+}

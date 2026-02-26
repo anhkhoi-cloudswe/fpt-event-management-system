@@ -1,0 +1,2605 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "FPT Event Management API",
+    "version": "1.0.0",
+    "description": "API for FPT Event Management System - Go Lambda"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local Development Server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Authentication APIs"
+    },
+    {
+      "name": "Admin",
+      "description": "Admin management APIs"
+    },
+    {
+      "name": "Users",
+      "description": "User management APIs"
+    },
+    {
+      "name": "Events",
+      "description": "Event management APIs"
+    },
+    {
+      "name": "Event Requests",
+      "description": "Event request management APIs"
+    },
+    {
+      "name": "Tickets",
+      "description": "Ticket management APIs"
+    },
+    {
+      "name": "Payment",
+      "description": "Payment and VNPay APIs"
+    },
+    {
+      "name": "Venues",
+      "description": "Venue and Area management APIs"
+    },
+    {
+      "name": "Staff",
+      "description": "Staff check-in/check-out APIs"
+    },
+    {
+      "name": "Statistics",
+      "description": "Statistics and Reports"
+    }
+  ],
+  "paths": {
+    "/api/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login (Verify reCAPTCHA)",
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid reCAPTCHA or Credentials"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register new user (Verify reCAPTCHA)",
+        "operationId": "register",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or Invalid reCAPTCHA"
+          },
+          "409": {
+            "description": "Email already exists"
+          }
+        }
+      }
+    },
+    "/api/register/send-otp": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register step 1 - Send OTP to email",
+        "operationId": "registerSendOtp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or invalid input"
+          },
+          "409": {
+            "description": "Email already exists"
+          },
+          "502": {
+            "description": "Failed to send OTP email"
+          }
+        }
+      }
+    },
+    "/api/register/verify-otp": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register step 2 - Verify OTP and create account",
+        "operationId": "registerVerifyOtp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP valid, user created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "OTP invalid or expired"
+          },
+          "409": {
+            "description": "Email already exists"
+          }
+        }
+      }
+    },
+    "/api/register/resend-otp": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Resend OTP for pending registration",
+        "operationId": "registerResendOtp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendOtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP resent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No pending registration for this email"
+          },
+          "429": {
+            "description": "Too many resends"
+          },
+          "502": {
+            "description": "Failed to send OTP email"
+          }
+        }
+      }
+    },
+    "/api/forgot-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Send OTP to reset password",
+        "operationId": "forgotPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent to email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Email missing or invalid"
+          },
+          "404": {
+            "description": "Email not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/reset-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Reset password with email and OTP",
+        "operationId": "resetPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing data or weak password"
+          },
+          "401": {
+            "description": "Invalid or expired OTP"
+          },
+          "404": {
+            "description": "Email not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/admin/create-account": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[Admin Only] Create account for Staff/Organizer/Admin",
+        "operationId": "adminCreateAccount",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCreateAccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created successfully"
+          },
+          "400": {
+            "description": "Format error or duplicate Email/Phone"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden: Admin only"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[Admin] Update user (fullName, phone, role, status, optional password)",
+        "operationId": "adminUpdateUser",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUpdateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated"
+          },
+          "400": {
+            "description": "Invalid data"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden: Admin only"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[Admin] Soft delete user (status -> INACTIVE)",
+        "operationId": "adminDeleteUser",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "User ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Soft deleted"
+          },
+          "400": {
+            "description": "Missing/invalid id"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden: Admin only"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/users/staff-organizer": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "[Admin] Get STAFF and ORGANIZER users (2 lists)",
+        "description": "Only ADMIN can call. Returns staffList and organizerList.",
+        "operationId": "getStaffOrganizer",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffOrganizerResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden (Admin only)"
+          }
+        }
+      }
+    },
+    "/api/events": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get all events (grouped by status)",
+        "description": "Returns openEvents and closedEvents with venue and area info.",
+        "operationId": "getEvents",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Events grouped by status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsGroupedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/events/detail": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get event detail (JWT required)",
+        "description": "Returns event detail including venue, speaker and ticket categories",
+        "operationId": "getEventDetail",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Event ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Event detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Event not found"
+          }
+        }
+      }
+    },
+    "/api/events/stats": {
+      "get": {
+        "tags": [
+          "Statistics"
+        ],
+        "summary": "[Admin/Organizer] View statistics (Dashboard)",
+        "description": "Returns total stats: Registered, Booking, Check-in, Check-out, Refunded with percentages.",
+        "operationId": "getEventStats",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Optional: Filter by Event ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statistics data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventStatsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/events/update-details": {
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Organizer update event details (speaker, tickets, banner)",
+        "description": "Only ORGANIZER can call. Updates speaker, tickets, banner_url and seat layout.",
+        "operationId": "updateEventDetails",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventDetailsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid data"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Not Organizer or not owner"
+          },
+          "404": {
+            "description": "Event not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/event-requests": {
+      "post": {
+        "tags": [
+          "Event Requests"
+        ],
+        "summary": "Organizer create event request",
+        "description": "Only ORGANIZER can call. Creates Event_Request with PENDING status.",
+        "operationId": "createEventRequest",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Request created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateEventRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing title or invalid data"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Only ORGANIZER can create"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/event-requests/my": {
+      "get": {
+        "tags": [
+          "Event Requests"
+        ],
+        "summary": "Organizer view own event requests",
+        "description": "Only ORGANIZER. Returns Event_Request list where requester_id = userId.",
+        "operationId": "getMyEventRequests",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organizer requests list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventRequest"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Only ORGANIZER can view"
+          }
+        }
+      }
+    },
+    "/api/staff/event-requests": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Staff view all event requests (grouped by status)",
+        "description": "Only STAFF or ADMIN. Returns requests grouped by: pending, approved, rejected.",
+        "operationId": "getStaffEventRequests",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Requests grouped by status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventRequestsGroupedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Only STAFF/ADMIN can view"
+          }
+        }
+      }
+    },
+    "/api/event-requests/process": {
+      "post": {
+        "tags": [
+          "Event Requests"
+        ],
+        "summary": "Staff approve or reject Event Request",
+        "description": "Only STAFF/ADMIN. APPROVE creates Event and assigns Area; REJECT updates status.",
+        "operationId": "processEventRequest",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessEventRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessEventRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing data or invalid action/areaId"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Not STAFF/ADMIN"
+          },
+          "404": {
+            "description": "Request not found"
+          },
+          "409": {
+            "description": "Area has event at same time"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/registrations/my-tickets": {
+      "get": {
+        "tags": [
+          "Tickets"
+        ],
+        "summary": "[Student] View registered ticket history",
+        "description": "Get ticket list of logged in user with event and venue info",
+        "operationId": "getMyTickets",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ticket list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyTicketResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in"
+          }
+        }
+      }
+    },
+    "/api/tickets/list": {
+      "get": {
+        "tags": [
+          "Statistics"
+        ],
+        "summary": "[Admin/Organizer] Get detailed ticket list (Table Data)",
+        "description": "Returns detailed ticket list. Admin/Staff see all. Organizer sees only own events.",
+        "operationId": "getTicketList",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Optional: Filter by Event ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detailed ticket list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyTicketResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/payment/my-bills": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "[Student] View payment history (Bills)",
+        "description": "Get bill list with user name",
+        "operationId": "getMyBills",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bill list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Bill"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in"
+          }
+        }
+      }
+    },
+    "/api/payment-ticket": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "Create VNPay payment URL for event ticket",
+        "description": "Validate user/event/categoryTicket/seat and redirect to VNPay Sandbox",
+        "operationId": "paymentTicket",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "User ID"
+          },
+          {
+            "name": "eventId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Event ID"
+          },
+          {
+            "name": "categoryTicketId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Ticket category ID (VIP/STANDARD)"
+          },
+          {
+            "name": "seatId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Seat ID"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to VNPay"
+          },
+          "400": {
+            "description": "Invalid params or seat/ticket/event invalid"
+          },
+          "500": {
+            "description": "Server error building VNPay URL"
+          }
+        }
+      }
+    },
+    "/api/buyTicket": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "VNPay return URL - confirm payment and create ticket",
+        "description": "VNPay redirects here after payment. System verifies signature, checks response code, creates Bill and Ticket.",
+        "operationId": "buyTicket",
+        "parameters": [
+          {
+            "name": "vnp_Amount",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Amount from VNPay (x100)"
+          },
+          {
+            "name": "vnp_ResponseCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Transaction result code (00 = success)"
+          },
+          {
+            "name": "vnp_OrderInfo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Encoded order info"
+          },
+          {
+            "name": "vnp_TxnRef",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Transaction reference"
+          },
+          {
+            "name": "vnp_SecureHash",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC SHA512 signature"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment processing result",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/venues": {
+      "get": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "View venue list with nested areas",
+        "description": "Returns Venue list with Areas array nested inside",
+        "operationId": "getVenues",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of venues with nested areas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Venue"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Create new venue (Admin)",
+        "operationId": "createVenue",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VenueCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Update venue (Admin)",
+        "operationId": "updateVenue",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VenueUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Delete venue (Soft Delete)",
+        "operationId": "deleteVenue",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "venueId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Soft deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/venues/areas": {
+      "get": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Get area list (all or by VenueID)",
+        "description": "If no venueId: returns ALL areas. If venueId: filters by that venue.",
+        "operationId": "getVenueAreas",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "venueId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Venue ID (optional). Leave empty for all areas."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of areas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VenueArea"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Add area to venue",
+        "operationId": "createVenueArea",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VenueAreaCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Update area info (Admin)",
+        "operationId": "updateVenueArea",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VenueArea"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Delete area (Soft Delete) (Admin)",
+        "operationId": "deleteVenueArea",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "areaId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Soft deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/areas/free": {
+      "get": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Staff get free areas with 1h buffer (STAFF/ADMIN)",
+        "description": "Check JWT role STAFF/ADMIN, pass startTime and endTime, returns free Venue_Area list with 1 hour buffer.",
+        "operationId": "getFreeAreas",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "startTime",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Start time (ISO 8601, e.g. 2025-12-10T08:00:00)"
+          },
+          {
+            "name": "endTime",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "End time (after startTime)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Free areas list for Staff to choose",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FreeAreasResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid startTime/endTime"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Not STAFF/ADMIN"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/seats": {
+      "get": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Get seats by area (optional: eventId, seatType)",
+        "description": "Returns seat list by Venue_Area. If eventId: status is BOOKED/AVAILABLE by event. If no eventId: status is ACTIVE/INACTIVE from DB.",
+        "operationId": "getSeats",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "areaId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Area ID"
+          },
+          {
+            "name": "eventId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Event ID. If provided, seats are marked BOOKED if ticket exists."
+          },
+          {
+            "name": "seatType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Seat type (VIP / STANDARD / ...)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Seat list by area",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeatResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid areaId/eventId"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Server error loading seats"
+          }
+        }
+      }
+    },
+    "/api/staff/checkin": {
+      "post": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Check-in event ticket by ticketId (STAFF/ADMIN)",
+        "description": "STAFF or ADMIN uses ticketId (from QR code) to check-in, updates status to CHECKED_IN and checkin time",
+        "operationId": "staffCheckin",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Ticket ID (from QR code)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Check-in successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing ticketId, wrong ticketId or ticket status not allowed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden (not STAFF/ADMIN)"
+          },
+          "404": {
+            "description": "Ticket not found"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "Healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "healthy"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@fpt.edu.vn"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "Pass123"
+          },
+          "recaptchaToken": {
+            "type": "string",
+            "description": "Token from Google reCAPTCHA",
+            "example": "TEST_BYPASS"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": [
+          "fullName",
+          "phone",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "Nguyen Van A"
+          },
+          "phone": {
+            "type": "string",
+            "example": "0912345678"
+          },
+          "email": {
+            "type": "string",
+            "example": "user@fpt.edu.vn"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "Pass123"
+          },
+          "recaptchaToken": {
+            "type": "string",
+            "description": "Token from Google reCAPTCHA",
+            "example": "TEST_BYPASS"
+          }
+        }
+      },
+      "VerifyOtpRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "otp"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "otp": {
+            "type": "string"
+          }
+        }
+      },
+      "ResendOtpRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "otp",
+          "newPassword"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "otp": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        }
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "StatusMessage": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminCreateAccountRequest": {
+        "type": "object",
+        "required": [
+          "fullName",
+          "phone",
+          "email",
+          "password",
+          "role"
+        ],
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "Nguyen Van A"
+          },
+          "phone": {
+            "type": "string",
+            "example": "0912345678"
+          },
+          "email": {
+            "type": "string",
+            "example": "staff@fpt.edu.vn"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "Pass123"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "STAFF",
+              "ORGANIZER",
+              "ADMIN"
+            ],
+            "example": "STAFF"
+          }
+        }
+      },
+      "AdminUpdateUserRequest": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "fullName": {
+            "type": "string",
+            "example": "Nguyen Van A"
+          },
+          "phone": {
+            "type": "string",
+            "example": "0909123456"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "STAFF",
+              "ORGANIZER",
+              "ADMIN"
+            ],
+            "example": "STAFF"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ],
+            "example": "ACTIVE"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "abc123"
+          }
+        }
+      },
+      "StaffOrganizerUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "STAFF",
+              "ORGANIZER"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "wallet": {
+            "type": "number"
+          }
+        }
+      },
+      "StaffOrganizerResponse": {
+        "type": "object",
+        "properties": {
+          "staffList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffOrganizerUser"
+            }
+          },
+          "organizerList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffOrganizerUser"
+            }
+          }
+        }
+      },
+      "EventListItem": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "maxSeats": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "bannerUrl": {
+            "type": "string"
+          },
+          "areaId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "areaName": {
+            "type": "string",
+            "nullable": true
+          },
+          "floor": {
+            "type": "string",
+            "nullable": true
+          },
+          "venueId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "venueName": {
+            "type": "string",
+            "nullable": true
+          },
+          "venueLocation": {
+            "type": "string",
+            "nullable": true
+          },
+          "speakerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "speakerBio": {
+            "type": "string",
+            "nullable": true
+          },
+          "speakerAvatarUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EventsGroupedResponse": {
+        "type": "object",
+        "properties": {
+          "openEvents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventListItem"
+            }
+          },
+          "closedEvents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventListItem"
+            }
+          }
+        }
+      },
+      "EventDetail": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "maxSeats": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "venueName": {
+            "type": "string"
+          },
+          "speakerName": {
+            "type": "string"
+          },
+          "tickets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryTicket"
+            }
+          }
+        }
+      },
+      "EventStatsResponse": {
+        "type": "object",
+        "properties": {
+          "totalRegistered": {
+            "type": "integer",
+            "description": "Total tickets sold (all statuses)"
+          },
+          "totalBooking": {
+            "type": "integer",
+            "description": "Tickets with BOOKED status"
+          },
+          "bookingRate": {
+            "type": "string",
+            "example": "20.5%"
+          },
+          "totalCheckedIn": {
+            "type": "integer",
+            "description": "Tickets with CHECKED_IN status"
+          },
+          "checkInRate": {
+            "type": "string",
+            "example": "50.0%"
+          },
+          "totalCheckedOut": {
+            "type": "integer",
+            "description": "Tickets with CHECKED_OUT status"
+          },
+          "checkOutRate": {
+            "type": "string",
+            "example": "30.0%"
+          },
+          "totalRefunded": {
+            "type": "integer",
+            "description": "Tickets with REFUNDED status"
+          },
+          "refundedRate": {
+            "type": "string",
+            "example": "5.0%"
+          }
+        }
+      },
+      "UpdateEventDetailsRequest": {
+        "type": "object",
+        "required": [
+          "eventId",
+          "tickets"
+        ],
+        "properties": {
+          "eventId": {
+            "type": "integer"
+          },
+          "speaker": {
+            "$ref": "#/components/schemas/SpeakerDTO"
+          },
+          "tickets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketDTO"
+            }
+          },
+          "bannerUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "SpeakerDTO": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "TicketDTO": {
+        "type": "object",
+        "required": [
+          "name",
+          "price",
+          "maxQuantity"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxQuantity": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateEventRequestBody": {
+        "type": "object",
+        "required": [
+          "title",
+          "preferredStartTime",
+          "preferredEndTime"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "preferredStartTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "preferredEndTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expectedCapacity": {
+            "type": "integer"
+          }
+        }
+      },
+      "CreateEventRequestResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "integer"
+          }
+        }
+      },
+      "EventRequest": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "integer"
+          },
+          "requesterId": {
+            "type": "integer"
+          },
+          "requesterName": {
+            "type": "string",
+            "description": "Requester name (Organizer)"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "preferredStartTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "preferredEndTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expectedCapacity": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "processedBy": {
+            "type": "integer",
+            "description": "Processor ID (Staff/Admin)"
+          },
+          "processedByName": {
+            "type": "string",
+            "description": "Processor name"
+          },
+          "processedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "organizerNote": {
+            "type": "string"
+          },
+          "createdEventId": {
+            "type": "integer"
+          }
+        }
+      },
+      "EventRequestsGroupedResponse": {
+        "type": "object",
+        "properties": {
+          "pending": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventRequest"
+            }
+          },
+          "approved": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventRequest"
+            }
+          },
+          "rejected": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventRequest"
+            }
+          }
+        }
+      },
+      "ProcessEventRequestBody": {
+        "type": "object",
+        "required": [
+          "requestId",
+          "action"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "integer"
+          },
+          "action": {
+            "type": "string",
+            "description": "APPROVE or REJECT"
+          },
+          "organizerNote": {
+            "type": "string"
+          },
+          "areaId": {
+            "type": "integer",
+            "description": "Required when action = APPROVE"
+          }
+        }
+      },
+      "ProcessEventRequestResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "integer"
+          }
+        }
+      },
+      "MyTicketResponse": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "type": "integer"
+          },
+          "ticketCode": {
+            "type": "string"
+          },
+          "eventName": {
+            "type": "string"
+          },
+          "venueName": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "BOOKED",
+              "CHECKED_IN",
+              "CHECKED_OUT",
+              "REFUNDED"
+            ]
+          },
+          "checkInTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checkOutTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "category": {
+            "type": "string",
+            "description": "Seat type"
+          },
+          "categoryPrice": {
+            "type": "number"
+          },
+          "seatCode": {
+            "type": "string"
+          },
+          "buyerName": {
+            "type": "string"
+          },
+          "purchaseDate": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CategoryTicket": {
+        "type": "object",
+        "properties": {
+          "categoryTicketId": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxQuantity": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "Bill": {
+        "type": "object",
+        "properties": {
+          "billId": {
+            "type": "integer"
+          },
+          "totalAmount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "paymentMethod": {
+            "type": "string"
+          },
+          "paymentStatus": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userName": {
+            "type": "string"
+          }
+        }
+      },
+      "Venue": {
+        "type": "object",
+        "properties": {
+          "venueId": {
+            "type": "integer"
+          },
+          "venueName": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "areas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VenueArea"
+            }
+          }
+        }
+      },
+      "VenueCreateRequest": {
+        "type": "object",
+        "required": [
+          "venueName"
+        ],
+        "properties": {
+          "venueName": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        }
+      },
+      "VenueUpdateRequest": {
+        "type": "object",
+        "required": [
+          "venueId",
+          "venueName",
+          "address",
+          "status"
+        ],
+        "properties": {
+          "venueId": {
+            "type": "integer"
+          },
+          "venueName": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "VenueArea": {
+        "type": "object",
+        "properties": {
+          "areaId": {
+            "type": "integer"
+          },
+          "venueId": {
+            "type": "integer"
+          },
+          "areaName": {
+            "type": "string"
+          },
+          "floor": {
+            "type": "integer"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "VenueAreaCreateRequest": {
+        "type": "object",
+        "required": [
+          "venueId",
+          "areaName",
+          "capacity"
+        ],
+        "properties": {
+          "venueId": {
+            "type": "integer"
+          },
+          "areaName": {
+            "type": "string"
+          },
+          "floor": {
+            "type": "integer"
+          },
+          "capacity": {
+            "type": "integer"
+          }
+        }
+      },
+      "FreeAreasResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bufferHours": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "areas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VenueArea"
+            }
+          }
+        }
+      },
+      "Seat": {
+        "type": "object",
+        "properties": {
+          "seatId": {
+            "type": "integer"
+          },
+          "areaId": {
+            "type": "integer"
+          },
+          "seatCode": {
+            "type": "string"
+          },
+          "rowNo": {
+            "type": "string"
+          },
+          "colNo": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE/INACTIVE (no eventId) or BOOKED/AVAILABLE (with eventId)"
+          },
+          "seatType": {
+            "type": "string"
+          }
+        }
+      },
+      "SeatResponse": {
+        "type": "object",
+        "properties": {
+          "areaId": {
+            "type": "integer"
+          },
+          "seatType": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "seats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Seat"
+            }
+          }
+        }
+      },
+      "CheckinResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "ticketId": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "checkinTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

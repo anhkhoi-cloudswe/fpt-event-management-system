@@ -1,0 +1,7 @@
+tunnel: fpt-event-api
+credentials-file: C:\Users\Admin\.cloudflared\fpt-event-api.json
+
+ingress:
+  - hostname: fpt-event-api.example.com
+    service: http://localhost:8080
+  - service: http_status:404
