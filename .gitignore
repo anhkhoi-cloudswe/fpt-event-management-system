@@ -1,25 +1,16 @@
 # Root level gitignore for FPT Event Management System
 
-# Environment variables
-.env
-.env.*
-!.env.example
-
 # Backend
 backend/*.exe
 backend/*.exe~
 backend/bin/
 backend/dist/
-backend/.env
-backend/.env.local
 backend/bootstrap
 
 # Frontend
 frontend/node_modules/
 frontend/dist/
 frontend/dist-ssr/
-frontend/.env
-frontend/.env.local
 
 # IDE & Editor
 .vscode/*
