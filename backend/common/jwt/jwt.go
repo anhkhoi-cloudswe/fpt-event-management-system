@@ -1,8 +1,11 @@
 package jwt
 
 import (
+	"crypto/md5"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -97,6 +100,34 @@ func GetUserIDFromToken(tokenString string) (int, error) {
 		return 0, err
 	}
 	return claims.UserID, nil
+}
+
+// ReloadSecret re-reads JWT_SECRET from the environment.
+// Must be called AFTER godotenv.Load() in services that load .env in init(),
+// because package-level var secretKey is initialized before main's init() runs.
+// Deep-clean: strips surrounding double-quotes, whitespace, \r, \n that
+// Windows .env files or editors may inject.
+func ReloadSecret() {
+	if v := os.Getenv("JWT_SECRET"); v != "" {
+		v = strings.TrimSpace(v)        // strip \n, \r, spaces at both ends
+		v = strings.TrimPrefix(v, "\"") // strip leading "
+		v = strings.TrimSuffix(v, "\"") // strip trailing "
+		v = strings.TrimSpace(v)        // one more pass after quote removal
+		// Explicit conversion: string → []byte (deterministic, no encoding ambiguity)
+		clean := []byte(v)
+		secretKey = clean
+	}
+}
+
+// GetSecretPreview returns "first4...last4 (Len: N, MD5: hex8)" of the active secret for debug logging.
+func GetSecretPreview() string {
+	hash := md5.Sum(secretKey)
+	md5hex := fmt.Sprintf("%x", hash)[:8] // first 8 hex chars
+	l := len(secretKey)
+	if l >= 8 {
+		return fmt.Sprintf("%s...%s (Len: %d, MD5: %s)", string(secretKey[:4]), string(secretKey[l-4:]), l, md5hex)
+	}
+	return fmt.Sprintf("%s (Len: %d, MD5: %s)", string(secretKey), l, md5hex)
 }
 
 func getEnv(key, fallback string) string {

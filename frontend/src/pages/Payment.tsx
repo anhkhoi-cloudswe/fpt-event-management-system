@@ -28,6 +28,9 @@ Backend cập nhật đơn/vé → redirect về FE PaymentSuccess hoặc Paymen
 // Import hook điều hướng và đọc state của React Router
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+
+// Import helper để format thời gian theo Vietnam timezone
+import { formatVietnamDateTime } from '../utils/dateFormat'
 // useNavigate: Hook để điều hướng programmatically (bằng code) trong React Router
 // useLocation: Hook để lấy thông tin URL hiện tại + state truyền từ trang trước
 // useEffect: Hook để fetch wallet balance khi component mount
@@ -311,6 +314,15 @@ export default function Payment() {
 
       const data = await response.json()
 
+      // ✅ 0đ BYPASS: Vé miễn phí - backend đã tạo BOOKED trực tiếp, chuyển thẳng sang trang thành công
+      if (data.free === true) {
+        console.log('🎉 [FREE_TICKET] Vé miễn phí! TicketIds:', data.ticketIds)
+        navigate(
+          `/dashboard/payment/success?status=success&method=free&ticketIds=${encodeURIComponent(data.ticketIds || '')}`
+        )
+        return
+      }
+
       if (!data.paymentUrl) {
         throw new Error('Backend không trả về payment URL')
       }
@@ -421,12 +433,12 @@ export default function Payment() {
       if (response.status === 402) {
         try {
           const errorData = await response.json()
-          
+
           // Extract shortage information from backend response
           const shortage = errorData.shortage || 0
           const required = errorData.required || totalAmount
           const current = errorData.current || walletBalance || 0
-          
+
           console.log('💳 [INSUFFICIENT_BALANCE] Shortage:', shortage, 'Required:', required, 'Current:', current)
 
           // Show error modal with shortage information
@@ -516,16 +528,29 @@ export default function Payment() {
       }
 
       // ======================================================
-      // (8) SUCCESS FALLBACK
+      // (8) WALLET PAYMENT SUCCESS — đọc ticketIds từ JSON response
       // ======================================================
-      navigate('/dashboard/payment/success?status=success&method=wallet')
+      try {
+        const successData = await response.json()
+        const ids = successData?.ticketIds ?? ''
+        // emailFailed=1 nếu backend báo gửi mail thất bại (field emailFailed)
+        const emailFailedFlag = successData?.emailFailed ? '&emailFailed=1' : ''
+        emitWalletRefresh()
+        navigate(
+          `/dashboard/payment/success?status=success&method=wallet${ids ? `&ticketIds=${encodeURIComponent(ids)}` : ''}${emailFailedFlag}`
+        )
+      } catch {
+        // Nếu parse JSON thất bại, dùng fallback không có ticketIds
+        emitWalletRefresh()
+        navigate('/dashboard/payment/success?status=success&method=wallet')
+      }
 
     } catch (error: any) {
       console.error('Wallet payment error:', error)
 
       // Check if error is a duplicate entry error
       const errorMsg = error.message || error.toString()
-      
+
       if (errorMsg.includes('Duplicate entry') || errorMsg.includes('1062')) {
         setErrorData({
           errorType: 'duplicate_entry',
@@ -716,7 +741,7 @@ export default function Payment() {
                     Ngừng bán vé
                   </h3>
                   <div className="mt-2 text-sm text-red-700">
-                    <p>Sự kiện đã bắt đầu hoặc kết thúc lúc {eventStartTime ? new Date(eventStartTime).toLocaleString('vi-VN') : 'thời điểm xác định'}.</p>
+                    <p>Sự kiện đã bắt đầu hoặc kến thúc lúc {eventStartTime ? formatVietnamDateTime(eventStartTime, 'dd/MM/yyyy HH:mm') : 'thời điểm xác định'}.  </p>
                     <p className="mt-1">Không thể tiếp tục đặt vé cho sự kiện này.</p>
                   </div>
                 </div>

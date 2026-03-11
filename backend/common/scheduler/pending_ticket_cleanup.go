@@ -3,10 +3,10 @@ package scheduler
 import (
 	"context"
 	"database/sql"
-	"log"
 	"time"
 
 	"github.com/fpt-event-services/common/db"
+	"github.com/fpt-event-services/common/logger"
 )
 
 // PendingTicketCleanupScheduler handles automatic cleanup of expired PENDING tickets
@@ -29,7 +29,7 @@ func NewPendingTicketCleanupScheduler(intervalMinutes int) *PendingTicketCleanup
 
 // Start begins the scheduled cleanup job
 func (s *PendingTicketCleanupScheduler) Start() {
-	log.Printf("[SCHEDULER] PENDING ticket cleanup job started (runs every %v minutes, timeout: %d minutes)",
+	logger.Default().Info("[SCHEDULER] PENDING ticket cleanup job started (runs every %v minutes, timeout: %d minutes)",
 		s.interval, s.timeoutMinute)
 
 	// Run immediately once at startup
@@ -44,7 +44,7 @@ func (s *PendingTicketCleanupScheduler) Start() {
 				s.cleanupExpiredPendingTickets()
 			case <-s.stopChan:
 				ticker.Stop()
-				log.Println("[SCHEDULER] PENDING ticket cleanup job stopped")
+				logger.Default().Info("[SCHEDULER] PENDING ticket cleanup job stopped")
 				return
 			}
 		}
@@ -71,7 +71,7 @@ func (s *PendingTicketCleanupScheduler) cleanupExpiredPendingTickets() {
 
 	rows, err := s.db.QueryContext(ctx, query, s.timeoutMinute)
 	if err != nil {
-		log.Printf("[SCHEDULER] Error querying expired PENDING tickets: %v", err)
+		logger.Default().Error("[SCHEDULER] Error querying expired PENDING tickets: %v", err)
 		return
 	}
 	defer rows.Close()
@@ -85,7 +85,7 @@ func (s *PendingTicketCleanupScheduler) cleanupExpiredPendingTickets() {
 		var createdAt time.Time
 
 		if err := rows.Scan(&ticketID, &userID, &eventID, &seatID, &createdAt); err != nil {
-			log.Printf("[SCHEDULER] Error scanning ticket row: %v", err)
+			logger.Default().Error("[SCHEDULER] Error scanning ticket row: %v", err)
 			continue
 		}
 
@@ -93,7 +93,7 @@ func (s *PendingTicketCleanupScheduler) cleanupExpiredPendingTickets() {
 		seatIDs = append(seatIDs, seatID)
 		processedCount++
 
-		log.Printf("[SCHEDULER] 🎫 Found expired PENDING ticket #%d (User #%d, Event #%d, created at %s)",
+		logger.Default().Info("[SCHEDULER] Found expired PENDING ticket #%d (User #%d Event #%d created %s)",
 			ticketID, userID, eventID, createdAt.Format("2006-01-02 15:04:05"))
 	}
 
@@ -104,7 +104,7 @@ func (s *PendingTicketCleanupScheduler) cleanupExpiredPendingTickets() {
 	// Begin transaction
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		log.Printf("[SCHEDULER] Error starting transaction: %v", err)
+		logger.Default().Error("[SCHEDULER] Error starting transaction: %v", err)
 		return
 	}
 	defer tx.Rollback()
@@ -114,25 +114,25 @@ func (s *PendingTicketCleanupScheduler) cleanupExpiredPendingTickets() {
 		deleteQuery := `DELETE FROM Ticket WHERE ticket_id = ? AND status = 'PENDING'`
 		result, err := tx.ExecContext(ctx, deleteQuery, ticketID)
 		if err != nil {
-			log.Printf("[SCHEDULER] Error deleting ticket #%d: %v", ticketID, err)
+			logger.Default().Error("[SCHEDULER] Error deleting ticket #%d: %v", ticketID, err)
 			continue
 		}
 
 		rowsAffected, _ := result.RowsAffected()
 		if rowsAffected > 0 {
-			log.Printf("[SCHEDULER] ✅ Deleted expired PENDING ticket #%d", ticketID)
+			logger.Default().Info("[SCHEDULER] Deleted expired PENDING ticket #%d", ticketID)
 		}
 	}
 
 	// ✅ FIXED: Seats are automatically released when tickets are deleted
 	// No need to delete from Registration table (simplified logic)
-	log.Printf("[SCHEDULER] 📋 Released %d seats from deleted PENDING tickets", len(seatIDs))
+	logger.Default().Info("[SCHEDULER] Released %d seats from deleted PENDING tickets", len(seatIDs))
 
 	// Commit transaction
 	if err := tx.Commit(); err != nil {
-		log.Printf("[SCHEDULER] Error committing transaction: %v", err)
+		logger.Default().Error("[SCHEDULER] Error committing transaction: %v", err)
 		return
 	}
 
-	log.Printf("[SCHEDULER] 📊 Cleaned up %d expired PENDING tickets", processedCount)
+	logger.Default().Info("[SCHEDULER] Cleaned up %d expired PENDING tickets", processedCount)
 }

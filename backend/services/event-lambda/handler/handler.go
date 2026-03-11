@@ -2,26 +2,32 @@ package handler
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/logger"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/event-lambda/models"
 	"github.com/fpt-event-services/services/event-lambda/usecase"
 )
+
+var log = logger.Default()
 
 // EventHandler handles event-related requests
 type EventHandler struct {
 	useCase *usecase.EventUseCase
 }
 
-// NewEventHandler creates a new event handler
-func NewEventHandler() *EventHandler {
+// NewEventHandlerWithDB creates a new event handler with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton allowed
+func NewEventHandlerWithDB(dbConn *sql.DB) *EventHandler {
 	return &EventHandler{
-		useCase: usecase.NewEventUseCase(),
+		useCase: usecase.NewEventUseCaseWithDB(dbConn),
 	}
 }
 
@@ -47,7 +53,7 @@ func (h *EventHandler) HandleGetEvents(ctx context.Context, request events.APIGa
 		var err error
 		userID, err = strconv.Atoi(userIDStr)
 		if err != nil {
-			fmt.Printf("[PERMISSION] Invalid X-User-Id: %s\n", userIDStr)
+			log.Warn("HandleGetEvents - Invalid X-User-Id: %s", userIDStr)
 		}
 	}
 
@@ -56,14 +62,31 @@ func (h *EventHandler) HandleGetEvents(ctx context.Context, request events.APIGa
 		role = "PUBLIC"
 	}
 
-	fmt.Printf("[PERMISSION] HandleGetEvents - Role=%s, UserID=%d\n", role, userID)
+	// ✅ NEW: Parse pagination parameters from query string
+	pageStr := request.QueryStringParameters["page"]
+	limitStr := request.QueryStringParameters["limit"]
 
-	// Get all events separated by status (khớp với Java)
-	// Pass role and userID for permission filtering
-	openEvents, closedEvents, err := h.useCase.GetAllEventsSeparated(ctx, role, userID)
+	page := 1
+	limit := 10
+
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	log.Debug("HandleGetEvents - Role=%s UserID=%d Page=%d Limit=%d", role, userID, page, limit)
+
+	// Get all events separated by status with pagination
+	openEvents, closedEvents, totalOpen, totalClosed, err := h.useCase.GetAllEventsSeparatedWithPagination(ctx, role, userID, page, limit)
 	if err != nil {
-		// ✅ Log chi tiết lỗi để debug
-		fmt.Printf("❌ ERROR GetAllEventsSeparated: %v\n", err)
+		log.Error("GetAllEventsSeparatedWithPagination error: %v", err)
 		return createMessageResponse(http.StatusInternalServerError, fmt.Sprintf("Internal server error when loading events: %v", err))
 	}
 
@@ -75,16 +98,27 @@ func (h *EventHandler) HandleGetEvents(ctx context.Context, request events.APIGa
 		closedEvents = []models.EventListItem{}
 	}
 
-	// ✅ SECURITY LOG: Track filtered events access
-	totalEvents := len(openEvents) + len(closedEvents)
-	fmt.Printf("[SECURITY] Filtered events for UserID: %d, Role: %s, Total Events Returned: %d (OPEN: %d, CLOSED: %d)\n",
-		userID, role, totalEvents, len(openEvents), len(closedEvents))
-	fmt.Printf("[PERMISSION] Returning %d OPEN events, %d CLOSED events\n", len(openEvents), len(closedEvents))
+	// Calculate pagination metadata
+	totalItems := totalOpen + totalClosed
+	totalPages := (totalItems + limit - 1) / limit
+	if totalPages < 1 {
+		totalPages = 1
+	}
 
-	// Response format khớp với Java Backend
+	// ✅ SECURITY LOG: Track filtered events access
+	log.Info("GetEvents filtered - UserID=%d Role=%s Page=%d TotalItems=%d Open=%d Closed=%d",
+		userID, role, page, totalItems, len(openEvents), len(closedEvents))
+
+	// ✅ NEW RESPONSE FORMAT with pagination metadata
 	response := map[string]interface{}{
 		"openEvents":   openEvents,
 		"closedEvents": closedEvents,
+		"pagination": map[string]int{
+			"currentPage": page,
+			"pageSize":    limit,
+			"totalItems":  totalItems,
+			"totalPages":  totalPages,
+		},
 	}
 
 	return createJSONResponse(http.StatusOK, response)
@@ -210,35 +244,33 @@ func (h *EventHandler) HandleCreateEventRequest(ctx context.Context, request eve
 	}
 
 	// Parse and validate time
-	log.Printf("[HandleCreateEventRequest] Parsing times - Start: %s, End: %s", req.PreferredStartTime, req.PreferredEndTime)
+	log.Debug("HandleCreateEventRequest - Parsing times Start=%s End=%s", req.PreferredStartTime, req.PreferredEndTime)
 	startTime, err := ParseEventTime(req.PreferredStartTime)
 	if err != nil {
-		log.Printf("[HandleCreateEventRequest] Failed to parse start time: %v", err)
+		log.Warn("HandleCreateEventRequest - Failed to parse start time: %v", err)
 		return createMessageResponse(http.StatusBadRequest, "Invalid start time format")
 	}
 	endTime, err := ParseEventTime(req.PreferredEndTime)
 	if err != nil {
-		log.Printf("[HandleCreateEventRequest] Failed to parse end time: %v", err)
+		log.Warn("HandleCreateEventRequest - Failed to parse end time: %v", err)
 		return createMessageResponse(http.StatusBadRequest, "Invalid end time format")
 	}
-	log.Printf("[HandleCreateEventRequest] Parsed times - Start: %s, End: %s", startTime.Format("2006-01-02 15:04:05"), endTime.Format("2006-01-02 15:04:05"))
+	log.Debug("HandleCreateEventRequest - Parsed times Start=%s End=%s", startTime.Format("2006-01-02 15:04:05"), endTime.Format("2006-01-02 15:04:05"))
 
 	// Validate event time rules
-	log.Printf("[HandleCreateEventRequest] Validating event time rules...")
 	if err := ValidateEventTime(startTime, endTime); err != nil {
-		log.Printf("[HandleCreateEventRequest] Time validation failed: %v", err.Error())
+		log.Warn("HandleCreateEventRequest - Time validation failed: %v", err.Error())
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
-	log.Printf("[HandleCreateEventRequest] Time validation passed")
 
 	// Create event request
 	requestID, err := h.useCase.CreateEventRequest(ctx, userID, &req)
 	if err != nil {
-		log.Printf("[HandleCreateEventRequest] Failed to create event request: %v", err)
+		log.Error("HandleCreateEventRequest - Failed to create event request: %v", err)
 		return createMessageResponse(http.StatusInternalServerError, "Error creating event request")
 	}
 
-	log.Printf("[HandleCreateEventRequest] Successfully created request ID: %d", requestID)
+	log.Info("HandleCreateEventRequest - Created request ID=%d", requestID)
 	return createJSONResponse(http.StatusOK, map[string]interface{}{
 		"message":   "Event request created successfully",
 		"requestId": requestID,
@@ -365,28 +397,45 @@ func (h *EventHandler) HandleGetMyArchivedEventRequests(ctx context.Context, req
 // Trả về dữ liệu: title, description, venue info (venueName, areaName, floor, areaCapacity), ...
 // ============================================================
 func (h *EventHandler) HandleGetEventRequestByID(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Get request ID from path parameters
+	// Get request ID from path parameters (Lambda mode) or fallback to parsing path (local mode)
 	requestIDStr := request.PathParameters["id"]
+
+	// Fallback: if PathParameters is empty (local HTTP server), parse from path
 	if requestIDStr == "" {
+		// Parse /api/event-requests/1055 → extract "1055"
+		parts := strings.Split(strings.TrimSuffix(request.Path, "/"), "/")
+		if len(parts) > 0 {
+			requestIDStr = parts[len(parts)-1]
+		}
+		log.Debug("GetEventRequestByID - Extracted ID from path: %s (full path: %s)", requestIDStr, request.Path)
+	}
+
+	if requestIDStr == "" {
+		log.Warn("GetEventRequestByID - ID is empty Path=%s PathParams=%v", request.Path, request.PathParameters)
 		return createMessageResponse(http.StatusBadRequest, "Event request ID is required")
 	}
 
 	requestID, err := strconv.Atoi(requestIDStr)
 	if err != nil {
+		log.Warn("GetEventRequestByID - Invalid ID format '%s': %v", requestIDStr, err)
 		return createMessageResponse(http.StatusBadRequest, "Invalid request ID format")
 	}
+
+	log.Debug("GetEventRequestByID - Fetching request ID=%d", requestID)
 
 	// Get event request detail with venue info
 	eventRequest, err := h.useCase.GetEventRequestByID(ctx, requestID)
 	if err != nil {
-		fmt.Printf("[ERROR] GetEventRequestByID failed: %v\n", err)
+		log.Error("GetEventRequestByID failed ID=%d: %v", requestID, err)
 		return createMessageResponse(http.StatusInternalServerError, "Error fetching event request")
 	}
 
 	if eventRequest == nil {
+		log.Warn("GetEventRequestByID - Not found requestID=%d", requestID)
 		return createMessageResponse(http.StatusNotFound, "Event request not found")
 	}
 
+	log.Debug("GetEventRequestByID - SUCCESS requestID=%d Title=%s", requestID, eventRequest.Title)
 	return createJSONResponse(http.StatusOK, eventRequest)
 }
 
@@ -449,13 +498,13 @@ func (h *EventHandler) HandleProcessEventRequest(ctx context.Context, request ev
 	}
 
 	// Log request details
-	fmt.Printf("[ProcessEventRequest] RequestID=%d, Action=%s, AreaID=%v, SpeakerID=%v\n",
+	log.Info("ProcessEventRequest - RequestID=%d Action=%s AreaID=%v SpeakerID=%v",
 		req.RequestID, req.Action, req.AreaID, req.SpeakerID)
 
 	// Process event request
 	err := h.useCase.ProcessEventRequest(ctx, userID, &req)
 	if err != nil {
-		fmt.Printf("[ERROR] ProcessEventRequest failed: %v\n", err)
+		log.Error("ProcessEventRequest failed RequestID=%d: %v", req.RequestID, err)
 		return createMessageResponse(http.StatusInternalServerError, fmt.Sprintf("Error processing event request: %v", err))
 	}
 
@@ -503,13 +552,13 @@ func (h *EventHandler) HandleUpdateEventRequest(ctx context.Context, request eve
 	}
 
 	// Log update request
-	fmt.Printf("[UpdateEventRequest] RequestID=%d, UserID=%d, Status=%s\n", req.RequestID, userID, req.Status)
+	log.Info("UpdateEventRequest - RequestID=%d UserID=%d Status=%s", req.RequestID, userID, req.Status)
 
 	// ===== BUSINESS LOGIC GUARDS - Check if event can be updated =====
 	// Get the related event to check status and start time
 	eventEligible, eligibilityError := h.useCase.CheckEventUpdateEligibility(ctx, req.RequestID)
 	if eligibilityError != nil {
-		fmt.Printf("[ERROR] CheckEventUpdateEligibility failed: %v\n", eligibilityError)
+		log.Warn("CheckEventUpdateEligibility failed RequestID=%d: %v", req.RequestID, eligibilityError)
 
 		// Parse error message to determine HTTP status code
 		if eligibilityError.Code == "EVENT_CLOSED" {
@@ -530,7 +579,7 @@ func (h *EventHandler) HandleUpdateEventRequest(ctx context.Context, request eve
 		// Get original event request to compare
 		originalRequest, err := h.useCase.GetEventRequestByID(ctx, req.RequestID)
 		if err != nil {
-			fmt.Printf("[ERROR] GetEventRequestByID failed: %v\n", err)
+			log.Error("GetEventRequestByID failed RequestID=%d: %v", req.RequestID, err)
 			return createMessageResponse(http.StatusInternalServerError, "Error retrieving original request")
 		}
 
@@ -583,7 +632,7 @@ func (h *EventHandler) HandleUpdateEventRequest(ctx context.Context, request eve
 	// Call use case to update request
 	err := h.useCase.UpdateEventRequest(ctx, userID, &req)
 	if err != nil {
-		fmt.Printf("[ERROR] UpdateEventRequest failed: %v\n", err)
+		log.Error("UpdateEventRequest failed RequestID=%d: %v", req.RequestID, err)
 		return createMessageResponse(http.StatusInternalServerError, fmt.Sprintf("Error updating event request: %v", err))
 	}
 
@@ -686,7 +735,7 @@ func (h *EventHandler) HandleUpdateEventDetails(ctx context.Context, request eve
 	err = h.useCase.UpdateEventDetails(ctx, userID, role, &req)
 	if err != nil {
 		// Log detailed error for debugging
-		fmt.Printf("[ERROR] UpdateEventDetails failed: %v\n", err)
+		log.Error("UpdateEventDetails failed userID=%d: %v", userID, err)
 
 		// Check for specific error messages
 		errMsg := err.Error()
@@ -755,7 +804,7 @@ func (h *EventHandler) HandleUpdateEventConfig(ctx context.Context, request even
 	// Update config
 	err = h.useCase.UpdateEventConfig(ctx, userID, role, &req)
 	if err != nil {
-		fmt.Printf("[ERROR] UpdateEventConfig failed: %v\n", err)
+		log.Error("UpdateEventConfig failed userID=%d: %v", userID, err)
 		errMsg := err.Error()
 		if errMsg == "event not found" {
 			return createMessageResponse(http.StatusNotFound, "Event not found")
@@ -813,34 +862,6 @@ func (h *EventHandler) HandleGetEventConfig(ctx context.Context, request events.
 // Disable event (ADMIN only)
 // KHỚP VỚI Java EventDisableController
 // ============================================================
-func (h *EventHandler) HandleDisableEvent(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Check role (ADMIN only)
-	role := request.Headers["X-User-Role"]
-	if role != "ADMIN" {
-		return createMessageResponse(http.StatusForbidden, "Admin access required")
-	}
-
-	// Get event ID from query parameter
-	eventIDStr := request.QueryStringParameters["id"]
-	if eventIDStr == "" {
-		return createMessageResponse(http.StatusBadRequest, "Event ID is required")
-	}
-	eventID, err := strconv.Atoi(eventIDStr)
-	if err != nil {
-		return createMessageResponse(http.StatusBadRequest, "Invalid event ID")
-	}
-
-	// Disable event
-	err = h.useCase.DisableEvent(ctx, eventID)
-	if err != nil {
-		return createMessageResponse(http.StatusInternalServerError, "Error disabling event")
-	}
-
-	return createJSONResponse(http.StatusOK, map[string]string{
-		"message": "Event disabled successfully",
-	})
-}
-
 // ============================================================
 // HandleGetEventStats - GET /api/events/stats
 // Thống kê sự kiện (All authenticated users, with access control)
@@ -874,12 +895,12 @@ func (h *EventHandler) HandleGetEventStats(ctx context.Context, request events.A
 
 	// ✅ SPECIAL CASE: eventID = 0 = "All Events" aggregation mode
 	if eventID == 0 {
-		fmt.Printf("[STATS_ALL] Calculating aggregate stats for UserID: %d, Role: %s\n", userID, role)
+		log.Info("GetEventStats - aggregate mode UserID=%d Role=%s", userID, role)
 
 		// Get aggregate stats
 		stats, err := h.useCase.GetAggregateEventStats(ctx, role, userID)
 		if err != nil {
-			fmt.Printf("[ERROR] GetAggregateEventStats failed: %v\n", err)
+			log.Error("GetAggregateEventStats failed: %v", err)
 			return createMessageResponse(http.StatusInternalServerError, "Error loading aggregate stats")
 		}
 
@@ -898,34 +919,32 @@ func (h *EventHandler) HandleGetEventStats(ctx context.Context, request events.A
 			return createJSONResponse(http.StatusOK, emptyStats)
 		}
 
-		fmt.Printf("[STATS API] Sending aggregate response: Total=%d, CheckedIn=%d, CheckedOut=%d, Revenue=%.2f\n",
-			stats.TotalTickets, stats.CheckedInCount, stats.CheckedOutCount, stats.TotalRevenue)
+		log.Debug("GetEventStats - aggregate response Total=%d CheckedIn=%d Revenue=%.2f",
+			stats.TotalTickets, stats.CheckedInCount, stats.TotalRevenue)
 		return createJSONResponse(http.StatusOK, stats)
 	}
 
 	// ✅ ACCESS CONTROL: Kiểm tra quyền cho single event
 	if role != "ADMIN" && role != "STAFF" {
 		// ORGANIZER: Chỉ xem được event mình tạo
-		// Khác ADMIN/STAFF/ORGANIZER: Không được phép
 		if role == "ORGANIZER" {
 			// Check if organizer owns this event
 			ownsEvent, err := h.useCase.CheckEventOwnership(ctx, eventID, userID)
 			if err != nil {
-				fmt.Printf("[ERROR] CheckEventOwnership failed: %v\n", err)
+				log.Error("CheckEventOwnership failed eventID=%d: %v", eventID, err)
 				return createMessageResponse(http.StatusInternalServerError, "Error checking event ownership")
 			}
 			if !ownsEvent {
-				fmt.Printf("[FORBIDDEN] Organizer %d trying to view stats of event %d they don't own\n", userID, eventID)
+				log.Warn("Forbidden - Organizer %d viewing stats of eventID=%d they don't own", userID, eventID)
 				return createMessageResponse(http.StatusForbidden, "You do not have permission to view this event's statistics")
 			}
 		} else {
-			// CUSTOMER/OTHER roles not allowed
-			fmt.Printf("[FORBIDDEN] User %d with role %s trying to view event stats\n", userID, role)
+			log.Warn("Forbidden - UserID=%d Role=%s viewing event stats", userID, role)
 			return createMessageResponse(http.StatusForbidden, "You do not have permission to view event statistics")
 		}
 	}
 
-	fmt.Printf("[STATS ACCESS] UserID=%d (Role=%s) requesting stats for EventID=%d\n", userID, role, eventID)
+	log.Debug("GetEventStats - UserID=%d Role=%s EventID=%d", userID, role, eventID)
 
 	// Get event stats
 	stats, err := h.useCase.GetEventStats(ctx, eventID)
@@ -938,13 +957,8 @@ func (h *EventHandler) HandleGetEventStats(ctx context.Context, request events.A
 	}
 
 	// ✅ LOG RESPONSE before sending to client
-	fmt.Printf("[STATS API] Sending response to client: EventID=%d, Total=%d, CheckedIn=%d, CheckedOut=%d, Booked=%d, Cancelled=%d\n",
-		stats.EventID,
-		stats.TotalTickets,
-		stats.CheckedInCount,
-		stats.CheckedOutCount,
-		stats.BookedCount,
-		stats.CancelledCount,
+	log.Debug("GetEventStats - EventID=%d Total=%d CheckedIn=%d CheckedOut=%d Booked=%d Cancelled=%d",
+		stats.EventID, stats.TotalTickets, stats.CheckedInCount, stats.CheckedOutCount, stats.BookedCount, stats.CancelledCount,
 	)
 
 	return createJSONResponse(http.StatusOK, stats)
@@ -974,12 +988,12 @@ func (h *EventHandler) HandleGetAvailableAreas(ctx context.Context, request even
 		}
 	}
 
-	fmt.Printf("[AVAILABLE AREAS] Query: startTime=%s, endTime=%s, expectedCapacity=%d\n", startTime, endTime, expectedCapacity)
+	log.Debug("GetAvailableAreas - startTime=%s endTime=%s expectedCapacity=%d", startTime, endTime, expectedCapacity)
 
 	// Get available areas
 	areas, err := h.useCase.GetAvailableAreas(ctx, startTime, endTime, expectedCapacity)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to get available areas: %v\n", err)
+		log.Error("GetAvailableAreas failed: %v", err)
 		return createMessageResponse(http.StatusInternalServerError, "Error loading available areas")
 	}
 
@@ -987,7 +1001,7 @@ func (h *EventHandler) HandleGetAvailableAreas(ctx context.Context, request even
 		areas = []models.AvailableAreaInfo{}
 	}
 
-	fmt.Printf("[AVAILABLE AREAS] Found %d available areas\n", len(areas))
+	log.Debug("GetAvailableAreas - found %d areas", len(areas))
 	return createJSONResponse(http.StatusOK, map[string]interface{}{
 		"availableAreas": areas,
 		"count":          len(areas),
@@ -1025,20 +1039,20 @@ func (h *EventHandler) HandleCancelEvent(ctx context.Context, request events.API
 
 	// Scenario 1: Hủy yêu cầu (PENDING/UPDATING)
 	if req.RequestID > 0 {
-		fmt.Printf("[CancelEvent] UserID=%d cancelling RequestID=%d\n", userID, req.RequestID)
+		log.Info("CancelEvent - UserID=%d cancelling RequestID=%d", userID, req.RequestID)
 		err = h.useCase.CancelEventRequest(ctx, userID, req.RequestID)
 		if err != nil {
-			fmt.Printf("[ERROR] Failed to cancel request: %v\n", err)
+			log.Error("CancelEventRequest failed RequestID=%d: %v", req.RequestID, err)
 			return createMessageResponse(http.StatusBadRequest, err.Error())
 		}
 		return createMessageResponse(http.StatusOK, "Yêu cầu đã được rút lại thành công")
 	}
 
 	// Scenario 2: Hủy sự kiện (APPROVED)
-	fmt.Printf("[CancelEvent] UserID=%d cancelling EventID=%d\n", userID, req.EventID)
+	log.Info("CancelEvent - UserID=%d cancelling EventID=%d", userID, req.EventID)
 	err = h.useCase.CancelEvent(ctx, userID, req.EventID)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to cancel event: %v\n", err)
+		log.Error("CancelEvent failed EventID=%d: %v", req.EventID, err)
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
 
@@ -1056,16 +1070,75 @@ func (h *EventHandler) HandleCheckDailyQuota(ctx context.Context, request events
 		return createMessageResponse(http.StatusBadRequest, "date parameter is required (format: YYYY-MM-DD)")
 	}
 
-	fmt.Printf("[CheckDailyQuota] Checking quota for date: %s\n", eventDate)
+	log.Debug("CheckDailyQuota - date=%s", eventDate)
 
 	// Call useCase to check daily quota
 	quotaResponse, err := h.useCase.CheckDailyQuota(ctx, eventDate)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to check daily quota: %v\n", err)
+		log.Error("CheckDailyQuota failed date=%s: %v", eventDate, err)
 		return createMessageResponse(http.StatusInternalServerError, "Error checking daily quota")
 	}
 
 	return createJSONResponse(http.StatusOK, quotaResponse)
+}
+
+// ============================================================
+// HandleDisableEvent - POST /api/events/disable
+// Chỉ STAFF/ADMIN: đặt event → CANCELLED + kick hoàn tiền 100%
+// ============================================================
+func (h *EventHandler) HandleDisableEvent(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	role := request.Headers["X-User-Role"]
+	userIDStr := request.Headers["X-User-Id"]
+
+	if userIDStr == "" {
+		return createMessageResponse(http.StatusUnauthorized, "Unauthorized: missing X-User-Id")
+	}
+
+	// Chỉ STAFF và ADMIN được phép
+	if role != "STAFF" && role != "ADMIN" {
+		return createMessageResponse(http.StatusForbidden, "Chỉ STAFF/ADMIN mới có quyền hủy sự kiện")
+	}
+
+	var req struct {
+		EventID int    `json:"eventId"`
+		Reason  string `json:"reason"`
+	}
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid request body")
+	}
+	if req.EventID <= 0 {
+		return createMessageResponse(http.StatusBadRequest, "eventId là bắt buộc")
+	}
+
+	log.Info("DisableEvent - EventID=%d UserID=%s Role=%s", req.EventID, userIDStr, role)
+
+	// BƯỚC 1: Cập nhật trạng thái sự kiện → CANCELLED
+	if err := h.useCase.DisableEventByStaff(ctx, req.EventID); err != nil {
+		log.Error("DisableEvent - cannot cancel event %d: %v", req.EventID, err)
+		return createMessageResponse(http.StatusBadRequest, err.Error())
+	}
+
+	log.Info("DisableEvent - EventID=%d set to CANCELLED", req.EventID)
+
+	// BƯỚC 2: Kích hoạt hoàn tiền 100% qua Ticket Service
+	log.Info("DisableEvent - Triggering mass refund for EventID=%d", req.EventID)
+	client := utils.NewInternalClient()
+	refundPayload := map[string]interface{}{
+		"eventId": req.EventID,
+		"reason":  req.Reason,
+	}
+
+	refundURL := utils.GetTicketServiceURL() + "/internal/tickets/refund-all-by-event"
+	_, sc, err := client.Post(ctx, refundURL, refundPayload)
+	if err != nil || sc >= 400 {
+		log.Warn("DisableEvent - refund call failed EventID=%d sc=%d: %v", req.EventID, sc, err)
+		// Sự kiện đã CANCELLED — hoàn tiền thất bại nhưng không rollback hủy event
+		return createMessageResponse(http.StatusOK,
+			fmt.Sprintf("Sự kiện đã hủy nhưng hoàn tiền thất bại (sc=%d). Liên hệ Admin để xử lý thủ công.", sc))
+	}
+
+	log.Info("DisableEvent - refund triggered successfully for EventID=%d", req.EventID)
+	return createMessageResponse(http.StatusOK, "Sự kiện đã bị hủy và đang tiến hành hoàn tiền 100% cho toàn bộ sinh viên đã mua vé")
 }
 
 // ============================================================

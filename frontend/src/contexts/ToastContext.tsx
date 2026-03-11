@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react'
 import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react'
 
 type ToastType = 'success' | 'error' | 'warning' | 'info'
@@ -17,9 +17,11 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined)
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
+  // counter đảm bảo ID duy nhất ngay cả khi nhiều toast xuất hiện trong cùng millisecond
+  const counterRef = useRef(0)
 
   const showToast = useCallback((type: ToastType, message: string) => {
-    const id = Date.now()
+    const id = Date.now() * 1000 + (counterRef.current++ % 1000)
     setToasts(prev => [...prev, { id, type, message }])
 
     // Auto remove after 5 seconds
@@ -61,7 +63,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      
+
       {/* Toast Container */}
       <div className="fixed top-20 right-4 z-[9999] space-y-3 max-w-lg">
         {toasts.map(toast => (

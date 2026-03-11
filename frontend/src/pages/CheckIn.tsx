@@ -32,7 +32,7 @@ import { Html5Qrcode } from 'html5-qrcode'
 // Thư viện bên thứ 3 để quét mã QR bằng camera trên trình duyệt web
 // Hỗ trợ nhiều loại mã vạch và QR code
 
-import { Scan, CheckCircle, XCircle, Search, LogIn, LogOut, AlertTriangle, AlertCircle, Clock, Loader } from 'lucide-react'
+import { Scan, CheckCircle, XCircle, Search, LogIn, LogOut, AlertTriangle, AlertCircle, Clock, Loader, ShieldAlert, RotateCcw, type LucideIcon } from 'lucide-react'
 // Các icon từ thư viện lucide-react:
 // - Scan: icon quét mã
 // - CheckCircle: icon thành công (dấu check trong vòng tròn)
@@ -56,6 +56,64 @@ import { vi } from 'date-fns/locale'
 // =============================================================================
 // Kiểu dữ liệu cho 2 tab: 'checkin' (vào sự kiện) và 'checkout' (ra khỏi sự kiện)
 type TabType = 'checkin' | 'checkout'
+
+// =============================================================================
+// HELPER: CẤU HÌNH HIỂN THỊ LỖI DỰA TRÊN ERROR CODE
+// Phân biệt rõ ràng: 'Vé giả/Sai sự kiện' vs 'Vé đã dùng rồi'
+// =============================================================================
+type ErrorDisplayConfig = {
+  Icon: LucideIcon
+  iconClass: string
+  title: string
+}
+
+function getErrorConfig(errorCode: string | undefined, tab: TabType, previousTime?: string): ErrorDisplayConfig {
+  switch (errorCode) {
+    case 'UnauthorizedOrganizer':
+      // Vé thuộc sự kiện khác - Organizer không sở hữu
+      return {
+        Icon: ShieldAlert,
+        iconClass: 'text-red-500',
+        title: '🔐 Bạn không có quyền quét vé cho sự kiện này.\nVui lòng kiểm tra lại sự kiện bạn đang quản lý'
+      }
+    case 'AlreadyCheckedIn':
+      // Vé đã quét rồi - trước đó đã cho vào
+      return {
+        Icon: RotateCcw,
+        iconClass: 'text-orange-500',
+        title: previousTime
+          ? `⚠️ Mã QR này đã được dùng để check-in vào lúc ${previousTime}`
+          : '⚠️ Vé đã được quét rồi! Khách này đã vào cổng.'
+      }
+    case 'AlreadyCheckedOut':
+      return { Icon: RotateCcw, iconClass: 'text-orange-500', title: '🚶 Khách đã rời sự kiện rồi! Vé không còn hiệu lực.' }
+    case 'NotCheckedIn':
+      return { Icon: AlertTriangle, iconClass: 'text-yellow-500', title: '❓ Khách chưa check-in! Không thể check-out.' }
+    case 'TicketCancelled':
+      return { Icon: XCircle, iconClass: 'text-red-500', title: '❌ Vé đã bị hủy! Không thể sử dụng.' }
+    case 'InvalidTicket':
+      return {
+        Icon: XCircle,
+        iconClass: 'text-red-500',
+        title: '❌ Mã vé không tồn tại trong hệ thống hoặc thuộc về một sự kiện khác'
+      }
+    case 'TooEarlyToCheckIn':
+      return { Icon: Clock, iconClass: 'text-yellow-500', title: '⏰ Chưa đến giờ! Cổng check-in chưa mở.' }
+    case 'TooEarlyToCheckOut':
+      return { Icon: Clock, iconClass: 'text-yellow-500', title: '⏰ Chưa đến giờ check-out!' }
+    case 'EventEnded':
+      return { Icon: AlertCircle, iconClass: 'text-red-500', title: '🏁 Sự kiện đã kết thúc!' }
+    case 'DatabaseError':
+      return { Icon: AlertCircle, iconClass: 'text-gray-500', title: '⛔ Lỗi hệ thống!' }
+    default:
+      // Fallback: dùng icon cũ dựa trên nội dung message
+      return {
+        Icon: tab === 'checkin' ? XCircle : XCircle,
+        iconClass: 'text-red-500',
+        title: tab === 'checkin' ? 'Check-in thất bại!' : 'Check-out thất bại!',
+      }
+  }
+}
 
 
 // =============================================================================
@@ -93,10 +151,12 @@ export default function CheckIn() {
   // State lưu kết quả trả về sau khi gọi API check-in/check-out(lưu kết quả để hiển thị)
   // - success: boolean cho biết thành công hay thất bại
   // - message: thông báo hiển thị cho người dùng
+  // - errorCode: mã lỗi có cấu trúc để phân loại và hiển thị đúng icon/message
   // - registration: dữ liệu chi tiết về vé/sự kiện (tùy chọn)
   const [result, setResult] = useState<{
     success: boolean
     message: string
+    errorCode?: string
     registration?: any
   } | null>(null)
 
@@ -439,6 +499,7 @@ export default function CheckIn() {
         setResult({
           success: false,
           message: msg,
+          errorCode: res.status === 403 ? 'UnauthorizedOrganizer' : undefined,
         })
         setIsProcessing(false)  // ✅ NEW: Disable flag
         return
@@ -446,18 +507,43 @@ export default function CheckIn() {
 
       // =====================================================================
       // XỬ LÝ RESPONSE THÀNH CÔNG - NHIỀU VÉ (MULTI-TICKET)
-      // =====================================================================
       // Backend trả về mảng results[] khi xử lý nhiều vé cùng lúc
+      // =====================================================================
       if (data && Array.isArray(data.results)) {
-        // ✅ Cải thiện: Nếu chỉ có 1 vé và thất bại, hiển thị error chi tiết
+        // ✅ Vé đơn thất bại: hiển thị error chi tiết với errorCode để phân loại
         if (data.results.length === 1 && !data.success && data.results[0].error) {
           setResult({
             success: false,
-            message: data.results[0].error, // Hiển thị error message chi tiết từ Backend
+            message: data.results[0].error,
+            errorCode: data.results[0].errorCode, // ✅ Mã lỗi có cấu trúc
             registration: {
               ticketId: data.results[0].ticketId,
               eventName: data.results[0].eventName,
-              customerName: data.results[0].customerName, // ✅ NEW: Thêm tên khách hàng
+              customerName: data.results[0].customerName,
+              previousTime: data.results[0].previousTime, // thời gian đã quét
+            },
+          })
+          return
+        }
+
+        // ✅ Vé đơn thành công: hiển thị câu chào mừng cá nhân hoá
+        if (data.results.length === 1 && data.success) {
+          const r = data.results[0]
+          const customerName: string = r.customerName || ''
+          const eventName: string = r.eventName || ''
+          const greeting = activeTab === 'checkin'
+            ? (eventName ? `🎉 Check-in thành công cho sự kiện ${eventName}!` : '✅ Check-in thành công!')
+            : (customerName ? `👋 Hẹn gặp lại ${customerName}!` : '✅ Check-out thành công!')
+          setResult({
+            success: true,
+            message: greeting,
+            registration: {
+              ticketId: r.ticketId,
+              eventName: eventName,
+              customerName: customerName,
+              checkedInAt: r.checkInTime,
+              checkedOutAt: r.checkOutTime,
+              seatCode: r.seatCode,
             },
           })
           return
@@ -484,14 +570,19 @@ export default function CheckIn() {
       // Xử lý đặc biệt cho check-out khi backend vẫn trả results[]
       if (activeTab === 'checkout' && data.results && data.results.length > 0) {
         const firstResult = data.results[0]
+        const customerName: string = firstResult.customerName || ''
+        const isSuccess = data.success || firstResult.success
         setResult({
-          success: data.success || firstResult.success,
-          message: data.message || firstResult.message || 'Check-out thành công',
+          success: isSuccess,
+          message: isSuccess
+            ? (customerName ? `👋 Hẹn gặp lại ${customerName}!` : 'Check-out thành công')
+            : (firstResult.message || data.message || 'Check-out thất bại'),
+          errorCode: !isSuccess ? firstResult.errorCode : undefined,
           registration: {
             ticketId: firstResult.ticketId,
             checkedOutAt: firstResult.checkoutTime,
             eventName: firstResult.eventName,
-            customerName: firstResult.customerName, // ✅ NEW: Thêm tên khách hàng
+            customerName: customerName,
           },
         })
       } else {
@@ -577,8 +668,8 @@ export default function CheckIn() {
         <button
           onClick={() => setActiveTab('checkin')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeTab === 'checkin'
-              ? 'bg-white text-blue-600 shadow-sm'  // Style khi tab đang được chọn
-              : 'text-gray-600 hover:text-gray-900' // Style khi tab không được chọn
+            ? 'bg-white text-blue-600 shadow-sm'  // Style khi tab đang được chọn
+            : 'text-gray-600 hover:text-gray-900' // Style khi tab không được chọn
             }`}
         >
           <LogIn className="w-5 h-5" />
@@ -589,8 +680,8 @@ export default function CheckIn() {
         <button
           onClick={() => setActiveTab('checkout')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeTab === 'checkout'
-              ? 'bg-white text-purple-600 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
+            ? 'bg-white text-purple-600 shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
             }`}
         >
           <LogOut className="w-5 h-5" />
@@ -618,10 +709,10 @@ export default function CheckIn() {
                 }}
                 disabled={isProcessing}  // ✅ NEW: Disable khi đang xử lý
                 className={`w-full py-3 rounded-lg transition-colors flex items-center justify-center text-white ${isProcessing
-                    ? 'bg-gray-400 cursor-not-allowed'  // ✅ NEW: Màu xám khi disable
-                    : isCheckIn
-                      ? 'bg-blue-600 hover:bg-blue-700'    // Màu xanh cho check-in
-                      : 'bg-purple-600 hover:bg-purple-700' // Màu tím cho check-out
+                  ? 'bg-gray-400 cursor-not-allowed'  // ✅ NEW: Màu xám khi disable
+                  : isCheckIn
+                    ? 'bg-blue-600 hover:bg-blue-700'    // Màu xanh cho check-in
+                    : 'bg-purple-600 hover:bg-purple-700' // Màu tím cho check-out
                   }`}
               >
                 {isProcessing ? (
@@ -668,8 +759,8 @@ export default function CheckIn() {
                     onClick={handleManualAction}
                     disabled={isProcessing}  // ✅ NEW: Disable khi đang xử lý
                     className={`px-4 py-2 text-white rounded-lg transition-colors flex items-center justify-center ${isProcessing
-                        ? 'bg-gray-400 cursor-not-allowed'  // ✅ NEW: Màu xám khi disable
-                        : 'bg-gray-600 hover:bg-gray-700'
+                      ? 'bg-gray-400 cursor-not-allowed'  // ✅ NEW: Màu xám khi disable
+                      : 'bg-gray-600 hover:bg-gray-700'
                       }`}
                   >
                     {isProcessing ? (
@@ -761,45 +852,81 @@ export default function CheckIn() {
               {/* Hiển thị icon và thông báo dựa theo thành công/thất bại */}
               {result.success ? (
                 /* Trường hợp THÀNH CÔNG */
-                <div className="text-center py-6">
-                  <CheckCircle
-                    className={`w-16 h-16 mx-auto mb-4 ${isCheckIn ? 'text-green-500' : 'text-purple-500'
-                      }`}
-                  />
-                  <p
-                    className={`text-xl font-semibold mb-2 ${isCheckIn ? 'text-green-600' : 'text-purple-600'
-                      }`}
-                  >
-                    {result.message}
-                  </p>
+                <div className="space-y-3">
+                  <div className="text-center py-4">
+                    <CheckCircle
+                      className={`w-16 h-16 mx-auto mb-4 ${isCheckIn ? 'text-green-500' : 'text-purple-500'
+                        }`}
+                    />
+                    <p
+                      className={`text-xl font-semibold ${isCheckIn ? 'text-green-600' : 'text-purple-600'
+                        }`}
+                    >
+                      {result.message}
+                    </p>
+                  </div>
+                  {/* INFO BOX: Ticket ID + Timestamp để Organizer đối soát nhanh */}
+                  {(result.registration?.ticketId || result.registration?.checkedInAt || result.registration?.checkedOutAt) && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                      {result.registration?.ticketId && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">Ticket ID:</span>
+                          <span className="font-bold text-gray-900">#{result.registration.ticketId}</span>
+                        </div>
+                      )}
+                      {result.registration?.checkedInAt && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">Thời gian Check-in:</span>
+                          <span className="font-medium text-gray-900">
+                            {format(
+                              new Date(result.registration.checkedInAt),
+                              'dd/MM/yyyy HH:mm:ss',
+                              { locale: vi }
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      {result.registration?.checkedOutAt && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">Thời gian Check-out:</span>
+                          <span className="font-medium text-gray-900">
+                            {format(
+                              new Date(result.registration.checkedOutAt),
+                              'dd/MM/yyyy HH:mm:ss',
+                              { locale: vi }
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      {result.registration?.customerName && (
+                        <div className="flex justify-between items-center text-sm border-t pt-2">
+                          <span className="text-gray-600">Khách hàng:</span>
+                          <span className="font-medium text-gray-900">{result.registration.customerName}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
-                /* Trường hợp THẤT BẠI */
-                <div className="text-center py-6">
-                  {/* ✅ NEW: Hỏn hợp icon dựa vào loại lỗi */}
-                  {result.message.includes('⚠️') || result.message.includes('sớm') ? (
-                    <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
-                  ) : result.message.includes('🚫') || result.message.includes('kết thúc') ? (
-                    <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
-                  ) : result.message.includes('📢') || result.message.includes('vào cổng') ? (
-                    <AlertCircle className="w-16 h-16 mx-auto mb-4 text-orange-500" />
-                  ) : result.message.includes('🎫') || result.message.includes('ra về') ? (
-                    <AlertCircle className="w-16 h-16 mx-auto mb-4 text-orange-500" />
-                  ) : result.message.includes('⏳') ? (
-                    <Clock className="w-16 h-16 mx-auto mb-4 text-blue-500" />
-                  ) : (
-                    <XCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
-                  )}
-                  <p className="text-lg font-semibold text-gray-900 mb-2 whitespace-pre-line">
-                    {result.message}
-                  </p>
-                </div>
+                /* Trường hợp THẤT BẠI - phân loại rõ ràng dựa trên errorCode */
+                (() => {
+                  const errCfg = getErrorConfig(result.errorCode, activeTab, result.registration?.previousTime)
+                  return (
+                    <div className="text-center py-6">
+                      <errCfg.Icon className={`w-16 h-16 mx-auto mb-3 ${errCfg.iconClass}`} />
+                      {/* Tiêu đề lỗi: IN ĐẬM, phân biệt loại lỗi */}
+                      <p className="text-lg font-bold text-gray-900 whitespace-pre-line">
+                        {errCfg.title}
+                      </p>
+                    </div>
+                  )
+                })()
               )}
 
-              {/* Hiển thị thông tin chi tiết về vé/sự kiện (nếu có) */}
-              {result.registration && (
+              {/* Hiển thị thông tin chi tiết về vé/sự kiện cho trường hợp FAILURE hoặc MULTI-TICKET */}
+              {!result.success && result.registration && (
                 <div className="border-t pt-4 space-y-3">
-                  {/* ✅ NEW: Hiển thị tên khách hàng */}
+                  {/* Hiển thị tên khách hàng (failure case) */}
                   {result.registration.customerName && (
                     <div className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400">
                       <p className="text-sm text-gray-600">👤 Khách hàng:</p>
@@ -807,7 +934,7 @@ export default function CheckIn() {
                     </div>
                   )}
 
-                  {/* Hiển thị tên sự kiện */}
+                  {/* Hiển thị tên sự kiện (failure case) */}
                   {result.registration.eventName && (
                     <div className="bg-purple-50 p-3 rounded-lg border-l-4 border-purple-400">
                       <p className="text-sm text-gray-600">📋 Sự kiện:</p>
@@ -815,7 +942,7 @@ export default function CheckIn() {
                     </div>
                   )}
 
-                  {/* Hiển thị Ticket ID */}
+                  {/* Hiển thị Ticket ID (failure case) */}
                   {result.registration.ticketId && (
                     <div>
                       <p className="text-sm text-gray-600">Ticket ID:</p>
@@ -823,49 +950,20 @@ export default function CheckIn() {
                     </div>
                   )}
 
-                  {/* Hiển thị thời gian check-in (nếu có) */}
-                  {result.registration.checkedInAt && (
-                    <div>
-                      <p className="text-sm text-gray-600">Thời gian check-in:</p>
-                      <p className="font-medium">
-                        {/* Format ngày giờ theo định dạng VN: dd/MM/yyyy HH:mm:ss */}
-                        {format(
-                          new Date(result.registration.checkedInAt),
-                          'dd/MM/yyyy HH:mm:ss',
-                          { locale: vi },
-                        )}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Hiển thị thời gian check-out (nếu có) */}
-                  {result.registration.checkedOutAt && (
-                    <div>
-                      <p className="text-sm text-gray-600">Thời gian check-out:</p>
-                      <p className="font-medium">
-                        {format(
-                          new Date(result.registration.checkedOutAt),
-                          'dd/MM/yyyy HH:mm:ss',
-                          { locale: vi },
-                        )}
-                      </p>
-                    </div>
-                  )}
-
                   {/* Hiển thị danh sách kết quả cho trường hợp nhiều vé (multi-ticket) */}
                   {result.registration.results && Array.isArray(result.registration.results) && (
                     <div>
-                      <p className="text-sm text-gray-600">Danh sách vé:</p>
-                      <div className="text-sm mt-2 space-y-2">
+                      <p className="text-sm text-gray-600 font-semibold mb-2">Danh sách vé:</p>
+                      <div className="text-sm space-y-2">
                         {/* Map qua từng vé và hiển thị trạng thái với error message */}
                         {result.registration.results.map((r: any, idx: number) => (
-                          <div key={idx} className="border-l-4 pl-3 py-1 rounded"
+                          <div key={idx} className="border-l-4 pl-3 py-2 rounded bg-gray-50"
                             style={{ borderColor: r.success ? '#10b981' : '#ef4444' }}>
                             <div className="flex justify-between items-start">
                               <span className="font-medium">Vé #{r.ticketId}</span>
                               {/* Màu xanh nếu OK, màu đỏ nếu FAIL */}
                               <span className={r.success ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                                {r.success ? '✓ Thành công' : '✗ Thất bại'}
+                                {r.success ? '✓ OK' : '✗ Lỗi'}
                               </span>
                             </div>
                             {/* Hiển thị error message chi tiết nếu thất bại */}

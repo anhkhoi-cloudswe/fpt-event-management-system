@@ -2,17 +2,20 @@ package handler
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/common/email"
 	"github.com/fpt-event-services/common/jwt"
 	"github.com/fpt-event-services/common/logger"
 	"github.com/fpt-event-services/common/recaptcha"
 	"github.com/fpt-event-services/common/response"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/auth-lambda/models"
 	"github.com/fpt-event-services/services/auth-lambda/usecase"
 )
@@ -42,10 +45,11 @@ type AuthHandler struct {
 	useCase *usecase.AuthUseCase
 }
 
-// NewAuthHandler creates a new auth handler
-func NewAuthHandler() *AuthHandler {
+// NewAuthHandlerWithDB creates a new auth handler with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton allowed
+func NewAuthHandlerWithDB(dbConn *sql.DB) *AuthHandler {
 	return &AuthHandler{
-		useCase: usecase.NewAuthUseCase(),
+		useCase: usecase.NewAuthUseCaseWithDB(dbConn),
 	}
 }
 
@@ -83,6 +87,9 @@ func getClientIP(request events.APIGatewayProxyRequest) string {
 
 // HandleLogin handles POST /api/login
 func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Log which JWT secret is active (debug: helps verify Auth signs with same key as Gateway)
+	log.Info(fmt.Sprintf("[Auth] HandleLogin — JWT_SECRET preview: %s****", jwt.GetSecretPreview()))
+
 	// Parse request body
 	var req models.LoginRequest
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
@@ -276,8 +283,8 @@ func (h *AuthHandler) HandleForgotPassword(ctx context.Context, request events.A
 		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 	}
 
-	// GỬI EMAIL VỚI OTP (Production-ready)
-	if err := emailService.SendOTPEmail(req.Email, otp, "forgot_password"); err != nil {
+	// GỬI EMAIL VỚI OTP (Production-ready) - Dual path: notification API or local
+	if err := sendOTPEmail(ctx, req.Email, otp, "forgot_password"); err != nil {
 		log.Error("Failed to send OTP email", "email", req.Email, "error", err)
 		// Vẫn trả về success để không leak thông tin email tồn tại hay không
 	}
@@ -381,8 +388,8 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 		return createStatusResponse(http.StatusBadGateway, "fail", "Không thể gửi OTP")
 	}
 
-	// GỬI EMAIL VỚI OTP (Production-ready)
-	if err := emailService.SendOTPEmail(req.Email, otp, "register"); err != nil {
+	// GỬI EMAIL VỚI OTP (Production-ready) - Dual path: notification API or local
+	if err := sendOTPEmail(ctx, req.Email, otp, "register"); err != nil {
 		log.Error("Failed to send registration OTP email", "email", req.Email, "error", err)
 		// Continue anyway to not block registration flow in dev mode
 	}
@@ -467,8 +474,8 @@ func (h *AuthHandler) HandleRegisterResendOTP(ctx context.Context, request event
 		}
 	}
 
-	// GỬI EMAIL VỚI OTP (Production-ready)
-	if err := emailService.SendOTPEmail(req.Email, otp, "register"); err != nil {
+	// GỬI EMAIL VỚI OTP (Production-ready) - Dual path: notification API or local
+	if err := sendOTPEmail(ctx, req.Email, otp, "register"); err != nil {
 		log.Error("Failed to resend registration OTP email", "email", req.Email, "error", err)
 	}
 
@@ -577,4 +584,42 @@ func (h *AuthHandler) HandleGetStaffOrganizer(ctx context.Context, request event
 		},
 		Body: string(body),
 	}, nil
+}
+
+// ============================================================
+// sendOTPEmail - Dual path: Notification API or local email service
+// Phase 6: Tách Notification Service
+// ============================================================
+func sendOTPEmail(ctx context.Context, recipient, otp, purpose string) error {
+	// Phase 6: Route through Notification Service API if enabled
+	if config.IsFeatureEnabled(config.FlagNotificationAPIEnabled) {
+		client := utils.NewInternalClient()
+		notifyURL := utils.GetNotificationServiceURL() + "/internal/notify/email"
+
+		payload := map[string]string{
+			"to":      recipient,
+			"type":    "otp",
+			"otp":     otp,
+			"purpose": purpose,
+		}
+
+		respBody, statusCode, err := client.Post(ctx, notifyURL, payload)
+		if err != nil {
+			log.Error("Notification API call failed, falling back to local email",
+				"error", err, "email", recipient)
+			// Fallback to local email service on API failure
+			return emailService.SendOTPEmail(recipient, otp, purpose)
+		}
+		if statusCode != http.StatusOK {
+			log.Warn("Notification API returned non-200, falling back to local email",
+				"status", statusCode, "body", string(respBody), "email", recipient)
+			return emailService.SendOTPEmail(recipient, otp, purpose)
+		}
+
+		log.Info("OTP email sent via Notification API", "email", recipient, "purpose", purpose)
+		return nil
+	}
+
+	// Legacy path: use local email service directly
+	return emailService.SendOTPEmail(recipient, otp, purpose)
 }

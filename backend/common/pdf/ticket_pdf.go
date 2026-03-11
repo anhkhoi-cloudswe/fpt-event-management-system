@@ -174,7 +174,7 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	}
 	pdf.MultiCell(85, 8.4, userName, "", "L", false) // +20%: 7 → 8.4
 
-	// Right side - Venue Address
+	// Right side - Venue Address with dynamic wrapping
 	pdf.SetFont("Arial", "", 16.8)
 	pdf.SetXY(115, currentY)
 	pdf.CellFormat(75, 7.2, "Location:", "", 1, "L", false, 0, "")
@@ -184,13 +184,15 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	}
 	// Remove diacritics and clean corrupted UTF-8 from database location
 	venueInfo = cleanText(venueInfo)
-	if len(venueInfo) > 40 {
-		venueInfo = venueInfo[:37] + "..."
-	}
+	// No truncation - allow MultiCell to wrap text to multiple lines
 	pdf.SetFont("Arial", "B", 16.8)
 	pdf.SetX(115)
-	pdf.MultiCell(75, 4.8, venueInfo, "", "L", false) // +20%: 4 → 4.8
-	pdf.Ln(3.6)
+	pdf.MultiCell(70, 5, venueInfo, "", "L", false) // Width: 70, Height: 5 per line for wrapping
+	newLocationY := pdf.GetY()                      // Get position after Location MultiCell
+
+	// Ensure the next section starts below the Location with safe margin
+	nextSectionY := newLocationY + 10
+	pdf.SetY(nextSectionY)
 
 	// ========================================
 	// TICKET DETAILS - TWO COLUMNS, ALIGNED LEFT
@@ -242,9 +244,6 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	pdf.SetTextColor(100, 100, 100)
 	pdf.CellFormat(0, 10.8, fmt.Sprintf("Ticket Code: %s", data.TicketCode), "0", 1, "C", false, 0, "") // +20%: 9 → 10.8
 	pdf.Ln(3.6)                                                                                         // +20%: 3 → 3.6
-
-	pdf.SetFont("Arial", "", 14.4)                                                                                                                      // +20%: 12 → 14.4
-	pdf.MultiCell(0, 7.2, "Please bring this ticket (PDF file or image) to the event.\nScan the QR code to check in at the entrance.", "0", "C", false) // +20%: 6 → 7.2
 
 	// ========================================
 	// OUTPUT PDF

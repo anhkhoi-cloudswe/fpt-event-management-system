@@ -77,22 +77,25 @@ type Attachment struct {
 }
 
 type TicketEmailData struct {
-	UserEmail     string
-	UserName      string
-	EventTitle    string
-	TicketIDs     string
-	TicketTypes   string
-	SeatCodes     string
-	VenueName     string
-	VenueAddress  string
-	AreaName      string
-	MapURL        string
-	TotalAmount   string
-	StartTime     string
-	QRCodeBase64  string
-	PaymentMethod string
-	PDFAttachment []byte
-	PDFFilename   string
+	UserEmail      string
+	UserName       string
+	EventTitle     string
+	TicketIDs      string
+	TicketTypes    string
+	SeatCodes      string
+	VenueName      string
+	VenueAddress   string
+	AreaName       string
+	MapURL         string
+	TotalAmount    string
+	StartTime      string // RFC3339 format
+	EndTime        string // RFC3339 format (optional)
+	QRCodeBase64   string
+	PaymentMethod  string
+	PDFAttachment  []byte
+	PDFFilename    string
+	OrganizerName  string
+	OrganizerEmail string
 }
 
 type MultipleTicketsEmailData struct {
@@ -100,12 +103,15 @@ type MultipleTicketsEmailData struct {
 	UserName       string
 	EventTitle     string
 	EventDate      string
+	EndTime        string
 	VenueName      string
 	VenueAddress   string
 	TicketCount    int
 	SeatList       string
 	TotalAmount    string
 	GoogleMapsURL  string
+	OrganizerName  string
+	OrganizerEmail string
 	PDFAttachments []PDFAttachment
 }
 
@@ -117,6 +123,35 @@ type PDFAttachment struct {
 // ============================================================
 // HELPER FUNCTIONS
 // ============================================================
+
+func formatEventDateTime(startTimeISO, endTimeISO string) (string, string) {
+	// Parse start time
+	startTime, err := time.Parse(time.RFC3339, startTimeISO)
+	if err != nil {
+		return startTimeISO, ""
+	}
+
+	// Format start date as "January 2, 2006"
+	startDate := startTime.Format("January 2, 2006")
+
+	// Format time range as "3:04PM - 4:00PM"
+	startTimeStr := startTime.Format("3:04PM")
+
+	// If end time is provided, format it
+	endTimeStr := ""
+	if endTimeISO != "" && endTimeISO != "0001-01-01T00:00:00Z" {
+		endTime, err := time.Parse(time.RFC3339, endTimeISO)
+		if err == nil {
+			endTimeStr = endTime.Format("3:04PM")
+		}
+	}
+
+	// Create the formatted string
+	if endTimeStr != "" {
+		return startDate, startTimeStr + " - " + endTimeStr
+	}
+	return startDate, startTimeStr
+}
 
 func formatVND(amount string) string {
 	clean := ""
@@ -203,6 +238,21 @@ func (s *EmailService) SendTicketEmail(data TicketEmailData) error {
 
 func (s *EmailService) buildTicketEmailHTML(data TicketEmailData) string {
 	mapURL := "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(data.VenueAddress)
+
+	// Format event date and time
+	eventDate, eventTime := formatEventDateTime(data.StartTime, data.EndTime)
+
+	// Build organizer section if available
+	organizerSection := ""
+	if data.OrganizerName != "" {
+		organizerSection = fmt.Sprintf(`
+    <div style="margin-top: 15px;">
+      <p style="font-size: 10px; color: #9ca3af; margin-bottom: 4px; text-transform: uppercase;">EVENT ORGANIZER</p>
+      <p style="font-weight: 600; color: #1f2937;">%s</p>
+      <p style="font-size: 13px; color: #4b5563;">%s</p>
+    </div>`, data.OrganizerName, data.OrganizerEmail)
+	}
+
 	return fmt.Sprintf(`<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f5f5f5;">
     <table width="100%%" border="0" cellspacing="0" cellpadding="0" bgcolor="#f5f5f5"><tr><td align="center" style="padding:40px 0;">
     <table width="600" border="0" cellspacing="0" cellpadding="0" bgcolor="#ffffff" style="border-radius:16px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.1);">
@@ -214,19 +264,36 @@ func (s *EmailService) buildTicketEmailHTML(data TicketEmailData) string {
     <table width="100%%" border="0" cellpadding="15" bgcolor="#fafafa" style="margin-bottom:20px;border-left:4px solid #F27124;">
     <tr><td><small style="color:#999999;text-transform:uppercase;">Ticket ID</small><br/><strong>#%s</strong></td></tr>
     <tr><td><small style="color:#999999;text-transform:uppercase;">Location</small><br/><strong>%s</strong><br/><small>%s</small></td></tr>
-    <tr><td><small style="color:#999999;text-transform:uppercase;">Date & Time</small><br/><strong>%s</strong></td></tr>
+    <tr><td><small style="color:#999999;text-transform:uppercase;">Date</small><br/><strong>%s</strong></td></tr>
+    <tr><td><small style="color:#999999;text-transform:uppercase;">Time</small><br/><strong>%s</strong></td></tr>
     <tr><td><small style="color:#999999;text-transform:uppercase;">Total Amount</small><br/><strong style="color:#F27124;font-size:22px;">%s VND</strong></td></tr>
     </table>
+    %s
     <table width="100%%" bgcolor="#FFF8E1" style="border:1px solid #FFE082;border-radius:8px;margin-bottom:30px;"><tr><td style="padding:15px;"><strong>This email contains 1 PDF file.</strong> Please present the QR code at the entrance.</td></tr></table>
     <table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#F27124" style="border-radius:50px;padding:15px 35px;"><a href="%s" style="color:#ffffff;text-decoration:none;font-weight:bold;">VIEW ON MAP</a></td></tr></table>
     </td></tr><tr><td align="center" bgcolor="#2c2c2c" style="padding:25px;"><p style="margin:0;font-size:12px;color:#999999;">© 2026 FPT Event Management. All rights reserved.</p></td></tr></table></td></tr></table></body></html>`,
-		data.EventTitle, data.UserName, data.TicketIDs, data.VenueName, data.VenueAddress, data.StartTime, data.TotalAmount, mapURL)
+		data.EventTitle, data.UserName, data.TicketIDs, data.VenueName, data.VenueAddress, eventDate, eventTime, data.TotalAmount, organizerSection, mapURL)
 }
 
 func (s *EmailService) SendMultipleTicketsEmail(data MultipleTicketsEmailData) error {
 	data.UserName, data.EventTitle, data.VenueName, data.VenueAddress = cleanVietnameseText(data.UserName), cleanVietnameseText(data.EventTitle), cleanVietnameseText(data.VenueName), cleanVietnameseText(data.VenueAddress)
 	data.TotalAmount = formatVND(data.TotalAmount)
 	mapURL := "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(data.VenueAddress)
+
+	// Format event date and time
+	eventDate, eventTime := formatEventDateTime(data.EventDate, data.EndTime)
+
+	// Build organizer section if available
+	organizerSection := ""
+	if data.OrganizerName != "" {
+		organizerSection = fmt.Sprintf(`
+    <div style="margin-top: 15px;">
+      <p style="font-size: 10px; color: #9ca3af; margin-bottom: 4px; text-transform: uppercase;">EVENT ORGANIZER</p>
+      <p style="font-weight: 600; color: #1f2937;">%s</p>
+      <p style="font-size: 13px; color: #4b5563;">%s</p>
+    </div>`, data.OrganizerName, data.OrganizerEmail)
+	}
+
 	html := fmt.Sprintf(`<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f5f5f5;">
     <table width="100%%" border="0" cellspacing="0" cellpadding="0" bgcolor="#f5f5f5"><tr><td align="center" style="padding:40px 0;">
     <table width="600" border="0" cellspacing="0" cellpadding="0" bgcolor="#ffffff" style="border-radius:16px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.1);">
@@ -237,13 +304,15 @@ func (s *EmailService) SendMultipleTicketsEmail(data MultipleTicketsEmailData) e
     <table width="100%%" border="0" cellpadding="15" bgcolor="#fafafa" style="margin-bottom:20px;border-left:4px solid #F27124;">
     <tr><td><small style="color:#999999;text-transform:uppercase;">SEATS</small><br/><strong>%s</strong></td></tr>
     <tr><td><small style="color:#999999;text-transform:uppercase;">LOCATION</small><br/><strong>%s</strong><br/><small>%s</small></td></tr>
-    <tr><td><small style="color:#999999;text-transform:uppercase;">DATE & TIME</small><br/><strong>%s</strong></td></tr>
+    <tr><td><small style="color:#999999;text-transform:uppercase;">DATE</small><br/><strong>%s</strong></td></tr>
+    <tr><td><small style="color:#999999;text-transform:uppercase;">TIME</small><br/><strong>%s</strong></td></tr>
     <tr><td><small style="color:#999999;text-transform:uppercase;">TOTAL AMOUNT</small><br/><strong style="color:#F27124;font-size:22px;">%s VND</strong></td></tr>
     </table>
+    %s
     <table width="100%%" bgcolor="#FFF8E1" style="border:1px solid #FFE082;border-radius:8px;margin-bottom:30px;"><tr><td style="padding:15px;"><strong>This email contains %d PDF files.</strong></td></tr></table>
     <table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#F27124" style="border-radius:50px;padding:15px 35px;"><a href="%s" style="color:#ffffff;text-decoration:none;font-weight:bold;">VIEW ON MAP</a></td></tr></table>
     </td></tr><tr><td align="center" bgcolor="#2c2c2c" style="padding:25px;"><p style="margin:0;font-size:12px;color:#999999;">© 2026 FPT Event Management. All rights reserved.</p></td></tr></table></td></tr></table></body></html>`,
-		data.EventTitle, data.UserName, data.TicketCount, data.SeatList, data.VenueName, data.VenueAddress, data.EventDate, data.TotalAmount, data.TicketCount, mapURL)
+		data.EventTitle, data.UserName, data.TicketCount, data.SeatList, data.VenueName, data.VenueAddress, eventDate, eventTime, data.TotalAmount, organizerSection, data.TicketCount, mapURL)
 	msg := EmailMessage{To: []string{data.UserEmail}, Subject: fmt.Sprintf("[FPT Event] %d E-Tickets - %s", data.TicketCount, data.EventTitle), HTMLBody: html}
 	for _, att := range data.PDFAttachments {
 		msg.Attachments = append(msg.Attachments, Attachment{Filename: att.Filename, Data: att.Data, MimeType: "application/pdf"})

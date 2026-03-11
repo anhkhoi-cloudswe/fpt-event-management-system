@@ -3,10 +3,10 @@ package scheduler
 import (
 	"context"
 	"database/sql"
-	"log"
 	"time"
 
 	"github.com/fpt-event-services/common/db"
+	"github.com/fpt-event-services/common/logger"
 )
 
 // ExpiredRequestsCleanupScheduler handles automatic closing of expired event update requests
@@ -28,7 +28,7 @@ func NewExpiredRequestsCleanupScheduler(intervalMinutes int) *ExpiredRequestsCle
 
 // Start begins the scheduled cleanup job
 func (s *ExpiredRequestsCleanupScheduler) Start() {
-	log.Printf("[SCHEDULER] Expired requests cleanup job started (runs every %v)", s.interval)
+	logger.Default().Info("[SCHEDULER] Expired requests cleanup job started (runs every %v)", s.interval)
 
 	// Run immediately once at startup
 	s.autoCloseExpiredRequests()
@@ -42,7 +42,7 @@ func (s *ExpiredRequestsCleanupScheduler) Start() {
 				s.autoCloseExpiredRequests()
 			case <-s.stopChan:
 				ticker.Stop()
-				log.Println("[SCHEDULER] Expired requests cleanup job stopped")
+				logger.Default().Info("[SCHEDULER] Expired requests cleanup job stopped")
 				return
 			}
 		}
@@ -71,7 +71,7 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
-		log.Printf("[SCHEDULER] Error querying expired event requests: %v", err)
+		logger.Default().Error("[SCHEDULER] Error querying expired event requests: %v", err)
 		return
 	}
 	defer rows.Close()
@@ -86,14 +86,14 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 		var startTime time.Time
 
 		if err := rows.Scan(&eventID, &areaID, &title, &startTime); err != nil {
-			log.Printf("[SCHEDULER] Error scanning event row: %v", err)
+			logger.Default().Error("[SCHEDULER] Error scanning event row: %v", err)
 			continue
 		}
 
 		// ===== START TRANSACTION =====
 		tx, err := s.db.BeginTx(ctx, nil)
 		if err != nil {
-			log.Printf("[SCHEDULER] Error beginning transaction for event #%d: %v", eventID, err)
+			logger.Default().Error("[SCHEDULER] Error beginning transaction for event #%d: %v", eventID, err)
 			continue
 		}
 
@@ -101,7 +101,7 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 		updateEventQuery := `UPDATE Event SET status = 'CLOSED' WHERE event_id = ?`
 		_, err = tx.ExecContext(ctx, updateEventQuery, eventID)
 		if err != nil {
-			log.Printf("[SCHEDULER] Error closing event #%d: %v", eventID, err)
+			logger.Default().Error("[SCHEDULER] Error closing event #%d: %v", eventID, err)
 			tx.Rollback()
 			continue
 		}
@@ -111,7 +111,7 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 		updateRequestQuery := `UPDATE Event_Request SET status = 'CANCELLED' WHERE created_event_id = ?`
 		_, err = tx.ExecContext(ctx, updateRequestQuery, eventID)
 		if err != nil {
-			log.Printf("[SCHEDULER] Error updating event request status for event #%d: %v", eventID, err)
+			logger.Default().Error("[SCHEDULER] Error updating event request status for event #%d: %v", eventID, err)
 			tx.Rollback()
 			continue
 		}
@@ -121,32 +121,31 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 			updateAreaQuery := `UPDATE Venue_Area SET status = 'AVAILABLE' WHERE area_id = ?`
 			result, err := tx.ExecContext(ctx, updateAreaQuery, areaID.Int64)
 			if err != nil {
-				log.Printf("[SCHEDULER] Error releasing venue area #%d for event #%d: %v", areaID.Int64, eventID, err)
+				logger.Default().Error("[SCHEDULER] Error releasing venue area #%d for event #%d: %v", areaID.Int64, eventID, err)
 				tx.Rollback()
 				continue
 			} else {
 				rowsAffected, _ := result.RowsAffected()
 				if rowsAffected > 0 {
 					releasedAreasCount++
-					log.Printf("[SCHEDULER] 🔓 Area #%d released for expired event %d", areaID.Int64, eventID)
+					logger.Default().Info("[SCHEDULER] Area #%d released for expired event %d", areaID.Int64, eventID)
 				}
 			}
 		}
 
 		// COMMIT TRANSACTION
 		if err = tx.Commit(); err != nil {
-			log.Printf("[SCHEDULER] Error committing transaction for event #%d: %v", eventID, err)
+			logger.Default().Error("[SCHEDULER] Error committing transaction for event #%d: %v", eventID, err)
 			continue
 		}
 
 		processedCount++
 		hoursUntilStart := startTime.Sub(time.Now()).Hours()
-		log.Printf("[AUTO_CANCEL] Event #%d \"%s\" closed due to update deadline (%.1f hours until start). Venue area released.",
+		logger.Default().Info("[AUTO_CANCEL] Event #%d \"%s\" closed update deadline elapsed (%.1fh to start) venue released",
 			eventID, truncateStringScheduler(title, 50), hoursUntilStart)
 	}
 
 	if processedCount > 0 {
-		log.Printf("[SCHEDULER] 📊 Auto-closed %d expired event requests, released %d venue areas",
-			processedCount, releasedAreasCount)
+		logger.Default().Info("[SCHEDULER] Auto-closed %d expired event requests released %d venue areas", processedCount, releasedAreasCount)
 	}
 }

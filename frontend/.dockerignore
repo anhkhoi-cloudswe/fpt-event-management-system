@@ -1,0 +1,20 @@
+# =============================================================================
+# frontend/.dockerignore — Exclude from Docker build context
+# =============================================================================
+
+# node_modules: installed fresh inside the container by `npm ci`
+node_modules/
+
+# Build artefacts (not needed in dev container)
+dist/
+dist-ssr/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

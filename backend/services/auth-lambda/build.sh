@@ -1,20 +1,25 @@
 #!/bin/bash
+set -e
 
-# Build script for auth-lambda
+SERVICE_NAME="auth-lambda"
+echo "Building ${SERVICE_NAME}..."
 
-echo "Building auth-lambda..."
+# Navigate to module root (backend/) relative to this script
+cd "$(dirname "$0")/../.."
 
-# Set environment variables for Lambda
 export GOOS=linux
-export GOARCH=amd64
+export GOARCH=arm64
 export CGO_ENABLED=0
 
-# Build
-cd services/auth-lambda
-go build -o bootstrap main.go
+## Clean previous artifacts
+rm -f "services/${SERVICE_NAME}/bootstrap"
+rm -f "services/${SERVICE_NAME}/${SERVICE_NAME}.zip"
+go build -tags lambda.norpc -o "services/${SERVICE_NAME}/bootstrap" "./services/${SERVICE_NAME}/"
+
+echo "Build complete: services/${SERVICE_NAME}/bootstrap"
 
 # Create deployment package
-zip auth-lambda.zip bootstrap
+cd "services/${SERVICE_NAME}"
+zip "${SERVICE_NAME}.zip" bootstrap
 
-echo "Build complete: auth-lambda.zip"
-echo "Deploy this file to AWS Lambda"
+echo "Deployment package: ${SERVICE_NAME}.zip"

@@ -26,28 +26,30 @@ type CheckoutRequest struct {
 type CheckinResult struct {
 	TicketID     int     `json:"ticketId"`
 	Success      bool    `json:"success"`
+	ErrorCode    *string `json:"errorCode,omitempty"` // ✅ Mã lỗi có cấu trúc để frontend phân loại
 	Error        *string `json:"error,omitempty"`
 	Message      *string `json:"message,omitempty"`
 	EventName    *string `json:"eventName,omitempty"`
-	CustomerName *string `json:"customerName,omitempty"` // ✅ NEW
+	CustomerName *string `json:"customerName,omitempty"`
 	SeatCode     *string `json:"seatCode,omitempty"`
 	TicketCode   *string `json:"ticketCode,omitempty"`
 	CheckInTime  *string `json:"checkInTime,omitempty"`
-	PreviousTime *string `json:"previousTime,omitempty"` // ✅ NEW: Thời gian check-in trước đó (nếu trùng lặp)
+	PreviousTime *string `json:"previousTime,omitempty"` // Thời gian check-in trước đó (nếu trùng lặp)
 }
 
 // CheckoutResult - Kết quả check-out 1 vé
 type CheckoutResult struct {
 	TicketID     int     `json:"ticketId"`
 	Success      bool    `json:"success"`
+	ErrorCode    *string `json:"errorCode,omitempty"` // ✅ Mã lỗi có cấu trúc để frontend phân loại
 	Error        *string `json:"error,omitempty"`
 	Message      *string `json:"message,omitempty"`
 	EventName    *string `json:"eventName,omitempty"`
-	CustomerName *string `json:"customerName,omitempty"` // ✅ NEW
+	CustomerName *string `json:"customerName,omitempty"`
 	SeatCode     *string `json:"seatCode,omitempty"`
 	TicketCode   *string `json:"ticketCode,omitempty"`
 	CheckOutTime *string `json:"checkOutTime,omitempty"`
-	PreviousTime *string `json:"previousTime,omitempty"` // ✅ NEW: Thời gian check-out trước đó (nếu trùng lặp)
+	PreviousTime *string `json:"previousTime,omitempty"` // Thời gian check-out trước đó (nếu trùng lặp)
 }
 
 // CheckinResponse - Response check-in

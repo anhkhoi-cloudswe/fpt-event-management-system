@@ -12,6 +12,22 @@ import { useToast } from '../../contexts/ToastContext'
 // useAvailableAreas hook để fetch khu vực trống theo thời gian & sức chứa
 import { useAvailableAreas, AvailableArea } from '../../hooks/useAvailableAreas'
 
+// ===================== MESSAGE TEMPLATES =====================
+const TEMPLATES = {
+  approve: [
+    'Yêu cầu của bạn đã được duyệt. Vui lòng kiểm tra thông tin khu vực đã được phân bổ.',
+    'Sự kiện của bạn đã được phê duyệt. Chúc bạn tổ chức sự kiện thành công!',
+    'Yêu cầu hợp lệ và đã được chấp nhận. Hãy chuẩn bị các tài liệu cần thiết cho sự kiện.',
+    'Phê duyệt thành công. Vui lòng liên hệ với ban quản lý để xác nhận các chi tiết cuối cùng.'
+  ],
+  reject: [
+    'Yêu cầu của bạn bị từ chối do xung đột lịch với sự kiện khác.',
+    'Đáy đủ sức chứa không đáp ứng yêu cầu. Vui lòng chọn thời gian khác.',
+    'Yêu cầu không phù hợp với chính sách của tổ chức. Vui lòng liên hệ để biết chi tiết.',
+    'Thời gian yêu cầu không khả dụng. Xin vui lòng chọn ngày khác.'
+  ]
+}
+
 // ===================== TYPES =====================
 
 // CheckDailyQuotaResponse: Response từ API /api/events/daily-quota
@@ -341,41 +357,51 @@ export function ProcessRequestModal({
           )}
 
           {/* Daily Quota Warning - Chỉ hiện khi APPROVE */}
-          {action === 'APPROVE' && quotaInfo && !loadingQuota && (
-            <div
-              className={`p-4 rounded-lg border ${quotaInfo.quotaExceeded
-                ? 'bg-red-50 border-red-200'
-                : quotaInfo.currentCount === quotaInfo.maxAllowed - 1
-                  ? 'bg-yellow-50 border-yellow-200'
-                  : 'bg-green-50 border-green-200'
-                }`}
-            >
-              <p
-                className={`text-sm font-medium ${quotaInfo.quotaExceeded
-                  ? 'text-red-700'
-                  : quotaInfo.currentCount === quotaInfo.maxAllowed - 1
-                    ? 'text-yellow-700'
-                    : 'text-green-700'
+          {action === 'APPROVE' && quotaInfo && !loadingQuota && (() => {
+            // Dùng currentCount >= 2 trực tiếp để đảm bảo đồng bộ với backend lock.
+            // KHÔNG dùng quotaExceeded (server-side flag) vì có thể lỗi thời nếu
+            // server đếm sai (cũ: chỉ đếm OPEN+APPROVED, giờ: NOT IN CANCELLED/REJECTED).
+            const isFull = quotaInfo.currentCount >= quotaInfo.maxAllowed
+            const isLastSlot = !isFull && quotaInfo.currentCount === quotaInfo.maxAllowed - 1
+
+            return (
+              <div
+                className={`p-4 rounded-lg border ${isFull
+                    ? 'bg-red-50 border-red-300'
+                    : isLastSlot
+                      ? 'bg-yellow-50 border-yellow-200'
+                      : 'bg-green-50 border-green-200'
                   }`}
               >
-                {quotaInfo.quotaExceeded ? (
-                  <>
-                    <span className="text-lg">❌</span> {quotaInfo.warningMessage}
-                  </>
-                ) : quotaInfo.currentCount === quotaInfo.maxAllowed - 1 ? (
-                  <>
-                    <span className="text-lg">⚠️</span> {quotaInfo.warningMessage}
-                  </>
-                ) : (
-                  <>
-                    <span className="text-lg">✅</span> Còn{' '}
-                    {quotaInfo.maxAllowed - quotaInfo.currentCount} slot trống cho ngày này
-                    (Tổng: {quotaInfo.currentCount}/{quotaInfo.maxAllowed})
-                  </>
-                )}
-              </p>
-            </div>
-          )}
+                <p
+                  className={`text-sm font-semibold ${isFull
+                      ? 'text-red-800'
+                      : isLastSlot
+                        ? 'text-yellow-700'
+                        : 'text-green-700'
+                    }`}
+                >
+                  {isFull ? (
+                    <>
+                      <span className="text-lg">🚫</span>{' '}
+                      Ngày này đã hết suất tổ chức ({quotaInfo.currentCount}/{quotaInfo.maxAllowed})
+                    </>
+                  ) : isLastSlot ? (
+                    <>
+                      <span className="text-lg">⚠️</span>{' '}
+                      {quotaInfo.warningMessage || `Còn 1 suất trống trong ngày (${quotaInfo.currentCount}/${quotaInfo.maxAllowed})`}
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-lg">✅</span> Còn{' '}
+                      {quotaInfo.maxAllowed - quotaInfo.currentCount} slot trống cho ngày này
+                      (Tổng: {quotaInfo.currentCount}/{quotaInfo.maxAllowed})
+                    </>
+                  )}
+                </p>
+              </div>
+            )
+          })()}
 
           {/* Nếu action là APPROVE => bắt buộc chọn khu vực */}
           {action === 'APPROVE' && (
@@ -547,6 +573,24 @@ export function ProcessRequestModal({
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-gray-900 text-sm"
                 placeholder="Nhập lý do từ chối (bắt buộc)..."
               />
+
+              {/* Template suggestions for reject reason */}
+              <div className="mt-3">
+                <p className="text-xs font-medium text-gray-600 mb-2">💡 Gợi ý:</p>
+                <div className="flex flex-wrap gap-2">
+                  {TEMPLATES.reject.map((template, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setRejectReason(template)}
+                      className="bg-gray-100 hover:bg-red-100 text-gray-700 hover:text-red-700 text-xs px-3 py-1.5 rounded-full transition-colors border border-gray-200 hover:border-red-300 cursor-pointer"
+                      title="Click để điền nội dung"
+                    >
+                      📝 {template.substring(0, 35)}...
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -564,6 +608,24 @@ export function ProcessRequestModal({
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900 text-sm"
                 placeholder="Nhập ghi chú (không bắt buộc)..."
               />
+
+              {/* Template suggestions for approval note */}
+              <div className="mt-3">
+                <p className="text-xs font-medium text-gray-600 mb-2">💡 Gợi ý:</p>
+                <div className="flex flex-wrap gap-2">
+                  {TEMPLATES.approve.map((template, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setOrganizerNote(template)}
+                      className="bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700 text-xs px-3 py-1.5 rounded-full transition-colors border border-gray-200 hover:border-green-300 cursor-pointer"
+                      title="Click để điền nội dung"
+                    >
+                      📝 {template.substring(0, 35)}...
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -579,12 +641,18 @@ export function ProcessRequestModal({
             </button>
 
             {/* Submit */}
+            {/* Khóa cứng: nếu currentCount >= 2 → disable nút Duyệt, buộc staff phải từ chối */}
             <button
               type="submit"
-              // Nếu APPROVE mà đang loading hoặc không có area hoặc quota exceeded => disable
+              // Nếu APPROVE mà đang loading, không có area, hoặc đã đủ 2 sự kiện/ngày => disable
               disabled={
                 action === 'APPROVE' &&
-                (loading || areas.length === 0 || quotaInfo?.quotaExceeded)
+                (loading || areas.length === 0 || (quotaInfo?.currentCount ?? 0) >= 2)
+              }
+              title={
+                action === 'APPROVE' && (quotaInfo?.currentCount ?? 0) >= 2
+                  ? 'Vui lòng từ chối đơn này vì đã hết suất trong ngày'
+                  : undefined
               }
               className={`flex-1 px-4 py-3 text-white rounded-lg transition-colors font-medium text-sm ${action === 'APPROVE'
                 ? 'bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed'
@@ -594,6 +662,13 @@ export function ProcessRequestModal({
               {action === 'APPROVE' ? '✓ Duyệt' : '✗ Từ chối'}
             </button>
           </div>
+
+          {/* Thông báo khóa cứng khi đã đạt giới hạn 2 sự kiện/ngày */}
+          {action === 'APPROVE' && quotaInfo && (quotaInfo.currentCount ?? 0) >= 2 && (
+            <p className="text-xs text-red-600 text-center font-medium bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              🚫 Vui lòng từ chối đơn này vì đã hết suất trong ngày ({quotaInfo.currentCount}/{quotaInfo.maxAllowed} sự kiện)
+            </p>
+          )}
         </form>
       </div>
     </div>

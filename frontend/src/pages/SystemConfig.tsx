@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { Settings, Save, RefreshCw, Search } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
+import { useSearchParams } from 'react-router-dom'
 import { EventConfigModal } from '../components/events/EventConfigModal'
+import Pagination from '../components/common/Pagination'
 
 /**
  * Kiểu dữ liệu cấu hình hệ thống
@@ -32,6 +34,11 @@ export default function SystemConfig() {
   const isAdmin = user?.role === 'ADMIN'
   const isOrganizer = user?.role === 'ORGANIZER'
 
+  // ✅ NEW: URL Search Params for pagination
+  const [searchParams, setSearchParams] = useSearchParams()
+  const currentPage = parseInt(searchParams.get('page') || '1', 10)
+  const pageSize = 10
+
   /**
    * State lưu cấu hình hệ thống
    * Mặc định khởi tạo là 60 phút cho cả check-in và check-out
@@ -57,6 +64,14 @@ export default function SystemConfig() {
   const [loadingEvents, setLoadingEvents] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'OPEN' | 'CLOSED'>('ALL') // ✅ New: Status filter
+
+  // ✅ NEW: Pagination state
+  const [paginationData, setPaginationData] = useState({
+    totalItems: 0,
+    totalPages: 1,
+    currentPage: 1,
+    pageSize: pageSize
+  })
 
   // Config modal state
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
@@ -123,14 +138,17 @@ export default function SystemConfig() {
 
   /**
    * fetchEvents:
-   * - Lấy danh sách events để Admin có thể cấu hình từng event
+   * - Lấy danh sách events với phân trang từ URL parameter
+   * ✅ NOW WITH PAGINATION SUPPORT
    */
-  const fetchEvents = async () => {
+  const fetchEvents = async (page: number = 1) => {
     if (!token) return
 
     setLoadingEvents(true)
     try {
-      const response = await fetch('/api/events', {
+      // ✅ NEW: Include page and limit in API call
+      const url = `/api/events?page=${page}&limit=${pageSize}`
+      const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
           'ngrok-skip-browser-warning': '1'
@@ -141,15 +159,37 @@ export default function SystemConfig() {
       if (response.ok) {
         const data = await response.json()
 
-        // Handle both array (legacy) and object structure (new API)
-        const eventsArray = Array.isArray(data)
-          ? data
-          : [
+        // ✅ NEW: Handle pagination response format
+        if (data.pagination) {
+          // New format with pagination metadata
+          const eventsArray = [
             ...(Array.isArray(data.openEvents) ? data.openEvents : []),
             ...(Array.isArray(data.closedEvents) ? data.closedEvents : [])
           ]
-
-        setEvents(eventsArray)
+          setEvents(eventsArray)
+          setPaginationData({
+            totalItems: data.pagination.totalItems,
+            totalPages: data.pagination.totalPages,
+            currentPage: data.pagination.currentPage,
+            pageSize: data.pagination.pageSize
+          })
+          console.log('[PAGINATION] Received pagination data:', data.pagination)
+        } else {
+          // Legacy format (no pagination)
+          const eventsArray = Array.isArray(data)
+            ? data
+            : [
+              ...(Array.isArray(data.openEvents) ? data.openEvents : []),
+              ...(Array.isArray(data.closedEvents) ? data.closedEvents : [])
+            ]
+          setEvents(eventsArray)
+          setPaginationData({
+            totalItems: eventsArray.length,
+            totalPages: 1,
+            currentPage: 1,
+            pageSize: eventsArray.length
+          })
+        }
       } else {
         throw new Error('Failed to fetch events')
       }
@@ -163,12 +203,20 @@ export default function SystemConfig() {
 
   /**
    * Load events sau khi load config
+   * ✅ NOW: Monitors URL page parameter and refetches when it changes
    */
   useEffect(() => {
     if (!loading && token) {
-      fetchEvents()
+      fetchEvents(currentPage)
+      // ✅ NEW: Scroll table into view when page changes
+      setTimeout(() => {
+        const tableElement = document.querySelector('[data-event-table]')
+        if (tableElement) {
+          tableElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 100)
     }
-  }, [loading, token])
+  }, [loading, token, currentPage])
 
   /**
    * handleManageEventConfig:
@@ -178,6 +226,36 @@ export default function SystemConfig() {
     setSelectedEventId(eventId)
     setSelectedEventTitle(eventTitle)
     setIsConfigModalOpen(true)
+  }
+
+  /**
+   * ✅ NEW: handlePageChange
+   * - Update URL parameter when user clicks pagination button
+   * - Reset search when changing pages to avoid confusion
+   */
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= paginationData.totalPages) {
+      setSearchParams({ page: String(newPage) })
+    }
+  }
+
+  /**
+   * ✅ NEW: handleSearch with pagination reset
+   * - Reset to page 1 when user types in search box
+   */
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query)
+    // Reset to page 1 when searching
+    setSearchParams({ page: '1' })
+  }
+
+  /**
+   * ✅ NEW: handleStatusFilterChange with pagination reset
+   */
+  const handleStatusFilterChange = (status: 'ALL' | 'OPEN' | 'CLOSED') => {
+    setStatusFilter(status)
+    // Reset to page 1 when filtering
+    setSearchParams({ page: '1' })
   }
 
   /**
@@ -357,8 +435,8 @@ export default function SystemConfig() {
             <button
               onClick={() => setActiveTab('system')}
               className={`flex-1 px-6 py-4 font-medium transition-all ${activeTab === 'system'
-                  ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50'
-                  : 'text-gray-600 hover:text-gray-900 bg-white'
+                ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50'
+                : 'text-gray-600 hover:text-gray-900 bg-white'
                 }`}
             >
               <div className="flex items-center justify-center gap-2">
@@ -372,8 +450,8 @@ export default function SystemConfig() {
           <button
             onClick={() => setActiveTab('events')}
             className={`flex-1 px-6 py-4 font-medium transition-all ${activeTab === 'events'
-                ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
-                : 'text-gray-600 hover:text-gray-900 bg-white'
+              ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
+              : 'text-gray-600 hover:text-gray-900 bg-white'
               }`}
           >
             <div className="flex items-center justify-center gap-2">
@@ -453,8 +531,8 @@ export default function SystemConfig() {
                       }))
                     }
                     className={`px-3 py-1 text-xs rounded-full transition-colors ${config.checkinAllowedBeforeStartMinutes === val
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-600'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-600'
                       }`}
                   >
                     {val} phút
@@ -500,8 +578,8 @@ export default function SystemConfig() {
                       setConfig(prev => ({ ...prev, minMinutesAfterStart: val }))
                     }
                     className={`px-3 py-1 text-xs rounded-full transition-colors ${config.minMinutesAfterStart === val
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-600'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-600'
                       }`}
                   >
                     {val} phút
@@ -576,7 +654,7 @@ export default function SystemConfig() {
                 type="text"
                 placeholder="Tìm kiếm sự kiện..."
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => handleSearchChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               />
             </div>
@@ -584,7 +662,7 @@ export default function SystemConfig() {
             {/* Status Filter */}
             <select
               value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value as 'ALL' | 'OPEN' | 'CLOSED')}
+              onChange={e => handleStatusFilterChange(e.target.value as 'ALL' | 'OPEN' | 'CLOSED')}
               className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
             >
               <option value="ALL">Tất cả trạng thái</option>
@@ -608,7 +686,7 @@ export default function SystemConfig() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="min-w-full divide-y divide-gray-200" data-event-table>
                 <thead className="bg-gray-50">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -671,12 +749,12 @@ export default function SystemConfig() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${event.status === 'OPEN'
-                              ? 'bg-green-100 text-green-800'
-                              : event.status === 'CLOSED'
-                                ? 'bg-gray-100 text-gray-800'
-                                : event.status === 'CANCELLED'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-blue-100 text-blue-800'
+                            ? 'bg-green-100 text-green-800'
+                            : event.status === 'CLOSED'
+                              ? 'bg-gray-100 text-gray-800'
+                              : event.status === 'CANCELLED'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-blue-100 text-blue-800'
                             }`}
                         >
                           {event.status === 'OPEN' && '🟢 Đang mở'}
@@ -716,6 +794,18 @@ export default function SystemConfig() {
               </table>
             </div>
           )}
+
+          {/* ✅ NEW: Pagination Component */}
+          {!loadingEvents && events.length > 0 && (
+            <Pagination
+              currentPage={paginationData.currentPage}
+              totalPages={paginationData.totalPages}
+              totalItems={paginationData.totalItems}
+              pageSize={paginationData.pageSize}
+              onPageChange={handlePageChange}
+              isLoading={loadingEvents}
+            />
+          )}
         </div>
       )}
 
@@ -727,7 +817,7 @@ export default function SystemConfig() {
           setSelectedEventId(0)
           setSelectedEventTitle('')
           // Reload events sau khi đóng modal để cập nhật changes
-          fetchEvents()
+          fetchEvents(currentPage)
         }}
         eventId={selectedEventId}
         eventTitle={selectedEventTitle}

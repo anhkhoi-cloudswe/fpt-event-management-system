@@ -28,6 +28,7 @@ type Ticket = {
   description?: string | null
   price: number
   maxQuantity: number
+  remaining?: number // ✅ FIX: số vé còn lại từ backend (maxQuantity - sold)
   status: string
 }
 
@@ -67,6 +68,7 @@ export function EventDetailModal({
 
   // DEBUG: Log userRole and isManager to console
   console.log('EventDetailModal - userRole:', userRole, '- isManager:', isManager)
+  console.log('DEBUG MODAL DATA:', event)
 
   // ===================== STATE =====================
 
@@ -324,11 +326,22 @@ export function EventDetailModal({
     let vipCount = 0
     let standardCount = 0
 
+    // ✅ FIX: Map breakdown theo categoryTicketId trước, fallback seatType
+    const breakdownMap = new Map<number, { ticket: typeof vipTicket; count: number }>()
+
     selectedSeats.forEach((seat) => {
-      if (seat.seatType === 'VIP' && vipTicket) {
+      // Primary: match by categoryTicketId (exact matching, giá chính xác nhất)
+      const matchedTicket = event.tickets?.find((t) => t.categoryTicketId === seat.categoryTicketId)
+      if (matchedTicket) {
+        totalAmount += matchedTicket.price
+        const existing = breakdownMap.get(matchedTicket.categoryTicketId)
+        if (existing) existing.count++
+        else breakdownMap.set(matchedTicket.categoryTicketId, { ticket: matchedTicket, count: 1 })
+      } else if (seat.seatType === 'VIP' && vipTicket) {
+        // Fallback: match theo seatType và tên vé có 'VIP'
         totalAmount += vipTicket.price
         vipCount++
-      } else if (seat.seatType === 'STANDARD' && standardTicket) {
+      } else if (standardTicket) {
         totalAmount += standardTicket.price
         standardCount++
       }
@@ -336,15 +349,14 @@ export function EventDetailModal({
 
     /**
      * ticketToUse: categoryTicketId truyền sang payment.
-     * - Nếu user đã click chọn vé (selectedTicket) => ưu tiên dùng vé đó
-     * - Nếu chưa, tự map theo seatType của ghế đầu tiên
-     *
-     * (Trong thực tế, vì bạn có thể chọn cả VIP + STANDARD trong 1 lần,
-     * việc dùng 1 categoryTicketId có thể là constraint của BE.
-     * Nhưng code đang chọn 1 ticket đại diện.)
+     * ✅ FIX: ưu tiên match theo categoryTicketId từ ghế đầu tiên đã chọn
      */
+    const firstSeatTicket = event.tickets?.find(
+      (t) => t.categoryTicketId === selectedSeats[0]?.categoryTicketId
+    )
     const ticketToUse =
       selectedTicket ||
+      firstSeatTicket ||
       (selectedSeats[0]?.seatType === 'VIP' ? vipTicket : standardTicket)
 
     if (!ticketToUse) {
@@ -357,12 +369,21 @@ export function EventDetailModal({
     const seatCodes = selectedSeats.map((s) => s.seatCode)
 
     // ticketBreakdown: dữ liệu để trang payment hiển thị chi tiết từng loại vé
+    // ✅ FIX: Dùng breakdownMap từ categoryTicketId trước, sau đó fallback vipCount/standardCount
     const ticketBreakdown: Array<{ name: string; count: number; price: number }> = []
-    if (vipCount > 0 && vipTicket) {
-      ticketBreakdown.push({ name: vipTicket.name, count: vipCount, price: vipTicket.price })
+    if (breakdownMap.size > 0) {
+      breakdownMap.forEach(({ ticket: t, count }) => {
+        if (t) ticketBreakdown.push({ name: t.name, count, price: t.price })
+      })
     }
-    if (standardCount > 0 && standardTicket) {
-      ticketBreakdown.push({ name: standardTicket.name, count: standardCount, price: standardTicket.price })
+    // Fallback: nếu không có breakdownMap (seats không có categoryTicketId)
+    if (ticketBreakdown.length === 0) {
+      if (vipCount > 0 && vipTicket) {
+        ticketBreakdown.push({ name: vipTicket.name, count: vipCount, price: vipTicket.price })
+      }
+      if (standardCount > 0 && standardTicket) {
+        ticketBreakdown.push({ name: standardTicket.name, count: standardCount, price: standardTicket.price })
+      }
     }
 
     // Navigate sang trang payment và truyền state (React Router)
@@ -409,11 +430,11 @@ export function EventDetailModal({
   const now = new Date()
   const eventStart = event ? new Date(event.startTime) : null
   const eventEnd = event ? new Date(event.endTime) : null
-  
-  const eventOngoing = event && eventStart && eventEnd 
+
+  const eventOngoing = event && eventStart && eventEnd
     ? (now >= eventStart && now < eventEnd)
     : false
-    
+
   const eventEnded = event && eventEnd
     ? (now > eventEnd)
     : false
@@ -423,14 +444,22 @@ export function EventDetailModal({
   const eventClosed = event ? event.status === 'CLOSED' : false
 
   // ===================== TÍNH TỔNG TIỀN HIỂN THỊ Ở FOOTER =====================
+  // ✅ FIX: Match theo categoryTicketId trước, fallback seatType
   let totalAmount = 0
   if (event && selectedSeats.length > 0) {
     const vipTicket = event.tickets?.find((t) => t.name.toUpperCase().includes('VIP'))
     const standardTicket = event.tickets?.find((t) => !t.name.toUpperCase().includes('VIP'))
 
     selectedSeats.forEach((seat) => {
-      if (seat.seatType === 'VIP' && vipTicket) totalAmount += vipTicket.price
-      else if (seat.seatType === 'STANDARD' && standardTicket) totalAmount += standardTicket.price
+      // Primary: match by categoryTicketId
+      const matchedTicket = event.tickets?.find((t) => t.categoryTicketId === seat.categoryTicketId)
+      if (matchedTicket) {
+        totalAmount += matchedTicket.price
+      } else if (seat.seatType === 'VIP' && vipTicket) {
+        totalAmount += vipTicket.price
+      } else if (standardTicket) {
+        totalAmount += standardTicket.price
+      }
     })
   }
 
@@ -630,6 +659,20 @@ export function EventDetailModal({
                   </div>
                 )}
 
+                {/* ===== LÝ DO TỪ CHỐI ===== */}
+                {event.status === 'REJECTED' && (event.rejectReason || event.reject_reason) && (
+                  <div className="mb-6 border-t pt-6">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <h3 className="text-base font-semibold text-red-700 mb-2 flex items-center gap-2">
+                        <span>🚫</span> Lý do từ chối từ Staff
+                      </h3>
+                      <p className="text-sm text-red-800 leading-relaxed whitespace-pre-wrap">
+                        {event.rejectReason || event.reject_reason}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* ===== GIÁ VÉ ===== */}
                 {event.tickets && event.tickets.length > 0 && (
                   <div className="border-t pt-6 mb-6">
@@ -637,15 +680,20 @@ export function EventDetailModal({
 
                     <div className="space-y-2">
                       {event.tickets.map((ticket) => {
-                        // ✅ FIX: Use organizer's ticket.maxQuantity instead of venue capacity
-                        // This shows the actual number of tickets available per category (e.g., 30 VIP, 60 Standard)
+                        // ✅ FIX: Số vé tống theo maxQuantity
                         const total = ticket.maxQuantity
 
-                        // ✅ FIX: Count seats by categoryTicketId instead of seatType
-                        // Only count AVAILABLE seats that are assigned to this specific ticket category
-                        const availableCount = allSeats.filter(
+                        // ✅ FIX: Ư u tiên dùng ticket.remaining từ BE (maxQuantity - sold)
+                        // Fallback: đếm ghế AVAILABLE theo categoryTicketId trong allSeats
+                        const seatsAvailable = allSeats.filter(
                           (s: Seat) => s.categoryTicketId === ticket.categoryTicketId && s.status === 'AVAILABLE'
                         ).length
+                        const availableCount =
+                          ticket.remaining !== undefined
+                            ? ticket.remaining
+                            : seatsAvailable > 0
+                              ? seatsAvailable
+                              : total // nếu không có thông tin, hiển thị tổng
 
                         // đang được chọn không? (để highlight UI)
                         const isSelectedTicket =

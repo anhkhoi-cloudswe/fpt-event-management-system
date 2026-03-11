@@ -9,6 +9,9 @@ import { useSearchParams } from 'react-router-dom'
 // Import icon để hiển thị UI trạng thái hóa đơn
 import { FileText, CreditCard, Search, Filter } from 'lucide-react'
 
+// Import helper để format thời gian theo Vietnam timezone
+import { formatVietnamDateTime } from '../utils/dateFormat'
+
 // Import components
 import Pagination from '../components/common/Pagination'
 import BillSkeleton from '../components/common/BillSkeleton'
@@ -343,8 +346,8 @@ export default function MyBills() {
 
                     {/* Cột ngày tạo */}
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {/* Convert createdAt thành Date rồi format theo locale vi-VN */}
-                      {new Date(bill.createdAt).toLocaleString('vi-VN')}
+                      {/* Convert createdAt thành Date rồi format theo locale vi-VN với timezone corrction */}
+                      {formatVietnamDateTime(bill.createdAt, 'dd/MM/yyyy HH:mm:ss')}
                     </td>
 
                     {/* Cột số tiền */}

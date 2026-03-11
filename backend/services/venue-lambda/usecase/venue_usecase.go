@@ -2,8 +2,10 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
+	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/services/venue-lambda/models"
 	"github.com/fpt-event-services/services/venue-lambda/repository"
 )
@@ -12,9 +14,11 @@ type VenueUseCase struct {
 	venueRepo *repository.VenueRepository
 }
 
-func NewVenueUseCase() *VenueUseCase {
+// NewVenueUseCaseWithDB creates a new venue use case with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton allowed
+func NewVenueUseCaseWithDB(dbConn *sql.DB) *VenueUseCase {
 	return &VenueUseCase{
-		venueRepo: repository.NewVenueRepository(),
+		venueRepo: repository.NewVenueRepositoryWithDB(dbConn),
 	}
 }
 
@@ -41,7 +45,14 @@ func (uc *VenueUseCase) UpdateVenue(ctx context.Context, req models.UpdateVenueR
 // DeleteVenue - Soft delete venue with constraint checking
 func (uc *VenueUseCase) DeleteVenue(ctx context.Context, venueID int) error {
 	// Check if venue has any active events (OPEN or DRAFT status)
-	hasActive, err := uc.venueRepo.HasActiveEvents(ctx, venueID)
+	// Feature Flag: VENUE_API_ENABLED → gọi event-lambda API thay vì JOIN
+	var hasActive bool
+	var err error
+	if config.IsFeatureEnabled(config.FlagVenueAPIEnabled) {
+		hasActive, err = uc.venueRepo.HasActiveEventsComposed(ctx, venueID)
+	} else {
+		hasActive, err = uc.venueRepo.HasActiveEvents(ctx, venueID)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to check active events: %w", err)
 	}
@@ -66,17 +77,29 @@ func (uc *VenueUseCase) GetAreasByVenueID(ctx context.Context, venueID int) ([]m
 }
 
 // GetFreeAreas - Lấy các area còn trống
+// Feature Flag: VENUE_API_ENABLED → API Composition thay SQL JOIN chéo domain
 func (uc *VenueUseCase) GetFreeAreas(ctx context.Context, startTime, endTime string) ([]models.FreeAreaResponse, error) {
+	if config.IsFeatureEnabled(config.FlagVenueAPIEnabled) {
+		return uc.venueRepo.GetFreeAreasComposed(ctx, startTime, endTime)
+	}
 	return uc.venueRepo.GetFreeAreas(ctx, startTime, endTime)
 }
 
 // GetAllSeats - Lấy seats theo area (ghế vật lý)
+// Feature Flag: VENUE_API_ENABLED → tách query category_ticket ra API call
 func (uc *VenueUseCase) GetAllSeats(ctx context.Context, areaID int) ([]models.Seat, error) {
+	if config.IsFeatureEnabled(config.FlagVenueAPIEnabled) {
+		return uc.venueRepo.GetAllSeatsComposed(ctx, areaID)
+	}
 	return uc.venueRepo.GetAllSeats(ctx, areaID)
 }
 
 // GetSeatsForEvent - Lấy seats theo event (từ Event_Seat_Layout)
+// Feature Flag: VENUE_API_ENABLED → API Composition thay JOIN Event + Ticket
 func (uc *VenueUseCase) GetSeatsForEvent(ctx context.Context, eventID int, seatType string) ([]models.Seat, error) {
+	if config.IsFeatureEnabled(config.FlagVenueAPIEnabled) {
+		return uc.venueRepo.GetSeatsForEventComposed(ctx, eventID, seatType)
+	}
 	return uc.venueRepo.GetSeatsForEvent(ctx, eventID, seatType)
 }
 

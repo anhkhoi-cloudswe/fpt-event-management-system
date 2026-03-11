@@ -9,8 +9,15 @@ local-api*
 # Test binary
 *.test
 
+# Test binary (no extension, compiled by go test -c)
+test
+
 # Output of the go coverage tool
 *.out
+
+# Runtime log files (generated when services run locally)
+*.log
+*-err.log
 
 # Build artifacts
 /bin/

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -17,9 +18,11 @@ type VenueHandler struct {
 	useCase *usecase.VenueUseCase
 }
 
-func NewVenueHandler() *VenueHandler {
+// NewVenueHandlerWithDB creates a new venue handler with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton allowed
+func NewVenueHandlerWithDB(dbConn *sql.DB) *VenueHandler {
 	return &VenueHandler{
-		useCase: usecase.NewVenueUseCase(),
+		useCase: usecase.NewVenueUseCaseWithDB(dbConn),
 	}
 }
 

@@ -10,6 +10,9 @@ import { useToast } from '../contexts/ToastContext'
 // Import icon để hiển thị UI đẹp hơn
 import { CheckCircle2, XCircle, FileClock, PlusCircle, Edit } from 'lucide-react'
 
+// Import helper để format thời gian theo Vietnam timezone
+import { formatVietnamDateTime } from '../utils/dateFormat'
+
 // useEffect để gọi API khi component mount / khi dependencies thay đổi
 // useState để quản lý state dữ liệu
 import { useEffect, useState } from 'react'
@@ -748,7 +751,7 @@ export default function EventRequests() {
                   )}
 
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(req.createdAt).toLocaleString('vi-VN')}
+                    {formatVietnamDateTime(req.createdAt, 'dd/MM/yyyy HH:mm:ss')}
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-center">

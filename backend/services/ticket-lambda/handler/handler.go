@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,25 +11,33 @@ import (
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/logger"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/ticket-lambda/usecase"
 )
+
+var log = logger.Default()
 
 type TicketHandler struct {
 	useCase *usecase.TicketUseCase
 }
 
-func NewTicketHandler() *TicketHandler {
+// NewTicketHandlerWithDB creates a new ticket handler with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton allowed
+func NewTicketHandlerWithDB(dbConn *sql.DB) *TicketHandler {
 	return &TicketHandler{
-		useCase: usecase.NewTicketUseCase(),
+		useCase: usecase.NewTicketUseCaseWithDB(dbConn),
 	}
 }
 
 // HandleGetMyTickets - GET /api/registrations/my-tickets
 func (h *TicketHandler) HandleGetMyTickets(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Inject request headers vào context cho JWT Propagation (internal calls)
+	ctx = utils.WithRequestHeaders(ctx, request.Headers)
+
 	// Get userId from request attribute (set by JWT middleware)
 	userIDStr := request.Headers["X-User-Id"]
-	fmt.Printf("[DEBUG] HandleGetMyTickets - X-User-Id header: '%s'\n", userIDStr)
-	fmt.Printf("[DEBUG] HandleGetMyTickets - All headers: %v\n", request.Headers)
+	log.Debug("HandleGetMyTickets - X-User-Id header: '%s'", userIDStr)
 
 	if userIDStr == "" {
 		return createMessageResponse(http.StatusUnauthorized, "Unauthorized: missing userId")
@@ -36,7 +45,7 @@ func (h *TicketHandler) HandleGetMyTickets(ctx context.Context, request events.A
 
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
-		fmt.Printf("[DEBUG] HandleGetMyTickets - Invalid userId: %s, error: %v\n", userIDStr, err)
+		log.Warn("HandleGetMyTickets - Invalid userId: %s, error: %v", userIDStr, err)
 		return createMessageResponse(http.StatusBadRequest, "Invalid userId")
 	}
 
@@ -49,13 +58,12 @@ func (h *TicketHandler) HandleGetMyTickets(ctx context.Context, request events.A
 
 	// If no pagination params, use old endpoint
 	if pageStr == "" && limitStr == "" {
-		fmt.Printf("[DEBUG] HandleGetMyTickets - Fetching tickets for userID: %d (non-paginated)\n", userID)
 		tickets, err := h.useCase.GetMyTickets(ctx, userID)
 		if err != nil {
-			fmt.Printf("[ERROR] HandleGetMyTickets - Error: %v\n", err)
+			log.Error("HandleGetMyTickets - GetMyTickets error: %v", err)
 			return createMessageResponse(http.StatusInternalServerError, "Internal server error when loading tickets")
 		}
-		fmt.Printf("[DEBUG] HandleGetMyTickets - Found %d tickets\n", len(tickets))
+		log.Debug("HandleGetMyTickets - Found %d tickets for userID %d", len(tickets), userID)
 		return createJSONResponse(http.StatusOK, tickets)
 	}
 
@@ -73,16 +81,13 @@ func (h *TicketHandler) HandleGetMyTickets(ctx context.Context, request events.A
 		limit = 100
 	}
 
-	fmt.Printf("[DEBUG] HandleGetMyTickets - Fetching tickets for userID: %d (page: %d, limit: %d, search: %s, status: %s)\n",
-		userID, page, limit, search, status)
-
 	paginatedTickets, err := h.useCase.GetMyTicketsPaginated(ctx, userID, page, limit, search, status)
 	if err != nil {
-		fmt.Printf("[ERROR] HandleGetMyTickets - Error: %v\n", err)
+		log.Error("HandleGetMyTickets - GetMyTicketsPaginated error: %v", err)
 		return createMessageResponse(http.StatusInternalServerError, "Internal server error when loading tickets")
 	}
 
-	fmt.Printf("[DEBUG] HandleGetMyTickets - Found %d tickets (total: %d)\n", len(paginatedTickets.Tickets), paginatedTickets.TotalRecords)
+	log.Debug("HandleGetMyTickets - userID=%d page=%d found=%d total=%d", userID, page, len(paginatedTickets.Tickets), paginatedTickets.TotalRecords)
 	return createJSONResponse(http.StatusOK, paginatedTickets)
 }
 
@@ -297,6 +302,26 @@ func (h *TicketHandler) HandlePaymentTicket(ctx context.Context, request events.
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
 
+	// ✅ 0đ BYPASS: Vé miễn phí – không cần VNPay, trả về thông tin thành công trực tiếp
+	if strings.HasPrefix(paymentURL, "FREE:") {
+		ticketIDs := strings.TrimPrefix(paymentURL, "FREE:")
+		successURL := fmt.Sprintf("http://localhost:3000/dashboard/payment/success?status=success&method=free&ticketIds=%s", url.QueryEscape(ticketIDs))
+		log.Info("Free ticket bypass - successUrl: %s", successURL)
+		body, _ := json.Marshal(map[string]interface{}{
+			"free":       true,
+			"ticketIds":  ticketIDs,
+			"successUrl": successURL,
+		})
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusOK,
+			Headers: map[string]string{
+				"Content-Type":                "application/json;charset=UTF-8",
+				"Access-Control-Allow-Origin": "*",
+			},
+			Body: string(body),
+		}, nil
+	}
+
 	// Return redirect or URL
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
@@ -321,13 +346,7 @@ func (h *TicketHandler) HandleBuyTicket(ctx context.Context, request events.APIG
 	vnpTxnRef := request.QueryStringParameters["vnp_TxnRef"]
 	vnpSecureHash := request.QueryStringParameters["vnp_SecureHash"]
 
-	// ⭐ DEBUG: Log VNPay callback parameters
-	fmt.Printf("\n========== VNPAY CALLBACK RECEIVED ==========\n")
-	fmt.Printf("[Handler] vnp_Amount: %s\n", vnpAmount)
-	fmt.Printf("[Handler] vnp_ResponseCode: %s\n", vnpResponseCode)
-	fmt.Printf("[Handler] vnp_OrderInfo: %s\n", vnpOrderInfo)
-	fmt.Printf("[Handler] vnp_TxnRef: %s\n", vnpTxnRef)
-	fmt.Printf("===========================================\n\n")
+	log.Info("VNPay callback received - Amount=%s ResponseCode=%s TxnRef=%s", vnpAmount, vnpResponseCode, vnpTxnRef)
 
 	// Process payment callback
 	ticketIds, err := h.useCase.ProcessPaymentCallback(ctx, vnpAmount, vnpResponseCode, vnpOrderInfo, vnpTxnRef, vnpSecureHash)
@@ -359,48 +378,36 @@ func (h *TicketHandler) HandleBuyTicket(ctx context.Context, request events.APIG
 // Get user's wallet balance for pre-check before payment
 // ============================================================
 func (h *TicketHandler) HandleGetWalletBalance(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	fmt.Printf("\n[WALLET_FETCH] === START GET WALLET BALANCE ===\n")
-	fmt.Printf("[WALLET_FETCH] 📋 All request headers: %v\n", request.Headers)
-	fmt.Printf("[WALLET_FETCH] 📋 Query string params: %v\n", request.QueryStringParameters)
-
-	// Extract userId from query parameter (also in header if passed from middleware)
-	userIDStr := request.QueryStringParameters["userId"]
-	fmt.Printf("[WALLET_FETCH] 🔍 userID from query: '%s'\n", userIDStr)
-
+	// Priority 1: X-User-Id header injected by Gateway (Trusted Gateway pattern)
+	userIDStr := request.Headers["X-User-Id"]
 	if userIDStr == "" {
-		// Try from headers (X-User-Id set by auth middleware)
-		userIDStr = request.Headers["X-User-Id"]
-		fmt.Printf("[WALLET_FETCH] 🔍 userID from header X-User-Id: '%s'\n", userIDStr)
+		userIDStr = request.Headers["x-user-id"]
+	}
 
-		// Also try case variations
-		if userIDStr == "" {
-			userIDStr = request.Headers["x-user-id"]
-			fmt.Printf("[WALLET_FETCH] 🔍 userID from header x-user-id: '%s'\n", userIDStr)
-		}
+	// Priority 2: Query parameter fallback
+	if userIDStr == "" {
+		userIDStr = request.QueryStringParameters["userId"]
 	}
 
 	if userIDStr == "" {
-		fmt.Printf("[WALLET_FETCH] ❌ User ID not found in request\n")
+		log.Warn("GetWalletBalance - User ID not found in request")
 		return createMessageResponse(http.StatusUnauthorized, "User ID not found")
 	}
 
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
-		fmt.Printf("[WALLET_FETCH] ❌ Invalid user ID format: '%s', error: %v\n", userIDStr, err)
+		log.Warn("GetWalletBalance - Invalid user ID format: '%s'", userIDStr)
 		return createMessageResponse(http.StatusBadRequest, "Invalid user ID format")
 	}
-
-	fmt.Printf("[WALLET_FETCH] ✅ Extracted userID: %d\n", userID)
 
 	// Get wallet balance from use case
 	balance, err := h.useCase.GetWalletBalance(ctx, userID)
 	if err != nil {
-		fmt.Printf("[WALLET_FETCH] ❌ Error getting balance: %v\n", err)
+		log.Error("GetWalletBalance - error for userID %d: %v", userID, err)
 		return createMessageResponse(http.StatusInternalServerError, err.Error())
 	}
 
-	fmt.Printf("[WALLET_FETCH] ✅ Retrieved balance for user %d: %.2f VND\n", userID, balance)
-	fmt.Printf("[WALLET_FETCH] === END GET WALLET BALANCE ===\n\n")
+	log.Debug("GetWalletBalance - userID=%d balance=%.2f", userID, balance)
 
 	// Return JSON response
 	return events.APIGatewayProxyResponse{

@@ -41,6 +41,10 @@ export interface EventDetail extends EventListItem {
     description?: string | null
     price: number
     maxQuantity: number
+    remaining?: number // ✅ FIX: số vé còn lại từ backend (maxQuantity - sold)
     status: string
   }[]
+
+  // Lý do từ chối (khi status === 'REJECTED')
+  rejectReason?: string | null
 }

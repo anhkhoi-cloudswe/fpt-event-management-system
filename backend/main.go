@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,18 +10,22 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/common/db"
 	"github.com/fpt-event-services/common/jwt"
 	"github.com/fpt-event-services/common/scheduler"
 	authHandler "github.com/fpt-event-services/services/auth-lambda/handler"
 	eventHandler "github.com/fpt-event-services/services/event-lambda/handler"
 	eventRepository "github.com/fpt-event-services/services/event-lambda/repository"
+	eventScheduler "github.com/fpt-event-services/services/event-lambda/scheduler"
+	notifyHandler "github.com/fpt-event-services/services/notification-lambda/handler"
 	staffHandler "github.com/fpt-event-services/services/staff-lambda/handler"
 	ticketHandler "github.com/fpt-event-services/services/ticket-lambda/handler"
+	ticketScheduler "github.com/fpt-event-services/services/ticket-lambda/scheduler"
 	venueHandler "github.com/fpt-event-services/services/venue-lambda/handler"
+	venueScheduler "github.com/fpt-event-services/services/venue-lambda/scheduler"
 )
 
 // Adapter converts http.Request to APIGatewayProxyRequest
@@ -136,7 +139,7 @@ func runStartupJanitor() {
 	log.Println("========================================")
 
 	// Create event repository to access cleanup function
-	eventRepo := eventRepository.NewEventRepository()
+	eventRepo := eventRepository.NewEventRepositoryWithDB(db.GetDB())
 
 	// Run venue release for closed events
 	ctx := context.Background()
@@ -168,16 +171,18 @@ func main() {
 	defer db.CloseDB()
 	log.Println("Database connected successfully!")
 
+	dbConn := db.GetDB()
+
 	// ======================= STARTUP JANITOR =======================
 	// Run startup cleanup to release areas for closed events
 	runStartupJanitor()
 
 	// Create handlers
-	authH := authHandler.NewAuthHandler()
-	eventH := eventHandler.NewEventHandler()
-	ticketH := ticketHandler.NewTicketHandler()
-	venueH := venueHandler.NewVenueHandler()
-	staffH := staffHandler.NewStaffHandler()
+	authH := authHandler.NewAuthHandlerWithDB(dbConn)
+	eventH := eventHandler.NewEventHandlerWithDB(dbConn)
+	ticketH := ticketHandler.NewTicketHandlerWithDB(dbConn)
+	venueH := venueHandler.NewVenueHandlerWithDB(dbConn)
+	staffH := staffHandler.NewStaffHandlerWithDB(dbConn)
 
 	// ======================= AUTH ROUTES =======================
 	http.HandleFunc("/api/login", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -995,6 +1000,429 @@ func main() {
 		writeResponse(w, resp)
 	}))
 
+	// ======================= WALLET INTERNAL ROUTES (Phase 4: Saga Pattern) =======================
+	// Các API nội bộ cho Wallet Service - KHÔNG expose ra ngoài (chỉ internal call)
+	// Security: Kiểm tra X-Internal-Call header
+
+	walletInternalH := ticketHandler.NewWalletInternalHandlerWithDB(dbConn)
+
+	// GET /internal/wallet/balance - Lấy số dư ví (internal)
+	http.HandleFunc("/internal/wallet/balance", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := walletInternalH.HandleGetBalance(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// GET /internal/wallet/check - Kiểm tra số dư đủ không (internal)
+	http.HandleFunc("/internal/wallet/check", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := walletInternalH.HandleCheckBalance(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// POST /internal/wallet/debit - Trừ tiền ví (internal)
+	http.HandleFunc("/internal/wallet/debit", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := walletInternalH.HandleDebit(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// POST /internal/wallet/credit - Cộng tiền ví (internal)
+	http.HandleFunc("/internal/wallet/credit", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := walletInternalH.HandleCredit(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// POST /internal/wallet/reserve - Saga Step 1: Giữ tiền tạm (internal)
+	http.HandleFunc("/internal/wallet/reserve", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := walletInternalH.HandleReserve(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// POST /internal/wallet/confirm - Saga Step 3: Xác nhận trừ tiền (internal)
+	http.HandleFunc("/internal/wallet/confirm", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := walletInternalH.HandleConfirm(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// POST /internal/wallet/release - Saga Compensation: Hủy giữ tiền (internal)
+	http.HandleFunc("/internal/wallet/release", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := walletInternalH.HandleRelease(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// ======================= TICKET INTERNAL ROUTES (Phase 5: Refund Saga + Checkin/Checkout) =======================
+	// Các API nội bộ cho Ticket Service - KHÔNG expose ra ngoài (chỉ internal call)
+	// Security: Kiểm tra X-Internal-Call header
+
+	ticketInternalH := ticketHandler.NewTicketInternalHandlerWithDB(dbConn)
+
+	// POST /internal/ticket/refund - Saga Step 1: Đổi vé sang REFUNDED
+	http.HandleFunc("/internal/ticket/refund", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := ticketInternalH.HandleRefundTicket(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// POST /internal/ticket/revert-refund - Saga Compensation: Hoàn tác refund
+	http.HandleFunc("/internal/ticket/revert-refund", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := ticketInternalH.HandleRevertRefund(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// POST /internal/ticket/checkin - Check-in vé qua API nội bộ
+	http.HandleFunc("/internal/ticket/checkin", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := ticketInternalH.HandleCheckinTicket(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// POST /internal/ticket/checkout - Check-out vé qua API nội bộ
+	http.HandleFunc("/internal/ticket/checkout", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := ticketInternalH.HandleCheckoutTicket(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// GET /internal/ticket/info - Lấy thông tin vé (internal)
+	http.HandleFunc("/internal/ticket/info", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := ticketInternalH.HandleGetTicketInfo(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// ======================= AUTH INTERNAL ROUTES (Phase 6) =======================
+	authInternalH := authHandler.NewAuthInternalHandlerWithDB(dbConn)
+
+	// GET /internal/user/profile - Lấy thông tin user (internal)
+	http.HandleFunc("/internal/user/profile", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := authInternalH.HandleGetUserProfile(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// GET /internal/user/profiles - Batch lookup nhiều users (internal)
+	http.HandleFunc("/internal/user/profiles", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := authInternalH.HandleGetUserProfiles(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// ======================= EVENT INTERNAL ROUTES (Phase 6) =======================
+	eventInternalH := eventHandler.NewEventInternalHandlerWithDB(dbConn)
+
+	// GET /internal/events/active-by-venue - Đếm event OPEN/DRAFT trong venue (internal)
+	http.HandleFunc("/internal/events/active-by-venue", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := eventInternalH.HandleActiveByVenue(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// GET /internal/events/busy-areas - Danh sách area_id đã bận (internal)
+	http.HandleFunc("/internal/events/busy-areas", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := eventInternalH.HandleBusyAreas(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// GET /internal/events/area - Lấy area_id của event (internal)
+	http.HandleFunc("/internal/events/area", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := eventInternalH.HandleGetEventArea(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// ======================= VENUE INTERNAL ROUTES (Phase 6) =======================
+	venueInternalH := venueHandler.NewVenueInternalHandlerWithDB(dbConn)
+
+	// GET /internal/venue/area-with-venue?areaId= - Lấy area + venue info (internal)
+	http.HandleFunc("/internal/venue/area-with-venue", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := venueInternalH.HandleGetAreaWithVenue(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// POST /internal/venue/area-status - Cập nhật status area (internal)
+	http.HandleFunc("/internal/venue/area-status", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := venueInternalH.HandleUpdateAreaStatus(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// ======================= NOTIFICATION INTERNAL ROUTES (Phase 6) =======================
+	notifyH := notifyHandler.NewNotificationHandler()
+
+	// POST /internal/notify/email - Gửi email (OTP, generic) qua Notification Service
+	http.HandleFunc("/internal/notify/email", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := notifyH.HandleSendEmail(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
+	// POST /internal/notify/ticket-pdf - Gửi email + PDF vé (internal)
+	http.HandleFunc("/internal/notify/ticket-pdf", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		req, err := adaptRequest(r)
+		if err != nil {
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			return
+		}
+		resp, err := notifyH.HandleSendTicketPDF(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponse(w, resp)
+	}))
+
 	// ======================= VENUE ROUTES =======================
 
 	// GET /api/venues - Lấy danh sách venues (CRUD)
@@ -1165,7 +1593,7 @@ func main() {
 	}))
 
 	// POST /api/staff/reports/process - APPROVE/REJECT report (⭐ REFUND LOGIC)
-	reportH := staffHandler.NewReportHandler()
+	reportH := staffHandler.NewReportHandlerWithDB(dbConn)
 	http.HandleFunc("/api/staff/reports/process", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1241,6 +1669,9 @@ func main() {
 	}))
 
 	// ======================= STUDENT REPORT ROUTES =======================
+	// ⭐ Phase 5: Di chuyển inline code vào staff-lambda/handler/student_report_handler.go
+
+	studentReportH := staffHandler.NewStudentReportHandlerWithDB(dbConn)
 
 	// POST /api/student/reports - Submit error report for checked-in ticket
 	http.HandleFunc("/api/student/reports", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -1248,141 +1679,21 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-
-		w.Header().Set("Content-Type", "application/json;charset=UTF-8")
-
-		// Extract user ID from Context (set by authMiddleware)
-		userID, ok := r.Context().Value("userID").(int)
-		if !ok || userID <= 0 {
-			log.Printf("[ERROR] ReportHandler: Cannot find userID in context")
-			w.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprintf(w, `{"status":"fail","message":"Unauthorized: missing user ID"}`)
-			return
-		}
-		log.Printf("[REPORT] Retrieved userID=%d from Context", userID)
-
-		// Extract user role from Context (set by authMiddleware)
-		userRole, ok := r.Context().Value("userRole").(string)
-		if !ok || userRole != "STUDENT" {
-			log.Printf("[ERROR] ReportHandler: Invalid role. Got: %s", userRole)
-			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprintf(w, `{"status":"fail","message":"Only students can submit reports"}`)
-			return
-		}
-
-		// Parse JSON body
-		var reportBody struct {
-			TicketId    int    `json:"ticketId"`
-			Title       string `json:"title"`
-			Description string `json:"description"`
-			ImageUrl    string `json:"imageUrl"`
-		}
-
-		if err := json.NewDecoder(r.Body).Decode(&reportBody); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, `{"status":"fail","message":"Invalid JSON"}`)
-			return
-		}
-
-		log.Printf("[REPORT REQUEST] TicketID: %d | UserID: %d | Title: '%s' | Description: '%s'",
-			reportBody.TicketId, userID, reportBody.Title, reportBody.Description)
-
-		// Validate input
-		if reportBody.TicketId <= 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, `{"status":"fail","message":"Invalid ticketId"}`)
-			return
-		}
-
-		if strings.TrimSpace(reportBody.Description) == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, `{"status":"fail","message":"Description is required"}`)
-			return
-		}
-
-		// Get database connection
-		dbConn := db.GetDB()
-		if dbConn == nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, `{"status":"error","message":"Database connection failed"}`)
-			return
-		}
-
-		// Verify ticket ownership and check status
-		var ticketStatus string
-		var ticketUserID int
-		checkQuery := `SELECT t.status, t.user_id FROM Ticket t WHERE t.ticket_id = ?`
-		err := dbConn.QueryRowContext(context.Background(), checkQuery, reportBody.TicketId).Scan(&ticketStatus, &ticketUserID)
+		req, err := adaptRequest(r)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(w, `{"status":"fail","message":"Ticket not found"}`)
-			} else {
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(w, `{"status":"error","message":"Database error"}`)
-			}
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
 			return
 		}
-
-		// Verify ticket belongs to the user
-		if ticketUserID != userID {
-			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprintf(w, `{"status":"fail","message":"Ticket does not belong to you"}`)
-			return
-		}
-
-		// Verify ticket is CHECKED_IN
-		log.Printf("[CHECK-IN VERIFY] Ticket status in DB: %s", ticketStatus)
-		if ticketStatus != "CHECKED_IN" {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, `{"status":"fail","message":"Bạn phải check-in trước khi báo cáo lỗi"}`)
-			return
-		}
-		log.Printf("[CHECK-IN VERIFY] Status is CHECKED_IN -> Valid!")
-
-		// Check for duplicate pending report on same ticket
-		var existingCount int
-		dupQuery := `SELECT COUNT(*) FROM report WHERE ticket_id = ? AND status = 'PENDING'`
-		dbConn.QueryRowContext(context.Background(), dupQuery, reportBody.TicketId).Scan(&existingCount)
-		if existingCount > 0 {
-			w.WriteHeader(http.StatusConflict)
-			fmt.Fprintf(w, `{"status":"fail","message":"This ticket already has a pending report"}`)
-			return
-		}
-
-		// Insert report into database
-		log.Printf("[DB INSERT] Saving report to database...")
-		now := time.Now()
-		insertQuery := `
-			INSERT INTO report (user_id, ticket_id, title, description, image_url, status, created_at)
-			VALUES (?, ?, ?, ?, ?, 'PENDING', ?)
-		`
-		result, err := dbConn.ExecContext(context.Background(), insertQuery,
-			userID,
-			reportBody.TicketId,
-			reportBody.Title,
-			reportBody.Description,
-			reportBody.ImageUrl,
-			now,
-		)
-
+		resp, err := studentReportH.HandleSubmitReport(context.Background(), req)
 		if err != nil {
-			log.Printf("[DB INSERT ERROR] %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, `{"status":"error","message":"Failed to create report"}`)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		reportID, _ := result.LastInsertId()
-		log.Printf("[DB INSERT] Report created successfully! Report ID: %d", reportID)
-
-		w.WriteHeader(http.StatusCreated)
-		fmt.Fprintf(w, `{"status":"success","message":"Report submitted successfully","reportId":%d}`, reportID)
+		writeResponse(w, resp)
 	}))
 
 	// GET /api/student/reports/pending-ticket-ids - Get list of ticket IDs with pending reports
@@ -1391,58 +1702,21 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-
-		w.Header().Set("Content-Type", "application/json;charset=UTF-8")
-
-		// Extract user ID from header
-		userIDStr := r.Header.Get("X-User-Id")
-		userID := 0
-		if userIDStr != "" {
-			fmt.Sscanf(userIDStr, "%d", &userID)
-		}
-
-		if userID <= 0 {
-			w.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprintf(w, `[]`)
-			return
-		}
-
-		// Get database connection
-		dbConn := db.GetDB()
-		if dbConn == nil {
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, `[]`)
-			return
-		}
-
-		// Query pending ticket IDs
-		query := `SELECT DISTINCT ticket_id FROM report WHERE user_id = ? AND status = 'PENDING'`
-		rows, err := dbConn.QueryContext(context.Background(), query, userID)
+		req, err := adaptRequest(r)
 		if err != nil {
-			log.Printf("[ERROR] Failed to query pending reports: %v", err)
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, `[]`)
+			http.Error(w, "Failed to read request", http.StatusBadRequest)
 			return
 		}
-		defer rows.Close()
-
-		var pendingIDs []int
-		for rows.Next() {
-			var id int
-			if err := rows.Scan(&id); err == nil {
-				pendingIDs = append(pendingIDs, id)
-			}
+		resp, err := studentReportH.HandleGetPendingTicketIDs(context.Background(), req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-
-		// Return as JSON array (empty array if no pending reports)
-		data, _ := json.Marshal(pendingIDs)
-		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		writeResponse(w, resp)
 	}))
 
 	// ======================= SYSTEM CONFIG ROUTES =======================
@@ -1582,33 +1856,44 @@ func main() {
 	fmt.Printf("========================================\n\n")
 
 	// ======================= START SCHEDULER =======================
-	// Khởi động scheduled job để tự động giải phóng venue areas khi events kết thúc
-	eventCleanup := scheduler.NewEventCleanupScheduler(5) // Chạy mỗi 5 phút
-	eventCleanup.Start()
-	log.Println("✅ Event cleanup scheduler started (runs every 5 minutes)")
+	// Phase 6: Dual path - service-specific schedulers or legacy common schedulers
+	if config.IsFeatureEnabled(config.FlagServiceSpecificScheduler) {
+		// Service-specific schedulers: accept *sql.DB, use internal APIs for cross-service
+		dbConn := db.GetDB()
 
-	// Khởi động scheduled job để tự động xóa PENDING tickets sau 5 phút
-	// Giống Java backend - release ghế nếu user không hoàn thành thanh toán
-	pendingTicketCleanup := scheduler.NewPendingTicketCleanupScheduler(1) // Check mỗi 1 phút
-	pendingTicketCleanup.Start()
-	log.Println("✅ PENDING ticket cleanup scheduler started (checks every 1 minute, timeout: 5 minutes)")
+		eventCleanupSvc := eventScheduler.NewEventCleanupScheduler(dbConn, 5)
+		eventCleanupSvc.Start()
+		log.Println("✅ [Phase 6] Event cleanup scheduler started (service-specific, 5 min)")
 
-	// ======================= EXPIRED REQUESTS CLEANUP SCHEDULER =======================
-	// Khởi động scheduled job để tự động bãi bỏ sự kiện quá hạn cập nhật
-	// Logic: Tìm các sự kiện APPROVED/UPDATING trong vòng 24h trước start_time
-	// Hành động: Chuyển trạng thái sang CLOSED + giải phóng địa điểm
-	// Tần suất: Chạy mỗi 60 phút (1 giờ)
-	expiredRequestsCleanup := scheduler.NewExpiredRequestsCleanupScheduler(60)
-	expiredRequestsCleanup.Start()
-	log.Println("✅ Expired requests cleanup scheduler started (runs every 60 minutes)")
+		ticketCleanupSvc := ticketScheduler.NewPendingTicketCleanupScheduler(dbConn, 1)
+		ticketCleanupSvc.Start()
+		log.Println("✅ [Phase 6] Ticket cleanup scheduler started (service-specific, 1 min)")
 
-	// ======================= VENUE RELEASE SCHEDULER =======================
-	// Khởi động scheduled job để tự động giải phóng địa điểm khi sự kiện kết thúc
-	// Ưu tiên: Chỉ giải phóng các địa điểm thuộc sự kiện đã CLOSED
-	// Tần suất: Chạy mỗi 5 phút
-	venueReleaseScheduler := scheduler.NewVenueReleaseScheduler(5)
-	venueReleaseScheduler.Start()
-	log.Println("✅ Venue release scheduler started (runs every 5 minutes)")
+		expiredReqSvc := eventScheduler.NewExpiredRequestsCleanupScheduler(dbConn, 60)
+		expiredReqSvc.Start()
+		log.Println("✅ [Phase 6] Expired requests cleanup scheduler started (service-specific, 60 min)")
+
+		venueReleaseSvc := venueScheduler.NewVenueReleaseScheduler(dbConn, 5)
+		venueReleaseSvc.Start()
+		log.Println("✅ [Phase 6] Venue release scheduler started (service-specific, 5 min)")
+	} else {
+		// Legacy schedulers (common/scheduler, use db.GetDB() singleton)
+		eventCleanup := scheduler.NewEventCleanupScheduler(5)
+		eventCleanup.Start()
+		log.Println("✅ Event cleanup scheduler started (runs every 5 minutes)")
+
+		pendingTicketCleanup := scheduler.NewPendingTicketCleanupScheduler(1)
+		pendingTicketCleanup.Start()
+		log.Println("✅ PENDING ticket cleanup scheduler started (checks every 1 minute)")
+
+		expiredRequestsCleanup := scheduler.NewExpiredRequestsCleanupScheduler(60)
+		expiredRequestsCleanup.Start()
+		log.Println("✅ Expired requests cleanup scheduler started (runs every 60 minutes)")
+
+		venueReleaseScheduler := scheduler.NewVenueReleaseScheduler(5)
+		venueReleaseScheduler.Start()
+		log.Println("✅ Venue release scheduler started (runs every 5 minutes)")
+	}
 
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

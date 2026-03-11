@@ -7,7 +7,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/fpt-event-services/common/db"
 	"github.com/fpt-event-services/services/venue-lambda/models"
 )
 
@@ -15,9 +14,11 @@ type VenueRepository struct {
 	db *sql.DB
 }
 
-func NewVenueRepository() *VenueRepository {
+// NewVenueRepositoryWithDB creates a new venue repository with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton db.GetDB() allowed
+func NewVenueRepositoryWithDB(dbConn *sql.DB) *VenueRepository {
 	return &VenueRepository{
-		db: db.GetDB(),
+		db: dbConn,
 	}
 }
 
@@ -534,7 +535,7 @@ func (r *VenueRepository) GetSeatsForEvent(ctx context.Context, eventID int, sea
 	// - If seatType specified: return ONLY allocated seats where ct.name=seatType
 	args := []interface{}{eventID, eventID, eventID, areaID}
 	if seatType != "" {
-		log.Printf("[GetSeatsForEvent] 🔍 CATEGORY_FILTER APPLIED: %s (strict allocation only, no unallocated fallback)", seatType)
+		// ❌ DISABLED: log.Printf("[GetSeatsForEvent] 🔍 CATEGORY_FILTER APPLIED: %s (strict allocation only, no unallocated fallback)", seatType)
 		// When seatType specified, show ONLY allocated seats with matching category
 		switch seatType {
 		case "VIP":
@@ -551,16 +552,16 @@ func (r *VenueRepository) GetSeatsForEvent(ctx context.Context, eventID int, sea
 			args = append(args, seatType)
 		}
 	} else {
-		log.Printf("[GetSeatsForEvent] 📂 NO_CATEGORY_FILTER: Returning ALL seats (allocated + unallocated/NULL) per LEFT JOIN")
+		// ❌ DISABLED: log.Printf("[GetSeatsForEvent] 📂 NO_CATEGORY_FILTER: Returning ALL seats (allocated + unallocated/NULL) per LEFT JOIN")
 	}
 
-	log.Printf("[GetSeatsForEvent] 📍 QUERY_CONFIG: event_id=%d, area_id=%d, seatType='%s', totalParams=%d", eventID, areaID, seatType, len(args))
+	// ❌ DISABLED: log.Printf("[GetSeatsForEvent] 📍 QUERY_CONFIG: event_id=%d, area_id=%d, seatType='%s', totalParams=%d", eventID, areaID, seatType, len(args))
 
 	query += " ORDER BY s.row_no, s.col_no, s.seat_code"
 
-	// Log the final SQL and args for debugging (helps reproduce in terminal)
-	log.Printf("[GetSeatsForEvent] Executing SQL: %s", query)
-	log.Printf("[GetSeatsForEvent] SQL args: %+v", args)
+	// ❌ DISABLED: Log the final SQL and args for debugging (helps reproduce in terminal)
+	// log.Printf("[GetSeatsForEvent] Executing SQL: %s", query)
+	// log.Printf("[GetSeatsForEvent] SQL args: %+v", args)
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -605,7 +606,7 @@ func (r *VenueRepository) GetSeatsForEvent(ctx context.Context, eventID int, sea
 			seat.AreaID = scannedArea
 		}
 		if scannedArea != seat.AreaID {
-			log.Printf("[GetSeatsForEvent] Note: seat_id=%d scanned area=%d -> using area=%d", seat.SeatID, scannedArea, seat.AreaID)
+			// ❌ DISABLED: log.Printf("[GetSeatsForEvent] Note: seat_id=%d scanned area=%d -> using area=%d", seat.SeatID, scannedArea, seat.AreaID)
 		}
 
 		// ✅ Map nullable fields properly
@@ -638,28 +639,23 @@ func (r *VenueRepository) GetSeatsForEvent(ctx context.Context, eventID int, sea
 		// Log first 3 seats for debugging
 		seatCount++
 		if seatCount <= 3 {
-			log.Printf("[GetSeatsForEvent] ✓ Seat[%d]: ID=%d, Code=%s, Area=%d, Row=%v, Category=%s, Status=%s",
-				seatCount, seat.SeatID, seat.SeatCode, seat.AreaID, rowName, categoryName, status)
+			// ❌ DISABLED: log.Printf("[GetSeatsForEvent] ✓ Seat[%d]: ID=%d, Code=%s, Area=%d, Row=%v, Category=%s, Status=%s", seatCount, seat.SeatID, seat.SeatCode, seat.AreaID, rowName, categoryName, status)
 		}
 	}
 
 	log.Printf("[GetSeatsForEvent] ✅ Successfully retrieved %d seats from area_id=%d", len(seats), areaID)
 
-	// ✅ FIX 3A: Force AreaID to event's area to ensure response.AreaID is never null
-	// This must be done for ALL seats, not just some
-	log.Printf("[GetSeatsForEvent] 🔧 RESPONSE_MAPPING START: Setting AreaID=%d for all %d seats in response", areaID, len(seats))
+	// ❌ DISABLED: log.Printf("[GetSeatsForEvent] 📇 RESPONSE_MAPPING START: Setting AreaID=%d for all %d seats in response", areaID, len(seats))
 	for i := range seats {
 		seats[i].AreaID = areaID
 		// Verify seat has proper mapping (useful for debugging)
 		if i < 3 {
-			log.Printf("[GetSeatsForEvent] 🪑 Seat[%d] mapped: code=%s, area_id=%d, category=%v, ticketID=%v",
-				i, seats[i].SeatCode, seats[i].AreaID, seats[i].CategoryName, seats[i].CategoryTicketID)
+			// ❌ DISABLED: log.Printf("[GetSeatsForEvent] 🙊 Seat[%d] mapped: code=%s, area_id=%d, category=%v, ticketID=%v", i, seats[i].SeatCode, seats[i].AreaID, seats[i].CategoryName, seats[i].CategoryTicketID)
 		}
 	}
-	log.Printf("[GetSeatsForEvent] ✅ RESPONSE_MAPPING COMPLETE: All seats assigned area_id=%d (never null)", areaID)
+	// ❌ DISABLED: log.Printf("[GetSeatsForEvent] ✅ RESPONSE_MAPPING COMPLETE: All seats assigned area_id=%d (never null)", areaID)
 
-	// Log first 5 ROWS (rows A, B, C, D, E - not individual seats) with seat_id and category_ticket_id for MySQL comparison
-	log.Printf("[GetSeatsForEvent] 🔍 DEBUG: First 5 rows from area_id=%d for event_id=%d:", areaID, eventID)
+	// ❌ DISABLED: log.Printf("[GetSeatsForEvent] 🔍 DEBUG: First 5 rows from area_id=%d for event_id=%d:", areaID, eventID)
 
 	var previousRow string
 	var rowCount int
@@ -674,18 +670,9 @@ func (r *VenueRepository) GetSeatsForEvent(ctx context.Context, eventID int, sea
 		if currentRow != previousRow && currentRow != "" {
 			rowCount++
 			previousRow = currentRow
-
-			// Log all seats in this row
-			var cid interface{}
-			if s.CategoryTicketID != nil {
-				cid = *s.CategoryTicketID
-			} else {
-				cid = "NULL"
-			}
-			log.Printf("[GetSeatsForEvent] 🪑 Row %s | Seat: ID=%d, Code=%s, Category_Ticket_ID=%v, Status=%s",
-				currentRow, s.SeatID, s.SeatCode, cid, s.Status)
-		}
-	}
+			// ❌ DISABLED: log.Printf("[GetSeatsForEvent] 🪑 Row %s | Seat: ...", currentRow, s.SeatID, s.SeatCode, s.Status)
+		} // end if currentRow != previousRow
+	} // end for
 
 	return seats, nil
 }

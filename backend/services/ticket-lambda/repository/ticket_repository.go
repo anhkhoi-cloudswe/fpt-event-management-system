@@ -10,23 +10,27 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fpt-event-services/common/db"
+	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/common/email"
 	apperrors "github.com/fpt-event-services/common/errors"
 	"github.com/fpt-event-services/common/logger"
 	ticketpdf "github.com/fpt-event-services/common/pdf"
 	"github.com/fpt-event-services/common/qrcode"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/common/vnpay"
 	"github.com/fpt-event-services/services/ticket-lambda/models"
+	ticketutils "github.com/fpt-event-services/services/ticket-lambda/utils"
 )
 
 type TicketRepository struct {
 	db *sql.DB
 }
 
-func NewTicketRepository() *TicketRepository {
+// NewTicketRepositoryWithDB creates a new ticket repository with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton db.GetDB() allowed
+func NewTicketRepositoryWithDB(dbConn *sql.DB) *TicketRepository {
 	return &TicketRepository{
-		db: db.GetDB(),
+		db: dbConn,
 	}
 }
 
@@ -442,13 +446,26 @@ func (r *TicketRepository) GetTicketsByRole(ctx context.Context, role string, us
 
 // ============================================================
 // GetCategoryTicketsByEventID - Lấy các loại vé của event
+// ✅ FIX: Tính Remaining = MaxQuantity - COUNT(sold/pending tickets) để frontend hiển thị đúng "Còn lại"
 // ============================================================
 func (r *TicketRepository) GetCategoryTicketsByEventID(ctx context.Context, eventID int) ([]models.CategoryTicket, error) {
+	fmt.Printf("[TICKET] GetCategoryTicketsByEventID - EventID: %d\n", eventID)
+
 	query := `
-		SELECT category_ticket_id, event_id, name, description, price, max_quantity, status
-		FROM Category_Ticket
-		WHERE event_id = ?
-		ORDER BY price ASC
+		SELECT 
+			ct.category_ticket_id,
+			ct.event_id,
+			ct.name,
+			ct.description,
+			ct.price,
+			ct.max_quantity,
+			ct.status,
+			GREATEST(0, ct.max_quantity - COUNT(CASE WHEN t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN') THEN 1 END)) AS remaining
+		FROM Category_Ticket ct
+		LEFT JOIN Ticket t ON ct.category_ticket_id = t.category_ticket_id
+		WHERE ct.event_id = ?
+		GROUP BY ct.category_ticket_id, ct.event_id, ct.name, ct.description, ct.price, ct.max_quantity, ct.status
+		ORDER BY ct.price ASC
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, eventID)
@@ -470,6 +487,7 @@ func (r *TicketRepository) GetCategoryTicketsByEventID(ctx context.Context, even
 			&ct.Price,
 			&ct.MaxQuantity,
 			&ct.Status,
+			&ct.Remaining,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan category ticket: %w", err)
@@ -479,9 +497,13 @@ func (r *TicketRepository) GetCategoryTicketsByEventID(ctx context.Context, even
 			ct.Description = &description.String
 		}
 
+		fmt.Printf("[TICKET] Category: %s | Giá: %.0f VNĐ | Còn lại: %d/%d\n",
+			ct.Name, ct.Price, ct.Remaining, ct.MaxQuantity)
+
 		tickets = append(tickets, ct)
 	}
 
+	fmt.Printf("[TICKET] GetCategoryTicketsByEventID - Tổng số loại vé: %d\n", len(tickets))
 	return tickets, nil
 }
 
@@ -716,12 +738,13 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 	// Kiểm tra category ticket và lấy giá
 	// ⭐ FIX: Dùng float64 để nhận giá trị DECIMAL từ MySQL (150000.00)
 	var pricePerSeat float64 // DECIMAL từ DB có phần thập phân
+	var catName string
 	var catStatus string
 	var maxQty int
 	err = r.db.QueryRowContext(ctx,
-		"SELECT price, status, max_quantity FROM Category_Ticket WHERE category_ticket_id = ? AND event_id = ?",
+		"SELECT price, status, max_quantity, name FROM Category_Ticket WHERE category_ticket_id = ? AND event_id = ?",
 		categoryTicketID, eventID,
-	).Scan(&pricePerSeat, &catStatus, &maxQty)
+	).Scan(&pricePerSeat, &catStatus, &maxQty, &catName)
 	if err != nil {
 		log.Error("Category ticket not found", "category_ticket_id", categoryTicketID, "error", err)
 		return "", apperrors.NotFound("Loại vé")
@@ -731,17 +754,31 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 		return "", apperrors.BusinessError("Loại vé này không khả dụng")
 	}
 
-	log.Info("[INVOICE DEBUG] Category Ticket Retrieved", "category_ticket_id", categoryTicketID, "price_from_db", pricePerSeat, "price_type", "float64")
+	// ✅ [TICKET] Log chi tiết thanh toán
+	fmt.Printf("[TICKET] Đang xử lý thanh toán cho Event: %d, Category: %s (ID: %d), Giá: %.0f VNĐ/ghế, Số ghế: %d\n",
+		eventID, catName, categoryTicketID, pricePerSeat, len(seatIDs))
+	log.Info("[INVOICE DEBUG] Category Ticket Retrieved", "category_ticket_id", categoryTicketID, "category_name", catName, "price_from_db", pricePerSeat, "price_type", "float64")
 
-	// Kiểm tra số lượng vé đã bán
+	// ✅ FIX: Kiểm tra số lượng vé đã bán - chỉ đếm vé ACTIVE (không đếm CANCELLED)
 	var soldCount int
-	r.db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM Ticket WHERE category_ticket_id = ?",
+	if queryErr := r.db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM Ticket WHERE category_ticket_id = ? AND status IN ('PENDING', 'BOOKED', 'CHECKED_IN')",
 		categoryTicketID,
-	).Scan(&soldCount)
+	).Scan(&soldCount); queryErr != nil {
+		fmt.Printf("[TICKET] Cảnh báo: không đếm được sold count: %v\n", queryErr)
+		soldCount = 0
+	}
+	remaining := maxQty - soldCount
+	fmt.Printf("[TICKET] Kiểm tra tồn kho - Tổng: %d, Đã bán: %d, Còn lại: %d, Yêu cầu: %d\n",
+		maxQty, soldCount, remaining, len(seatIDs))
+	// ✅ FIX: Trả 400 thay vì crash 500 khi hết vé
+	if remaining <= 0 {
+		log.Warn("[TICKET] Ticket Sold Out", "category_ticket_id", categoryTicketID, "sold", soldCount, "max", maxQty)
+		return "", apperrors.BusinessError(fmt.Sprintf("Ticket Sold Out - Loại vé '%s' đã hết. Còn lại: 0/%d", catName, maxQty))
+	}
 	if soldCount+len(seatIDs) > maxQty {
 		log.Warn("Not enough tickets", "category_ticket_id", categoryTicketID, "sold", soldCount, "max", maxQty, "requested", len(seatIDs))
-		return "", apperrors.BusinessError(fmt.Sprintf("Không đủ vé. Còn lại: %d, Yêu cầu: %d", maxQty-soldCount, len(seatIDs)))
+		return "", apperrors.BusinessError(fmt.Sprintf("Không đủ vé. Còn lại: %d, Yêu cầu: %d", remaining, len(seatIDs)))
 	}
 
 	// Kiểm tra TẤT CẢ ghế có active và available không
@@ -818,6 +855,61 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 
 	// Tạo orderInfo
 	orderInfo := fmt.Sprintf("Payment for %s - %d seats", eventTitle, len(seatIDs))
+
+	// ✅ 0đ BYPASS: Nếu giá vé = 0, tạo vé BOOKED trực tiếp mà không cần VNPay
+	if totalAmount == 0 {
+		fmt.Printf("[TICKET] 🎉 Vé miễn phí (0đ) - Event: %d, Category: %s. Tạo BOOKED trực tiếp, bỏ qua VNPay.\n", eventID, catName)
+
+		// Tạo 1 Bill duy nhất cho toàn bộ lô vé miễn phí
+		var freeBillID int64
+		billResult, billErr := r.db.ExecContext(ctx,
+			`INSERT INTO Bill (user_id, total_amount, payment_method, payment_status, created_at, paid_at)
+			 VALUES (?, 0, 'FREE', 'PAID', NOW(), NOW())`,
+			userID,
+		)
+		if billErr != nil {
+			fmt.Printf("[TICKET] Cảnh báo: không tạo được Bill miễn phí: %v\n", billErr)
+		} else {
+			freeBillID, _ = billResult.LastInsertId()
+		}
+
+		bookedIDsFree := make([]int, 0, len(pendingTicketIDs))
+		for _, tid := range pendingTicketIDs {
+			// Liên kết vé với Bill
+			if freeBillID > 0 {
+				r.db.ExecContext(ctx,
+					`INSERT INTO Bill_Detail (bill_id, ticket_id, price) VALUES (?, ?, 0)`,
+					freeBillID, tid,
+				)
+			}
+			// Cập nhật Ticket sang BOOKED với QR code thực (cùng logic với VNPay flow)
+			qrBase64, qrErr := qrcode.GenerateTicketQRBase64(int(tid), 300)
+			if qrErr != nil {
+				fmt.Printf("[TICKET] ⚠️ Không tạo được QR cho ticket %d: %v — dùng fallback\n", tid, qrErr)
+				qrBase64 = fmt.Sprintf("FREE-%d-%s", tid, timestamp)
+			}
+			_, updateErr := r.db.ExecContext(ctx,
+				`UPDATE Ticket SET status = 'BOOKED', qr_code_value = ? WHERE ticket_id = ?`,
+				qrBase64, tid,
+			)
+			if updateErr != nil {
+				fmt.Printf("[TICKET] Lỗi cập nhật ticket %d sang BOOKED: %v\n", tid, updateErr)
+			} else {
+				fmt.Printf("[TICKET] ✅ Ticket %d → BOOKED (miễn phí, QR=%d bytes)\n", tid, len(qrBase64))
+				bookedIDsFree = append(bookedIDsFree, int(tid))
+			}
+		}
+
+		// 📧 Gửi email vé điện tử (non-blocking, cùng cơ chế với VNPay)
+		// ⭐ FIX: dùng context.Background() để goroutine không bị cancel khi HTTP request kết thúc
+		go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedIDsFree, "0", categoryTicketID, int(freeBillID))
+
+		// 🔔 Kích hoạt Notification Service gửi PDF vé (non-blocking)
+		go ticketutils.CallNotificationService(bookedIDsFree)
+
+		// Trả về chuỗi đặc biệt để handler nhận biết là vé miễn phí
+		return "FREE:" + ticketIDsStr, nil
+	}
 
 	// ⭐ LOGGING DEBUG: Theo dõi chi tiết giá trị tiền tệ
 	log.Info("[INVOICE DEBUG] CreateVNPayURL - Final Calculation",
@@ -1060,7 +1152,10 @@ func (r *TicketRepository) ProcessVNPayCallback(ctx context.Context, amount, res
 
 	// Convert billAmount float64 to string format cho email
 	realAmount := fmt.Sprintf("%.0f", billAmount)
-	go r.sendMultipleTicketEmailsAsync(ctx, userID, eventID, bookedTicketIDs, realAmount, categoryTicketID, int(billID))
+	// ⭐ FIX: dùng context.Background() để goroutine không bị cancel khi HTTP request kết thúc
+	go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedTicketIDs, realAmount, categoryTicketID, int(billID))
+	// 🔔 Kích hoạt Notification Service gửi PDF vé (non-blocking)
+	go ticketutils.CallNotificationService(bookedTicketIDs)
 
 	// Trả về comma-separated ticket IDs
 	ticketIDsResult := ""
@@ -1076,12 +1171,14 @@ func (r *TicketRepository) ProcessVNPayCallback(ctx context.Context, amount, res
 // sendTicketEmailAsync gửi email vé điện tử trong goroutine (không block payment response)
 // KHỚP VỚI Java BuyTicketController gọi EmailUtils.sendEmail()
 func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eventID, seatID, ticketID int, amount string, categoryTicketID int) {
-	log := logger.Default().WithContext(ctx)
+	// ⭐ FIX: dùng background context để tránh lỗi "context canceled" sau khi HTTP redirect
+	bgCtx := context.Background()
+	log := logger.Default().WithContext(bgCtx)
 	log.Info("🔔 STARTING sendTicketEmailAsync", "user_id", userID, "ticket_id", ticketID)
 
 	// Lấy thông tin user
 	var userEmail, userName string
-	err := r.db.QueryRowContext(ctx,
+	err := r.db.QueryRowContext(bgCtx,
 		"SELECT email, full_name FROM Users WHERE user_id = ?",
 		userID,
 	).Scan(&userEmail, &userName)
@@ -1096,7 +1193,7 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 
 	// Lấy QR Base64 từ database (ĐÃ LƯU SAU PAYMENT CALLBACK)
 	var qrBase64 string
-	err = r.db.QueryRowContext(ctx,
+	err = r.db.QueryRowContext(bgCtx,
 		"SELECT qr_code_value FROM Ticket WHERE ticket_id = ?",
 		ticketID,
 	).Scan(&qrBase64)
@@ -1112,7 +1209,7 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 	var areaName sql.NullString
 	var venueName sql.NullString
 	var venueLocation sql.NullString
-	err = r.db.QueryRowContext(ctx,
+	err = r.db.QueryRowContext(bgCtx,
 		`SELECT e.title, e.start_time, e.area_id, 
 		        COALESCE(va.area_name, 'Chưa xác định') as area_name,
 		        COALESCE(v.venue_name, 'Chưa xác định') as venue_name,
@@ -1130,14 +1227,14 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 
 	// Lấy thông tin ghế
 	var seatCode string
-	r.db.QueryRowContext(ctx,
+	r.db.QueryRowContext(bgCtx,
 		"SELECT seat_code FROM Seat WHERE seat_id = ?",
 		seatID,
 	).Scan(&seatCode)
 
 	// Lấy thông tin loại vé
 	var categoryName string
-	r.db.QueryRowContext(ctx,
+	r.db.QueryRowContext(bgCtx,
 		"SELECT name FROM Category_Ticket WHERE category_ticket_id = ?",
 		categoryTicketID,
 	).Scan(&categoryName)
@@ -1192,6 +1289,35 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 		}
 	}
 
+	// Phase 6: Dual path - Notification API or local PDF+email
+	if config.IsFeatureEnabled(config.FlagNotificationAPIEnabled) {
+		// Route through Notification Service API
+		if err := sendSingleTicketViaNotifyAPI(bgCtx, map[string]interface{}{
+			"ticket_id":      ticketID,
+			"user_email":     userEmail,
+			"user_name":      userName,
+			"event_title":    eventTitle,
+			"start_time":     startTime.Format(time.RFC3339),
+			"venue_name":     finalVenueName,
+			"area_name":      finalAreaName,
+			"venue_address":  finalVenueAddress,
+			"seat_code":      seatCode,
+			"seat_row":       seatRow,
+			"seat_number":    seatNumber,
+			"category_name":  categoryName,
+			"price":          formattedAmount,
+			"qr_base64":      qrBase64,
+			"map_url":        mapURL,
+			"payment_method": "VNPAY",
+		}); err != nil {
+			log.Warn("Notification API failed, falling back to local", "error", err)
+		} else {
+			log.Info("Ticket email sent via Notification API", "ticket_id", ticketID)
+			return
+		}
+	}
+
+	// Legacy path: Generate PDF locally + send email directly
 	// Generate QR PNG bytes từ Base64 để tạo PDF
 	var qrPngBytes []byte
 	if qrBase64 != "" && !strings.HasPrefix(qrBase64, "PENDING_QR") {
@@ -1260,12 +1386,14 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 // sendMultipleTicketEmailsAsync gửi 1 email với NHIỀU PDF attachments (mỗi vé 1 PDF)
 // Được gọi khi user mua nhiều ghế cùng lúc (max 4 ghế)
 func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, userID, eventID int, ticketIDs []int, totalAmount string, categoryTicketID, billID int) {
-	log := logger.Default().WithContext(ctx)
+	// ⭐ FIX: luôn dùng background context để tránh lỗi "context canceled" sau khi HTTP redirect
+	bgCtx := context.Background()
+	log := logger.Default().WithContext(bgCtx)
 	log.Info("🔔 STARTING sendMultipleTicketEmailsAsync", "user_id", userID, "ticket_count", len(ticketIDs))
 
 	// Lấy thông tin user
 	var userEmail, userName string
-	err := r.db.QueryRowContext(ctx,
+	err := r.db.QueryRowContext(bgCtx,
 		"SELECT email, full_name FROM Users WHERE user_id = ?",
 		userID,
 	).Scan(&userEmail, &userName)
@@ -1277,16 +1405,19 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 		log.Warn("User has no email", "user_id", userID)
 		return
 	}
+	fmt.Printf("[NOTIFY] 📧 Chuẩn bị gửi vé tới email: %s (userID=%d)\n", userEmail, userID)
 
 	// Lấy thông tin event + venue (chung cho tất cả vé)
 	var eventTitle string
 	var startTime time.Time
+	var endTime time.Time
 	var areaID sql.NullInt64
 	var areaName sql.NullString
 	var venueName sql.NullString
 	var venueLocation sql.NullString
-	err = r.db.QueryRowContext(ctx,
-		`SELECT e.title, e.start_time, e.area_id, 
+	var createdBy sql.NullInt64
+	err = r.db.QueryRowContext(bgCtx,
+		`SELECT e.title, e.start_time, e.end_time, e.area_id, e.created_by,
 		        COALESCE(va.area_name, 'Chưa xác định') as area_name,
 		        COALESCE(v.venue_name, 'Chưa xác định') as venue_name,
 		        COALESCE(v.location, 'Chưa xác định') as location
@@ -1295,7 +1426,7 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 		 LEFT JOIN Venue v ON va.venue_id = v.venue_id
 		 WHERE e.event_id = ?`,
 		eventID,
-	).Scan(&eventTitle, &startTime, &areaID, &areaName, &venueName, &venueLocation)
+	).Scan(&eventTitle, &startTime, &endTime, &areaID, &createdBy, &areaName, &venueName, &venueLocation)
 	if err != nil {
 		log.Error("Failed to get event for email", "event_id", eventID, "error", err)
 		return
@@ -1317,10 +1448,20 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 
 	// Lấy category name
 	var categoryName string
-	r.db.QueryRowContext(ctx,
+	r.db.QueryRowContext(bgCtx,
 		"SELECT name FROM Category_Ticket WHERE category_ticket_id = ?",
 		categoryTicketID,
 	).Scan(&categoryName)
+
+	// Lấy thông tin organizer từ created_by
+	var organizerName string = "Event Organizer"
+	var organizerEmail string = ""
+	if createdBy.Valid && createdBy.Int64 > 0 {
+		r.db.QueryRowContext(bgCtx,
+			"SELECT COALESCE(full_name, 'Event Organizer'), COALESCE(email, '') FROM Users WHERE user_id = ?",
+			createdBy.Int64,
+		).Scan(&organizerName, &organizerEmail)
+	}
 
 	// Tạo Map URL
 	mapURL := "https://www.google.com/maps"
@@ -1330,6 +1471,60 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 		mapURL = fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(finalVenueName))
 	}
 
+	// Phase 6: Dual path - Notification API or local PDF+email
+	if config.IsFeatureEnabled(config.FlagNotificationAPIEnabled) {
+		// Gather ticket data for API call
+		items := []map[string]interface{}{}
+		for _, ticketID := range ticketIDs {
+			var qrBase64 string
+			var seatID int
+			err = r.db.QueryRowContext(bgCtx,
+				"SELECT qr_code_value, seat_id FROM Ticket WHERE ticket_id = ?",
+				ticketID,
+			).Scan(&qrBase64, &seatID)
+			if err != nil {
+				log.Error("Failed to get ticket for notify API", "ticket_id", ticketID, "error", err)
+				continue
+			}
+			var seatCode string
+			var price float64
+			r.db.QueryRowContext(bgCtx, "SELECT seat_code FROM Seat WHERE seat_id = ?", seatID).Scan(&seatCode)
+			r.db.QueryRowContext(bgCtx, "SELECT price FROM Category_Ticket WHERE category_ticket_id = ?", categoryTicketID).Scan(&price)
+			seatRow, seatNumber := parseSeatCodeHelper(seatCode)
+			items = append(items, map[string]interface{}{
+				"ticket_id":     ticketID,
+				"qr_base64":     qrBase64,
+				"seat_code":     seatCode,
+				"seat_row":      seatRow,
+				"seat_number":   seatNumber,
+				"category_name": categoryName,
+				"price":         formatCurrency(fmt.Sprintf("%.0f", price)),
+			})
+		}
+
+		if err := sendMultipleTicketsViaNotifyAPI(bgCtx, map[string]interface{}{
+			"user_email":      userEmail,
+			"user_name":       userName,
+			"event_title":     eventTitle,
+			"start_time":      startTime.Format(time.RFC3339),
+			"end_time":        endTime.Format(time.RFC3339),
+			"venue_name":      finalVenueName,
+			"area_name":       finalAreaName,
+			"venue_address":   finalVenueAddress,
+			"total_amount":    formatCurrency(totalAmount),
+			"map_url":         mapURL,
+			"organizer_name":  organizerName,
+			"organizer_email": organizerEmail,
+			"items":           items,
+		}); err != nil {
+			log.Warn("Notification API failed for multiple tickets, falling back to local", "error", err)
+		} else {
+			log.Info("Multiple tickets email sent via Notification API", "ticket_count", len(ticketIDs))
+			return
+		}
+	}
+
+	// Legacy path: Generate PDF locally + send email directly
 	// Generate PDF cho MỖI vé
 	pdfAttachments := []email.PDFAttachment{}
 	seatCodes := []string{}
@@ -1338,7 +1533,7 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 		// Lấy thông tin ticket
 		var qrBase64 string
 		var seatID int
-		err = r.db.QueryRowContext(ctx,
+		err = r.db.QueryRowContext(bgCtx,
 			"SELECT qr_code_value, seat_id FROM Ticket WHERE ticket_id = ?",
 			ticketID,
 		).Scan(&qrBase64, &seatID)
@@ -1351,11 +1546,11 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 		var seatCode string
 		// ⭐ FIX: Sử dụng float64 để nhận DECIMAL từ MySQL
 		var price float64
-		r.db.QueryRowContext(ctx,
+		r.db.QueryRowContext(bgCtx,
 			"SELECT seat_code FROM Seat WHERE seat_id = ?",
 			seatID,
 		).Scan(&seatCode)
-		r.db.QueryRowContext(ctx,
+		r.db.QueryRowContext(bgCtx,
 			"SELECT price FROM Category_Ticket WHERE category_ticket_id = ?",
 			categoryTicketID,
 		).Scan(&price)
@@ -1448,7 +1643,8 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 	if err != nil {
 		log.Error("Failed to send multiple tickets email", "user_email", userEmail, "ticket_count", len(ticketIDs), "error", err)
 	} else {
-		log.Info("Multiple tickets email sent successfully", "user_email", userEmail, "ticket_count", len(ticketIDs))
+		fmt.Printf("[NOTIFY] ✅ Email sent successfully → %s (%d tickets)\n", userEmail, len(ticketIDs))
+		log.Info("[NOTIFY] ✅ Multiple tickets email sent successfully", "user_email", userEmail, "ticket_count", len(ticketIDs))
 	}
 }
 
@@ -1495,22 +1691,21 @@ func formatCurrency(amountStr string) string {
 // WALLET PAYMENT METHODS
 // ============================================================
 
-// GetUserWalletBalance - Lấy số dư ví của user từ database
-// KHỚP VỚI Java: UserService.getWalletBalance()
+// GetUserWalletBalance - Lấy số dư ví của user từ bảng Wallet (single source of truth)
+// Auth Service quản lý Users.Wallet column via API
 func (r *TicketRepository) GetUserWalletBalance(ctx context.Context, userID int) (float64, error) {
 	fmt.Printf("[WALLET_DB] 🔍 Fetching balance for userID: %d\n", userID)
 
 	var balance float64
-	query := `SELECT COALESCE(Wallet, 0) as balance FROM users WHERE user_id = ?`
+	query := `SELECT COALESCE(balance, 0) FROM Wallet WHERE user_id = ?`
 
 	fmt.Printf("[WALLET_DB] 📝 Executing query: %s with userID=%d\n", query, userID)
 
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(&balance)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// User not found, return 0 balance
-			fmt.Printf("[WALLET_DB] ⚠️  User %d not found in database (ErrNoRows)\n", userID)
-			fmt.Printf("[WALLET_DB] ✅ Returning default balance 0 for non-existent user\n")
+			// No wallet record → return 0 balance
+			fmt.Printf("[WALLET_DB] ⚠️  No wallet record for user %d, returning 0\n", userID)
 			return 0, nil
 		}
 		fmt.Printf("[WALLET_DB] ❌ Database query error: %v\n", err)
@@ -1614,23 +1809,31 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 	}
 	defer tx.Rollback()
 
-	// ===== STEP 1: LOCK AND CHECK USER BALANCE =====
-	// Use SELECT ... FOR UPDATE to lock the user row during transaction
-	// This prevents:
-	// 1. Concurrent payment processing causing negative balance
-	// 2. Race condition where two payments succeed when only one should
-	// 3. Lost updates in concurrent topup and payment scenarios
+	// ===== STEP 1: LOCK AND CHECK WALLET BALANCE =====
+	// Use Wallet table as the single source of truth (microservice isolation)
+	// Lock the Wallet row with FOR UPDATE to prevent concurrent modifications
 
-	fmt.Printf("[DEBUG] ProcessWalletPayment: Locking user balance for userID=%d\n", userID)
+	fmt.Printf("[DEBUG] ProcessWalletPayment: Locking wallet balance for userID=%d\n", userID)
 
 	var currentBalance float64
-	lockQuery := `SELECT COALESCE(Wallet, 0) FROM users WHERE user_id = ? FOR UPDATE`
-	err = tx.QueryRowContext(ctx, lockQuery, userID).Scan(&currentBalance)
+	var walletID int
+	lockQuery := `SELECT wallet_id, balance FROM Wallet WHERE user_id = ? FOR UPDATE`
+	err = tx.QueryRowContext(ctx, lockQuery, userID).Scan(&walletID, &currentBalance)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", fmt.Errorf("user not found")
+			// Auto-create wallet with balance 0 (Auth Service manages Users.Wallet via API)
+			insertResult, insertErr := tx.ExecContext(ctx,
+				"INSERT INTO Wallet (user_id, balance, currency, status) VALUES (?, 0, 'VND', 'ACTIVE')", userID)
+			if insertErr != nil {
+				return "", fmt.Errorf("error creating wallet: %w", insertErr)
+			}
+			id, _ := insertResult.LastInsertId()
+			walletID = int(id)
+			currentBalance = 0
+			fmt.Printf("[WALLET_MIGRATE] ✅ Created Wallet for user=%d, balance=0\n", userID)
+		} else {
+			return "", fmt.Errorf("error locking wallet balance: %w", err)
 		}
-		return "", fmt.Errorf("error locking user balance: %w", err)
 	}
 
 	fmt.Printf("[WALLET_FINAL_CHECK] User %d has Wallet: %f\n", userID, currentBalance)
@@ -1658,6 +1861,8 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 	areaNames := []string{}
 	var eventTitle, venueName, venueAddress, userEmail, userName, seatCode string
 	var totalPrice float64
+	var endTime time.Time
+	var createdBy sql.NullInt64
 
 	for _, seatID := range seatIDs {
 		fmt.Printf("[SQL_FIX] Creating ticket for seatID: %d, userID: %d, eventID: %d\n", seatID, userID, eventID)
@@ -1704,6 +1909,8 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 			SELECT 
 				e.title,
 				e.start_time,
+				e.end_time,
+				e.created_by,
 				v.location,
 				v.venue_name,
 				va.area_name,
@@ -1727,9 +1934,13 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 
 		var categoryName, areaName string
 		var price float64
+		var endTime time.Time
+		var createdBy sql.NullInt64
 		err = tx.QueryRowContext(ctx, selectTicketQuery, ticketID).Scan(
 			&eventTitle,
 			&startTime,
+			&endTime,
+			&createdBy,
 			&venueAddress,
 			&venueName,
 			&areaName,
@@ -1751,11 +1962,24 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 		totalPrice += price
 	}
 
-	// ===== STEP 3: DEDUCT FROM WALLET ATOMICALLY =====
-	// This UPDATE happens while user row is locked (from SELECT ... FOR UPDATE)
-	// No other transaction can modify this user's balance until we COMMIT or ROLLBACK
-	updateWalletQuery := `UPDATE users SET Wallet = Wallet - ? WHERE user_id = ? AND Wallet >= ?`
-	result, err := tx.ExecContext(ctx, updateWalletQuery, amount, userID, amount)
+	// Get organizer name and email from created_by
+	var organizerName string = "Event Organizer"
+	var organizerEmail string = ""
+	if createdBy.Valid && createdBy.Int64 > 0 {
+		err := r.db.QueryRowContext(ctx,
+			"SELECT COALESCE(full_name, 'Event Organizer'), COALESCE(email, '') FROM Users WHERE user_id = ?",
+			createdBy.Int64,
+		).Scan(&organizerName, &organizerEmail)
+		if err != nil {
+			fmt.Printf("[ORGANIZER] Failed to get organizer info: %v, using defaults\n", err)
+			organizerName = "Event Organizer"
+			organizerEmail = ""
+		}
+	}
+	// All wallet writes go through Wallet table only. Auth Service manages Users.Wallet via API.
+	newBalance := currentBalance - float64(amount)
+	updateWalletQuery := `UPDATE Wallet SET balance = ? WHERE wallet_id = ? AND balance >= ?`
+	result, err := tx.ExecContext(ctx, updateWalletQuery, newBalance, walletID, float64(amount))
 	if err != nil {
 		return "", fmt.Errorf("error updating wallet: %w", err)
 	}
@@ -1767,8 +1991,20 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 		return "", fmt.Errorf("Số dư ví không đủ để hoàn tất giao dịch")
 	}
 
-	fmt.Printf("[PAYMENT_CHECK] ✅ WALLET DEDUCTED - UserID: %d, Amount: %d, New Balance: %.2f\n", userID, amount, currentBalance-float64(amount))
+	fmt.Printf("[PAYMENT_CHECK] ✅ WALLET DEDUCTED - UserID: %d, Amount: %d, New Balance: %.2f\n", userID, amount, newBalance)
 	fmt.Printf("[DEBUG] ProcessWalletPayment: Successfully deducted %d from userID=%d\n", amount, userID)
+
+	// Log transaction in Wallet_Transaction table
+	_, txErr := tx.ExecContext(ctx,
+		`INSERT INTO Wallet_Transaction (wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description)
+		 VALUES (?, ?, 'DEBIT', ?, ?, ?, 'TICKET_PURCHASE', ?, ?)`,
+		walletID, userID, float64(amount), currentBalance, newBalance,
+		fmt.Sprintf("tickets:%s", strings.Join(ticketIds, ",")),
+		fmt.Sprintf("Mua vé event %d", eventID),
+	)
+	if txErr != nil {
+		fmt.Printf("[WALLET_TX] ⚠️ Failed to log Wallet_Transaction: %v\n", txErr)
+	}
 
 	// ===== STEP 3.5: CREATE BILL =====
 	// Create bill record for this wallet payment within the same transaction
@@ -1795,7 +2031,80 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 
 	fmt.Printf("[DEBUG] ProcessWalletPayment: Transaction committed for userID=%d\n", userID)
 
-	// ===== STEP 4.5: GENERATE PDF TICKETS WITH QR CODES =====
+	// ===== STEP 4.5: SEND TICKET NOTIFICATION =====
+	// Phase 6: Dual path - Notification API or local PDF+email
+	if config.IsFeatureEnabled(config.FlagNotificationAPIEnabled) && len(ticketIds) > 0 {
+		notifyCtx := context.Background()
+		if len(ticketIds) == 1 {
+			ticketID, _ := strconv.Atoi(ticketIds[0])
+			seatRow, seatNumber := parseSeatCodeHelper(seatCodes[0])
+			if err := sendSingleTicketViaNotifyAPI(notifyCtx, map[string]interface{}{
+				"ticket_id":       ticketID,
+				"user_email":      userEmail,
+				"user_name":       userName,
+				"event_title":     eventTitle,
+				"start_time":      startTime.Format(time.RFC3339),
+				"end_time":        endTime.Format(time.RFC3339),
+				"venue_name":      venueName,
+				"area_name":       areaNames[0],
+				"venue_address":   venueAddress,
+				"seat_code":       seatCodes[0],
+				"seat_row":        seatRow,
+				"seat_number":     seatNumber,
+				"category_name":   categoryNames[0],
+				"price":           formatCurrency(fmt.Sprintf("%.0f", prices[0])),
+				"qr_base64":       qrValues[0],
+				"map_url":         fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(venueAddress)),
+				"payment_method":  "wallet",
+				"organizer_name":  organizerName,
+				"organizer_email": organizerEmail,
+			}); err != nil {
+				fmt.Printf("[WARN] Notification API failed for single ticket, falling back to local: %v\n", err)
+			} else {
+				fmt.Printf("[NOTIFY_API] ✅ Single ticket email sent via Notification API\n")
+				fmt.Printf("[DEBUG] ProcessWalletPayment: COMPLETED for userID=%d with %d tickets\n", userID, len(ticketIds))
+				return strings.Join(ticketIds, ","), nil
+			}
+		} else {
+			items := []map[string]interface{}{}
+			for i, ticketIDStr := range ticketIds {
+				ticketID, _ := strconv.Atoi(ticketIDStr)
+				seatRow, seatNumber := parseSeatCodeHelper(seatCodes[i])
+				items = append(items, map[string]interface{}{
+					"ticket_id":     ticketID,
+					"qr_base64":     qrValues[i],
+					"seat_code":     seatCodes[i],
+					"seat_row":      seatRow,
+					"seat_number":   seatNumber,
+					"category_name": categoryNames[i],
+					"price":         formatCurrency(fmt.Sprintf("%.0f", prices[i])),
+				})
+			}
+			if err := sendMultipleTicketsViaNotifyAPI(notifyCtx, map[string]interface{}{
+				"user_email":      userEmail,
+				"user_name":       userName,
+				"event_title":     eventTitle,
+				"start_time":      startTime.Format(time.RFC3339),
+				"end_time":        endTime.Format(time.RFC3339),
+				"venue_name":      venueName,
+				"area_name":       areaNames[0],
+				"venue_address":   venueAddress,
+				"total_amount":    fmt.Sprintf("%.0f", totalPrice),
+				"map_url":         fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(venueAddress)),
+				"organizer_name":  organizerName,
+				"organizer_email": organizerEmail,
+				"items":           items,
+			}); err != nil {
+				fmt.Printf("[WARN] Notification API failed for multiple tickets, falling back to local: %v\n", err)
+			} else {
+				fmt.Printf("[NOTIFY_API] ✅ Multiple tickets email sent via Notification API\n")
+				fmt.Printf("[DEBUG] ProcessWalletPayment: COMPLETED for userID=%d with %d tickets\n", userID, len(ticketIds))
+				return strings.Join(ticketIds, ","), nil
+			}
+		}
+	}
+
+	// Legacy path (local PDF gen + email): STEP 4.5 GENERATE PDF + STEP 5 SEND EMAIL
 	// Generate PDF for each ticket to attach to email
 	pdfAttachments := []email.PDFAttachment{}
 
@@ -1919,4 +2228,159 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 
 	fmt.Printf("[DEBUG] ProcessWalletPayment: COMPLETED for userID=%d with %d tickets\n", userID, len(ticketIds))
 	return strings.Join(ticketIds, ","), nil
+}
+
+// ============================================================
+// NOTIFICATION API HELPERS (Phase 6)
+// ============================================================
+
+// parseSeatCodeHelper splits seat code like "A5" into row="A" and number="5"
+func parseSeatCodeHelper(seatCode string) (string, string) {
+	if len(seatCode) == 0 {
+		return "", ""
+	}
+	for i, c := range seatCode {
+		if c >= '0' && c <= '9' {
+			return seatCode[:i], seatCode[i:]
+		}
+	}
+	return seatCode, "1"
+}
+
+// sendSingleTicketViaNotifyAPI sends single ticket email via Notification Service API.
+// Payload must match SingleTicketData in notification handler (camelCase JSON).
+func sendSingleTicketViaNotifyAPI(ctx context.Context, data map[string]interface{}) error {
+	log := logger.Default()
+	client := utils.NewInternalClient()
+	// Gọi endpoint /ticket-confirmation (alias của /ticket-pdf nhận đúng DTO)
+	notifyURL := utils.GetNotificationServiceURL() + "/internal/notify/ticket-confirmation"
+
+	// Lấy các giá trị cần thiết từ snake_case map
+	ticketID, _ := data["ticket_id"].(int)
+	seatRow, _ := data["seat_row"].(string)
+	seatNumber, _ := data["seat_number"].(string)
+	categoryName, _ := data["category_name"].(string)
+	startTime, _ := data["start_time"].(string)
+	userEmail, _ := data["user_email"].(string)
+
+	fmt.Printf("[NOTIFY] 📧 Đang gửi vé #%d tới email %s...\n", ticketID, userEmail)
+
+	// Chuyển đổi sang camelCase DTO theo SingleTicketData của notification handler
+	payload := map[string]interface{}{
+		"singleTicket": map[string]interface{}{
+			"ticketId":       ticketID,
+			"ticketCode":     fmt.Sprintf("TKT_%d", ticketID),
+			"userEmail":      userEmail,
+			"userName":       data["user_name"],
+			"eventTitle":     data["event_title"],
+			"eventDate":      startTime,
+			"endTime":        data["end_time"],
+			"venueName":      data["venue_name"],
+			"venueAddress":   data["venue_address"],
+			"areaName":       data["area_name"],
+			"seatRow":        seatRow,
+			"seatNumber":     seatNumber,
+			"categoryName":   categoryName,
+			"price":          data["price"],
+			"totalAmount":    data["price"],
+			"startTime":      startTime,
+			"paymentMethod":  data["payment_method"],
+			"mapUrl":         data["map_url"],
+			"ticketIds":      fmt.Sprintf("%d", ticketID),
+			"ticketTypes":    categoryName,
+			"seatCodes":      fmt.Sprintf("%s%s", seatRow, seatNumber),
+			"organizerName":  data["organizer_name"],
+			"organizerEmail": data["organizer_email"],
+		},
+	}
+
+	respBody, statusCode, err := client.Post(ctx, notifyURL, payload)
+	if err != nil {
+		return fmt.Errorf("notification API call failed: %w", err)
+	}
+	if statusCode != 200 {
+		return fmt.Errorf("notification API returned status %d: %s", statusCode, string(respBody))
+	}
+
+	log.Info("[NOTIFY] ✅ Single ticket email sent via Notification API", "ticket_id", ticketID, "email", userEmail)
+	return nil
+}
+
+// sendMultipleTicketsViaNotifyAPI sends multiple tickets email via Notification Service API.
+// Payload must match MultipleTicketsData in notification handler (camelCase JSON).
+func sendMultipleTicketsViaNotifyAPI(ctx context.Context, data map[string]interface{}) error {
+	log := logger.Default()
+	client := utils.NewInternalClient()
+	// Gọi endpoint /ticket-confirmation (alias của /ticket-pdf nhận đúng DTO)
+	notifyURL := utils.GetNotificationServiceURL() + "/internal/notify/ticket-confirmation"
+
+	userEmail, _ := data["user_email"].(string)
+	userName, _ := data["user_name"].(string)
+	eventAreaName, _ := data["area_name"].(string)
+
+	// Chuyển đổi items → TicketPDFItem camelCase
+	rawItems, _ := data["items"].([]map[string]interface{})
+	ticketItems := []map[string]interface{}{}
+	seatCodeList := []string{}
+	for _, item := range rawItems {
+		ticketID, _ := item["ticket_id"].(int)
+		seatRow, _ := item["seat_row"].(string)
+		seatNumber, _ := item["seat_number"].(string)
+		seatCode, _ := item["seat_code"].(string)
+		// area_name ở level item nếu có, fallback về level event
+		itemArea, ok := item["area_name"].(string)
+		if !ok || itemArea == "" {
+			itemArea = eventAreaName
+		}
+		if seatCode != "" {
+			seatCodeList = append(seatCodeList, seatCode)
+		}
+		ticketItems = append(ticketItems, map[string]interface{}{
+			"ticketId":     ticketID,
+			"ticketCode":   fmt.Sprintf("TKT_%d", ticketID),
+			"eventDate":    data["start_time"],
+			"venueName":    data["venue_name"],
+			"areaName":     itemArea,
+			"venueAddress": data["venue_address"],
+			"seatRow":      seatRow,
+			"seatNumber":   seatNumber,
+			"categoryName": item["category_name"],
+			"price":        item["price"],
+			"userName":     userName,
+			"userEmail":    userEmail,
+			"eventName":    data["event_title"],
+		})
+	}
+
+	seatList := strings.Join(seatCodeList, ", ")
+	fmt.Printf("[NOTIFY] 📧 Đang gửi %d vé tới email %s...\n", len(ticketItems), userEmail)
+
+	payload := map[string]interface{}{
+		"multipleTickets": map[string]interface{}{
+			"userEmail":      userEmail,
+			"userName":       userName,
+			"eventTitle":     data["event_title"],
+			"eventDate":      data["start_time"],
+			"endTime":        data["end_time"],
+			"venueName":      data["venue_name"],
+			"venueAddress":   data["venue_address"],
+			"seatList":       seatList,
+			"totalAmount":    data["total_amount"],
+			"googleMapsUrl":  data["map_url"],
+			"organizerName":  data["organizer_name"],
+			"organizerEmail": data["organizer_email"],
+			"tickets":        ticketItems,
+		},
+	}
+
+	respBody, statusCode, err := client.Post(ctx, notifyURL, payload)
+	if err != nil {
+		return fmt.Errorf("notification API call failed: %w", err)
+	}
+	if statusCode != 200 {
+		return fmt.Errorf("notification API returned status %d: %s", statusCode, string(respBody))
+	}
+
+	log.Info("[NOTIFY] ✅ Multiple tickets email sent via Notification API", "ticket_count", len(ticketItems), "email", userEmail)
+	return nil
 }

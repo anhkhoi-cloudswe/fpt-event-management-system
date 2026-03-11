@@ -1,74 +1,64 @@
 // src/utils/imageUpload.ts
-import { supabase } from '../config/supabase'
+// Đã migration: Supabase → AWS S3 (thông qua Backend endpoint /api/upload/image)
+// Zero-Waste: upload chỉ xảy ra sau khi JWT hợp lệ được xác nhận bởng backend
 
 /**
- * Upload an image file to Supabase storage
- * @param file - The image file to upload
- * @param bucket - The storage bucket name (default: 'user-uploads')
- * @returns The public URL of the uploaded image
+ * Upload một file ảnh lên AWS S3 thông qua backend endpoint.
+ *
+ * Quy trình Zero-Waste:
+ *  1. Frontend gửi file đến POST /api/upload/image (có JWT trong header)
+ *  2. Backend xác thực JWT, kiểm tra role, validate file
+ *  3. Chỉ khi pass backend validation mới upload lên S3
+ *  4. Trả về S3 URL dạng: https://{bucket}.s3.{region}.amazonaws.com/{key}
+ *
+ * @param file - File ảnh cần upload
+ * @returns URL công khai của ảnh trên S3
  */
-export async function uploadEventBanner(
-  file: File,
-  bucket: string = 'user-uploads'
-): Promise<string> {
-  try {
-    // Generate unique filename
-    const timestamp = Date.now()
-    const randomString = Math.random().toString(36).substring(7)
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${timestamp}-${randomString}.${fileExt}`
-
-    console.log('Attempting to upload file to Supabase:', fileName)
-
-    // Upload file to Supabase storage
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false,
-      })
-
-    if (error) {
-      console.error('Supabase upload error:', error)
-      throw new Error(`Failed to upload image: ${error.message}`)
-    }
-
-    // Get public URL
-    const { data: publicUrlData } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(data.path)
-
-    console.log('Upload successful:', publicUrlData.publicUrl)
-    return publicUrlData.publicUrl
-  } catch (error: any) {
-    console.error('Upload failed:', error)
-    // Re-throw with more context
-    if (error.message?.includes('Failed to fetch')) {
-      throw new Error('Failed to upload image: Cannot connect to storage service. Please check your internet connection or try again later.')
-    }
-    throw new Error(`Failed to upload image: ${error.message || 'Unknown error'}`)
+export async function uploadEventBanner(file: File): Promise<string> {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    throw new Error('Failed to upload image: Not authenticated. Please log in again.')
   }
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  console.log('[S3 Upload] Sending file to backend:', file.name, `(${(file.size / 1024).toFixed(1)} KB)`)
+
+  const response = await fetch('/api/upload/image', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    const message = data?.message || `HTTP ${response.status}`
+    console.error('[S3 Upload] Backend returned error:', message)
+    throw new Error(`Failed to upload image: ${message}`)
+  }
+
+  if (!data.url) {
+    throw new Error('Failed to upload image: Backend did not return a URL')
+  }
+
+  console.log('[S3 Upload] Success:', data.url)
+  return data.url as string
 }
 
 /**
- * Delete an image from Supabase storage
- * @param url - The public URL of the image to delete
- * @param bucket - The storage bucket name
+ * Stub: xóa ảnh trên S3 không được thực hiện client-side.
+ * Việc xóa cần được làm từ backend (IAM permission) trong tương lai.
+ *
+ * @param _url - URL ảnh cần xóa (chưa áp dụng)
  */
-export async function deleteEventBanner(
-  url: string,
-  bucket: string = 'user-uploads'
-): Promise<void> {
-  // Extract filename from URL
-  const urlParts = url.split('/')
-  const fileName = urlParts[urlParts.length - 1]
-
-  const { error } = await supabase.storage.from(bucket).remove([fileName])
-
-  if (error) {
-    console.error('Delete error:', error)
-    throw new Error(`Failed to delete image: ${error.message}`)
-  }
+export async function deleteEventBanner(_url: string): Promise<void> {
+  // S3 object deletion requires backend/IAM credentials.
+  // Implement a DELETE /api/upload/image?key=... endpoint when needed.
+  console.warn('[S3 Upload] deleteEventBanner: server-side deletion not yet implemented')
 }
 
 /**
