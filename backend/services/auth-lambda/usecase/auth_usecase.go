@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -17,10 +18,11 @@ type AuthUseCase struct {
 	userRepo *repository.UserRepository
 }
 
-// NewAuthUseCase creates a new auth use case
-func NewAuthUseCase() *AuthUseCase {
+// NewAuthUseCaseWithDB creates a new auth use case with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton allowed
+func NewAuthUseCaseWithDB(dbConn *sql.DB) *AuthUseCase {
 	return &AuthUseCase{
-		userRepo: repository.NewUserRepository(),
+		userRepo: repository.NewUserRepositoryWithDB(dbConn),
 	}
 }
 

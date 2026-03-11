@@ -1,0 +1,43 @@
+# =============================================================================
+# .dockerignore — Exclude files from Docker build context
+# Keeps the context small → faster COPY, faster builds
+# =============================================================================
+
+# ── Compiled Windows artifacts (never needed in Linux container) ──────────────
+*.exe
+*.exe~
+*.dll
+bin/
+dist/
+
+# ── Lambda deploy packages ────────────────────────────────────────────────────
+bootstrap
+*.zip
+
+# ── Test files (not compiled into production binary) ──────────────────────────
+*_test.go
+
+# ── IDE / editor ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS artifacts ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs (runtime, not source) ────────────────────────────────────────────────
+*.log
+*-err.log
+
+# ── Go workspace (local-only multi-module tooling, not needed in build) ───────
+go.work
+go.work.sum
+
+# ── Docs / swagger (not needed inside container) ──────────────────────────────
+docs/
+swagger-ui.html
+openapi.json
+README.md

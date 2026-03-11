@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -15,10 +16,11 @@ type ReportUseCase struct {
 	reportRepo *repository.ReportRepository
 }
 
-// NewReportUseCase creates a new report use case
-func NewReportUseCase() *ReportUseCase {
+// NewReportUseCaseWithDB creates a new report use case with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton allowed
+func NewReportUseCaseWithDB(dbConn *sql.DB) *ReportUseCase {
 	return &ReportUseCase{
-		reportRepo: repository.NewReportRepository(),
+		reportRepo: repository.NewReportRepositoryWithDB(dbConn),
 	}
 }
 
@@ -66,6 +68,62 @@ func (uc *ReportUseCase) ListReports(ctx context.Context, status string, page, p
 	}
 
 	return list, nil
+}
+
+// ============================================================
+// ListReportsWithMetadata - List reports với pagination, filter, search và metadata
+// Hỗ trợ: tìm kiếm theo tên người gửi hoặc ticket ID, lọc theo status
+// Trả về: danh sách + totalItems + totalPages
+// ============================================================
+func (uc *ReportUseCase) ListReportsWithMetadata(ctx context.Context, status, search string, page, pageSize int) (map[string]interface{}, error) {
+	log := logger.Default().WithContext(ctx)
+
+	// Validate status filter
+	if status != "" {
+		status = strings.ToUpper(strings.TrimSpace(status))
+		if status != "PENDING" && status != "APPROVED" && status != "REJECTED" {
+			return nil, fmt.Errorf("invalid status filter: %s", status)
+		}
+	}
+
+	// Trim search
+	search = strings.TrimSpace(search)
+
+	// Get list with metadata from repository
+	list, total, err := uc.reportRepo.ListReportsForStaffWithMetadata(ctx, status, search, page, pageSize)
+	if err != nil {
+		log.Info("Failed to list reports with metadata", "status", status, "search", search, "page", page, "error", err)
+		return nil, err
+	}
+
+	// Get status counts (independent of current filter)
+	counts, err := uc.reportRepo.GetReportStatusCounts(ctx)
+	if err != nil {
+		log.Info("Failed to get status counts", "error", err)
+		// Don't fail the entire request, just log and continue with zero counts
+		counts = map[string]int{
+			"pending":   0,
+			"approved":  0,
+			"rejected":  0,
+			"processed": 0,
+		}
+	}
+
+	// Calculate totalPages
+	totalPages := (total + pageSize - 1) / pageSize
+	if totalPages < 1 {
+		totalPages = 1
+	}
+
+	return map[string]interface{}{
+		"status":     "success",
+		"data":       list,
+		"page":       page,
+		"pageSize":   pageSize,
+		"totalItems": total,
+		"totalPages": totalPages,
+		"counts":     counts,
+	}, nil
 }
 
 // ============================================================

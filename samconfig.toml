@@ -1,0 +1,123 @@
+# ============================================================
+# AWS SAM CLI Configuration - FPT Event Management System
+# Usage: sam deploy (reads defaults from this file)
+# ============================================================
+
+version = 0.1
+
+# ============================================================
+# DEFAULT ENVIRONMENT (prod)
+# ============================================================
+[default.deploy.parameters]
+stack_name = "fpt-event-management"
+region = "ap-southeast-1"
+# S3 bucket for uploading Lambda code packages
+s3_bucket = "fpt-events-sam-artifacts"
+s3_prefix = "fpt-event-management"
+# Confirm changes before deploy
+confirm_changeset = true
+# Allow SAM to create IAM roles
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+# Fail on empty changeset (set false to avoid error when no changes)
+fail_on_empty_changeset = false
+# Disable rollback for debugging (set true in production)
+disable_rollback = false
+# Image repositories (not needed for Go binaries)
+resolve_s3 = true
+
+# Parameter overrides - CHANGE THESE before deploying!
+parameter_overrides = [
+    "Environment=prod",
+    "DBUsername=admin",
+    "DBPassword=CHANGE_ME_BEFORE_DEPLOY",
+    "DBName=fpt_event_management",
+    "JWTSecret=CHANGE_ME_BEFORE_DEPLOY",
+    "VNPayHashSecret=CHANGE_ME_BEFORE_DEPLOY",
+    "RecaptchaSecret=CHANGE_ME_BEFORE_DEPLOY",
+    "SMTPPassword=CHANGE_ME_BEFORE_DEPLOY",
+    "LambdaMemorySize=256",
+    "LambdaTimeout=30"
+]
+
+# Tags applied to all resources in the stack
+tags = "Project=\"FPTEventManagement\" Environment=\"prod\" ManagedBy=\"SAM\""
+
+[default.build.parameters]
+use_container = false
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.local_start_api.parameters]
+port = 3000
+host = "0.0.0.0"
+
+[default.local_invoke.parameters]
+env_vars = "env.json"
+
+# ============================================================
+# DEV ENVIRONMENT
+# ============================================================
+[dev.deploy.parameters]
+stack_name = "fpt-event-management-dev"
+region = "ap-southeast-1"
+s3_bucket = "fpt-events-sam-artifacts-dev"
+s3_prefix = "fpt-event-management-dev"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+fail_on_empty_changeset = false
+disable_rollback = true
+resolve_s3 = true
+
+parameter_overrides = [
+    "Environment=dev",
+    "DBUsername=admin",
+    "DBPassword=CHANGE_ME_DEV",
+    "DBName=fpt_event_management_dev",
+    "JWTSecret=dev-jwt-secret",
+    "VNPayHashSecret=CHANGE_ME_DEV",
+    "RecaptchaSecret=CHANGE_ME_DEV",
+    "SMTPPassword=CHANGE_ME_DEV",
+    "LambdaMemorySize=128",
+    "LambdaTimeout=30"
+]
+
+tags = "Project=\"FPTEventManagement\" Environment=\"dev\" ManagedBy=\"SAM\""
+
+[dev.build.parameters]
+use_container = false
+parallel = true
+
+# ============================================================
+# STAGING ENVIRONMENT
+# ============================================================
+[staging.deploy.parameters]
+stack_name = "fpt-event-management-staging"
+region = "ap-southeast-1"
+s3_bucket = "fpt-events-sam-artifacts-staging"
+s3_prefix = "fpt-event-management-staging"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+fail_on_empty_changeset = false
+disable_rollback = false
+resolve_s3 = true
+
+parameter_overrides = [
+    "Environment=staging",
+    "DBUsername=admin",
+    "DBPassword=CHANGE_ME_STAGING",
+    "DBName=fpt_event_management_staging",
+    "JWTSecret=staging-jwt-secret",
+    "VNPayHashSecret=CHANGE_ME_STAGING",
+    "RecaptchaSecret=CHANGE_ME_STAGING",
+    "SMTPPassword=CHANGE_ME_STAGING",
+    "LambdaMemorySize=256",
+    "LambdaTimeout=30"
+]
+
+tags = "Project=\"FPTEventManagement\" Environment=\"staging\" ManagedBy=\"SAM\""
+
+[staging.build.parameters]
+use_container = false
+parallel = true

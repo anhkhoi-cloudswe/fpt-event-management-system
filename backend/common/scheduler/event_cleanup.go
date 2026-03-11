@@ -3,11 +3,13 @@ package scheduler
 import (
 	"context"
 	"database/sql"
-	"log"
 	"time"
 
 	"github.com/fpt-event-services/common/db"
+	"github.com/fpt-event-services/common/logger"
 )
+
+var log = logger.Default()
 
 // EventCleanupScheduler handles automatic cleanup of ended events
 type EventCleanupScheduler struct {
@@ -27,7 +29,7 @@ func NewEventCleanupScheduler(intervalMinutes int) *EventCleanupScheduler {
 
 // Start begins the scheduled cleanup job
 func (s *EventCleanupScheduler) Start() {
-	log.Printf("[SCHEDULER] Event cleanup job started (runs every %v)", s.interval)
+	log.Info("[SCHEDULER] Event cleanup job started (runs every %v)", s.interval)
 
 	// Run immediately once at startup
 	s.cleanupEndedEvents()
@@ -41,7 +43,7 @@ func (s *EventCleanupScheduler) Start() {
 				s.cleanupEndedEvents()
 			case <-s.stopChan:
 				ticker.Stop()
-				log.Println("[SCHEDULER] Event cleanup job stopped")
+				log.Info("[SCHEDULER] Event cleanup job stopped")
 				return
 			}
 		}
@@ -68,7 +70,7 @@ func (s *EventCleanupScheduler) cleanupEndedEvents() {
 
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
-		log.Printf("[SCHEDULER] Error querying ended events: %v", err)
+		log.Error("[SCHEDULER] Error querying ended events: %v", err)
 		return
 	}
 	defer rows.Close()
@@ -83,7 +85,7 @@ func (s *EventCleanupScheduler) cleanupEndedEvents() {
 		var endTime time.Time
 
 		if err := rows.Scan(&eventID, &areaID, &title, &endTime); err != nil {
-			log.Printf("[SCHEDULER] Error scanning event row: %v", err)
+			log.Error("[SCHEDULER] Error scanning event row: %v", err)
 			continue
 		}
 
@@ -91,34 +93,32 @@ func (s *EventCleanupScheduler) cleanupEndedEvents() {
 		updateEventQuery := `UPDATE Event SET status = 'CLOSED' WHERE event_id = ?`
 		_, err := s.db.ExecContext(ctx, updateEventQuery, eventID)
 		if err != nil {
-			log.Printf("[SCHEDULER] Error closing event #%d: %v", eventID, err)
+			log.Error("[SCHEDULER] Error closing event #%d: %v", eventID, err)
 			continue
 		}
 
 		// Release venue area if exists
 		if areaID.Valid {
-			updateAreaQuery := `UPDATE Venue_Area SET status = 'BOOKED' WHERE area_id = ? AND status = 'BOOKED'`
+			updateAreaQuery := `UPDATE Venue_Area SET status = 'AVAILABLE' WHERE area_id = ? AND status = 'UNAVAILABLE'`
 			result, err := s.db.ExecContext(ctx, updateAreaQuery, areaID.Int64)
 			if err != nil {
-				log.Printf("[SCHEDULER] Error releasing venue area #%d for event #%d: %v", areaID.Int64, eventID, err)
+				log.Error("[SCHEDULER] Error releasing venue area #%d for event #%d: %v", areaID.Int64, eventID, err)
 			} else {
 				rowsAffected, _ := result.RowsAffected()
 				if rowsAffected > 0 {
 					releasedAreasCount++
-					log.Printf("[SCHEDULER] 🔓 Địa điểm (AreaID: %d) đã được giải phóng do sự kiện %d kết thúc",
-						areaID.Int64, eventID)
+					log.Info("[SCHEDULER] Area #%d released for ended event #%d", areaID.Int64, eventID)
 				}
 			}
 		}
 
 		processedCount++
-		log.Printf("[SCHEDULER] ✅ Event #%d \"%s\" ended at %s → Closed & venue released",
+		log.Info("[SCHEDULER] Event #%d \"%s\" ended at %s closed+venue released",
 			eventID, truncateStringScheduler(title, 30), endTime.Format("2006-01-02 15:04"))
 	}
 
 	if processedCount > 0 {
-		log.Printf("[SCHEDULER] 📊 Processed %d ended events, released %d venue areas",
-			processedCount, releasedAreasCount)
+		log.Info("[SCHEDULER] Processed %d ended events released %d venue areas", processedCount, releasedAreasCount)
 	}
 }
 

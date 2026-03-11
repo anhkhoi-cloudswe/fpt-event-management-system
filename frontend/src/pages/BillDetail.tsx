@@ -1,6 +1,7 @@
 //Hình như không dùng trang này
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, FileText, CreditCard, Download } from 'lucide-react'
+import { formatVietnamDateTime } from '../utils/dateFormat'
 
 type MockBill = {
   id: string
@@ -59,26 +60,25 @@ export default function BillDetail() {
               <p className="text-sm text-gray-500 mt-1">
                 Ngày tạo:{' '}
                 <span className="font-medium">
-                  {new Date(bill.createdAt).toLocaleString('vi-VN')}
+                  {formatVietnamDateTime(bill.createdAt, 'dd/MM/yyyy HH:mm:ss')}
                 </span>
               </p>
             </div>
             <div className="text-right">
               <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                  bill.status === 'PAID'
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${bill.status === 'PAID'
                     ? 'bg-green-100 text-green-800'
                     : bill.status === 'PENDING'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-red-100 text-red-800'
-                }`}
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}
               >
                 <CreditCard className="w-4 h-4 mr-1" />
                 {bill.status === 'PAID'
                   ? 'Đã thanh toán'
                   : bill.status === 'PENDING'
-                  ? 'Chờ thanh toán'
-                  : 'Đã hủy'}
+                    ? 'Chờ thanh toán'
+                    : 'Đã hủy'}
               </span>
               <p className="mt-3 text-sm text-gray-500">
                 Tổng tiền:{' '}

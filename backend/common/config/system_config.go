@@ -1,13 +1,33 @@
 package config
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	ssmtypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
 )
+
+// isLocal returns true when running outside AWS Lambda (local development)
+func isLocal() bool {
+	return os.Getenv("AWS_LAMBDA_FUNCTION_NAME") == ""
+}
+
+// ssmParamName returns the SSM parameter path for system config.
+// Override via env var SSM_SYSTEM_CONFIG_PATH (set in template.yaml).
+func ssmParamName() string {
+	if v := os.Getenv("SSM_SYSTEM_CONFIG_PATH"); v != "" {
+		return v
+	}
+	return "/fpt-events/system-config"
+}
 
 // SystemConfig chứa cấu hình hệ thống cho check-in/check-out
 // Tương đương với SystemConfig.json trong Java backend
@@ -35,8 +55,8 @@ func DefaultConfig() *SystemConfig {
 	}
 }
 
-// LoadConfig đọc cấu hình từ file system_config.json
-// Nếu file không tồn tại hoặc lỗi, trả về cấu hình mặc định
+// LoadConfig đọc cấu hình từ file (Local) hoặc SSM Parameter Store (AWS).
+// Nếu không tìm thấy, trả về cấu hình mặc định.
 func LoadConfig() *SystemConfig {
 	configMutex.RLock()
 	if globalConfig != nil {
@@ -48,15 +68,27 @@ func LoadConfig() *SystemConfig {
 	configMutex.Lock()
 	defer configMutex.Unlock()
 
-	// Double-check sau khi có lock
+	// Double-check sau khi có write lock
 	if globalConfig != nil {
 		return globalConfig
 	}
 
-	// Tìm file config
+	var cfg *SystemConfig
+	if isLocal() {
+		cfg = loadConfigFromFile()
+	} else {
+		cfg = loadConfigFromSSM()
+	}
+
+	validateAndClamp(cfg)
+	globalConfig = cfg
+	return globalConfig
+}
+
+// loadConfigFromFile đọc config từ file system_config.json (Local mode)
+func loadConfigFromFile() *SystemConfig {
 	cfg := DefaultConfig()
 
-	// Thử các đường dẫn có thể
 	possiblePaths := []string{
 		configPath,
 		filepath.Join(".", configPath),
@@ -64,47 +96,75 @@ func LoadConfig() *SystemConfig {
 		filepath.Join("fpt-event-services #2", configPath),
 	}
 
-	var data []byte
-	var err error
-
 	for _, path := range possiblePaths {
-		data, err = os.ReadFile(path)
-		if err == nil {
-			// Tìm thấy file
-			if jsonErr := json.Unmarshal(data, cfg); jsonErr != nil {
-				fmt.Printf("[WARN] Failed to parse config from %s: %v. Using defaults.\n", path, jsonErr)
-				cfg = DefaultConfig()
-			} else {
-				fmt.Printf("[INFO] Loaded system config from %s\n", path)
-			}
-			break
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
 		}
+		if jsonErr := json.Unmarshal(data, cfg); jsonErr != nil {
+			fmt.Printf("[WARN] Failed to parse config from %s: %v. Using defaults.\n", path, jsonErr)
+			return DefaultConfig()
+		}
+		fmt.Printf("[INFO] Loaded system config from file: %s\n", path)
+		return cfg
 	}
 
+	fmt.Printf("[WARN] Config file not found. Using defaults: checkinBefore=%d, checkoutAfter=%d\n",
+		cfg.CheckinAllowedBeforeStartMinutes, cfg.MinMinutesAfterStart)
+	return cfg
+}
+
+// loadConfigFromSSM đọc config từ AWS SSM Parameter Store (AWS Lambda mode)
+func loadConfigFromSSM() *SystemConfig {
+	cfg := DefaultConfig()
+
+	ctx := context.Background()
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
-		fmt.Printf("[WARN] Config file not found. Using default config: checkinAllowedBeforeStartMinutes=%d, minMinutesAfterStart=%d\n",
-			cfg.CheckinAllowedBeforeStartMinutes, cfg.MinMinutesAfterStart)
+		fmt.Printf("[WARN] SSM: failed to load AWS config: %v. Using defaults.\n", err)
+		return cfg
 	}
 
-	// Validate config
+	client := ssm.NewFromConfig(awsCfg)
+	paramName := ssmParamName()
+
+	output, err := client.GetParameter(ctx, &ssm.GetParameterInput{
+		Name:           aws.String(paramName),
+		WithDecryption: aws.Bool(false),
+	})
+	if err != nil {
+		fmt.Printf("[WARN] SSM: parameter %s not found (%v). Using defaults.\n", paramName, err)
+		return cfg
+	}
+
+	if output.Parameter != nil && output.Parameter.Value != nil {
+		if jsonErr := json.Unmarshal([]byte(*output.Parameter.Value), cfg); jsonErr != nil {
+			fmt.Printf("[WARN] SSM: failed to parse parameter value: %v. Using defaults.\n", jsonErr)
+			return DefaultConfig()
+		}
+		fmt.Printf("[INFO] Loaded system config from SSM: %s\n", paramName)
+	}
+
+	return cfg
+}
+
+// validateAndClamp ensures config values are within acceptable bounds
+func validateAndClamp(cfg *SystemConfig) {
 	if cfg.CheckinAllowedBeforeStartMinutes < 0 || cfg.CheckinAllowedBeforeStartMinutes > 600 {
 		cfg.CheckinAllowedBeforeStartMinutes = 60
 	}
 	if cfg.MinMinutesAfterStart < 0 || cfg.MinMinutesAfterStart > 600 {
 		cfg.MinMinutesAfterStart = 60
 	}
-
-	globalConfig = cfg
-	return globalConfig
 }
 
-// SaveConfig lưu cấu hình vào file (chỉ ADMIN mới được gọi)
+// SaveConfig lưu cấu hình vào file (Local) hoặc SSM Parameter Store (AWS).
+// Chỉ ADMIN mới được gọi hàm này.
 func SaveConfig(cfg *SystemConfig) error {
 	if cfg == nil {
 		return fmt.Errorf("config cannot be nil")
 	}
 
-	// Validate
 	if cfg.CheckinAllowedBeforeStartMinutes < 0 || cfg.CheckinAllowedBeforeStartMinutes > 600 {
 		return fmt.Errorf("checkinAllowedBeforeStartMinutes must be between 0 and 600")
 	}
@@ -112,31 +172,69 @@ func SaveConfig(cfg *SystemConfig) error {
 		return fmt.Errorf("minMinutesAfterStart must be between 0 and 600")
 	}
 
-	configMutex.Lock()
-	defer configMutex.Unlock()
+	var err error
+	if isLocal() {
+		err = saveConfigToFile(cfg)
+	} else {
+		err = saveConfigToSSM(cfg)
+	}
+	if err != nil {
+		return err
+	}
 
-	// Tạo thư mục nếu chưa tồn tại
+	// Update in-memory cache regardless of backend
+	configMutex.Lock()
+	globalConfig = cfg
+	configMutex.Unlock()
+
+	fmt.Printf("[INFO] System config saved: checkinBefore=%d, checkoutAfter=%d\n",
+		cfg.CheckinAllowedBeforeStartMinutes, cfg.MinMinutesAfterStart)
+	return nil
+}
+
+// saveConfigToFile lưu config vào file system_config.json (Local mode)
+func saveConfigToFile(cfg *SystemConfig) error {
 	dir := filepath.Dir(configPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	// Marshal to JSON
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	// Write to file
 	if err := os.WriteFile(configPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
+	return nil
+}
 
-	// Update global config
-	globalConfig = cfg
-	fmt.Printf("[INFO] System config saved: checkinAllowedBeforeStartMinutes=%d, minMinutesAfterStart=%d\n",
-		cfg.CheckinAllowedBeforeStartMinutes, cfg.MinMinutesAfterStart)
+// saveConfigToSSM lưu config lên AWS SSM Parameter Store (AWS Lambda mode)
+func saveConfigToSSM(cfg *SystemConfig) error {
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config for SSM: %w", err)
+	}
 
+	ctx := context.Background()
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("SSM: failed to load AWS config: %w", err)
+	}
+
+	client := ssm.NewFromConfig(awsCfg)
+	paramName := ssmParamName()
+
+	_, err = client.PutParameter(ctx, &ssm.PutParameterInput{
+		Name:      aws.String(paramName),
+		Value:     aws.String(string(data)),
+		Type:      ssmtypes.ParameterTypeString,
+		Overwrite: aws.Bool(true),
+	})
+	if err != nil {
+		return fmt.Errorf("SSM: failed to put parameter %s: %w", paramName, err)
+	}
 	return nil
 }
 

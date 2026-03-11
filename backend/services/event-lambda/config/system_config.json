@@ -1,0 +1,4 @@
+{
+  "checkinAllowedBeforeStartMinutes": 30,
+  "minMinutesAfterStart": 30
+}

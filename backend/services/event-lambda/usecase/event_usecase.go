@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/services/event-lambda/models"
@@ -13,10 +14,11 @@ type EventUseCase struct {
 	eventRepo *repository.EventRepository
 }
 
-// NewEventUseCase creates a new event use case
-func NewEventUseCase() *EventUseCase {
+// NewEventUseCaseWithDB creates a new event use case with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton allowed
+func NewEventUseCaseWithDB(dbConn *sql.DB) *EventUseCase {
 	return &EventUseCase{
-		eventRepo: repository.NewEventRepository(),
+		eventRepo: repository.NewEventRepositoryWithDB(dbConn),
 	}
 }
 
@@ -27,6 +29,22 @@ func NewEventUseCase() *EventUseCase {
 // ============================================================
 func (uc *EventUseCase) GetAllEventsSeparated(ctx context.Context, role string, userID int) (openEvents []models.EventListItem, closedEvents []models.EventListItem, err error) {
 	return uc.eventRepo.GetAllEventsSeparated(ctx, role, userID)
+}
+
+// ============================================================
+// GetAllEventsSeparatedWithPagination - ✅ NEW: WITH PAGINATION SUPPORT
+// Trả về 2 list: openEvents và closedEvents, cùng với total count
+// With permission filtering: role and userID
+// Pagination: limit items per page, calculate offset
+// ============================================================
+func (uc *EventUseCase) GetAllEventsSeparatedWithPagination(ctx context.Context, role string, userID int, page int, limit int) (
+	openEvents []models.EventListItem,
+	closedEvents []models.EventListItem,
+	totalOpen int,
+	totalClosed int,
+	err error,
+) {
+	return uc.eventRepo.GetAllEventsSeparatedWithPagination(ctx, role, userID, page, limit)
 }
 
 // ============================================================
@@ -313,6 +331,13 @@ func (uc *EventUseCase) CancelEvent(ctx context.Context, userID int, eventID int
 // ============================================================
 func (uc *EventUseCase) CancelEventRequest(ctx context.Context, userID int, requestID int) error {
 	return uc.eventRepo.CancelEventRequest(ctx, userID, requestID)
+}
+
+// ============================================================
+// DisableEventByStaff - STAFF/ADMIN hủy sự kiện bất kỳ (bypass 24h + ownership)
+// ============================================================
+func (uc *EventUseCase) DisableEventByStaff(ctx context.Context, eventID int) error {
+	return uc.eventRepo.DisableEventByStaff(ctx, eventID)
 }
 
 // ============================================================

@@ -121,8 +121,8 @@ export default function MyTickets() {
   // cancelTicket: vé đang được yêu cầu hủy (null = không mở modal)
   const [cancelTicket, setCancelTicket] = useState<MyTicket | null>(null)
 
-  // pendingReports: danh sách ticketId đang có report pending
-  const [pendingReports, setPendingReports] = useState<Set<number>>(new Set())
+  // reportsTicketIds: map ticketId → reportStatus (để hiển thị badge đúng trạng thái)
+  const [reportsTicketIds, setReportsTicketIds] = useState<Map<number, string>>(new Map())
 
   // Pagination states - Initialize from URL params
   const [currentPage, setCurrentPage] = useState(() => {
@@ -246,9 +246,10 @@ export default function MyTickets() {
     fetchTickets(currentPage, searchQuery, statusFilter)
   }, [currentPage, searchQuery, statusFilter, fetchTickets])
 
-  // Fetch pending ticket IDs for the logged-in student so we disable duplicate reports
+  // Fetch ALL ticket IDs with reports (One Ticket - One Report vĩnh viễn)
+  // This endpoint now returns tickets with PENDING, APPROVED, REJECTED reports
   useEffect(() => {
-    const fetchPendingIds = async () => {
+    const fetchReportTicketIds = async () => {
       const jwt = localStorage.getItem('token')
       if (!jwt) return
 
@@ -265,21 +266,26 @@ export default function MyTickets() {
         if (!res.ok) return
 
         const data = await res.json()
-        // Expect { status: 'success', data: [ids] }
-        const ids = Array.isArray(data) ? data : data?.data ?? []
+        // Expect { status: 'success', data: [ids] } or just [ids]
+        const items = Array.isArray(data) ? data : data?.data ?? []
 
-        const pendingSet = new Set<number>()
-        for (const id of ids) {
-          pendingSet.add(Number(id))
+        // Support both legacy [id] format and new [{ticketId, reportStatus}] format
+        const reportMap = new Map<number, string>()
+        for (const item of items) {
+          if (typeof item === 'object' && item !== null && 'ticketId' in item) {
+            reportMap.set(Number(item.ticketId), String(item.reportStatus ?? 'PENDING'))
+          } else {
+            reportMap.set(Number(item), 'PENDING')
+          }
         }
 
-        setPendingReports(pendingSet)
+        setReportsTicketIds(reportMap)
       } catch (err) {
-        console.error('Error fetching pending ticket ids:', err)
+        console.error('Error fetching report ticket ids:', err)
       }
     }
 
-    fetchPendingIds()
+    fetchReportTicketIds()
   }, [])
 
   // Handle search with debounce (500ms)
@@ -371,7 +377,11 @@ export default function MyTickets() {
     if (cancelTicket) {
       const ticketId = cancelTicket.ticketId ?? cancelTicket.id
       if (ticketId) {
-        setPendingReports((prev) => new Set(prev).add(ticketId))
+        setReportsTicketIds((prev) => {
+          const next = new Map(prev)
+          next.set(Number(ticketId), 'PENDING')
+          return next
+        })
       }
     }
   }
@@ -532,7 +542,9 @@ export default function MyTickets() {
               const imageUrl = getImageUrl(t)
               const checkedIn = isCheckedIn(t)
               const status = getStatus(t)
-              const isPendingRefund = pendingReports.has(id) || status === 'PENDING'
+              // Check if ticket already has ANY report (PENDING, APPROVED, REJECTED)
+              const existingReportStatus = reportsTicketIds.get(id)
+              const hasExistingReport = !!existingReportStatus || status === 'PENDING'
 
               // startText: text hiển thị thời gian bắt đầu event
               // default nếu chưa có data hoặc data lỗi
@@ -612,11 +624,39 @@ export default function MyTickets() {
                     <div className="mb-4">
                       <p className="text-sm text-gray-600 mb-2">Trạng thái:</p>
 
-                      {/* Nếu đang chờ hoàn tiền */}
-                      {isPendingRefund ? (
+                      {/* Badge dựa trên trạng thái report (PENDING / APPROVED / REJECTED) hoặc trạng thái vé bình thường */}
+                      {existingReportStatus === 'PENDING' ? (
                         <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
                           Đang chờ hoàn tiền
                         </span>
+                      ) : existingReportStatus === 'APPROVED' ? (
+                        <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                          Đã hoàn tiền
+                        </span>
+                      ) : existingReportStatus === 'REJECTED' ? (
+                        <>
+                          {/* Hiển thị trạng thái vé bình thường */}
+                          <span
+                            className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${status === 'EXPIRED'
+                              ? 'bg-red-100 text-red-800'
+                              : status === 'REFUNDED'
+                                ? 'bg-gray-100 text-gray-800'
+                                : status === 'CHECKED_OUT'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : status === 'CHECKED_IN'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                              }`}
+                          >
+                            {status === 'EXPIRED' ? 'Hết hạn'
+                              : status === 'REFUNDED' ? 'Đã hoàn tiền'
+                                : status === 'CHECKED_OUT' ? 'Đã check-out'
+                                  : status === 'CHECKED_IN' ? 'Đã check-in'
+                                    : 'Chưa check-in'}
+                          </span>
+                          {/* Dòng chữ nhỏ màu đỏ thông báo bị từ chối */}
+                          <p className="text-xs text-red-400 mt-1">Yêu cầu hoàn tiền bị từ chối</p>
+                        </>
                       ) : (
                         /* Badge màu theo trạng thái */
                         <span
@@ -667,8 +707,8 @@ export default function MyTickets() {
 
                     {/* Các nút action */}
                     <div className="flex gap-2">
-                      {/* Nút Báo Cáo Lỗi - chỉ hiển thị cho vé CHECKED_IN */}
-                      {!isPendingRefund && status === 'CHECKED_IN' && (
+                      {/* Nút Báo Cáo Lỗi - chỉ hiển thị cho vé CHECKED_IN và chưa có report nào (One Ticket - One Report) */}
+                      {!hasExistingReport && status === 'CHECKED_IN' && (
                         <button
                           type="button"
                           onClick={() => setCancelTicket(t)}
@@ -684,7 +724,7 @@ export default function MyTickets() {
                       <button
                         type="button"
                         onClick={() => setQrTicket(t)}
-                        className={`${!isPendingRefund && status === 'CHECKED_IN' ? 'flex-1' : 'w-full'
+                        className={`${!hasExistingReport && status === 'CHECKED_IN' ? 'flex-1' : 'w-full'
                           } text-center bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors`}
                       >
                         Xem vé QR

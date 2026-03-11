@@ -17,6 +17,9 @@ import {
 // React hooks: useState (state), useEffect (chạy side-effect), useRef (tham chiếu DOM)
 import { useState, useEffect, useRef } from 'react'
 
+// Import helper để format thời gian theo Vietnam timezone
+import { formatVietnamDateTime } from '../utils/dateFormat'
+
 // Import logo và logo loading từ assets
 import fptLogo from '../assets/fpt-logo.png'
 import fptLogoLoading from '../assets/fpt-logo-loading.png'
@@ -670,10 +673,7 @@ export default function GuestLanding() {
                       <div className="space-y-2 text-sm text-gray-500">
                         <p className="flex items-center gap-2">
                           <CalendarDays className="w-4 h-4" />
-                          {new Date(event.startTime).toLocaleString('vi-VN', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short'
-                          })}
+                          {formatVietnamDateTime(event.startTime, 'dd/MM/yyyy HH:mm')}
                         </p>
 
                         {/* venueName nếu có */}
@@ -737,10 +737,14 @@ export default function GuestLanding() {
           </div>
 
           {/* new Date().getFullYear() lấy năm hiện tại */}
-          <p className="text-sm text-gray-500">
-            © {new Date().getFullYear()} FPT Education Events Platform · Designed
-            for SWP391 B3W Group 3
-          </p>
+          <div className="text-sm text-gray-500 space-y-2">
+            <p>
+              Person in charge of OJT project management: Nguyen Hoang Anh Khoi (SE194466)
+            </p>
+            <p>
+              © {new Date().getFullYear()} FPT Education Events Platform. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
 

@@ -34,6 +34,7 @@ type CategoryTicket struct {
 	Description      *string `json:"description"`
 	Price            float64 `json:"price"`
 	MaxQuantity      int     `json:"maxQuantity"`
+	Remaining        int     `json:"remaining"` // ✅ FIX: maxQuantity - COUNT(sold/pending tickets)
 	Status           string  `json:"status"`
 }
 

@@ -55,6 +55,11 @@ type ReportDetailStaffDTO struct {
 	VenueID   *int    `json:"venue_id"`
 	VenueName *string `json:"venue_name"`
 	Location  *string `json:"location"`
+
+	// Processor info (for approved/rejected reports)
+	ProcessedBy *string    `json:"processed_by"`
+	ProcessedAt *time.Time `json:"processed_at"`
+	StaffNote   *string    `json:"staff_note"`
 }
 
 // ReportListStaffDTO contains summary report information for staff list view

@@ -65,6 +65,8 @@ interface EventRequestDetailModalProps {
     areaName?: string
     floor?: string
     areaCapacity?: number
+    // ✅ NEW: Rejection reason (when REJECTED)
+    rejectReason?: string
   } | null
 
   // userRole: vai trò user hiện tại (ORGANIZER/STAFF/...)
@@ -218,6 +220,18 @@ export function EventRequestDetailModal({
               </h3>
               {/* whitespace-pre-wrap: giữ xuống dòng đúng như text */}
               <p className="text-gray-700 whitespace-pre-wrap">{request.description}</p>
+            </div>
+          )}
+
+          {/* ===== LÝ DO TỪ CHỐI (Rejection Reason) - Only for REJECTED ===== */}
+          {/* ✅ NEW: Hiển thị lý do từ chối khi request bị từ chối (REJECTED) */}
+          {request.status === 'REJECTED' && request.rejectReason && (
+            <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
+              <h3 className="text-lg font-semibold text-red-700 mb-2 flex items-center">
+                <XCircle className="w-5 h-5 mr-2 text-red-600" />
+                Lý do từ chối từ Staff
+              </h3>
+              <p className="text-sm text-red-800 whitespace-pre-wrap">{request.rejectReason}</p>
             </div>
           )}
 

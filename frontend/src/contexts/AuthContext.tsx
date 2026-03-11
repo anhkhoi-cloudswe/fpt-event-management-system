@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import axios from 'axios'
 
 export type UserRole = 'STUDENT' | 'ORGANIZER' | 'STAFF' | 'ADMIN'
 
@@ -57,10 +58,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // The actual login is done via setUser in Login.tsx
   }
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null)
     setToken(null)
-  }
+  }, [])
+
+  // ── Axios interceptor: force logout on 401 (stale/invalid token) ──
+  useEffect(() => {
+    const interceptorId = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          console.warn('[Auth] Received 401 — clearing stale token and forcing re-login')
+          // Immediately purge localStorage so no stale token survives a refresh
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          // Then update React state (triggers re-render)
+          setUser(null)
+          setToken(null)
+          // Redirect to login if not already there
+          if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
+            window.location.href = '/login'
+          }
+        }
+        return Promise.reject(error)
+      }
+    )
+    return () => {
+      axios.interceptors.response.eject(interceptorId)
+    }
+  }, [])
 
   // Refresh user profile from backend and update context + localStorage
   const refreshUser = async () => {
@@ -85,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userObj = data?.user ?? data
       if (userObj) {
         setUser(userObj)
-        try { localStorage.setItem('user', JSON.stringify(userObj)) } catch (_) {}
+        try { localStorage.setItem('user', JSON.stringify(userObj)) } catch (_) { }
       }
     } catch (err) {
       console.error('refreshUser error:', err)

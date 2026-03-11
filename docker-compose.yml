@@ -1,0 +1,244 @@
+# =============================================================================
+# FPT Event Management System — Docker Compose
+# =============================================================================
+# Orchestrates 8 containers:
+#   mysql             — MySQL 8.0, initialised from Database/FPTEventManagement_v5.sql
+#   auth-service      — port 8081
+#   event-service     — port 8082
+#   ticket-service    — port 8083
+#   venue-service     — port 8084
+#   staff-service     — port 8085
+#   notification-service — port 8086
+#   gateway           — port 8080 (reverse-proxy to all services above)
+#
+# Quick-start:
+#   docker compose up --build        # first run — builds all images
+#   docker compose up                # subsequent runs (images cached)
+#   docker compose down              # stop all containers
+#   docker compose down -v           # stop + wipe database volume
+#
+# Re-build a single service (e.g. after code change):
+#   docker compose up --build auth-service
+# =============================================================================
+
+networks:
+  fpt-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local
+
+# ─── YAML anchors (DRY) ───────────────────────────────────────────────────────
+x-build-defaults: &build-defaults
+  context: ./backend
+  dockerfile: Dockerfile
+  target: local # Use the Alpine target for local dev (~25 MB images)
+
+x-service-defaults: &service-defaults
+  env_file: ./backend/.env.docker
+  networks:
+    - fpt-network
+  restart: unless-stopped
+
+# =============================================================================
+services:
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # MySQL 8.0
+  # ──────────────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: fpt-mysql
+    # --lower-case-table-names=1: Linux MySQL is case-sensitive by default.
+    # This makes table names case-insensitive, matching the Go code which
+    # queries tables like 'Event', 'Venue', 'Ticket' (mixed-case).
+    command: --lower-case-table-names=1
+    environment:
+      MYSQL_ROOT_PASSWORD: "12345"
+      MYSQL_DATABASE: fpteventmanagement
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "3306:3306" # expose to host so you can connect via MySQL Workbench
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Auto-import schema on first boot (runs only when data volume is empty)
+      - ./Database/FPTEventManagement_v5.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      # Use 127.0.0.1 inside the container (avoids Unix socket vs TCP ambiguity)
+      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p12345" ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s # MySQL 8 takes ~30 s to initialise on first run
+    networks:
+      - fpt-network
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Auth Service — port 8081
+  # ──────────────────────────────────────────────────────────────────────────
+  auth-service:
+    build:
+      <<: *build-defaults
+      args:
+        SERVICE: auth-lambda
+        BUILD_PATH: ./services/auth-lambda
+    container_name: fpt-auth
+    <<: *service-defaults
+    ports:
+      - "8081:8081"
+    environment:
+      LOCAL_PORT: "8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Event Service — port 8082
+  # ──────────────────────────────────────────────────────────────────────────
+  event-service:
+    build:
+      <<: *build-defaults
+      args:
+        SERVICE: event-lambda
+        BUILD_PATH: ./services/event-lambda
+    container_name: fpt-event
+    <<: *service-defaults
+    ports:
+      - "8082:8082"
+    environment:
+      LOCAL_PORT: "8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Ticket Service — port 8083
+  # ──────────────────────────────────────────────────────────────────────────
+  ticket-service:
+    build:
+      <<: *build-defaults
+      args:
+        SERVICE: ticket-lambda
+        BUILD_PATH: ./services/ticket-lambda
+    container_name: fpt-ticket
+    <<: *service-defaults
+    ports:
+      - "8083:8083"
+    environment:
+      LOCAL_PORT: "8083"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Venue Service — port 8084
+  # ──────────────────────────────────────────────────────────────────────────
+  venue-service:
+    build:
+      <<: *build-defaults
+      args:
+        SERVICE: venue-lambda
+        BUILD_PATH: ./services/venue-lambda
+    container_name: fpt-venue
+    <<: *service-defaults
+    ports:
+      - "8084:8084"
+    environment:
+      LOCAL_PORT: "8084"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Staff Service — port 8085
+  # ──────────────────────────────────────────────────────────────────────────
+  staff-service:
+    build:
+      <<: *build-defaults
+      args:
+        SERVICE: staff-lambda
+        BUILD_PATH: ./services/staff-lambda
+    container_name: fpt-staff
+    <<: *service-defaults
+    ports:
+      - "8085:8085"
+    environment:
+      LOCAL_PORT: "8085"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Notification Service — port 8086
+  # ──────────────────────────────────────────────────────────────────────────
+  notification-service:
+    build:
+      <<: *build-defaults
+      args:
+        SERVICE: notification-lambda
+        BUILD_PATH: ./services/notification-lambda
+    container_name: fpt-notification
+    <<: *service-defaults
+    ports:
+      - "8086:8086"
+    environment:
+      LOCAL_PORT: "8086"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # API Gateway — port 8080 (the single entry-point for the frontend)
+  # ──────────────────────────────────────────────────────────────────────────
+  gateway:
+    build:
+      <<: *build-defaults
+      args:
+        SERVICE: gateway
+        BUILD_PATH: ./cmd/gateway
+    container_name: fpt-gateway
+    <<: *service-defaults
+    ports:
+      - "8080:8080"
+    environment:
+      LOCAL_PORT: "8080"
+      # Override service URLs so the gateway reaches containers by name
+      # (these take precedence over the values in .env.docker)
+      AUTH_SERVICE_URL: "http://auth-service:8081"
+      EVENT_SERVICE_URL: "http://event-service:8082"
+      TICKET_SERVICE_URL: "http://ticket-service:8083"
+      VENUE_SERVICE_URL: "http://venue-service:8084"
+      STAFF_SERVICE_URL: "http://staff-service:8085"
+      NOTIFICATION_SERVICE_URL: "http://notification-service:8086"
+    depends_on:
+      - auth-service
+      - event-service
+      - ticket-service
+      - venue-service
+      - staff-service
+      - notification-service
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Frontend — Vite dev server, port 3000
+  # ──────────────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: fpt-frontend
+    networks:
+      - fpt-network
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Used by vite.config.ts to point the /api proxy at the gateway container.
+      # The browser sends requests to http://localhost:3000/api/...
+      # Vite dev server inside the container proxies them to http://gateway:8080
+      VITE_API_TARGET: "http://gateway:8080"
+      # Exposed to browser JS (VITE_ prefix) — useful if any code references it directly.
+      VITE_API_BASE_URL: "http://localhost:8080/api"
+    depends_on:
+      - gateway

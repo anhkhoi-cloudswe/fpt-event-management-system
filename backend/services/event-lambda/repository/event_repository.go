@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fpt-event-services/common/db"
+	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/services/event-lambda/models"
 )
 
@@ -37,10 +37,11 @@ type EventRepository struct {
 	db *sql.DB
 }
 
-// NewEventRepository creates a new event repository
-func NewEventRepository() *EventRepository {
+// NewEventRepositoryWithDB creates a new event repository with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton db.GetDB() allowed
+func NewEventRepositoryWithDB(dbConn *sql.DB) *EventRepository {
 	return &EventRepository{
-		db: db.GetDB(),
+		db: dbConn,
 	}
 }
 
@@ -635,6 +636,11 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 // ============================================================
 
 func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string, userID int) ([]models.EventListItem, []models.EventListItem, error) {
+	// ✅ Phase 3: Microservice mode - dùng API calls thay SQL JOINs
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.GetAllEventsSeparatedComposed(ctx, role, userID)
+	}
+
 	// Base query to get all events with joined data
 	baseQuery := `
 		SELECT 
@@ -734,7 +740,158 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 	return openEvents, closedEvents, rows.Err()
 }
 
+// ✅ NEW: GetAllEventsSeparatedWithPagination - WITH PAGINATION SUPPORT
+// Returns paginated events separated by status (open vs closed)
+// Also returns total counts for calculation of totalPages in frontend
+func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Context, role string, userID int, page int, limit int) (
+	[]models.EventListItem,
+	[]models.EventListItem,
+	int, // totalOpen
+	int, // totalClosed
+	error,
+) {
+	// NOTE: Pagination is always SQL-based; no API composition route needed here.
+	// See GetAllEventsSeparatedWithPaginationComposed for the composed variant.
+
+	// Validate pagination parameters
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	offset := (page - 1) * limit
+
+	// Base query to get all events with joined data
+	baseQuery := `
+		SELECT 
+			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
+			e.area_id, va.area_name, va.floor,
+			v.venue_name, v.location,
+			e.created_by
+		FROM Event e
+		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
+		LEFT JOIN Venue v ON va.venue_id = v.venue_id
+	`
+
+	// Determine WHERE clause based on role
+	var whereClause string
+	var args []interface{}
+
+	if role == "ORGANIZER" {
+		// Organizer should see events they created including active and historical ones.
+		whereClause = ` WHERE e.created_by = ? AND (e.status IN ('OPEN','CLOSED','APPROVED','UPDATING') OR e.end_time < NOW())`
+		args = append(args, userID)
+	} else if role == "STAFF" {
+		// Staff sees OPEN events and events that have already ended
+		whereClause = ` WHERE (e.status = 'OPEN' OR e.end_time < NOW())`
+	} else {
+		// Public: show open events and historical events (by end_time)
+		whereClause = ` WHERE (e.status = 'OPEN' OR e.end_time < NOW())`
+	}
+
+	// Query with LIMIT and OFFSET
+	query := baseQuery + whereClause + ` ORDER BY e.start_time DESC LIMIT ? OFFSET ?`
+	args = append(args, limit, offset)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, nil, 0, 0, fmt.Errorf("failed to query events: %w", err)
+	}
+	defer rows.Close()
+
+	var openEvents, closedEvents []models.EventListItem
+	for rows.Next() {
+		var item models.EventListItem
+		var description, bannerURL, areaName, floor, venueName, venueLoc sql.NullString
+		var areaID, createdBy sql.NullInt64
+		var startTime, endTime time.Time
+
+		err := rows.Scan(
+			&item.EventID, &item.Title, &description, &startTime, &endTime, &item.MaxSeats, &item.Status, &bannerURL,
+			&areaID, &areaName, &floor,
+			&venueName, &venueLoc,
+			&createdBy,
+		)
+		if err != nil {
+			return nil, nil, 0, 0, fmt.Errorf("failed to scan event: %w", err)
+		}
+
+		// Convert timestamps to ISO string
+		item.StartTime = startTime.Format(time.RFC3339)
+		item.EndTime = endTime.Format(time.RFC3339)
+
+		// Convert sql.Null to pointers
+		if description.Valid {
+			item.Description = &description.String
+		}
+		if bannerURL.Valid {
+			item.BannerURL = &bannerURL.String
+		}
+		if areaID.Valid {
+			item.AreaID = pointer(int(areaID.Int64))
+		}
+		if areaName.Valid {
+			item.AreaName = &areaName.String
+		}
+		if floor.Valid {
+			item.Floor = &floor.String
+		}
+		if venueName.Valid {
+			item.VenueName = &venueName.String
+		}
+		if venueLoc.Valid {
+			item.VenueLocation = &venueLoc.String
+		}
+		if createdBy.Valid {
+			item.OrganizerID = pointer(int(createdBy.Int64))
+		}
+
+		// Classify events into open vs closed/historical.
+		now := time.Now()
+		if item.Status == "CLOSED" || endTime.Before(now) {
+			closedEvents = append(closedEvents, item)
+		} else {
+			openEvents = append(openEvents, item)
+		}
+	}
+
+	// Get total counts for pagination calculation
+	countQuery := baseQuery + whereClause
+	countArgs := args[:len(args)-2] // Remove LIMIT OFFSET from args
+
+	var totalOpen, totalClosed int
+
+	// Count total open events (status = OPEN and end_time >= NOW)
+	countOpenQuery := countQuery + ` AND e.status = 'OPEN' AND e.end_time >= NOW()`
+	err = r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM ("+countOpenQuery+") as count", countArgs...).Scan(&totalOpen)
+	if err != nil && err != sql.ErrNoRows {
+		fmt.Printf("[PAGINATION_ERROR] Failed to count open events: %v\n", err)
+	}
+
+	// Count total closed events (status != OPEN OR end_time < NOW)
+	countClosedQuery := countQuery + ` AND (e.status = 'CLOSED' OR e.end_time < NOW())`
+	err = r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM ("+countClosedQuery+") as count", countArgs...).Scan(&totalClosed)
+	if err != nil && err != sql.ErrNoRows {
+		fmt.Printf("[PAGINATION_ERROR] Failed to count closed events: %v\n", err)
+	}
+
+	fmt.Printf("[PAGINATION] Page=%d, Limit=%d, Offset=%d, TotalOpen=%d, TotalClosed=%d\n",
+		page, limit, offset, totalOpen, totalClosed)
+
+	return openEvents, closedEvents, totalOpen, totalClosed, rows.Err()
+}
+
 func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*models.EventDetailDto, error) {
+	// ✅ Phase 3: Microservice mode
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.GetEventDetailComposed(ctx, eventID)
+	}
+
 	query := `
 		SELECT
 			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
@@ -859,7 +1016,17 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 }
 
 func (r *EventRepository) GetCategoryTicketsByEventID(ctx context.Context, eventID int) ([]models.CategoryTicket, error) {
-	query := `SELECT category_ticket_id, name, description, price, max_quantity, status FROM Category_Ticket WHERE event_id = ? ORDER BY price ASC`
+	// ✅ FIX: Tính Remaining = MaxQuantity - COUNT(sold/pending tickets)
+	query := `
+		SELECT
+			ct.category_ticket_id, ct.name, ct.description, ct.price, ct.max_quantity, ct.status,
+			GREATEST(0, ct.max_quantity - COUNT(CASE WHEN t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN') THEN 1 END)) AS remaining
+		FROM Category_Ticket ct
+		LEFT JOIN Ticket t ON ct.category_ticket_id = t.category_ticket_id
+		WHERE ct.event_id = ?
+		GROUP BY ct.category_ticket_id, ct.name, ct.description, ct.price, ct.max_quantity, ct.status
+		ORDER BY ct.price ASC
+	`
 	rows, err := r.db.QueryContext(ctx, query, eventID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query category tickets: %w", err)
@@ -872,7 +1039,7 @@ func (r *EventRepository) GetCategoryTicketsByEventID(ctx context.Context, event
 		var desc sql.NullString
 		var price sql.NullFloat64
 		var maxQty sql.NullInt64
-		if err := rows.Scan(&ct.CategoryTicketID, &ct.Name, &desc, &price, &maxQty, &ct.Status); err != nil {
+		if err := rows.Scan(&ct.CategoryTicketID, &ct.Name, &desc, &price, &maxQty, &ct.Status, &ct.Remaining); err != nil {
 			return nil, fmt.Errorf("failed to scan category ticket: %w", err)
 		}
 		if desc.Valid {
@@ -885,12 +1052,18 @@ func (r *EventRepository) GetCategoryTicketsByEventID(ctx context.Context, event
 		if maxQty.Valid {
 			ct.MaxQuantity = int(maxQty.Int64)
 		}
+		log.Printf("[TICKET] Category: %s | Giá: %.0f VNĐ | Còn lại: %d/%d", ct.Name, ct.Price, ct.Remaining, ct.MaxQuantity)
 		cats = append(cats, ct)
 	}
 	return cats, rows.Err()
 }
 
 func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventListItem, error) {
+	// ✅ Phase 3: Microservice mode
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.GetOpenEventsComposed(ctx)
+	}
+
 	query := `
 		SELECT 
 			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
@@ -997,6 +1170,11 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 }
 
 func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID int) ([]models.EventRequest, error) {
+	// ✅ Phase 3: Microservice mode
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.GetMyEventRequestsComposed(ctx, requesterID)
+	}
+
 	log.Printf("[GetMyEventRequests] Querying for requesterID=%d", requesterID)
 
 	query := `
@@ -1087,6 +1265,11 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 }
 
 func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requesterID int, limit int, offset int) ([]models.EventRequest, int, error) {
+	// ✅ Phase 3: Microservice mode
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.GetMyActiveEventRequestsComposed(ctx, requesterID, limit, offset)
+	}
+
 	// Active = PENDING OR (APPROVED AND Event.status = UPDATING) (Tab "Chờ")
 	query := `
 		SELECT 
@@ -1193,6 +1376,11 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 }
 
 func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, requesterID int, limit int, offset int) ([]models.EventRequest, int, error) {
+	// ✅ Phase 3: Microservice mode
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.GetMyArchivedEventRequestsComposed(ctx, requesterID, limit, offset)
+	}
+
 	// Archived = REJECTED, CANCELLED OR (APPROVED AND Event.status IN OPEN, CLOSED, CANCELLED, FINISHED) (Tab "Đã xử lý")
 	query := `
 		SELECT 
@@ -1301,6 +1489,11 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 }
 
 func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models.EventRequest, error) {
+	// ✅ Phase 3: Microservice mode
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.GetPendingEventRequestsComposed(ctx)
+	}
+
 	// Staff xem tất cả yêu cầu (bao gồm cả đã xử lý: APPROVED, REJECTED)
 	query := `
 		SELECT 
@@ -1387,6 +1580,11 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 }
 
 func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int) (*models.EventRequest, error) {
+	// ✅ Phase 3: Microservice mode
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.GetEventRequestByIDComposed(ctx, requestID)
+	}
+
 	query := `
 		SELECT 
 			er.request_id, er.requester_id, u.full_name as requester_name,
@@ -1506,6 +1704,11 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 }
 
 func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, req *models.ProcessEventRequestBody) error {
+	// ✅ Phase 3: Microservice mode - thay UPDATE Venue_Area trực tiếp bằng API call
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.ProcessEventRequestComposed(ctx, adminID, req)
+	}
+
 	fmt.Printf("[DB_PROCESS] Starting: RequestID=%d, Action=%s, AdminID=%d\n", req.RequestID, req.Action, adminID)
 
 	// Log AreaID properly (dereference pointer if not nil)
@@ -2082,11 +2285,109 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 }
 
 func (r *EventRepository) UpdateEventConfig(ctx context.Context, userID int, role string, req interface{}) error {
+	updateReq, ok := req.(*models.UpdateEventConfigRequest)
+	if !ok {
+		return fmt.Errorf("invalid request type for UpdateEventConfig")
+	}
+
+	fmt.Printf("[UpdateEventConfig] eventID=%d, checkin=%d, checkout=%d, role=%s\n",
+		updateReq.EventID, updateReq.CheckinAllowedBeforeStartMinutes, updateReq.MinMinutesAfterStart, role)
+
+	// ── Global config (eventId = -1): save to file + memory ──
+	if updateReq.EventID == -1 {
+		if err := config.UpdateConfig(
+			updateReq.CheckinAllowedBeforeStartMinutes,
+			updateReq.MinMinutesAfterStart,
+		); err != nil {
+			return fmt.Errorf("failed to save global config: %w", err)
+		}
+		fmt.Printf("[UpdateEventConfig] ✅ Global config saved: checkin=%d, checkout=%d\n",
+			updateReq.CheckinAllowedBeforeStartMinutes, updateReq.MinMinutesAfterStart)
+		return nil
+	}
+
+	// ── Per-event config (eventId > 0): update Event table ──
+	if updateReq.EventID <= 0 {
+		return fmt.Errorf("invalid event ID: %d", updateReq.EventID)
+	}
+
+	// Check event exists
+	var exists int
+	err := r.db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM Event WHERE event_id = ?", updateReq.EventID,
+	).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to check event existence: %w", err)
+	}
+	if exists == 0 {
+		return fmt.Errorf("event not found")
+	}
+
+	// Organizer ownership check
+	if role == "ORGANIZER" {
+		var ownerID int
+		err = r.db.QueryRowContext(ctx,
+			"SELECT organizer_id FROM Event WHERE event_id = ?", updateReq.EventID,
+		).Scan(&ownerID)
+		if err != nil {
+			return fmt.Errorf("failed to check event ownership: %w", err)
+		}
+		if ownerID != userID {
+			return fmt.Errorf("you are not the owner of this event")
+		}
+	}
+
+	// UPDATE checkin_offset and checkout_offset
+	_, err = r.db.ExecContext(ctx,
+		"UPDATE Event SET checkin_offset = ?, checkout_offset = ? WHERE event_id = ?",
+		updateReq.CheckinAllowedBeforeStartMinutes,
+		updateReq.MinMinutesAfterStart,
+		updateReq.EventID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update event config: %w", err)
+	}
+
+	fmt.Printf("[UpdateEventConfig] ✅ Per-event config saved: eventID=%d, checkin=%d, checkout=%d\n",
+		updateReq.EventID, updateReq.CheckinAllowedBeforeStartMinutes, updateReq.MinMinutesAfterStart)
 	return nil
 }
 
 func (r *EventRepository) GetEventConfigById(ctx context.Context, eventID int) (*models.EventConfigResponse, error) {
-	return nil, nil // Returns nil if no per-event config exists
+	var checkinOffset, checkoutOffset sql.NullInt64
+	err := r.db.QueryRowContext(ctx,
+		"SELECT checkin_offset, checkout_offset FROM Event WHERE event_id = ?",
+		eventID,
+	).Scan(&checkinOffset, &checkoutOffset)
+
+	if err == sql.ErrNoRows {
+		return nil, nil // No per-event config found
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to query event config: %w", err)
+	}
+
+	hasCheckin := checkinOffset.Valid && checkinOffset.Int64 > 0
+	hasCheckout := checkoutOffset.Valid && checkoutOffset.Int64 > 0
+
+	var checkinVal, checkoutVal int
+	if hasCheckin {
+		checkinVal = int(checkinOffset.Int64)
+	}
+	if hasCheckout {
+		checkoutVal = int(checkoutOffset.Int64)
+	}
+
+	fmt.Printf("[GetEventConfigById] eventID=%d → checkin=%v(%d), checkout=%v(%d)\n",
+		eventID, hasCheckin, checkinVal, hasCheckout, checkoutVal)
+
+	return &models.EventConfigResponse{
+		CheckinAllowedBeforeStartMinutes: checkinVal,
+		MinMinutesAfterStart:             checkoutVal,
+		Source:                           "per-event",
+		HasCheckinOffset:                 hasCheckin,
+		HasCheckoutOffset:                hasCheckout,
+	}, nil
 }
 
 func (r *EventRepository) GetAvailableAreas(ctx context.Context, startTime, endTime string, expectedCapacity int) ([]models.AvailableAreaInfo, error) {
@@ -2177,6 +2478,11 @@ func (r *EventRepository) ReleaseAreaOnEventClose(ctx context.Context, eventID, 
 }
 
 func (r *EventRepository) GetEventStats(ctx context.Context, eventID int) (*models.EventStatsResponse, error) {
+	// ✅ Phase 3: Microservice mode - thay JOIN Ticket bằng API call
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.GetEventStatsComposed(ctx, eventID)
+	}
+
 	query := `
 		SELECT 
 			e.event_id,
@@ -2227,6 +2533,11 @@ func (r *EventRepository) GetEventStats(ctx context.Context, eventID int) (*mode
 }
 
 func (r *EventRepository) GetAggregateEventStats(ctx context.Context, role string, userID int) (*models.EventStatsResponse, error) {
+	// ✅ Phase 3: Microservice mode
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.GetAggregateEventStatsComposed(ctx, role, userID)
+	}
+
 	// Build query based on role
 	var query string
 	var args []interface{}
@@ -2333,6 +2644,11 @@ func (r *EventRepository) GetAggregateEventStats(ctx context.Context, role strin
 }
 
 func (r *EventRepository) CancelEvent(ctx context.Context, userID, eventID int) error {
+	// ✅ Phase 3: Microservice mode - thay UPDATE Venue_Area trực tiếp bằng API call
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.CancelEventComposed(ctx, userID, eventID)
+	}
+
 	log.Printf("[DB_UPDATE] Starting cancel event for EventID=%d, UserID=%d", eventID, userID)
 
 	// Step 1: Get event info and verify ownership
@@ -2661,13 +2977,15 @@ func (r *EventRepository) AutoReleaseVenues(ctx context.Context) error {
 }
 
 func (r *EventRepository) CheckDailyQuota(ctx context.Context, eventDate string) (*models.CheckDailyQuotaResponse, error) {
-	// Query: Count approved/open events on the specific date
-	// Rule: Maximum 2 events per day
+	// Query: Count ALL events on the specific date except CANCELLED and REJECTED.
+	// Rule: Maximum 2 events per day.
+	// IMPORTANT: UPDATING events MUST be counted — they are approved events being filled in by organizer.
+	// Counted statuses: OPEN, UPDATING, CLOSED, ONGOING (and any future active status).
 	query := `
 		SELECT COUNT(*) as event_count
 		FROM Event
 		WHERE DATE(start_time) = ?
-		AND status IN ('OPEN', 'APPROVED')
+		AND status NOT IN ('CANCELLED', 'REJECTED')
 	`
 
 	var currentCount int
@@ -2684,9 +3002,9 @@ func (r *EventRepository) CheckDailyQuota(ctx context.Context, eventDate string)
 	// Build warning message
 	var warningMessage string
 	if quotaExceeded {
-		warningMessage = fmt.Sprintf("Đã đạt giới hạn %d sự kiện/ngày. Không thể duyệt thêm.", maxAllowed)
+		warningMessage = fmt.Sprintf("Ngày này đã hết suất tổ chức (%d/%d sự kiện). Không thể duyệt thêm.", currentCount, maxAllowed)
 	} else if currentCount == maxAllowed-1 {
-		warningMessage = fmt.Sprintf("Đây là sự kiện cuối cùng được phép trong ngày (Tổng: %d/%d)", currentCount+1, maxAllowed)
+		warningMessage = fmt.Sprintf("Còn 1 suất trống trong ngày. Đây là sự kiện cuối cùng được phép duyệt (Tổng: %d/%d)", currentCount+1, maxAllowed)
 	} else {
 		warningMessage = ""
 	}
@@ -2702,4 +3020,77 @@ func (r *EventRepository) CheckDailyQuota(ctx context.Context, eventDate string)
 		CanApproveMore: canApproveMore,
 		WarningMessage: warningMessage,
 	}, nil
+}
+
+// ============================================================
+// DisableEventByStaff - STAFF hủy sự kiện:
+//   - Bypass ownership + 24h rule
+//   - SET Event.status = 'CANCELLED'
+//   - SET Event_Request.status = 'CANCELLED' (nếu có)
+//   - Release Venue_Area → AVAILABLE
+//
+// ============================================================
+func (r *EventRepository) DisableEventByStaff(ctx context.Context, eventID int) error {
+	log.Printf("[STAFF_CANCEL] Bắt đầu hủy EventID=%d bởi STAFF", eventID)
+
+	// Kiểm tra sự kiện tồn tại
+	var status string
+	var requestID sql.NullInt64
+	var areaID sql.NullInt64
+
+	checkQuery := `
+		SELECT e.status, e.area_id,
+		       (SELECT request_id FROM Event_Request WHERE created_event_id = e.event_id LIMIT 1)
+		FROM Event e
+		WHERE e.event_id = ?
+	`
+	err := r.db.QueryRowContext(ctx, checkQuery, eventID).Scan(&status, &areaID, &requestID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("sự kiện không tồn tại")
+		}
+		return fmt.Errorf("lỗi kiểm tra sự kiện: %w", err)
+	}
+
+	if status == "CANCELLED" {
+		return fmt.Errorf("sự kiện đã được hủy trước đó")
+	}
+
+	// Transaction: cập nhật Event + Event_Request
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("lỗi khởi tạo transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Cập nhật Event → CANCELLED
+	res, err := tx.ExecContext(ctx, `UPDATE Event SET status = 'CANCELLED' WHERE event_id = ?`, eventID)
+	if err != nil {
+		return fmt.Errorf("lỗi cập nhật event: %w", err)
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("không thể cập nhật event %d", eventID)
+	}
+
+	// Cập nhật Event_Request → CANCELLED (nếu có)
+	if requestID.Valid {
+		tx.ExecContext(ctx, `UPDATE Event_Request SET status = 'CANCELLED' WHERE request_id = ?`, requestID.Int64)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("lỗi commit transaction: %w", err)
+	}
+
+	log.Printf("[STAFF_CANCEL] ✅ Event %d → CANCELLED", eventID)
+
+	// Release Venue Area → AVAILABLE (cross-domain via API)
+	if areaID.Valid {
+		if err := updateAreaStatusViaAPI(ctx, int(areaID.Int64), "AVAILABLE"); err != nil {
+			log.Printf("[STAFF_CANCEL] ⚠️ Không thể release area %d: %v (cần xử lý thủ công)", areaID.Int64, err)
+		} else {
+			log.Printf("[STAFF_CANCEL] ✅ Đã release Area %d → AVAILABLE", areaID.Int64)
+		}
+	}
+
+	return nil
 }

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -16,10 +17,11 @@ type StaffHandler struct {
 	useCase *usecase.StaffUseCase
 }
 
-// NewStaffHandler creates a new staff handler
-func NewStaffHandler() *StaffHandler {
+// NewStaffHandlerWithDB creates a new staff handler with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton allowed
+func NewStaffHandlerWithDB(dbConn *sql.DB) *StaffHandler {
 	return &StaffHandler{
-		useCase: usecase.NewStaffUseCase(),
+		useCase: usecase.NewStaffUseCaseWithDB(dbConn),
 	}
 }
 

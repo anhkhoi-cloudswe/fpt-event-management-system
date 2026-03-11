@@ -1,0 +1,1517 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  FPT Event Management System - Microservices on AWS SAM
+  6 Lambda Functions (auth, event, ticket, venue, staff, notification)
+  Public + Internal API Gateways, VPC, RDS MySQL
+
+# ============================================================
+# PARAMETERS
+# ============================================================
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment
+
+  DBUsername:
+    Type: String
+    Default: admin
+    Description: RDS master username
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: RDS master password
+
+  DBName:
+    Type: String
+    Default: fpt_event_management
+    Description: Database name
+
+  JWTSecret:
+    Type: String
+    NoEcho: true
+    Description: JWT signing secret (no default — must be supplied at deploy time)
+
+  FrontendDomain:
+    Type: String
+    Default: your-app.vercel.app
+    Description: Frontend domain for CORS (e.g. your-app.vercel.app)
+
+  VNPayHashSecret:
+    Type: String
+    NoEcho: true
+    Default: CHANGEME
+    Description: VNPay HMAC secret
+
+  RecaptchaSecret:
+    Type: String
+    NoEcho: true
+    Default: CHANGEME
+    Description: Google reCAPTCHA secret key
+
+  SMTPPassword:
+    Type: String
+    NoEcho: true
+    Default: CHANGEME
+    Description: SMTP email password
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 256
+    Description: Memory (MB) for each Lambda function
+
+  LambdaTimeout:
+    Type: Number
+    Default: 30
+    Description: Timeout (seconds) for each Lambda
+
+# ============================================================
+# GLOBALS - Shared settings for all Lambda functions
+# ============================================================
+Globals:
+  Function:
+    PackageType: Image
+    Architectures: [arm64]
+    MemorySize: !Ref LambdaMemorySize
+    Timeout: !Ref LambdaTimeout
+    # VPC configuration - all Lambdas in private subnets
+    VpcConfig:
+      SecurityGroupIds:
+        - !Ref LambdaSecurityGroup
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        # Database
+        DB_URL: !Sub >-
+          ${DBUsername}:${DBPassword}@tcp(${RDSInstance.Endpoint.Address}:3306)/${DBName}?parseTime=true&loc=Asia%2FHo_Chi_Minh
+        JWT_SECRET: !Ref JWTSecret
+        VNPAY_HASH_SECRET: !Ref VNPayHashSecret
+        RECAPTCHA_SECRET: !Ref RecaptchaSecret
+        SMTP_PASSWORD: !Ref SMTPPassword
+        # Service URLs - point to Internal API Gateway
+        AUTH_SERVICE_URL: !Sub "https://${InternalApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+        EVENT_SERVICE_URL: !Sub "https://${InternalApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+        VENUE_SERVICE_URL: !Sub "https://${InternalApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+        TICKET_SERVICE_URL: !Sub "https://${InternalApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+        STAFF_SERVICE_URL: !Sub "https://${InternalApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+        NOTIFICATION_SERVICE_URL: !Sub "https://${InternalApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+        # Feature Flags - ALL enabled for full Microservices mode
+        USE_API_COMPOSITION: "true"
+        VENUE_API_ENABLED: "true"
+        AUTH_API_ENABLED: "true"
+        TICKET_API_ENABLED: "true"
+        EVENT_API_ENABLED: "true"
+        WALLET_SERVICE_ENABLED: "true"
+        SAGA_ENABLED: "true"
+        NOTIFICATION_API_ENABLED: "true"
+        SERVICE_SPECIFIC_SCHEDULER: "true"
+        SERVICE_SPECIFIC_DB: "true"
+        # System Config - SSM Parameter Store path
+        SSM_SYSTEM_CONFIG_PATH: !Sub "/fpt-events/${Environment}/system-config"
+
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,Authorization,X-Requested-With'"
+      AllowOrigin: !Sub "'https://${FrontendDomain}'"
+
+# ============================================================
+# RESOURCES
+# ============================================================
+Resources:
+
+  # ==========================================================
+  # NETWORKING - VPC, Subnets, NAT Gateway
+  # ==========================================================
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-vpc-${Environment}"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-igw-${Environment}"
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # --- Public Subnets (for NAT Gateway & ALB) ---
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-public-1-${Environment}"
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-public-2-${Environment}"
+
+  # --- Private Subnets (for Lambda & RDS) ---
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.10.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-private-1-${Environment}"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-private-2-${Environment}"
+
+  # --- NAT Gateway (allows Lambda in private subnets to reach internet) ---
+  NATGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NATGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-nat-${Environment}"
+
+  # --- Route Tables ---
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-public-rt-${Environment}"
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-private-rt-${Environment}"
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+  PrivateSubnet1RouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # ==========================================================
+  # SECURITY GROUPS
+  # ==========================================================
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+      VpcId: !Ref VPC
+      SecurityGroupIngress: []
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-lambda-sg-${Environment}"
+
+  # Allow Lambda SG to talk to itself (inter-service)
+  LambdaSGSelfIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref LambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 0
+      ToPort: 65535
+      SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS MySQL
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: Allow MySQL access from Lambda
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-rds-sg-${Environment}"
+
+  VPCEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for VPC Endpoints
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: Allow HTTPS from Lambda
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-vpce-sg-${Environment}"
+
+  # ==========================================================
+  # VPC ENDPOINTS (for API Gateway Private access)
+  # ==========================================================
+
+  ExecuteApiVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.execute-api"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+
+  # SSM VPC Endpoint - allows Lambda in private subnets to reach SSM without NAT
+  SSMVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+
+  # ==========================================================
+  # DATABASE - RDS MySQL (cost-optimized)
+  # ==========================================================
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for FPT Events RDS
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-db-subnet-${Environment}"
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub "fpt-events-db-${Environment}"
+      DBInstanceClass: db.t3.micro
+      Engine: mysql
+      EngineVersion: "8.0"
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBName: !Ref DBName
+      AllocatedStorage: 20
+      MaxAllocatedStorage: 100
+      StorageType: gp3
+      StorageEncrypted: true
+      MultiAZ: false
+      PubliclyAccessible: false
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: "03:00-04:00"
+      PreferredMaintenanceWindow: "sun:04:00-sun:05:00"
+      EnablePerformanceInsights: false
+      DeletionProtection: true
+      Tags:
+        - Key: Name
+          Value: !Sub "fpt-events-db-${Environment}"
+
+  # ==========================================================
+  # SSM PARAMETER STORE - System Config
+  # ==========================================================
+
+  SystemConfigParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/fpt-events/${Environment}/system-config"
+      Type: String
+      Value: '{"checkinAllowedBeforeStartMinutes":60,"minMinutesAfterStart":60}'
+      Description: FPT Events system-wide check-in/check-out configuration
+
+  # IAM Managed Policy - SSM Read for all Lambda functions
+  SSMReadPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "fpt-events-ssm-read-${Environment}"
+      Description: Allow Lambda functions to read system config from SSM
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - ssm:GetParameter
+            Resource:
+              - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/fpt-events/${Environment}/system-config"
+
+  # IAM Managed Policy - SSM Write for StaffFunction only
+  SSMWritePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "fpt-events-ssm-write-${Environment}"
+      Description: Allow StaffFunction to update system config in SSM
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - ssm:PutParameter
+            Resource:
+              - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/fpt-events/${Environment}/system-config"
+
+  # IAM Managed Policy - Lambda Invoke for direct inter-service calls
+  LambdaInvokePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "fpt-events-lambda-invoke-${Environment}"
+      Description: Allow Lambda functions to invoke sibling fpt-events Lambda functions directly
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource:
+              - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:fpt-events-*-${Environment}"
+
+  # ==========================================================
+  # PUBLIC API GATEWAY (for frontend/external consumers)
+  # ==========================================================
+
+  PublicApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "fpt-events-public-api-${Environment}"
+      StageName: !Ref Environment
+      TracingEnabled: true
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Requested-With'"
+        AllowOrigin: !Sub "'https://${FrontendDomain}'"
+      Auth:
+        DefaultAuthorizer: JWTAuthorizer
+        AddDefaultAuthorizerToCorsPreflight: false
+        Authorizers:
+          JWTAuthorizer:
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
+            FunctionPayloadType: REQUEST
+            Identity:
+              Headers:
+                - Authorization
+              ReauthorizeEvery: 300
+      # Throttling for cost control
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          ThrottlingBurstLimit: 100
+          ThrottlingRateLimit: 50
+
+  # ==========================================================
+  # INTERNAL API GATEWAY (Private - VPC only)
+  # ==========================================================
+
+  InternalApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "fpt-events-internal-api-${Environment}"
+      StageName: !Ref Environment
+      EndpointConfiguration:
+        Type: PRIVATE
+        VPCEndpointIds:
+          - !Ref ExecuteApiVPCEndpoint
+      Auth:
+        ResourcePolicy:
+          CustomStatements:
+            - Effect: Allow
+              Principal: "*"
+              Action: execute-api:Invoke
+              Resource: "execute-api:/*"
+              Condition:
+                StringEquals:
+                  "aws:sourceVpce": !Ref ExecuteApiVPCEndpoint
+
+  # ==========================================================
+  # LAMBDA FUNCTIONS - 6 Microservices + JWT Authorizer
+  # ==========================================================
+
+  # ----------------------------------------------------------
+  # 0. JWT AUTHORIZER (validates tokens at API Gateway level)
+  # ----------------------------------------------------------
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "fpt-events-authorizer-${Environment}"
+      Description: JWT Authorizer - validates tokens before invoking main Lambdas
+      ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fpt-events-authorizer-${Environment}:latest"
+      Policies:
+        - VPCAccessPolicy: {}
+      # No Events — invoked directly by API Gateway Authorizer mechanism
+    Metadata:
+      DockerTag: !Sub "fpt-authorizer-${Environment}"
+      DockerContext: ./backend
+      Dockerfile: Dockerfile
+      DockerBuildArgs:
+        SERVICE: authorizer-lambda
+        BUILD_PATH: ./services/authorizer-lambda
+        GOARCH: arm64
+      DockerBuildTarget: lambda
+
+  # ----------------------------------------------------------
+  # 1. AUTH SERVICE
+  # ----------------------------------------------------------
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "fpt-events-auth-${Environment}"
+      Description: Auth Service - Login, Register, User management
+      ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fpt-events-auth-${Environment}:latest"
+      Policies:
+        - VPCAccessPolicy: {}
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:Invoke
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${InternalApi}/*"
+        - !Ref SSMReadPolicy
+        - !Ref LambdaInvokePolicy
+      Events:
+        # --- Public Routes (no auth required) ---
+        Login:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/login
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        Register:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/register
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        RegisterSendOtp:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/register/send-otp
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        RegisterVerifyOtp:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/register/verify-otp
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        RegisterResendOtp:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/register/resend-otp
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        ForgotPassword:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/forgot-password
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        ResetPassword:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/reset-password
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        # --- Protected Routes ---
+        AdminCreateAccount:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/admin/create-account
+            Method: POST
+        AdminUpdateAccount:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/admin/create-account
+            Method: PUT
+        AdminDeleteAccount:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/admin/create-account
+            Method: DELETE
+        GetStaffOrganizer:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/users/staff-organizer
+            Method: GET
+        # --- Internal Routes ---
+        InternalUserProfile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/user/profile
+            Method: GET
+        InternalUserProfiles:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/user/profiles
+            Method: GET
+    Metadata:
+      DockerTag: !Sub "fpt-auth-${Environment}"
+      DockerContext: ./backend
+      Dockerfile: Dockerfile
+      DockerBuildArgs:
+        SERVICE: auth-lambda
+        BUILD_PATH: ./services/auth-lambda
+        GOARCH: arm64
+      DockerBuildTarget: lambda
+
+  # ----------------------------------------------------------
+  # 2. EVENT SERVICE
+  # ----------------------------------------------------------
+  EventFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "fpt-events-event-${Environment}"
+      Description: Event Service - Event CRUD, Requests, Scheduling
+      ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fpt-events-event-${Environment}:latest"
+      Policies:
+        - VPCAccessPolicy: {}
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:Invoke
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${InternalApi}/*"
+        - !Ref SSMReadPolicy
+        - !Ref LambdaInvokePolicy
+      Events:
+        # --- Public Routes (no auth required) ---
+        GetEvents:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/events
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        GetOpenEvents:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/events/open
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        GetEventDetail:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/events/detail
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        # --- Protected Routes ---
+        CreateEventRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/event-requests
+            Method: POST
+        MyEventRequests:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/event-requests/my
+            Method: GET
+        MyActiveRequests:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/event-requests/my/active
+            Method: GET
+        MyArchivedRequests:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/event-requests/my/archived
+            Method: GET
+        GetEventRequestById:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/event-requests/{id}
+            Method: GET
+        StaffViewRequests:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/staff/event-requests
+            Method: GET
+        ProcessEventRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/event-requests/process
+            Method: POST
+        UpdateEventRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/event-requests/update
+            Method: POST
+        UpdateEventDetails:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/events/update-details
+            Method: POST
+        UpdateEventConfig:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/events/update-config
+            Method: POST
+        GetEventConfig:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/events/config
+            Method: GET
+        GetEventStats:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/events/stats
+            Method: GET
+        GetAvailableAreas:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/events/available-areas
+            Method: GET
+        CancelEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/organizer/events/cancel
+            Method: POST
+        DailyQuota:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/events/daily-quota
+            Method: GET
+        DisableEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/events/disable
+            Method: POST
+        # --- Internal Routes ---
+        InternalActiveByVenue:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/events/active-by-venue
+            Method: GET
+        InternalBusyAreas:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/events/busy-areas
+            Method: GET
+        InternalEventArea:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/events/area
+            Method: GET
+        # --- EventBridge Scheduler Triggers ---
+        # EventBridge invokes this Lambda with a fake APIGatewayProxyRequest JSON,
+        # which the Handler routes to the scheduler endpoint internally.
+        SchedulerEventCleanup:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            Description: Auto-trigger event cleanup via EventBridge every 5 minutes
+            Enabled: true
+            Input: >-
+              {"httpMethod":"POST","path":"/internal/scheduler/event-cleanup","headers":{"X-Internal-Call":"true"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
+        SchedulerExpiredRequests:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            Description: Auto-trigger expired requests cleanup via EventBridge every 5 minutes
+            Enabled: true
+            Input: >-
+              {"httpMethod":"POST","path":"/internal/scheduler/expired-requests","headers":{"X-Internal-Call":"true"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
+    Metadata:
+      DockerTag: !Sub "fpt-event-${Environment}"
+      DockerContext: ./backend
+      Dockerfile: Dockerfile
+      DockerBuildArgs:
+        SERVICE: event-lambda
+        BUILD_PATH: ./services/event-lambda
+        GOARCH: arm64
+      DockerBuildTarget: lambda
+
+  # ----------------------------------------------------------
+  # 3. TICKET SERVICE (includes Wallet)
+  # ----------------------------------------------------------
+  TicketFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "fpt-events-ticket-${Environment}"
+      Description: Ticket & Wallet Service - Ticketing, Payments, Wallet
+      ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fpt-events-ticket-${Environment}:latest"
+      Policies:
+        - VPCAccessPolicy: {}
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:Invoke
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${InternalApi}/*"
+        - !Ref SSMReadPolicy
+        - !Ref LambdaInvokePolicy
+      Events:
+        # --- Public Routes (no auth required) ---
+        BuyTicketCallback:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/buyTicket
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        CategoryTickets:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/category-tickets
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        # --- Protected Routes ---
+        MyTickets:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/registrations/my-tickets
+            Method: GET
+        TicketList:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/tickets/list
+            Method: GET
+        MyBills:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/bills/my-bills
+            Method: GET
+        PaymentMyBills:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/payment/my-bills
+            Method: GET
+        PaymentTicket:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/payment-ticket
+            Method: GET
+        WalletBalance:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/wallet/balance
+            Method: GET
+        WalletPayTicket:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/wallet/pay-ticket
+            Method: POST
+        # --- Internal Wallet Routes ---
+        InternalWalletBalance:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/wallet/balance
+            Method: GET
+        InternalWalletCheck:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/wallet/check
+            Method: GET
+        InternalWalletDebit:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/wallet/debit
+            Method: POST
+        InternalWalletCredit:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/wallet/credit
+            Method: POST
+        InternalWalletReserve:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/wallet/reserve
+            Method: POST
+        InternalWalletConfirm:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/wallet/confirm
+            Method: POST
+        InternalWalletRelease:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/wallet/release
+            Method: POST
+        # --- Internal Ticket Routes ---
+        InternalCategoryTicketInfo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/category-ticket/info
+            Method: GET
+        InternalCategoryTicketsByEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/category-tickets/by-event
+            Method: GET
+        InternalSeatStatuses:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/tickets/seat-statuses
+            Method: GET
+        InternalTicketCount:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/ticket/count
+            Method: GET
+        InternalTicketRefund:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/ticket/refund
+            Method: POST
+        InternalRevertRefund:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/ticket/revert-refund
+            Method: POST
+        InternalTicketCheckin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/ticket/checkin
+            Method: POST
+        InternalTicketCheckout:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/ticket/checkout
+            Method: POST
+        InternalTicketInfo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/ticket/info
+            Method: GET
+        InternalRefundAllByEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/tickets/refund-all-by-event
+            Method: POST
+        # --- EventBridge Scheduler Trigger ---
+        SchedulerPendingTicketCleanup:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            Description: Auto-trigger pending ticket cleanup via EventBridge every 5 minutes
+            Enabled: true
+            Input: >-
+              {"httpMethod":"POST","path":"/internal/scheduler/pending-ticket-cleanup","headers":{"X-Internal-Call":"true"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
+    Metadata:
+      DockerTag: !Sub "fpt-ticket-${Environment}"
+      DockerContext: ./backend
+      Dockerfile: Dockerfile
+      DockerBuildArgs:
+        SERVICE: ticket-lambda
+        BUILD_PATH: ./services/ticket-lambda
+        GOARCH: arm64
+      DockerBuildTarget: lambda
+
+  # ----------------------------------------------------------
+  # 4. VENUE SERVICE
+  # ----------------------------------------------------------
+  VenueFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "fpt-events-venue-${Environment}"
+      Description: Venue Service - Venues, Areas, Seats management
+      ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fpt-events-venue-${Environment}:latest"
+      Policies:
+        - VPCAccessPolicy: {}
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:Invoke
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${InternalApi}/*"
+        - !Ref SSMReadPolicy
+        - !Ref LambdaInvokePolicy
+      Events:
+        # --- Public Routes (no auth required) ---
+        GetVenues:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/venues
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        CreateVenue:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/venues
+            Method: POST
+        UpdateVenue:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/venues
+            Method: PUT
+        DeleteVenue:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/venues
+            Method: DELETE
+        GetAreas:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/venues/areas
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        CreateArea:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/venues/areas
+            Method: POST
+        UpdateArea:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/venues/areas
+            Method: PUT
+        DeleteArea:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/venues/areas
+            Method: DELETE
+        FreeAreas:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/areas/free
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        GetSeats:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/seats
+            Method: GET
+        # --- Internal Routes ---
+        InternalVenueInfo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/venue/info
+            Method: GET
+        InternalAreaInfo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/venue/area/info
+            Method: GET
+        InternalVenueAreas:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/venue/areas
+            Method: GET
+        InternalSeatInfo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/venue/seat/info
+            Method: GET
+        InternalSeats:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/venue/seats
+            Method: GET
+        InternalAreaBySeat:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/venue/area/by-seat
+            Method: GET
+        InternalAreaWithVenue:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/venue/area-with-venue
+            Method: GET
+        InternalAreaStatus:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/venue/area-status
+            Method: POST
+        # --- EventBridge Scheduler Trigger ---
+        SchedulerVenueRelease:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            Description: Auto-trigger venue release via EventBridge every 5 minutes
+            Enabled: true
+            Input: >-
+              {"httpMethod":"POST","path":"/internal/scheduler/venue-release","headers":{"X-Internal-Call":"true"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
+    Metadata:
+      DockerTag: !Sub "fpt-venue-${Environment}"
+      DockerContext: ./backend
+      Dockerfile: Dockerfile
+      DockerBuildArgs:
+        SERVICE: venue-lambda
+        BUILD_PATH: ./services/venue-lambda
+        GOARCH: arm64
+      DockerBuildTarget: lambda
+
+  # ----------------------------------------------------------
+  # 5. STAFF SERVICE
+  # ----------------------------------------------------------
+  StaffFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "fpt-events-staff-${Environment}"
+      Description: Staff Service - Check-in/out, Reports, System Config
+      ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fpt-events-staff-${Environment}:latest"
+      Policies:
+        - VPCAccessPolicy: {}
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:Invoke
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${InternalApi}/*"
+        - !Ref SSMReadPolicy
+        - !Ref SSMWritePolicy
+        - !Ref LambdaInvokePolicy
+      Events:
+        # --- Public Routes ---
+        StaffCheckin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/staff/checkin
+            Method: POST
+        StaffCheckout:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/staff/checkout
+            Method: POST
+        GetSystemConfig:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/admin/config/system
+            Method: GET
+        UpdateSystemConfig:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/admin/config/system
+            Method: POST
+        ListReports:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/staff/reports
+            Method: GET
+        ReportDetail:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/staff/reports/detail
+            Method: GET
+        ProcessReport:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/staff/reports/process
+            Method: POST
+        ApproveReport:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/staff/reports/approve
+            Method: POST
+        RejectReport:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/staff/reports/reject
+            Method: POST
+        GetReportById:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/staff/reports/{id}
+            Method: GET
+        SubmitReport:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/student/reports
+            Method: POST
+        PendingTicketIds:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /api/student/reports/pending-ticket-ids
+            Method: GET
+    Metadata:
+      DockerTag: !Sub "fpt-staff-${Environment}"
+      DockerContext: ./backend
+      Dockerfile: Dockerfile
+      DockerBuildArgs:
+        SERVICE: staff-lambda
+        BUILD_PATH: ./services/staff-lambda
+        GOARCH: arm64
+      DockerBuildTarget: lambda
+
+  # ----------------------------------------------------------
+  # 6. NOTIFICATION SERVICE (Internal only)
+  # ----------------------------------------------------------
+  NotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "fpt-events-notification-${Environment}"
+      Description: Notification Service - Email, PDF, QR generation
+      ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fpt-events-notification-${Environment}:latest"
+      Policies:
+        - VPCAccessPolicy: {}
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:Invoke
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${InternalApi}/*"
+        - !Ref SSMReadPolicy
+        - !Ref LambdaInvokePolicy
+      Events:
+        # --- Internal Routes Only ---
+        InternalSendEmail:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/notify/email
+            Method: POST
+        InternalSendTicketPDF:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/notify/ticket-pdf
+            Method: POST
+        InternalSendTickets:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/notify/send-tickets
+            Method: POST
+        InternalTicketConfirmation:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InternalApi
+            Path: /internal/notify/ticket-confirmation
+            Method: POST
+    Metadata:
+      DockerTag: !Sub "fpt-notification-${Environment}"
+      DockerContext: ./backend
+      Dockerfile: Dockerfile
+      DockerBuildArgs:
+        SERVICE: notification-lambda
+        BUILD_PATH: ./services/notification-lambda
+        GOARCH: arm64
+      DockerBuildTarget: lambda
+
+  # ==========================================================
+  # AUTO-SCALING - Provisioned Concurrency for critical paths
+  # ==========================================================
+
+  AuthFunctionAutoScaling:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: AuthFunctionAliaslive
+    Properties:
+      MaxCapacity: 10
+      MinCapacity: 0
+      ResourceId: !Sub "function:${AuthFunction}:live"
+      RoleARN: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/lambda.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_LambdaConcurrency"
+      ScalableDimension: lambda:function:ProvisionedConcurrency
+      ServiceNamespace: lambda
+
+  AuthFunctionAliaslive:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: !Ref AuthFunction
+      FunctionVersion: !GetAtt AuthFunction.Version
+      Name: live
+
+  AuthScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: AuthUtilizationScaling
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref AuthFunctionAutoScaling
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 0.7
+        PredefinedMetricSpecification:
+          PredefinedMetricType: LambdaProvisionedConcurrencyUtilization
+
+  TicketFunctionAutoScaling:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: TicketFunctionAliaslive
+    Properties:
+      MaxCapacity: 15
+      MinCapacity: 0
+      ResourceId: !Sub "function:${TicketFunction}:live"
+      RoleARN: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/lambda.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_LambdaConcurrency"
+      ScalableDimension: lambda:function:ProvisionedConcurrency
+      ServiceNamespace: lambda
+
+  TicketFunctionAliaslive:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: !Ref TicketFunction
+      FunctionVersion: !GetAtt TicketFunction.Version
+      Name: live
+
+  TicketScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: TicketUtilizationScaling
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref TicketFunctionAutoScaling
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 0.7
+        PredefinedMetricSpecification:
+          PredefinedMetricType: LambdaProvisionedConcurrencyUtilization
+
+  # ==========================================================
+  # CLOUDWATCH LOG GROUPS (with retention for cost control)
+  # ==========================================================
+
+  AuthLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/fpt-events-auth-${Environment}"
+      RetentionInDays: 14
+
+  EventLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/fpt-events-event-${Environment}"
+      RetentionInDays: 14
+
+  TicketLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/fpt-events-ticket-${Environment}"
+      RetentionInDays: 14
+
+  VenueLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/fpt-events-venue-${Environment}"
+      RetentionInDays: 14
+
+  StaffLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/fpt-events-staff-${Environment}"
+      RetentionInDays: 14
+
+  NotificationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/fpt-events-notification-${Environment}"
+      RetentionInDays: 14
+
+# ============================================================
+# OUTPUTS
+# ============================================================
+Outputs:
+  PublicApiUrl:
+    Description: Public API Gateway URL (for frontend)
+    Value: !Sub "https://${PublicApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicApiUrl"
+
+  InternalApiUrl:
+    Description: Internal API Gateway URL (VPC-only, for inter-service calls)
+    Value: !Sub "https://${InternalApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${AWS::StackName}-InternalApiUrl"
+
+  RDSEndpoint:
+    Description: RDS MySQL endpoint
+    Value: !GetAtt RDSInstance.Endpoint.Address
+    Export:
+      Name: !Sub "${AWS::StackName}-RDSEndpoint"
+
+  VPCId:
+    Description: VPC ID
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VPCId"
+
+  AuthFunctionArn:
+    Description: Auth Lambda ARN
+    Value: !GetAtt AuthFunction.Arn
+
+  EventFunctionArn:
+    Description: Event Lambda ARN
+    Value: !GetAtt EventFunction.Arn
+
+  TicketFunctionArn:
+    Description: Ticket Lambda ARN
+    Value: !GetAtt TicketFunction.Arn
+
+  VenueFunctionArn:
+    Description: Venue Lambda ARN
+    Value: !GetAtt VenueFunction.Arn
+
+  StaffFunctionArn:
+    Description: Staff Lambda ARN
+    Value: !GetAtt StaffFunction.Arn
+
+  NotificationFunctionArn:
+    Description: Notification Lambda ARN
+    Value: !GetAtt NotificationFunction.Arn

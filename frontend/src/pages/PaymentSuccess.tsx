@@ -29,6 +29,8 @@ export default function PaymentSuccess() {
   const [ticketIds, setTicketIds] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<string>('vnpay')
   const [showConfetti, setShowConfetti] = useState(true)
+  // Trạng thái gửi email: true nếu backend báo gửi thất bại (param emailFailed=1)
+  const [emailFailed, setEmailFailed] = useState(false)
 
   /**
    * useEffect: chạy mỗi khi query string thay đổi (location.search)
@@ -76,10 +78,14 @@ export default function PaymentSuccess() {
      */
     const ticketsParam = params.get('ticketIds') ?? params.get('ticketId')
     const method = params.get('method') ?? 'vnpay'
+    const emailFailedParam = params.get('emailFailed')
 
     // Cập nhật state để UI hiển thị "Mã vé: ..."
     setTicketIds(ticketsParam)
     setPaymentMethod(method)
+    if (emailFailedParam === '1') {
+      setEmailFailed(true)
+    }
 
     // Tắt confetti sau 5 giây
     const timer = setTimeout(() => setShowConfetti(false), 5000)
@@ -187,6 +193,18 @@ export default function PaymentSuccess() {
               Email xác nhận với <span className="font-semibold text-blue-700">mã QR check-in</span> và <span className="font-semibold text-blue-700">file PDF</span> đã được gửi đến hộp thư của bạn
             </p>
           </div>
+
+          {/* Cảnh báo nếu gửi mail thất bại */}
+          {emailFailed && (
+            <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl border-2 border-yellow-400">
+              <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <p className="text-sm text-yellow-800 font-medium leading-relaxed">
+                ⚠️ Giao dịch thành công nhưng gửi mail gặp sự cố, vui lòng tải vé thủ công từ mục <strong>"Vé của tôi"</strong>.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Hiển thị mã vé với box đẹp hơn */}

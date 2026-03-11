@@ -225,17 +225,13 @@ export default function Events() {
 
       const token = localStorage.getItem('token')
 
-      // Dùng application/x-www-form-urlencoded nên tạo URLSearchParams
-      const body = new URLSearchParams()
-      body.append('eventId', String(eventId))
-
       const res = await fetch('/api/event/disable', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         },
-        body: body.toString()
+        body: JSON.stringify({ eventId: Number(eventId) })
       })
 
       // Thử đọc JSON response (nếu BE trả JSON)

@@ -219,7 +219,7 @@ Response:
 │ 1. User clicks "Top-up Wallet"                             │
 │ 2. Backend generates payment URL + QR code                 │
 │    • QR contains: payment gateway URL                      │
-│    • Format: Base64 PNG (data:image/png;base64,...)       │
+│    • Format: Base64 PNG (data:image/png;base64,...)        │
 │ 3. User scans QR → Redirected to VNPAY                     │
 │ 4. Payment success → Callback updates User_Wallet          │
 │ 5. Frontend shows success with QR history                  │
@@ -298,22 +298,22 @@ CREATE TABLE Ticket (
 ┌─────────────────────────────────────────────────────────┐
 │ Event Lifecycle & Venue Status                          │
 │ ─────────────────────────────────────────────────────── │
-│                                                          │
-│ 1. PENDING Request → No venue allocated                │
+│                                                         │
+│ 1. PENDING Request → No venue allocated                 │
 │    Venue_Area.status = AVAILABLE                        │
-│                                                          │
-│ 2. APPROVED Request → Event created (status: UPDATING) │
+│                                                         │
+│ 2. APPROVED Request → Event created (status: UPDATING)  │
 │    Venue_Area.status = UNAVAILABLE                      │
 │    (Locked for organizer to configure)                  │
-│                                                          │
+│                                                         │
 │ 3. Organizer completes setup                            │
 │    Event.status = OPEN                                  │
 │    Venue_Area.status = UNAVAILABLE (still locked)       │
-│                                                          │
-│ 4. Event ends (end_time < NOW)                         │
+│                                                         │
+│ 4. Event ends (end_time < NOW)                          │
 │    Event.status = CLOSED                                │
-│    Venue_Area.status = AVAILABLE ✅ (Smart Janitor)    │
-│                                                          │
+│    Venue_Area.status = AVAILABLE ✅ (Smart Janitor)     │
+│                                                         │
 │ 5. Event cancelled by organizer                         │
 │    Event.status = CANCELLED                             │
 │    Venue_Area.status = AVAILABLE ✅ (Immediate release) │
@@ -835,106 +835,92 @@ fpt-event-management-system/  (Monorepo Root)
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Port Reference
 
-- **Go 1.24+** (Backend runtime)
-- **Node.js 18+** & npm (Frontend build tool)
-- **MySQL 8.0+** (Database)
-- **Git** (Version control)
+| Service | URL | Notes |
+|---------|-----|-------|
+| **Frontend** (Vite) | http://localhost:3000 | React SPA |
+| **API Gateway** | http://localhost:8080 | Single entry-point for all API calls |
+| **Auth Service** | http://localhost:8081 | Internal — do not call directly |
+| **Event Service** | http://localhost:8082 | Internal |
+| **Ticket Service** | http://localhost:8083 | Internal |
+| **Venue Service** | http://localhost:8084 | Internal |
+| **Staff Service** | http://localhost:8085 | Internal |
+| **Notification Service** | http://localhost:8086 | Internal |
+| **MySQL** | localhost:3306 | Accessible from host for tools like MySQL Workbench |
 
-### Step 1: Clone Repository
+---
+
+### Option A — Docker Compose (Recommended)
+
+**Prerequisites:** Docker Desktop (or Docker Engine + Compose plugin)
 
 ```bash
 git clone <repository-url>
 cd fpt-event-management-system
+
+# First run: build all images + start all 9 containers
+docker compose up --build
+
+# Subsequent runs (uses cached images — much faster)
+docker compose up
+
+# Stop everything
+docker compose down
+
+# Stop + wipe the database volume (fresh start)
+docker compose down -v
 ```
 
-### Step 2: Backend Setup
+> **What happens on `docker compose up --build`:**
+> 1. **MySQL** starts with `--lower-case-table-names=1` (Linux case-insensitivity fix) and auto-imports `Database/FPTEventManagement_v5.sql`
+> 2. **6 Go microservices** compile in parallel via multi-stage Docker builds (~25 MB images each)
+> 3. **API Gateway** starts after all 6 services are healthy
+> 4. **Frontend** (Vite dev server) starts after the gateway, with the `/api` proxy pointing at the gateway container
 
-#### 2.1 Database Configuration
-
-Create MySQL database:
-
-```sql
-CREATE DATABASE IF NOT EXISTS fpt_event_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE fpt_event_db;
-
--- Tables will be auto-created on first backend run
--- Or import schema from services/migrations/ (if available)
-```
-
-#### 2.2 Environment Variables
-
-Create `.env` file in `backend/` directory:
-
-```env
-# Database
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=fpt_event_db
-
-# JWT Authentication
-JWT_SECRET=your_jwt_secret_key_min_32_chars_long
-JWT_EXPIRY=24h
-
-# Supabase Storage (for images)
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your_supabase_anon_key
-***REMOVED***=your_service_role_key
-
-# VNPay Payment Gateway
-VNPAY_TMN_CODE=your_vnpay_terminal_code
-VNPAY_HASH_SECRET=your_vnpay_hash_secret
-VNPAY_RETURN_URL=http://localhost:5173/payment/callback
-
-# Email (SMTP)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your_email@gmail.com
-SMTP_PASSWORD=your_app_password
-
-# Google reCAPTCHA
-***REMOVED***=your_recaptcha_secret
-```
-
-#### 2.3 Install Dependencies & Run
-
+**Rebuild a single service after a code change:**
 ```bash
-cd backend
-go mod download
-go run main.go
+docker compose up --build auth-service
 ```
-
-**Expected output:**
-```
-[DB] Database connected successfully
-[SCHEDULER] Event cleanup job started (runs every 60 minutes)
-[SCHEDULER] Expired requests cleanup job started (runs every 60 minutes)
-[SCHEDULER] Venue release job started (runs every 5 minutes)
-[SCHEDULER] Pending ticket cleanup job started (runs every 10 minutes)
-[HTTP] Server listening on :8080
-```
-
-Backend API is now available at **http://localhost:8080**
 
 ---
 
-### Step 3: Frontend Setup
+### Option B — Local (Without Docker)
 
-#### 3.1 Environment Variables
+**Prerequisites:** Go 1.24+, Node.js 20+, MySQL 8.0 running locally
 
-Create `.env` file in `frontend/` directory:
+#### Step 1: Configure environment
 
+Edit `backend/.env` — the default values work for a local MySQL on `localhost:3306`.
+
+Key variables to verify:
 ```env
-VITE_API_BASE_URL=http://localhost:8080
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_RECAPTCHA_SITE_KEY=your_recaptcha_site_key
+DB_URL=root:12345@tcp(localhost:3306)/fpteventmanagement?parseTime=true&loc=Asia%2FHo_Chi_Minh
+JWT_SECRET=your-secret-here
 ```
 
-#### 3.2 Install Dependencies & Run
+#### Step 2: Import database schema
+
+```sql
+-- In MySQL Workbench or CLI:
+SOURCE Database/FPTEventManagement_v5.sql;
+```
+
+#### Step 3: Start all backend services
+
+```powershell
+# Windows PowerShell
+.\scripts\legacy\run-microservices.ps1 -Build
+```
+
+```bash
+# macOS / Linux
+bash scripts/legacy/run-microservices.sh
+```
+
+Expected: 7 processes start on ports 8080–8086.
+
+#### Step 4: Start frontend
 
 ```bash
 cd frontend
@@ -942,35 +928,72 @@ npm install
 npm run dev
 ```
 
-**Expected output:**
-```
-VITE v5.0.8  ready in 324 ms
+Frontend available at **http://localhost:3000**
 
-➜  Local:   http://localhost:5173/
-➜  Network: use --host to expose
+---
+
+### AWS Configuration (for cloud deployment)
+
+Add the following to `backend/.env.docker` before pushing to AWS:
+
+```env
+# AWS Identity (used by Lambda for S3, SSM access)
+# Leave blank when running on Lambda — IAM role handles this automatically.
+# Only needed for local testing of AWS SDK calls.
+AWS_ACCESS_KEY_ID=your-access-key
+***REMOVED***=your-secret-key
+AWS_REGION=ap-southeast-1
+
+# S3 Bucket (for banner image uploads)
+S3_BUCKET=fpt-events-media-prod
+S3_REGION=ap-southeast-1
+
+# SMTP, VNPay, reCAPTCHA — already in .env.docker
 ```
 
-Frontend is now available at **http://localhost:5173**
+**Deploy to AWS Lambda (Container Image):**
+```bash
+# Build and push auth-service image to ECR (arm64 Graviton2)
+docker build \
+  --target lambda \
+  --build-arg BUILD_PATH=./services/auth-lambda \
+  --build-arg GOARCH=arm64 \
+  --platform linux/arm64 \
+  -t <account>.dkr.ecr.ap-southeast-1.amazonaws.com/fpt-auth:latest \
+  ./backend
+
+aws ecr get-login-password --region ap-southeast-1 | \
+  docker login --username AWS --password-stdin \
+  <account>.dkr.ecr.ap-southeast-1.amazonaws.com
+
+docker push <account>.dkr.ecr.ap-southeast-1.amazonaws.com/fpt-auth:latest
+
+# Deploy all services via AWS SAM
+sam deploy --config-file samconfig.toml
+```
 
 ---
 
 ### Step 4: Verify Installation
 
-1. **Backend Health Check:**
+1. **API Gateway Health Check:**
    ```bash
-   curl http://localhost:8080/api/health
+   curl http://localhost:8080/health
    ```
-   Expected: `{"status": "ok"}`
+   Expected: `{"status":"UP"}`
 
-2. **Frontend Access:**
-   Open browser: http://localhost:5173
-   You should see the event listing page.
-
-3. **Database Tables Created:**
-   ```sql
-   SHOW TABLES;
+2. **Individual Service Health Check:**
+   ```bash
+   curl http://localhost:8081/health   # Auth
+   curl http://localhost:8082/health   # Event
    ```
-   Expected: `users`, `Event`, `Ticket`, `Venue`, `Venue_Area`, `Seat`, etc.
+
+3. **Frontend Access:**
+   Open browser: http://localhost:3000 — you should see the event listing page.
+
+4. **Database Check (MySQL Workbench):**
+   Connect to `localhost:3306`, user `root`, password `12345`
+   Run `SHOW TABLES;` — expect: `users`, `Event`, `Ticket`, `Venue`, `Venue_Area`, `Seat`, etc.
 
 ---
 

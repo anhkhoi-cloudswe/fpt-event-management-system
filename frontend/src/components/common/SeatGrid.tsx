@@ -116,9 +116,12 @@ export function SeatGrid({
   // Nếu mảng ghế rỗng => báo không còn ghế
   if (allSeats.length === 0) {
     return (
-      <p className="text-gray-600 mb-4">
-        Hiện không còn ghế trống trong khu vực này.
-      </p>
+      <div className="text-gray-600 mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <p className="font-medium text-yellow-800">Không có ghế nào được gán loại vé cho khu vực này.</p>
+        <p className="text-xs text-yellow-700 mt-1">
+          Kiểm tra: category_ticket_id trong bảng Seat có khớp với loại vé của sự kiện không?
+        </p>
+      </div>
     )
   }
 
@@ -146,13 +149,8 @@ export function SeatGrid({
         return seat.seatType
       }
 
-      // TERTIARY: Fallback to row letter (A-C = VIP, D-J = Standard)
-      const rowKey = seat.seatRow || seat.rowNo || seat.seatCode.charAt(0)
-      if (rowKey) {
-        const rowCode = rowKey.toUpperCase()
-        if (['A', 'B', 'C'].includes(rowCode)) return 'VIP'
-        if (['D', 'E', 'F', 'G', 'H', 'I', 'J'].includes(rowCode)) return 'STANDARD'
-      }
+      // TERTIARY: không thể xác định danh mục → đánh dấu UNALLOCATED (sẽ bị lọc bỏ)
+      return 'UNALLOCATED'
     }
 
     // Seat is unallocated (no categoryTicketId)
@@ -272,8 +270,8 @@ export function SeatGrid({
   }
 
   // ===================== PREPARE CATEGORY SECTIONS FOR RENDERING =====================
-  // ✅ FIXED: Display VIP, STANDARD, and UNALLOCATED sections
-  // UNALLOCATED rows needed to maintain 10-seat-per-row structure and prevent row splitting
+  // Chỉ hiển thị VIP SECTION và STANDARD SECTION.
+  // UNALLOCATED không được render — ghế không thuộc event đã bị lọc ở backend.
   const sectionOrder: Array<{ key: string; label: string; borderColor: string; bgColor: string; labelStyle: string }> = [
     {
       key: 'VIP',
@@ -289,13 +287,6 @@ export function SeatGrid({
       bgColor: 'bg-blue-50/30',
       labelStyle: 'px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full border border-blue-300'
     },
-    {
-      key: 'UNALLOCATED',
-      label: 'GHẾỞ TRỐNG',
-      borderColor: 'border-gray-300',
-      bgColor: 'bg-gray-50/20',
-      labelStyle: 'px-3 py-1 bg-gray-100 text-gray-500 text-xs font-semibold rounded-full border border-gray-300'
-    }
   ]
 
   // Filter out empty sections
@@ -351,8 +342,8 @@ export function SeatGrid({
                         {/* Seat grid container with category border */}
                         <div
                           className={`flex ${compactMode
-                              ? 'gap-0.5 sm:gap-2 overflow-x-auto hide-scrollbar flex-nowrap py-1'
-                              : 'gap-1 sm:gap-2 overflow-x-auto hide-scrollbar flex-nowrap py-1'
+                            ? 'gap-0.5 sm:gap-2 overflow-x-auto hide-scrollbar flex-nowrap py-1'
+                            : 'gap-1 sm:gap-2 overflow-x-auto hide-scrollbar flex-nowrap py-1'
                             } ${isFirstRow ? 'pt-3' : ''
                             } ${isLastRow ? 'pb-3' : ''
                             } pl-2 pr-2 border-l-4 border-r-4 ${section.borderColor} ${isFirstRow ? 'border-t-4 rounded-t-lg' : ''
@@ -378,8 +369,8 @@ export function SeatGrid({
                                   !allowSelect
                                 }
                                 className={`${compactMode
-                                    ? 'w-6 h-6 sm:w-10 sm:h-8 text-[9px] sm:text-[11px]'
-                                    : 'w-8 h-7 sm:w-12 sm:h-10 text-[10px] sm:text-xs'
+                                  ? 'w-6 h-6 sm:w-10 sm:h-8 text-[9px] sm:text-[11px]'
+                                  : 'w-8 h-7 sm:w-12 sm:h-10 text-[10px] sm:text-xs'
                                   } border-2 rounded-lg font-medium transition-colors flex-shrink-0 ${getSeatColor(
                                     seat,
                                     selectedSeats.some((s) => s.seatId === seat.seatId),
@@ -401,8 +392,8 @@ export function SeatGrid({
                               <div
                                 key={`empty-${row}-${index}`}
                                 className={`${compactMode
-                                    ? 'w-6 h-6 sm:w-10 sm:h-8 flex-shrink-0'
-                                    : 'w-8 h-7 sm:w-12 sm:h-10 flex-shrink-0'
+                                  ? 'w-6 h-6 sm:w-10 sm:h-8 flex-shrink-0'
+                                  : 'w-8 h-7 sm:w-12 sm:h-10 flex-shrink-0'
                                   }`}
                               ></div>
                             ),

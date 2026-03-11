@@ -6,20 +6,23 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/fpt-event-services/common/db"
 	"github.com/fpt-event-services/common/hash"
+	"github.com/fpt-event-services/common/logger"
 	"github.com/fpt-event-services/services/auth-lambda/models"
 )
+
+var log = logger.Default()
 
 // UserRepository handles user data access
 type UserRepository struct {
 	db *sql.DB
 }
 
-// NewUserRepository creates a new user repository
-func NewUserRepository() *UserRepository {
+// NewUserRepositoryWithDB creates a new user repository with explicit DB connection (DI)
+// All DB connections must be injected from main.go - no singleton db.GetDB() allowed
+func NewUserRepositoryWithDB(dbConn *sql.DB) *UserRepository {
 	return &UserRepository{
-		db: db.GetDB(),
+		db: dbConn,
 	}
 }
 
@@ -46,29 +49,26 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			fmt.Printf("❌ Login failed: User not found - Email: %s\n", email)
+			log.Warn("CheckLogin - user not found email=%s", email)
 			return nil, errors.New("user not found")
 		}
-		fmt.Printf("❌ Login failed: Database error - %v\n", err)
+		log.Error("CheckLogin - database error: %v", err)
 		return nil, fmt.Errorf("failed to query user: %w", err)
 	}
 
-	fmt.Printf("🔍 Login attempt - Email: %s, Role: %s, Status: %s\n", user.Email, user.Role, user.Status)
-
 	// Verify password
 	if !hash.VerifyPassword(password, user.PasswordHash) {
-		fmt.Printf("❌ Login failed: Invalid password for %s\n", email)
-		fmt.Printf("   Password hash in DB: %s\n", user.PasswordHash)
+		log.Warn("CheckLogin - invalid password for email=%s", email)
 		return nil, errors.New("invalid password")
 	}
 
 	// Check if user is blocked
 	if user.Status == "BLOCKED" {
-		fmt.Printf("❌ Login failed: User blocked - %s\n", email)
+		log.Warn("CheckLogin - user blocked email=%s", email)
 		return nil, errors.New("user is blocked")
 	}
 
-	fmt.Printf("✅ Login successful - Email: %s, UserID: %d\n", user.Email, user.ID)
+	log.Info("CheckLogin - success email=%s userID=%d", user.Email, user.ID)
 	return &user, nil
 }
 
