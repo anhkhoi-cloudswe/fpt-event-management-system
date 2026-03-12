@@ -674,8 +674,8 @@ export default function EventRequestEdit() {
      *   - If OK → proceed to Step 2
      *
      * Step 2 (Upload):
-     *   - Upload banner to Supabase (if new)
-     *   - Upload avatar to Supabase (if new)
+     *   - Upload banner to AWS S3 via backend (if new)
+     *   - Upload avatar to AWS S3 via backend (if new)
      *   - If any upload fails → show warning, continue with old URLs
      *
      * Step 3 (Commit):

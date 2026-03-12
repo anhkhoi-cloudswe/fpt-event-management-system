@@ -39,7 +39,7 @@ export default function CancelTicketModal({
     setIsUploading(true)
 
     try {
-      // Upload lên Supabase
+      // Upload lên AWS S3 via backend
       const url = await uploadEventBanner(file, 'user-uploads')
       setImageUrl(url)
       showToast('success', 'Upload ảnh thành công')
