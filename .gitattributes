@@ -1,0 +1,9 @@
+# Git attributes for environment files
+# Apply filters to prevent accidentally committing secrets
+
+backend/.env filter=credentials diff=credentials
+frontend/.env filter=credentials diff=credentials
+
+# Mark these files as merge driver to avoid conflicts
+backend/.env merge=ours
+frontend/.env merge=ours
