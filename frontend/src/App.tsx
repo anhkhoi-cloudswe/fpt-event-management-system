@@ -30,7 +30,6 @@ import CategoryTickets from './pages/CategoryTickets.tsx'
 import AdminDashboard from './pages/AdminDashboard.tsx'
 import Layout from './components/Layout.tsx'
 import GuestLanding from './pages/GuestLanding.tsx'
-import ImageUploadTest from './pages/ImageUploadTest.tsx'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -102,7 +101,6 @@ function AppRoutes() {
           </StaffRoute>
         } />
         <Route path="system-config" element={<SystemConfig />} />
-        <Route path="image-upload-test" element={<ImageUploadTest />} />
       </Route>
       <Route
         path="/"
