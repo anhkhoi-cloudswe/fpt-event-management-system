@@ -233,6 +233,9 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
     environment:
       # Used by vite.config.ts to point the /api proxy at the gateway container.
       # The browser sends requests to http://localhost:3000/api/...
