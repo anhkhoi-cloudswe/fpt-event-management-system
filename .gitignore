@@ -1,3 +1,5 @@
+# Ignore environment and local secrets
+backend/.env
 # Root level gitignore for FPT Event Management System
 
 # Backend
