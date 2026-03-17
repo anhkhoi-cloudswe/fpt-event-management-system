@@ -34,6 +34,9 @@ type Route struct {
 var routes = []Route{
 	// ========== Auth Service (8081) ==========
 	{"/api/login", "Auth"},
+	{"/api/logout", "Auth"},
+	{"/api/v1/auth/me", "Auth"},
+	{"/api/auth/me", "Auth"},
 	{"/api/register", "Auth"},
 	{"/api/forgot-password", "Auth"},
 	{"/api/reset-password", "Auth"},
@@ -140,6 +143,16 @@ func createProxy(target string) (*httputil.ReverseProxy, error) {
 		return nil, err
 	}
 	proxy := httputil.NewSingleHostReverseProxy(u)
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		// Gateway owns CORS policy to keep cookie-based auth consistent.
+		resp.Header.Del("Access-Control-Allow-Origin")
+		resp.Header.Del("Access-Control-Allow-Credentials")
+		resp.Header.Del("Access-Control-Allow-Methods")
+		resp.Header.Del("Access-Control-Allow-Headers")
+		resp.Header.Del("Access-Control-Expose-Headers")
+		resp.Header.Del("Access-Control-Max-Age")
+		return nil
+	}
 
 	// Custom error handler
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
@@ -161,9 +174,19 @@ func createProxy(target string) (*httputil.ReverseProxy, error) {
 // If no token is present, the request passes through without identity headers (public APIs).
 func jwtMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
-			token := authHeader[7:]
+		token := ""
+		if cookie, err := r.Cookie("token"); err == nil && strings.TrimSpace(cookie.Value) != "" {
+			token = cookie.Value
+		}
+
+		if token == "" {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+				token = authHeader[7:]
+			}
+		}
+
+		if token != "" {
 			claims, err := jwt.ValidateToken(token)
 			if err != nil {
 				log.Printf("[GATEWAY] [JWT] ❌ Token validation failed: %v", err)

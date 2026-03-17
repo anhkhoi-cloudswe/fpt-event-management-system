@@ -59,7 +59,7 @@ services:
       MYSQL_DATABASE: fpteventmanagement
       TZ: Asia/Ho_Chi_Minh
     ports:
-      - "3306:3306" # expose to host so you can connect via MySQL Workbench
+      - "127.0.0.1:3306:3306" # expose to host so you can connect via MySQL Workbench
     volumes:
       - mysql-data:/var/lib/mysql
       # Auto-import schema on first boot (runs only when data volume is empty)
@@ -75,7 +75,7 @@ services:
       - fpt-network
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Auth Service — port 8081
+  # Auth Service
   # ──────────────────────────────────────────────────────────────────────────
   auth-service:
     build:
@@ -85,16 +85,16 @@ services:
         BUILD_PATH: ./services/auth-lambda
     container_name: fpt-auth
     <<: *service-defaults
-    ports:
-      - "8081:8081"
     environment:
       LOCAL_PORT: "8081"
+      DB_HOST: "mysql"
+      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
     depends_on:
       mysql:
         condition: service_healthy
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Event Service — port 8082
+  # Event Service
   # ──────────────────────────────────────────────────────────────────────────
   event-service:
     build:
@@ -104,16 +104,16 @@ services:
         BUILD_PATH: ./services/event-lambda
     container_name: fpt-event
     <<: *service-defaults
-    ports:
-      - "8082:8082"
     environment:
       LOCAL_PORT: "8082"
+      DB_HOST: "mysql"
+      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
     depends_on:
       mysql:
         condition: service_healthy
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Ticket Service — port 8083
+  # Ticket Service
   # ──────────────────────────────────────────────────────────────────────────
   ticket-service:
     build:
@@ -123,16 +123,16 @@ services:
         BUILD_PATH: ./services/ticket-lambda
     container_name: fpt-ticket
     <<: *service-defaults
-    ports:
-      - "8083:8083"
     environment:
       LOCAL_PORT: "8083"
+      DB_HOST: "mysql"
+      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
     depends_on:
       mysql:
         condition: service_healthy
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Venue Service — port 8084
+  # Venue Service
   # ──────────────────────────────────────────────────────────────────────────
   venue-service:
     build:
@@ -142,16 +142,16 @@ services:
         BUILD_PATH: ./services/venue-lambda
     container_name: fpt-venue
     <<: *service-defaults
-    ports:
-      - "8084:8084"
     environment:
       LOCAL_PORT: "8084"
+      DB_HOST: "mysql"
+      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
     depends_on:
       mysql:
         condition: service_healthy
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Staff Service — port 8085
+  # Staff Service
   # ──────────────────────────────────────────────────────────────────────────
   staff-service:
     build:
@@ -161,16 +161,16 @@ services:
         BUILD_PATH: ./services/staff-lambda
     container_name: fpt-staff
     <<: *service-defaults
-    ports:
-      - "8085:8085"
     environment:
       LOCAL_PORT: "8085"
+      DB_HOST: "mysql"
+      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
     depends_on:
       mysql:
         condition: service_healthy
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Notification Service — port 8086
+  # Notification Service
   # ──────────────────────────────────────────────────────────────────────────
   notification-service:
     build:
@@ -180,10 +180,10 @@ services:
         BUILD_PATH: ./services/notification-lambda
     container_name: fpt-notification
     <<: *service-defaults
-    ports:
-      - "8086:8086"
     environment:
       LOCAL_PORT: "8086"
+      DB_HOST: "mysql"
+      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
     depends_on:
       mysql:
         condition: service_healthy

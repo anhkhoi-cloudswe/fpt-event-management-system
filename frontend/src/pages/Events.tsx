@@ -136,7 +136,7 @@ export default function Events() {
    */
   const fetchEvents = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       const response = await fetch('/api/events', {
         headers: {
@@ -175,7 +175,7 @@ export default function Events() {
   const fetchEventDetail = async (eventId: number) => {
     setLoadingDetail(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       const response = await fetch(
         `/api/events/detail?id=${eventId}`,
@@ -223,7 +223,7 @@ export default function Events() {
       // Thêm eventId vào list disabling để UI disable nút
       setDisablingIds(prev => [...prev, eventId])
 
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       const res = await fetch('/api/event/disable', {
         method: 'POST',
@@ -655,7 +655,7 @@ export default function Events() {
         event={selectedEvent}
         loading={loadingDetail}
         error={null}
-        token={localStorage.getItem('token')}
+        token={null}
         userRole={user?.role}        // truyền role để ẩn chọn ghế cho ORGANIZER/STAFF/ADMIN
       />
 

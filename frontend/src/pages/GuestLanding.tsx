@@ -159,7 +159,7 @@ export default function GuestLanding() {
 
         // Get token from localStorage
         const token =
-          typeof window !== 'undefined' ? localStorage.getItem('token') : null
+          typeof window !== 'undefined' ? 'cookie-auth' : null
 
         // Gọi API với Authorization header (nếu có token)
         const headers: Record<string, string> = {

@@ -138,7 +138,7 @@ export default function Payment() {
   useEffect(() => {
     const fetchWalletBalance = async () => {
       try {
-        const savedToken = token ?? localStorage.getItem('token')
+        const savedToken = token ?? 'cookie-auth'
         const userId = (user as any)?.userId ?? (user as any)?.id
 
         if (!userId || !savedToken) {
@@ -181,7 +181,7 @@ export default function Payment() {
         // Fetch event details from API
         const response = await fetch(`/api/events/${state.eventId}`, {
           headers: {
-            'Authorization': `Bearer ${token || localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token || 'cookie-auth'}`
           }
         })
 
@@ -415,7 +415,7 @@ export default function Payment() {
     // (4) GỬI REQUEST WALLET PAYMENT QUA FETCH API
     // ======================================================
     try {
-      const savedToken = token ?? localStorage.getItem('token')
+      const savedToken = token ?? 'cookie-auth'
 
       const response = await fetch('/api/wallet/pay-ticket', {
         method: 'POST',

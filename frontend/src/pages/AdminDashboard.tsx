@@ -70,7 +70,7 @@ export default function AdminDashboard() {
     // GET http://localhost:3000/api/admin/users
     // Uses stored `token` for Authorization header (Bearer)
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       const response = await fetch('/api/users/staff-organizer', {
         headers: {
@@ -129,7 +129,7 @@ export default function AdminDashboard() {
     // POST http://localhost:3000/api/admin/create-account
     // Expects body: { fullName, phone, email, password, role }
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       const response = await fetch('/api/admin/create-account', {
         method: 'POST',
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
     // PUT http://localhost:3000/api/admin/create-account
     // Body: { id, fullName, phone, role, status, password }
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       // Build payload matching the backend requirement
       const payload: any = {
         id: data.userId,
@@ -206,7 +206,7 @@ export default function AdminDashboard() {
     // Body: { id }
     // On success refetches the user list
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       // Use query param for DELETE: /api/admin/create-account?id=1
       const url = `/api/admin/create-account?id=${encodeURIComponent(userId)}`
       const response = await fetch(url, {

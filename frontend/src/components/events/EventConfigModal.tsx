@@ -47,7 +47,7 @@ export function EventConfigModal({
     const [error, setError] = useState<string | null>(null)
 
     const token =
-        typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        typeof window !== 'undefined' ? 'cookie-auth' : null
 
     /**
      * useEffect: Load config khi modal mở

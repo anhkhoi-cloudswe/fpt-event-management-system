@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/venue-lambda/scheduler"
 )
 
@@ -40,7 +41,7 @@ func (h *VenueSchedulerHandler) HandleVenueRelease(ctx context.Context, request 
 }
 
 func isVenueSchedulerCall(request events.APIGatewayProxyRequest) bool {
-	return request.Headers["X-Internal-Call"] == "true"
+	return utils.IsValidInternalToken(request.Headers)
 }
 
 func venueSchedulerResponse(status int, body interface{}) (events.APIGatewayProxyResponse, error) {

@@ -45,7 +45,7 @@ func (r *StaffRepository) getTicketForCheckinAPI(ctx context.Context, ticketID i
 	log.Info("[API_COMPOSITION] 🔄 GetTicketForCheckin via API: ticketID=%d", ticketID)
 
 	client := utils.NewInternalClient()
-	ctx = utils.WithRequestHeaders(ctx, map[string]string{"X-Internal-Call": "true"})
+	ctx = utils.WithRequestHeaders(ctx, map[string]string{"X-Internal-Token": utils.GetInternalAuthToken()})
 	ticketURL := utils.GetTicketServiceURL()
 
 	// 1) Gọi /internal/ticket/info → ticket basic info
@@ -334,7 +334,7 @@ func (r *StaffRepository) updateTicketCheckinAPI(ctx context.Context, ticketID i
 	log.Info("[API_COMPOSITION] 🔄 UpdateTicketCheckin via API: ticketID=%d", ticketID)
 
 	client := utils.NewInternalClient()
-	ctx = utils.WithRequestHeaders(ctx, map[string]string{"X-Internal-Call": "true"})
+	ctx = utils.WithRequestHeaders(ctx, map[string]string{"X-Internal-Token": utils.GetInternalAuthToken()})
 	ticketURL := utils.GetTicketServiceURL()
 
 	type checkinResp struct {
@@ -391,7 +391,7 @@ func (r *StaffRepository) updateTicketCheckoutAPI(ctx context.Context, ticketID 
 	log.Info("[API_COMPOSITION] 🔄 UpdateTicketCheckout via API: ticketID=%d", ticketID)
 
 	client := utils.NewInternalClient()
-	ctx = utils.WithRequestHeaders(ctx, map[string]string{"X-Internal-Call": "true"})
+	ctx = utils.WithRequestHeaders(ctx, map[string]string{"X-Internal-Token": utils.GetInternalAuthToken()})
 	ticketURL := utils.GetTicketServiceURL()
 
 	type checkoutResp struct {
@@ -562,7 +562,7 @@ func (r *StaffRepository) getReportsForStaffComposed(ctx context.Context) ([]mod
 	}
 
 	client := utils.NewInternalClient()
-	ctx = utils.WithRequestHeaders(ctx, map[string]string{"X-Internal-Call": "true"})
+	ctx = utils.WithRequestHeaders(ctx, map[string]string{"X-Internal-Token": utils.GetInternalAuthToken()})
 
 	// 2) Enrich each report with user + ticket info
 	for i := range reportRows {
@@ -721,7 +721,7 @@ func (r *StaffRepository) getReportDetailForStaffComposed(ctx context.Context, r
 	}
 
 	client := utils.NewInternalClient()
-	ctx = utils.WithRequestHeaders(ctx, map[string]string{"X-Internal-Call": "true"})
+	ctx = utils.WithRequestHeaders(ctx, map[string]string{"X-Internal-Token": utils.GetInternalAuthToken()})
 
 	// 2) Auth Service → student name
 	authURL := utils.GetAuthServiceURL()

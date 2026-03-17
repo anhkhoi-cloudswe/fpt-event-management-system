@@ -5,11 +5,11 @@ export type UserRole = 'STUDENT' | 'ORGANIZER' | 'STAFF' | 'ADMIN'
 
 export interface User {
   id: number
-  fullName: string
+  fullName?: string
   email: string
   phone?: string
   role: UserRole
-  status: string
+  status?: string
   createdAt?: string
   wallet?: number
 }
@@ -17,7 +17,6 @@ export interface User {
 interface AuthContextType {
   user: User | null
   token: string | null
-  // allow functional updates: setUser(prev => ...)
   setUser: React.Dispatch<React.SetStateAction<User | null>>
   setToken: (token: string | null) => void
   login: (email: string, password: string, role: UserRole) => void
@@ -28,55 +27,57 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('user')
-    return saved ? JSON.parse(saved) : null
-  })
+  const [user, setUser] = useState<User | null>(null)
+  // Keep token state only for compatibility with existing consumers.
+  const [token, setToken] = useState<string | null>(null)
 
-  const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('token')
-  })
-
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('user', JSON.stringify(user))
-    } else {
-      localStorage.removeItem('user')
-    }
-  }, [user])
-
-  useEffect(() => {
-    if (token) {
-      localStorage.setItem('token', token)
-    } else {
-      localStorage.removeItem('token')
-    }
-  }, [token])
-
-  const login = (email: string, password: string, role: UserRole) => {
-    // This function is kept for compatibility but is not used
-    // The actual login is done via setUser in Login.tsx
+  const login = (_email: string, _password: string, _role: UserRole) => {
+    // Compatibility no-op. Actual login is handled in Login.tsx.
   }
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/auth/me', {
+        method: 'GET',
+        cache: 'no-store',
+        credentials: 'include',
+      })
+
+      if (!res.ok) {
+        setUser(null)
+        return
+      }
+
+      const data = await res.json()
+      const userObj = data?.user ?? data
+      if (userObj) {
+        setUser(userObj)
+      }
+    } catch (err) {
+      console.error('refreshUser error:', err)
+      setUser(null)
+    }
+  }, [])
+
   const logout = useCallback(() => {
+    void axios.post('/api/logout', null, { withCredentials: true }).catch(() => undefined)
     setUser(null)
     setToken(null)
   }, [])
 
-  // ── Axios interceptor: force logout on 401 (stale/invalid token) ──
   useEffect(() => {
+    localStorage.removeItem('token')
+  }, [])
+
+  useEffect(() => {
+    axios.defaults.withCredentials = true
+
     const interceptorId = axios.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          console.warn('[Auth] Received 401 — clearing stale token and forcing re-login')
-          // Immediately purge localStorage so no stale token survives a refresh
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          // Then update React state (triggers re-render)
           setUser(null)
           setToken(null)
-          // Redirect to login if not already there
           if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
             window.location.href = '/login'
           }
@@ -84,40 +85,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return Promise.reject(error)
       }
     )
+
     return () => {
       axios.interceptors.response.eject(interceptorId)
     }
   }, [])
 
-  // Refresh user profile from backend and update context + localStorage
-  const refreshUser = async () => {
-    try {
-      const savedToken = token ?? localStorage.getItem('token')
-      if (!savedToken) return
-
-      // Default endpoint - change if your backend uses a different path
-      const res = await fetch('/api/auth/me', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${savedToken}`,
-        },
-        cache: 'no-store',
-        credentials: 'include',
-      })
-
-      if (!res.ok) return
-
-      const data = await res.json()
-      // Some backends return { user: { ... } }
-      const userObj = data?.user ?? data
-      if (userObj) {
-        setUser(userObj)
-        try { localStorage.setItem('user', JSON.stringify(userObj)) } catch (_) { }
-      }
-    } catch (err) {
-      console.error('refreshUser error:', err)
-    }
-  }
+  useEffect(() => {
+    void refreshUser()
+  }, [refreshUser])
 
   return (
     <AuthContext.Provider value={{ user, token, setUser, setToken, login, logout, refreshUser }}>
@@ -133,4 +109,3 @@ export function useAuth() {
   }
   return context
 }
-

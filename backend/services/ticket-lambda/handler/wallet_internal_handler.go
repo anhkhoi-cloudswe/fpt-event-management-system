@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
 	walletModels "github.com/fpt-event-services/common/models"
+	"github.com/fpt-event-services/common/utils"
 )
 
 // ============================================================
@@ -681,8 +682,7 @@ func (h *WalletInternalHandler) ensureWalletExists(ctx context.Context, tx *sql.
 
 // isWalletInternalCall kiểm tra request có phải từ internal service không
 func isWalletInternalCall(request events.APIGatewayProxyRequest) bool {
-	return request.Headers["X-Internal-Call"] == "true" ||
-		request.Headers["x-internal-call"] == "true"
+	return utils.IsValidInternalToken(request.Headers)
 }
 
 // generateUUID tạo UUID v4 sử dụng crypto/rand (không cần external dependency)

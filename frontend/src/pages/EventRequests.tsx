@@ -210,7 +210,7 @@ export default function EventRequests() {
    */
   const fetchEventRequests = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       // Staff thấy tất cả requests, Organizer chỉ thấy của mình
       const endpoint = isStaff
@@ -398,7 +398,7 @@ export default function EventRequests() {
     if (!requestToProcess) return
 
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       // payload gửi BE xử lý - Backend yêu cầu action phải là "APPROVED" hoặc "REJECTED" (có D)
       const payload = {
@@ -480,7 +480,7 @@ export default function EventRequests() {
     }
 
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       const userIdStr = localStorage.getItem('userId')
 
       // Use eventId if available (for approved events), otherwise use requestId

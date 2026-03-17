@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/event-lambda/scheduler"
 )
 
@@ -56,7 +57,7 @@ func (h *EventSchedulerHandler) HandleExpiredRequests(ctx context.Context, reque
 
 // isSchedulerCall validates that the request comes from an internal caller or EventBridge.
 func isSchedulerCall(request events.APIGatewayProxyRequest) bool {
-	return request.Headers["X-Internal-Call"] == "true"
+	return utils.IsValidInternalToken(request.Headers)
 }
 
 func schedulerResponse(status int, body interface{}) (events.APIGatewayProxyResponse, error) {

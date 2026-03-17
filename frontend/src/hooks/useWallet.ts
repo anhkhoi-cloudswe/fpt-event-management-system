@@ -43,7 +43,7 @@ export function useWallet() {
             setLoading(true)
             setError(null)
 
-            const token = localStorage.getItem('token')
+            const token = 'cookie-auth'
             if (!token) {
                 setBalance(0)
                 setLoading(false)

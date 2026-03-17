@@ -63,7 +63,7 @@ export default function MyBills() {
             setError(null)
 
             // Lấy JWT token (đã login) từ localStorage
-            const token = localStorage.getItem('token')
+            const token = 'cookie-auth'
 
             // Build query params
             const params = new URLSearchParams({

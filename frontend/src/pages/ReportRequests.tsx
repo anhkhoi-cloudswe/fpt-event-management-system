@@ -116,7 +116,7 @@ export default function ReportRequests() {
     setError(null)
 
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       if (!token) {
         throw new Error('Vui lòng đăng nhập lại')
       }
@@ -216,7 +216,7 @@ export default function ReportRequests() {
     setError(null)
 
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       if (!token) {
         throw new Error('Vui lòng đăng nhập lại')
       }
@@ -298,7 +298,7 @@ export default function ReportRequests() {
     setIsProcessing(true)
 
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       if (!token) throw new Error('Vui lòng đăng nhập lại')
 
       const endpoint = action === 'APPROVE' ? '/api/staff/reports/approve' : '/api/staff/reports/reject'

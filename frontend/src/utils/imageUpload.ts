@@ -15,7 +15,7 @@
  * @returns URL công khai của ảnh trên S3
  */
 export async function uploadEventBanner(file: File): Promise<string> {
-  const token = localStorage.getItem('token')
+  const token = 'cookie-auth'
   if (!token) {
     throw new Error('Failed to upload image: Not authenticated. Please log in again.')
   }

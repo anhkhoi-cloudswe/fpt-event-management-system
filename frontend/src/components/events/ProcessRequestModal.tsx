@@ -155,7 +155,7 @@ export function ProcessRequestModal({
           return
         }
 
-        const token = localStorage.getItem('token')
+        const token = 'cookie-auth'
 
         const response = await fetch(
           `/api/events/daily-quota?date=${eventDate}`,

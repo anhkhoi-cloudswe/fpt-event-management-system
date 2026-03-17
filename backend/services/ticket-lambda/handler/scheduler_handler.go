@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/ticket-lambda/scheduler"
 )
 
@@ -40,7 +41,7 @@ func (h *TicketSchedulerHandler) HandlePendingTicketCleanup(ctx context.Context,
 }
 
 func isTicketSchedulerCall(request events.APIGatewayProxyRequest) bool {
-	return request.Headers["X-Internal-Call"] == "true"
+	return utils.IsValidInternalToken(request.Headers)
 }
 
 func ticketSchedulerResponse(status int, body interface{}) (events.APIGatewayProxyResponse, error) {

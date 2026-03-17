@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
+	"github.com/fpt-event-services/common/utils"
 )
 
 // ============================================================
@@ -186,7 +187,7 @@ func (h *EventInternalHandler) HandleGetEventArea(ctx context.Context, request e
 // ============================================================
 
 func isEventInternalCall(request events.APIGatewayProxyRequest) bool {
-	return request.Headers["X-Internal-Call"] == "true"
+	return utils.IsValidInternalToken(request.Headers)
 }
 
 func createEventInternalResponse(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {

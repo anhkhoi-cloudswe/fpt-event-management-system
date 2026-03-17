@@ -20,7 +20,7 @@ export interface Area {
 }
 
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('token')
+  const token = 'cookie-auth'
   return {
     headers: {
       'Authorization': `Bearer ${token}`

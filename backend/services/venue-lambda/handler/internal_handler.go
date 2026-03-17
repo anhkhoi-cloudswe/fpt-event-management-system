@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/venue-lambda/models"
 	"github.com/fpt-event-services/services/venue-lambda/usecase"
 )
@@ -448,7 +449,7 @@ func (h *VenueInternalHandler) HandleUpdateAreaStatus(ctx context.Context, reque
 
 // isInternalCall kiểm tra header X-Internal-Call
 func isInternalCall(request events.APIGatewayProxyRequest) bool {
-	return request.Headers["X-Internal-Call"] == "true"
+	return utils.IsValidInternalToken(request.Headers)
 }
 
 // createInternalResponse tạo JSON response cho internal APIs

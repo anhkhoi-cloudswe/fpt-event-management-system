@@ -861,7 +861,7 @@ func (h *TicketInternalHandler) HandleRefundAllByEvent(ctx context.Context, requ
 // ============================================================
 
 func isTicketInternalCall(request events.APIGatewayProxyRequest) bool {
-	return request.Headers["X-Internal-Call"] == "true"
+	return utils.IsValidInternalToken(request.Headers)
 }
 
 func createTicketInternalResponse(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {

@@ -314,7 +314,7 @@ export default function OrganizerEventRequests() {
   const fetchActiveRequests = async (page: number) => {
     try {
       setActiveLoading(true)
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       const offset = (page - 1) * ITEMS_PER_PAGE
 
       let url = `/api/event-requests/my/active?limit=${ITEMS_PER_PAGE}&offset=${offset}`
@@ -357,7 +357,7 @@ export default function OrganizerEventRequests() {
   const fetchArchivedRequests = async (page: number) => {
     try {
       setArchivedLoading(true)
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       const offset = (page - 1) * ITEMS_PER_PAGE
 
       let url = `/api/event-requests/my/archived?limit=${ITEMS_PER_PAGE}&offset=${offset}`
@@ -400,7 +400,7 @@ export default function OrganizerEventRequests() {
   const fetchEventRequestDetail = async (requestId: number) => {
     try {
       setIsDetailLoading(true)
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       const response = await fetch(`/api/event-requests/${requestId}`, {
         headers: {
@@ -491,7 +491,7 @@ export default function OrganizerEventRequests() {
     }
 
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       const userIdStr = localStorage.getItem('userId')
 
       // ✅ FIX: Gửi đúng eventId/requestId dựa trên createdEventId

@@ -123,7 +123,7 @@ export default function MyTickets() {
     // fetchTickets là hàm async gọi API lấy danh sách vé
     const fetchTickets = async () => {
       // Lấy JWT token từ localStorage
-      const jwt = localStorage.getItem('token')
+      const jwt = 'cookie-auth'
 
       // Nếu không có token => user chưa đăng nhập
       if (!jwt) {
@@ -188,7 +188,7 @@ export default function MyTickets() {
   // Fetch pending ticket IDs for the logged-in student so we disable duplicate reports
   useEffect(() => {
     const fetchPendingIds = async () => {
-      const jwt = localStorage.getItem('token')
+      const jwt = 'cookie-auth'
       if (!jwt) return
 
       try {

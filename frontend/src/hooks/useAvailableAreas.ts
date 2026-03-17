@@ -46,7 +46,7 @@ export const useAvailableAreas = (
                     params.append('expectedCapacity', expectedCapacity.toString());
                 }
 
-                const token = localStorage.getItem('token');
+                const token = 'cookie-auth';
                 const response = await fetch(
                     `/api/events/available-areas?${params.toString()}`,
                     {

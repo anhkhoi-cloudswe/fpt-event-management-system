@@ -153,7 +153,7 @@ export default function EventEdit() {
     const fetchEventRequest = async () => {
       try {
         // lấy token để gọi API
-        const token = localStorage.getItem('token')
+        const token = 'cookie-auth'
 
         // gọi API lấy danh sách event requests của user hiện tại
         const response = await fetch('/api/event-requests/my', {
@@ -230,7 +230,7 @@ export default function EventEdit() {
    */
   const fetchEventDetails = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       const response = await fetch(`/api/events/detail?id=${id}`, {
         headers: {
@@ -710,7 +710,7 @@ export default function EventEdit() {
       }
 
       // lấy token từ localStorage để gọi API update
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       /**
        * requestBody:
