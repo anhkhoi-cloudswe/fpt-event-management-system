@@ -173,7 +173,7 @@ export default function StaffEventRequests() {
    */
   const fetchEventRequests = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       const response = await fetch('/api/staff/event-requests', {
         headers: {
@@ -330,7 +330,7 @@ export default function StaffEventRequests() {
     if (!requestToProcess) return
 
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       const payload = {
         requestId: requestToProcess.requestId,

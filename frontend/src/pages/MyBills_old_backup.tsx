@@ -45,7 +45,7 @@ export default function MyBills() {
         setLoading(true)
 
         // Lấy JWT token (đã login) từ localStorage
-        const token = localStorage.getItem('token')
+        const token = 'cookie-auth'
 
         // Gọi API lấy hóa đơn của tôi
         const res = await fetch('/api/payment/my-bills', {

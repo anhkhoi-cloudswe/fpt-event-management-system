@@ -12,6 +12,7 @@ import (
 	"github.com/fpt-event-services/common/logger"
 	ticketpdf "github.com/fpt-event-services/common/pdf"
 	"github.com/fpt-event-services/common/qrcode"
+	"github.com/fpt-event-services/common/utils"
 )
 
 // ============================================================
@@ -420,7 +421,7 @@ func (h *NotificationHandler) HandleSendTickets(ctx context.Context, request eve
 // ============================================================
 
 func isNotifyInternalCall(request events.APIGatewayProxyRequest) bool {
-	return request.Headers["X-Internal-Call"] == "true"
+	return utils.IsValidInternalToken(request.Headers)
 }
 
 func createNotifyResponse(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {

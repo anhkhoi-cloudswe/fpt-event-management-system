@@ -132,7 +132,7 @@ export default function CheckIn() {
   // Lấy token xác thực từ localStorage để gửi kèm trong header Authorization khi gọi API
   // Kiểm tra typeof window !== 'undefined' để tránh lỗi khi chạy Server-Side Rendering (SSR)
   const token =
-    typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    typeof window !== 'undefined' ? 'cookie-auth' : null
 
   // State lưu tab đang được chọn, mặc định là 'checkin'
   const [activeTab, setActiveTab] = useState<TabType>('checkin')

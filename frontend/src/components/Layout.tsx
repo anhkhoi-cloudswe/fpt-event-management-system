@@ -388,50 +388,6 @@ export default function Layout() {
                     </>
                   )}
                   <div className="px-3 py-2 border-t mt-2">
-                    {/* Mobile Notification Bell */}
-                    {user && user.role !== 'ADMIN' && (
-                      <div className="mb-3">
-                        <button
-                          onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
-                          className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 hover:bg-blue-100 transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Bell size={18} className="text-blue-600" />
-                            <span className="text-sm font-medium text-gray-900">Thông báo</span>
-                          </div>
-                          {notifications?.hasUnread && (
-                            <span className="text-xs font-bold text-white bg-red-600 rounded-full px-2 py-0.5">
-                              {notifications.totalUnread > 9 ? '9+' : notifications.totalUnread}
-                            </span>
-                          )}
-                        </button>
-
-                        {/* Mobile Notification List */}
-                        {notificationDropdownOpen && (
-                          <div className="mt-2 bg-white rounded-lg border border-gray-200 max-h-64 overflow-y-auto">
-                            {!notificationsLoading && notifications && notifications.notifications.length > 0 ? (
-                              notifications.notifications.map((notif) => (
-                                <div
-                                  key={notif.id}
-                                  className={`px-3 py-2 border-b border-gray-50 last:border-b-0 ${!notif.isRead ? 'bg-blue-50' : ''
-                                    }`}
-                                >
-                                  <p className="text-xs text-gray-700">{notif.message}</p>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    {formatNotificationTime(notif.createdAt)}
-                                  </p>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="px-3 py-4 text-center text-gray-500 text-xs">
-                                Không có thông báo
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200">
                       <Wallet size={18} className="text-orange-600" />
                       <span className="text-sm font-semibold text-gray-900">

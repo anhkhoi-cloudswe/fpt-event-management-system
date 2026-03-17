@@ -40,7 +40,7 @@ export default function CancelTicketModal({
 
     try {
       // Upload lên AWS S3 via backend
-      const url = await uploadEventBanner(file, 'user-uploads')
+	  const url = await uploadEventBanner(file)
       setImageUrl(url)
       showToast('success', 'Upload ảnh thành công')
     } catch (error) {
@@ -71,7 +71,7 @@ export default function CancelTicketModal({
     setIsSubmitting(true)
 
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       console.log('[DEBUG] Submitting report for ticketId:', ticketId)
       console.log('[DEBUG] Token exists:', !!token)
 

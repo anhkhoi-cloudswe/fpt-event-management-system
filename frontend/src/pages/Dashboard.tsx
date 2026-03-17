@@ -41,7 +41,7 @@ export default function Dashboard() {
 
   // Lấy token từ localStorage để gọi API có Authorization
   // (comment trong code: "Get token from localStorage instead of user object")
-  const token = localStorage.getItem('token')
+  const token = 'cookie-auth'
 
   // events: danh sách sự kiện load từ API /api/events
   const [events, setEvents] = useState<EventListItem[]>([])

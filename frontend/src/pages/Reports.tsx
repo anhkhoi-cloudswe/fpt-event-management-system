@@ -90,7 +90,7 @@ export default function Reports() {
 
   // JWT token để gọi API (lấy từ localStorage; check window để tránh lỗi SSR)
   const token =
-    typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    typeof window !== 'undefined' ? 'cookie-auth' : null
 
   // ===================== UI STATE =====================
 

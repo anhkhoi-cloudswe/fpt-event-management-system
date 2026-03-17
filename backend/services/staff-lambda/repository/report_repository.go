@@ -103,7 +103,7 @@ func (r *ReportRepository) getReportDetailComposed(ctx context.Context, reportID
 
 	// Inject internal call header vào context
 	ctx = utils.WithRequestHeaders(ctx, map[string]string{
-		"X-Internal-Call": "true",
+		"X-Internal-Token": utils.GetInternalAuthToken(),
 	})
 
 	// 2) Gọi Auth Service → student info
@@ -846,7 +846,7 @@ func (r *ReportRepository) processReportSaga(ctx context.Context, reportID, staf
 
 	// Inject internal call header
 	ctx = utils.WithRequestHeaders(ctx, map[string]string{
-		"X-Internal-Call": "true",
+		"X-Internal-Token": utils.GetInternalAuthToken(),
 	})
 
 	statusCode, err := client.PostJSON(ctx, refundURL, refundBody, &refundResp)

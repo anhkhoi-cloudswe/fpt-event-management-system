@@ -85,7 +85,7 @@ export default function SystemConfig() {
    * typeof window !== 'undefined' để tránh lỗi khi render phía server (SSR)
    */
   const token =
-    typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    typeof window !== 'undefined' ? 'cookie-auth' : null
 
   /**
    * useEffect: chạy khi component mount hoặc khi token thay đổi
@@ -800,10 +800,7 @@ export default function SystemConfig() {
             <Pagination
               currentPage={paginationData.currentPage}
               totalPages={paginationData.totalPages}
-              totalItems={paginationData.totalItems}
-              pageSize={paginationData.pageSize}
               onPageChange={handlePageChange}
-              isLoading={loadingEvents}
             />
           )}
         </div>

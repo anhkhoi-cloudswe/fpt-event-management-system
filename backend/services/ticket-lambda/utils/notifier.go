@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/fpt-event-services/common/registry"
@@ -40,7 +41,9 @@ func CallNotificationService(ticketIds []int) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Internal-Call", "true")
+	if token := os.Getenv("INTERNAL_AUTH_TOKEN"); token != "" {
+		req.Header.Set("X-Internal-Token", token)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

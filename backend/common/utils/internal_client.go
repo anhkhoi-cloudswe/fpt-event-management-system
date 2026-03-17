@@ -287,8 +287,10 @@ func (c *InternalClient) PostJSON(ctx context.Context, url string, requestBody i
 // Truyền đầy đủ: JWT, UserID, Role, RequestID, X-Ray TraceID để SA có thể trace
 func (c *InternalClient) buildInternalHeaders(ctx context.Context) map[string]string {
 	h := map[string]string{
-		"X-Internal-Call": "true",
-		"Content-Type":    "application/json",
+		"Content-Type": "application/json",
+	}
+	if token := GetInternalAuthToken(); token != "" {
+		h["X-Internal-Token"] = token
 	}
 	if token, ok := ctx.Value(ContextKeyJWTToken).(string); ok && token != "" {
 		h["Authorization"] = "Bearer " + token
@@ -338,8 +340,9 @@ func (c *InternalClient) injectHeaders(ctx context.Context, req *http.Request) {
 		req.Header.Set("X-Amzn-Trace-Id", traceID)
 	}
 
-	// Đánh dấu đây là internal call để service đích có thể phân biệt
-	req.Header.Set("X-Internal-Call", "true")
+	if token := GetInternalAuthToken(); token != "" {
+		req.Header.Set("X-Internal-Token", token)
+	}
 }
 
 // doWithRetry thực hiện HTTP request với retry logic

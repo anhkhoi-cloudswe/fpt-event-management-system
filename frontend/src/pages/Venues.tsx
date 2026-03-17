@@ -78,7 +78,7 @@ export default function Venues() {
     try {
       setLoading(true)
       // Lấy token xác thực từ localStorage
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       // Nếu không có token -> không thực hiện request
       if (!token) {
@@ -178,7 +178,7 @@ export default function Venues() {
    */
   const handleSubmitVenue = async (data: { venueId: number; venueName: string; address: string }) => {
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       if (!token) {
         showToast('error', 'Bạn cần đăng nhập để thực hiện thao tác này')
         return
@@ -210,7 +210,7 @@ export default function Venues() {
    */
   const performDeleteVenue = async (venueId: number) => {
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       if (!token) {
         showToast('error', 'Bạn cần đăng nhập để thực hiện thao tác này')
         return
@@ -281,7 +281,7 @@ export default function Venues() {
     status: string
   }) => {
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       if (!token) {
         showToast('error', 'Bạn cần đăng nhập để thực hiện thao tác này')
         return
@@ -322,7 +322,7 @@ export default function Venues() {
    */
   const performDeleteArea = async (areaId: number) => {
     try {
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
       if (!token) {
         showToast('error', 'Bạn cần đăng nhập để thực hiện thao tác này')
         return

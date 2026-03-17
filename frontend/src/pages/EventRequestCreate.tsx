@@ -352,7 +352,7 @@ export default function EventRequestCreate() {
 
     try {
       // Lấy token để gọi API có auth
-      const token = localStorage.getItem('token')
+      const token = 'cookie-auth'
 
       /**
        * formatDateTimeLocal:

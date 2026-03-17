@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/config"
@@ -18,6 +21,7 @@ import (
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/auth-lambda/models"
 	"github.com/fpt-event-services/services/auth-lambda/usecase"
+	"golang.org/x/time/rate"
 )
 
 // Service instances (singleton)
@@ -26,7 +30,78 @@ var (
 	recaptchaService    *recaptcha.RecaptchaService
 	log                 = logger.Default()
 	servicesInitialized bool
+	forgotPasswordGuard = newForgotPasswordLimiter()
 )
+
+type rateLimitEntry struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+type forgotPasswordLimiter struct {
+	mu      sync.Mutex
+	byEmail map[string]*rateLimitEntry
+	byIP    map[string]*rateLimitEntry
+}
+
+func newForgotPasswordLimiter() *forgotPasswordLimiter {
+	return &forgotPasswordLimiter{
+		byEmail: make(map[string]*rateLimitEntry),
+		byIP:    make(map[string]*rateLimitEntry),
+	}
+}
+
+func (l *forgotPasswordLimiter) allow(email, ip string) bool {
+	now := time.Now()
+	emailKey := strings.ToLower(strings.TrimSpace(email))
+	ipKey := strings.TrimSpace(ip)
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	l.cleanup(now)
+
+	if emailKey != "" && !l.allowKey(l.byEmail, emailKey, now) {
+		return false
+	}
+
+	if ipKey != "" && !l.allowKey(l.byIP, ipKey, now) {
+		return false
+	}
+
+	return true
+}
+
+func (l *forgotPasswordLimiter) allowKey(store map[string]*rateLimitEntry, key string, now time.Time) bool {
+	entry, ok := store[key]
+	if !ok {
+		entry = &rateLimitEntry{
+			limiter: rate.NewLimiter(rate.Every(2*time.Minute), 1),
+		}
+		store[key] = entry
+	}
+
+	entry.lastSeen = now
+	return entry.limiter.Allow()
+}
+
+func (l *forgotPasswordLimiter) cleanup(now time.Time) {
+	if len(l.byEmail)+len(l.byIP) < 500 {
+		return
+	}
+
+	staleAfter := 30 * time.Minute
+	for key, entry := range l.byEmail {
+		if now.Sub(entry.lastSeen) > staleAfter {
+			delete(l.byEmail, key)
+		}
+	}
+	for key, entry := range l.byIP {
+		if now.Sub(entry.lastSeen) > staleAfter {
+			delete(l.byIP, key)
+		}
+	}
+}
 
 // InitServices initializes email and recaptcha services
 // Must be called after environment variables are loaded
@@ -106,11 +181,19 @@ func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGateway
 		return createErrorResponse(statusCode, err.Error())
 	}
 
-	// Return format matching Java: {status: "success", user: {...}, token: "..."}
+	tokenCookie := http.Cookie{
+		Name:     "token",
+		Value:    authResponse.Token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+	}
+
+	// Return success payload without exposing JWT in JSON body
 	resp := map[string]interface{}{
 		"status": "success",
 		"user":   authResponse.User,
-		"token":  authResponse.Token,
 	}
 	body, _ := json.Marshal(resp)
 
@@ -119,6 +202,70 @@ func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGateway
 		Headers: map[string]string{
 			"Content-Type":                "application/json",
 			"Access-Control-Allow-Origin": "*",
+			"Set-Cookie":                  tokenCookie.String(),
+		},
+		Body: string(body),
+	}, nil
+}
+
+// HandleMe handles GET /api/v1/auth/me
+// Returns trusted user identity from JWT token stored in HttpOnly cookie.
+func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	token := extractToken(request)
+	if token == "" {
+		return createErrorResponse(http.StatusUnauthorized, "Missing authentication token")
+	}
+
+	claims, err := jwt.ValidateToken(token)
+	if err != nil {
+		return createErrorResponse(http.StatusUnauthorized, "Invalid authentication token")
+	}
+
+	resp := map[string]interface{}{
+		"status": "success",
+		"user": map[string]interface{}{
+			"id":    claims.UserID,
+			"email": claims.Email,
+			"role":  claims.Role,
+		},
+	}
+	body, _ := json.Marshal(resp)
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                "application/json",
+			"Access-Control-Allow-Origin": "*",
+		},
+		Body: string(body),
+	}, nil
+}
+
+// HandleLogout handles POST /api/logout
+// It clears the HttpOnly token cookie on client side.
+func (h *AuthHandler) HandleLogout(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	clearCookie := http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	}
+
+	resp := map[string]interface{}{
+		"status":  "success",
+		"message": "Logged out",
+	}
+	body, _ := json.Marshal(resp)
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                "application/json",
+			"Access-Control-Allow-Origin": "*",
+			"Set-Cookie":                  clearCookie.String(),
 		},
 		Body: string(body),
 	}, nil
@@ -201,6 +348,13 @@ func (h *AuthHandler) HandleAdminCreateAccount(ctx context.Context, request even
 // Helper functions
 
 func extractToken(request events.APIGatewayProxyRequest) string {
+	if token := extractTokenFromCookieHeader(request.Headers["Cookie"]); token != "" {
+		return token
+	}
+	if token := extractTokenFromCookieHeader(request.Headers["cookie"]); token != "" {
+		return token
+	}
+
 	// Try Authorization header first
 	if auth := request.Headers["Authorization"]; auth != "" {
 		// Remove "Bearer " prefix
@@ -214,6 +368,29 @@ func extractToken(request events.APIGatewayProxyRequest) string {
 		if len(auth) > 7 && auth[:7] == "Bearer " {
 			return auth[7:]
 		}
+	}
+
+	return ""
+}
+
+func extractTokenFromCookieHeader(cookieHeader string) string {
+	if strings.TrimSpace(cookieHeader) == "" {
+		return ""
+	}
+
+	parts := strings.Split(cookieHeader, ";")
+	for _, part := range parts {
+		item := strings.TrimSpace(part)
+		if !strings.HasPrefix(item, "token=") {
+			continue
+		}
+
+		raw := strings.TrimPrefix(item, "token=")
+		decoded, err := url.QueryUnescape(raw)
+		if err != nil {
+			return raw
+		}
+		return decoded
 	}
 
 	return ""
@@ -264,9 +441,13 @@ func (h *AuthHandler) HandleForgotPassword(ctx context.Context, request events.A
 		return createStatusResponse(http.StatusBadRequest, "fail", "Email không được để trống")
 	}
 
+	clientIP := getClientIP(request)
+	if !forgotPasswordGuard.allow(req.Email, clientIP) {
+		return createStatusResponse(http.StatusTooManyRequests, "fail", "Too many requests. Vui lòng thử lại sau 2 phút")
+	}
+
 	// Verify reCAPTCHA (if configured)
 	if req.RecaptchaToken != "" {
-		clientIP := getClientIP(request)
 		if err := verifyRecaptcha(req.RecaptchaToken, "forgot_password", clientIP); err != nil {
 			log.Warn("reCAPTCHA failed for forgot-password", "email", req.Email, "error", err)
 			return createStatusResponse(http.StatusForbidden, "fail", "Xác thực reCAPTCHA thất bại")

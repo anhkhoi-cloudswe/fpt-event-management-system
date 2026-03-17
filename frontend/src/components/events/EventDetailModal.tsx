@@ -660,14 +660,14 @@ export function EventDetailModal({
                 )}
 
                 {/* ===== LÝ DO TỪ CHỐI ===== */}
-                {event.status === 'REJECTED' && (event.rejectReason || event.reject_reason) && (
+        				{event.status === 'REJECTED' && event.rejectReason && (
                   <div className="mb-6 border-t pt-6">
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                       <h3 className="text-base font-semibold text-red-700 mb-2 flex items-center gap-2">
                         <span>🚫</span> Lý do từ chối từ Staff
                       </h3>
                       <p className="text-sm text-red-800 leading-relaxed whitespace-pre-wrap">
-                        {event.rejectReason || event.reject_reason}
+        						{event.rejectReason}
                       </p>
                     </div>
                   </div>

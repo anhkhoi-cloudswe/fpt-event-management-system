@@ -11,7 +11,7 @@ import { useNavigate, Link } from 'react-router-dom'
 // Icon Eye để toggle hiển thị mật khẩu
 import { Eye, EyeOff } from 'lucide-react'
 
-// useAuth: lấy hàm setUser/setToken để lưu thông tin đăng nhập vào AuthContext (và localStorage)
+// useAuth: lưu user vào context và refresh user từ backend sau khi cookie được set
 import { useAuth } from '../contexts/AuthContext'
 
 // axios: thư viện gọi API thay cho fetch (tiện xử lý response/error)
@@ -85,8 +85,8 @@ export default function Login() {
   // showPassword: toggle hiển thị mật khẩu
   const [showPassword, setShowPassword] = useState(false)
 
-  // Lấy setUser, setToken từ context để lưu user/token sau khi login thành công
-  const { setUser, setToken } = useAuth()
+  // Lấy setUser/refreshUser từ context để đồng bộ user theo HttpOnly cookie
+  const { setUser, setToken, refreshUser } = useAuth()
 
   // navigate: chuyển trang sang dashboard sau khi login
   const navigate = useNavigate()
@@ -143,21 +143,23 @@ export default function Login() {
         email: formData.email,
         password: formData.password,
         recaptchaToken: tokenToSend
+      }, {
+        withCredentials: true,
       })
 
       console.log('Login Response:', response.data)
 
       // Nếu BE trả status = success
       if (response.data && response.data.status === 'success') {
-        // Lấy user + token
-        const { user, token } = response.data
+        // Cookie JWT đã được backend set qua Set-Cookie; chỉ cần lấy user hiển thị
+        const { user } = response.data
 
         console.log('User:', user)
-        console.log('Token (first 40 chars):', token ? token.slice(0, 40) : null)
 
-        // Lưu vào AuthContext (và localStorage nếu context có xử lý)
+        // Lưu user và đồng bộ lại từ endpoint me để lấy role/user trusted từ server
         setUser(user)
-        setToken(token)
+        setToken(null)
+        await refreshUser()
 
         // Reset captcha (optional) để sau này login lại không bị token cũ
         try {

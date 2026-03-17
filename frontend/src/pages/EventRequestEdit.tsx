@@ -176,7 +176,7 @@ export default function EventRequestEdit() {
      */
     const fetchEventRequestData = async () => {
         try {
-            const token = localStorage.getItem('token')
+            const token = 'cookie-auth'
 
             // ✅ NEW: Gọi API chi tiết request (thay vì dùng list và tìm)
             // Endpoint này trả về dữ liệu đầy đủ với datetime fields được JOIN từ Event
@@ -738,7 +738,7 @@ export default function EventRequestEdit() {
                 }
             }
 
-            const token = localStorage.getItem('token')
+            const token = 'cookie-auth'
 
             // ===== STEP 1: DRY RUN - Validate without committing =====
             console.log('[STEP 1] Validating form data...')
