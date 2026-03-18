@@ -1,11 +1,6 @@
 -- 1. Tạo Database trước
 CREATE DATABASE IF NOT EXISTS `fpteventmanagement` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
 USE `fpteventmanagement`;
-
--- 2. Thiết lập căn cước cho Backend
-CREATE USER IF NOT EXISTS 'fpt_app'@'%' IDENTIFIED BY 'StrongPassword_123!';
-GRANT SELECT, INSERT, UPDATE, DELETE ON fpteventmanagement.* TO 'fpt_app'@'%';
-FLUSH PRIVILEGES;
 -- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
 --
 -- Host: localhost    Database: fpteventmanagement
