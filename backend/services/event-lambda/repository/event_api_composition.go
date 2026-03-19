@@ -498,6 +498,17 @@ func (r *EventRepository) GetEventDetailComposed(ctx context.Context, eventID in
 	}
 	detail.Tickets = tickets
 
+	// Load seats by area_id (must include all seats in this area)
+	if detail.AreaID != nil {
+		seats, err := r.GetSeatsByAreaID(ctx, *detail.AreaID, eventID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load seats: %w", err)
+		}
+		detail.Seats = seats
+	} else {
+		detail.Seats = []models.SeatResponse{}
+	}
+
 	// Check bookings (same domain - no change)
 	var bookingCount int
 	err = r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM Ticket WHERE event_id = ? AND status IN ('PENDING','BOOKED','CHECKED_IN')", eventID).Scan(&bookingCount)

@@ -192,207 +192,210 @@ export default function UserFormModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {mode === 'create' ? 'Tạo người dùng mới' : 'Chỉnh sửa người dùng'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-            disabled={loading}
-          >
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={e => handleFieldChange('email', e.target.value)}
-              onBlur={() => handleFieldBlur('email')}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
-              disabled={loading || mode === 'edit'}
-              placeholder="user@example.com"
-            />
-            {errors.email && (
-              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-            )}
-            {mode === 'edit' && (
-              <p className="text-sm italic text-gray-500 mt-1">Email không thể chỉnh sửa</p>
-            )}
-          </div>
-
-          {/* Password - chỉ hiển thị khi tạo mới */}
-          {mode === 'create' ? (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mật khẩu <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={e => handleFieldChange('password', e.target.value)}
-                  onBlur={() => handleFieldBlur('password')}
-                  className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
-                  disabled={loading}
-                  placeholder="Tối thiểu 6 ký tự, có chữ và số"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-              )}
-            </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mật khẩu (để trống nếu không đổi)
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={e => handleFieldChange('password', e.target.value)}
-                  className="w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300"
-                  disabled={loading}
-                  placeholder="Để trống nếu không muốn thay đổi mật khẩu"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-          )}
-
-
-
-          {/* Full Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Họ và tên <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.fullName}
-              onChange={e => handleFieldChange('fullName', e.target.value)}
-              onBlur={() => handleFieldBlur('fullName')}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fullName ? 'border-red-500' : 'border-gray-300'}`}
-              disabled={loading}
-              placeholder="Nguyễn Văn A"
-            />
-            {errors.fullName && (
-              <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>
-            )}
-          </div>
-
-          {/* Phone */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Số điện thoại <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={e => handleFieldChange('phone', e.target.value)}
-              onBlur={() => handleFieldBlur('phone')}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.phone ? 'border-red-500' : 'border-gray-300'}`}
-              disabled={loading}
-              placeholder="0912345678"
-            />
-            {errors.phone && (
-              <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-            )}
-          </div>
-
-          {/* Role */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Vai trò <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={formData.role}
-              onChange={e =>
-                setFormData({
-                  ...formData,
-                  role: e.target.value as 'ADMIN' | 'ORGANIZER' | 'STAFF'
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+    // ⭐ ABSOLUTE CENTERING: Fixed overlay + centered container
+    <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
+      {/* Centering wrapper */}
+      <div className="flex items-center justify-center min-h-screen p-4">
+        {/* Modal Card: responsive width + scrollable */}
+        <div className="bg-white rounded-lg shadow-xl max-w-[90vw] w-full max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
+            <h2 className="text-2xl font-bold text-gray-900">
+              {mode === 'create' ? 'Tạo người dùng mới' : 'Chỉnh sửa người dùng'}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
               disabled={loading}
             >
-              <option value="ADMIN">Admin</option>
-              <option value="ORGANIZER">Organizer</option>
-              <option value="STAFF">Staff</option>
-            </select>
+              <X size={24} />
+            </button>
           </div>
 
-          {/* Status - chỉ hiển thị khi edit */}
-          {mode === 'edit' && (
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Trạng thái
+                Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={e => handleFieldChange('email', e.target.value)}
+                onBlur={() => handleFieldBlur('email')}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
+                disabled={loading || mode === 'edit'}
+                placeholder="user@example.com"
+              />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+              )}
+              {mode === 'edit' && (
+                <p className="text-sm italic text-gray-500 mt-1">Email không thể chỉnh sửa</p>
+              )}
+            </div>
+
+            {/* Password - chỉ hiển thị khi tạo mới */}
+            {mode === 'create' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mật khẩu <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={e => handleFieldChange('password', e.target.value)}
+                    onBlur={() => handleFieldBlur('password')}
+                    className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
+                    disabled={loading}
+                    placeholder="Tối thiểu 6 ký tự, có chữ và số"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                )}
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mật khẩu (để trống nếu không đổi)
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={e => handleFieldChange('password', e.target.value)}
+                    className="w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300"
+                    disabled={loading}
+                    placeholder="Để trống nếu không muốn thay đổi mật khẩu"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Full Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Họ và tên <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.fullName}
+                onChange={e => handleFieldChange('fullName', e.target.value)}
+                onBlur={() => handleFieldBlur('fullName')}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fullName ? 'border-red-500' : 'border-gray-300'}`}
+                disabled={loading}
+                placeholder="Nguyễn Văn A"
+              />
+              {errors.fullName && (
+                <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>
+              )}
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Số điện thoại <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={e => handleFieldChange('phone', e.target.value)}
+                onBlur={() => handleFieldBlur('phone')}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.phone ? 'border-red-500' : 'border-gray-300'}`}
+                disabled={loading}
+                placeholder="0912345678"
+              />
+              {errors.phone && (
+                <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+              )}
+            </div>
+
+            {/* Role */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Vai trò <span className="text-red-500">*</span>
               </label>
               <select
-                value={formData.status}
+                value={formData.role}
                 onChange={e =>
                   setFormData({
                     ...formData,
-                    status: e.target.value as 'ACTIVE' | 'INACTIVE'
+                    role: e.target.value as 'ADMIN' | 'ORGANIZER' | 'STAFF'
                   })
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
               >
-                <option value="ACTIVE">Hoạt động</option>
-                <option value="INACTIVE">Vô hiệu hóa</option>
+                <option value="ADMIN">Admin</option>
+                <option value="ORGANIZER">Organizer</option>
+                <option value="STAFF">Staff</option>
               </select>
             </div>
-          )}
 
-          {/* Action buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              disabled={loading}
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300"
-              disabled={loading}
-            >
-              {loading
-                ? 'Đang xử lý...'
-                : mode === 'create'
-                  ? 'Tạo mới'
-                  : 'Cập nhật'}
-            </button>
-          </div>
-        </form>
+            {/* Status - chỉ hiển thị khi edit */}
+            {mode === 'edit' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Trạng thái
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      status: e.target.value as 'ACTIVE' | 'INACTIVE'
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                >
+                  <option value="ACTIVE">Hoạt động</option>
+                  <option value="INACTIVE">Vô hiệu hóa</option>
+                </select>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                disabled={loading}
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300"
+                disabled={loading}
+              >
+                {loading
+                  ? 'Đang xử lý...'
+                  : mode === 'create'
+                    ? 'Tạo mới'
+                    : 'Cập nhật'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )

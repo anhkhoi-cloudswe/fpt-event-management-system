@@ -6,13 +6,13 @@ import { useParams, useNavigate } from 'react-router-dom'
 
 // Import AuthContext để lấy user + token (thông tin đăng nhập)
 import { useAuth } from '../contexts/AuthContext'
-// useAuth: custom hook lấy user (role...) và token (JWT) từ context
+// useAuth: custom hook lấy user (role...) từ context
 
 
 // Import React hooks
 import { useState, useEffect } from 'react'
 // useState: lưu state event, loading, error
-// useEffect: gọi API lấy detail event khi component mount hoặc khi id/token đổi
+// useEffect: gọi API lấy detail event khi component mount hoặc khi id đổi
 
 
 // Import type dữ liệu event detail (để TypeScript check)
@@ -35,33 +35,13 @@ export default function EventDetail() {
   const { id } = useParams()
 
   /**
-   * Lấy user + token từ AuthContext
+  * Lấy user từ AuthContext
    * user: chứa role (STUDENT, STAFF, ORGANIZER...)
-   * token: JWT dùng để gọi API có Authorization
    */
-  const { user, token } = useAuth()
+  const { user } = useAuth()
 
   // DEBUG: Log user object
   console.log('EventDetail - user from useAuth:', user)
-
-  // Fallback: Nếu user?.role undefined, thử lấy từ localStorage
-  const getUserRole = (): string | undefined => {
-    if (user?.role) return user.role
-    try {
-      const savedUser = localStorage.getItem('user')
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser)
-        console.log('EventDetail - parsed user from localStorage:', parsed)
-        return parsed?.role
-      }
-    } catch (e) {
-      console.error('Error parsing user from localStorage:', e)
-    }
-    return undefined
-  }
-
-  const currentUserRole = getUserRole()
-  console.log('EventDetail - currentUserRole:', currentUserRole)
 
   // Hook điều hướng trang
   const navigate = useNavigate()
@@ -87,31 +67,41 @@ export default function EventDetail() {
     // fetchEvent: hàm async gọi API lấy event detail
     const fetchEvent = async () => {
       /**
-       * Nếu không có id hoặc không có token:
+      * Nếu không có id:
        * - không thể gọi API detail
        * - return để tránh lỗi
        */
-      if (!id || !token) return
+          if (!id) return
 
       // bật loading + reset error trước khi gọi API
       setLoading(true)
       setError(null)
 
       try {
+        const refreshToken = sessionStorage.getItem('force-event-detail-refresh')
+        const detailUrl = refreshToken
+          ? `/api/events/detail?id=${id}&refresh=${encodeURIComponent(refreshToken)}`
+          : `/api/events/detail?id=${id}`
+
         /**
          * Gọi API lấy chi tiết event:
          * - Dùng relative path /api/events/detail?id=... để đi qua Vite proxy
-         * - headers có Authorization Bearer token để backend xác thực
+         * - credentials include để gửi HttpOnly cookie cho backend xác thực
          */
         const response = await fetch(
-          `/api/events/detail?id=${id}`,
+          detailUrl,
           {
+            cache: 'no-store',
+            credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
             },
           },
         )
+
+        if (refreshToken) {
+          sessionStorage.removeItem('force-event-detail-refresh')
+        }
 
         /**
          * Nếu response không ok (HTTP status 4xx/5xx)
@@ -149,7 +139,7 @@ export default function EventDetail() {
 
     // Cleanup interval khi component unmount
     return () => clearInterval(refreshInterval)
-  }, [id, token])
+  }, [id])
 
   /**
    * handleEdit:
@@ -188,8 +178,8 @@ export default function EventDetail() {
           event={event}                 // data event lấy từ API
           loading={loading}             // đang tải event -> modal có thể show skeleton/spinner
           error={error}                 // lỗi -> modal hiển thị message lỗi
-          token={token}                 // token để modal gọi API khác nếu cần (đặt vé, load ghế...)
-          userRole={currentUserRole}    // truyền role để modal quyết định hiển thị chức năng theo quyền
+          token={null}                  // xác thực hiện tại dùng HttpOnly cookie
+          userRole={user?.role}         // render theo role trusted từ AuthContext
           onEdit={isOrganizer ? handleEdit : undefined}
         // nếu organizer/staff -> truyền handleEdit (cho phép nút Edit)
         // nếu student -> undefined (không có quyền edit)

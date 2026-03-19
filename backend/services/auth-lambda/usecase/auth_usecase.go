@@ -144,12 +144,14 @@ func (uc *AuthUseCase) AdminCreateAccount(ctx context.Context, req models.AdminC
 		return nil, errors.New("failed to check email")
 	}
 	if exists {
-		log.Printf("[CREATE-ACCOUNT] Email already exists: %s", req.Email)
+		// Security: Don't log email plaintext
+		log.Printf("[CREATE-ACCOUNT] Email already exists (validation failed)")
 		return nil, errors.New("email already exists")
 	}
 
 	// Create account
-	log.Printf("[CREATE-ACCOUNT] Creating account - Email: %s, Role: %s", req.Email, req.Role)
+	// Security: Don't log email plaintext
+	log.Printf("[CREATE-ACCOUNT] Creating account with Role: %s", req.Role)
 	userID, err := uc.userRepo.AdminCreateAccount(ctx, req)
 	if err != nil {
 		log.Printf("[CREATE-ACCOUNT] Failed to create account in database: %v", err)

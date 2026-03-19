@@ -699,7 +699,7 @@ func getVNPayService() *vnpay.VNPayService {
 // KHỚP VỚI Java: PaymentService.createPaymentUrl()
 // PRODUCTION: Sử dụng HMAC-SHA512 signature
 // UPDATED: Hỗ trợ mua nhiều ghế cùng lúc (max 4 ghế)
-func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int) (string, error) {
+func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, returnURL string) (string, error) {
 	log := logger.Default().WithContext(ctx)
 
 	// Validate số lượng ghế (max 4)
@@ -735,67 +735,92 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 		return "", apperrors.BusinessError("Sự kiện đã bắt đầu hoặc kết thúc, không thể đặt thêm vé")
 	}
 
-	// Kiểm tra category ticket và lấy giá
-	// ⭐ FIX: Dùng float64 để nhận giá trị DECIMAL từ MySQL (150000.00)
-	var pricePerSeat float64 // DECIMAL từ DB có phần thập phân
-	var catName string
-	var catStatus string
-	var maxQty int
-	err = r.db.QueryRowContext(ctx,
-		"SELECT price, status, max_quantity, name FROM Category_Ticket WHERE category_ticket_id = ? AND event_id = ?",
-		categoryTicketID, eventID,
-	).Scan(&pricePerSeat, &catStatus, &maxQty, &catName)
-	if err != nil {
-		log.Error("Category ticket not found", "category_ticket_id", categoryTicketID, "error", err)
-		return "", apperrors.NotFound("Loại vé")
-	}
-	// Category_Ticket status ENUM: 'ACTIVE','INACTIVE'
-	if catStatus != "ACTIVE" {
-		return "", apperrors.BusinessError("Loại vé này không khả dụng")
-	}
-
-	// ✅ [TICKET] Log chi tiết thanh toán
-	fmt.Printf("[TICKET] Đang xử lý thanh toán cho Event: %d, Category: %s (ID: %d), Giá: %.0f VNĐ/ghế, Số ghế: %d\n",
-		eventID, catName, categoryTicketID, pricePerSeat, len(seatIDs))
-	log.Info("[INVOICE DEBUG] Category Ticket Retrieved", "category_ticket_id", categoryTicketID, "category_name", catName, "price_from_db", pricePerSeat, "price_type", "float64")
-
-	// ✅ FIX: Kiểm tra số lượng vé đã bán - chỉ đếm vé ACTIVE (không đếm CANCELLED)
-	var soldCount int
-	if queryErr := r.db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM Ticket WHERE category_ticket_id = ? AND status IN ('PENDING', 'BOOKED', 'CHECKED_IN')",
-		categoryTicketID,
-	).Scan(&soldCount); queryErr != nil {
-		fmt.Printf("[TICKET] Cảnh báo: không đếm được sold count: %v\n", queryErr)
-		soldCount = 0
-	}
-	remaining := maxQty - soldCount
-	fmt.Printf("[TICKET] Kiểm tra tồn kho - Tổng: %d, Đã bán: %d, Còn lại: %d, Yêu cầu: %d\n",
-		maxQty, soldCount, remaining, len(seatIDs))
-	// ✅ FIX: Trả 400 thay vì crash 500 khi hết vé
-	if remaining <= 0 {
-		log.Warn("[TICKET] Ticket Sold Out", "category_ticket_id", categoryTicketID, "sold", soldCount, "max", maxQty)
-		return "", apperrors.BusinessError(fmt.Sprintf("Ticket Sold Out - Loại vé '%s' đã hết. Còn lại: 0/%d", catName, maxQty))
-	}
-	if soldCount+len(seatIDs) > maxQty {
-		log.Warn("Not enough tickets", "category_ticket_id", categoryTicketID, "sold", soldCount, "max", maxQty, "requested", len(seatIDs))
-		return "", apperrors.BusinessError(fmt.Sprintf("Không đủ vé. Còn lại: %d, Yêu cầu: %d", remaining, len(seatIDs)))
-	}
-
 	// Kiểm tra TẤT CẢ ghế có active và available không
 	pendingTicketIDs := []int64{}
-	// ⭐ FIX: Dùng float64 để xử lý DECIMAL từ MySQL
-	var totalAmount float64 = 0 // Tổng tiền theo giá DECIMAL từ DB
+	var totalAmount float64 // Tổng tiền theo giá DECIMAL từ DB
+
+	type categoryInfo struct {
+		Name      string
+		Price     float64
+		MaxQty    int
+		SoldCount int
+		Requested int
+	}
+
+	categoryMap := make(map[int]*categoryInfo)
+	resolvedCategoryTicketID := categoryTicketID
 
 	for _, seatID := range seatIDs {
-		// Kiểm tra ghế có active không (Seat vật lý)
+		// Kiểm tra ghế có active không và lấy category thực tế của ghế.
 		var seatStatus string
-		err = r.db.QueryRowContext(ctx, "SELECT status FROM Seat WHERE seat_id = ?", seatID).Scan(&seatStatus)
+		var seatCategoryTicketID sql.NullInt64
+		var catName sql.NullString
+		var catStatus sql.NullString
+		var pricePerSeat sql.NullFloat64
+		var maxQty sql.NullInt64
+
+		err = r.db.QueryRowContext(ctx, `
+			SELECT
+				s.status,
+				s.category_ticket_id,
+				ct.name,
+				ct.status,
+				ct.price,
+				ct.max_quantity
+			FROM Seat s
+			LEFT JOIN Category_Ticket ct
+				ON s.category_ticket_id = ct.category_ticket_id
+				AND ct.event_id = ?
+			WHERE s.seat_id = ?
+		`, eventID, seatID).Scan(&seatStatus, &seatCategoryTicketID, &catName, &catStatus, &pricePerSeat, &maxQty)
 		if err != nil {
 			log.Error("Seat not found", "seat_id", seatID, "error", err)
 			return "", apperrors.NotFound(fmt.Sprintf("Ghế ID %d", seatID))
 		}
 		if seatStatus != "ACTIVE" {
 			return "", apperrors.BusinessError(fmt.Sprintf("Ghế ID %d không khả dụng", seatID))
+		}
+		if !seatCategoryTicketID.Valid {
+			return "", apperrors.BusinessError(fmt.Sprintf("Ghế ID %d chưa được gán loại vé", seatID))
+		}
+
+		currentCategoryTicketID := int(seatCategoryTicketID.Int64)
+		if resolvedCategoryTicketID == 0 {
+			resolvedCategoryTicketID = currentCategoryTicketID
+		}
+
+		meta, ok := categoryMap[currentCategoryTicketID]
+		if !ok {
+			if !catStatus.Valid || catStatus.String != "ACTIVE" {
+				return "", apperrors.BusinessError(fmt.Sprintf("Loại vé của ghế ID %d không khả dụng", seatID))
+			}
+
+			var soldCount int
+			if queryErr := r.db.QueryRowContext(ctx,
+				"SELECT COUNT(*) FROM Ticket WHERE category_ticket_id = ? AND status IN ('PENDING', 'BOOKED', 'CHECKED_IN')",
+				currentCategoryTicketID,
+			).Scan(&soldCount); queryErr != nil {
+				fmt.Printf("[TICKET] Cảnh báo: không đếm được sold count cho category %d: %v\n", currentCategoryTicketID, queryErr)
+				soldCount = 0
+			}
+
+			meta = &categoryInfo{
+				Name:      catName.String,
+				Price:     pricePerSeat.Float64,
+				MaxQty:    int(maxQty.Int64),
+				SoldCount: soldCount,
+				Requested: 0,
+			}
+			categoryMap[currentCategoryTicketID] = meta
+		}
+
+		meta.Requested++
+		remaining := meta.MaxQty - meta.SoldCount
+		if remaining <= 0 {
+			return "", apperrors.BusinessError(fmt.Sprintf("Ticket Sold Out - Loại vé '%s' đã hết. Còn lại: 0/%d", meta.Name, meta.MaxQty))
+		}
+		if meta.SoldCount+meta.Requested > meta.MaxQty {
+			return "", apperrors.BusinessError(fmt.Sprintf("Không đủ vé cho loại '%s'. Còn lại: %d, Yêu cầu: %d", meta.Name, remaining, meta.Requested))
 		}
 
 		// RACE CONDITION CHECK: Kiểm tra ghế đã bị giữ/đặt chưa
@@ -818,7 +843,7 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 		pendingResult, err := r.db.ExecContext(ctx,
 			`INSERT INTO Ticket (user_id, event_id, category_ticket_id, seat_id, qr_code_value, status, created_at) 
 			 VALUES (?, ?, ?, ?, 'PENDING_QR', 'PENDING', NOW())`,
-			userID, eventID, categoryTicketID, seatID,
+			userID, eventID, currentCategoryTicketID, seatID,
 		)
 		if err != nil {
 			log.Error("Failed to create PENDING ticket", "seat_id", seatID, "error", err)
@@ -831,11 +856,12 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 
 		pendingTicketID, _ := pendingResult.LastInsertId()
 		pendingTicketIDs = append(pendingTicketIDs, pendingTicketID)
-		totalAmount += pricePerSeat
+		totalAmount += meta.Price
 
 		log.Info("[INVOICE DEBUG] Seat Added To Bill",
 			"seat_id", seatID,
-			"price_per_seat", pricePerSeat,
+			"category_ticket_id", currentCategoryTicketID,
+			"price_per_seat", meta.Price,
 			"running_total", totalAmount,
 			"seat_position", len(pendingTicketIDs))
 	}
@@ -851,14 +877,14 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 		}
 		ticketIDsStr += fmt.Sprintf("%d", tid)
 	}
-	txnRef := fmt.Sprintf("%d_%d_%d_%s_%s", userID, eventID, categoryTicketID, ticketIDsStr, timestamp)
+	txnRef := fmt.Sprintf("%d_%d_%d_%s_%s", userID, eventID, resolvedCategoryTicketID, ticketIDsStr, timestamp)
 
 	// Tạo orderInfo
 	orderInfo := fmt.Sprintf("Payment for %s - %d seats", eventTitle, len(seatIDs))
 
 	// ✅ 0đ BYPASS: Nếu giá vé = 0, tạo vé BOOKED trực tiếp mà không cần VNPay
 	if totalAmount == 0 {
-		fmt.Printf("[TICKET] 🎉 Vé miễn phí (0đ) - Event: %d, Category: %s. Tạo BOOKED trực tiếp, bỏ qua VNPay.\n", eventID, catName)
+		fmt.Printf("[TICKET] 🎉 Vé miễn phí (0đ) - Event: %d. Tạo BOOKED trực tiếp, bỏ qua VNPay.\n", eventID)
 
 		// Tạo 1 Bill duy nhất cho toàn bộ lô vé miễn phí
 		var freeBillID int64
@@ -902,7 +928,7 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 
 		// 📧 Gửi email vé điện tử (non-blocking, cùng cơ chế với VNPay)
 		// ⭐ FIX: dùng context.Background() để goroutine không bị cancel khi HTTP request kết thúc
-		go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedIDsFree, "0", categoryTicketID, int(freeBillID))
+		go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedIDsFree, "0", resolvedCategoryTicketID, int(freeBillID))
 
 		// 🔔 Kích hoạt Notification Service gửi PDF vé (non-blocking)
 		go ticketutils.CallNotificationService(bookedIDsFree)
@@ -926,6 +952,7 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 		Amount:    totalAmount, // totalAmount đã là float64
 		TxnRef:    txnRef,
 		IPAddr:    "127.0.0.1",
+		ReturnURL: strings.TrimSpace(returnURL),
 	})
 	if err != nil {
 		// Rollback: xóa TẤT CẢ PENDING tickets
@@ -1446,13 +1473,6 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 		finalVenueAddress = venueLocation.String
 	}
 
-	// Lấy category name
-	var categoryName string
-	r.db.QueryRowContext(bgCtx,
-		"SELECT name FROM Category_Ticket WHERE category_ticket_id = ?",
-		categoryTicketID,
-	).Scan(&categoryName)
-
 	// Lấy thông tin organizer từ created_by
 	var organizerName string = "Event Organizer"
 	var organizerEmail string = ""
@@ -1477,19 +1497,21 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 		items := []map[string]interface{}{}
 		for _, ticketID := range ticketIDs {
 			var qrBase64 string
-			var seatID int
+			var seatCode string
+			var ticketCategoryName string
+			var price float64
 			err = r.db.QueryRowContext(bgCtx,
-				"SELECT qr_code_value, seat_id FROM Ticket WHERE ticket_id = ?",
+				`SELECT t.qr_code_value, s.seat_code, COALESCE(ct.name, 'Vé'), COALESCE(ct.price, 0)
+				 FROM Ticket t
+				 JOIN Seat s ON t.seat_id = s.seat_id
+				 LEFT JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
+				 WHERE t.ticket_id = ?`,
 				ticketID,
-			).Scan(&qrBase64, &seatID)
+			).Scan(&qrBase64, &seatCode, &ticketCategoryName, &price)
 			if err != nil {
 				log.Error("Failed to get ticket for notify API", "ticket_id", ticketID, "error", err)
 				continue
 			}
-			var seatCode string
-			var price float64
-			r.db.QueryRowContext(bgCtx, "SELECT seat_code FROM Seat WHERE seat_id = ?", seatID).Scan(&seatCode)
-			r.db.QueryRowContext(bgCtx, "SELECT price FROM Category_Ticket WHERE category_ticket_id = ?", categoryTicketID).Scan(&price)
 			seatRow, seatNumber := parseSeatCodeHelper(seatCode)
 			items = append(items, map[string]interface{}{
 				"ticket_id":     ticketID,
@@ -1497,7 +1519,7 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 				"seat_code":     seatCode,
 				"seat_row":      seatRow,
 				"seat_number":   seatNumber,
-				"category_name": categoryName,
+				"category_name": ticketCategoryName,
 				"price":         formatCurrency(fmt.Sprintf("%.0f", price)),
 			})
 		}
@@ -1532,28 +1554,21 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 	for _, ticketID := range ticketIDs {
 		// Lấy thông tin ticket
 		var qrBase64 string
-		var seatID int
+		var seatCode string
+		var ticketCategoryName string
+		var price float64
 		err = r.db.QueryRowContext(bgCtx,
-			"SELECT qr_code_value, seat_id FROM Ticket WHERE ticket_id = ?",
+			`SELECT t.qr_code_value, s.seat_code, COALESCE(ct.name, 'Vé'), COALESCE(ct.price, 0)
+			 FROM Ticket t
+			 JOIN Seat s ON t.seat_id = s.seat_id
+			 LEFT JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
+			 WHERE t.ticket_id = ?`,
 			ticketID,
-		).Scan(&qrBase64, &seatID)
+		).Scan(&qrBase64, &seatCode, &ticketCategoryName, &price)
 		if err != nil {
 			log.Error("Failed to get ticket", "ticket_id", ticketID, "error", err)
 			continue
 		}
-
-		// Lấy seat code và price
-		var seatCode string
-		// ⭐ FIX: Sử dụng float64 để nhận DECIMAL từ MySQL
-		var price float64
-		r.db.QueryRowContext(bgCtx,
-			"SELECT seat_code FROM Seat WHERE seat_id = ?",
-			seatID,
-		).Scan(&seatCode)
-		r.db.QueryRowContext(bgCtx,
-			"SELECT price FROM Category_Ticket WHERE category_ticket_id = ?",
-			categoryTicketID,
-		).Scan(&price)
 
 		seatCodes = append(seatCodes, seatCode)
 
@@ -1595,7 +1610,7 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 				Address:      finalVenueAddress,
 				SeatRow:      seatRow,
 				SeatNumber:   seatNumber,
-				CategoryName: categoryName,
+				CategoryName: ticketCategoryName,
 				// ⭐ FIX: Format float64 price as integer VND
 				Price:          formatCurrency(fmt.Sprintf("%.0f", price)),
 				UserName:       userName,
@@ -1899,7 +1914,8 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 			return "", fmt.Errorf("error updating QR code: %w", err)
 		}
 
-		fmt.Printf("[QR_FIX] ✅ Đã tạo Token cho Ticket ID: %d, sẵn sàng cho Frontend hiển thị QR\n", ticketID)
+		// Security: Don't log token or QR code - only log ticket ID
+		fmt.Printf("[QR_FIX] ✅ QR code generated for Ticket ID: %d\n", ticketID)
 
 		ticketIds = append(ticketIds, fmt.Sprintf("%d", ticketID))
 		qrValues = append(qrValues, qrBase64) // Store QR Base64 for later PDF generation

@@ -766,7 +766,7 @@ func cleanupArtifacts(cfg e2eConfig, artifacts *e2eArtifacts) error {
 		return nil
 	}
 
-	dsn := getenv("E2E_DB_URL", getenv("DB_URL", "root:12345@tcp(localhost:3306)/fpteventmanagement?parseTime=true&loc=Asia%2FHo_Chi_Minh"))
+	dsn := getenv("E2E_DB_URL", getenv("DB_URL", "fpt_app:FPTEventAppPassword2026@tcp(localhost:3306)/fpteventmanagement?parseTime=true&loc=Asia%2FHo_Chi_Minh"))
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return fmt.Errorf("khong mo duoc DB de cleanup: %w", err)

@@ -56,8 +56,8 @@ func InitDB() error {
 		Server:   getEnv("DB_SERVER", "127.0.0.1"),
 		Port:     3306,
 		Database: getEnv("DB_NAME", "FPTEventManagement"),
-		User:     getEnv("DB_USER", "root"),
-		Password: getEnv("DB_PASSWORD", ""),
+		User:     getEnv("DB_USER", "fpt_app"),
+		Password: getEnv("DB_PASSWORD", "FPTEventAppPassword2026"),
 	}
 
 	return InitDBWithConfig(config)
@@ -86,11 +86,13 @@ func initDBWithDSN(dsn string) error {
 
 // InitDBWithConfig initializes database with custom config
 func InitDBWithConfig(config Config) error {
-	// Build MySQL DSN: user:password@tcp(host:port)/database?parseTime=true&loc=Asia/Ho_Chi_Minh
+	// Build MySQL DSN: user:password@tcp(host:port)/database?charset=utf8mb4&...
+	// charset=utf8mb4: Vietnamese characters & emoji support
+	// collation=utf8mb4_unicode_ci: Proper Vietnamese character sorting
 	// parseTime=true: Go tự động parse TIME/DATETIME thành time.Time
 	// loc=Asia/Ho_Chi_Minh: Đảm bảo tất cả thời gian luôn theo múi giờ Việt Nam (UTC+7)
 	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?parseTime=true&loc=Asia%%2FHo_Chi_Minh",
+		"%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=true&loc=Asia%%2FHo_Chi_Minh&collation=utf8mb4_unicode_ci",
 		config.User,
 		config.Password,
 		config.Server,
@@ -148,8 +150,8 @@ func InitServiceDB(serviceName string) (*sql.DB, error) {
 			Server:   getEnv("DB_SERVER", "127.0.0.1"),
 			Port:     3306,
 			Database: getEnv("DB_NAME", "FPTEventManagement"),
-			User:     getEnv("DB_USER", "root"),
-			Password: getEnv("DB_PASSWORD", ""),
+			User:     getEnv("DB_USER", "fpt_app"),
+			Password: getEnv("DB_PASSWORD", "FPTEventAppPassword2026"),
 		}
 		dsn = fmt.Sprintf(
 			"%s:%s@tcp(%s:%d)/%s?parseTime=true&loc=Asia%%2FHo_Chi_Minh",

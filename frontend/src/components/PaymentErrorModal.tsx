@@ -39,11 +39,13 @@ export default function PaymentErrorModal({
     const displayShortage = shortage ?? 0
 
     return (
-        // Backdrop overlay
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            {/* Modal Card */}
-            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 overflow-hidden">
-                {/* Header with red gradient */}
+        // ⭐ ABSOLUTE CENTERING: Fixed overlay + centered container
+        <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
+            {/* Centering wrapper */}
+            <div className="flex items-center justify-center min-h-screen p-4">
+                {/* Modal Card: responsive width + scrollable content */}
+                <div className="bg-white rounded-lg shadow-2xl max-w-[90vw] w-full max-h-[90vh] overflow-y-auto">
+                    {/* Header with red gradient */}
                 <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4 flex items-start justify-between">
                     {/* Icon & Title */}
                     <div className="flex items-start">
@@ -69,10 +71,10 @@ export default function PaymentErrorModal({
                     >
                         <X className="w-5 h-5" />
                     </button>
-                </div>
+                    </div>
 
-                {/* Body */}
-                <div className="px-6 py-5">
+                    {/* Body */}
+                    <div className="px-6 py-5">
                     {/* INSUFFICIENT BALANCE Message */}
                     {errorType === 'insufficient_balance' && (
                         <div className="mb-4">
@@ -144,8 +146,8 @@ export default function PaymentErrorModal({
                     )}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="px-6 py-4 bg-gray-50 space-y-3">
+                    {/* Action Buttons */}
+                    <div className="px-6 py-4 bg-gray-50 space-y-3">
                     {/* VNPay Button - for insufficient balance */}
                     {errorType === 'insufficient_balance' && onRetryWithVNPay && (
                         <button
@@ -175,6 +177,7 @@ export default function PaymentErrorModal({
                     >
                         Đóng
                     </button>
+                    </div>
                 </div>
             </div>
         </div>

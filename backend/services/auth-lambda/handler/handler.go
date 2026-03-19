@@ -142,7 +142,7 @@ func verifyRecaptcha(token, action, clientIP string) error {
 	}
 	if !result.Valid {
 		log.Warn("reCAPTCHA verification failed", "message", result.ErrorMessage, "score", result.Score)
-		return fmt.Errorf(result.ErrorMessage)
+		return fmt.Errorf("%s", result.ErrorMessage)
 	}
 	log.Debug("reCAPTCHA verified", "score", result.Score, "action", result.Action)
 	return nil
@@ -158,6 +158,19 @@ func getClientIP(request events.APIGatewayProxyRequest) string {
 		return ip
 	}
 	return request.RequestContext.Identity.SourceIP
+}
+
+// getScheme extracts request scheme (http/https) from X-Forwarded-Proto header
+// Used when running behind load balancer (ALB/API Gateway)
+func getScheme(request events.APIGatewayProxyRequest) string {
+	if proto := request.Headers["X-Forwarded-Proto"]; proto != "" {
+		return strings.ToLower(strings.TrimSpace(proto))
+	}
+	if proto := request.Headers["x-forwarded-proto"]; proto != "" {
+		return strings.ToLower(strings.TrimSpace(proto))
+	}
+	// Default to https in production for safety
+	return "https"
 }
 
 // HandleLogin handles POST /api/login

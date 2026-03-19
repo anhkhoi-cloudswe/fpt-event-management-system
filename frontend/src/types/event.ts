@@ -45,6 +45,18 @@ export interface EventDetail extends EventListItem {
     status: string
   }[]
 
+  seats?: {
+    seatId: number
+    seatCode: string
+    rowNo?: string | null
+    colNo?: string | null
+    status: string
+    seatType?: string | null
+    categoryTicketId?: number | null
+    categoryName?: string | null
+    areaId: number
+  }[]
+
   // Lý do từ chối (khi status === 'REJECTED')
   rejectReason?: string | null
 }

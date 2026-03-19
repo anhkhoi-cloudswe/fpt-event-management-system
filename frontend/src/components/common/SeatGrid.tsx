@@ -52,6 +52,22 @@ export function SeatGrid({
   // nhưng để sẵn để sau này có thể hiển thị lỗi.
   const [error] = useState<string | null>(null)
 
+  const normalizeSeatStatus = (status?: string) => {
+    const normalized = String(status ?? '').trim().toUpperCase()
+
+    if (normalized === 'BOOKED' || normalized === 'CHECKED_IN' || normalized === 'OCCUPIED') {
+      return 'BOOKED'
+    }
+    if (normalized === 'PENDING' || normalized === 'HOLD' || normalized === 'RESERVED') {
+      return 'PENDING'
+    }
+    if (normalized === 'ACTIVE' || normalized === 'AVAILABLE') {
+      return 'ACTIVE'
+    }
+
+    return normalized
+  }
+
   // ✅ FIXED: Only show ALLOCATED seats (categoryTicketId != null)
   // Organizer chỉ muốn xem những gì đã mua, KHÔNG quan tâm ghế chưa phân bổ
   // This ensures VIP stays in A-B, STANDARD stays in C-G when A2 exists
@@ -252,16 +268,14 @@ export function SeatGrid({
     }
 
     // Nếu ghế đã được đặt/chiếm => đỏ, disable
-    if (
-      seat.status === 'BOOKED' ||
-      seat.status === 'RESERVED' ||
-      seat.status === 'OCCUPIED'
-    ) {
+    const seatStatus = normalizeSeatStatus(seat.status)
+
+    if (seatStatus === 'BOOKED') {
       return 'border-red-400 bg-red-100 cursor-not-allowed text-red-800'
     }
 
     // Nếu ghế đang giữ chỗ / hold => xám, disable
-    if (seat.status === 'HOLD') {
+    if (seatStatus === 'PENDING') {
       return 'border-gray-400 bg-gray-200 cursor-not-allowed text-gray-700'
     }
 
@@ -358,14 +372,14 @@ export function SeatGrid({
                                 type="button"
                                 onClick={() => {
                                   // Only allow booking AVAILABLE seats (all are allocated already)
-                                  if (disabled || seat.status !== 'AVAILABLE') return
+                                  if (disabled || normalizeSeatStatus(seat.status) !== 'ACTIVE') return
                                   if (!allowSelect) return
                                   if (typeof onSeatSelect !== 'function') return
                                   onSeatSelect(seat)
                                 }}
                                 disabled={
                                   disabled ||
-                                  seat.status !== 'AVAILABLE' ||
+                                  normalizeSeatStatus(seat.status) !== 'ACTIVE' ||
                                   !allowSelect
                                 }
                                 className={`${compactMode

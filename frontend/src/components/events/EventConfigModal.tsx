@@ -189,15 +189,18 @@ export function EventConfigModal({
 
     return (
         <>
-            {/* Backdrop */}
+            {/* ⭐ ABSOLUTE CENTERING: Fixed overlay + centered container */}
             <div
                 className="fixed inset-0 bg-black/50 z-40"
                 onClick={onClose}
             ></div>
 
             {/* Modal */}
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 z-50 overflow-y-auto">
+                {/* Centering wrapper */}
+                <div className="flex items-center justify-center min-h-screen p-4">
+                    {/* Modal Card: responsive width + scrollable */}
+                    <div className="bg-white rounded-lg shadow-xl max-w-[90vw] w-full max-h-[90vh] overflow-y-auto">
                     {/* Header */}
                     <div className="flex items-center justify-between p-6 border-b border-gray-200">
                         <div className="flex items-center gap-3">
@@ -406,6 +409,7 @@ export function EventConfigModal({
                         </button>
                     </div>
                 </div>
+            </div>
             </div>
         </>
     )

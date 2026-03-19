@@ -32,6 +32,30 @@ type Ticket = {
   status: string
 }
 
+type ApiSeat = {
+  seatId?: number | string
+  seat_id?: number | string
+  seatCode?: string
+  seat_code?: string
+  rowNo?: string
+  row_no?: string
+  seatRow?: string
+  seat_row?: string
+  colNo?: string | number
+  col_no?: string | number
+  seatColumn?: number | string
+  seat_column?: number | string
+  status?: string
+  seatType?: string
+  seat_type?: string
+  categoryTicketId?: number | string | null
+  category_ticket_id?: number | string | null
+  categoryName?: string | null
+  category_name?: string | null
+  areaId?: number | string
+  area_id?: number | string
+}
+
 // ===================== PROPS =====================
 // Props mà component cha truyền vào
 interface EventDetailModalProps {
@@ -84,13 +108,56 @@ export function EventDetailModal({
   const [allSeats, setAllSeats] = useState<Seat[]>([])
 
   // Tổng số ghế VIP của khu vực + event (API trả total)
-  const [vipTotal, setVipTotal] = useState<number>(0)
-
-  // Tổng số ghế STANDARD của khu vực + event (API trả total)
-  const [standardTotal, setStandardTotal] = useState<number>(0)
-
-  // Loading khi fetch danh sách ghế
   const [loadingSeats, setLoadingSeats] = useState(false)
+
+  const toNumber = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value)
+      if (Number.isFinite(parsed)) return parsed
+    }
+    return undefined
+  }
+
+  const normalizeSeat = (rawSeat: ApiSeat): Seat | null => {
+    const seatId = toNumber(rawSeat.seatId ?? rawSeat.seat_id)
+    const seatCode = (rawSeat.seatCode ?? rawSeat.seat_code ?? '').toString()
+    const areaId = toNumber(rawSeat.areaId ?? rawSeat.area_id ?? event?.areaId)
+
+    if (!seatId || !seatCode || !areaId) {
+      return null
+    }
+
+    const categoryTicketId = toNumber(
+      rawSeat.categoryTicketId ?? rawSeat.category_ticket_id,
+    )
+
+    const rawStatus = String(rawSeat.status ?? '').trim().toUpperCase()
+    let mappedStatus = 'ACTIVE'
+    if (rawStatus === 'BOOKED' || rawStatus === 'CHECKED_IN' || rawStatus === 'OCCUPIED') {
+      mappedStatus = 'BOOKED'
+    } else if (rawStatus === 'PENDING' || rawStatus === 'HOLD' || rawStatus === 'RESERVED') {
+      mappedStatus = 'PENDING'
+    } else if (rawStatus === 'ACTIVE' || rawStatus === 'AVAILABLE' || rawStatus === '') {
+      mappedStatus = 'ACTIVE'
+    }
+
+    const normalized: Seat = {
+      seatId,
+      seatCode,
+      rowNo: (rawSeat.rowNo ?? rawSeat.row_no) as string | undefined,
+      seatRow: (rawSeat.seatRow ?? rawSeat.seat_row) as string | undefined,
+      colNo: rawSeat.colNo != null ? String(rawSeat.colNo) : rawSeat.col_no != null ? String(rawSeat.col_no) : undefined,
+      seatColumn: toNumber(rawSeat.seatColumn ?? rawSeat.seat_column),
+      status: mappedStatus,
+      seatType: (rawSeat.seatType ?? rawSeat.seat_type) as string | undefined,
+      categoryTicketId,
+      categoryName: (rawSeat.categoryName ?? rawSeat.category_name ?? undefined) as string | undefined,
+      areaId,
+    }
+
+    return normalized
+  }
 
   // ===================== HELPER: CHECK TRẠNG THÁI GHẾ =====================
 
@@ -100,7 +167,8 @@ export function EventDetailModal({
    * => chỉ cho click khi 'AVAILABLE'
    */
   const isSeatAvailableForSelect = (seat: Seat) => {
-    return seat.status === 'AVAILABLE'
+    const status = String(seat.status ?? '').toUpperCase()
+    return status === 'ACTIVE' || status === 'AVAILABLE'
   }
 
   /**
@@ -109,163 +177,30 @@ export function EventDetailModal({
    */
   const isSeatAvailableForCount = (seat: Seat, isVIP: boolean) => {
     const seatIsVIP = seat.seatType === 'VIP'
-    return seatIsVIP === isVIP && seat.status === 'AVAILABLE'
+    const status = String(seat.status ?? '').toUpperCase()
+    return seatIsVIP === isVIP && (status === 'ACTIVE' || status === 'AVAILABLE')
   }
 
   // ===================== EFFECT: LOAD SEAT LAYOUT =====================
   useEffect(() => {
-    const fetchSeats = async () => {
-      // Chỉ fetch khi có event + có areaId + có token
-      if (!event || !event.areaId || !token) return
-
-      setLoadingSeats(true)
-
-      try {
-        // 1) Gọi API lấy tất cả ghế theo areaId + eventId (để vẽ SeatGrid)
-        const seatsRes = await fetch(
-          `/api/seats?areaId=${event.areaId}&eventId=${event.eventId}`,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        )
-
-        // Nếu OK => parse JSON và set allSeats
-        if (seatsRes.ok) {
-          const seatsData = await seatsRes.json()
-          console.log('All seats data:', seatsData)
-          setAllSeats(seatsData.seats || [])
-        }
-
-        /**
-         * 2) Đồng thời gọi 2 API để lấy tổng ghế VIP và tổng ghế STANDARD
-         * Dùng Promise.all để chạy song song cho nhanh
-         */
-        const [vipRes, standardRes] = await Promise.all([
-          fetch(
-            `/api/seats?areaId=${event.areaId}&eventId=${event.eventId}&seatType=VIP`,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-            },
-          ),
-          fetch(
-            `/api/seats?areaId=${event.areaId}&eventId=${event.eventId}&seatType=STANDARD`,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-            },
-          ),
-        ])
-
-        // Nếu OK => setVipTotal / setStandardTotal (API trả { total: ... })
-        if (vipRes.ok) {
-          const vipData = await vipRes.json()
-          console.log('VIP total:', vipData.total)
-          setVipTotal(vipData.total || 0)
-        }
-
-        if (standardRes.ok) {
-          const standardData = await standardRes.json()
-          console.log('STANDARD total:', standardData.total)
-          setStandardTotal(standardData.total || 0)
-        }
-      } catch (err: any) {
-        console.error('Error loading seats:', err)
-      } finally {
-        setLoadingSeats(false)
-      }
-    }
-
-    // Chỉ fetch seat khi đã có event và event detail không còn loading
-    if (event && !loading) {
-      fetchSeats()
-    }
-  }, [event, loading, token])
-
-  // ✅ NEW: useEffect to listen for ticket changes and re-generate seats
-  // Purpose: When organizer updates ticket data (30 VIP + 60 STANDARD), 
-  // automatically re-fetch seats from backend to generate correct seat map
-  useEffect(() => {
-    if (!event || !event.tickets || !token) return
-
-    console.log('[EventDetailModal] Tickets updated, re-fetching seats...')
-    console.log('[EventDetailModal] Tickets:', event.tickets)
+    if (!event || loading) return
 
     setLoadingSeats(true)
+    try {
+      const rawSeats = (event.seats ?? []) as ApiSeat[]
+      const normalizedSeats = rawSeats
+        .map((seat) => normalizeSeat(seat))
+        .filter((seat): seat is Seat => seat !== null)
 
-    const refetchSeatsForTickets = async () => {
-      try {
-        if (!event.areaId) return
-
-        // Re-fetch all seats (will be re-generated based on new ticket counts)
-        const seatsRes = await fetch(
-          `/api/seats?areaId=${event.areaId}&eventId=${event.eventId}`,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        )
-
-        if (seatsRes.ok) {
-          const seatsData = await seatsRes.json()
-          console.log('[EventDetailModal] Seats re-fetched after ticket update:', seatsData)
-          setAllSeats(seatsData.seats || [])
-          // Reset selection when re-generating seats
-          setSelectedSeats([])
-          setSelectedTicket(null)
-        }
-
-        // Also re-fetch ticket totals
-        const [vipRes, standardRes] = await Promise.all([
-          fetch(
-            `/api/seats?areaId=${event.areaId}&eventId=${event.eventId}&seatType=VIP`,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-            },
-          ),
-          fetch(
-            `/api/seats?areaId=${event.areaId}&eventId=${event.eventId}&seatType=STANDARD`,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-            },
-          ),
-        ])
-
-        if (vipRes.ok) {
-          const vipData = await vipRes.json()
-          setVipTotal(vipData.total || 0)
-          console.log('[EventDetailModal] VIP total updated:', vipData.total)
-        }
-
-        if (standardRes.ok) {
-          const standardData = await standardRes.json()
-          setStandardTotal(standardData.total || 0)
-          console.log('[EventDetailModal] STANDARD total updated:', standardData.total)
-        }
-      } catch (err: any) {
-        console.error('[EventDetailModal] Error re-fetching seats for tickets:', err)
-      } finally {
-        setLoadingSeats(false)
-      }
+      console.log('[EventDetailModal] Seats from event detail:', normalizedSeats.length)
+      setAllSeats(normalizedSeats)
+    } catch (err: any) {
+      console.error('Error mapping event seats:', err)
+      setAllSeats([])
+    } finally {
+      setLoadingSeats(false)
     }
-
-    refetchSeatsForTickets()
-  }, [event?.tickets?.length, event?.areaId, event?.eventId, token])
+  }, [event, loading])
 
   // ===================== HANDLE: CHỌN LOẠI VÉ =====================
   const handleSelectTicket = (ticket: Ticket) => {
@@ -413,8 +348,6 @@ export function EventDetailModal({
     setSelectedTicket(null)
     setSelectedSeats([])
     setAllSeats([])
-    setVipTotal(0)
-    setStandardTotal(0)
     onClose()
   }
 
@@ -470,27 +403,29 @@ export function EventDetailModal({
   // ===================== UI RENDER =====================
   return (
     <>
-      {/* Overlay nền đen */}
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-        {/* Container modal */}
-        <div
-          className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()} // chặn click lan ra overlay (để không đóng khi click trong modal)
-        >
-          {/* ===== HEADER ===== */}
-          <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {event?.title ?? 'Chi tiết sự kiện'}
-            </h2>
+      {/* ⭐ ABSOLUTE CENTERING: Fixed overlay + centered container */}
+      <div className="fixed inset-0 bg-black/50 z-40 overflow-y-auto">
+        {/* Centering wrapper */}
+        <div className="flex items-center justify-center min-h-screen p-4">
+          {/* Modal Card: responsive width + scrollable */}
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-[90vw] w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()} // chặn click lan ra overlay (để không đóng khi click trong modal)
+          >
+            {/* ===== HEADER ===== */}
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {event?.title ?? 'Chi tiết sự kiện'}
+              </h2>
 
-            {/* Nút đóng */}
-            <button
-              onClick={handleClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
+              {/* Nút đóng */}
+              <button
+                onClick={handleClose}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
           {/* ===== CONTENT ===== */}
           <div className="p-6">
@@ -660,14 +595,14 @@ export function EventDetailModal({
                 )}
 
                 {/* ===== LÝ DO TỪ CHỐI ===== */}
-        				{event.status === 'REJECTED' && event.rejectReason && (
+                {event.status === 'REJECTED' && event.rejectReason && (
                   <div className="mb-6 border-t pt-6">
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                       <h3 className="text-base font-semibold text-red-700 mb-2 flex items-center gap-2">
                         <span>🚫</span> Lý do từ chối từ Staff
                       </h3>
                       <p className="text-sm text-red-800 leading-relaxed whitespace-pre-wrap">
-        						{event.rejectReason}
+                        {event.rejectReason}
                       </p>
                     </div>
                   </div>
@@ -684,9 +619,12 @@ export function EventDetailModal({
                         const total = ticket.maxQuantity
 
                         // ✅ FIX: Ư u tiên dùng ticket.remaining từ BE (maxQuantity - sold)
-                        // Fallback: đếm ghế AVAILABLE theo categoryTicketId trong allSeats
+                        // Fallback: đếm ghế ACTIVE theo categoryTicketId trong allSeats
                         const seatsAvailable = allSeats.filter(
-                          (s: Seat) => s.categoryTicketId === ticket.categoryTicketId && s.status === 'AVAILABLE'
+                          (s: Seat) => {
+                            const status = String(s.status ?? '').toUpperCase()
+                            return s.categoryTicketId === ticket.categoryTicketId && (status === 'ACTIVE' || status === 'AVAILABLE')
+                          }
                         ).length
                         const availableCount =
                           ticket.remaining !== undefined
@@ -711,12 +649,11 @@ export function EventDetailModal({
                                 status: ticket.status,
                               })
                             }
-                            className={`flex items-center justify-between gap-4 py-2 px-3 rounded-lg border cursor-pointer tra
-nsition
-                              ${isSelectedTicket
+                            className={`flex items-center justify-between gap-4 py-2 px-3 rounded-lg border cursor-pointer transition ${
+                              isSelectedTicket
                                 ? 'border-blue-600 bg-blue-50'
                                 : 'border-transparent hover:bg-gray-50'
-                              }`}
+                            }`}
                           >
                             <div className="flex-1 min-w-0">
                               <p className="font-medium">{ticket.name}</p>
@@ -828,6 +765,7 @@ nsition
             )}
           </div>
         </div>
+      </div>
       </div>
     </>
   )

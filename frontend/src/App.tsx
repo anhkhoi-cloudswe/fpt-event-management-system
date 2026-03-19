@@ -32,7 +32,14 @@ import Layout from './components/Layout.tsx'
 import GuestLanding from './pages/GuestLanding.tsx'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white" />
+    )
+  }
+
   return user ? <>{children}</> : <Navigate to="/guest" />
 }
 

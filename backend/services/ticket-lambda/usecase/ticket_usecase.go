@@ -73,8 +73,8 @@ func (uc *TicketUseCase) GetMyBillsPaginated(ctx context.Context, userID, page, 
 // ============================================================
 
 // CreatePaymentURL - Tạo URL thanh toán VNPay cho nhiều ghế
-func (uc *TicketUseCase) CreatePaymentURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int) (string, error) {
-	return uc.ticketRepo.CreateVNPayURL(ctx, userID, eventID, categoryTicketID, seatIDs)
+func (uc *TicketUseCase) CreatePaymentURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, returnURL string) (string, error) {
+	return uc.ticketRepo.CreateVNPayURL(ctx, userID, eventID, categoryTicketID, seatIDs, returnURL)
 }
 
 // ProcessPaymentCallback - Xử lý callback từ VNPay

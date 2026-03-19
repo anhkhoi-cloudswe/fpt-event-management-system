@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { GraduationCap, Eye, EyeOff } from 'lucide-react'
 import axios from 'axios'
+import ReCAPTCHA from 'react-google-recaptcha'
 import fptLogo from '../assets/fpt-logo.png'
 import fptCampus from '../assets/dai-hoc-fpt-tp-hcm-1.jpeg'
 import { useToast } from '../contexts/ToastContext'
 
 const API_URL = '/api'
+const RECAPTCHA_SITE_KEY = '6LdvPQIsAAAAAG7glbICpFiBR9o5MhboFU4JvxAJ'
 
 interface FormData {
   email: string
@@ -29,6 +31,8 @@ export default function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [resetToken, setResetToken] = useState('')
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
+  const recaptchaRef = useRef<ReCAPTCHA | null>(null)
   const navigate = useNavigate()
   const { showToast } = useToast()
 
@@ -56,12 +60,18 @@ export default function ResetPassword() {
       return
     }
 
+    if (!recaptchaToken) {
+      setError('Vui lòng xác nhận reCAPTCHA trước khi gửi OTP!')
+      return
+    }
+
     setLoading(true)
     try {
       console.log('Sending reset password OTP to:', formData.email)
 
       const response = await axios.post(`${API_URL}/forgot-password`, {
-        email: formData.email
+        email: formData.email,
+        recaptchaToken,
       })
 
       console.log('Forgot Password Response:', response.data)
@@ -80,6 +90,8 @@ export default function ResetPassword() {
         setOtpCountdown(60)
         setError('')
         showToast('success', 'Mã OTP đã được gửi đến email của bạn!')
+        recaptchaRef.current?.reset()
+        setRecaptchaToken(null)
       } else {
         setError(response.data.message || 'Gửi OTP thất bại')
       }
@@ -89,6 +101,8 @@ export default function ResetPassword() {
         err.response?.data?.error ||
         'Đã xảy ra lỗi. Vui lòng thử lại.'
       setError(errorMsg)
+      recaptchaRef.current?.reset()
+      setRecaptchaToken(null)
     } finally {
       setLoading(false)
     }
@@ -220,6 +234,20 @@ export default function ResetPassword() {
         {step === 'email' ? (
           <form onSubmit={handleSendOtp} className="space-y-6">
             <div>
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey={RECAPTCHA_SITE_KEY}
+                onChange={(token) => {
+                  setRecaptchaToken(token)
+                  if (token) {
+                    setError('')
+                  }
+                }}
+                onExpired={() => setRecaptchaToken(null)}
+              />
+            </div>
+
+            <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email
               </label>
@@ -237,7 +265,7 @@ export default function ResetPassword() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !recaptchaToken}
               className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed"
             >
               {loading ? 'Đang gửi...' : 'Gửi mã OTP'}

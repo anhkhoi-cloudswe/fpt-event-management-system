@@ -229,6 +229,50 @@ func defaultHeaders() map[string]string {
 	}
 }
 
+func getHeaderIgnoreCase(headers map[string]string, key string) string {
+	for headerKey, value := range headers {
+		if strings.EqualFold(headerKey, key) {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func buildDynamicReturnURL(request events.APIGatewayProxyRequest) string {
+	// ⭐ CRITICAL: Tạo dynamic return URL cho VNPay callback
+	// This allows Docker deployment ở bất kỳ đâu (localhost, LAN, AWS) mà ko cần edit .env
+	
+	host := getHeaderIgnoreCase(request.Headers, "Host")
+	if host == "" {
+		// Fallback if Host header missing (should not happen with proper proxy setup)
+		return ""
+	}
+
+	// Xác định scheme (http vs https) từ X-Forwarded-Proto header
+	// X-Forwarded-Proto được set bởi API Gateway hoặc reverse proxy
+	scheme := getHeaderIgnoreCase(request.Headers, "X-Forwarded-Proto")
+	
+	if scheme != "" {
+		// Parse X-Forwarded-Proto (có thể là "http,https" nếu qua nhiều proxy)
+		if commaIdx := strings.Index(scheme, ","); commaIdx >= 0 {
+			scheme = scheme[:commaIdx]
+		}
+		scheme = strings.ToLower(strings.TrimSpace(scheme))
+	}
+	
+	// Fallback nếu X-Forwarded-Proto không có hoặc invalid
+	if scheme == "" || (scheme != "http" && scheme != "https") {
+		// Default to http dành cho local dev (Docker compose, localhost)
+		// Production AWS API Gateway sẽ set X-Forwarded-Proto = https
+		scheme = "http"
+		log.Debug("[buildDynamicReturnURL] No valid X-Forwarded-Proto, defaulting to http (Local Dev Mode)")
+	}
+
+	returnURL := fmt.Sprintf("%s://%s/api/buyTicket", scheme, host)
+	log.Debug("[buildDynamicReturnURL] Dynamic VNPay Return URL: %s (Host=%s, Scheme=%s)", returnURL, host, scheme)
+	return returnURL
+}
+
 // ============================================================
 // HandlePaymentTicket - GET /api/payment-ticket
 // Tạo URL thanh toán VNPay cho vé sự kiện
@@ -247,8 +291,8 @@ func (h *TicketHandler) HandlePaymentTicket(ctx context.Context, request events.
 	}
 
 	// Validate required params
-	if userIDStr == "" || eventIDStr == "" || categoryTicketIDStr == "" || seatIDStr == "" {
-		return createMessageResponse(http.StatusBadRequest, "Missing required parameters: userId, eventId, categoryTicketId, seatId")
+	if userIDStr == "" || eventIDStr == "" || seatIDStr == "" {
+		return createMessageResponse(http.StatusBadRequest, "Missing required parameters: userId, eventId, seatId")
 	}
 
 	userID, err := strconv.Atoi(userIDStr)
@@ -261,9 +305,13 @@ func (h *TicketHandler) HandlePaymentTicket(ctx context.Context, request events.
 		return createMessageResponse(http.StatusBadRequest, "Invalid eventId")
 	}
 
-	categoryTicketID, err := strconv.Atoi(categoryTicketIDStr)
-	if err != nil {
-		return createMessageResponse(http.StatusBadRequest, "Invalid categoryTicketId")
+	categoryTicketID := 0
+	if categoryTicketIDStr != "" {
+		parsedCategoryTicketID, parseErr := strconv.Atoi(categoryTicketIDStr)
+		if parseErr != nil {
+			return createMessageResponse(http.StatusBadRequest, "Invalid categoryTicketId")
+		}
+		categoryTicketID = parsedCategoryTicketID
 	}
 
 	// Parse multiple seatIds (comma-separated: "1,2,3,4")
@@ -296,8 +344,12 @@ func (h *TicketHandler) HandlePaymentTicket(ctx context.Context, request events.
 		return createMessageResponse(http.StatusBadRequest, "Maximum 4 seats per purchase")
 	}
 
+	// Build dynamic return URL from current request host/protocol.
+	// If host is unavailable, repository/service will fallback to configured VNPAY_RETURN_URL.
+	dynamicReturnURL := buildDynamicReturnURL(request)
+
 	// Generate VNPay URL for multiple seats
-	paymentURL, err := h.useCase.CreatePaymentURL(ctx, userID, eventID, categoryTicketID, seatIDs)
+	paymentURL, err := h.useCase.CreatePaymentURL(ctx, userID, eventID, categoryTicketID, seatIDs, dynamicReturnURL)
 	if err != nil {
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
@@ -362,8 +414,17 @@ func (h *TicketHandler) HandleBuyTicket(ctx context.Context, request events.APIG
 		}, nil
 	}
 
+	// Try to enrich redirect with eventId for forced refresh on frontend.
+	eventIDParam := ""
+	txnParts := strings.Split(vnpTxnRef, "_")
+	if len(txnParts) >= 2 {
+		if _, parseErr := strconv.Atoi(txnParts[1]); parseErr == nil {
+			eventIDParam = "&eventId=" + url.QueryEscape(txnParts[1])
+		}
+	}
+
 	// Redirect to payment success page with ticketIds
-	frontendURL := fmt.Sprintf("http://localhost:3000/dashboard/payment/success?status=success&method=vnpay&ticketIds=%s", url.QueryEscape(ticketIds))
+	frontendURL := fmt.Sprintf("http://localhost:3000/dashboard/payment/success?status=success&method=vnpay&ticketIds=%s%s", url.QueryEscape(ticketIds), eventIDParam)
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusFound,
 		Headers: map[string]string{
@@ -446,14 +507,13 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 
 	var paymentReq WalletPaymentRequest
 	if request.Body != "" {
-		// Log raw body for debugging
-		fmt.Printf("[WALLET_PAYMENT] 📥 RAW BODY RECEIVED: %s\n", request.Body)
-		fmt.Printf("[WALLET_PAYMENT] 📋 Content-Type: %s\n", request.Headers["Content-Type"])
+		// Security: Don't log raw body (could contain sensitive data)
+		fmt.Printf("[WALLET_PAYMENT] 📋 Content-Type: %s, Body size: %d bytes\n", request.Headers["Content-Type"], len(request.Body))
 
 		err := json.Unmarshal([]byte(request.Body), &paymentReq)
 		if err != nil {
 			fmt.Printf("[WALLET_PAYMENT] ❌ JSON PARSE ERROR: %v\n", err)
-			fmt.Printf("[WALLET_PAYMENT] 📝 Body that failed to parse: '%s'\n", request.Body)
+			fmt.Printf("[WALLET_PAYMENT] 📝 Failed to parse payment request (body redacted for security)\n")
 			return createMessageResponse(http.StatusBadRequest, "Invalid request body: "+err.Error())
 		}
 

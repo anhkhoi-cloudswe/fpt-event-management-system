@@ -5,7 +5,7 @@ const API_URL = '/api'
 export interface Venue {
   venueId: number
   venueName: string
-  address: string
+  location: string | null  // Backend trả về 'location', không phải 'address'
   status: string
   areas?: Area[]
 }
@@ -35,11 +35,11 @@ export const venueService = {
     return response.data.filter((venue: Venue) => venue.status === 'AVAILABLE')
   },
 
-  async create(data: { venueName: string; address: string }): Promise<void> {
+  async create(data: { venueName: string; location: string }): Promise<void> {
     await axios.post(`${API_URL}/venues`, data, getAuthHeaders())
   },
 
-  async update(data: { venueId: number; venueName: string; address: string }): Promise<void> {
+  async update(data: { venueId: number; venueName: string; location: string }): Promise<void> {
     await axios.put(`${API_URL}/venues`, data, getAuthHeaders())
   },
 

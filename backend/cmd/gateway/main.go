@@ -120,6 +120,10 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
+func isAuthMePath(path string) bool {
+	return path == "/api/v1/auth/me" || path == "/api/auth/me"
+}
+
 // resolveBackend finds the matching backend for a given path
 func resolveBackend(path string) (backendURL string, serviceName string, found bool) {
 	bestLen := 0
@@ -174,6 +178,12 @@ func createProxy(target string) (*httputil.ReverseProxy, error) {
 // If no token is present, the request passes through without identity headers (public APIs).
 func jwtMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Let /auth/me pass through untouched so Auth service can decode cookie directly.
+		if isAuthMePath(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		token := ""
 		if cookie, err := r.Cookie("token"); err == nil && strings.TrimSpace(cookie.Value) != "" {
 			token = cookie.Value
@@ -191,13 +201,14 @@ func jwtMiddleware(next http.Handler) http.Handler {
 			if err != nil {
 				log.Printf("[GATEWAY] [JWT] ❌ Token validation failed: %v", err)
 				log.Printf("[GATEWAY] [JWT] 🔑 Gateway secret: %s", jwt.GetSecretPreview())
+				// Security: Don't log token content/prefix - only size info
 				if len(token) > 20 {
-					log.Printf("[GATEWAY] [JWT] 🎫 Token prefix: %s...", token[:20])
+					log.Printf("[GATEWAY] [JWT] 📝 Token size: %d bytes (valid JWT structure: header.payload.sig)", len(token))
 				}
-				// Decode token parts for diagnosis (header.payload.sig)
+				// Decode token parts for diagnosis (header.payload.sig) - size only, no content
 				parts := strings.SplitN(token, ".", 3)
 				if len(parts) == 3 {
-					log.Printf("[GATEWAY] [JWT] 📐 Token parts: header=%d, payload=%d, sig=%d bytes",
+					log.Printf("[GATEWAY] [JWT] 📐 Token structure: header=%d, payload=%d, sig=%d bytes",
 						len(parts[0]), len(parts[1]), len(parts[2]))
 				}
 				if strings.Contains(err.Error(), "signature is invalid") {
