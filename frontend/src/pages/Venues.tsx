@@ -11,7 +11,7 @@
  * 5. Người dùng có thể thêm/sửa/xóa phòng trong địa điểm đã chọn
  * 
  * CẤU TRÚC DỮ LIỆU:
- * - Venue (Địa điểm): venueId, venueName, address, areas[]
+ * - Venue (Địa điểm): venueId, venueName, location, areas[]
  * - Area (Phòng): areaId, venueId, areaName, floor, capacity, status
  * =============================================================================
  */
@@ -176,7 +176,7 @@ export default function Venues() {
    * 2. Nếu đang sửa -> gọi API update, ngược lại -> gọi API create
    * 3. Refresh lại danh sách địa điểm
    */
-  const handleSubmitVenue = async (data: { venueId: number; venueName: string; address: string }) => {
+  const handleSubmitVenue = async (data: { venueId: number; venueName: string; location: string }) => {
     try {
       const token = 'cookie-auth'
       if (!token) {
@@ -453,7 +453,7 @@ export default function Venues() {
       {selectedVenue && (
         <AreaListSection
           venueName={selectedVenue.venueName}
-          venueAddress={selectedVenue.address}
+          venueAddress={selectedVenue.location || ''}
           areas={selectedVenue.areas || []}
           onClose={() => setSelectedVenue(null)}  // Đóng section khi click nút close
           onAdd={() => handleOpenAreaModal()}     // Mở modal thêm phòng mới

@@ -10,11 +10,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/common/db"
 	"github.com/fpt-event-services/common/jwt"
+	authmodule "github.com/fpt-event-services/internal/auth"
 	"github.com/fpt-event-services/common/scheduler"
 	authHandler "github.com/fpt-event-services/services/auth-lambda/handler"
 	eventHandler "github.com/fpt-event-services/services/event-lambda/handler"
@@ -44,6 +46,9 @@ func adaptRequest(r *http.Request) (events.APIGatewayProxyRequest, error) {
 			headers[key] = values[0]
 		}
 	}
+	if r.Host != "" {
+		headers["Host"] = r.Host
+	}
 
 	// Convert query parameters
 	queryParams := make(map[string]string)
@@ -68,6 +73,9 @@ func writeResponse(w http.ResponseWriter, resp events.APIGatewayProxyResponse) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization")
+
+	// Ensure UTF-8 encoding for JSON responses (fixes Vietnamese character display)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	// Set response headers from Lambda response
 	for key, value := range resp.Headers {
@@ -184,28 +192,43 @@ func main() {
 	venueH := venueHandler.NewVenueHandlerWithDB(dbConn)
 	staffH := staffHandler.NewStaffHandlerWithDB(dbConn)
 
+	// ======================= AUTH MODULE (PRODUCTION INTEGRATION) =======================
+	// Uses the existing JWT_SECRET from environment and DB_URL for GORM MySQL repository.
+	jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET is required for auth module")
+	}
+
+	dsn := strings.TrimSpace(os.Getenv("DB_URL"))
+	if dsn == "" {
+		log.Fatal("DB_URL is required for auth module")
+	}
+
+	gormDB, err := authmodule.NewMySQLGormDB(dsn)
+	if err != nil {
+		log.Fatalf("failed to initialize auth gorm db: %v", err)
+	}
+
+	authStore, err := authmodule.NewGormUserStore(gormDB)
+	if err != nil {
+		log.Fatalf("failed to initialize auth gorm store: %v", err)
+	}
+
+	authJWTManager := authmodule.NewJWTManager(jwtSecret, 24*time.Hour)
+	authModuleHandler := authmodule.NewHandler(authStore, authJWTManager)
+	authModuleRouter := authmodule.NewRouter(authModuleHandler, authJWTManager)
+
+	// New standalone auth module endpoints:
+	// - POST /api/v2/auth/register
+	// - POST /api/v2/auth/login
+	// - GET  /api/v2/auth/protected/me (requires Bearer token)
+	http.Handle("/api/v2/auth/", http.StripPrefix("/api/v2/auth", authModuleRouter))
+
+	// Legacy API route: /api/login (redirects to new auth module with lazy migration support)
+	// Supports SHA256, MD5, and plaintext password migration to bcrypt
+	http.Handle("/api/login", http.StripPrefix("/api/login", authmodule.NewLoginOnlyRouter(authModuleHandler)))
+
 	// ======================= AUTH ROUTES =======================
-	http.HandleFunc("/api/login", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		req, err := adaptRequest(r)
-		if err != nil {
-			http.Error(w, "Failed to read request", http.StatusBadRequest)
-			return
-		}
-
-		resp, err := authH.HandleLogin(context.Background(), req)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		writeResponse(w, resp)
-	}))
-
 	http.HandleFunc("/api/register", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1002,7 +1025,7 @@ func main() {
 
 	// ======================= WALLET INTERNAL ROUTES (Phase 4: Saga Pattern) =======================
 	// Các API nội bộ cho Wallet Service - KHÔNG expose ra ngoài (chỉ internal call)
-	// Security: Kiểm tra X-Internal-Call header
+	// Security: Kiểm tra X-Internal-Token header (via utils.IsValidInternalToken())
 
 	walletInternalH := ticketHandler.NewWalletInternalHandlerWithDB(dbConn)
 
@@ -1141,7 +1164,7 @@ func main() {
 
 	// ======================= TICKET INTERNAL ROUTES (Phase 5: Refund Saga + Checkin/Checkout) =======================
 	// Các API nội bộ cho Ticket Service - KHÔNG expose ra ngoài (chỉ internal call)
-	// Security: Kiểm tra X-Internal-Call header
+	// Security: Kiểm tra X-Internal-Token header (via utils.IsValidInternalToken())
 
 	ticketInternalH := ticketHandler.NewTicketInternalHandlerWithDB(dbConn)
 

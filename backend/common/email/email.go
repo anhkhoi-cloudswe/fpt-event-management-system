@@ -10,6 +10,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/fpt-event-services/common/logger"
 )
 
 // ============================================================
@@ -51,6 +53,9 @@ func NewEmailService(config *Config) *EmailService {
 		config = DefaultConfig()
 	}
 	devMode := config.Username == "" || config.Password == ""
+	if devMode {
+		logger.Default().Warn("[EMAIL] ⚠️ DEV MODE ENABLED - Emails will NOT be sent. Configure SMTP_USERNAME and SMTP_PASSWORD.")
+	}
 	return &EmailService{
 		config:    config,
 		devMode:   devMode,
@@ -205,10 +210,14 @@ func stripHTML(html string) string { return strings.ReplaceAll(html, "<br>", "\n
 // ============================================================
 
 func (s *EmailService) Send(msg EmailMessage) error {
+	log := logger.Default()
 	if s.devMode {
+		log.Info("[EMAIL] 📧 DEV MODE - Skipping actual send to %v (Subject: %s)", msg.To, msg.Subject)
 		return nil
 	}
 	addr := fmt.Sprintf("%s:%s", s.config.Host, s.config.Port)
+	recipients := strings.Join(msg.To, ", ")
+	log.Info("[EMAIL] 🚀 Attempting to send email to %s via %s (Host: %s, Port: %s)", recipients, msg.Subject, s.config.Host, s.config.Port)
 	auth := smtp.PlainAuth("", s.config.Username, s.config.Password, s.config.Host)
 	var body bytes.Buffer
 	boundary := fmt.Sprintf("boundary_%d", time.Now().UnixNano())
@@ -218,7 +227,13 @@ func (s *EmailService) Send(msg EmailMessage) error {
 		body.WriteString(fmt.Sprintf("--%s\r\nContent-Type: %s; name=\"%s\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"%s\"\r\n\r\n%s\r\n", boundary, att.MimeType, att.Filename, att.Filename, base64.StdEncoding.EncodeToString(att.Data)))
 	}
 	body.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
-	return smtp.SendMail(addr, auth, s.config.From, msg.To, body.Bytes())
+	err := smtp.SendMail(addr, auth, s.config.From, msg.To, body.Bytes())
+	if err != nil {
+		log.Warn("[EMAIL] ❌ Failed to send email to %s: %v", recipients, err)
+		return err
+	}
+	log.Info("[EMAIL] ✅ Email sent successfully to %s!", recipients)
+	return nil
 }
 
 // ============================================================
@@ -226,12 +241,15 @@ func (s *EmailService) Send(msg EmailMessage) error {
 // ============================================================
 
 func (s *EmailService) SendTicketEmail(data TicketEmailData) error {
+	log := logger.Default()
+	log.Info("[EMAIL] 📋 Preparing ticket email for %s (Event: %s)", data.UserEmail, data.EventTitle)
 	data.UserName, data.EventTitle, data.VenueName, data.VenueAddress = cleanVietnameseText(data.UserName), cleanVietnameseText(data.EventTitle), cleanVietnameseText(data.VenueName), cleanVietnameseText(data.VenueAddress)
 	data.TotalAmount = formatVND(data.TotalAmount)
 	html := s.buildTicketEmailHTML(data)
 	msg := EmailMessage{To: []string{data.UserEmail}, Subject: fmt.Sprintf("[FPT Event] E-Ticket - %s", data.EventTitle), HTMLBody: html}
 	if len(data.PDFAttachment) > 0 {
 		msg.Attachments = []Attachment{{Filename: "ticket.pdf", Data: data.PDFAttachment, MimeType: "application/pdf"}}
+		log.Info("[EMAIL] 📎 Attaching PDF (size: %d bytes)", len(data.PDFAttachment))
 	}
 	return s.Send(msg)
 }
@@ -276,6 +294,8 @@ func (s *EmailService) buildTicketEmailHTML(data TicketEmailData) string {
 }
 
 func (s *EmailService) SendMultipleTicketsEmail(data MultipleTicketsEmailData) error {
+	log := logger.Default()
+	log.Info("[EMAIL] 📋 Preparing multi-ticket email for %s (%d tickets, Event: %s)", data.UserEmail, data.TicketCount, data.EventTitle)
 	data.UserName, data.EventTitle, data.VenueName, data.VenueAddress = cleanVietnameseText(data.UserName), cleanVietnameseText(data.EventTitle), cleanVietnameseText(data.VenueName), cleanVietnameseText(data.VenueAddress)
 	data.TotalAmount = formatVND(data.TotalAmount)
 	mapURL := "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(data.VenueAddress)
@@ -316,11 +336,14 @@ func (s *EmailService) SendMultipleTicketsEmail(data MultipleTicketsEmailData) e
 	msg := EmailMessage{To: []string{data.UserEmail}, Subject: fmt.Sprintf("[FPT Event] %d E-Tickets - %s", data.TicketCount, data.EventTitle), HTMLBody: html}
 	for _, att := range data.PDFAttachments {
 		msg.Attachments = append(msg.Attachments, Attachment{Filename: att.Filename, Data: att.Data, MimeType: "application/pdf"})
+		log.Info("[EMAIL] 📎 Attaching PDF: %s (size: %d bytes)", att.Filename, len(att.Data))
 	}
 	return s.Send(msg)
 }
 
 func (s *EmailService) SendOTPEmail(to, otp, purpose string) error {
+	log := logger.Default()
+	log.Info("[EMAIL] 🔐 Preparing OTP email for %s (Purpose: %s)", to, purpose)
 	var subject, title string
 	switch purpose {
 	case "register":

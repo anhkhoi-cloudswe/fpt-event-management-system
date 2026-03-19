@@ -25,12 +25,15 @@ type Config struct {
 }
 
 // DefaultConfig returns default VNPay sandbox configuration
+// ⭐ CRITICAL: ReturnURL is now DYNAMICALLY set from request Host header
+// The VNPAY_RETURN_URL env var is DEPRECATED and should NO LONGER be used
+// See: buildDynamicReturnURL() in handler.go
 func DefaultConfig() *Config {
 	return &Config{
 		TmnCode:    getEnv("VNPAY_TMN_CODE", "DEMO_TMN_CODE"),
 		HashSecret: getEnv("VNPAY_HASH_SECRET", "DEMO_HASH_SECRET"),
 		PaymentURL: getEnv("VNPAY_PAYMENT_URL", "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"),
-		ReturnURL:  getEnv("VNPAY_RETURN_URL", "http://localhost:8080/api/buyTicket"),
+		ReturnURL:  "", // ⭐ EMPTY: Must be provided dynamically via PaymentRequest.ReturnURL from handler
 		Version:    "2.1.0",
 		Command:    "pay",
 		CurrCode:   "VND",
@@ -39,12 +42,13 @@ func DefaultConfig() *Config {
 }
 
 // ProductionConfig returns production VNPay configuration
+// ⭐ CRITICAL: ReturnURL is now DYNAMICALLY set from request Host header
 func ProductionConfig() *Config {
 	config := &Config{
 		TmnCode:    mustGetEnv("VNPAY_TMN_CODE"),
 		HashSecret: mustGetEnv("VNPAY_HASH_SECRET"),
 		PaymentURL: "https://pay.vnpay.vn/vpcpay.html",
-		ReturnURL:  mustGetEnv("VNPAY_RETURN_URL"),
+		ReturnURL:  "", // ⭐ EMPTY: Must be provided dynamically via PaymentRequest.ReturnURL from handler
 		Version:    "2.1.0",
 		Command:    "pay",
 		CurrCode:   "VND",
@@ -134,13 +138,21 @@ func (s *VNPayService) CreatePaymentURL(req PaymentRequest) (string, error) {
 		"vnp_Locale":     s.config.Locale,
 		"vnp_OrderInfo":  req.OrderInfo,
 		"vnp_OrderType":  req.OrderType,
-		"vnp_ReturnUrl":  req.ReturnURL, // Use request-specific ReturnURL if provided, otherwise config default will be used below
+		"vnp_ReturnUrl":  req.ReturnURL, // ⭐ DYNAMIC: Must be provided by handler from request Host header
 		"vnp_TxnRef":     req.TxnRef,
 	}
 
-	// If ReturnURL not specified in request, use config default
+	// ⭐ NEW LOGIC: ReturnURL phải được provide từ request handler
+	// Nếu empty, log warning (không silent fallback)
 	if params["vnp_ReturnUrl"] == "" {
-		params["vnp_ReturnUrl"] = s.config.ReturnURL
+		// If still empty, try config default as last resort
+		if s.config.ReturnURL != "" {
+			params["vnp_ReturnUrl"] = s.config.ReturnURL
+			fmt.Printf("[WARN] vnp_ReturnUrl not provided in request, using config fallback: %s\n", s.config.ReturnURL)
+		} else {
+			// This is a critical error - should never happen in production
+			fmt.Printf("[ERROR] vnp_ReturnUrl is required but not provided in request AND config is empty!\n")
+		}
 	}
 
 	// Add optional parameters

@@ -36,7 +36,7 @@ x-build-defaults: &build-defaults
   target: local # Use the Alpine target for local dev (~25 MB images)
 
 x-service-defaults: &service-defaults
-  env_file: ./backend/.env.docker
+  env_file: .env #Thay vì ./backend/.env.docker
   networks:
     - fpt-network
   restart: unless-stopped
@@ -50,23 +50,30 @@ services:
   mysql:
     image: mysql:8.0
     container_name: fpt-mysql
-    # --lower-case-table-names=1: Linux MySQL is case-sensitive by default.
+    env_file: .env
     # This makes table names case-insensitive, matching the Go code which
     # queries tables like 'Event', 'Venue', 'Ticket' (mixed-case).
-    command: --lower-case-table-names=1
+    # --character-set-server=utf8mb4: Enforce UTF-8MB4 at database level
+    # --collation-server=utf8mb4_unicode_ci: Emoji/Vietnamese character support
+    command: --lower-case-table-names=1 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
-      MYSQL_ROOT_PASSWORD: "12345"
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: fpteventmanagement
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
       TZ: Asia/Ho_Chi_Minh
     ports:
       - "127.0.0.1:3306:3306" # expose to host so you can connect via MySQL Workbench
     volumes:
       - mysql-data:/var/lib/mysql
-      # Auto-import schema on first boot (runs only when data volume is empty)
-      - ./Database/FPTEventManagement_v5.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      # Auto-import schema & create user on first boot (runs only when data volume is empty)
+      # 01_schema.sql: Creates tables and database structure
+      # 02_create_user.sh: Creates MySQL application user from environment variables (NO hardcoding!)
+      - ./Database/initdb.d:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      # Use 127.0.0.1 inside the container (avoids Unix socket vs TCP ambiguity)
-      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p12345" ]
+      # Use socket-based authentication (no password needed when connected via socket)
+      # This avoids hardcoding the MYSQL_ROOT_PASSWORD in the compose file
+      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -88,7 +95,9 @@ services:
     environment:
       LOCAL_PORT: "8081"
       DB_HOST: "mysql"
-      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
     depends_on:
       mysql:
         condition: service_healthy
@@ -107,7 +116,9 @@ services:
     environment:
       LOCAL_PORT: "8082"
       DB_HOST: "mysql"
-      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
     depends_on:
       mysql:
         condition: service_healthy
@@ -126,7 +137,9 @@ services:
     environment:
       LOCAL_PORT: "8083"
       DB_HOST: "mysql"
-      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
     depends_on:
       mysql:
         condition: service_healthy
@@ -145,7 +158,9 @@ services:
     environment:
       LOCAL_PORT: "8084"
       DB_HOST: "mysql"
-      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
     depends_on:
       mysql:
         condition: service_healthy
@@ -164,7 +179,9 @@ services:
     environment:
       LOCAL_PORT: "8085"
       DB_HOST: "mysql"
-      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
     depends_on:
       mysql:
         condition: service_healthy
@@ -183,7 +200,16 @@ services:
     environment:
       LOCAL_PORT: "8086"
       DB_HOST: "mysql"
-      INTERNAL_AUTH_TOKEN: "FPT_TopSecret_2026_@_9999"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
+      # SMTP Configuration (loaded from .env.docker)
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME}
     depends_on:
       mysql:
         condition: service_healthy
@@ -203,6 +229,8 @@ services:
       - "8080:8080"
     environment:
       LOCAL_PORT: "8080"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
       # Override service URLs so the gateway reaches containers by name
       # (these take precedence over the values in .env.docker)
       AUTH_SERVICE_URL: "http://auth-service:8081"
@@ -220,28 +248,17 @@ services:
       - notification-service
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Frontend — Vite dev server, port 3000
+  # Frontend — production static assets served by Nginx
   # ──────────────────────────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: dev
     container_name: fpt-frontend
     networks:
       - fpt-network
     restart: unless-stopped
     ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/index.html:/app/index.html
-    environment:
-      # Used by vite.config.ts to point the /api proxy at the gateway container.
-      # The browser sends requests to http://localhost:3000/api/...
-      # Vite dev server inside the container proxies them to http://gateway:8080
-      VITE_API_TARGET: "http://gateway:8080"
-      # Exposed to browser JS (VITE_ prefix) — useful if any code references it directly.
-      VITE_API_BASE_URL: "http://localhost:8080/api"
+      - "127.0.0.1:3000:80"
     depends_on:
       - gateway

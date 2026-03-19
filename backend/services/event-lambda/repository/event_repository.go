@@ -184,8 +184,9 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 		// ✅ LOG CHECK: In ra speaker data trước khi xử lý
 		log.Printf("[CHECK] Du lieu Speaker gui len: %+v", req.Speaker)
 
-		fmt.Printf("[UpdateEventRequest] Speaker data: fullName=%s, bio=%s, email=%s, phone=%s, avatarUrl=%s\n",
-			speakerFullName, speakerBio, speakerEmail, speakerPhone, speakerAvatarUrl)
+		// Security: Don't log speaker PII (email, phone); only log metadata
+		fmt.Printf("[UpdateEventRequest] Speaker record being processed (ID=%d) for Event: %d\n",
+			speakerID, eventID)
 
 		// Get current speaker_id for this event (if exists)
 		checkSpeakerQuery := `SELECT speaker_id FROM Event WHERE event_id = ?`
@@ -207,10 +208,9 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 					VALUES (?, ?, ?, ?, ?)
 				`
 				// [DEBUG] Log SQL before execution
-				fmt.Printf("[SQL LOG] About to INSERT Speaker: fullName=%s, bio=%s, email=%s, phone=%s, avatarUrl=%s\n",
-					speakerFullName, speakerBio, speakerEmail, speakerPhone, speakerAvatarUrl)
-				// ✅ STRONG LOG: Confirm SQL execution
-				log.Printf("[SQL_EXECUTE] Dang thuc hien INSERT Speaker cho Event: %d (fullName=%s)", eventID, speakerFullName)
+				// Security: Don't log speaker PII; only log metadata
+				fmt.Printf("[SQL LOG] Inserting new speaker for Event: %d\n", eventID)
+				log.Printf("[SQL_EXECUTE] INSERT Speaker with PII (redacted for security) for Event: %d", eventID)
 				result, err := tx.ExecContext(ctx, insertSpeakerQuery, speakerFullName, speakerBio, speakerEmail, speakerPhone, speakerAvatarUrl)
 				if err != nil {
 					return fmt.Errorf("failed to insert speaker: %w", err)
@@ -233,10 +233,9 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 					WHERE speaker_id = ?
 				`
 				// [DEBUG] Log SQL before execution
-				fmt.Printf("[SQL LOG] About to UPDATE Speaker ID=%d: fullName=%s, bio=%s, email=%s, phone=%s, avatarUrl=%s\n",
-					speakerID.Int64, speakerFullName, speakerBio, speakerEmail, speakerPhone, speakerAvatarUrl)
-				// ✅ STRONG LOG: Confirm SQL execution
-				log.Printf("[SQL_EXECUTE] Dang thuc hien UPDATE Speaker ID=%d cho Event: %d (fullName=%s)", speakerID.Int64, eventID, speakerFullName)
+				// Security: Don't log speaker PII; only log metadata
+				fmt.Printf("[SQL LOG] Updating Speaker ID=%d for Event: %d\n", speakerID.Int64, eventID)
+				log.Printf("[SQL_EXECUTE] UPDATE Speaker ID=%d with PII (redacted for security) for Event: %d", speakerID.Int64, eventID)
 				result, err := tx.ExecContext(ctx, updateSpeakerQuery, speakerFullName, speakerBio, speakerEmail, speakerPhone, speakerAvatarUrl, speakerID.Int64)
 				if err != nil {
 					return fmt.Errorf("failed to update speaker: %w", err)
@@ -604,11 +603,10 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 		}
 	}
 
-	// Handle dry run
+	// NOTE: Dry-run rollback is intentionally disabled for UpdateEventRequest.
+	// Even if client sends dryRun=true, seat/category allocation must persist.
 	if req.DryRun {
-		fmt.Printf("[UpdateEventRequest] DRY_RUN: Rolling back all changes\n")
-		tx.Rollback()
-		return nil
+		log.Printf("[UpdateEventRequest] dryRun=true received but ignored; proceeding with COMMIT for real persistence")
 	}
 
 	// ✅ FINAL CHECK: Log speaker_id before commit
@@ -984,6 +982,17 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 	}
 	detail.Tickets = tickets
 
+	// Load seats by area_id (must return all seats in area, including unallocated)
+	if detail.AreaID != nil {
+		seats, err := r.GetSeatsByAreaID(ctx, *detail.AreaID, eventID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load seats: %w", err)
+		}
+		detail.Seats = seats
+	} else {
+		detail.Seats = []models.SeatResponse{}
+	}
+
 	// Check if any bookings exist for event (to indicate locked seating)
 	var bookingCount int
 	err = r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM Ticket WHERE event_id = ? AND status IN ('PENDING','BOOKED','CHECKED_IN')", eventID).Scan(&bookingCount)
@@ -997,20 +1006,8 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 	if detail.SpeakerName != nil {
 		speakerNameVal = *detail.SpeakerName
 	}
-	speakerBioVal := "nil"
-	if detail.SpeakerBio != nil {
-		speakerBioVal = *detail.SpeakerBio
-	}
-	speakerEmailVal := "nil"
-	if detail.SpeakerEmail != nil {
-		speakerEmailVal = *detail.SpeakerEmail
-	}
-	speakerPhoneVal := "nil"
-	if detail.SpeakerPhone != nil {
-		speakerPhoneVal = *detail.SpeakerPhone
-	}
-	log.Printf("[GetEventDetail] EventID=%d after mapping: SpeakerName=%s, SpeakerBio=%s, SpeakerEmail=%s, SpeakerPhone=%s",
-		eventID, speakerNameVal, speakerBioVal, speakerEmailVal, speakerPhoneVal)
+	// Security: Don't log speaker PII; only log metadata
+	log.Printf("[GetEventDetail] EventID=%d - Event details retrieved (speaker: %s)", eventID, speakerNameVal)
 
 	return &detail, nil
 }
@@ -1056,6 +1053,90 @@ func (r *EventRepository) GetCategoryTicketsByEventID(ctx context.Context, event
 		cats = append(cats, ct)
 	}
 	return cats, rows.Err()
+}
+
+func (r *EventRepository) GetSeatsByAreaID(ctx context.Context, areaID int, eventID int) ([]models.SeatResponse, error) {
+	// Always fetch by area_id so all seats in the area are returned.
+	// Left join to category_ticket only to enrich category_name for current event.
+	// Seat status is derived from Ticket lifecycle for the current event.
+	query := `
+		SELECT
+			s.seat_id,
+			s.seat_code,
+			s.row_no,
+			s.col_no,
+			COALESCE(ts.effective_status, s.status) AS status,
+			s.area_id,
+			s.category_ticket_id,
+			ct.name
+		FROM Seat s
+		LEFT JOIN Category_Ticket ct
+			ON s.category_ticket_id = ct.category_ticket_id
+			AND ct.event_id = ?
+		LEFT JOIN (
+			SELECT
+				t.seat_id,
+				CASE
+					WHEN SUM(CASE WHEN t.status IN ('BOOKED', 'CHECKED_IN') THEN 1 ELSE 0 END) > 0 THEN 'BOOKED'
+					WHEN SUM(CASE WHEN t.status = 'PENDING' THEN 1 ELSE 0 END) > 0 THEN 'PENDING'
+					ELSE NULL
+				END AS effective_status
+			FROM Ticket t
+			WHERE t.event_id = ?
+				AND t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN')
+			GROUP BY t.seat_id
+		) ts ON ts.seat_id = s.seat_id
+		WHERE s.area_id = ?
+		ORDER BY s.row_no ASC, CAST(s.col_no AS UNSIGNED) ASC, s.seat_code ASC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, eventID, eventID, areaID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query seats by area: %w", err)
+	}
+	defer rows.Close()
+
+	seats := make([]models.SeatResponse, 0)
+	for rows.Next() {
+		var seat models.SeatResponse
+		var rowNo, colNo, categoryName sql.NullString
+		var categoryTicketID sql.NullInt64
+
+		if err := rows.Scan(
+			&seat.SeatID,
+			&seat.SeatCode,
+			&rowNo,
+			&colNo,
+			&seat.Status,
+			&seat.AreaID,
+			&categoryTicketID,
+			&categoryName,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan seat row: %w", err)
+		}
+
+		if rowNo.Valid {
+			seat.RowNo = &rowNo.String
+		}
+		if colNo.Valid {
+			seat.ColNo = &colNo.String
+		}
+		if categoryTicketID.Valid {
+			ctid := int(categoryTicketID.Int64)
+			seat.CategoryTicketID = &ctid
+		}
+		if categoryName.Valid {
+			seat.CategoryName = &categoryName.String
+		}
+
+		seats = append(seats, seat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("seat row iteration failed: %w", err)
+	}
+
+	return seats, nil
 }
 
 func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventListItem, error) {
@@ -2038,8 +2119,8 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 			speakerAvatarURL = strings.TrimSpace(*updateReq.Speaker.AvatarURL)
 		}
 
-		log.Printf("[CHECK] Processing Speaker: fullName=%s, bio=%s, email=%s, phone=%s",
-			speakerFullName, speakerBio, speakerEmail, speakerPhone)
+		// Security: Don't log speaker PII; only log that speaker is being processed
+		log.Printf("[CHECK] Processing Speaker update for Event")
 
 		if !speakerID.Valid || speakerID.Int64 == 0 {
 			// INSERT new speaker

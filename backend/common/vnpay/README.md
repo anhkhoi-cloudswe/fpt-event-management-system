@@ -15,17 +15,36 @@ Package `vnpay` cung cấp integration hoàn chỉnh với cổng thanh toán VN
 
 ### 1. Cấu Hình Environment
 
+⭐ **IMPORTANT**: `VNPAY_RETURN_URL` được REMOVE từ v2.0+ để hỗ trợ Docker deployment ở bất kỳ đâu
+- Return URL giờ được **tự động build** từ request Host header + X-Forwarded-Proto
+- Điều này cho phép cùng 1 Docker image chạy ở localhost, LAN, hay AWS mà không cần edit .env
+
 ```bash
-# Sandbox
+# Sandbox (ONLY 2 required - ReturnURL auto-detected from Host header)
 export VNPAY_TMN_CODE="your_tmn_code"
 export VNPAY_HASH_SECRET="your_hash_secret"
-export VNPAY_RETURN_URL="http://localhost:8080/callback"
 
-# Production
+# Production (ONLY 2 required - ReturnURL auto-detected from Host header + X-Forwarded-Proto)
 export VNPAY_TMN_CODE="prod_tmn_code"
 export VNPAY_HASH_SECRET="prod_hash_secret"
-export VNPAY_RETURN_URL="https://yourdomain.com/callback"
 export VNPAY_PAYMENT_URL="https://pay.vnpay.vn/vpcpay.html"
+
+# ⚠️ DEPRECATED (no longer needed):
+# export VNPAY_RETURN_URL="..." <- DO NOT USE
+```
+
+### 📌 Return URL Auto-Detection Logic
+
+```
+1. Handler (`buildDynamicReturnURL`) lấy Host từ request header
+2. Xác định scheme từ X-Forwarded-Proto header:
+   - Docker/AWS: API Gateway set X-Forwarded-Proto = https
+   - Local dev: Default to http
+3. VNPay ReturnURL = scheme://host/api/buyTicket
+4. Ví dụ:
+   - Local Docker: http://localhost:8080/api/buyTicket
+   - LAN: http://192.168.1.100:8080/api/buyTicket
+   - AWS: https://api.yourdomain.com/api/buyTicket
 ```
 
 ### 2. Tạo Payment URL

@@ -125,8 +125,23 @@ type EventDetailDto struct {
 	// Danh sách loại vé
 	Tickets []CategoryTicket `json:"tickets"`
 
+	// Danh sách ghế của area (map theo category_ticket_id hiện tại)
+	Seats []SeatResponse `json:"seats"`
+
 	// Booking info - để frontend biết có lock không
 	HasBookings *bool `json:"hasBookings,omitempty"`
+}
+
+type SeatResponse struct {
+	SeatID           int     `json:"seatId"`
+	SeatCode         string  `json:"seatCode"`
+	RowNo            *string `json:"rowNo,omitempty"`
+	ColNo            *string `json:"colNo,omitempty"`
+	Status           string  `json:"status"`
+	SeatType         *string `json:"seatType,omitempty"`
+	CategoryTicketID *int    `json:"categoryTicketId"`
+	CategoryName     *string `json:"categoryName,omitempty"`
+	AreaID           int     `json:"areaId"`
 }
 
 // ============================================================

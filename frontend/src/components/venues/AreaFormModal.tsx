@@ -104,18 +104,22 @@ export default function AreaFormModal({ isOpen, area, venueId, onClose, onSubmit
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {area ? 'Chỉnh sửa phòng' : 'Thêm phòng mới'}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    // ⭐ ABSOLUTE CENTERING: Fixed overlay + centered container
+    <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
+      {/* Centering wrapper */}
+      <div className="flex items-center justify-center min-h-screen p-4">
+        {/* Modal Card: responsive width + scrollable */}
+        <div className="bg-white rounded-lg shadow-xl max-w-[90vw] w-full max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between p-6 border-b">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {area ? 'Chỉnh sửa phòng' : 'Thêm phòng mới'}
+            </h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Tên phòng *
@@ -207,6 +211,7 @@ export default function AreaFormModal({ isOpen, area, venueId, onClose, onSubmit
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   )

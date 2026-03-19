@@ -175,14 +175,24 @@ export default function Dashboard() {
     setDetailError(null)
 
     try {
+      const refreshToken = sessionStorage.getItem('force-event-detail-refresh')
+      const detailUrl = refreshToken
+        ? `/api/events/detail?id=${eventId}&refresh=${encodeURIComponent(refreshToken)}`
+        : `/api/events/detail?id=${eventId}`
+
       // Gọi API lấy chi tiết event
-      const res = await fetch(`/api/events/detail?id=${eventId}`, {
+      const res = await fetch(detailUrl, {
         method: 'GET',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
       })
+
+      if (refreshToken) {
+        sessionStorage.removeItem('force-event-detail-refresh')
+      }
 
       // Xử lý lỗi HTTP
       if (!res.ok) {

@@ -26,8 +26,17 @@ func NewUserRepositoryWithDB(dbConn *sql.DB) *UserRepository {
 	}
 }
 
-// CheckLogin verifies user credentials (khớp UsersDAO.checkLogin)
+// CheckLogin verifies user credentials with Lazy Migration support (khớp UsersDAO.checkLogin)
+// Supports Bcrypt, SHA256, MD5, and plaintext password migration to Bcrypt
 func (r *UserRepository) CheckLogin(ctx context.Context, email, password string) (*models.User, error) {
+	log.Info(">>>>>>>>>> ĐANG CHẠY LOGIC LOGIN MỚI (BCRYPT + SHA256 + MD5 + PLAINTEXT) <<<<<<<<<<")
+
+	if r.db == nil {
+		err := errors.New("database connection is not initialized")
+		log.Error("CheckLogin - database init error: %v", err)
+		return nil, err
+	}
+
 	query := `
 		SELECT user_id, full_name, email, phone, password_hash, role, status, Wallet, created_at
 		FROM Users
@@ -56,10 +65,39 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 		return nil, fmt.Errorf("failed to query user: %w", err)
 	}
 
-	// Verify password
+	// Verify password with Lazy Migration
 	if !hash.VerifyPassword(password, user.PasswordHash) {
 		log.Warn("CheckLogin - invalid password for email=%s", email)
 		return nil, errors.New("invalid password")
+	}
+
+	// Auto-Upgrade: If password is in legacy format (not Bcrypt), upgrade to Bcrypt
+	if !hash.IsBcryptHash(user.PasswordHash) {
+		log.Info("CheckLogin - Legacy password detected for email=%s, upgrading to Bcrypt...", email)
+
+		newHash, hashErr := hash.HashPassword(password)
+		if hashErr != nil {
+			log.Error("CheckLogin - failed to hash password for upgrade: %v", hashErr)
+			// Continue login anyway, but don't block the user
+		} else {
+			// Update password in database
+			updateQuery := `UPDATE Users SET password_hash = ? WHERE email = ?`
+			result, updateErr := r.db.ExecContext(ctx, updateQuery, newHash, email)
+			if updateErr != nil {
+				log.Error("CheckLogin - failed to update password hash error: %v", updateErr)
+				// Continue login anyway, don't block the user
+			} else {
+				rows, rowsErr := result.RowsAffected()
+				if rowsErr != nil {
+					log.Error("CheckLogin - failed to read update affected rows error: %v", rowsErr)
+				} else if rows == 0 {
+					log.Error("CheckLogin - password hash update affected 0 rows for email=%s", email)
+				}
+
+				log.Info("CheckLogin - password upgraded to Bcrypt for email=%s", email)
+				user.PasswordHash = newHash
+			}
+		}
 	}
 
 	// Check if user is blocked
@@ -127,7 +165,11 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (int
 	}
 
 	// Hash password
-	user.PasswordHash = hash.HashPassword(user.PasswordHash)
+	hashedPwd, err := hash.HashPassword(user.PasswordHash)
+	if err != nil {
+		return 0, fmt.Errorf("failed to hash password: %w", err)
+	}
+	user.PasswordHash = hashedPwd
 
 	query := `
 		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet)
@@ -160,7 +202,10 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (int
 // AdminCreateAccount creates an account with specific role (khớp UsersDAO.adminCreateAccount)
 func (r *UserRepository) AdminCreateAccount(ctx context.Context, req models.AdminCreateAccountRequest) (int, error) {
 	// Hash password
-	passwordHash := hash.HashPassword(req.Password)
+	passwordHash, hashErr := hash.HashPassword(req.Password)
+	if hashErr != nil {
+		return 0, fmt.Errorf("failed to hash password: %w", hashErr)
+	}
 
 	query := `
 		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet)
@@ -194,7 +239,10 @@ func (r *UserRepository) AdminCreateAccount(ctx context.Context, req models.Admi
 // KHỚP VỚI Java UsersDAO.updatePasswordByEmail
 func (r *UserRepository) UpdatePasswordByEmail(ctx context.Context, email, newPassword string) error {
 	// Hash password
-	passwordHash := hash.HashPassword(newPassword)
+	passwordHash, hashErr := hash.HashPassword(newPassword)
+	if hashErr != nil {
+		return fmt.Errorf("failed to hash password: %w", hashErr)
+	}
 
 	query := `UPDATE Users SET password_hash = ? WHERE email = ?`
 
@@ -277,7 +325,11 @@ func (r *UserRepository) UpdateUser(ctx context.Context, req models.AdminUpdateU
 	}
 	if req.Password != "" {
 		updates = append(updates, "password_hash = ?")
-		args = append(args, hash.HashPassword(req.Password))
+		hashedPwd, hashErr := hash.HashPassword(req.Password)
+		if hashErr != nil {
+			return fmt.Errorf("failed to hash password: %w", hashErr)
+		}
+		args = append(args, hashedPwd)
 	}
 
 	if len(updates) == 0 {

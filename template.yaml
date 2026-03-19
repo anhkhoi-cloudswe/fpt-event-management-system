@@ -59,7 +59,11 @@ Parameters:
     Default: CHANGEME
     Description: SMTP email password
 
-  LambdaMemorySize:
+  InternalAuthToken:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+    Description: Shared secret for inter-service X-Internal-Token authentication (INTERNAL_AUTH_TOKEN env var)
     Type: Number
     Default: 256
     Description: Memory (MB) for each Lambda function
@@ -95,6 +99,7 @@ Globals:
         VNPAY_HASH_SECRET: !Ref VNPayHashSecret
         RECAPTCHA_SECRET: !Ref RecaptchaSecret
         SMTP_PASSWORD: !Ref SMTPPassword
+        INTERNAL_AUTH_TOKEN: !Ref InternalAuthToken
         # Service URLs - point to Internal API Gateway
         AUTH_SERVICE_URL: !Sub "https://${InternalApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
         EVENT_SERVICE_URL: !Sub "https://${InternalApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
@@ -834,7 +839,7 @@ Resources:
             Description: Auto-trigger event cleanup via EventBridge every 5 minutes
             Enabled: true
             Input: >-
-              {"httpMethod":"POST","path":"/internal/scheduler/event-cleanup","headers":{"X-Internal-Call":"true"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
+              {"httpMethod":"POST","path":"/internal/scheduler/event-cleanup","headers":{"X-Internal-Token":"FPT_TopSecret_2026_@_9999"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
         SchedulerExpiredRequests:
           Type: Schedule
           Properties:
@@ -842,7 +847,7 @@ Resources:
             Description: Auto-trigger expired requests cleanup via EventBridge every 5 minutes
             Enabled: true
             Input: >-
-              {"httpMethod":"POST","path":"/internal/scheduler/expired-requests","headers":{"X-Internal-Call":"true"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
+              {"httpMethod":"POST","path":"/internal/scheduler/expired-requests","headers":{"X-Internal-Token":"FPT_TopSecret_2026_@_9999"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
     Metadata:
       DockerTag: !Sub "fpt-event-${Environment}"
       DockerContext: ./backend
@@ -1043,7 +1048,7 @@ Resources:
             Description: Auto-trigger pending ticket cleanup via EventBridge every 5 minutes
             Enabled: true
             Input: >-
-              {"httpMethod":"POST","path":"/internal/scheduler/pending-ticket-cleanup","headers":{"X-Internal-Call":"true"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
+              {"httpMethod":"POST","path":"/internal/scheduler/pending-ticket-cleanup","headers":{"X-Internal-Token":"FPT_TopSecret_2026_@_9999"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
     Metadata:
       DockerTag: !Sub "fpt-ticket-${Environment}"
       DockerContext: ./backend
@@ -1196,7 +1201,7 @@ Resources:
             Description: Auto-trigger venue release via EventBridge every 5 minutes
             Enabled: true
             Input: >-
-              {"httpMethod":"POST","path":"/internal/scheduler/venue-release","headers":{"X-Internal-Call":"true"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
+              {"httpMethod":"POST","path":"/internal/scheduler/venue-release","headers":{"X-Internal-Token":"FPT_TopSecret_2026_@_9999"},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"pathParameters":{},"stageVariables":{},"body":"{}","isBase64Encoded":false,"requestContext":{"resourcePath":"/","httpMethod":"POST","stage":"scheduler"}}
     Metadata:
       DockerTag: !Sub "fpt-venue-${Environment}"
       DockerContext: ./backend

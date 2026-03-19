@@ -301,32 +301,31 @@ export function ProcessRequestModal({
 
   // ===================== UI RENDER =====================
   return (
-    // Overlay modal
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      {/* Box modal - wider for better dropdown display */}
-      <div className="bg-white rounded-lg shadow-xl w-full" style={{ maxWidth: '600px' }}>
+    // ⭐ ABSOLUTE CENTERING: Fixed overlay + centered container
+    <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
+      {/* Centering wrapper */}
+      <div className="flex items-center justify-center min-h-screen p-4">
+        {/* Modal Card: responsive width + scrollable */}
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-[90vw] max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between p-8 border-b bg-gradient-to-r from-gray-50 to-white sticky top-0 z-10">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {/* Title đổi theo action */}
+              {action === 'APPROVE' ? 'Duyệt yêu cầu' : 'Từ chối yêu cầu'}
+            </h2>
 
-        {/* Header */}
-        <div className="flex items-center justify-between p-8 border-b bg-gradient-to-r from-gray-50 to-white">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {/* Title đổi theo action */}
-            {action === 'APPROVE' ? 'Duyệt yêu cầu' : 'Từ chối yêu cầu'}
-          </h2>
+            {/* Nút đóng */}
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-          {/* Nút đóng */}
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
-
-          {/* Hiển thị tên sự kiện */}
-          <div>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-8 space-y-5">
+            {/* Hiển thị tên sự kiện */}
+            <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Sự kiện
             </label>
@@ -670,6 +669,7 @@ export function ProcessRequestModal({
             </p>
           )}
         </form>
+        </div>
       </div>
     </div>
   )

@@ -162,29 +162,26 @@ export function EventRequestDetailModal({
   // ===================== UI RENDER =====================
 
   return (
-    // Overlay fullscreen:
-    // fixed inset-0: phủ toàn màn hình
-    // bg-black bg-opacity-50: nền đen mờ
-    // flex center: căn giữa modal
-    // z-50: nổi lên trên
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      {/* Khung modal */}
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
+      {/* Centering wrapper */}
+      <div className="flex items-center justify-center min-h-screen p-4">
+        {/* Modal Card: responsive width + scrollable */}
+        <div className="bg-white rounded-lg shadow-xl max-w-[90vw] w-full max-h-[90vh] overflow-y-auto">
 
-        {/* ===================== HEADER ===================== */}
-        {/* sticky top-0: header dính trên khi scroll nội dung modal */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-          {/* Tiêu đề modal lấy từ request.title */}
-          <h2 className="text-2xl font-bold text-gray-900">{request.title}</h2>
+          {/* ===================== HEADER ===================== */}
+          {/* sticky top-0: header dính trên khi scroll nội dung modal */}
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+            {/* Tiêu đề modal lấy từ request.title */}
+            <h2 className="text-2xl font-bold text-gray-900">{request.title}</h2>
 
-          {/* Nút đóng modal */}
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+            {/* Nút đóng modal */}
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
 
         {/* ===================== CONTENT ===================== */}
         <div className="px-6 py-4">
@@ -429,6 +426,7 @@ export function EventRequestDetailModal({
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }

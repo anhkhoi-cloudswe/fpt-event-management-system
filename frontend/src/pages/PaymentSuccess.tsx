@@ -97,15 +97,21 @@ export default function PaymentSuccess() {
       if (!Number.isNaN(w)) {
         setUser((prev) => {
           if (!prev) return prev
-          const next = { ...prev, wallet: w }
-          try { localStorage.setItem('user', JSON.stringify(next)) } catch (_) { }
-          return next
+          return { ...prev, wallet: w }
         })
       }
     }
 
     // Emit signal để refresh wallet balance khi thanh toán thành công
     emitWalletRefresh()
+
+  // Mark next event-detail request to bypass caches and force fresh seat statuses.
+  try {
+    const refreshToken = params.get('eventId') || String(Date.now())
+    sessionStorage.setItem('force-event-detail-refresh', refreshToken)
+  } catch (_) {
+    // Ignore storage errors.
+  }
 
     return () => clearTimeout(timer)
   }, [location.search, navigate, setUser]) // dependency: chạy lại khi query string hoặc navigate thay đổi

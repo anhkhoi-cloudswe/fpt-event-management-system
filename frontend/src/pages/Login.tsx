@@ -114,7 +114,8 @@ export default function Login() {
    * - Nếu USE_REAL_RECAPTCHA = false -> gửi token giả "TEST_BYPASS" (debug)
    * - Nếu login thành công:
    *    + lấy user, token từ response
-   *    + setUser + setToken vào AuthContext (thường sẽ tự lưu localStorage)
+   *    + setUser vào AuthContext (lưu trong React state RAM, không localStorage)
+   *    + Cookie HttpOnly tự động được browser quản lý (backend set qua Set-Cookie)
    *    + reset captcha (optional)
    *    + navigate('/dashboard')
    * - Nếu thất bại: throw error để handleSubmit catch

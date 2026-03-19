@@ -33,7 +33,7 @@ export default function VenueList({ venues, selectedVenueId, onSelect, onEdit, o
                 <h3 className="font-semibold text-gray-900 mb-1">{venue.venueName}</h3>
                 <p className="text-sm text-gray-500 flex items-center gap-1">
                   <MapPin className="w-4 h-4 flex-shrink-0" />
-                  <span className="truncate">{venue.address}</span>
+                  <span className="truncate">{venue.location}</span>
                 </p>
                 {availableAreasCount > 0 && (
                   <p className="text-xs text-blue-600 mt-2 font-medium">

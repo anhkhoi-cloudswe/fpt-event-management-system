@@ -1,5 +1,7 @@
 # Ignore environment and local secrets
-backend/.env
+.env                    # Root .env (Master - NEVER commit!)
+backend/.env           # Backend local dev (legacy - for info only)
+
 # Root level gitignore for FPT Event Management System
 
 # Backend

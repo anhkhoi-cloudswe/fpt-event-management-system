@@ -267,6 +267,20 @@ func getClientIP(r *http.Request) string {
 	return ip
 }
 
+// getScheme extracts request scheme (http/https) from X-Forwarded-Proto header
+// Used when running behind load balancer (ALB/API Gateway)
+func getScheme(r *http.Request) string {
+	proto := r.Header.Get("X-Forwarded-Proto")
+	if proto == "" {
+		proto = r.Header.Get("x-forwarded-proto")
+	}
+	if proto != "" {
+		return strings.ToLower(strings.TrimSpace(proto))
+	}
+	// Default to https in production for safety
+	return "https"
+}
+
 // Helper function
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
