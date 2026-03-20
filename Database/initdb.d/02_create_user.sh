@@ -15,25 +15,41 @@
 
 set -e
 
-# Default values
-DB_USER="${DB_USER:-fpt_app}"
-DB_PASSWORD="${DB_PASSWORD:-FPTEventAppPassword2026}"
-DATABASE="${MYSQL_DATABASE:-fpteventmanagement}"
-MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD}"
+# Strict: No default values - all variables MUST come from environment
+DB_USER="$DB_USER"
+DB_PASSWORD="$DB_PASSWORD"
+DATABASE="$MYSQL_DATABASE"
+MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD"
 
-# Validation
+# Strict Validation: All variables MUST be set and non-empty
+errors=0
+
 if [ -z "$DB_USER" ]; then
-  echo "❌ ERROR: DB_USER environment variable not set"
-  exit 1
+  echo "❌ ERROR: DB_USER environment variable is required but not set"
+  ((errors++))
 fi
 
-if [ -z "$MYSQL_ROOT_PASSWORD" ]; then
-  echo "❌ ERROR: MYSQL_ROOT_PASSWORD not set"
-  exit 1
+if [ -z "$DB_PASSWORD" ]; then
+  echo "❌ ERROR: DB_PASSWORD environment variable is required but not set"
+  ((errors++))
 fi
 
 if [ -z "$DATABASE" ]; then
-  echo "❌ ERROR: MYSQL_DATABASE not set"
+  echo "❌ ERROR: MYSQL_DATABASE environment variable is required but not set"
+  ((errors++))
+fi
+
+if [ -z "$MYSQL_ROOT_PASSWORD" ]; then
+  echo "❌ ERROR: MYSQL_ROOT_PASSWORD environment variable is required but not set"
+  ((errors++))
+fi
+
+# If any validation failed, stop immediately
+if [ $errors -gt 0 ]; then
+  echo ""
+  echo "❌ FATAL: $errors required environment variable(s) are missing or empty."
+  echo "   Cannot proceed with MySQL user creation. Container initialization aborted."
+  echo ""
   exit 1
 fi
 

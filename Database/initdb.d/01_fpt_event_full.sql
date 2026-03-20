@@ -1,5 +1,3 @@
-USE `fpteventmanagement`;
-
 -- ============================================================
 -- ENFORCE UTF-8MB4 ENCODING FOR VIETNAMESE CHARACTER SUPPORT
 -- ============================================================
