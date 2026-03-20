@@ -17,11 +17,13 @@ if ($mode -eq 'clean') {
             if ($null -eq $prefix) { $prefix = '' }
             $key = $matches[2].Trim()
             Write-Output ("${prefix}${key}=<REDACTED>")
-        } else {
+        }
+        else {
             Write-Output $line
         }
     }
-} else {
+}
+else {
     # smudge / default: passthrough (returns stored blob as-is)
     Write-Output $stdin
 }
