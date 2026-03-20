@@ -94,6 +94,10 @@ export default function Dashboard() {
   // totalItems: tổng số sự kiện từ API response
   const [totalItems, setTotalItems] = useState(0)
 
+  // itemsPerPage: số sự kiện hiển thị trên mỗi trang (8 sự kiện)
+  // totalPages: tính toán tổng số trang từ totalItems
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+
   // ===================== DEBOUNCE REFERENCE =====================
   // debounceTimerRef: lưu timeout ID cho debounce search
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -369,12 +373,15 @@ export default function Dashboard() {
   /**
    * handlePageChange(newPage):
    * - Đổi trang hiện tại
+   * - Validate trang nằm trong phạm vi hợp lệ [1, totalPages]
    */
   const handlePageChange = useCallback((newPage: number) => {
-    setCurrentPage(newPage)
+    // Đảm bảo trang mới hợp lệ
+    const validPage = Math.max(1, Math.min(newPage, totalPages || 1))
+    setCurrentPage(validPage)
     // Cuộn lên đầu trang khi đổi trang (UX tốt)
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
+  }, [totalPages])
 
   // ===================== CLIENT-SIDE FILTERING (OPTIONAL - for backward compatibility) =====================
   // Note: 데이터는 이제 SERVER-SIDE에서 필터링되어 옵니다 (status, search, pagination)
@@ -407,9 +414,6 @@ export default function Dashboard() {
    * 
    * Hoặc bạn có thể hardcode totalPages dựa vào API response
    */
-
-  // Tính toán totalPages từ totalItems và itemsPerPage
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
 
   // Tạo array số trang cho pagination UI
   const getPaginationItems = () => {
@@ -609,13 +613,13 @@ export default function Dashboard() {
                 })}
               </div>
 
-              {/* Pagination */}
-              {true && (
+              {/* Pagination - Only show if totalPages > 1 */}
+              {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 mt-8">
                   {/* Nút Trước */}
                   <button
-                    onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
-                    disabled={currentPage === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage <= 1}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     ← Trước
@@ -647,8 +651,8 @@ export default function Dashboard() {
 
                   {/* Nút Sau */}
                   <button
-                    onClick={() => handlePageChange(Math.min(currentPage + 1, 99))}
-                    disabled={currentPage === 99}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Sau →
@@ -724,13 +728,13 @@ export default function Dashboard() {
                 })}
               </div>
 
-              {/* Pagination */}
-              {true && (
+              {/* Pagination - Only show if totalPages > 1 */}
+              {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 mt-8">
                   {/* Nút Trước */}
                   <button
-                    onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
-                    disabled={currentPage === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage <= 1}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     ← Trước
@@ -762,8 +766,8 @@ export default function Dashboard() {
 
                   {/* Nút Sau */}
                   <button
-                    onClick={() => handlePageChange(Math.min(currentPage + 1, 99))}
-                    disabled={currentPage === 99}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Sau →
@@ -827,13 +831,13 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* Pagination */}
-              {true && (
+              {/* Pagination - Only show if totalPages > 1 */}
+              {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 mt-8">
                   {/* Nút Trước */}
                   <button
-                    onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
-                    disabled={currentPage === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage <= 1}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     ← Trước
@@ -865,8 +869,8 @@ export default function Dashboard() {
 
                   {/* Nút Sau */}
                   <button
-                    onClick={() => handlePageChange(Math.min(currentPage + 1, 99))}
-                    disabled={currentPage === 99}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Sau →
