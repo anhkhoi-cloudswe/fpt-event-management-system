@@ -59,7 +59,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Warn("CheckLogin - user not found email=%s", email)
-			return nil, errors.New("user not found")
+			return nil, errors.New("Invalid email or password")
 		}
 		log.Error("CheckLogin - database error: %v", err)
 		return nil, fmt.Errorf("failed to query user: %w", err)
@@ -68,7 +68,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 	// Verify password with Lazy Migration
 	if !hash.VerifyPassword(password, user.PasswordHash) {
 		log.Warn("CheckLogin - invalid password for email=%s", email)
-		return nil, errors.New("invalid password")
+		return nil, errors.New("Invalid email or password")
 	}
 
 	// Auto-Upgrade: If password is in legacy format (not Bcrypt), upgrade to Bcrypt

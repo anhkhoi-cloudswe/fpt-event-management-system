@@ -241,10 +241,21 @@ export default function Login() {
       // default message nếu không có err.message
       let errorMessage = 'Có lỗi xảy ra. Vui lòng thử lại!'
 
-      // Nếu có message cụ thể -> ưu tiên hiển thị
-      if (err.message && err.message.includes('Backend đã chạy')) {
+      // SECURITY FIX: User Enumeration Prevention
+      // Nếu lỗi là 401 Unauthorized (invalid credentials) -> hiển thị message duy nhất
+      // Không hiển thị cụ thể "user not found" hay "invalid password"
+      if (err.response && err.response.status === 401) {
+        errorMessage = 'Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.'
+      } else if (err.message && err.message.includes('Backend đã chạy')) {
         errorMessage = err.message
+      } else if (err.response) {
+        // Các lỗi server khác (500, 403, etc.)
+        errorMessage = `Lỗi ${err.response.status}: ${err.response.statusText}`
+      } else if (err.request) {
+        // Network error
+        errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra backend và CORS.'
       } else if (err.message) {
+        // Lỗi khác
         errorMessage = err.message
       }
 

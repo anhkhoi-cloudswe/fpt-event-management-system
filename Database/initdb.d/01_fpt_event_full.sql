@@ -294,4 +294,37 @@ INSERT INTO `notification` VALUES (1,18,'❓ Thông báo: Yêu cầu \'Career Mo
 -- Chèn dữ liệu vào bảng event (Events with all required fields)
 INSERT INTO `event` VALUES (7,'Sự kiện mừng xuân - 2026','Mừng xuân đón tết','2026-01-01 10:00:00.000000','2026-01-01 17:00:00.000000',8,50,'CLOSED',4,'2025-12-08 00:55:02.095264',1,'https://img.freepik.com/premium-vector/talk-show-banner-template_791789-63.jpg?w=2000',60,30),(8,'Buổi dạy Thư Pháp Ngày Xuân 2026','Đánh bài tiến lên','2026-01-01 18:00:00.000000','2026-01-01 22:00:00.000000',9,50,'CLOSED',4,'2025-12-08 01:18:54.179751',1,'https://img.freepik.com/premium-vector/talk-show-banner-template_791789-63.jpg?w=2000',60,30);
 
+-- ============================================================
+-- Price Constraints for category_ticket
+-- Purpose: Enforce business rules for ticket prices
+-- - Price cannot be negative
+-- - Price cannot exceed 100 million VNĐ (MAX_TICKET_PRICE)
+-- ============================================================
+
+-- ✅ Add check constraint to ensure price >= 0
+-- This prevents negative prices which don't make business sense
+ALTER TABLE `category_ticket`
+ADD CONSTRAINT `CHK_CategoryTicket_Price_NonNegative`
+CHECK (`price` >= 0);
+
+-- ✅ Add check constraint to ensure price <= 100,000,000
+-- This prevents organizers from setting unrealistic ticket prices
+-- Maximum allowed: 100 million VNĐ
+ALTER TABLE `category_ticket`
+ADD CONSTRAINT `CHK_CategoryTicket_Price_MaxLimit`
+CHECK (`price` <= 100000000);
+
+-- ============================================================
+-- Documentation:
+-- These constraints work together with backend validation to:
+-- 1. Prevent negative prices at database level
+-- 2. Prevent prices exceeding 100 million VNĐ
+-- 3. Act as final safeguard even if backend validation is bypassed
+-- 
+-- When organizer attempts to set invalid price:
+-- - Frontend: Shows warning (red border, error message)
+-- - Backend: Returns 400 Bad Request with message
+-- - Database: Enforces constraint, rejects INSERT/UPDATE
+-- ============================================================
+
 SET FOREIGN_KEY_CHECKS=1;

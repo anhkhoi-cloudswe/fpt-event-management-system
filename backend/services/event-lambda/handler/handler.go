@@ -749,6 +749,13 @@ func (h *EventHandler) HandleUpdateEventDetails(ctx context.Context, request eve
 		if errMsg == "event is not editable" {
 			return createMessageResponse(http.StatusBadRequest, "Event is not editable in current status")
 		}
+		// ✅ NEW: Handle ticket price validation errors
+		if strings.Contains(errMsg, "Giá vé vượt quá hạn mức cho phép") {
+			return createMessageResponse(http.StatusBadRequest, "Giá vé vượt quá hạn mức cho phép")
+		}
+		if strings.Contains(errMsg, "ticket price cannot be negative") {
+			return createMessageResponse(http.StatusBadRequest, "Giá vé không được âm")
+		}
 		// Return detailed error message for debugging
 		return createMessageResponse(http.StatusInternalServerError, fmt.Sprintf("Error updating event: %v", err))
 	}

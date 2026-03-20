@@ -153,6 +153,12 @@ export default function EventRequestEdit() {
     // isDraggingAvatar: UI trạng thái drag-drop avatar
     const [isDraggingAvatar, setIsDraggingAvatar] = useState(false)
 
+    // ======================= CONSTANTS =======================
+
+    // MAX_TICKET_PRICE: Maximum allowed ticket price (100 million VNĐ)
+    const MAX_TICKET_PRICE = 100000000
+    const MAX_PRICE_DIGITS = 999999999 // Max value for input display (9 digits)
+
     // ======================= REF CHẶN SPAM TOAST =======================
 
     // hasShownWarningRef: dùng để chặn việc toast warning bị spam liên tục khi user nhập maxQuantity
@@ -422,8 +428,28 @@ export default function EventRequestEdit() {
                         : Number(value)
                     : value
 
-            // cập nhật ticket tại index
-            updated[index] = { ...updated[index], [field]: convertedValue }
+            // ✅ NEW: Validate ticket price
+            if (field === 'price') {
+                let numValue = convertedValue as number
+
+                // Limit to 9 digits max
+                if (numValue > MAX_PRICE_DIGITS) {
+                    numValue = MAX_PRICE_DIGITS
+                }
+
+                // Show warning if price exceeds MAX_TICKET_PRICE
+                if (numValue > MAX_TICKET_PRICE) {
+                    showToast(
+                        'error',
+                        `⚠️ Giá vé không được vượt quá ${MAX_TICKET_PRICE.toLocaleString('vi-VN')} VNĐ (100 triệu)`
+                    )
+                }
+
+                updated[index] = { ...updated[index], price: numValue }
+            } else {
+                // cập nhật ticket tại index
+                updated[index] = { ...updated[index], [field]: convertedValue }
+            }
 
             // Validate capacity khi đổi maxQuantity
             if (field === 'maxQuantity' && expectedCapacity > 0) {
@@ -1117,8 +1143,19 @@ export default function EventRequestEdit() {
                                                 onChange={(e) => handleTicketChange(index, 'price', e.target.value)}
                                                 required
                                                 min="0"
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                max={MAX_PRICE_DIGITS}
+                                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                                    ticket.price > MAX_TICKET_PRICE
+                                                        ? 'border-red-500 bg-red-50'
+                                                        : 'border-gray-300'
+                                                }`}
+                                                placeholder="Tối đa 100,000,000 VNĐ"
                                             />
+                                            {ticket.price > MAX_TICKET_PRICE && (
+                                                <p className="text-red-600 text-sm font-medium mt-1">
+                                                    ⚠️ Giá vé vượt quá hạn mức cho phép (100 triệu VNĐ)
+                                                </p>
+                                            )}
                                         </div>
 
                                         <div>
