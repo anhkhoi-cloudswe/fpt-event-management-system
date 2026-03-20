@@ -6,6 +6,14 @@ import (
 )
 
 // ============================================================
+// Business Logic Constants
+// ============================================================
+const (
+	// MAX_TICKET_PRICE: Maximum allowed ticket price (100 million VNĐ)
+	MAX_TICKET_PRICE float64 = 100000000
+)
+
+// ============================================================
 // EligibilityError - Error struct for event update eligibility check
 // ============================================================
 type EligibilityError struct {

@@ -2191,6 +2191,72 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 		if hasBookings {
 			log.Printf("[UpdateEventDetails] Skipping ticket modification - existing bookings detected")
 		} else {
+			// ✅ NEW: Check for price changes and trigger re-approval if needed
+			var shouldReApprov bool = false
+			var requestID sql.NullInt64
+
+			// Get old ticket prices to compare
+			oldTicketsQuery := `
+				SELECT name, price FROM category_ticket WHERE event_id = ?
+			`
+			oldTicketRows, err := tx.QueryContext(ctx, oldTicketsQuery, updateReq.EventID)
+			if err != nil && err != sql.ErrNoRows {
+				log.Printf("[UpdateEventDetails] Warning: failed to fetch old tickets: %v", err)
+			}
+			defer oldTicketRows.Close()
+
+			// Build map of old prices
+			oldPrices := make(map[string]float64)
+			if oldTicketRows != nil {
+				for oldTicketRows.Next() {
+					var name string
+					var price float64
+					if err := oldTicketRows.Scan(&name, &price); err == nil {
+						oldPrices[name] = price
+					}
+				}
+			}
+
+			// Check if any price has changed
+			for _, newTicket := range updateReq.Tickets {
+				oldPrice, exists := oldPrices[newTicket.Name]
+				if !exists || oldPrice != newTicket.Price {
+					shouldReApprov = true
+					log.Printf("[UpdateEventDetails] Price change detected for %s: %.0f -> %.0f", newTicket.Name, oldPrice, newTicket.Price)
+					break
+				}
+			}
+
+			// ✅ NEW: Get event_request status and update to PENDING if prices changed and was APPROVED
+			if shouldReApprov {
+				getRequestQuery := `
+					SELECT request_id FROM Event_Request WHERE created_event_id = ?
+				`
+				err := tx.QueryRowContext(ctx, getRequestQuery, updateReq.EventID).Scan(&requestID)
+				if err != nil && err != sql.ErrNoRows {
+					log.Printf("[UpdateEventDetails] Warning: failed to fetch request: %v", err)
+				}
+
+				if requestID.Valid {
+					// Check current request status
+					var currentRequestStatus string
+					checkStatusQuery := `SELECT status FROM Event_Request WHERE request_id = ?`
+					if err := tx.QueryRowContext(ctx, checkStatusQuery, requestID.Int64).Scan(&currentRequestStatus); err == nil {
+						if currentRequestStatus == "APPROVED" {
+							// Update status to PENDING
+							updateStatusQuery := `
+								UPDATE Event_Request SET status = 'PENDING' WHERE request_id = ?
+							`
+							if _, err := tx.ExecContext(ctx, updateStatusQuery, requestID.Int64); err != nil {
+								log.Printf("[UpdateEventDetails] Warning: failed to update request status: %v", err)
+							} else {
+								log.Printf("[UpdateEventDetails] ✅ Re-approval triggered: Request %d status changed to PENDING due to price change", requestID.Int64)
+							}
+						}
+					}
+				}
+			}
+
 			// Delete old tickets
 			deleteTicketsQuery := `DELETE FROM category_ticket WHERE event_id = ?`
 			result, err := tx.ExecContext(ctx, deleteTicketsQuery, updateReq.EventID)
@@ -2219,6 +2285,16 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 				Price            float64
 			}
 			var ticketAllocations []ticketAllocation
+
+			// ✅ VALIDATION: Check ticket prices before insertion
+			for _, ticket := range updateReq.Tickets {
+				if ticket.Price < 0 {
+					return fmt.Errorf("ticket price cannot be negative")
+				}
+				if ticket.Price > models.MAX_TICKET_PRICE {
+					return fmt.Errorf("Giá vé vượt quá hạn mức cho phép")
+				}
+			}
 
 			for idx, ticket := range updateReq.Tickets {
 				// ✅ Round price

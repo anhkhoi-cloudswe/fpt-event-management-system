@@ -22,7 +22,7 @@ type EventListV1Result struct {
 // Endpoint: GET /api/v1/events
 //
 // Parameters:
-//   - status: 'today' (today's events), 'upcoming' (future events), 'past' (past events, closed status)
+//   - status: 'open' or 'today' (today's events), 'upcoming' (future events), 'past' or 'closed' (past events)
 //   - search: search string to filter by title (optional, uses LIKE)
 //   - page: page number (default 1)
 //   - limit: items per page (default 10, max 100)
@@ -34,15 +34,24 @@ type EventListV1Result struct {
 //
 // Logic:
 // 1. Build WHERE conditions based on status:
-//    - 'today': status='OPEN' AND DATE(start_time) = TODAY()
-//    - 'upcoming': status='OPEN' AND start_time > NOW()
-//    - 'past': status='CLOSED' (OR start_time < NOW() for old OPEN events)
-// 2. If search provided: AND (e.title LIKE ? OR va.area_name LIKE ? OR v.venue_name LIKE ?)
-// 3. Calculate OFFSET = (page - 1) * limit
-// 4. Run 2 queries:
-//    - COUNT(*) for total matching records
-//    - SELECT ... LIMIT ? OFFSET ? for paginated results
-// 5. Return both total count and results
+//   - 'open'/'today': status='OPEN' AND DATE(start_time) = CURDATE()
+//     → Only shows today's events (server timezone)
+//   - 'upcoming': status='OPEN' AND start_time > NOW()
+//     → Shows future events
+//   - 'past'/'closed': status='CLOSED' OR (status='OPEN' AND start_time < NOW())
+//     → Shows past events (closed or old open events)
+//  2. If search provided: AND (e.title LIKE ? OR va.area_name LIKE ? OR v.venue_name LIKE ?)
+//     → Search is combined with status filter using AND
+//  3. Calculate OFFSET = (page - 1) * limit
+//  4. Run 2 queries:
+//     - COUNT(DISTINCT e.event_id) for total matching records
+//     - SELECT ... LIMIT ? OFFSET ? for paginated results
+//  5. Return both total count and results
+//
+// Frontend Mapping:
+//   - Tab "Sự kiện hôm nay" → sends status='open' → Backend filters TODAY's events
+//   - Tab "Sự kiện sắp diễn ra" → sends status='upcoming' → Backend filters FUTURE events
+//   - Tab "Sự kiện đã kết thúc" → sends status='closed' → Backend filters PAST/CLOSED events
 func (r *EventRepository) GetEventsByStatusV1(
 	ctx context.Context,
 	status string,
@@ -72,8 +81,9 @@ func (r *EventRepository) GetEventsByStatusV1(
 
 	// Add status condition
 	switch status {
-	case "today":
+	case "open", "today":
 		// Today's events: status = 'OPEN' AND start_time is TODAY
+		// Using DATE(e.start_time) = CURDATE() ensures only today's events (server timezone)
 		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE()")
 		queryArgs = append(queryArgs, "OPEN")
 
@@ -89,9 +99,9 @@ func (r *EventRepository) GetEventsByStatusV1(
 		queryArgs = append(queryArgs, "CLOSED", "OPEN")
 
 	default:
-		// Invalid status - default to all OPEN events
+		// Invalid status - default to today's OPEN events
 		status = "open"
-		whereConditions = append(whereConditions, "e.status = ?")
+		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE()")
 		queryArgs = append(queryArgs, "OPEN")
 	}
 
@@ -179,20 +189,20 @@ func (r *EventRepository) GetEventsByStatusV1(
 
 	for rows.Next() {
 		var (
-			eventID      int
-			title        string
-			description  sql.NullString
-			startTime    string
-			endTime      string
-			maxSeats     int
-			status       string
-			bannerURL    sql.NullString
-			areaID       sql.NullInt64
-			areaName     sql.NullString
-			floor        sql.NullString
-			venueName    sql.NullString
+			eventID       int
+			title         string
+			description   sql.NullString
+			startTime     string
+			endTime       string
+			maxSeats      int
+			status        string
+			bannerURL     sql.NullString
+			areaID        sql.NullInt64
+			areaName      sql.NullString
+			floor         sql.NullString
+			venueName     sql.NullString
 			venueLocation sql.NullString
-			organizerID  sql.NullInt64
+			organizerID   sql.NullInt64
 		)
 
 		err := rows.Scan(
@@ -288,7 +298,8 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 
 	// Add status condition
 	switch status {
-	case "today":
+	case "open", "today":
+		// Today's events: status = 'OPEN' AND start_time is TODAY
 		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE()")
 		queryArgs = append(queryArgs, "OPEN")
 
@@ -301,8 +312,9 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 		queryArgs = append(queryArgs, "CLOSED", "OPEN")
 
 	default:
+		// Invalid status - default to today's OPEN events with date filter
 		status = "open"
-		whereConditions = append(whereConditions, "e.status = ?")
+		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE()")
 		queryArgs = append(queryArgs, "OPEN")
 	}
 
