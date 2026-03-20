@@ -1,13 +1,16 @@
 // src/pages/Dashboard.tsx
 
 // Import React hooks
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 // useState: lưu state (events, loading, error, tab đang chọn, modal detail...)
 // useEffect: chạy side-effect (gọi API load events) khi component mount / khi token đổi
+// useCallback: memoize callbacks để tránh re-render không cần thiết
+// useRef: lưu reference debounce timeout
 
 // Import Link (hiện tại file này import nhưng chưa dùng trong JSX - có thể dùng để link sang trang khác)
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 // Link: tạo link điều hướng trong SPA (không reload trang)
+// useSearchParams: quản lý URL query parameters (tab, page, search)
 
 // Import AuthContext để lấy user (nếu cần)
 import { useAuth } from '../contexts/AuthContext'
@@ -15,7 +18,7 @@ import { useAuth } from '../contexts/AuthContext'
 // Lưu ý: trong code này user lấy ra nhưng token lại lấy từ localStorage
 
 // Import icon Calendar để hiển thị placeholder / background khi không có banner
-import { Calendar } from 'lucide-react'
+import { Calendar, Search } from 'lucide-react'
 
 // Import hàm xử lý ngày giờ từ date-fns
 import { format, isSameDay, startOfDay } from 'date-fns'
@@ -43,6 +46,27 @@ export default function Dashboard() {
   // (comment trong code: "Get token from localStorage instead of user object")
   const token = 'cookie-auth'
 
+  // ===================== URL PARAMS MANAGEMENT =====================
+  // Lấy search params từ URL
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Đọc giá trị từ URL query params khi component mount
+  // Nếu không có trong URL, dùng default value
+  const getInitialActiveTab = (): 'open' | 'upcoming' | 'closed' => {
+    const tab = searchParams.get('tab')
+    if (tab === 'open' || tab === 'upcoming' || tab === 'closed') return tab
+    return 'open'
+  }
+
+  const getInitialPage = (): number => {
+    const page = parseInt(searchParams.get('page') || '1', 10)
+    return page > 0 ? page : 1
+  }
+
+  const getInitialSearchQuery = (): string => {
+    return searchParams.get('search') || ''
+  }
+
   // events: danh sách sự kiện load từ API /api/events
   const [events, setEvents] = useState<EventListItem[]>([])
 
@@ -56,7 +80,23 @@ export default function Dashboard() {
   // - open: sự kiện hôm nay
   // - upcoming: sự kiện sắp diễn ra
   // - closed: sự kiện đã kết thúc
-  const [activeTab, setActiveTab] = useState<'open' | 'upcoming' | 'closed'>('open')
+  const [activeTab, setActiveTab] = useState<'open' | 'upcoming' | 'closed'>(getInitialActiveTab())
+
+  // searchQuery: từ khóa tìm kiếm
+  const [searchQuery, setSearchQuery] = useState(getInitialSearchQuery())
+
+  // currentPage: trang hiện tại trong phân trang
+  const [currentPage, setCurrentPage] = useState(getInitialPage())
+
+  // itemsPerPage: số sự kiện hiển thị trên mỗi trang (2 hàng x 4 cột = 8 sự kiện)
+  const itemsPerPage = 8
+
+  // totalItems: tổng số sự kiện từ API response
+  const [totalItems, setTotalItems] = useState(0)
+
+  // ===================== DEBOUNCE REFERENCE =====================
+  // debounceTimerRef: lưu timeout ID cho debounce search
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // ===================== STATE cho Event Detail Modal =====================
   // isDetailOpen: mở/đóng modal chi tiết
@@ -71,7 +111,31 @@ export default function Dashboard() {
   // detailError: lỗi khi load chi tiết event
   const [detailError, setDetailError] = useState<string | null>(null)
 
-  // ===================== GỌI API: LẤY DANH SÁCH SỰ KIỆN =====================
+  // ===================== SYNC STATE WITH URL PARAMS =====================
+  // Effect: cập nhật URL khi tab, page, hoặc search thay đổi
+  useEffect(() => {
+    const newParams = new URLSearchParams()
+    
+    // Thêm tab vào URL (mặc định là 'open')
+    if (activeTab !== 'open') {
+      newParams.set('tab', activeTab)
+    }
+    
+    // Thêm page vào URL (mặc định là '1')
+    if (currentPage !== 1) {
+      newParams.set('page', currentPage.toString())
+    }
+    
+    // Thêm search vào URL (nếu có từ khóa)
+    if (searchQuery.trim() !== '') {
+      newParams.set('search', searchQuery)
+    }
+    
+    // Cập nhật URL search params
+    setSearchParams(newParams)
+  }, [activeTab, currentPage, searchQuery, setSearchParams])
+
+  // ===================== GỌI API: LẤY DANH SÁCH SỰ KIỆN (WITH PAGINATION + SEARCH) =====================
   useEffect(() => {
     // fetchEvents: hàm async gọi /api/events để lấy danh sách sự kiện
     const fetchEvents = async () => {
@@ -87,8 +151,25 @@ export default function Dashboard() {
         setLoading(true)
         setError(null)
 
-        // Gọi API lấy danh sách event
-        const res = await fetch('/api/events', {
+        // Tạo query params cho API
+        const queryParams = new URLSearchParams()
+        
+        // Thêm status parameter (mapping tab name to API status)
+        // Lưu ý: backend có thể cần map từ tab name (open/upcoming/closed) thành status API
+        queryParams.append('status', activeTab)
+        
+        // Thêm search parameter nếu có
+        if (searchQuery.trim() !== '') {
+          queryParams.append('search', searchQuery)
+        }
+        
+        // Thêm pagination parameters
+        queryParams.append('page', currentPage.toString())
+        queryParams.append('limit', itemsPerPage.toString())
+
+        // Gọi API lấy danh sách event với pagination + search
+        const apiUrl = `/api/v1/events?${queryParams.toString()}`
+        const res = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -121,20 +202,37 @@ export default function Dashboard() {
         const data = await res.json()
 
         /**
-         * Backend có thể trả:
+         * Backend trả về có thể là:
          * - Array thuần: [event1, event2]
+         * - Hoặc object: { data: [...], total: 100, page: 1, limit: 8 }
          * - Hoặc object: { openEvents: [...], closedEvents: [...] }
          *
-         * => Code handle cả 2 case:
+         * => Code handle cả 3 case:
          * - Nếu data là array -> dùng luôn
+         * - Nếu có data property -> lấy data property
          * - Nếu không -> gộp openEvents + closedEvents thành 1 mảng
          */
-        const eventsArray = Array.isArray(data)
-          ? data
-          : [
-              ...(Array.isArray(data.openEvents) ? data.openEvents : []),
-              ...(Array.isArray(data.closedEvents) ? data.closedEvents : []),
-            ]
+        let eventsArray: EventListItem[] = []
+        let total = 0
+        
+        if (Array.isArray(data)) {
+          eventsArray = data
+          total = data.length || 0
+        } else if (data.data && Array.isArray(data.data)) {
+          // Nếu backend trả { data: [...], total: 100 }
+          eventsArray = data.data
+          total = data.total || 0
+        } else {
+          // Fallback: try merging openEvents và closedEvents
+          eventsArray = [
+            ...(Array.isArray(data.openEvents) ? data.openEvents : []),
+            ...(Array.isArray(data.closedEvents) ? data.closedEvents : []),
+          ]
+          total = eventsArray.length || 0
+        }
+
+        // Lưu tổng số items từ API
+        setTotalItems(total)
 
         // Lưu events vào state để render UI
         setEvents(eventsArray)
@@ -148,9 +246,9 @@ export default function Dashboard() {
       }
     }
 
-    // Gọi fetchEvents khi component mount hoặc khi token đổi
+    // Gọi fetchEvents khi component mount hoặc khi token, activeTab, currentPage, searchQuery đổi
     fetchEvents()
-  }, [token])
+  }, [token, activeTab, currentPage, searchQuery])
 
   // ===================== MỞ MODAL CHI TIẾT + GỌI API DETAIL =====================
   /**
@@ -234,78 +332,142 @@ export default function Dashboard() {
     setDetailError(null)
   }
 
-  // ===================== PHÂN LOẠI EVENT THEO NGÀY + STATUS =====================
+  // ===================== HANDLERS: TAB CHANGE, SEARCH, PAGINATION =====================
+
+  /**
+   * handleTabChange(newTab):
+   * - Đổi tab và reset page about 1
+   * - useCallback để tránh re-render không cần thiết
+   */
+  const handleTabChange = useCallback((newTab: 'open' | 'upcoming' | 'closed') => {
+    setActiveTab(newTab)
+    setCurrentPage(1) // Reset về trang 1 khi đổi tab
+  }, [])
+
+  /**
+   * handleSearchChange(newQuery):
+   * - Update search query với debounce 500ms
+   * - Debounce giúp tránh gọi API quá nhiều lần khi user gõ liên tục
+   * - Reset page về 1 khi thay đổi search
+   */
+  const handleSearchChange = useCallback((newQuery: string) => {
+    // Update local state ngay để UI responsive
+    setSearchQuery(newQuery)
+    
+    // Nếu có timer debounce đang chạy, hủy nó
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+
+    // Tạo timer mới sẽ chạy sau 500ms
+    // Khi timer chạy xong, reset page về 1 để user thấy kết quả từ đầu
+    debounceTimerRef.current = setTimeout(() => {
+      setCurrentPage(1)
+    }, 500)
+  }, [])
+
+  /**
+   * handlePageChange(newPage):
+   * - Đổi trang hiện tại
+   */
+  const handlePageChange = useCallback((newPage: number) => {
+    setCurrentPage(newPage)
+    // Cuộn lên đầu trang khi đổi trang (UX tốt)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
+  // ===================== CLIENT-SIDE FILTERING (OPTIONAL - for backward compatibility) =====================
+  // Note: 데이터는 이제 SERVER-SIDE에서 필터링되어 옵니다 (status, search, pagination)
+  // 다음의 필터링은 필요한 경우에만 적용됩니다
 
   // today: đầu ngày hiện tại (00:00:00) để so sánh ngày
   const today = startOfDay(new Date())
 
   /**
-   * openEvents (Sự kiện hôm nay):
-   * - status phải là OPEN
-   * - ngày startTime phải trùng với today
-   * - sort theo thời gian tăng dần (gần nhất trước)
+   * OPTIONAL: Client-side filtering (if backend doesn't support all filters)
+   * 만약 backend가 pagination만 지원하고 필터링은 하지 않는 경우,
+   * 아래의 필터링을 사용할 수 있습니다.
    */
-  const openEvents = (Array.isArray(events) ? events : [])
-    .filter((e) => {
-      // lọc status OPEN
-      if (e.status !== 'OPEN') return false
-
-      // so sánh ngày bắt đầu event với today
-      const eventStartDate = startOfDay(new Date(e.startTime))
-      return isSameDay(eventStartDate, today)
-    })
-    .sort((a, b) => {
-      // sort theo thời gian tăng dần
-      const dateA = new Date(a.startTime)
-      const dateB = new Date(b.startTime)
-      return dateA.getTime() - dateB.getTime()
-    })
-
-  /**
-   * upcomingEvents (Sự kiện sắp diễn ra):
-   * - status phải OPEN
-   * - ngày startTime > today
-   * - sort tăng dần
-   */
-  const upcomingEvents = (Array.isArray(events) ? events : [])
-    .filter((e) => {
-      if (e.status !== 'OPEN') return false
-      const eventStartDate = startOfDay(new Date(e.startTime))
-      return eventStartDate > today
-    })
-    .sort((a, b) => {
-      const dateA = new Date(a.startTime)
-      const dateB = new Date(b.startTime)
-      return dateA.getTime() - dateB.getTime()
-    })
-
-  /**
-   * closedEvents (Sự kiện đã kết thúc):
-   * - status phải CLOSED
-   * - bannerUrl phải tồn tại (không null)
-   * - sort giảm dần (mới nhất trước)
-   */
-  const closedEvents = (Array.isArray(events) ? events : [])
-    .filter((e) => {
-      if (e.status !== 'CLOSED') return false
-      if (!e.bannerUrl) return false
-      return true
-    })
-    .sort((a, b) => {
-      const dateA = new Date(a.startTime)
-      const dateB = new Date(b.startTime)
-      // sort giảm dần: event mới hơn lên trước
-      return dateB.getTime() - dateA.getTime()
-    })
 
   // ===================== RENDER UI (JSX) =====================
+
+  /**
+   * paginatedEvents: API từ server trả về đã là dữ liệu của trang hiện tại
+   * 단순히 API 응답을 직접 사용합니다
+   */
+  const displayedEvents = events
+
+  /**
+   * Tạo array số trang cho pagination UI
+   * 
+   * IMPORTANT: Backend cần trả về thông tin:
+   *  - total: tổng số events
+   *  - page: trang hiện tại
+   *  - limit: số items per page
+   * 
+   * Hoặc bạn có thể hardcode totalPages dựa vào API response
+   */
+
+  // Tính toán totalPages từ totalItems và itemsPerPage
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+
+  // Tạo array số trang cho pagination UI
+  const getPaginationItems = () => {
+    const items: (number | string)[] = []
+    const maxPagesToShow = 5
+
+    if (totalPages <= maxPagesToShow) {
+      // Nếu tổng số trang <= 5, hiển thị tất cả
+      for (let i = 1; i <= totalPages; i++) {
+        items.push(i)
+      }
+    } else {
+      // Hiển thị trang đầu
+      items.push(1)
+
+      // Tính vị trí bắt đầu của "..." giữa
+      const startOfMiddle = Math.max(2, currentPage - 1)
+      const endOfMiddle = Math.min(totalPages - 1, currentPage + 1)
+
+      if (startOfMiddle > 2) {
+        items.push('...')
+      }
+
+      // Hiển thị các trang xung quanh trang hiện tại
+      for (let i = startOfMiddle; i <= endOfMiddle; i++) {
+        items.push(i)
+      }
+
+      if (endOfMiddle < totalPages - 1) {
+        items.push('...')
+      }
+
+      // Hiển thị trang cuối
+      items.push(totalPages)
+    }
+
+    return items
+  }
+
   return (
     <div>
-      {/* Tiêu đề dashboard */}
+      {/* Tiêu đề + Tìm kiếm */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">
           Sự kiện tại Thành phố Hồ Chí Minh
         </h1>
+
+        {/* Search Input */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm sự kiện..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          />
+        </div>
       </div>
 
       {/* Hiển thị loading/error */}
@@ -318,7 +480,7 @@ export default function Dashboard() {
           <nav className="-mb-px flex space-x-8">
             {/* Tab 1: Sự kiện hôm nay */}
             <button
-              onClick={() => setActiveTab('open')}
+              onClick={() => handleTabChange('open')}
               className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${
                 activeTab === 'open'
                   ? 'border-orange-500 text-orange-600'
@@ -332,7 +494,7 @@ export default function Dashboard() {
 
             {/* Tab 2: Sự kiện sắp diễn ra */}
             <button
-              onClick={() => setActiveTab('upcoming')}
+              onClick={() => handleTabChange('upcoming')}
               className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${
                 activeTab === 'upcoming'
                   ? 'border-orange-500 text-orange-600'
@@ -346,7 +508,7 @@ export default function Dashboard() {
 
             {/* Tab 3: Sự kiện đã kết thúc */}
             <button
-              onClick={() => setActiveTab('closed')}
+              onClick={() => handleTabChange('closed')}
               className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${
                 activeTab === 'closed'
                   ? 'border-orange-500 text-orange-600'
@@ -366,85 +528,134 @@ export default function Dashboard() {
       {/* ===== TAB OPEN: Sự kiện hôm nay ===== */}
       {activeTab === 'open' && (
         <>
-          {/* Nếu không có event -> show empty */}
-          {openEvents.length === 0 ? (
+          {events.length === 0 ? (
             <div className="bg-white rounded-lg shadow p-12 text-center">
               <p className="text-gray-500 text-lg">Hiện chưa có sự kiện đang mở</p>
             </div>
           ) : (
-            // Có event -> render grid
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {openEvents.map((event) => {
-                // Parse ngày giờ event
-                const eventDate = new Date(event.startTime)
+            <>
+              {/* Grid Sự kiện (hiển thị events từ API) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {displayedEvents.map((event) => {
+                  // Parse ngày giờ event
+                  const eventDate = new Date(event.startTime)
 
-                // Kiểm tra event có phải hôm nay không (dù đã lọc openEvents rồi, vẫn check để highlight UI)
-                const isToday = isSameDay(eventDate, today)
+                  // Kiểm tra event có phải hôm nay không
+                  const today = startOfDay(new Date())
+                  const isToday = isSameDay(eventDate, today)
 
-                return (
-                  // Event card: dùng button để click mở modal detail
+                  return (
+                    // Event card: dùng button để click mở modal detail
+                    <button
+                      key={event.eventId}
+                      onClick={() => openEventDetail(event.eventId)} // click -> mở modal + fetch detail
+                      className={`text-left block rounded-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer bg-white ${
+                        // Nếu hôm nay -> highlight đỏ + scale
+                        isToday 
+                          ? 'border-4 border-red-500 shadow-2xl shadow-red-500/50 transform scale-105' 
+                          : 'border border-gray-200'
+                      }`}
+                    >
+                      {/* Banner Image */}
+                      {event.bannerUrl ? (
+                        <div className="relative">
+                          <img
+                            src={event.bannerUrl}
+                            alt={event.title}
+                            className="w-full h-48 object-cover"
+                          />
+                          {/* Nếu hôm nay -> show badge "🔥 HÔM NAY" */}
+                          {isToday && (
+                            <span className="absolute top-3 right-3 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg shadow-lg animate-pulse">
+                              🔥 HÔM NAY
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        // Nếu không có bannerUrl -> hiển thị background + icon Calendar
+                        <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center relative">
+                          <Calendar className="w-16 h-16 text-blue-400" />
+                          {isToday && (
+                            <span className="absolute top-3 right-3 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg shadow-lg animate-pulse">
+                              🔥 HÔM NAY
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Content */}
+                      <div className="p-4">
+                        {/* Title */}
+                        <h3 className={`text-lg font-bold mb-2 line-clamp-2 min-h-[56px] ${
+                          isToday ? 'text-red-600' : 'text-gray-900'
+                        }`}>
+                          {event.title}
+                        </h3>
+
+                        {/* Date & Time */}
+                        <p className={`text-sm mb-1 font-semibold ${
+                          isToday ? 'text-red-600' : 'text-gray-600'
+                        }`}>
+                          {format(eventDate, 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
+                        </p>
+
+                        {/* Location */}
+                        <p className="text-sm text-gray-600 line-clamp-1">
+                          {event.venueLocation || event.location || 'Trực tuyến'}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Pagination */}
+              {true && (
+                <div className="flex justify-center items-center gap-2 mt-8">
+                  {/* Nút Trước */}
                   <button
-                    key={event.eventId}
-                    onClick={() => openEventDetail(event.eventId)} // click -> mở modal + fetch detail
-                    className={`text-left block rounded-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer bg-white ${
-                      // Nếu hôm nay -> highlight đỏ + scale
-                      isToday 
-                        ? 'border-4 border-red-500 shadow-2xl shadow-red-500/50 transform scale-105' 
-                        : 'border border-gray-200'
-                    }`}
+                    onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {/* Banner Image */}
-                    {event.bannerUrl ? (
-                      <div className="relative">
-                        <img
-                          src={event.bannerUrl}
-                          alt={event.title}
-                          className="w-full h-48 object-cover"
-                        />
-                        {/* Nếu hôm nay -> show badge "🔥 HÔM NAY" */}
-                        {isToday && (
-                          <span className="absolute top-3 right-3 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg shadow-lg animate-pulse">
-                            🔥 HÔM NAY
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      // Nếu không có bannerUrl -> hiển thị background + icon Calendar
-                      <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center relative">
-                        <Calendar className="w-16 h-16 text-blue-400" />
-                        {isToday && (
-                          <span className="absolute top-3 right-3 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg shadow-lg animate-pulse">
-                            🔥 HÔM NAY
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Content */}
-                    <div className="p-4">
-                      {/* Title */}
-                      <h3 className={`text-lg font-bold mb-2 line-clamp-2 min-h-[56px] ${
-                        isToday ? 'text-red-600' : 'text-gray-900'
-                      }`}>
-                        {event.title}
-                      </h3>
-
-                      {/* Date & Time */}
-                      <p className={`text-sm mb-1 font-semibold ${
-                        isToday ? 'text-red-600' : 'text-gray-600'
-                      }`}>
-                        {format(eventDate, 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
-                      </p>
-
-                      {/* Location */}
-                      <p className="text-sm text-gray-600 line-clamp-1">
-                        {event.venueLocation || event.location || 'Trực tuyến'}
-                      </p>
-                    </div>
+                    ← Trước
                   </button>
-                )
-              })}
-            </div>
+
+                  {/* Số trang */}
+                  <div className="flex gap-1">
+                    {getPaginationItems().map((item, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          if (typeof item === 'number') {
+                            handlePageChange(item)
+                          }
+                        }}
+                        disabled={typeof item === 'string'}
+                        className={`px-3 py-2 rounded-lg transition-colors ${
+                          item === currentPage
+                            ? 'bg-orange-500 text-white font-semibold'
+                            : typeof item === 'number'
+                              ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                              : 'text-gray-500 cursor-default'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Nút Sau */}
+                  <button
+                    onClick={() => handlePageChange(Math.min(currentPage + 1, 99))}
+                    disabled={currentPage === 99}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Sau →
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </>
       )}
@@ -452,64 +663,114 @@ export default function Dashboard() {
       {/* ===== TAB UPCOMING: Sự kiện sắp diễn ra ===== */}
       {activeTab === 'upcoming' && (
         <>
-          {upcomingEvents.length === 0 ? (
+          {events.length === 0 ? (
             <div className="bg-white rounded-lg shadow p-12 text-center">
               <p className="text-gray-500 text-lg">Hiện chưa có sự kiện sắp mở</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {upcomingEvents.map((event) => {
-                const eventDate = new Date(event.startTime)
-                const isToday = isSameDay(eventDate, today)
+            <>
+              {/* Grid Sự kiện (hiển thị events từ API) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {displayedEvents.map((event) => {
+                  const eventDate = new Date(event.startTime)
+                  const isToday = isSameDay(eventDate, today)
 
-                return (
+                  return (
+                    <button
+                      key={event.eventId}
+                      onClick={() => openEventDetail(event.eventId)} // click -> modal + fetch detail
+                      className="text-left block rounded-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer bg-white border border-gray-200"
+                    >
+                      {/* Banner */}
+                      {event.bannerUrl ? (
+                        <div className="relative">
+                          <img
+                            src={event.bannerUrl}
+                            alt={event.title}
+                            className="w-full h-48 object-cover"
+                          />
+                          {/* Badge (đoạn này hiện tại chỉ show nếu isToday, nhưng upcoming đã lọc > today nên thường không xảy ra) */}
+                          {isToday && (
+                            <span className="absolute top-3 right-3 px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded">
+                              SẮP MỞ
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="w-full h-48 bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center relative">
+                          <Calendar className="w-16 h-16 text-yellow-400" />
+                          {isToday && (
+                            <span className="absolute top-3 right-3 px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded">
+                              SẮP MỞ
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Content */}
+                      <div className="p-4">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 min-h-[56px]">
+                          {event.title}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-1 font-semibold">
+                          {format(eventDate, 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
+                        </p>
+                        <p className="text-sm text-gray-600 line-clamp-1">
+                          {event.venueLocation || event.location || 'Trực tuyến'}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Pagination */}
+              {true && (
+                <div className="flex justify-center items-center gap-2 mt-8">
+                  {/* Nút Trước */}
                   <button
-                    key={event.eventId}
-                    onClick={() => openEventDetail(event.eventId)} // click -> modal + fetch detail
-                    className="text-left block rounded-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer bg-white border border-gray-200"
+                    onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {/* Banner */}
-                    {event.bannerUrl ? (
-                      <div className="relative">
-                        <img
-                          src={event.bannerUrl}
-                          alt={event.title}
-                          className="w-full h-48 object-cover"
-                        />
-                        {/* Badge (đoạn này hiện tại chỉ show nếu isToday, nhưng upcoming đã lọc > today nên thường không xảy ra) */}
-                        {isToday && (
-                          <span className="absolute top-3 right-3 px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded">
-                            SẮP MỞ
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="w-full h-48 bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center relative">
-                        <Calendar className="w-16 h-16 text-yellow-400" />
-                        {isToday && (
-                          <span className="absolute top-3 right-3 px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded">
-                            SẮP MỞ
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Content */}
-                    <div className="p-4">
-                      <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 min-h-[56px]">
-                        {event.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-1 font-semibold">
-                        {format(eventDate, 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
-                      </p>
-                      <p className="text-sm text-gray-600 line-clamp-1">
-                        {event.venueLocation || event.location || 'Trực tuyến'}
-                      </p>
-                    </div>
+                    ← Trước
                   </button>
-                )
-              })}
-            </div>
+
+                  {/* Số trang */}
+                  <div className="flex gap-1">
+                    {getPaginationItems().map((item, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          if (typeof item === 'number') {
+                            handlePageChange(item)
+                          }
+                        }}
+                        disabled={typeof item === 'string'}
+                        className={`px-3 py-2 rounded-lg transition-colors ${
+                          item === currentPage
+                            ? 'bg-orange-500 text-white font-semibold'
+                            : typeof item === 'number'
+                              ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                              : 'text-gray-500 cursor-default'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Nút Sau */}
+                  <button
+                    onClick={() => handlePageChange(Math.min(currentPage + 1, 99))}
+                    disabled={currentPage === 99}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Sau →
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </>
       )}
@@ -517,52 +778,102 @@ export default function Dashboard() {
       {/* ===== TAB CLOSED: Sự kiện đã kết thúc ===== */}
       {activeTab === 'closed' && (
         <>
-          {closedEvents.length === 0 ? (
+          {events.length === 0 ? (
             <div className="bg-white rounded-lg shadow p-12 text-center">
               <p className="text-gray-500 text-lg">Chưa có sự kiện đã kết thúc</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {closedEvents.map((event) => (
-                <button
-                  key={event.eventId}
-                  onClick={() => openEventDetail(event.eventId)} // click -> modal + fetch detail
-                  className="text-left block rounded-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer bg-white border border-gray-200 opacity-75"
-                >
-                  {/* Banner */}
-                  {event.bannerUrl ? (
-                    <img
-                      src={event.bannerUrl}
-                      alt={event.title}
-                      className="w-full h-48 object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                      <Calendar className="w-16 h-16 text-gray-400" />
+            <>
+              {/* Grid Sự kiện (hiển thị events từ API) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {displayedEvents.map((event) => (
+                  <button
+                    key={event.eventId}
+                    onClick={() => openEventDetail(event.eventId)} // click -> modal + fetch detail
+                    className="text-left block rounded-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer bg-white border border-gray-200 opacity-75"
+                  >
+                    {/* Banner */}
+                    {event.bannerUrl ? (
+                      <img
+                        src={event.bannerUrl}
+                        alt={event.title}
+                        className="w-full h-48 object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                        <Calendar className="w-16 h-16 text-gray-400" />
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <div className="p-4">
+                      <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded mb-3">
+                        Đã kết thúc
+                      </span>
+
+                      <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 min-h-[56px]">
+                        {event.title}
+                      </h3>
+
+                      <p className="text-sm text-gray-600 mb-1 font-semibold">
+                        {format(new Date(event.startTime), 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
+                      </p>
+
+                      <p className="text-sm text-gray-600 line-clamp-1">
+                        {event.venueLocation || event.location || 'Trực tuyến'}
+                      </p>
                     </div>
-                  )}
+                  </button>
+                ))}
+              </div>
 
-                  {/* Content */}
-                  <div className="p-4">
-                    <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded mb-3">
-                      Đã kết thúc
-                    </span>
+              {/* Pagination */}
+              {true && (
+                <div className="flex justify-center items-center gap-2 mt-8">
+                  {/* Nút Trước */}
+                  <button
+                    onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    ← Trước
+                  </button>
 
-                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 min-h-[56px]">
-                      {event.title}
-                    </h3>
-
-                    <p className="text-sm text-gray-600 mb-1 font-semibold">
-                      {format(new Date(event.startTime), 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
-                    </p>
-
-                    <p className="text-sm text-gray-600 line-clamp-1">
-                      {event.venueLocation || event.location || 'Trực tuyến'}
-                    </p>
+                  {/* Số trang */}
+                  <div className="flex gap-1">
+                    {getPaginationItems().map((item, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          if (typeof item === 'number') {
+                            handlePageChange(item)
+                          }
+                        }}
+                        disabled={typeof item === 'string'}
+                        className={`px-3 py-2 rounded-lg transition-colors ${
+                          item === currentPage
+                            ? 'bg-orange-500 text-white font-semibold'
+                            : typeof item === 'number'
+                              ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                              : 'text-gray-500 cursor-default'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
                   </div>
-                </button>
-              ))}
-            </div>
+
+                  {/* Nút Sau */}
+                  <button
+                    onClick={() => handlePageChange(Math.min(currentPage + 1, 99))}
+                    disabled={currentPage === 99}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Sau →
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </>
       )}

@@ -346,3 +346,38 @@ func (uc *EventUseCase) DisableEventByStaff(ctx context.Context, eventID int) er
 func (uc *EventUseCase) CheckDailyQuota(ctx context.Context, eventDate string) (*models.CheckDailyQuotaResponse, error) {
 	return uc.eventRepo.CheckDailyQuota(ctx, eventDate)
 }
+
+// ============================================================
+// GetEventsByStatusV1 - ✅ NEW API V1: Get events with unified filtering
+// Endpoint: GET /api/v1/events
+// Parameters:
+//   - status: 'today' | 'upcoming' | 'past'
+//   - search: search query (optional)
+//   - page: page number (default 1)
+//   - limit: items per page (default 10, max 100)
+//
+// Returns paginated list with:
+//   - data: array of EventListItem
+//   - total: total matching records
+//   - page: current page
+//   - limit: items per page
+//   - totalPages: calculated total pages
+//
+// No role filtering (public view - all events shown)
+// ============================================================
+func (uc *EventUseCase) GetEventsByStatusV1(ctx context.Context, status string, search string, page int, limit int) (*repository.EventListV1Result, error) {
+	return uc.eventRepo.GetEventsByStatusV1(ctx, status, search, page, limit)
+}
+
+// ============================================================
+// GetEventsByStatusV1WithRole - ✅ NEW API V1: Get events with role-based filtering
+// Same as GetEventsByStatusV1, but adds organizer filtering:
+//   - ADMIN: See all events regardless of creator
+//   - ORGANIZER: See only events created by this user
+//   - PUBLIC/GUEST: See all events (no filtering)
+//
+// Endpoint: GET /api/v1/events (with X-User-Role and X-User-Id headers)
+// ============================================================
+func (uc *EventUseCase) GetEventsByStatusV1WithRole(ctx context.Context, status string, search string, page int, limit int, role string, userID int) (*repository.EventListV1Result, error) {
+	return uc.eventRepo.GetEventsByStatusV1WithRole(ctx, status, search, page, limit, role, userID)
+}

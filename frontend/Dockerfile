@@ -6,6 +6,10 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
+# Build-time arg for Vite public env (passed from docker-compose build args)
+ARG VITE_RECAPTCHA_SITE_KEY
+ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
+
 # Copy dependency manifests first for better layer caching
 COPY package.json package-lock.json ./
 

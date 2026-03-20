@@ -34,7 +34,7 @@ interface FormData {
 // reCAPTCHA site key - ĐỌC TỪ BIẾN MÔI TRƯỜNG
 // Cấu hình trong file .env: VITE_RECAPTCHA_SITE_KEY
 // Đăng ký tại: https://www.google.com/recaptcha/admin/create
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LdvPQIsAAAAAG7glbICpFiBR9o5MhboFU4JvxAJ'
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 // Cờ bật/tắt chế độ kiểm tra Captcha thật (True = Bắt buộc tích Captcha)
 const USE_REAL_RECAPTCHA = true
 
