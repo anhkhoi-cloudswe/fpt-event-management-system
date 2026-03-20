@@ -13,6 +13,7 @@ import (
 	"github.com/fpt-event-services/common/logger"
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/event-lambda/models"
+	"github.com/fpt-event-services/services/event-lambda/repository"
 	"github.com/fpt-event-services/services/event-lambda/usecase"
 )
 
@@ -1139,6 +1140,139 @@ func (h *EventHandler) HandleDisableEvent(ctx context.Context, request events.AP
 
 	log.Info("DisableEvent - refund triggered successfully for EventID=%d", req.EventID)
 	return createMessageResponse(http.StatusOK, "Sự kiện đã bị hủy và đang tiến hành hoàn tiền 100% cho toàn bộ sinh viên đã mua vé")
+}
+
+// ============================================================
+// HandleGetEventsByStatusV1 handles GET /api/v1/events (NEW ENDPOINT)
+// Unified filtering endpoint with pagination support
+//
+// Query Parameters:
+// - status: 'today' | 'upcoming' | 'past' (required)
+// - search: search query string (optional)
+// - page: page number (default: 1)
+// - limit: items per page (default: 10, max: 100)
+//
+// Headers:
+// - X-User-Role: User role for permission filtering (ADMIN, ORGANIZER, PUBLIC)
+// - X-User-Id: User ID for organizer filtering
+//
+// Response Format:
+// {
+//   "data": [...EventListItem...],
+//   "total": 100,
+//   "page": 1,
+//   "limit": 8,
+//   "totalPages": 13
+// }
+//
+// Status Logic:
+// - 'today': OPEN events with start_time on today's date
+// - 'upcoming': OPEN events with start_time in the future
+// - 'past': CLOSED events OR OPEN events with start_time in the past
+//
+// Search Logic (OPTIONAL):
+// - Searches in: e.title, va.area_name, v.venue_name
+// - Uses LIKE with % wildcards
+//
+// Permission Logic:
+// - ADMIN: See all matching events
+// - ORGANIZER: See only events created by this user + all public events
+// - PUBLIC/GUEST: See all public events (no filtering)
+// ============================================================
+func (h *EventHandler) HandleGetEventsByStatusV1(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Log entry point
+	log.Info("[EVENT-HANDLER] 🚀 HandleGetEventsByStatusV1 called - Processing GET /api/v1/events request")
+
+	// Extract user info from headers
+	role := request.Headers["X-User-Role"]
+	userIDStr := request.Headers["X-User-Id"]
+	userID := 0
+
+	if userIDStr != "" {
+		if uid, err := strconv.Atoi(userIDStr); err == nil {
+			userID = uid
+		} else {
+			log.Warn("HandleGetEventsByStatusV1 - Invalid X-User-Id: %s", userIDStr)
+		}
+	}
+
+	// Default to PUBLIC if role is empty
+	if role == "" {
+		role = "PUBLIC"
+	}
+
+	// Extract and validate query parameters
+	statusParam := strings.ToLower(strings.TrimSpace(request.QueryStringParameters["status"]))
+	searchParam := strings.TrimSpace(request.QueryStringParameters["search"])
+	pageStr := request.QueryStringParameters["page"]
+	limitStr := request.QueryStringParameters["limit"]
+
+	// Validate status parameter
+	if statusParam == "" {
+		statusParam = "open" // Default to open events
+	}
+
+	if statusParam != "today" && statusParam != "upcoming" && statusParam != "past" && statusParam != "open" && statusParam != "closed" {
+		return createMessageResponse(http.StatusBadRequest, "Invalid status. Use 'today', 'upcoming', or 'past'")
+	}
+
+	// Parse pagination parameters
+	page := 1
+	limit := 10
+
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	log.Debug("HandleGetEventsByStatusV1 - Status=%s Search='%s' Page=%d Limit=%d Role=%s UserID=%d",
+		statusParam, searchParam, page, limit, role, userID)
+
+	// Call usecase with role-based filtering
+	var result *repository.EventListV1Result
+	var err error
+
+	if role == "ORGANIZER" {
+		// Organizer: filter by created_by
+		result, err = h.useCase.GetEventsByStatusV1WithRole(ctx, statusParam, searchParam, page, limit, role, userID)
+	} else {
+		// Admin/Public: no additional filtering
+		result, err = h.useCase.GetEventsByStatusV1(ctx, statusParam, searchParam, page, limit)
+	}
+
+	if err != nil {
+		log.Error("HandleGetEventsByStatusV1 - GetEventsByStatusV1 error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Failed to fetch events")
+	}
+
+	// Ensure data is not null (return empty array instead)
+	if result == nil || result.Data == nil {
+		result = &repository.EventListV1Result{
+			Data:       []models.EventListItem{},
+			Total:      0,
+			Page:       page,
+			Limit:      limit,
+			TotalPages: 0,
+		}
+	}
+
+	// Log access
+	log.Info("HandleGetEventsByStatusV1 - Retrieved %d events (total: %d, page: %d/%d) for Role=%s User=%d",
+		len(result.Data), result.Total, page, result.TotalPages, role, userID)
+
+	// Return response with empty array if no data (not null)
+	if len(result.Data) == 0 {
+		result.Data = []models.EventListItem{}
+	}
+
+	return createJSONResponse(http.StatusOK, result)
 }
 
 // ============================================================

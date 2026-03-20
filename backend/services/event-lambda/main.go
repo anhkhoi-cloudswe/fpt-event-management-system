@@ -107,6 +107,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	// ========== Public Routes ==========
 	switch {
+	case path == "/api/v1/events" && method == "GET":
+		return eventHandler.HandleGetEventsByStatusV1(ctx, request)
 	case path == "/api/events" && method == "GET":
 		return eventHandler.HandleGetEvents(ctx, request)
 	case path == "/api/events/open" && method == "GET":

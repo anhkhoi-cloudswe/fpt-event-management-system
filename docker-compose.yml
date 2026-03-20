@@ -254,6 +254,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY}
+    env_file: .env
     container_name: fpt-frontend
     networks:
       - fpt-network

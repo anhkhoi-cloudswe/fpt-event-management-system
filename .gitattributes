@@ -7,3 +7,7 @@ frontend/.env filter=credentials diff=credentials
 # Mark these files as merge driver to avoid conflicts
 backend/.env merge=ours
 frontend/.env merge=ours
+
+# Apply filter to any .env files at repo root or in subfolders
+*.env filter=credentials diff=credentials
+**/.env filter=credentials diff=credentials
