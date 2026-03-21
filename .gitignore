@@ -48,3 +48,47 @@ yarn-debug.log*
 .env.*.local
 backend/.env
 frontend/.env
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.example.tfvars
+example.tfvars.json
+
+# Local .terraform directories
+**/.terraform/*
+
+# .terraform.lock files
+.terraform.lock.hcl
+
+# Secret values - NEVER commit these
+*.pem
+*.key
+credentials.json
+secrets.yaml
+secrets.yml
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Misc
+.env
+.env.*
+*.log
+*.bak
+*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
