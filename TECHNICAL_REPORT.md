@@ -5,21 +5,32 @@
 > **Kiến trúc:** 6 Microservices trên AWS Lambda arm64  
 > **Trạng thái:** ✅ 95% hoàn thiện · 0 Compile Errors · DB: 0.84 MB  
 > **Ngày cập nhật:** 2026-03-22  
-> **Repository:** [AK17-LeonSatoru/FPT_EVENT_MANAGEMENT_Microservices](https://github.com/AK17-LeonSatoru/FPT_EVENT_MANAGEMENT_Microservices_withAWSBucket.git)
+> **Repository:** [AK17-LeonSatoru/FPT_EVENT_MANAGEMENT_Microservices](https://github.com/FPT-EVENT-MANAGEMENT-OJT/FPT_EVENT_MANAGEMENT_Microservices.git)
+
+> **Trạng thái tài liệu:** Đây là tài liệu kỹ thuật hợp nhất duy nhất (Single Source of Truth).  
+
+---
+
+## NOTE HỢP NHẤT TÀI LIỆU
+
+Nguyên tắc sử dụng:
+- Dùng tài liệu này cho mọi hoạt động review kỹ thuật.
+- Nếu cần bản đọc nhanh, xem mục lục và các phần: Product Overview, Architecture, Technical Pipeline.
+- Không lưu secrets trong tài liệu; chỉ dùng placeholder cho biến môi trường và thông tin nhạy cảm.
 
 ---
 
 ## MỤC LỤC
 
-1. [Product Overview](#phần-1-product-overview)
-2. [Architecture](#phần-2-architecture)
-3. [Feature Specification](#phần-3-feature-specification)
-4. [Data Architecture](#phần-4-data-architecture)
-5. [Technical Pipeline](#phần-5-technical-pipeline)
-6. [API Specification](#phần-6-api-specification)
-7. [State Machines](#phần-7-state-machines)
-8. [Development Roadmap](#phần-8-development-roadmap)
-9. [Risk Matrix](#phần-9-risk-matrix)
+1.  [Product Overview](#phần-1-product-overview)
+2.  [Architecture](#phần-2-architecture)
+3.  [Feature Specification](#phần-3-feature-specification)
+4.  [Data Architecture](#phần-4-data-architecture)
+5.  [Technical Pipeline](#phần-5-technical-pipeline)
+6.  [API Specification](#phần-6-api-specification)
+7.  [State Machines](#phần-7-state-machines)
+8.  [Development Roadmap](#phần-8-development-roadmap)
+9.  [Risk Matrix](#phần-9-risk-matrix)
 10. [Critical Path](#phần-10-critical-path)
 11. [Success Criteria](#phần-11-success-criteria)
 12. [Conventions](#phần-12-conventions)
@@ -128,17 +139,17 @@ Tổng thời gian target: **< 3 phút** từ bấm "Mua vé" đến nhận QR t
                     └──────────┬──────────┘
                                │ HTTPS
               ┌────────────────▼───────────────────┐
-              │         AWS API GATEWAY             │
-              │  Public:   /api/*  (Internet)       │
-              │  Internal: /internal/* (VPC only)   │
-              │  JWT Lambda Authorizer              │
+              │         AWS API GATEWAY            │
+              │  Public:   /api/*  (Internet)      │
+              │  Internal: /internal/* (VPC only)  │
+              │  JWT Lambda Authorizer             │
               └────────────────┬───────────────────┘
                                │
-              ┌────────────────▼──────────────────────────────┐
-              │          VPC 10.0.0.0/16                      │
-              │  Private Subnets: 10.0.10.0/24                │
-              │                  10.0.11.0/24                 │
-              │                                               │
+              ┌────────────────▼─────────────────────────────┐
+              │          VPC 10.0.0.0/16                     │
+              │  Private Subnets: 10.0.10.0/24               │
+              │                  10.0.11.0/24                │
+              │                                              │
               │  ┌──────────┐ ┌──────────┐ ┌──────────┐      │
               │  │  Auth λ  │ │ Event λ  │ │ Ticket λ │      │
               │  │  :auth   │ │  :event  │ │ :ticket  │      │
@@ -147,19 +158,19 @@ Tổng thời gian target: **< 3 phút** từ bấm "Mua vé" đến nhận QR t
               │  │  Venue λ │ │  Staff λ │ │ Notif λ  │      │
               │  │  :venue  │ │  :staff  │ │  :notif  │      │
               │  └──────────┘ └──────────┘ └──────────┘      │
-              │               │Direct Lambda Invoke│          │
-              │  ┌────────────▼──────────┐                    │
-              │  │   RDS MySQL 8.0       │  SSM Parameter     │
-              │  │   db.t3.micro         │  Store             │
-              │  │   fpt_event_mgmt      │                    │
-              │  │   0.84 MB             │                    │
-              │  └───────────────────────┘                    │
-              └───────────────────────────────────────────────┘
+              │               │Direct Lambda Invoke│         │
+              │  ┌────────────▼──────────┐                   │
+              │  │   RDS MySQL 8.0       │  SSM Parameter    │
+              │  │   db.t3.micro         │  Store            │
+              │  │   fpt_event_mgmt      │                   │
+              │  │   0.84 MB             │                   │
+              │  └───────────────────────┘                   │
+              └──────────────────────────────────────────────┘
                     │ Traces                   │ Logs
-              ┌─────▼──────┐          ┌────────▼────────┐
+              ┌─────▼──────┐          ┌────────▼─────────┐
               │  AWS X-Ray │          │  CloudWatch Logs │
               │ Service Map│          │  JSON structured │
-              └────────────┘          └─────────────────┘
+              └────────────┘          └──────────────────┘
 ```
 
 **Justification — Quyết định kiến trúc:**
@@ -689,18 +700,18 @@ Không có bảng `Notifications` riêng. Tất cả notification được **sin
 ```
 ┌──────────────────────────────────────────────────────────┐
 │ Cách thông thường (Tránh)                                │
-│ 1. User mua vé → INSERT Ticket                          │
+│ 1. User mua vé → INSERT Ticket                           │
 │ 2. INSERT Notification                                   │
-│ ❌ Duplicate data · ❌ Sync issues · ❌ Tốn storage      │
+│ ❌ Duplicate data · ❌ Sync issues · ❌ Tốn storage     │
 └──────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────┐
 │ Virtual Notifications ✅                                 │
-│ 1. User mua vé → INSERT Ticket only                     │
-│ 2. GET /api/notifications                               │
-│ 3. Backend query Bills (payment success/refund)         │
-│    + Tickets (check-in events)                          │
-│ 4. Transform thành notification format on-the-fly       │
+│ 1. User mua vé → INSERT Ticket only                      │
+│ 2. GET /api/notifications                                │
+│ 3. Backend query Bills (payment success/refund)          │
+│    + Tickets (check-in events)                           │
+│ 4. Transform thành notification format on-the-fly        │
 │ ✅ Zero storage waste · ✅ Always in sync               │
 └──────────────────────────────────────────────────────────┘
 ```
