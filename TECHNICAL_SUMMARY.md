@@ -4,19 +4,87 @@
 
 > **Dự án:** Hệ thống Quản lý Sự kiện FPT  
 > **Kiến trúc:** Microservices trên AWS Lambda Container Image  
-> **Ngày cập nhật:** 2026-03-12  
-> **Stack:** Go 1.24 · Docker Compose · AWS SAM · API Gateway · RDS MySQL · S3 · CloudWatch
+> **Ngày cập nhật:** 2026-03-22  
+> **Trạng thái:** 95% hoàn thiện · 0 Compile Errors · DB: 0.84 MB  
+> **Stack:** Go 1.24 · Docker Compose · AWS SAM · API Gateway · RDS MySQL · S3 · CloudWatch · X-Ray
 
 ---
 
 ## MỤC LỤC
 
+0. [Virtual Notifications — Tối ưu Chi phí Lưu trữ](#0-virtual-notifications--tối-ưu-chi-phí-lưu-trữ)
 1. [Kiến trúc Microservices](#1-kiến-trúc-microservices)
 2. [Saga Pattern — Quản lý Wallet](#2-saga-pattern--quản-lý-wallet)
 3. [API Composition — Thay thế SQL JOIN](#3-api-composition--thay-thế-sql-join)
 4. [Dependency Injection](#4-dependency-injection)
 5. [Tổng kết các Design Pattern áp dụng](#5-tổng-kết-các-design-pattern-áp-dụng)
 6. [Containerization — Docker & S3](#6-containerization--docker--s3)
+
+---
+
+## 0. VIRTUAL NOTIFICATIONS — TỐI ƯU CHI PHÍ LƯU TRỮ
+
+### 0.1 Khái niệm / Concept
+
+**Virtual Notifications** là kỹ thuật tạo notification **on-the-fly** từ các bảng dữ liệu hiện có (`Bill`, `Ticket`), thay vì lưu trữ riêng trong bảng `Notification` chuyên dụng.
+
+**Mục đích:**
+- 🏦 Giảm chi phí AWS RDS (không có bảng riêng)
+- 🔄 Đảm bảo tính nhất quán dữ liệu (single source of truth)
+- 📊 Tăng tốc độ query (ít bảng JOIN)
+
+### 0.2 Cơ chế Hoạt động
+
+```
+┌──────────────────────────────────────────────────────┐
+│  Cách Truyền Thống (❌ Tốn chi phí)                  │
+├──────────────────────────────────────────────────────┤
+│  CREATE TABLE Notification (                         │
+│      notification_id INT AUTO_INCREMENT PRIMARY KEY, │
+│      user_id INT,                                    │
+│      type VARCHAR(50),        ← Duplicate data       │
+│      message VARCHAR(500),    ← Duplicate data       │
+│      is_read BOOLEAN,                                │
+│      created_at TIMESTAMP                            │
+│  );                                                  │
+│                                                      │
+│  Problem:                                            │
+│  • Notification table cần sync với Bill/Ticket       │
+│  • Nếu Bill update → Notification không auto-update  │
+│  • RDS storage costly                                │
+└──────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────┐
+│  Virtual Notifications (✅ Tối ưu)                   │
+├──────────────────────────────────────────────────────┤
+│  GET /api/notifications                              │
+│  {                                                   │
+│    - Query: SELECT recent Bills WHERE user_id = ?    │
+│    - Transform: Bill → Notification object           │
+│    - Query: SELECT recent Tickets WHERE user_id = ?  │
+│    - Transform: Ticket → Notification object         │
+│    - Merge & Sort by timestamp DESC                  │
+│  }                                                   │
+│                                                      │
+│  Benefit:                                            │
+│  • Không cần notification table                      │
+│  • Always in-sync (source of truth)                  │
+│  • Reduced RDS size                                  │
+└──────────────────────────────────────────────────────┘
+```
+
+### 0.3 Implementation Details
+
+Hệ thống tạo notification từ 2 source:
+
+| Source | Trigger | Notification Type | Fields |
+|--------|---------|-------------------|--------|
+| **Bill table** | Mua vé thành công (Bill.Status='COMPLETED') | `payment_success` | amount, event_name, timestamp |
+| **Bill table** | Hoàn tiền (Bill.Status='REFUNDED') | `refund_success` | amount, reason, timestamp |
+| **Ticket table** | Check-in xác thực | `checkin_success` | event_name, seat_info, timestamp |
+| **Ticket table** | Ticket expire | `ticket_expired` | event_name, expiry_date, timestamp |
+
+**Code tham chiếu:** Backend sẽ implement `GetNotifications()` endp…
 
 ---
 

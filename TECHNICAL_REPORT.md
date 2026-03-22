@@ -3,8 +3,9 @@
 
 > **Dự án:** Hệ thống Quản lý Sự kiện FPT University  
 > **Kiến trúc:** 6 Microservices trên AWS Lambda arm64  
-> **Trạng thái:** 95% hoàn thiện · 0 Compile Errors · DB 0.84 MB  
-> **Repository:** [AK17-LeonSatoru/FPT_EVENT_MANAGEMENT_80percent-Microservices](https://github.com/AK17-LeonSatoru/FPT_EVENT_MANAGEMENT_Microservices_withAWSBucket.git)
+> **Trạng thái:** ✅ 95% hoàn thiện · 0 Compile Errors · DB: 0.84 MB  
+> **Ngày cập nhật:** 2026-03-22  
+> **Repository:** [AK17-LeonSatoru/FPT_EVENT_MANAGEMENT_Microservices](https://github.com/AK17-LeonSatoru/FPT_EVENT_MANAGEMENT_Microservices_withAWSBucket.git)
 
 ---
 
