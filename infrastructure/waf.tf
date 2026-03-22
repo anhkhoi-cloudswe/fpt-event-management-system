@@ -1,0 +1,233 @@
+# =============================================================================
+# AWS WAFv2 (Regional) — Cloud Posse module
+
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+# https://registry.terraform.io/modules/cloudposse/waf/aws/latest
+#
+# Gắn Web ACL với stage của API Gateway HTTP API: request từ client tới
+# execute-api được WAF đánh giá trước khi tới route/integration (VPC Link → ALB).
+# Yêu cầu: AWS provider cùng region với API Gateway (vd. ap-southeast-1).
+# =============================================================================
+
+module "api_waf_label" {
+  source  = "cloudposse/label/null"
+  version = "0.25.0"
+
+  namespace = "fpt"
+  stage     = "prod"
+  name      = "event-api-waf"
+
+  tags = {
+    Project = "FPT-Event-Management"
+  }
+}
+
+module "api_waf" {
+  source  = "cloudposse/waf/aws"
+  version = "1.9.0"
+
+  description = "WAF for FPT Event API Gateway HTTP API"
+  scope       = "REGIONAL"
+
+  # Cho phép mặc định; các managed rule + rate limit chặn traffic xấu / bão hòa
+  default_action = "allow"
+
+  visibility_config = {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "fpt-event-api-waf"
+    sampled_requests_enabled   = true
+  }
+
+  # Association done via separate resource below
+  association_resource_arns = []
+
+  # AWS Managed Rule Groups
+  managed_rule_group_statement_rules = [
+    {
+      name     = "AWS-AmazonIpReputation"
+      priority = 10
+      statement = {
+        name        = "AWSManagedRulesAmazonIpReputationList"
+        vendor_name = "AWS"
+      }
+      visibility_config = {
+        cloudwatch_metrics_enabled = true
+        sampled_requests_enabled   = true
+        metric_name                = "fpt-waf-ip-reputation"
+      }
+    },
+    {
+      name     = "AWS-KnownBadInputs"
+      priority = 20
+      statement = {
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+        vendor_name = "AWS"
+      }
+      visibility_config = {
+        cloudwatch_metrics_enabled = true
+        sampled_requests_enabled   = true
+        metric_name                = "fpt-waf-known-bad-inputs"
+      }
+    },
+    {
+      name     = "AWS-CommonRuleSet"
+      priority = 30
+      statement = {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+      }
+      visibility_config = {
+        cloudwatch_metrics_enabled = true
+        sampled_requests_enabled   = true
+        metric_name                = "fpt-waf-common-rules"
+      }
+    }
+  ]
+
+  # Giới hạn tốc độ theo IP
+  rate_based_statement_rules = [
+    {
+      name     = "fpt-global-rate-limit"
+      action   = "block"
+      priority = 40
+      statement = {
+        limit                 = 2000
+        aggregate_key_type    = "IP"
+        evaluation_window_sec = 300
+      }
+      visibility_config = {
+        cloudwatch_metrics_enabled = true
+        sampled_requests_enabled   = true
+        metric_name                = "fpt-waf-rate-limit"
+      }
+    }
+  ]
+
+  context = module.api_waf_label.context
+}
+
+# Associate WAF Web ACL with API Gateway stage
+# Associate WAF Web ACL with Application Load Balancer (ALB)
+# Traffic flow: Internet → API Gateway → VPC Link → ALB → ECS containers
+# WAF on ALB inspects all requests before they reach ECS services.
+resource "aws_wafv2_web_acl_association" "alb_waf" {
+  resource_arn = module.loadbalancer.arn
+  web_acl_arn  = module.api_waf.arn
+}
+
+# =============================================================================
+# CloudFront WAF — must be in us-east-1 with CLOUDFRONT scope
+# =============================================================================
+
+resource "aws_wafv2_web_acl" "cloudfront" {
+  provider = aws.us_east_1
+
+  name        = "fpt-cloudfront-waf"
+  description = "WAF for CloudFront distribution in front of API Gateway"
+  scope       = "CLOUDFRONT"
+
+  default_action {
+    allow {}
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "fpt-cloudfront-waf-metrics"
+    sampled_requests_enabled   = true
+  }
+
+  rule {
+    name     = "AWS-AmazonIpReputation"
+    priority = 10
+
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesAmazonIpReputationList"
+      }
+    }
+
+    override_action {
+      none {}
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      sampled_requests_enabled   = true
+      metric_name                = "fpt-cf-waf-ip-reputation"
+    }
+  }
+
+  rule {
+    name     = "AWS-KnownBadInputs"
+    priority = 20
+
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+      }
+    }
+
+    override_action {
+      none {}
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      sampled_requests_enabled   = true
+      metric_name                = "fpt-cf-waf-known-bad-inputs"
+    }
+  }
+
+  rule {
+    name     = "AWS-CommonRuleSet"
+    priority = 30
+
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesCommonRuleSet"
+      }
+    }
+
+    override_action {
+      none {}
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      sampled_requests_enabled   = true
+      metric_name                = "fpt-cf-waf-common-rules"
+    }
+  }
+
+  rule {
+    name     = "fpt-cloudfront-rate-limit"
+    priority = 40
+
+    statement {
+      rate_based_statement {
+        limit                 = 2000
+        evaluation_window_sec = 300
+        aggregate_key_type    = "IP"
+      }
+    }
+
+    action {
+      block {}
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      sampled_requests_enabled   = true
+      metric_name                = "fpt-cf-waf-rate-limit"
+    }
+  }
+
+  tags = {
+    Project = "FPT-Event-Management"
+  }
+}
+

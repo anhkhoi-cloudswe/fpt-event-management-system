@@ -1,6 +1,10 @@
 # =============================================================================
 # ALB Layer
 # =============================================================================
+# Path rules align with backend/cmd/gateway/main.go prefix routing.
+# ALB allows at most 5 path_pattern values per rule — split rules when needed.
+# Target groups: auth 8081, event 8082, ticket 8083, venue 8084, staff 8085, notification 8086
+# =============================================================================
 
 module "loadbalancer" {
   source = "terraform-aws-modules/alb/aws"
@@ -13,13 +17,14 @@ module "loadbalancer" {
   enable_deletion_protection = false
 
   create_security_group = true
+  # VPC Link → ALB hits listener port 80 (not container ports 8081–8086).
   security_group_ingress_rules = {
-    all_from_api_gateway = {
-      from_port                    = 8080
-      to_port                      = 8086
-      ip_protocol                  = "tcp"
-      description                  = "Allow traffic from API Gateway VPC Link"
-      cidr_ipv4                    = module.vpc.vpc_cidr_block
+    vpc_http_to_alb = {
+      from_port   = 80
+      to_port     = 80
+      ip_protocol = "tcp"
+      description = "HTTP from VPC (API Gateway VPC Link ENIs in private subnets)"
+      cidr_ipv4   = module.vpc.vpc_cidr_block
     }
   }
   security_group_egress_rules = {
@@ -157,24 +162,11 @@ module "loadbalancer" {
         status_code  = "404"
       }
 
+      # Lower priority number = evaluated first. Match gateway order: staff/event-requests → Event before /api/staff/* → Staff.
+      # Target groups: auth 8081, event 8082, ticket 8083, venue 8084, staff 8085, notification 8086
       rules = {
-        auth_rule = {
-          actions = [
-            {
-              forward = {
-                target_group_key = "auth-target"
-              }
-            }
-          ]
-          conditions = [
-            {
-              path_pattern = {
-                values = ["/api/login", "/api/register"]
-              }
-            }
-          ]
-        }
-        event_rule = {
+        event_staff_requests = {
+          priority = 5
           actions = [
             {
               forward = {
@@ -185,12 +177,138 @@ module "loadbalancer" {
           conditions = [
             {
               path_pattern = {
-                values = ["/api/events", "/api/events/*"]
+                values = ["/api/staff/event-requests", "/api/staff/event-requests/*"]
               }
             }
           ]
         }
-        ticket_rule = {
+        staff_admin_config = {
+          priority = 10
+          actions = [
+            {
+              forward = {
+                target_group_key = "staff-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = ["/api/admin/config", "/api/admin/config/*"]
+              }
+            }
+          ]
+        }
+        auth_paths_a = {
+          priority = 15
+          actions = [
+            {
+              forward = {
+                target_group_key = "auth-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/api/login",
+                  "/api/logout",
+                  "/api/v1/auth/me",
+                  "/api/auth/me",
+                  "/api/register*",
+                ]
+              }
+            }
+          ]
+        }
+        auth_paths_b = {
+          priority = 16
+          actions = [
+            {
+              forward = {
+                target_group_key = "auth-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/api/forgot-password",
+                  "/api/reset-password",
+                  "/api/admin/create-account",
+                  "/api/users",
+                  "/api/users/*",
+                ]
+              }
+            }
+          ]
+        }
+        # /api/event/* must not use /api/event* (would match /api/event-requests).
+        event_paths_singular = {
+          priority = 18
+          actions = [
+            {
+              forward = {
+                target_group_key = "event-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = ["/api/event", "/api/event/*"]
+              }
+            }
+          ]
+        }
+        event_paths_list = {
+          priority = 19
+          actions = [
+            {
+              forward = {
+                target_group_key = "event-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/api/v1/events",
+                  "/api/v1/events/*",
+                  "/api/events",
+                  "/api/events/*",
+                ]
+              }
+            }
+          ]
+        }
+        event_paths_b = {
+          priority = 21
+          actions = [
+            {
+              forward = {
+                target_group_key = "event-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/api/event-requests",
+                  "/api/event-requests/*",
+                  "/api/organizer",
+                  "/api/organizer/*",
+                ]
+              }
+            }
+          ]
+        }
+        ticket_paths_a = {
+          priority = 30
           actions = [
             {
               forward = {
@@ -201,12 +319,80 @@ module "loadbalancer" {
           conditions = [
             {
               path_pattern = {
-                values = ["/api/tickets", "/api/tickets/*"]
+                values = [
+                  "/api/registrations",
+                  "/api/registrations/*",
+                  "/api/tickets",
+                  "/api/tickets/*",
+                ]
               }
             }
           ]
         }
-        venue_rule = {
+        ticket_paths_a2 = {
+          priority = 31
+          actions = [
+            {
+              forward = {
+                target_group_key = "ticket-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/api/category-tickets",
+                  "/api/category-tickets/*",
+                ]
+              }
+            }
+          ]
+        }
+        # Wildcards keep patterns ≤5 per rule; /api/payment* covers /api/payment-ticket, /api/payment/my-bills, etc.
+        ticket_paths_b = {
+          priority = 32
+          actions = [
+            {
+              forward = {
+                target_group_key = "ticket-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/api/bills*",
+                  "/api/payment*",
+                ]
+              }
+            }
+          ]
+        }
+        ticket_paths_c = {
+          priority = 33
+          actions = [
+            {
+              forward = {
+                target_group_key = "ticket-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/api/buyTicket",
+                  "/api/wallet",
+                  "/api/wallet/*",
+                ]
+              }
+            }
+          ]
+        }
+        venue_paths_a = {
+          priority = 40
           actions = [
             {
               forward = {
@@ -217,12 +403,38 @@ module "loadbalancer" {
           conditions = [
             {
               path_pattern = {
-                values = ["/api/venues", "/api/venues/*"]
+                values = [
+                  "/api/venues",
+                  "/api/venues/*",
+                  "/api/areas",
+                  "/api/areas/*",
+                ]
               }
             }
           ]
         }
-        staff_rule = {
+        venue_paths_b = {
+          priority = 41
+          actions = [
+            {
+              forward = {
+                target_group_key = "venue-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/api/seats",
+                  "/api/seats/*",
+                ]
+              }
+            }
+          ]
+        }
+        staff_paths = {
+          priority = 50
           actions = [
             {
               forward = {
@@ -238,7 +450,25 @@ module "loadbalancer" {
             }
           ]
         }
-        notification_rule = {
+        student_paths = {
+          priority = 55
+          actions = [
+            {
+              forward = {
+                target_group_key = "staff-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = ["/api/student", "/api/student/*"]
+              }
+            }
+          ]
+        }
+        notification_paths = {
+          priority = 60
           actions = [
             {
               forward = {
