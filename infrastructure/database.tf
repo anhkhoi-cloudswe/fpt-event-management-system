@@ -64,6 +64,14 @@ module "rds" {
 
   skip_final_snapshot = true
 
+  # lower_case_table_names is static — cannot be changed after creation.
+  # Tables have been manually renamed to match Go code's mixed-case expectations.
+  parameters = [
+    { name = "lower_case_table_names", value = "1", apply_method = "pending-reboot" },
+    { name = "character_set_server", value = "utf8mb4" },
+    { name = "collation_server", value = "utf8mb4_unicode_ci" },
+  ]
+
   tags = {
     Project = "FPT-Event-Management"
   }

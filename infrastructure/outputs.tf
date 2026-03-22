@@ -17,6 +17,26 @@ output "api_gateway_arn" {
   value       = module.api_gateway.api_arn
 }
 
+output "waf_web_acl_arn" {
+  description = "Regional WAFv2 Web ACL ARN (ALB)"
+  value       = module.api_waf.arn
+}
+
+output "waf_web_acl_id" {
+  description = "Regional WAFv2 Web ACL ID (ALB)"
+  value       = module.api_waf.id
+}
+
+output "cloudfront_url" {
+  description = "CloudFront distribution URL (reverse proxy + WAF in front of API Gateway)"
+  value       = "https://${module.cloudfront.cloudfront_distribution_domain_name}"
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID"
+  value       = module.cloudfront.cloudfront_distribution_id
+}
+
 output "alb_dns_name" {
   description = "ALB DNS name"
   value       = module.loadbalancer.dns_name
