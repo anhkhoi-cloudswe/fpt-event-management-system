@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchUserFromMe])
 
   const logout = useCallback(() => {
-    void axios.post('/api/logout', null, { withCredentials: true }).catch(() => undefined)
+    void axios.post('/logout', null, { withCredentials: true }).catch(() => undefined)
     setUser(null)
     setToken(null)
   }, [])
