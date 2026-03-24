@@ -251,6 +251,7 @@ export default function MyBills() {
                             <option value="">Tất cả phương thức</option>
                             <option value="VNPAY">VNPay</option>
                             <option value="WALLET">Ví điện tử</option>
+                            <option value="FREE">Miễn phí</option>
                         </select>
                     </div>
                 </div>

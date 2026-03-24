@@ -6,8 +6,9 @@ import ReCAPTCHA from 'react-google-recaptcha'
 import fptLogo from '../assets/fpt-logo.png'
 import fptCampus from '../assets/dai-hoc-fpt-tp-hcm-1.jpeg'
 import { useToast } from '../contexts/ToastContext'
+import { API_BASE_URL } from '../config/api'
 
-const API_URL = '/api'
+const API_URL = API_BASE_URL
 const RECAPTCHA_SITE_KEY = '6LdvPQIsAAAAAG7glbICpFiBR9o5MhboFU4JvxAJ'
 
 interface FormData {

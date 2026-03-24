@@ -186,7 +186,7 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 
 		// Security: Don't log speaker PII (email, phone); only log metadata
 		fmt.Printf("[UpdateEventRequest] Speaker record being processed (ID=%d) for Event: %d\n",
-			speakerID, eventID)
+			speakerID.Int64, eventID)
 
 		// Get current speaker_id for this event (if exists)
 		checkSpeakerQuery := `SELECT speaker_id FROM Event WHERE event_id = ?`
@@ -2560,6 +2560,7 @@ func (r *EventRepository) GetAvailableAreas(ctx context.Context, startTime, endT
 
 	// SQL Query:
 	// 1. Get all areas with capacity >= expectedCapacity
+	// 2. Only include areas that are currently AVAILABLE
 	// 2. Count approved events on the same DATE (not time overlap)
 	// 3. Filter: only show areas with < 2 approved events on that date (max 2 events/day rule)
 	// 4. Sort by capacity ASC (smallest rooms first)
@@ -2578,6 +2579,7 @@ func (r *EventRepository) GetAvailableAreas(ctx context.Context, startTime, endT
 			AND DATE(e.start_time) = ?
 			AND e.status IN ('OPEN', 'APPROVED')
 		WHERE COALESCE(va.capacity, 0) >= ?
+		  AND va.status = 'AVAILABLE'
 		GROUP BY va.area_id, va.area_name, v.venue_name, va.floor, va.capacity, va.status
 		HAVING event_count_on_date < 2
 		ORDER BY COALESCE(va.capacity, 0) ASC
@@ -2928,7 +2930,20 @@ func (r *EventRepository) CancelEvent(ctx context.Context, userID, eventID int) 
 		releaseQuery := `
 			UPDATE Venue_Area 
 			SET status = 'AVAILABLE' 
-			WHERE area_id = ? AND status = 'UNAVAILABLE'
+			WHERE area_id = ?
+			  AND status = 'UNAVAILABLE'
+			  AND EXISTS (
+				SELECT 1
+				FROM Event e_done
+				WHERE e_done.area_id = Venue_Area.area_id
+				  AND e_done.status IN ('CLOSED', 'CANCELLED')
+			  )
+			  AND NOT EXISTS (
+				SELECT 1
+				FROM Event e_active
+				WHERE e_active.area_id = Venue_Area.area_id
+				  AND e_active.status IN ('OPEN', 'UPDATING', 'PENDING')
+			  )
 		`
 		result3, err := tx.ExecContext(ctx, releaseQuery, areaID.Int64)
 		if err != nil {
@@ -3077,7 +3092,20 @@ func (r *EventRepository) CancelEventRequest(ctx context.Context, userID, reques
 		releaseQuery := `
 			UPDATE Venue_Area 
 			SET status = 'AVAILABLE' 
-			WHERE area_id = ? AND status = 'UNAVAILABLE'
+			WHERE area_id = ?
+			  AND status = 'UNAVAILABLE'
+			  AND EXISTS (
+				SELECT 1
+				FROM Event e_done
+				WHERE e_done.area_id = Venue_Area.area_id
+				  AND e_done.status IN ('CLOSED', 'CANCELLED')
+			  )
+			  AND NOT EXISTS (
+				SELECT 1
+				FROM Event e_active
+				WHERE e_active.area_id = Venue_Area.area_id
+				  AND e_active.status IN ('OPEN', 'UPDATING', 'PENDING')
+			  )
 		`
 		result3, err := tx.ExecContext(ctx, releaseQuery, areaID.Int64)
 		if err != nil {
@@ -3104,17 +3132,24 @@ func (r *EventRepository) CancelEventRequest(ctx context.Context, userID, reques
 }
 
 func (r *EventRepository) AutoReleaseVenues(ctx context.Context) error {
-	// Sử dụng câu lệnh SQL an toàn: Chỉ giải phóng venue_area không còn sự kiện OPEN hoặc UPDATING
+	// Chỉ giải phóng khi area có event CLOSED/CANCELLED và KHÔNG còn event OPEN/UPDATING.
+	// Điều này ngăn release nhầm khi vẫn còn event active gắn với area.
 	updateQuery := `
 		UPDATE Venue_Area va
 		SET va.status = 'AVAILABLE'
 		WHERE va.status = 'UNAVAILABLE'
-		AND va.area_id NOT IN (
-			SELECT e.area_id 
-			FROM Event e 
-			WHERE e.status IN ('OPEN', 'UPDATING')
-			AND e.area_id IS NOT NULL
-		)
+		  AND EXISTS (
+			SELECT 1
+			FROM Event e_done
+			WHERE e_done.area_id = va.area_id
+			  AND e_done.status IN ('CLOSED', 'CANCELLED')
+		  )
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM Event e_active
+			WHERE e_active.area_id = va.area_id
+			  AND e_active.status IN ('OPEN', 'UPDATING', 'PENDING')
+		  )
 	`
 
 	result, err := r.db.ExecContext(ctx, updateQuery)

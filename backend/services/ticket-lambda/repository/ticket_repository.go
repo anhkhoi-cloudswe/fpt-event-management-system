@@ -702,6 +702,9 @@ func getVNPayService() *vnpay.VNPayService {
 func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, returnURL string) (string, error) {
 	log := logger.Default().WithContext(ctx)
 
+	// ⭐ DEBUG: Log ngay khi hàm được gọi để track returnURL
+	fmt.Printf("[CreateVNPayURL] Called - userID=%d, eventID=%d, returnURL='%s'\n", userID, eventID, returnURL)
+
 	// Validate số lượng ghế (max 4)
 	if len(seatIDs) == 0 {
 		return "", apperrors.BusinessError("Vui lòng chọn ít nhất 1 ghế")
@@ -1184,7 +1187,8 @@ func (r *TicketRepository) ProcessVNPayCallback(ctx context.Context, amount, res
 	// 🔔 Kích hoạt Notification Service gửi PDF vé (non-blocking)
 	go ticketutils.CallNotificationService(bookedTicketIDs)
 
-	// Trả về comma-separated ticket IDs
+	// Trả về comma-separated ticket IDs + bill ID
+	// Format: "ticketIds|billId" (e.g., "320,321,322,323|145")
 	ticketIDsResult := ""
 	for i, tid := range bookedTicketIDs {
 		if i > 0 {
@@ -1192,7 +1196,9 @@ func (r *TicketRepository) ProcessVNPayCallback(ctx context.Context, amount, res
 		}
 		ticketIDsResult += fmt.Sprintf("%d", tid)
 	}
-	return ticketIDsResult, nil
+	result := fmt.Sprintf("%s|%d", ticketIDsResult, billID)
+	log.Info("[VNPAY CALLBACK COMPLETE] PaymentSuccess - ticketIds=%s billId=%d result=%s", ticketIDsResult, billID, result)
+	return result, nil
 }
 
 // sendTicketEmailAsync gửi email vé điện tử trong goroutine (không block payment response)
@@ -2024,9 +2030,15 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 
 	// ===== STEP 3.5: CREATE BILL =====
 	// Create bill record for this wallet payment within the same transaction
+	// ⭐ CRITICAL FIX: If amount == 0, MUST set payment_method to 'FREE' regardless of student choice
+	paymentMethodForBill := "Wallet"
+	if amount == 0 {
+		paymentMethodForBill = "FREE"
+	}
+
 	billResult, err := tx.ExecContext(ctx,
-		"INSERT INTO Bill (user_id, total_amount, currency, payment_method, payment_status, created_at, paid_at) VALUES (?, ?, 'VND', 'Wallet', 'PAID', NOW(), NOW())",
-		userID, float64(amount),
+		"INSERT INTO Bill (user_id, total_amount, currency, payment_method, payment_status, created_at, paid_at) VALUES (?, ?, 'VND', ?, 'PAID', NOW(), NOW())",
+		userID, float64(amount), paymentMethodForBill,
 	)
 	if err != nil {
 		return "", fmt.Errorf("error creating bill: %w", err)
@@ -2037,7 +2049,7 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 		return "", fmt.Errorf("error getting bill ID: %w", err)
 	}
 
-	fmt.Printf("[BILL_CREATED] ✅ Da xuat hoa don ID: %d cho phuong thuc: %s\n", billID, "Wallet")
+	fmt.Printf("[BILL_CREATED] ✅ Da xuat hoa don ID: %d cho phuong thuc: %s\n", billID, paymentMethodForBill)
 
 	// ===== STEP 4: COMMIT TRANSACTION =====
 	// This releases the lock and makes changes permanent

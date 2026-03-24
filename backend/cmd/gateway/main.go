@@ -44,7 +44,7 @@ var routes = []Route{
 	{"/api/users/", "Auth"},
 
 	// ========== Event Service (8082) ==========
-	{"/api/v1/events", "Event"},           // v1 events API (longest prefix first)
+	{"/api/v1/events", "Event"}, // v1 events API (longest prefix first)
 	{"/api/events", "Event"},
 	{"/api/event/", "Event"}, // singular alias (e.g. /api/event/disable)
 	{"/api/event-requests", "Event"},
@@ -231,10 +231,11 @@ func jwtMiddleware(next http.Handler) http.Handler {
 
 // corsMiddleware adds CORS headers and handles preflight
 func corsMiddleware(next http.Handler) http.Handler {
-	allowedOrigins := getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")
+	allowedOrigins := getEnv("CORS_ALLOWED_ORIGINS", "https://fpt-event.online")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
+		w.Header().Set("Vary", "Origin")
 
 		// Determine allowed origin
 		if allowedOrigins == "*" {
@@ -250,7 +251,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 		}
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With,X-User-Id,X-User-Role,X-User-Email")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization,Content-Type,X-Requested-With,X-User-Id,X-User-Role,X-User-Email,ngrok-skip-browser-warning")
 		w.Header().Set("Access-Control-Expose-Headers", "X-User-Id,X-User-Role,X-User-Email")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Max-Age", "86400")

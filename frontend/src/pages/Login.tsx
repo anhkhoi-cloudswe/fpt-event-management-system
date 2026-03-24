@@ -23,12 +23,13 @@ import ReCAPTCHA from 'react-google-recaptcha'
 // import ảnh/logo để hiển thị UI
 import fptLogo from '../assets/fpt-logo.png'
 import fptCampus from '../assets/dai-hoc-fpt-tp-hcm-1.jpeg'
+import { API_BASE_URL } from '../config/api'
 
 // ===================== CONFIG API =====================
 
 // API_URL = '/api' -> dùng proxy của Vite để tránh CORS khi dev
 // Ví dụ: axios gọi /api/login thì Vite proxy sẽ forward sang backend thật
-const API_URL = '/api'
+const API_URL = API_BASE_URL
 
 // Cấu hình header mặc định cho axios:
 // - Content-Type: dạng JSON

@@ -99,7 +99,24 @@ func (s *EventCleanupScheduler) cleanupEndedEvents() {
 
 		// Release venue area if exists
 		if areaID.Valid {
-			updateAreaQuery := `UPDATE Venue_Area SET status = 'AVAILABLE' WHERE area_id = ? AND status = 'UNAVAILABLE'`
+			updateAreaQuery := `
+				UPDATE Venue_Area
+				SET status = 'AVAILABLE'
+				WHERE area_id = ?
+				  AND status = 'UNAVAILABLE'
+				  AND EXISTS (
+					SELECT 1
+					FROM Event e_done
+					WHERE e_done.area_id = Venue_Area.area_id
+					  AND e_done.status IN ('CLOSED', 'CANCELLED')
+				  )
+				  AND NOT EXISTS (
+					SELECT 1
+					FROM Event e_active
+					WHERE e_active.area_id = Venue_Area.area_id
+					  AND e_active.status IN ('OPEN', 'UPDATING', 'PENDING')
+				  )
+			`
 			result, err := s.db.ExecContext(ctx, updateAreaQuery, areaID.Int64)
 			if err != nil {
 				log.Error("[SCHEDULER] Error releasing venue area #%d for event #%d: %v", areaID.Int64, eventID, err)

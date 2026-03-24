@@ -83,14 +83,24 @@ func (s *VenueReleaseScheduler) releaseVenues() {
 
 	fmt.Println("[VENUE_SCHEDULER] Venue release routine triggered")
 
-	// Find ended events with associated venue areas and release them
+	// Release only when area has closed/cancelled events and no active OPEN/UPDATING event.
 	query := `
 		UPDATE Venue_Area va
-		JOIN Event e ON va.area_id = e.area_id
 		SET va.status = 'AVAILABLE'
 		WHERE va.status = 'UNAVAILABLE'
-		  AND e.end_time < NOW()
-		  AND e.status IN ('CLOSED', 'CANCELLED')
+		  AND EXISTS (
+			SELECT 1
+			FROM Event e_done
+			WHERE e_done.area_id = va.area_id
+			  AND e_done.status IN ('CLOSED', 'CANCELLED')
+			  AND (e_done.status = 'CANCELLED' OR e_done.end_time < NOW())
+		  )
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM Event e_active
+			WHERE e_active.area_id = va.area_id
+			  AND e_active.status IN ('OPEN', 'UPDATING', 'PENDING')
+		  )
 	`
 
 	result, err := s.db.ExecContext(ctx, query)

@@ -32,6 +32,7 @@ import (
 // VenueInternalHandler xử lý các request nội bộ từ service khác
 type VenueInternalHandler struct {
 	useCase *usecase.VenueUseCase
+	db      *sql.DB
 	logger  *logger.Logger
 }
 
@@ -40,6 +41,7 @@ type VenueInternalHandler struct {
 func NewVenueInternalHandlerWithDB(dbConn *sql.DB) *VenueInternalHandler {
 	return &VenueInternalHandler{
 		useCase: usecase.NewVenueUseCaseWithDB(dbConn),
+		db:      dbConn,
 		logger:  logger.Default(),
 	}
 }
@@ -389,6 +391,42 @@ func (h *VenueInternalHandler) HandleUpdateAreaStatus(ctx context.Context, reque
 
 	if body.Status != "AVAILABLE" && body.Status != "UNAVAILABLE" {
 		return createInternalResponse(http.StatusBadRequest, map[string]string{"error": "status must be AVAILABLE or UNAVAILABLE"})
+	}
+
+	if body.Status == "AVAILABLE" {
+		var activeEventCount int
+		activeEventQuery := `
+			SELECT COUNT(1)
+			FROM Event
+			WHERE area_id = ?
+			  AND status IN ('OPEN', 'UPDATING', 'PENDING')
+		`
+		if err := h.db.QueryRowContext(ctx, activeEventQuery, body.AreaID).Scan(&activeEventCount); err != nil {
+			h.logger.Warn("[INTERNAL_VENUE] Failed to validate active events for area %d: %v", body.AreaID, err)
+			return createInternalResponse(http.StatusInternalServerError, map[string]string{"error": "failed to validate area release condition"})
+		}
+
+		if activeEventCount > 0 {
+			h.logger.Warn("[INTERNAL_VENUE] Blocked area release: areaId=%d still has %d OPEN/UPDATING/PENDING event(s)", body.AreaID, activeEventCount)
+			return createInternalResponse(http.StatusConflict, map[string]string{"error": "cannot release area while event is OPEN, UPDATING, or PENDING"})
+		}
+
+		var doneEventCount int
+		doneEventQuery := `
+			SELECT COUNT(1)
+			FROM Event
+			WHERE area_id = ?
+			  AND status IN ('CLOSED', 'CANCELLED')
+		`
+		if err := h.db.QueryRowContext(ctx, doneEventQuery, body.AreaID).Scan(&doneEventCount); err != nil {
+			h.logger.Warn("[INTERNAL_VENUE] Failed to validate closed/cancelled events for area %d: %v", body.AreaID, err)
+			return createInternalResponse(http.StatusInternalServerError, map[string]string{"error": "failed to validate area release condition"})
+		}
+
+		if doneEventCount == 0 {
+			h.logger.Warn("[INTERNAL_VENUE] Blocked area release: areaId=%d has no CLOSED/CANCELLED event", body.AreaID)
+			return createInternalResponse(http.StatusConflict, map[string]string{"error": "cannot release area without CLOSED or CANCELLED event"})
+		}
 	}
 
 	// Dùng UpdateArea với chỉ status change
