@@ -74,6 +74,8 @@ example.tfvars.json
 # Secret values - NEVER commit these
 *.pem
 *.key
+# Bastion SSH (Terraform local_file); public key may be committed if desired
+infrastructure/fpt-bastion-ssh.pem
 credentials.json
 secrets.yaml
 secrets.yml
@@ -94,3 +96,5 @@ crash.*.log
 Thumbs.db
 
 INFRASTRUCTURE_REPORT.md
+secrets.tf 
+.env

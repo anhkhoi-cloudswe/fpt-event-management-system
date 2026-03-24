@@ -5,9 +5,9 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 # https://registry.terraform.io/modules/cloudposse/waf/aws/latest
 #
-# Gắn Web ACL với stage của API Gateway HTTP API: request từ client tới
-# execute-api được WAF đánh giá trước khi tới route/integration (VPC Link → ALB).
-# Yêu cầu: AWS provider cùng region với API Gateway (vd. ap-southeast-1).
+# Regional WAF gắn vào ALB (HTTP API / API Gateway v2 không hỗ trợ AssociateWebACL).
+# Luồng: CloudFront (WAF CLOUDFRONT riêng) → API Gateway → VPC Link → ALB → ECS;
+# traffic sau VPC Link được WAF regional trên ALB kiểm tra trước ECS.
 # =============================================================================
 
 module "api_waf_label" {
@@ -27,7 +27,7 @@ module "api_waf" {
   source  = "cloudposse/waf/aws"
   version = "1.9.0"
 
-  description = "WAF for FPT Event API Gateway HTTP API"
+  description = "WAF regional for FPT Event ALB - not attachable to HTTP API v2"
   scope       = "REGIONAL"
 
   # Cho phép mặc định; các managed rule + rate limit chặn traffic xấu / bão hòa
@@ -107,10 +107,8 @@ module "api_waf" {
   context = module.api_waf_label.context
 }
 
-# Associate WAF Web ACL with API Gateway stage
-# Associate WAF Web ACL with Application Load Balancer (ALB)
-# Traffic flow: Internet → API Gateway → VPC Link → ALB → ECS containers
-# WAF on ALB inspects all requests before they reach ECS services.
+# Associate regional WAF with ALB only (AWS WAF does not support HTTP API stage ARN).
+
 resource "aws_wafv2_web_acl_association" "alb_waf" {
   resource_arn = module.loadbalancer.arn
   web_acl_arn  = module.api_waf.arn
@@ -124,7 +122,7 @@ resource "aws_wafv2_web_acl" "cloudfront" {
   provider = aws.us_east_1
 
   name        = "fpt-cloudfront-waf"
-  description = "WAF for CloudFront distribution in front of API Gateway"
+  description = "WAF for unified CloudFront SPA and API Gateway"
   scope       = "CLOUDFRONT"
 
   default_action {
