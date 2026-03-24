@@ -48,7 +48,7 @@ module "rds" {
 
   db_name  = "fpteventmanagement"
   username = "admin"
-  password = "FptEvent2024!"
+  password = "FptEvent2024"
 
   manage_master_user_password = false
 

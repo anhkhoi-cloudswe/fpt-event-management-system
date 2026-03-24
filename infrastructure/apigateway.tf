@@ -6,6 +6,7 @@
 data "aws_lb_listener" "http" {
   load_balancer_arn = module.loadbalancer.arn
   port              = 80
+  depends_on        = [module.loadbalancer]
 }
 
 module "api_gateway" {
@@ -18,13 +19,10 @@ module "api_gateway" {
   create_domain_name = false
 
   cors_configuration = {
-    allow_headers = ["content-type", "authorization", "x-requested-with", "x-user-id", "x-user-role", "x-user-email"]
-    allow_methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
-    allow_origins = [
-      "https://your-app.vercel.app",
-      "http://localhost:3000",
-      "http://localhost:5173",
-    ]
+    allow_headers     = ["content-type", "authorization", "x-requested-with", "x-user-id", "x-user-role", "x-user-email", "cookie"]
+    allow_methods     = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+    allow_origins     = var.cors_allowed_origins
+    allow_credentials = true
   }
 
   # VPC Link - inline, pointing to ALB in private subnet

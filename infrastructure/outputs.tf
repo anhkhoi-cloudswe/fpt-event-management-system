@@ -28,13 +28,28 @@ output "waf_web_acl_id" {
 }
 
 output "cloudfront_url" {
-  description = "CloudFront distribution URL (reverse proxy + WAF in front of API Gateway)"
+  description = "CloudFront default domain — SPA (S3) + /api/* → API Gateway"
   value       = "https://${module.cloudfront.cloudfront_distribution_domain_name}"
+}
+
+output "public_site_url" {
+  description = "Primary custom domain URL (HTTPS)"
+  value       = "https://${var.public_domain_name}"
+}
+
+output "public_domain_names" {
+  description = "All CloudFront alternate domain names (apex + aliases)"
+  value       = concat([var.public_domain_name], var.public_domain_extra_aliases)
 }
 
 output "cloudfront_distribution_id" {
   description = "CloudFront distribution ID"
   value       = module.cloudfront.cloudfront_distribution_id
+}
+
+output "frontend_s3_bucket" {
+  description = "S3 bucket for static frontend (aws s3 sync dist/ s3://... --delete)"
+  value       = aws_s3_bucket.frontend.bucket
 }
 
 output "alb_dns_name" {
@@ -60,6 +75,11 @@ output "rds_endpoint" {
 output "rds_port" {
   description = "RDS MySQL instance port"
   value       = module.rds.db_instance_port
+}
+
+output "rds_hostname" {
+  description = "RDS hostname without port (for SSH -L local:host:3306)"
+  value       = module.rds.db_instance_address
 }
 
 output "rds_arn" {

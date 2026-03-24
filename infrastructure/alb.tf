@@ -36,16 +36,16 @@ module "loadbalancer" {
 
   target_groups = {
     auth-target = {
-      name_prefix = "auth-"
-      port        = 8081
-      protocol    = "HTTP"
-      target_type = "ip"
+      name_prefix       = "auth-"
+      port              = 8081
+      protocol          = "HTTP"
+      target_type       = "ip"
       create_attachment = false
 
       health_check = {
         enabled             = true
         interval            = 30
-        path                = "/api/login"
+        path                = "/health"
         port                = "traffic-port"
         healthy_threshold   = 2
         unhealthy_threshold = 2
@@ -55,16 +55,16 @@ module "loadbalancer" {
       }
     }
     event-target = {
-      name_prefix = "evt-"
-      port        = 8082
-      protocol    = "HTTP"
-      target_type = "ip"
+      name_prefix       = "evt-"
+      port              = 8082
+      protocol          = "HTTP"
+      target_type       = "ip"
       create_attachment = false
 
       health_check = {
         enabled             = true
         interval            = 30
-        path                = "/api/events"
+        path                = "/health"
         port                = "traffic-port"
         healthy_threshold   = 2
         unhealthy_threshold = 2
@@ -74,16 +74,16 @@ module "loadbalancer" {
       }
     }
     ticket-target = {
-      name_prefix = "tkt-"
-      port        = 8083
-      protocol    = "HTTP"
-      target_type = "ip"
+      name_prefix       = "tkt-"
+      port              = 8083
+      protocol          = "HTTP"
+      target_type       = "ip"
       create_attachment = false
 
       health_check = {
         enabled             = true
         interval            = 30
-        path                = "/api/tickets"
+        path                = "/health"
         port                = "traffic-port"
         healthy_threshold   = 2
         unhealthy_threshold = 2
@@ -93,16 +93,16 @@ module "loadbalancer" {
       }
     }
     venue-target = {
-      name_prefix = "ven-"
-      port        = 8084
-      protocol    = "HTTP"
-      target_type = "ip"
+      name_prefix       = "ven-"
+      port              = 8084
+      protocol          = "HTTP"
+      target_type       = "ip"
       create_attachment = false
 
       health_check = {
         enabled             = true
         interval            = 30
-        path                = "/api/venues"
+        path                = "/health"
         port                = "traffic-port"
         healthy_threshold   = 2
         unhealthy_threshold = 2
@@ -112,16 +112,16 @@ module "loadbalancer" {
       }
     }
     staff-target = {
-      name_prefix = "stf-"
-      port        = 8085
-      protocol    = "HTTP"
-      target_type = "ip"
+      name_prefix       = "stf-"
+      port              = 8085
+      protocol          = "HTTP"
+      target_type       = "ip"
       create_attachment = false
 
       health_check = {
         enabled             = true
         interval            = 30
-        path                = "/api/staff"
+        path                = "/health"
         port                = "traffic-port"
         healthy_threshold   = 2
         unhealthy_threshold = 2
@@ -131,10 +131,10 @@ module "loadbalancer" {
       }
     }
     notification-target = {
-      name_prefix = "not-"
-      port        = 8086
-      protocol    = "HTTP"
-      target_type = "ip"
+      name_prefix       = "not-"
+      port              = 8086
+      protocol          = "HTTP"
+      target_type       = "ip"
       create_attachment = false
 
       health_check = {

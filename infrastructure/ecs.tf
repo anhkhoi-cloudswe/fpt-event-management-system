@@ -25,6 +25,9 @@ module "ecs" {
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
 
+      task_execution_role_arn = aws_iam_role.ecs_task_execution.arn
+      task_role_arn           = aws_iam_role.ecs_task.arn
+
       security_group_ingress_rules = {
         ingress_alb = {
           description                  = "Allow traffic from ALB"
@@ -71,12 +74,12 @@ module "ecs" {
           environment = [
             { name = "AWS_LAMBDA_FUNCTION_NAME", value = "" },
             { name = "LOCAL_PORT", value = "8081" },
-            { name = "DB_URL", value = "admin:FptEvent2024!@tcp(${module.rds.db_instance_address})/fpteventmanagement?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=true&loc=Asia%2FHo_Chi_Minh" },
             { name = "DB_SERVER", value = module.rds.db_instance_address },
             { name = "DB_PORT", value = "3306" },
-            { name = "DB_USER", value = "admin" },
-            { name = "DB_PASSWORD", value = "FptEvent2024!" },
-            { name = "INTERNAL_AUTH_TOKEN", value = "internal-secret-token" }
+            { name = "DB_USER", value = local.db_user },
+            { name = "DB_PASSWORD", value = local.db_password },
+            { name = "JWT_SECRET", value = local.jwt_secret },
+            { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
           ]
 
           portMappings = [
@@ -96,6 +99,9 @@ module "ecs" {
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
+
+      task_execution_role_arn = aws_iam_role.ecs_task_execution.arn
+      task_role_arn           = aws_iam_role.ecs_task.arn
 
       security_group_ingress_rules = {
         ingress_alb = {
@@ -143,12 +149,11 @@ module "ecs" {
           environment = [
             { name = "AWS_LAMBDA_FUNCTION_NAME", value = "" },
             { name = "LOCAL_PORT", value = "8082" },
-            { name = "DB_URL", value = "admin:FptEvent2024!@tcp(${module.rds.db_instance_address})/fpteventmanagement?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=true&loc=Asia%2FHo_Chi_Minh" },
             { name = "DB_SERVER", value = module.rds.db_instance_address },
             { name = "DB_PORT", value = "3306" },
-            { name = "DB_USER", value = "admin" },
-            { name = "DB_PASSWORD", value = "FptEvent2024!" },
-            { name = "INTERNAL_AUTH_TOKEN", value = "internal-secret-token" }
+            { name = "DB_USER", value = local.db_user },
+            { name = "DB_PASSWORD", value = local.db_password },
+            { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
           ]
 
           portMappings = [
@@ -168,6 +173,9 @@ module "ecs" {
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
+
+      task_execution_role_arn = aws_iam_role.ecs_task_execution.arn
+      task_role_arn           = aws_iam_role.ecs_task.arn
 
       security_group_ingress_rules = {
         ingress_alb = {
@@ -215,12 +223,16 @@ module "ecs" {
           environment = [
             { name = "AWS_LAMBDA_FUNCTION_NAME", value = "" },
             { name = "LOCAL_PORT", value = "8083" },
-            { name = "DB_URL", value = "admin:FptEvent2024!@tcp(${module.rds.db_instance_address})/fpteventmanagement?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=true&loc=Asia%2FHo_Chi_Minh" },
             { name = "DB_SERVER", value = module.rds.db_instance_address },
             { name = "DB_PORT", value = "3306" },
-            { name = "DB_USER", value = "admin" },
-            { name = "DB_PASSWORD", value = "FptEvent2024!" },
-            { name = "INTERNAL_AUTH_TOKEN", value = "internal-secret-token" }
+            { name = "DB_USER", value = local.db_user },
+            { name = "DB_PASSWORD", value = local.db_password },
+            { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
+            { name = "VNPAY_TMN_CODE", value = local.vnpay_tmn_code },
+            { name = "VNPAY_HASH_SECRET", value = local.vnpay_hash_secret },
+            { name = "VNPAY_URL", value = local.vnpay_url },
+            { name = "VNPAY_RETURN_URL", value = local.vnpay_return_url },
+            { name = "RECAPTCHA_SECRET", value = local.recaptcha_secret },
           ]
 
           portMappings = [
@@ -240,6 +252,9 @@ module "ecs" {
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
+
+      task_execution_role_arn = aws_iam_role.ecs_task_execution.arn
+      task_role_arn           = aws_iam_role.ecs_task.arn
 
       security_group_ingress_rules = {
         ingress_alb = {
@@ -287,12 +302,11 @@ module "ecs" {
           environment = [
             { name = "AWS_LAMBDA_FUNCTION_NAME", value = "" },
             { name = "LOCAL_PORT", value = "8084" },
-            { name = "DB_URL", value = "admin:FptEvent2024!@tcp(${module.rds.db_instance_address})/fpteventmanagement?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=true&loc=Asia%2FHo_Chi_Minh" },
             { name = "DB_SERVER", value = module.rds.db_instance_address },
             { name = "DB_PORT", value = "3306" },
-            { name = "DB_USER", value = "admin" },
-            { name = "DB_PASSWORD", value = "FptEvent2024!" },
-            { name = "INTERNAL_AUTH_TOKEN", value = "internal-secret-token" }
+            { name = "DB_USER", value = local.db_user },
+            { name = "DB_PASSWORD", value = local.db_password },
+            { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
           ]
 
           portMappings = [
@@ -312,6 +326,9 @@ module "ecs" {
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
+
+      task_execution_role_arn = aws_iam_role.ecs_task_execution.arn
+      task_role_arn           = aws_iam_role.ecs_task.arn
 
       security_group_ingress_rules = {
         ingress_alb = {
@@ -359,12 +376,11 @@ module "ecs" {
           environment = [
             { name = "AWS_LAMBDA_FUNCTION_NAME", value = "" },
             { name = "LOCAL_PORT", value = "8085" },
-            { name = "DB_URL", value = "admin:FptEvent2024!@tcp(${module.rds.db_instance_address})/fpteventmanagement?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=true&loc=Asia%2FHo_Chi_Minh" },
             { name = "DB_SERVER", value = module.rds.db_instance_address },
             { name = "DB_PORT", value = "3306" },
-            { name = "DB_USER", value = "admin" },
-            { name = "DB_PASSWORD", value = "FptEvent2024!" },
-            { name = "INTERNAL_AUTH_TOKEN", value = "internal-secret-token" }
+            { name = "DB_USER", value = local.db_user },
+            { name = "DB_PASSWORD", value = local.db_password },
+            { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
           ]
 
           portMappings = [
@@ -384,6 +400,9 @@ module "ecs" {
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
+
+      task_execution_role_arn = aws_iam_role.ecs_task_execution.arn
+      task_role_arn           = aws_iam_role.ecs_task.arn
 
       security_group_ingress_rules = {
         ingress_alb = {
@@ -431,18 +450,17 @@ module "ecs" {
           environment = [
             { name = "AWS_LAMBDA_FUNCTION_NAME", value = "" },
             { name = "LOCAL_PORT", value = "8086" },
-            { name = "DB_URL", value = "admin:FptEvent2024!@tcp(${module.rds.db_instance_address})/fpteventmanagement?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=true&loc=Asia%2FHo_Chi_Minh" },
             { name = "DB_SERVER", value = module.rds.db_instance_address },
             { name = "DB_PORT", value = "3306" },
-            { name = "DB_USER", value = "admin" },
-            { name = "DB_PASSWORD", value = "FptEvent2024!" },
-            { name = "INTERNAL_AUTH_TOKEN", value = "internal-secret-token" },
-            { name = "SMTP_HOST", value = "email-smtp.ap-southeast-1.amazonaws.com" },
-            { name = "SMTP_PORT", value = "587" },
-            { name = "SMTP_USERNAME", value = "" },
-            { name = "SMTP_PASSWORD", value = "" },
-            { name = "SMTP_FROM", value = "noreply@fptevent.com" },
-            { name = "SMTP_FROM_NAME", value = "FPT Event" }
+            { name = "DB_USER", value = local.db_user },
+            { name = "DB_PASSWORD", value = local.db_password },
+            { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
+            { name = "SMTP_HOST", value = local.smtp_host },
+            { name = "SMTP_PORT", value = local.smtp_port },
+            { name = "SMTP_FROM", value = local.smtp_from },
+            { name = "SMTP_FROM_NAME", value = local.smtp_from_name },
+            { name = "SMTP_USERNAME", value = local.smtp_username },
+            { name = "SMTP_PASSWORD", value = local.smtp_password },
           ]
 
           portMappings = [
@@ -458,6 +476,8 @@ module "ecs" {
   }
 
   depends_on = [
-    module.loadbalancer
+    module.loadbalancer,
+    aws_iam_role.ecs_task_execution,
+    aws_iam_role.ecs_task,
   ]
 }
