@@ -121,6 +121,27 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
+func parseAllowedOrigins(raw string) []string {
+	origins := make([]string, 0)
+	for _, part := range strings.Split(raw, ",") {
+		origin := strings.TrimSpace(part)
+		if origin == "" {
+			continue
+		}
+		// Credentials + wildcard is invalid in browsers, so ignore "*" explicitly.
+		if origin == "*" {
+			log.Printf("[GATEWAY] [CORS] Ignoring wildcard origin '*' because credentials are enabled")
+			continue
+		}
+		origins = append(origins, origin)
+	}
+	return origins
+}
+
+func enforceCredentialHeader(headers http.Header) {
+	headers.Set("Access-Control-Allow-Credentials", "true")
+}
+
 func isAuthMePath(path string) bool {
 	return path == "/api/v1/auth/me" || path == "/api/auth/me"
 }
@@ -151,11 +172,11 @@ func createProxy(target string) (*httputil.ReverseProxy, error) {
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		// Gateway owns CORS policy to keep cookie-based auth consistent.
 		resp.Header.Del("Access-Control-Allow-Origin")
-		resp.Header.Del("Access-Control-Allow-Credentials")
 		resp.Header.Del("Access-Control-Allow-Methods")
 		resp.Header.Del("Access-Control-Allow-Headers")
 		resp.Header.Del("Access-Control-Expose-Headers")
 		resp.Header.Del("Access-Control-Max-Age")
+		enforceCredentialHeader(resp.Header)
 		return nil
 	}
 
@@ -163,6 +184,7 @@ func createProxy(target string) (*httputil.ReverseProxy, error) {
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("[GATEWAY] [ERROR] %s %s -> %s: %v", r.Method, r.URL.Path, target, err)
 		w.Header().Set("Content-Type", "application/json")
+		enforceCredentialHeader(w.Header())
 		w.WriteHeader(http.StatusBadGateway)
 		json.NewEncoder(w).Encode(map[string]string{
 			"error":   "Service unavailable",
@@ -231,29 +253,24 @@ func jwtMiddleware(next http.Handler) http.Handler {
 
 // corsMiddleware adds CORS headers and handles preflight
 func corsMiddleware(next http.Handler) http.Handler {
-	allowedOrigins := getEnv("CORS_ALLOWED_ORIGINS", "https://fpt-event.online")
+	allowedOrigins := parseAllowedOrigins(getEnv("CORS_ALLOWED_ORIGINS", "https://fpt-event.online"))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		w.Header().Set("Vary", "Origin")
+		enforceCredentialHeader(w.Header())
 
-		// Determine allowed origin
-		if allowedOrigins == "*" {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-		} else {
-			origins := strings.Split(allowedOrigins, ",")
-			for _, o := range origins {
-				if strings.TrimSpace(o) == origin {
-					w.Header().Set("Access-Control-Allow-Origin", origin)
-					break
-				}
+		// Determine allowed origin from explicit list only.
+		for _, o := range allowedOrigins {
+			if o == origin {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				break
 			}
 		}
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
 		w.Header().Set("Access-Control-Allow-Headers", "Authorization,Content-Type,X-Requested-With,X-User-Id,X-User-Role,X-User-Email,ngrok-skip-browser-warning")
 		w.Header().Set("Access-Control-Expose-Headers", "X-User-Id,X-User-Role,X-User-Email")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 
 		if r.Method == http.MethodOptions {
