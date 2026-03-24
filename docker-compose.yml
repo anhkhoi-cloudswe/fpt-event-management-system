@@ -28,6 +28,8 @@ networks:
 volumes:
   mysql-data:
     driver: local
+  localstack-data:
+    driver: local
 
 # ─── YAML anchors (DRY) ───────────────────────────────────────────────────────
 x-build-defaults: &build-defaults
@@ -43,6 +45,32 @@ x-service-defaults: &service-defaults
 
 # =============================================================================
 services:
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Redis (OTP + Event cache)
+  # ──────────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:alpine
+    container_name: fpt-redis
+    <<: *service-defaults
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # LocalStack (SQS emulation for local development)
+  # ──────────────────────────────────────────────────────────────────────────
+  localstack:
+    image: localstack/localstack:3.8.1
+    container_name: fpt-localstack
+    <<: *service-defaults
+    environment:
+      SERVICES: sqs
+      AWS_DEFAULT_REGION: ap-southeast-1
+      EDGE_PORT: 4566
+    ports:
+      - "127.0.0.1:4566:4566"
+    volumes:
+      - localstack-data:/var/lib/localstack
 
   # ──────────────────────────────────────────────────────────────────────────
   # MySQL 8.0
@@ -98,9 +126,20 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      ***REMOVED***: ${***REMOVED***}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_started
+      localstack:
+        condition: service_started
 
   # ──────────────────────────────────────────────────────────────────────────
   # Event Service
@@ -119,9 +158,13 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   # ──────────────────────────────────────────────────────────────────────────
   # Ticket Service
@@ -140,9 +183,23 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+
+      VNPAY_TMN_CODE: ${VNPAY_TMN_CODE}
+      VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET}
+      VNPAY_URL: ${VNPAY_URL}
+      VNPAY_RETURN_URL: ${VNPAY_RETURN_URL}
+
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      ***REMOVED***: ${***REMOVED***}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
     depends_on:
       mysql:
         condition: service_healthy
+      localstack:
+        condition: service_started
 
   # ──────────────────────────────────────────────────────────────────────────
   # Venue Service
@@ -205,14 +262,22 @@ services:
       INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
       # SMTP Configuration (loaded from .env.docker)
       SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
+      SMTP_PORT: "${SMTP_PORT}"
       SMTP_USERNAME: ${SMTP_USERNAME}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: ${SMTP_FROM}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME}
+      ENABLE_SQS_WORKER: ${ENABLE_SQS_WORKER}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      ***REMOVED***: ${***REMOVED***}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
     depends_on:
       mysql:
         condition: service_healthy
+      localstack:
+        condition: service_started
 
   # ──────────────────────────────────────────────────────────────────────────
   # API Gateway — port 8080 (the single entry-point for the frontend)
@@ -231,6 +296,7 @@ services:
       LOCAL_PORT: "8080"
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
       # Override service URLs so the gateway reaches containers by name
       # (these take precedence over the values in .env.docker)
       AUTH_SERVICE_URL: "http://auth-service:8081"

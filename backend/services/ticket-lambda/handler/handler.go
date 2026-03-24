@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
@@ -238,20 +239,87 @@ func getHeaderIgnoreCase(headers map[string]string, key string) string {
 	return ""
 }
 
+func getFrontendBaseURL() string {
+	if frontendBaseURL := strings.TrimSpace(os.Getenv("FRONTEND_BASE_URL")); frontendBaseURL != "" {
+		return strings.TrimRight(frontendBaseURL, "/")
+	}
+	return ""
+}
+
+func buildFrontendRedirectURL(baseURL, pathWithQuery string) string {
+	if strings.TrimSpace(baseURL) == "" {
+		// Fallback to relative redirect so browser stays on current domain when base is unavailable.
+		return pathWithQuery
+	}
+	return strings.TrimRight(baseURL, "/") + pathWithQuery
+}
+
+func buildFrontendBaseURLFromRequest(request events.APIGatewayProxyRequest) string {
+	origin := getHeaderIgnoreCase(request.Headers, "Origin")
+	if origin != "" {
+		parsed, err := url.Parse(origin)
+		if err == nil && parsed.Scheme != "" && parsed.Host != "" {
+			baseURL := fmt.Sprintf("%s://%s", strings.ToLower(parsed.Scheme), parsed.Host)
+			log.Info("[FRONTEND_BASE_URL] Using Origin header: %s", baseURL)
+			return baseURL
+		}
+	}
+
+	host := getHeaderIgnoreCase(request.Headers, "Host")
+	if host != "" {
+		scheme := getHeaderIgnoreCase(request.Headers, "X-Forwarded-Proto")
+		if scheme != "" {
+			if commaIdx := strings.Index(scheme, ","); commaIdx >= 0 {
+				scheme = scheme[:commaIdx]
+			}
+			scheme = strings.ToLower(strings.TrimSpace(scheme))
+		}
+
+		if scheme == "" || (scheme != "http" && scheme != "https") {
+			if isLocalHost(host) {
+				scheme = "http"
+			} else {
+				scheme = "https"
+			}
+		}
+
+		baseURL := fmt.Sprintf("%s://%s", scheme, host)
+		log.Info("[FRONTEND_BASE_URL] Using Host header: %s", baseURL)
+		return baseURL
+	}
+
+	fallback := getFrontendBaseURL()
+	log.Info("[FRONTEND_BASE_URL] Using FRONTEND_BASE_URL fallback: %s", fallback)
+	return fallback
+}
+
+func isLocalHost(host string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	if host == "" {
+		return false
+	}
+	hostOnly := strings.Split(host, ":")[0]
+	return hostOnly == "localhost" || hostOnly == "127.0.0.1"
+}
+
 func buildDynamicReturnURL(request events.APIGatewayProxyRequest) string {
 	// ⭐ CRITICAL: Tạo dynamic return URL cho VNPay callback
 	// This allows Docker deployment ở bất kỳ đâu (localhost, LAN, AWS) mà ko cần edit .env
-	
+
 	host := getHeaderIgnoreCase(request.Headers, "Host")
+	fmt.Printf("[buildDynamicReturnURL] Request Headers - Host: '%s'\n", host)
+
 	if host == "" {
 		// Fallback if Host header missing (should not happen with proper proxy setup)
+		fmt.Printf("[buildDynamicReturnURL] ⚠️  Host header is EMPTY - will use config fallback for ReturnURL\n")
 		return ""
 	}
 
 	// Xác định scheme (http vs https) từ X-Forwarded-Proto header
 	// X-Forwarded-Proto được set bởi API Gateway hoặc reverse proxy
 	scheme := getHeaderIgnoreCase(request.Headers, "X-Forwarded-Proto")
-	
+	fmt.Printf("[buildDynamicReturnURL] X-Forwarded-Proto header: '%s'\n", scheme)
+
 	if scheme != "" {
 		// Parse X-Forwarded-Proto (có thể là "http,https" nếu qua nhiều proxy)
 		if commaIdx := strings.Index(scheme, ","); commaIdx >= 0 {
@@ -259,17 +327,20 @@ func buildDynamicReturnURL(request events.APIGatewayProxyRequest) string {
 		}
 		scheme = strings.ToLower(strings.TrimSpace(scheme))
 	}
-	
+
 	// Fallback nếu X-Forwarded-Proto không có hoặc invalid
 	if scheme == "" || (scheme != "http" && scheme != "https") {
-		// Default to http dành cho local dev (Docker compose, localhost)
-		// Production AWS API Gateway sẽ set X-Forwarded-Proto = https
-		scheme = "http"
-		log.Debug("[buildDynamicReturnURL] No valid X-Forwarded-Proto, defaulting to http (Local Dev Mode)")
+		if isLocalHost(host) {
+			scheme = "http"
+			log.Debug("[buildDynamicReturnURL] No valid X-Forwarded-Proto, defaulting to http (Local Dev Mode)")
+		} else {
+			scheme = "https"
+			log.Debug("[buildDynamicReturnURL] No valid X-Forwarded-Proto, defaulting to https (Production Mode)")
+		}
 	}
 
 	returnURL := fmt.Sprintf("%s://%s/api/buyTicket", scheme, host)
-	log.Debug("[buildDynamicReturnURL] Dynamic VNPay Return URL: %s (Host=%s, Scheme=%s)", returnURL, host, scheme)
+	fmt.Printf("[buildDynamicReturnURL] ✅ Dynamic VNPay Return URL built: %s (Scheme=%s, Host=%s)\n", returnURL, scheme, host)
 	return returnURL
 }
 
@@ -357,7 +428,8 @@ func (h *TicketHandler) HandlePaymentTicket(ctx context.Context, request events.
 	// ✅ 0đ BYPASS: Vé miễn phí – không cần VNPay, trả về thông tin thành công trực tiếp
 	if strings.HasPrefix(paymentURL, "FREE:") {
 		ticketIDs := strings.TrimPrefix(paymentURL, "FREE:")
-		successURL := fmt.Sprintf("http://localhost:3000/dashboard/payment/success?status=success&method=free&ticketIds=%s", url.QueryEscape(ticketIDs))
+		frontendBaseURL := buildFrontendBaseURLFromRequest(request)
+		successURL := buildFrontendRedirectURL(frontendBaseURL, fmt.Sprintf("/payment-success?status=success&method=free&ticketIds=%s", url.QueryEscape(ticketIDs)))
 		log.Info("Free ticket bypass - successUrl: %s", successURL)
 		body, _ := json.Marshal(map[string]interface{}{
 			"free":       true,
@@ -401,10 +473,12 @@ func (h *TicketHandler) HandleBuyTicket(ctx context.Context, request events.APIG
 	log.Info("VNPay callback received - Amount=%s ResponseCode=%s TxnRef=%s", vnpAmount, vnpResponseCode, vnpTxnRef)
 
 	// Process payment callback
-	ticketIds, err := h.useCase.ProcessPaymentCallback(ctx, vnpAmount, vnpResponseCode, vnpOrderInfo, vnpTxnRef, vnpSecureHash)
+	result, err := h.useCase.ProcessPaymentCallback(ctx, vnpAmount, vnpResponseCode, vnpOrderInfo, vnpTxnRef, vnpSecureHash)
+	frontendBaseURL := buildFrontendBaseURLFromRequest(request)
 	if err != nil {
 		// Redirect to payment failed page
-		frontendURL := "http://localhost:3000/dashboard/payment/failed?status=failed&method=vnpay&reason=" + url.QueryEscape(err.Error())
+		frontendURL := buildFrontendRedirectURL(frontendBaseURL, "/payment-failed?status=failed&method=vnpay&reason="+url.QueryEscape(err.Error()))
+		log.Warn("[BUYTICKET] Payment failed - redirecting to: %s", frontendURL)
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusFound,
 			Headers: map[string]string{
@@ -412,6 +486,15 @@ func (h *TicketHandler) HandleBuyTicket(ctx context.Context, request events.APIG
 				"Access-Control-Allow-Origin": "*",
 			},
 		}, nil
+	}
+
+	// Parse result: format is "ticketIds|billId" (e.g., "320,321,322,323|145")
+	ticketIds := result
+	billId := ""
+	if parts := strings.Split(result, "|"); len(parts) > 1 {
+		ticketIds = parts[0]
+		billId = parts[1]
+		log.Info("[BUYTICKET] Parsed result - ticketIds=%s billId=%s", ticketIds, billId)
 	}
 
 	// Try to enrich redirect with eventId for forced refresh on frontend.
@@ -423,8 +506,24 @@ func (h *TicketHandler) HandleBuyTicket(ctx context.Context, request events.APIG
 		}
 	}
 
-	// Redirect to payment success page with ticketIds
-	frontendURL := fmt.Sprintf("http://localhost:3000/dashboard/payment/success?status=success&method=vnpay&ticketIds=%s%s", url.QueryEscape(ticketIds), eventIDParam)
+	if billId == "" {
+		billId = vnpTxnRef
+	}
+
+	query := url.Values{}
+	query.Set("billId", billId)
+	query.Set("status", "success")
+	if ticketIds != "" {
+		query.Set("ticketIds", ticketIds)
+	}
+	if eventIDParam != "" {
+		query.Set("eventId", strings.TrimPrefix(eventIDParam, "&eventId="))
+	}
+	query.Set("method", "vnpay")
+
+	frontendURL := buildFrontendRedirectURL(frontendBaseURL, fmt.Sprintf("/payment-success?%s", query.Encode()))
+
+	log.Info("[BUYTICKET] Payment success - redirecting to: %s", frontendURL)
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusFound,
 		Headers: map[string]string{

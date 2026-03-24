@@ -80,7 +80,7 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 
 		// Tạo Bill miễn phí
 		billResult, billErr := r.db.ExecContext(ctx,
-			"INSERT INTO Bill (user_id, total_amount, currency, payment_method, payment_status, created_at, paid_at) VALUES (?, 0, 'VND', 'Wallet', 'PAID', NOW(), NOW())",
+			"INSERT INTO Bill (user_id, total_amount, currency, payment_method, payment_status, created_at, paid_at) VALUES (?, 0, 'VND', 'FREE', 'PAID', NOW(), NOW())",
 			userID,
 		)
 		if billErr != nil {
@@ -161,15 +161,21 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 	log.Info("[SAGA_STEP_3] ✅ Confirm success: reservationId=%s", reservationID)
 
 	// ===== STEP 3.5: CREATE BILL (same as monolith) =====
+	// ⭐ CRITICAL FIX: If amount == 0, MUST set payment_method to 'FREE'
+	paymentMethodForBill := "Wallet"
+	if amount == 0 {
+		paymentMethodForBill = "FREE"
+	}
+
 	billResult, err := r.db.ExecContext(ctx,
-		"INSERT INTO Bill (user_id, total_amount, currency, payment_method, payment_status, created_at, paid_at) VALUES (?, ?, 'VND', 'Wallet', 'PAID', NOW(), NOW())",
-		userID, float64(amount),
+		"INSERT INTO Bill (user_id, total_amount, currency, payment_method, payment_status, created_at, paid_at) VALUES (?, ?, 'VND', ?, 'PAID', NOW(), NOW())",
+		userID, float64(amount), paymentMethodForBill,
 	)
 	if err != nil {
 		log.Warn("[SAGA] ⚠️ Failed to create bill (non-critical): %v", err)
 	} else {
 		billID, _ := billResult.LastInsertId()
-		fmt.Printf("[BILL_CREATED] ✅ Da xuat hoa don ID: %d cho phuong thuc: %s\n", billID, "Wallet")
+		fmt.Printf("[BILL_CREATED] ✅ Da xuat hoa don ID: %d cho phuong thuc: %s\n", billID, paymentMethodForBill)
 	}
 
 	// ===== STEP 4: SEND EMAIL & PDF (same as monolith, post-saga) =====

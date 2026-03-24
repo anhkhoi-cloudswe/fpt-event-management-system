@@ -12,10 +12,11 @@ import {
   getPasswordError
 } from '../utils/validation'
 import { useToast, ToastContainer } from '../components/Toast'
+import { API_BASE_URL } from '../config/api'
 
 // Use proxy to avoid CORS issues in development
 // Cấu hình proxy API để tránh lỗi Cross-Origin khi chạy localhost
-const API_URL = '/api'
+const API_URL = API_BASE_URL
 
 // Configure axios defaults
 axios.defaults.headers.common['Content-Type'] = 'application/json'
@@ -280,7 +281,7 @@ export default function Register() {
         errorMessage = err.response.data?.message || `Lỗi ${err.response.status}: ${err.response.statusText}`
       } else if (err.request) {
         // Request made but no response (Lỗi mạng hoặc Server down)
-        errorMessage = 'Không thể kết nối đến server!\n\n⚠️ Vui lòng kiểm tra:\n1. Backend đã chạy chưa? (http://localhost:8080)\n2. CORS đã được cấu hình trong backend chưa?'
+        errorMessage = 'Không thể kết nối đến server!\n\n⚠️ Vui lòng kiểm tra:\n1. Backend đã chạy chưa?\n2. Biến môi trường VITE_API_URL đã đúng chưa?\n3. CORS đã được cấu hình trong backend chưa?'
       }
 
       setError(errorMessage)

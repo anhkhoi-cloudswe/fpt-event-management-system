@@ -26,14 +26,17 @@ type Config struct {
 
 // DefaultConfig returns default VNPay sandbox configuration
 // ⭐ CRITICAL: ReturnURL is now DYNAMICALLY set from request Host header
-// The VNPAY_RETURN_URL env var is DEPRECATED and should NO LONGER be used
+// But also reads VNPAY_RETURN_URL from env as FALLBACK
 // See: buildDynamicReturnURL() in handler.go
 func DefaultConfig() *Config {
+	returnURL := getEnv("VNPAY_RETURN_URL", "") // ⭐ READ from env with underscores
+	fmt.Printf("[VNPay Config] DefaultConfig() initialized - VNPAY_RETURN_URL from env: '%s'\n", returnURL)
+
 	return &Config{
 		TmnCode:    getEnv("VNPAY_TMN_CODE", "DEMO_TMN_CODE"),
 		HashSecret: getEnv("VNPAY_HASH_SECRET", "DEMO_HASH_SECRET"),
 		PaymentURL: getEnv("VNPAY_PAYMENT_URL", "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"),
-		ReturnURL:  "", // ⭐ EMPTY: Must be provided dynamically via PaymentRequest.ReturnURL from handler
+		ReturnURL:  returnURL, // ⭐ FALLBACK: Will be used if dynamic return URL is empty
 		Version:    "2.1.0",
 		Command:    "pay",
 		CurrCode:   "VND",
@@ -43,12 +46,16 @@ func DefaultConfig() *Config {
 
 // ProductionConfig returns production VNPay configuration
 // ⭐ CRITICAL: ReturnURL is now DYNAMICALLY set from request Host header
+// But also reads VNPAY_RETURN_URL from env as FALLBACK
 func ProductionConfig() *Config {
+	returnURL := getEnv("VNPAY_RETURN_URL", "") // ⭐ READ from env with underscores
+	fmt.Printf("[VNPay Config] ProductionConfig() initialized - VNPAY_RETURN_URL from env: '%s'\n", returnURL)
+
 	config := &Config{
 		TmnCode:    mustGetEnv("VNPAY_TMN_CODE"),
 		HashSecret: mustGetEnv("VNPAY_HASH_SECRET"),
 		PaymentURL: "https://pay.vnpay.vn/vpcpay.html",
-		ReturnURL:  "", // ⭐ EMPTY: Must be provided dynamically via PaymentRequest.ReturnURL from handler
+		ReturnURL:  returnURL, // ⭐ FALLBACK: Will be used if dynamic return URL is empty
 		Version:    "2.1.0",
 		Command:    "pay",
 		CurrCode:   "VND",
@@ -151,9 +158,12 @@ func (s *VNPayService) CreatePaymentURL(req PaymentRequest) (string, error) {
 			fmt.Printf("[WARN] vnp_ReturnUrl not provided in request, using config fallback: %s\n", s.config.ReturnURL)
 		} else {
 			// This is a critical error - should never happen in production
-			fmt.Printf("[ERROR] vnp_ReturnUrl is required but not provided in request AND config is empty!\n")
+			fmt.Printf("[ERROR] vnp_ReturnUrl is EMPTY! Dynamic (from Host header) = empty AND config fallback is empty. Payment URL will fail validation.\n")
 		}
 	}
+
+	// ⭐ DEBUG LOG: Print final vnp_ReturnUrl value
+	fmt.Printf("[VNPay Payment] Final vnp_ReturnUrl: '%s' (will be used in payment URL)\n", params["vnp_ReturnUrl"])
 
 	// Add optional parameters
 	if req.BankCode != "" {
