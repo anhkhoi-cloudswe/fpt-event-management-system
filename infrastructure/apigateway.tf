@@ -603,6 +603,26 @@ module "api_gateway" {
         vpc_link_key    = "ecs-vpc-link"
       }
     }
+
+    # -------------------- Notification service --------------------
+    "GET /api/notifications" = {
+      integration = {
+        connection_type = "VPC_LINK"
+        uri             = "${data.aws_lb_listener.http.arn}"
+        type            = "HTTP_PROXY"
+        method          = "GET"
+        vpc_link_key    = "ecs-vpc-link"
+      }
+    }
+    "GET /api/notifications/{proxy+}" = {
+      integration = {
+        connection_type = "VPC_LINK"
+        uri             = "${data.aws_lb_listener.http.arn}"
+        type            = "HTTP_PROXY"
+        method          = "GET"
+        vpc_link_key    = "ecs-vpc-link"
+      }
+    }
   }
 
   stage_access_log_settings = {
