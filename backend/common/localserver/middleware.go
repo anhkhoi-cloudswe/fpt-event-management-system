@@ -1,0 +1,75 @@
+package localserver
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"strings"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/jwt"
+)
+
+// WithJWTAuth wraps a LambdaHandler and explicitly performs JWT authentication.
+// It extracts the JWT from the Cookie or Authorization header, validates it,
+// and injects the X-User-Id, X-User-Role, and X-User-Email headers downstream.
+func WithJWTAuth(next LambdaHandler) LambdaHandler {
+	return func(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+		path := request.Path
+		
+		// Bypass authentication for public routes (e.g., login, register, local auth check)
+		if path == "/api/v1/auth/me" || path == "/api/auth/me" || strings.HasPrefix(path, "/api/login") || strings.HasPrefix(path, "/api/register") || path == "/health" {
+			return next(ctx, request)
+		}
+
+		token := ""
+
+		// 1. Try Cookie
+		cookieHeader := request.Headers["Cookie"]
+		if cookieHeader == "" {
+			cookieHeader = request.Headers["cookie"]
+		}
+		if cookieHeader != "" {
+			for _, part := range strings.Split(cookieHeader, ";") {
+				item := strings.TrimSpace(part)
+				if strings.HasPrefix(item, "token=") {
+					token = strings.TrimPrefix(item, "token=")
+					break
+				}
+			}
+		}
+
+		// 2. Try Authorization Header
+		if token == "" {
+			authHeader := request.Headers["Authorization"]
+			if authHeader == "" {
+				authHeader = request.Headers["authorization"]
+			}
+			if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+				val := strings.TrimSpace(authHeader[7:])
+				if val != "cookie-auth" {
+					token = val
+				}
+			}
+		}
+
+		// 3. Validate Token & Inject Identity
+		if token != "" {
+			claims, err := jwt.ValidateToken(token)
+			if err == nil && claims != nil {
+				// Inject X-User-* headers (making sure map is initialized)
+				if request.Headers == nil {
+					request.Headers = make(map[string]string)
+				}
+				request.Headers["X-User-Id"] = fmt.Sprintf("%d", claims.UserID)
+				request.Headers["X-User-Role"] = claims.Role
+				request.Headers["X-User-Email"] = claims.Email
+				log.Printf("[JWT Middleware] Authenticated: UserID=%d, Role=%s", claims.UserID, claims.Role)
+			} else {
+				log.Printf("[JWT Middleware] Token validation failed: %v", err)
+			}
+		}
+
+		return next(ctx, request)
+	}
+}

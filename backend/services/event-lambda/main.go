@@ -223,11 +223,13 @@ func main() {
 	// to run after all package-level vars and init() functions are done.
 	localserver.LoadEnvAndSyncJWT("Event")
 
+	handlerWithAuth := localserver.WithJWTAuth(Handler)
+
 	if localserver.IsLocal() {
 		// Start background schedulers only in local mode (goroutine tickers)
 		eventSchedulerHandler.StartSchedulers()
-		localserver.Start("8082", Handler)
+		localserver.Start("8082", handlerWithAuth)
 	} else {
-		lambda.Start(Handler)
+		lambda.Start(handlerWithAuth)
 	}
 }
