@@ -153,6 +153,7 @@ module "ecs" {
             { name = "DB_PORT", value = "3306" },
             { name = "DB_USER", value = local.db_user },
             { name = "DB_PASSWORD", value = local.db_password },
+            { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
           ]
 
@@ -227,6 +228,7 @@ module "ecs" {
             { name = "DB_PORT", value = "3306" },
             { name = "DB_USER", value = local.db_user },
             { name = "DB_PASSWORD", value = local.db_password },
+            { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
             { name = "VNPAY_TMN_CODE", value = local.vnpay_tmn_code },
             { name = "VNPAY_HASH_SECRET", value = local.vnpay_hash_secret },
@@ -306,6 +308,7 @@ module "ecs" {
             { name = "DB_PORT", value = "3306" },
             { name = "DB_USER", value = local.db_user },
             { name = "DB_PASSWORD", value = local.db_password },
+            { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
           ]
 
@@ -380,6 +383,7 @@ module "ecs" {
             { name = "DB_PORT", value = "3306" },
             { name = "DB_USER", value = local.db_user },
             { name = "DB_PASSWORD", value = local.db_password },
+            { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
           ]
 
