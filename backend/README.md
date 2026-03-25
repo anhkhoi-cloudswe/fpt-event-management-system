@@ -508,6 +508,18 @@ DB_URL=root:password@tcp(localhost:3306)/fpt_event_management?parseTime=true
 JWT_SECRET=your-local-dev-secret
 ENVIRONMENT=dev
 
+# Smart Service Discovery
+# AWS: set INTERNAL_ALB_URL (no scheme, no port), e.g. internal-my-alb-123.ap-southeast-1.elb.amazonaws.com
+INTERNAL_ALB_URL=
+
+# Local fallback URLs (used when INTERNAL_ALB_URL is empty)
+AUTH_SERVICE_URL=http://localhost:8081
+EVENT_SERVICE_URL=http://localhost:8082
+TICKET_SERVICE_URL=http://localhost:8083
+VENUE_SERVICE_URL=http://localhost:8084
+STAFF_SERVICE_URL=http://localhost:8085
+NOTIFICATION_SERVICE_URL=http://localhost:8086
+
 # Feature Flags — enable microservice behaviors locally
 USE_API_COMPOSITION=true
 VENUE_API_ENABLED=true

@@ -3,6 +3,10 @@ package registry
 import (
 	"fmt"
 	"os"
+	"strings"
+
+	"github.com/fpt-event-services/common/config"
+	"github.com/fpt-event-services/common/logger"
 )
 
 // ServiceInfo holds the metadata for a single microservice.
@@ -31,6 +35,13 @@ func init() {
 	for _, s := range Services {
 		byName[s.Name] = s
 	}
+
+	// Log the service discovery mode
+	if albURL := strings.TrimSpace(os.Getenv("INTERNAL_ALB_URL")); albURL != "" {
+		logger.Info("🚀 SERVICE DISCOVERY MODE: AWS (using INTERNAL_ALB_URL)", "alb_url", albURL)
+	} else {
+		logger.Info("🚀 SERVICE DISCOVERY MODE: LOCAL (using SERVICE_URL env vars or localhost fallback)")
+	}
 }
 
 // GetBackendURL returns the HTTP base URL for the named service.
@@ -38,7 +49,7 @@ func init() {
 // to http://localhost:<port>.
 func GetBackendURL(name string) string {
 	if info, ok := byName[name]; ok {
-		if v := os.Getenv(info.EnvKey); v != "" {
+		if v := config.GetServiceURL(info.EnvKey); v != "" {
 			return v
 		}
 		return fmt.Sprintf("http://localhost:%d", info.Port)
