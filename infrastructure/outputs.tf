@@ -17,15 +17,7 @@ output "api_gateway_arn" {
   value       = module.api_gateway.api_arn
 }
 
-output "waf_web_acl_arn" {
-  description = "Regional WAFv2 Web ACL ARN (ALB)"
-  value       = module.api_waf.arn
-}
 
-output "waf_web_acl_id" {
-  description = "Regional WAFv2 Web ACL ID (ALB)"
-  value       = module.api_waf.id
-}
 
 output "cloudfront_url" {
   description = "CloudFront default domain — SPA (S3) + /api/* → API Gateway"

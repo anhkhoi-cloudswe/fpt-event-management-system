@@ -307,6 +307,26 @@ module "loadbalancer" {
             }
           ]
         }
+        event_paths_upload = {
+          priority = 22
+          actions = [
+            {
+              forward = {
+                target_group_key = "event-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/api/upload",
+                  "/api/upload/*",
+                ]
+              }
+            }
+          ]
+        }
         ticket_paths_a = {
           priority = 30
           actions = [
