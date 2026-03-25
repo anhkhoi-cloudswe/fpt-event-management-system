@@ -83,20 +83,20 @@ module "cloudfront" {
     origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf" # Managed-CORS-S3Origin
   }
 
-  custom_error_response = [
-    {
-      error_code            = 403
-      response_code         = 200
-      response_page_path    = "/index.html"
-      error_caching_min_ttl = 0
-    },
-    {
-      error_code            = 404
-      response_code         = 200
-      response_page_path    = "/index.html"
-      error_caching_min_ttl = 0
-    },
-  ]
+  # custom_error_response = [
+  #   {
+  #     error_code            = 403
+  #     response_code         = 200
+  #     response_page_path    = "/index.html"
+  #     error_caching_min_ttl = 0
+  #   },
+  #   {
+  #     error_code            = 404
+  #     response_code         = 200
+  #     response_page_path    = "/index.html"
+  #     error_caching_min_ttl = 0
+  #   },
+  # ]
 
   viewer_certificate = {
     acm_certificate_arn      = aws_acm_certificate_validation.cloudfront.certificate_arn
