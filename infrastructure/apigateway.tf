@@ -165,6 +165,15 @@ module "api_gateway" {
     }
 
     # -------------------- Event service --------------------
+    "POST /api/upload/image" = {
+      integration = {
+        connection_type = "VPC_LINK"
+        uri             = "${data.aws_lb_listener.http.arn}"
+        type            = "HTTP_PROXY"
+        method          = "POST"
+        vpc_link_key    = "ecs-vpc-link"
+      }
+    }
     "GET /api/v1/events" = {
       integration = {
         connection_type = "VPC_LINK"

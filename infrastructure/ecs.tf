@@ -155,6 +155,10 @@ module "ecs" {
             { name = "DB_PASSWORD", value = local.db_password },
             { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
+            { name = "AWS_S3_BUCKET", value = "fpt-event-management-storage" },
+            { name = "AWS_REGION", value = "ap-southeast-1" },
+            { name = "AWS_ACCESS_KEY_ID", value = local.aws_access_key_id },
+            { name = "***REMOVED***", value = local.aws_secret_access_key },
           ]
 
           portMappings = [
