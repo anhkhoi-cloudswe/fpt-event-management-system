@@ -119,9 +119,11 @@ func main() {
 	// to run after all package-level vars and init() functions are done.
 	localserver.LoadEnvAndSyncJWT("Auth")
 
+	handlerWithAuth := localserver.WithJWTAuth(Handler)
+
 	if localserver.IsLocal() {
-		localserver.Start("8081", Handler)
+		localserver.Start("8081", handlerWithAuth)
 	} else {
-		lambda.Start(Handler)
+		lambda.Start(handlerWithAuth)
 	}
 }
