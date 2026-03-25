@@ -465,6 +465,7 @@ module "ecs" {
             { name = "SMTP_FROM_NAME", value = local.smtp_from_name },
             { name = "SMTP_USERNAME", value = local.smtp_username },
             { name = "SMTP_PASSWORD", value = local.smtp_password },
+            { name = "JWT_SECRET", value = local.jwt_secret }
           ]
 
           portMappings = [
