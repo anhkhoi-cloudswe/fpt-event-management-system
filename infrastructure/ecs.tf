@@ -9,6 +9,13 @@ module "ecs" {
 
   create_cloudwatch_log_group = true
 
+  # Execute Command Configuration (ECS Exec)
+  cluster_configuration = {
+    execute_command_configuration = {
+      logging = "DEFAULT"
+    }
+  }
+
   cluster_capacity_providers = ["FARGATE"]
   default_capacity_provider_strategy = {
     FARGATE = {
@@ -67,9 +74,10 @@ module "ecs" {
         auth-service = {
           name = "auth-service"
 
-          cpu       = 256
-          memory    = 512
-          essential = true
+          cpu                      = 256
+          memory                   = 512
+          essential                = true
+          readonlyRootFilesystem   = false
 
           image = "436756555762.dkr.ecr.ap-southeast-1.amazonaws.com/auth-service:latest"
 
@@ -145,9 +153,10 @@ module "ecs" {
         event-service = {
           name = "event-service"
 
-          cpu       = 256
-          memory    = 512
-          essential = true
+          cpu                      = 256
+          memory                   = 512
+          essential                = true
+          readonlyRootFilesystem   = false
 
           image = "436756555762.dkr.ecr.ap-southeast-1.amazonaws.com/event-service:latest"
 
@@ -227,9 +236,10 @@ module "ecs" {
         ticket-service = {
           name = "ticket-service"
 
-          cpu       = 256
-          memory    = 512
-          essential = true
+          cpu                      = 256
+          memory                   = 512
+          essential                = true
+          readonlyRootFilesystem   = false
 
           image = "436756555762.dkr.ecr.ap-southeast-1.amazonaws.com/ticket-service:latest"
 
@@ -310,9 +320,10 @@ module "ecs" {
         venue-service = {
           name = "venue-service"
 
-          cpu       = 256
-          memory    = 512
-          essential = true
+          cpu                      = 256
+          memory                   = 512
+          essential                = true
+          readonlyRootFilesystem   = false
 
           image = "436756555762.dkr.ecr.ap-southeast-1.amazonaws.com/venue-service:latest"
 
@@ -388,9 +399,10 @@ module "ecs" {
         staff-service = {
           name = "staff-service"
 
-          cpu       = 256
-          memory    = 512
-          essential = true
+          cpu                      = 256
+          memory                   = 512
+          essential                = true
+          readonlyRootFilesystem   = false
 
           image = "436756555762.dkr.ecr.ap-southeast-1.amazonaws.com/staff-service:latest"
 
@@ -466,9 +478,10 @@ module "ecs" {
         notification-service = {
           name = "notification-service"
 
-          cpu       = 256
-          memory    = 512
-          essential = true
+          cpu                      = 256
+          memory                   = 512
+          essential                = true
+          readonlyRootFilesystem   = false
 
           image = "436756555762.dkr.ecr.ap-southeast-1.amazonaws.com/notification-service:latest"
 

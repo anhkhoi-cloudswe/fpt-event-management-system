@@ -517,7 +517,7 @@ module "loadbalancer" {
             {
               path_pattern = {
                 values = [
-                  "/internal/notifications", 
+                  "/internal/notifications",
                   "/internal/notifications/*",
                   "/internal/notification",
                   "/internal/notification/*"
