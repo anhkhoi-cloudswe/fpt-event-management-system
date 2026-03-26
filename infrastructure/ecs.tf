@@ -22,6 +22,8 @@ module "ecs" {
       cpu    = 256
       memory = 512
 
+      enable_execute_command = true
+
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
 
@@ -80,6 +82,7 @@ module "ecs" {
             { name = "DB_PASSWORD", value = local.db_password },
             { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
+            { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
           ]
 
           portMappings = [
@@ -96,6 +99,8 @@ module "ecs" {
     event-service = {
       cpu    = 256
       memory = 512
+
+      enable_execute_command = true
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
@@ -159,6 +164,7 @@ module "ecs" {
             { name = "AWS_REGION", value = "ap-southeast-1" },
             { name = "AWS_ACCESS_KEY_ID", value = local.aws_access_key_id },
             { name = "***REMOVED***", value = local.aws_secret_access_key },
+            { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
           ]
 
           portMappings = [
@@ -175,6 +181,8 @@ module "ecs" {
     ticket-service = {
       cpu    = 256
       memory = 512
+
+      enable_execute_command = true
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
@@ -239,6 +247,7 @@ module "ecs" {
             { name = "VNPAY_URL", value = local.vnpay_url },
             { name = "VNPAY_RETURN_URL", value = local.vnpay_return_url },
             { name = "RECAPTCHA_SECRET", value = local.recaptcha_secret },
+            { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
           ]
 
           portMappings = [
@@ -255,6 +264,8 @@ module "ecs" {
     venue-service = {
       cpu    = 256
       memory = 512
+
+      enable_execute_command = true
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
@@ -314,6 +325,7 @@ module "ecs" {
             { name = "DB_PASSWORD", value = local.db_password },
             { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
+            { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
           ]
 
           portMappings = [
@@ -330,6 +342,8 @@ module "ecs" {
     staff-service = {
       cpu    = 256
       memory = 512
+
+      enable_execute_command = true
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
@@ -389,6 +403,7 @@ module "ecs" {
             { name = "DB_PASSWORD", value = local.db_password },
             { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
+            { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
           ]
 
           portMappings = [
@@ -405,6 +420,8 @@ module "ecs" {
     notification-service = {
       cpu    = 256
       memory = 512
+
+      enable_execute_command = true
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
@@ -469,7 +486,8 @@ module "ecs" {
             { name = "SMTP_FROM_NAME", value = local.smtp_from_name },
             { name = "SMTP_USERNAME", value = local.smtp_username },
             { name = "SMTP_PASSWORD", value = local.smtp_password },
-            { name = "JWT_SECRET", value = local.jwt_secret }
+            { name = "JWT_SECRET", value = local.jwt_secret },
+            { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" }
           ]
 
           portMappings = [

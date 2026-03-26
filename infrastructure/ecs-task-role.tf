@@ -54,6 +54,34 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_cloudwatch" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
 }
 
+# ECS Exec support (SSM messages channels)
+# Required for Fargate tasks when enable_execute_command = true.
+resource "aws_iam_policy" "ecs_exec_ssm_messages" {
+  name        = "fpt-ecs-exec-ssm-messages"
+  description = "Allow ECS Exec via SSM messages channels"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_ecs_exec_ssm_messages" {
+  role       = aws_iam_role.ecs_task_execution.name
+  policy_arn = aws_iam_policy.ecs_exec_ssm_messages.arn
+}
+
 # Task role: permission for S3 (storage bucket)
 resource "aws_iam_policy" "s3_access" {
   name        = "fpt-ecs-s3-access"
