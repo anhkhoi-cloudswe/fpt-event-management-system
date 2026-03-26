@@ -117,6 +117,51 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}
 	}
 
+	// ========== API Routes (Internal Access via /api/internal prefix) ==========
+	if strings.HasPrefix(path, "/api/internal/wallet/") {
+		switch {
+		case path == "/api/internal/wallet/balance" && method == "GET":
+			return walletInternalHandler.HandleGetBalance(ctx, request)
+		case path == "/api/internal/wallet/check" && method == "GET":
+			return walletInternalHandler.HandleCheckBalance(ctx, request)
+		case path == "/api/internal/wallet/debit" && method == "POST":
+			return walletInternalHandler.HandleDebit(ctx, request)
+		case path == "/api/internal/wallet/credit" && method == "POST":
+			return walletInternalHandler.HandleCredit(ctx, request)
+		case path == "/api/internal/wallet/reserve" && method == "POST":
+			return walletInternalHandler.HandleReserve(ctx, request)
+		case path == "/api/internal/wallet/confirm" && method == "POST":
+			return walletInternalHandler.HandleConfirm(ctx, request)
+		case path == "/api/internal/wallet/release" && method == "POST":
+			return walletInternalHandler.HandleRelease(ctx, request)
+		}
+	}
+
+	if strings.HasPrefix(path, "/api/internal/") {
+		switch {
+		case path == "/api/internal/category-ticket/info" && method == "GET":
+			return ticketInternalHandler.HandleGetCategoryTicketInfo(ctx, request)
+		case path == "/api/internal/category-tickets/by-event" && method == "GET":
+			return ticketInternalHandler.HandleGetCategoryTicketsByEvent(ctx, request)
+		case path == "/api/internal/tickets/seat-statuses" && method == "GET":
+			return ticketInternalHandler.HandleGetSeatStatuses(ctx, request)
+		case path == "/api/internal/ticket/count" && method == "GET":
+			return ticketInternalHandler.HandleGetTicketStats(ctx, request)
+		case path == "/api/internal/ticket/refund" && method == "POST":
+			return ticketInternalHandler.HandleRefundTicket(ctx, request)
+		case path == "/api/internal/ticket/revert-refund" && method == "POST":
+			return ticketInternalHandler.HandleRevertRefund(ctx, request)
+		case path == "/api/internal/ticket/checkin" && method == "POST":
+			return ticketInternalHandler.HandleCheckinTicket(ctx, request)
+		case path == "/api/internal/ticket/checkout" && method == "POST":
+			return ticketInternalHandler.HandleCheckoutTicket(ctx, request)
+		case path == "/api/internal/ticket/info" && method == "GET":
+			return ticketInternalHandler.HandleGetTicketInfo(ctx, request)
+		case path == "/api/internal/tickets/refund-all-by-event" && method == "POST":
+			return ticketInternalHandler.HandleRefundAllByEvent(ctx, request)
+		}
+	}
+
 	// ========== Public Routes ==========
 	switch {
 	case path == "/api/registrations/my-tickets" && method == "GET":

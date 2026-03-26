@@ -65,6 +65,26 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}, nil
 	}
 
+	// ========== Internal Routes - Staff Check-in/out ==========
+	if strings.HasPrefix(path, "/internal/staff/") {
+		switch {
+		case path == "/internal/staff/checkin" && method == "POST":
+			return staffHandler.HandleCheckin(ctx, request)
+		case path == "/internal/staff/checkout" && method == "POST":
+			return staffHandler.HandleCheckout(ctx, request)
+		}
+	}
+
+	// ========== API Routes (Internal Access via /api/internal prefix) ==========
+	if strings.HasPrefix(path, "/api/internal/staff/") {
+		switch {
+		case path == "/api/internal/staff/checkin" && method == "POST":
+			return staffHandler.HandleCheckin(ctx, request)
+		case path == "/api/internal/staff/checkout" && method == "POST":
+			return staffHandler.HandleCheckout(ctx, request)
+		}
+	}
+
 	// ========== Public Routes - Staff ==========
 	switch {
 	case path == "/api/staff/checkin" && method == "POST":
