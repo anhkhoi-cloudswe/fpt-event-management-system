@@ -75,6 +75,16 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}
 	}
 
+	// ========== API Routes (Internal Access via /api prefix) ==========
+	if strings.HasPrefix(path, "/api/internal/") {
+		switch {
+		case path == "/api/internal/user/profile" && method == "GET":
+			return authInternalHandler.HandleGetUserProfile(ctx, request)
+		case path == "/api/internal/user/profiles" && method == "GET":
+			return authInternalHandler.HandleGetUserProfiles(ctx, request)
+		}
+	}
+
 	// ========== Public Routes ==========
 	switch {
 	case path == "/api/login" && method == "POST":

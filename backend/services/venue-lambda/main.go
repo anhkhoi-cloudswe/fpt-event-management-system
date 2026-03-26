@@ -91,6 +91,28 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}
 	}
 
+	// ========== API Routes (Internal Access via /api/internal prefix) ==========
+	if strings.HasPrefix(path, "/api/internal/") {
+		switch {
+		case path == "/api/internal/venue/info" && method == "GET":
+			return venueInternalHandler.HandleGetVenueInfo(ctx, request)
+		case path == "/api/internal/venue/area/info" && method == "GET":
+			return venueInternalHandler.HandleGetAreaInfo(ctx, request)
+		case path == "/api/internal/venue/areas" && method == "GET":
+			return venueInternalHandler.HandleGetAreasByVenue(ctx, request)
+		case path == "/api/internal/venue/seat/info" && method == "GET":
+			return venueInternalHandler.HandleGetSeatInfo(ctx, request)
+		case path == "/api/internal/venue/seats" && method == "GET":
+			return venueInternalHandler.HandleGetSeatsByArea(ctx, request)
+		case path == "/api/internal/venue/area/by-seat" && method == "GET":
+			return venueInternalHandler.HandleGetAreaBySeat(ctx, request)
+		case path == "/api/internal/venue/area-with-venue" && method == "GET":
+			return venueInternalHandler.HandleGetAreaWithVenue(ctx, request)
+		case path == "/api/internal/venue/area-status" && method == "POST":
+			return venueInternalHandler.HandleUpdateAreaStatus(ctx, request)
+		}
+	}
+
 	// ========== Public Routes ==========
 	switch {
 	case path == "/api/venues" && method == "GET":

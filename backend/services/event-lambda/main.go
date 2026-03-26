@@ -97,6 +97,25 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}
 	}
 
+	// ========== API Routes (Internal Access via /api prefix) ==========
+	if strings.HasPrefix(path, "/api/internal/") {
+		if !config.IsFeatureEnabled(config.FlagEventAPIEnabled) {
+			return events.APIGatewayProxyResponse{
+				StatusCode: 503,
+				Body:       `{"error":"Event internal API is disabled. Set EVENT_API_ENABLED=true"}`,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+			}, nil
+		}
+		switch {
+		case path == "/api/internal/events/active-by-venue" && method == "GET":
+			return eventInternalHandler.HandleActiveByVenue(ctx, request)
+		case path == "/api/internal/events/busy-areas" && method == "GET":
+			return eventInternalHandler.HandleBusyAreas(ctx, request)
+		case path == "/api/internal/events/area" && method == "GET":
+			return eventInternalHandler.HandleGetEventArea(ctx, request)
+		}
+	}
+
 	// ========== Upload Route — handled natively (not via proxy) ==========
 	// In local microservices mode, the gateway handles this directly (see cmd/gateway/main.go).
 	// In AWS Lambda production mode, API Gateway sends binary bodies base64-encoded;
