@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
@@ -827,9 +828,14 @@ func (h *TicketInternalHandler) HandleRefundAllByEvent(ctx context.Context, requ
 		totalAmount += t.Price
 		h.logger.Info("[TICKET] Refunded %.0f VND to User %d (ticket #%d)", t.Price, t.UserID, t.TicketID)
 
-		// Fire cancellation email asynchronously
+		// Fire cancellation email asynchronously with retry logic
 		go func(email, name string, price float64, ticketID int) {
 			notifyURL := utils.GetNotificationServiceURL() + "/internal/notify/email"
+			if notifyURL == "" {
+				h.logger.Warn("[TICKET] Cannot resolve Notification Service URL for refund email (ticketID=%d)", ticketID)
+				return
+			}
+
 			emailPayload := cancelEmailRequest{
 				To:      email,
 				Subject: "[FPT Event] Sự kiện đã bị hủy - Hoàn tiền vé",
@@ -842,7 +848,23 @@ func (h *TicketInternalHandler) HandleRefundAllByEvent(ctx context.Context, requ
 					name, price, ticketID,
 				),
 			}
-			utils.NewInternalClient().Post(context.Background(), notifyURL, emailPayload)
+
+			// Retry logic for notification delivery
+			client := utils.NewInternalClient()
+			const maxAttempts = 2
+			for attempt := 1; attempt <= maxAttempts; attempt++ {
+				_, sc, err := client.Post(context.Background(), notifyURL, emailPayload)
+				if err == nil && sc >= 200 && sc < 300 {
+					h.logger.Info("[TICKET] ✅ Sent refund cancellation email to %s for ticket #%d", email, ticketID)
+					return
+				}
+				if attempt < maxAttempts {
+					h.logger.Warn("[TICKET] Attempt %d failed to send refund email to %s (ticket #%d): sc=%d, err=%v. Retrying...", attempt, email, ticketID, sc, err)
+					time.Sleep(time.Second) // Brief delay before retry
+				}
+			}
+			// Final log if all retries failed
+			h.logger.Warn("[TICKET] ⚠️ Failed to send refund cancellation email to %s for ticket #%d after %d attempts", email, ticketID, maxAttempts)
 		}(t.Email, t.FullName, t.Price, t.TicketID)
 	}
 
