@@ -6,6 +6,20 @@ import (
 	"strings"
 )
 
+func normalizeInternalALBURL(raw string) string {
+	albURL := strings.TrimSuffix(strings.TrimSpace(raw), "/")
+	if albURL == "" {
+		return ""
+	}
+
+	lower := strings.ToLower(albURL)
+	if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return albURL
+	}
+
+	return "http://" + albURL
+}
+
 // GetServiceURL resolves service base URL for both Local and AWS environments.
 // Priority:
 // 1) INTERNAL_ALB_URL -> http://<alb-url> (for internal service-to-service on AWS)
@@ -14,9 +28,7 @@ import (
 // NOTE: Trims trailing slash from INTERNAL_ALB_URL to prevent double slashes when concatenating paths
 func GetServiceURL(localEnvKey string) string {
 	if albURL := strings.TrimSpace(os.Getenv("INTERNAL_ALB_URL")); albURL != "" {
-		// Trim trailing slash to prevent http://alb.com//internal/... with double slashes
-		albURL = strings.TrimSuffix(albURL, "/")
-		return "http://" + albURL
+		return normalizeInternalALBURL(albURL)
 	}
 
 	return strings.TrimSpace(os.Getenv(localEnvKey))
@@ -36,9 +48,7 @@ func IsAWSMode() bool {
 func MustGetServiceURLWithFallback(serviceName string, localEnvKey string, fallbackLocalPort int) string {
 	// Try INTERNAL_ALB_URL first (AWS mode with proper env var)
 	if albURL := strings.TrimSpace(os.Getenv("INTERNAL_ALB_URL")); albURL != "" {
-		// Trim trailing slash to prevent http://alb.com//internal/... with double slashes
-		albURL = strings.TrimSuffix(albURL, "/")
-		return fmt.Sprintf("http://%s", albURL)
+		return normalizeInternalALBURL(albURL)
 	}
 
 	// Try service-specific env var (Local mode or AWS with explicit URL)
