@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	commonconfig "github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/common/logger"
 	"github.com/fpt-event-services/common/utils"
 )
@@ -716,7 +717,17 @@ type ticketRefundInfo struct {
 	UserID   int
 	Price    float64
 	Email    string
-	FullName string
+}
+
+type UserRefundSummary struct {
+	Email       string
+	EventName   string
+	TotalAmount float64
+	TicketIDs   []int
+}
+
+type eventDetailSummary struct {
+	Title string `json:"title"`
 }
 
 type cancelEmailRequest struct {
@@ -739,9 +750,15 @@ func (h *TicketInternalHandler) HandleRefundAllByEvent(ctx context.Context, requ
 		return createTicketInternalResponse(http.StatusBadRequest, map[string]string{"error": "eventId must be positive"})
 	}
 
+	eventName, err := h.resolveEventNameForRefund(ctx, req.EventID)
+	if err != nil {
+		h.logger.Warn("[TICKET] ❌ RefundAllByEvent: resolve event name failed for event %d: %v", req.EventID, err)
+		return createTicketInternalResponse(http.StatusInternalServerError, map[string]string{"error": "cannot resolve event name"})
+	}
+
 	// Query all refundable tickets with user email and price
 	rows, err := h.db.QueryContext(ctx, `
-		SELECT t.ticket_id, t.user_id, ct.price, u.email, COALESCE(u.full_name, u.email)
+		SELECT t.ticket_id, t.user_id, ct.price, u.email
 		FROM ticket t
 		JOIN category_ticket ct ON t.category_ticket_id = ct.category_ticket_id
 		JOIN users u ON t.user_id = u.user_id
@@ -755,15 +772,22 @@ func (h *TicketInternalHandler) HandleRefundAllByEvent(ctx context.Context, requ
 	var tickets []ticketRefundInfo
 	for rows.Next() {
 		var t ticketRefundInfo
-		if err := rows.Scan(&t.TicketID, &t.UserID, &t.Price, &t.Email, &t.FullName); err != nil {
+		if err := rows.Scan(&t.TicketID, &t.UserID, &t.Price, &t.Email); err != nil {
+			h.logger.Warn("[TICKET] ⚠️ RefundAllByEvent: scan ticket row failed for event %d: %v", req.EventID, err)
 			continue
 		}
 		tickets = append(tickets, t)
+	}
+	if err := rows.Err(); err != nil {
+		h.logger.Warn("[TICKET] ❌ RefundAllByEvent: iterate ticket rows failed for event %d: %v", req.EventID, err)
+		rows.Close()
+		return createTicketInternalResponse(http.StatusInternalServerError, map[string]string{"error": "query iteration failed"})
 	}
 	rows.Close()
 
 	refunded := 0
 	var totalAmount float64
+	userRefundMap := make(map[int]*UserRefundSummary)
 
 	for _, t := range tickets {
 		tx, err := h.db.BeginTx(ctx, nil)
@@ -828,45 +852,19 @@ func (h *TicketInternalHandler) HandleRefundAllByEvent(ctx context.Context, requ
 		totalAmount += t.Price
 		h.logger.Info("[TICKET] Refunded %.0f VND to User %d (ticket #%d)", t.Price, t.UserID, t.TicketID)
 
-		// Fire cancellation email asynchronously with retry logic
-		go func(email, name string, price float64, ticketID int) {
-			notifyURL := utils.GetNotificationServiceURL() + "/internal/notify/email"
-			if notifyURL == "" {
-				h.logger.Warn("[TICKET] Cannot resolve Notification Service URL for refund email (ticketID=%d)", ticketID)
-				return
+		summary, exists := userRefundMap[t.UserID]
+		if !exists {
+			summary = &UserRefundSummary{
+				Email:     t.Email,
+				EventName: eventName,
 			}
-
-			emailPayload := cancelEmailRequest{
-				To:      email,
-				Subject: "[FPT Event] Sự kiện đã bị hủy - Hoàn tiền vé",
-				Type:    "generic",
-				HTMLBody: fmt.Sprintf(
-					`<p>Xin chào <b>%s</b>,</p>
-					<p>Sự kiện bạn đăng ký đã bị hủy. Chúng tôi đã hoàn tiền <b>%.0f VND</b> vào ví FPT Event của bạn cho vé #%d.</p>
-					<p>Vui lòng đăng nhập để kiểm tra số dư ví.</p>
-					<p>Xin lỗi vì sự bất tiện này!</p>`,
-					name, price, ticketID,
-				),
-			}
-
-			// Retry logic for notification delivery
-			client := utils.NewInternalClient()
-			const maxAttempts = 2
-			for attempt := 1; attempt <= maxAttempts; attempt++ {
-				_, sc, err := client.Post(context.Background(), notifyURL, emailPayload)
-				if err == nil && sc >= 200 && sc < 300 {
-					h.logger.Info("[TICKET] ✅ Sent refund cancellation email to %s for ticket #%d", email, ticketID)
-					return
-				}
-				if attempt < maxAttempts {
-					h.logger.Warn("[TICKET] Attempt %d failed to send refund email to %s (ticket #%d): sc=%d, err=%v. Retrying...", attempt, email, ticketID, sc, err)
-					time.Sleep(time.Second) // Brief delay before retry
-				}
-			}
-			// Final log if all retries failed
-			h.logger.Warn("[TICKET] ⚠️ Failed to send refund cancellation email to %s for ticket #%d after %d attempts", email, ticketID, maxAttempts)
-		}(t.Email, t.FullName, t.Price, t.TicketID)
+			userRefundMap[t.UserID] = summary
+		}
+		summary.TotalAmount += t.Price
+		summary.TicketIDs = append(summary.TicketIDs, t.TicketID)
 	}
+
+	h.sendAggregatedRefundEmails(userRefundMap)
 
 	h.logger.Info("[TICKET] ✅ RefundAllByEvent done: eventId=%d, refunded=%d tickets, totalAmount=%.2f", req.EventID, refunded, totalAmount)
 	return createTicketInternalResponse(http.StatusOK, RefundAllByEventResponse{
@@ -876,6 +874,100 @@ func (h *TicketInternalHandler) HandleRefundAllByEvent(ctx context.Context, requ
 		TotalAmount: totalAmount,
 		Message:     fmt.Sprintf("Đã hoàn tiền cho %d vé, tổng %.0f VND", refunded, totalAmount),
 	})
+}
+
+func (h *TicketInternalHandler) resolveEventNameForRefund(ctx context.Context, eventID int) (string, error) {
+	var localTitle sql.NullString
+	err := h.db.QueryRowContext(ctx, "SELECT title FROM Event WHERE event_id = ?", eventID).Scan(&localTitle)
+	if err == nil && strings.TrimSpace(localTitle.String) != "" {
+		return strings.TrimSpace(localTitle.String), nil
+	}
+	if err != nil && err != sql.ErrNoRows {
+		h.logger.Warn("[TICKET] ⚠️ ResolveEventName: local Event query failed for event %d: %v", eventID, err)
+	}
+
+	baseURL := commonconfig.MustGetServiceURLWithFallback("Event", "EVENT_SERVICE_URL", 8082)
+	detailURL := strings.TrimSuffix(baseURL, "/") + "/api/events/detail"
+
+	client := utils.NewInternalClient()
+	var detail eventDetailSummary
+	statusCode, svcErr := client.GetJSON(ctx, detailURL, map[string]string{"id": strconv.Itoa(eventID)}, &detail)
+	if svcErr != nil {
+		return "", fmt.Errorf("call event-service failed: %w", svcErr)
+	}
+	if statusCode < 200 || statusCode >= 300 {
+		return "", fmt.Errorf("event-service returned status %d", statusCode)
+	}
+
+	title := strings.TrimSpace(detail.Title)
+	if title == "" {
+		return "", fmt.Errorf("event title is empty")
+	}
+
+	return title, nil
+}
+
+func (h *TicketInternalHandler) sendAggregatedRefundEmails(userRefundMap map[int]*UserRefundSummary) {
+	if len(userRefundMap) == 0 {
+		return
+	}
+
+	notificationBaseURL := commonconfig.MustGetServiceURLWithFallback("Notification", "NOTIFICATION_SERVICE_URL", 8086)
+	notifyURL := strings.TrimSuffix(notificationBaseURL, "/") + "/internal/notify/email"
+
+	for userID, summary := range userRefundMap {
+		uid := userID
+		s := summary
+		go func() {
+			if err := h.sendRefundAggregationEmailWithRetry(uid, notifyURL, s); err != nil {
+				h.logger.Warn("[TICKET] ⚠️ Failed to send aggregated refund email to user %d (%s): %v", uid, s.Email, err)
+			}
+		}()
+	}
+}
+
+func (h *TicketInternalHandler) sendRefundAggregationEmailWithRetry(userID int, notifyURL string, summary *UserRefundSummary) error {
+	client := utils.NewInternalClient()
+	ticketIDs := make([]string, 0, len(summary.TicketIDs))
+	for _, id := range summary.TicketIDs {
+		ticketIDs = append(ticketIDs, strconv.Itoa(id))
+	}
+
+	htmlBody := fmt.Sprintf(
+		`<p>Sự kiện <b>%s</b> của bạn đã bị hủy. Chúng tôi đã hoàn lại tổng cộng <b>%.0f VND</b> cho các vé có mã: [%s]. Số tiền đã được cộng vào ví ảo của bạn.</p><p>Chúng tôi thật sự xin lỗi vì sự bất tiện này!</p>`,
+		summary.EventName,
+		summary.TotalAmount,
+		strings.Join(ticketIDs, ", "),
+	)
+
+	emailPayload := cancelEmailRequest{
+		To:       summary.Email,
+		Subject:  "[FPT Event] Sự kiện đã bị hủy - Hoàn tiền vé",
+		Type:     "generic",
+		HTMLBody: htmlBody,
+	}
+
+	const maxAttempts = 3
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		_, statusCode, err := client.Post(context.Background(), notifyURL, emailPayload)
+		if err == nil && statusCode >= 200 && statusCode < 300 {
+			h.logger.Info("[TICKET] ✅ Sent aggregated refund email to user %d (%s), tickets=%v, total=%.0f", userID, summary.Email, summary.TicketIDs, summary.TotalAmount)
+			return nil
+		}
+
+		lastErr = err
+		if statusCode < 200 || statusCode >= 300 {
+			lastErr = fmt.Errorf("status=%d, err=%v", statusCode, err)
+		}
+
+		if attempt < maxAttempts {
+			h.logger.Warn("[TICKET] Attempt %d/%d failed to send aggregated refund email to user %d (%s): %v", attempt, maxAttempts, userID, summary.Email, lastErr)
+			time.Sleep(time.Second)
+		}
+	}
+
+	return fmt.Errorf("after %d attempts: %w", maxAttempts, lastErr)
 }
 
 // ============================================================

@@ -19,9 +19,9 @@ type sendTicketsRequest struct {
 }
 
 const (
-	maxRetries         = 3
-	initialRetryDelay  = 500 * time.Millisecond
-	maxRetryDelay      = 5 * time.Second
+	maxRetries          = 3
+	initialRetryDelay   = 500 * time.Millisecond
+	maxRetryDelay       = 5 * time.Second
 	notificationTimeout = 30 * time.Second // Increased from 10s due to Lambda cold start
 )
 
