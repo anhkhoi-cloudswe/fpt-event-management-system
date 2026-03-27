@@ -91,6 +91,7 @@ module "ecs" {
             { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
             { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
+            { name = "NOTIFICATION_API_ENABLED", value = "true" },
           ]
 
           portMappings = [
