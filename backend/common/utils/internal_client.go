@@ -44,17 +44,25 @@ func pathToLambdaFunction(path string) (string, bool) {
 
 	rules := []rule{
 		{"/internal/user", "auth"},
+		{"/api/internal/user", "auth"},
 		{"/internal/events", "event"},
+		{"/api/internal/events", "event"},
 		{"/internal/scheduler/event-cleanup", "event"},
 		{"/internal/scheduler/expired-requests", "event"},
 		{"/internal/scheduler/venue-release", "venue"},
 		{"/internal/scheduler/pending-ticket-cleanup", "ticket"},
 		{"/internal/venue", "venue"},
+		{"/api/internal/venue", "venue"},
 		{"/internal/wallet", "ticket"},
+		{"/api/internal/wallet", "ticket"},
 		{"/internal/category-ticket", "ticket"},
+		{"/api/internal/category-ticket", "ticket"},
 		{"/internal/tickets", "ticket"},
+		{"/api/internal/tickets", "ticket"},
 		{"/internal/ticket", "ticket"},
+		{"/api/internal/ticket", "ticket"},
 		{"/internal/notify", "notification"},
+		{"/api/internal/notify", "notification"},
 	}
 
 	for _, r := range rules {

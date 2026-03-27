@@ -382,10 +382,8 @@ func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData
 
 // ============================================================
 // 3. HandleSendTickets - POST /internal/notify/send-tickets
-//    Nhận danh sách ticketIds từ Ticket Service sau khi thanh toán thành công.
-//    Endpoint này đóng vai trò "hook" liên dịch vụ; xác nhận nhận lệnh
-//    và kích hoạt sinh mã QR kiểm tra (stateless — không cần DB).
-//    Email thực (PDF đầy đủ) đã được ticket-lambda gửi qua sendMultipleTicketEmailsAsync.
+//    Ticket-service chuyển full payload sang notification-service.
+//    Notification-service chịu trách nhiệm 100% việc gửi email/PDF.
 // ============================================================
 
 // SendTicketsNotifyRequest payload từ ticket-lambda
@@ -425,20 +423,7 @@ func (h *NotificationHandler) HandleSendTickets(ctx context.Context, request eve
 		return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "multipleTickets payload is required for batch send"})
 	}
 
-	h.logger.Info("[NOTIFY] ✅ Nhận lệnh từ Ticket Service. Bắt đầu tạo PDF cho TicketIDs: %v", req.TicketIDs)
-
-	processed := 0
-	for _, ticket := range req.MultipleTickets.Tickets {
-		_, err := qrcode.GenerateTicketQRBase64(ticket.TicketID, 300)
-		if err != nil {
-			h.logger.Warn("[NOTIFICATION] Không sinh được QR xác nhận cho ticket %d: %v", ticket.TicketID, err)
-			continue
-		}
-		processed++
-		h.logger.Info("[NOTIFICATION] ✅ QR xác nhận tạo thành công cho ticketId=%d", ticket.TicketID)
-	}
-
-	h.logger.Info("[NOTIFY] ✅ Hoàn tất: processed=%d/%d ticketIds", processed, len(req.MultipleTickets.Tickets))
+	h.logger.Info("[NOTIFY] ✅ send-tickets received multiple tickets payload for %s (count=%d)", req.MultipleTickets.UserEmail, len(req.MultipleTickets.Tickets))
 
 	resp, err := h.handleMultipleTicketsPDF(req.MultipleTickets)
 	if err != nil {

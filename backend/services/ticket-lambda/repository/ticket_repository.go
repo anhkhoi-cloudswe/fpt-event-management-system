@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"encoding/base64"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -11,10 +10,8 @@ import (
 	"time"
 
 	"github.com/fpt-event-services/common/config"
-	"github.com/fpt-event-services/common/email"
 	apperrors "github.com/fpt-event-services/common/errors"
 	"github.com/fpt-event-services/common/logger"
-	ticketpdf "github.com/fpt-event-services/common/pdf"
 	"github.com/fpt-event-services/common/qrcode"
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/common/vnpay"
@@ -1315,98 +1312,34 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 		}
 	}
 
-	// Phase 6: Dual path - Notification API or local PDF+email
 	if config.IsFeatureEnabled(config.FlagNotificationAPIEnabled) {
-		// Route through Notification Service API
-		if err := sendSingleTicketViaNotifyAPI(bgCtx, map[string]interface{}{
-			"ticket_id":      ticketID,
-			"user_email":     userEmail,
-			"user_name":      userName,
-			"event_title":    eventTitle,
-			"start_time":     startTime.Format(time.RFC3339),
-			"venue_name":     finalVenueName,
-			"area_name":      finalAreaName,
-			"venue_address":  finalVenueAddress,
-			"seat_code":      seatCode,
-			"seat_row":       seatRow,
-			"seat_number":    seatNumber,
-			"category_name":  categoryName,
-			"price":          formattedAmount,
-			"qr_base64":      qrBase64,
-			"map_url":        mapURL,
-			"payment_method": "VNPAY",
-		}); err != nil {
-			log.Warn("Notification API failed, falling back to local", "error", err)
-		} else {
-			log.Info("Ticket email sent via Notification API", "ticket_id", ticketID)
-			return
-		}
+		log.Warn("Notification API is disabled; skip sending direct email from ticket-service", "ticket_id", ticketID)
+		return
 	}
 
-	// Legacy path: Generate PDF locally + send email directly
-	// Generate QR PNG bytes từ Base64 để tạo PDF
-	var qrPngBytes []byte
-	if qrBase64 != "" && !strings.HasPrefix(qrBase64, "PENDING_QR") {
-		// Decode Base64 to PNG bytes
-		qrPngBytes, err = parseBase64ToPNG(qrBase64)
-		if err != nil {
-			log.Warn("Failed to decode QR Base64 for PDF", "ticket_id", ticketID, "error", err)
-		}
+	if err := sendSingleTicketViaNotifyAPI(bgCtx, map[string]interface{}{
+		"ticket_id":      ticketID,
+		"user_email":     userEmail,
+		"user_name":      userName,
+		"event_title":    eventTitle,
+		"start_time":     startTime.Format(time.RFC3339),
+		"venue_name":     finalVenueName,
+		"area_name":      finalAreaName,
+		"venue_address":  finalVenueAddress,
+		"seat_code":      seatCode,
+		"seat_row":       seatRow,
+		"seat_number":    seatNumber,
+		"category_name":  categoryName,
+		"price":          formattedAmount,
+		"qr_base64":      qrBase64,
+		"map_url":        mapURL,
+		"payment_method": "VNPAY",
+	}); err != nil {
+		log.Error("Notification API failed for single ticket email dispatch", "ticket_id", ticketID, "error", err)
+		return
 	}
 
-	// Generate PDF vé điện tử
-	var pdfBytes []byte
-	var pdfFilename string
-	if qrPngBytes != nil && len(qrPngBytes) > 0 {
-		pdfBytes, err = ticketpdf.GenerateTicketPDF(ticketpdf.TicketPDFData{
-			TicketCode:     fmt.Sprintf("TKT_%d", ticketID),
-			EventName:      eventTitle,
-			EventDate:      startTime,
-			VenueName:      finalVenueName,
-			AreaName:       finalAreaName,
-			Address:        finalVenueAddress,
-			SeatRow:        seatRow,
-			SeatNumber:     seatNumber,
-			CategoryName:   categoryName,
-			Price:          formattedAmount,
-			UserName:       userName,
-			UserEmail:      userEmail,
-			QRCodePngBytes: qrPngBytes,
-		})
-		if err != nil {
-			log.Error("Failed to generate PDF", "ticket_id", ticketID, "error", err)
-			pdfBytes = nil
-		} else {
-			pdfFilename = fmt.Sprintf("ticket_%d_%s.pdf", ticketID, seatCode)
-			log.Info("PDF generated successfully", "filename", pdfFilename, "size_bytes", len(pdfBytes))
-		}
-	}
-
-	// Gửi email với QR code Base64 trong body + PDF attachment (KHỚP VỚI JAVA)
-	emailService := email.NewEmailService(nil)
-	err = emailService.SendTicketEmail(email.TicketEmailData{
-		UserEmail:     userEmail,
-		UserName:      userName,
-		EventTitle:    eventTitle,
-		TicketIDs:     fmt.Sprintf("%d", ticketID),
-		TicketTypes:   categoryName,
-		SeatCodes:     seatCode,
-		VenueName:     finalVenueName,
-		VenueAddress:  finalVenueAddress,
-		AreaName:      finalAreaName,
-		MapURL:        mapURL,
-		TotalAmount:   formattedAmount,
-		StartTime:     startTime.Format("15:04 02/01/2006"),
-		PaymentMethod: "VNPAY",
-		QRCodeBase64:  qrBase64, // ✅ Base64 từ database
-		PDFAttachment: pdfBytes, // ✅ Attach PDF
-		PDFFilename:   pdfFilename,
-	})
-	if err != nil {
-		log.Error("Failed to send ticket email", "user_email", userEmail, "error", err)
-	} else {
-		log.Info("Ticket email sent successfully", "user_email", userEmail, "ticket_id", ticketID)
-	}
+	log.Info("Ticket email dispatch request sent to Notification API", "ticket_id", ticketID)
 }
 
 // sendMultipleTicketEmailsAsync gửi 1 email với NHIỀU PDF attachments (mỗi vé 1 PDF)
@@ -1490,68 +1423,13 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 		mapURL = fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(finalVenueName))
 	}
 
-	// Phase 6: Dual path - Notification API or local PDF+email
-	if config.IsFeatureEnabled(config.FlagNotificationAPIEnabled) {
-		// Gather ticket data for API call
-		items := []map[string]interface{}{}
-		for _, ticketID := range ticketIDs {
-			var qrBase64 string
-			var seatCode string
-			var ticketCategoryName string
-			var price float64
-			err = r.db.QueryRowContext(bgCtx,
-				`SELECT t.qr_code_value, s.seat_code, COALESCE(ct.name, 'Vé'), COALESCE(ct.price, 0)
-				 FROM Ticket t
-				 JOIN Seat s ON t.seat_id = s.seat_id
-				 LEFT JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
-				 WHERE t.ticket_id = ?`,
-				ticketID,
-			).Scan(&qrBase64, &seatCode, &ticketCategoryName, &price)
-			if err != nil {
-				log.Error("Failed to get ticket for notify API", "ticket_id", ticketID, "error", err)
-				continue
-			}
-			seatRow, seatNumber := parseSeatCodeHelper(seatCode)
-			items = append(items, map[string]interface{}{
-				"ticket_id":     ticketID,
-				"qr_base64":     qrBase64,
-				"seat_code":     seatCode,
-				"seat_row":      seatRow,
-				"seat_number":   seatNumber,
-				"category_name": ticketCategoryName,
-				"price":         formatCurrency(fmt.Sprintf("%.0f", price)),
-			})
-		}
-
-		if err := sendMultipleTicketsViaNotifyAPI(bgCtx, map[string]interface{}{
-			"user_email":      userEmail,
-			"user_name":       userName,
-			"event_title":     eventTitle,
-			"start_time":      startTime.Format(time.RFC3339),
-			"end_time":        endTime.Format(time.RFC3339),
-			"venue_name":      finalVenueName,
-			"area_name":       finalAreaName,
-			"venue_address":   finalVenueAddress,
-			"total_amount":    formatCurrency(totalAmount),
-			"map_url":         mapURL,
-			"organizer_name":  organizerName,
-			"organizer_email": organizerEmail,
-			"items":           items,
-		}); err != nil {
-			log.Warn("Notification API failed for multiple tickets, falling back to local", "error", err)
-		} else {
-			log.Info("Multiple tickets email sent via Notification API", "ticket_count", len(ticketIDs))
-			return
-		}
+	if !config.IsFeatureEnabled(config.FlagNotificationAPIEnabled) {
+		log.Warn("Notification API is disabled; skip sending direct email from ticket-service", "ticket_count", len(ticketIDs))
+		return
 	}
 
-	// Legacy path: Generate PDF locally + send email directly
-	// Generate PDF cho MỖI vé
-	pdfAttachments := []email.PDFAttachment{}
-	seatCodes := []string{}
-
+	items := []map[string]interface{}{}
 	for _, ticketID := range ticketIDs {
-		// Lấy thông tin ticket
 		var qrBase64 string
 		var seatCode string
 		var ticketCategoryName string
@@ -1565,114 +1443,46 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 			ticketID,
 		).Scan(&qrBase64, &seatCode, &ticketCategoryName, &price)
 		if err != nil {
-			log.Error("Failed to get ticket", "ticket_id", ticketID, "error", err)
+			log.Error("Failed to get ticket for notify API", "ticket_id", ticketID, "error", err)
 			continue
 		}
-
-		seatCodes = append(seatCodes, seatCode)
-
-		// Parse seat code (A5 -> row="A", number="5")
-		seatRow := ""
-		seatNumber := ""
-		if len(seatCode) > 0 {
-			for i, c := range seatCode {
-				if c >= '0' && c <= '9' {
-					seatRow = seatCode[:i]
-					seatNumber = seatCode[i:]
-					break
-				}
-			}
-			if seatRow == "" {
-				seatRow = seatCode
-				seatNumber = "1"
-			}
-		}
-
-		// Generate QR PNG bytes
-		var qrPngBytes []byte
-		if qrBase64 != "" && !strings.HasPrefix(qrBase64, "PENDING_QR") {
-			qrPngBytes, err = parseBase64ToPNG(qrBase64)
-			if err != nil {
-				log.Warn("Failed to decode QR Base64", "ticket_id", ticketID, "error", err)
-				continue
-			}
-		}
-
-		// Generate PDF
-		if qrPngBytes != nil && len(qrPngBytes) > 0 {
-			pdfBytes, err := ticketpdf.GenerateTicketPDF(ticketpdf.TicketPDFData{
-				TicketCode:   fmt.Sprintf("TKT_%d", ticketID),
-				EventName:    eventTitle,
-				EventDate:    startTime,
-				VenueName:    finalVenueName,
-				AreaName:     finalAreaName,
-				Address:      finalVenueAddress,
-				SeatRow:      seatRow,
-				SeatNumber:   seatNumber,
-				CategoryName: ticketCategoryName,
-				// ⭐ FIX: Format float64 price as integer VND
-				Price:          formatCurrency(fmt.Sprintf("%.0f", price)),
-				UserName:       userName,
-				UserEmail:      userEmail,
-				QRCodePngBytes: qrPngBytes,
-			})
-			if err != nil {
-				log.Error("Failed to generate PDF", "ticket_id", ticketID, "error", err)
-				continue
-			}
-
-			pdfAttachments = append(pdfAttachments, email.PDFAttachment{
-				Filename: fmt.Sprintf("ticket_%d_%s.pdf", ticketID, seatCode),
-				Data:     pdfBytes,
-			})
-			log.Info("PDF generated", "ticket_id", ticketID, "size_bytes", len(pdfBytes))
-		}
+		seatRow, seatNumber := parseSeatCodeHelper(seatCode)
+		items = append(items, map[string]interface{}{
+			"ticket_id":     ticketID,
+			"qr_base64":     qrBase64,
+			"seat_code":     seatCode,
+			"seat_row":      seatRow,
+			"seat_number":   seatNumber,
+			"category_name": ticketCategoryName,
+			"price":         formatCurrency(fmt.Sprintf("%.0f", price)),
+		})
 	}
 
-	if len(pdfAttachments) == 0 {
-		log.Error("No PDFs generated - cannot send email")
+	if len(items) == 0 {
+		log.Error("Skip dispatch because no valid ticket payload for Notification API", "ticket_count", len(ticketIDs))
 		return
 	}
 
-	// Gửi 1 email với TẤT CẢ PDF attachments
-	emailService := email.NewEmailService(nil)
-
-	// Format seat list cho email body
-	seatListStr := strings.Join(seatCodes, ", ")
-
-	err = emailService.SendMultipleTicketsEmail(email.MultipleTicketsEmailData{
-		UserEmail:      userEmail,
-		UserName:       userName,
-		EventTitle:     eventTitle,
-		EventDate:      startTime.Format("Monday, January 02, 2006 at 03:04 PM"),
-		VenueName:      finalVenueName,
-		VenueAddress:   finalVenueAddress,
-		TicketCount:    len(ticketIDs),
-		SeatList:       seatListStr,
-		TotalAmount:    formatCurrency(totalAmount),
-		GoogleMapsURL:  mapURL,
-		PDFAttachments: pdfAttachments,
-	})
-
-	if err != nil {
-		log.Error("Failed to send multiple tickets email", "user_email", userEmail, "ticket_count", len(ticketIDs), "error", err)
-	} else {
-		fmt.Printf("[NOTIFY] ✅ Email sent successfully → %s (%d tickets)\n", userEmail, len(ticketIDs))
-		log.Info("[NOTIFY] ✅ Multiple tickets email sent successfully", "user_email", userEmail, "ticket_count", len(ticketIDs))
-	}
-}
-
-// parseBase64ToPNG converts base64 string to PNG bytes
-// Handles both "data:image/png;base64,..." and plain base64 formats
-func parseBase64ToPNG(qrBase64 string) ([]byte, error) {
-	// Remove data URI prefix if present
-	base64Str := qrBase64
-	if strings.HasPrefix(qrBase64, "data:image/png;base64,") {
-		base64Str = strings.TrimPrefix(qrBase64, "data:image/png;base64,")
+	if err := sendMultipleTicketsViaNotifyAPI(bgCtx, map[string]interface{}{
+		"user_email":      userEmail,
+		"user_name":       userName,
+		"event_title":     eventTitle,
+		"start_time":      startTime.Format(time.RFC3339),
+		"end_time":        endTime.Format(time.RFC3339),
+		"venue_name":      finalVenueName,
+		"area_name":       finalAreaName,
+		"venue_address":   finalVenueAddress,
+		"total_amount":    formatCurrency(totalAmount),
+		"map_url":         mapURL,
+		"organizer_name":  organizerName,
+		"organizer_email": organizerEmail,
+		"items":           items,
+	}); err != nil {
+		log.Error("Notification API failed for multiple ticket email dispatch", "ticket_count", len(ticketIDs), "error", err)
+		return
 	}
 
-	// Decode base64 to bytes
-	return base64.StdEncoding.DecodeString(base64Str)
+	log.Info("Multiple ticket email dispatch request sent to Notification API", "ticket_count", len(ticketIDs))
 }
 
 // formatCurrency formats amount string to Vietnamese currency format
@@ -2080,7 +1890,7 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 				"organizer_name":  organizerName,
 				"organizer_email": organizerEmail,
 			}); err != nil {
-				fmt.Printf("[WARN] Notification API failed for single ticket, falling back to local: %v\n", err)
+				fmt.Printf("[WARN] Notification API failed for single ticket dispatch: %v\n", err)
 			} else {
 				fmt.Printf("[NOTIFY_API] ✅ Single ticket email sent via Notification API\n")
 				fmt.Printf("[DEBUG] ProcessWalletPayment: COMPLETED for userID=%d with %d tickets\n", userID, len(ticketIds))
@@ -2116,137 +1926,16 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 				"organizer_email": organizerEmail,
 				"items":           items,
 			}); err != nil {
-				fmt.Printf("[WARN] Notification API failed for multiple tickets, falling back to local: %v\n", err)
+				fmt.Printf("[WARN] Notification API failed for multiple ticket dispatch: %v\n", err)
 			} else {
 				fmt.Printf("[NOTIFY_API] ✅ Multiple tickets email sent via Notification API\n")
 				fmt.Printf("[DEBUG] ProcessWalletPayment: COMPLETED for userID=%d with %d tickets\n", userID, len(ticketIds))
 				return strings.Join(ticketIds, ","), nil
 			}
 		}
+	} else {
+		fmt.Printf("[WARN] Notification API is disabled; skip direct email dispatch in ticket-service\n")
 	}
-
-	// Legacy path (local PDF gen + email): STEP 4.5 GENERATE PDF + STEP 5 SEND EMAIL
-	// Generate PDF for each ticket to attach to email
-	pdfAttachments := []email.PDFAttachment{}
-
-	for i, ticketIDStr := range ticketIds {
-		// Convert ticket ID to int
-		ticketID, _ := strconv.Atoi(ticketIDStr)
-
-		// Parse QR Base64 to PNG bytes (qrValues now contains Base64 strings)
-		qrPngBytes, err := parseBase64ToPNG(qrValues[i])
-		if err != nil {
-			fmt.Printf("[PDF_WARN] Failed to parse QR Base64 for ticketID=%d: %v\n", ticketID, err)
-			continue
-		}
-
-		// Parse seat code to extract row and number (format: "A1", "B12", etc.)
-		seatRow := ""
-		seatNumber := ""
-		seatCodeStr := seatCodes[i]
-		if len(seatCodeStr) > 0 {
-			// Try to split seat code into row (letters) and number (digits)
-			for idx, char := range seatCodeStr {
-				if char >= '0' && char <= '9' {
-					seatRow = seatCodeStr[:idx]
-					seatNumber = seatCodeStr[idx:]
-					break
-				}
-			}
-			if seatRow == "" {
-				seatRow = seatCodeStr
-				seatNumber = "1"
-			}
-		}
-
-		// Generate PDF ticket
-		pdfBytes, err := ticketpdf.GenerateTicketPDF(ticketpdf.TicketPDFData{
-			TicketCode:     fmt.Sprintf("TKT_%d", ticketID),
-			EventName:      eventTitle,
-			EventDate:      startTime,
-			VenueName:      venueName,
-			AreaName:       areaNames[i],
-			Address:        venueAddress,
-			SeatRow:        seatRow,
-			SeatNumber:     seatNumber,
-			CategoryName:   categoryNames[i],
-			Price:          formatCurrency(fmt.Sprintf("%.0f", prices[i])),
-			UserName:       userName,
-			UserEmail:      userEmail,
-			QRCodePngBytes: qrPngBytes,
-		})
-		if err != nil {
-			fmt.Printf("[PDF_WARN] Failed to generate PDF for ticketID=%d: %v\n", ticketID, err)
-			continue
-		}
-
-		pdfAttachments = append(pdfAttachments, email.PDFAttachment{
-			Filename: fmt.Sprintf("ticket_%d_%s.pdf", ticketID, seatCodeStr),
-			Data:     pdfBytes,
-		})
-		fmt.Printf("[PDF_SUCCESS] Generated PDF for ticketID=%d, size=%d bytes\n", ticketID, len(pdfBytes))
-	}
-
-	fmt.Printf("[PDF_ATTACHMENT] Đã tạo %d file PDF cho User: %d\n", len(pdfAttachments), userID)
-
-	// ===== STEP 5: SEND EMAIL NOTIFICATIONS =====
-	// Done outside transaction to avoid blocking other operations
-	// If email fails, tickets are already created and balance already deducted
-	if len(ticketIds) > 0 {
-		emailService := email.NewEmailService(nil)
-
-		// Prepare email data based on number of tickets
-		if len(ticketIds) == 1 {
-			emailData := email.TicketEmailData{
-				UserEmail:     userEmail,
-				UserName:      userName,
-				EventTitle:    eventTitle,
-				TicketIDs:     ticketIds[0],
-				TicketTypes:   ticketTypes[0],
-				SeatCodes:     seatCodes[0],
-				VenueName:     venueName,
-				VenueAddress:  venueAddress,
-				TotalAmount:   fmt.Sprintf("%.0f", totalPrice),
-				StartTime:     startTime.Format("2006-01-02 15:04"),
-				PaymentMethod: "wallet",
-				MapURL:        fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(venueAddress)),
-			}
-			// Add PDF attachment if generated
-			if len(pdfAttachments) > 0 {
-				emailData.PDFAttachment = pdfAttachments[0].Data
-				emailData.PDFFilename = pdfAttachments[0].Filename
-				fmt.Printf("[EMAIL] Sending single ticket email with PDF: %s\n", pdfAttachments[0].Filename)
-			}
-			if err := emailService.SendTicketEmail(emailData); err != nil {
-				fmt.Printf("[WARN] Failed to send ticket email: %v\n", err)
-				// Continue anyway - tickets are already created
-			}
-		} else {
-			seatList := strings.Join(seatCodes, ", ")
-			emailData := email.MultipleTicketsEmailData{
-				UserEmail:     userEmail,
-				UserName:      userName,
-				EventTitle:    eventTitle,
-				EventDate:     startTime.Format("2006-01-02 15:04"),
-				VenueName:     venueName,
-				VenueAddress:  venueAddress,
-				TicketCount:   len(ticketIds),
-				SeatList:      seatList,
-				TotalAmount:   fmt.Sprintf("%.0f", totalPrice),
-				GoogleMapsURL: fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(venueAddress)),
-			}
-			// Add PDF attachments if generated
-			if len(pdfAttachments) > 0 {
-				emailData.PDFAttachments = pdfAttachments
-				fmt.Printf("[EMAIL] Sending multiple tickets email with %d PDFs\n", len(pdfAttachments))
-			}
-			if err := emailService.SendMultipleTicketsEmail(emailData); err != nil {
-				fmt.Printf("[WARN] Failed to send multiple tickets email: %v\n", err)
-				// Continue anyway - tickets are already created
-			}
-		}
-	}
-
 	fmt.Printf("[DEBUG] ProcessWalletPayment: COMPLETED for userID=%d with %d tickets\n", userID, len(ticketIds))
 	return strings.Join(ticketIds, ","), nil
 }
