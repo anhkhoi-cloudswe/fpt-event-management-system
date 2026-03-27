@@ -504,6 +504,48 @@ module "loadbalancer" {
             }
           ]
         }
+        notification_paths_internal = {
+          priority = 61
+          actions = [
+            {
+              forward = {
+                target_group_key = "notification-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/internal/notifications",
+                  "/internal/notifications/*",
+                  "/internal/notification",
+                  "/internal/notification/*"
+                ]
+              }
+            }
+          ]
+        }
+        notification_paths_notify = {
+          priority = 62
+          actions = [
+            {
+              forward = {
+                target_group_key = "notification-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/internal/notify",
+                  "/internal/notify/*"
+                ]
+              }
+            }
+          ]
+        }
       }
     }
   }
