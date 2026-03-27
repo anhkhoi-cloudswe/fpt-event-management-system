@@ -213,7 +213,7 @@ func (s *EmailService) Send(msg EmailMessage) error {
 	log := logger.Default()
 	if s.devMode {
 		log.Info("[EMAIL] 📧 DEV MODE - Skipping actual send to %v (Subject: %s)", msg.To, msg.Subject)
-		log.Warn("[SES_RESULT] Error: dev mode enabled, SES/SMTP provider was not called")
+		log.Warn("[SES_ERROR] dev mode enabled, SES/SMTP provider was not called")
 		return nil
 	}
 	addr := fmt.Sprintf("%s:%s", s.config.Host, s.config.Port)
@@ -232,7 +232,7 @@ func (s *EmailService) Send(msg EmailMessage) error {
 	err := smtp.SendMail(addr, auth, s.config.From, msg.To, body.Bytes())
 	if err != nil {
 		log.Warn("[EMAIL] ❌ Failed to send email to %s: %v", recipients, err)
-		log.Warn("[SES_RESULT] Error: %v", err)
+		log.Warn("[SES_ERROR] %v", err)
 		return err
 	}
 	log.Info("[EMAIL] ✅ Email sent successfully to %s!", recipients)

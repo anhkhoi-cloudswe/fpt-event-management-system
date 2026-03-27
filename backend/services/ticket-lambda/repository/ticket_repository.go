@@ -19,7 +19,6 @@ import (
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/common/vnpay"
 	"github.com/fpt-event-services/services/ticket-lambda/models"
-	ticketutils "github.com/fpt-event-services/services/ticket-lambda/utils"
 )
 
 type TicketRepository struct {
@@ -933,9 +932,6 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 		// ⭐ FIX: dùng context.Background() để goroutine không bị cancel khi HTTP request kết thúc
 		go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedIDsFree, "0", resolvedCategoryTicketID, int(freeBillID))
 
-		// 🔔 Kích hoạt Notification Service gửi PDF vé (non-blocking)
-		go ticketutils.CallNotificationService(bookedIDsFree)
-
 		// Trả về chuỗi đặc biệt để handler nhận biết là vé miễn phí
 		return "FREE:" + ticketIDsStr, nil
 	}
@@ -1184,9 +1180,6 @@ func (r *TicketRepository) ProcessVNPayCallback(ctx context.Context, amount, res
 	realAmount := fmt.Sprintf("%.0f", billAmount)
 	// ⭐ FIX: dùng context.Background() để goroutine không bị cancel khi HTTP request kết thúc
 	go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedTicketIDs, realAmount, categoryTicketID, int(billID))
-	// 🔔 Kích hoạt Notification Service gửi PDF vé (non-blocking)
-	go ticketutils.CallNotificationService(bookedTicketIDs)
-
 	// Trả về comma-separated ticket IDs + bill ID
 	// Format: "ticketIds|billId" (e.g., "320,321,322,323|145")
 	ticketIDsResult := ""
@@ -2280,8 +2273,8 @@ func parseSeatCodeHelper(seatCode string) (string, string) {
 func sendSingleTicketViaNotifyAPI(ctx context.Context, data map[string]interface{}) error {
 	log := logger.Default()
 	client := utils.NewInternalClient()
-	// Gọi endpoint /ticket-confirmation (alias của /ticket-pdf nhận đúng DTO)
-	notifyURL := utils.GetNotificationServiceURL() + "/internal/notify/ticket-confirmation"
+	baseURL := config.MustGetServiceURLWithFallback("Notification", "NOTIFICATION_SERVICE_URL", 8086)
+	notifyURL := strings.TrimSuffix(baseURL, "/") + "/internal/notify/send-tickets"
 
 	// Lấy các giá trị cần thiết từ snake_case map
 	ticketID, _ := data["ticket_id"].(int)
@@ -2295,6 +2288,7 @@ func sendSingleTicketViaNotifyAPI(ctx context.Context, data map[string]interface
 
 	// Chuyển đổi sang camelCase DTO theo SingleTicketData của notification handler
 	payload := map[string]interface{}{
+		"ticketIds": []int{ticketID},
 		"singleTicket": map[string]interface{}{
 			"ticketId":       ticketID,
 			"ticketCode":     fmt.Sprintf("TKT_%d", ticketID),
@@ -2339,8 +2333,8 @@ func sendSingleTicketViaNotifyAPI(ctx context.Context, data map[string]interface
 func sendMultipleTicketsViaNotifyAPI(ctx context.Context, data map[string]interface{}) error {
 	log := logger.Default()
 	client := utils.NewInternalClient()
-	// Gọi endpoint /ticket-confirmation (alias của /ticket-pdf nhận đúng DTO)
-	notifyURL := utils.GetNotificationServiceURL() + "/internal/notify/ticket-confirmation"
+	baseURL := config.MustGetServiceURLWithFallback("Notification", "NOTIFICATION_SERVICE_URL", 8086)
+	notifyURL := strings.TrimSuffix(baseURL, "/") + "/internal/notify/send-tickets"
 
 	userEmail, _ := data["user_email"].(string)
 	userName, _ := data["user_name"].(string)
@@ -2349,9 +2343,11 @@ func sendMultipleTicketsViaNotifyAPI(ctx context.Context, data map[string]interf
 	// Chuyển đổi items → TicketPDFItem camelCase
 	rawItems, _ := data["items"].([]map[string]interface{})
 	ticketItems := []map[string]interface{}{}
+	ticketIDs := []int{}
 	seatCodeList := []string{}
 	for _, item := range rawItems {
 		ticketID, _ := item["ticket_id"].(int)
+		ticketIDs = append(ticketIDs, ticketID)
 		seatRow, _ := item["seat_row"].(string)
 		seatNumber, _ := item["seat_number"].(string)
 		seatCode, _ := item["seat_code"].(string)
@@ -2384,6 +2380,7 @@ func sendMultipleTicketsViaNotifyAPI(ctx context.Context, data map[string]interf
 	fmt.Printf("[NOTIFY] 📧 Đang gửi %d vé tới email %s...\n", len(ticketItems), userEmail)
 
 	payload := map[string]interface{}{
+		"ticketIds": ticketIDs,
 		"multipleTickets": map[string]interface{}{
 			"userEmail":      userEmail,
 			"userName":       userName,
