@@ -8,9 +8,10 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/fpt-event-services/common/registry"
+	commonconfig "github.com/fpt-event-services/common/config"
 )
 
 // sendTicketsRequest là payload gửi đến Notification Service
@@ -49,14 +50,8 @@ func CallNotificationService(ticketIds []int) {
 		return
 	}
 
-	// Use smart fallback URL resolution
-	baseURL := registry.GetBackendURL("Notification")
-	if baseURL == "" {
-		fmt.Printf("[NOTIFIER] ❌ Không thể resolve Notification Service URL (kiểm tra INTERNAL_ALB_URL env var hoặc NOTIFICATION_SERVICE_URL)\n")
-		return
-	}
-
-	endpoint := baseURL + "/internal/notify/send-tickets"
+	baseURL := commonconfig.MustGetServiceURLWithFallback("Notification", "NOTIFICATION_SERVICE_URL", 8086)
+	endpoint := strings.TrimSuffix(baseURL, "/") + "/internal/notify/send-tickets"
 
 	payload, err := json.Marshal(sendTicketsRequest{TicketIDs: ticketIds})
 	if err != nil {

@@ -51,6 +51,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return notificationHandler.HandleSendTicketPDF(ctx, request)
 	case path == "/internal/notify/send-tickets" && method == "POST":
 		return notificationHandler.HandleSendTickets(ctx, request)
+	case path == "/internal/notify/refund" && method == "POST":
+		return notificationHandler.HandleRefundEmail(ctx, request)
 	// /ticket-confirmation: alias mới cho /ticket-pdf, nhận đúng DTO từ ticket service sau thanh toán
 	case path == "/internal/notify/ticket-confirmation" && method == "POST":
 		return notificationHandler.HandleSendTicketPDF(ctx, request)
@@ -61,6 +63,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return notificationHandler.HandleSendTicketPDF(ctx, request)
 	case path == "/api/internal/notify/send-tickets" && method == "POST":
 		return notificationHandler.HandleSendTickets(ctx, request)
+	case path == "/api/internal/notify/refund" && method == "POST":
+		return notificationHandler.HandleRefundEmail(ctx, request)
 	case path == "/api/internal/notify/ticket-confirmation" && method == "POST":
 		return notificationHandler.HandleSendTicketPDF(ctx, request)
 	}

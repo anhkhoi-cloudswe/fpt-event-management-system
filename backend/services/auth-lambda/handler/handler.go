@@ -788,7 +788,8 @@ func sendOTPEmail(ctx context.Context, recipient, otp, purpose string) error {
 	// Phase 6: Route through Notification Service API if enabled
 	if config.IsFeatureEnabled(config.FlagNotificationAPIEnabled) {
 		client := utils.NewInternalClient()
-		notifyURL := utils.GetNotificationServiceURL() + "/internal/notify/email"
+		baseURL := config.MustGetServiceURLWithFallback("Notification", "NOTIFICATION_SERVICE_URL", 8086)
+		notifyURL := strings.TrimSuffix(baseURL, "/") + "/internal/notify/email"
 
 		payload := map[string]string{
 			"to":      recipient,

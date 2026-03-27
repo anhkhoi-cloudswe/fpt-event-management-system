@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -66,6 +67,16 @@ type TicketPDFRequest struct {
 	SingleTicket *SingleTicketData `json:"singleTicket,omitempty"`
 	// Multiple tickets mode
 	MultipleTickets *MultipleTicketsData `json:"multipleTickets,omitempty"`
+}
+
+// RefundNotifyRequest - Request cho POST /internal/notify/refund
+// 1 user + 1 event = 1 email aggregate
+type RefundNotifyRequest struct {
+	UserEmail   string `json:"userEmail"`
+	UserName    string `json:"userName"`
+	EventName   string `json:"eventName"`
+	TotalAmount string `json:"totalAmount"`
+	TicketIDs   []int  `json:"ticketIds"`
 }
 
 // SingleTicketData - Data cho 1 vé
@@ -284,10 +295,12 @@ func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (eve
 	}
 
 	if err := h.emailService.SendTicketEmail(emailData); err != nil {
+		h.logger.Warn("[SES_ERROR] Failed to send Purchase email to %s with 1 tickets: %v", data.UserEmail, err)
 		h.logger.Warn("[NOTIFICATION] Failed to send ticket email for ticket %d: %v", data.TicketID, err)
 		return createNotifyResponse(http.StatusInternalServerError, map[string]interface{}{"success": false, "error": "failed to send email"})
 	}
 
+	h.logger.Info("[SES_RESULT] Success: Sent Purchase email to %s with 1 tickets", data.UserEmail)
 	h.logger.Info(fmt.Sprintf("[NOTIFY] ✅ Email sent successfully → vé #%d tới %s", data.TicketID, data.UserEmail))
 	return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true, "ticketId": data.TicketID})
 }
@@ -357,10 +370,12 @@ func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData
 	}
 
 	if err := h.emailService.SendMultipleTicketsEmail(emailData); err != nil {
+		h.logger.Warn("[SES_ERROR] Failed to send Purchase email to %s with %d tickets: %v", data.UserEmail, len(data.Tickets), err)
 		h.logger.Warn("[NOTIFICATION] Failed to send multiple tickets email: %v", err)
 		return createNotifyResponse(http.StatusInternalServerError, map[string]interface{}{"success": false, "error": "failed to send email"})
 	}
 
+	h.logger.Info("[SES_RESULT] Success: Sent Purchase email to %s with %d tickets", data.UserEmail, len(data.Tickets))
 	h.logger.Info(fmt.Sprintf("[NOTIFY] ✅ Email sent successfully → %d vé tới %s", len(data.Tickets), data.UserEmail))
 	return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true, "ticketCount": len(data.Tickets)})
 }
@@ -375,7 +390,9 @@ func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData
 
 // SendTicketsNotifyRequest payload từ ticket-lambda
 type SendTicketsNotifyRequest struct {
-	TicketIDs []int `json:"ticketIds"`
+	TicketIDs       []int                `json:"ticketIds,omitempty"`
+	SingleTicket    *SingleTicketData    `json:"singleTicket,omitempty"`
+	MultipleTickets *MultipleTicketsData `json:"multipleTickets,omitempty"`
 }
 
 func (h *NotificationHandler) HandleSendTickets(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -389,32 +406,90 @@ func (h *NotificationHandler) HandleSendTickets(ctx context.Context, request eve
 		return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "invalid request body"})
 	}
 
-	if len(req.TicketIDs) == 0 {
-		h.logger.Warn("[NOTIFICATION] send-tickets: danh sách ticketIds rỗng")
-		return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "ticketIds must not be empty"})
+	if req.SingleTicket == nil && req.MultipleTickets == nil {
+		h.logger.Warn("[NOTIFICATION] send-tickets: missing singleTicket/multipleTickets payload")
+		return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "singleTicket or multipleTickets payload is required"})
+	}
+
+	if req.SingleTicket != nil {
+		h.logger.Info("[NOTIFY] ✅ send-tickets received single ticket payload for %s (ticketId=%d)", req.SingleTicket.UserEmail, req.SingleTicket.TicketID)
+		resp, err := h.handleSingleTicketPDF(req.SingleTicket)
+		if err != nil {
+			return resp, err
+		}
+		h.logger.Info("[SES_RESULT] Success: Sent Purchase email to %s with 1 tickets", req.SingleTicket.UserEmail)
+		return resp, nil
+	}
+
+	if req.MultipleTickets == nil {
+		return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "multipleTickets payload is required for batch send"})
 	}
 
 	h.logger.Info("[NOTIFY] ✅ Nhận lệnh từ Ticket Service. Bắt đầu tạo PDF cho TicketIDs: %v", req.TicketIDs)
-	h.logger.Info("[SES_DEBUG] HandleSendTickets is QR-only and does not call SES email send APIs")
 
-	// Sinh QR xác nhận cho từng vé (stateless — chỉ cần ticketId)
 	processed := 0
-	for _, tid := range req.TicketIDs {
-		_, err := qrcode.GenerateTicketQRBase64(tid, 300)
+	for _, ticket := range req.MultipleTickets.Tickets {
+		_, err := qrcode.GenerateTicketQRBase64(ticket.TicketID, 300)
 		if err != nil {
-			h.logger.Warn("[NOTIFICATION] Không sinh được QR xác nhận cho ticket %d: %v", tid, err)
+			h.logger.Warn("[NOTIFICATION] Không sinh được QR xác nhận cho ticket %d: %v", ticket.TicketID, err)
 			continue
 		}
 		processed++
-		h.logger.Info("[NOTIFICATION] ✅ QR xác nhận tạo thành công cho ticketId=%d", tid)
+		h.logger.Info("[NOTIFICATION] ✅ QR xác nhận tạo thành công cho ticketId=%d", ticket.TicketID)
 	}
 
-	h.logger.Info("[NOTIFY] ✅ Hoàn tất: processed=%d/%d ticketIds", processed, len(req.TicketIDs))
-	return createNotifyResponse(http.StatusOK, map[string]interface{}{
-		"success":   true,
-		"total":     len(req.TicketIDs),
-		"processed": processed,
+	h.logger.Info("[NOTIFY] ✅ Hoàn tất: processed=%d/%d ticketIds", processed, len(req.MultipleTickets.Tickets))
+
+	resp, err := h.handleMultipleTicketsPDF(req.MultipleTickets)
+	if err != nil {
+		h.logger.Warn("[SES_ERROR] Failed to send Purchase email to %s with %d tickets: %v", req.MultipleTickets.UserEmail, len(req.MultipleTickets.Tickets), err)
+		return resp, err
+	}
+
+	h.logger.Info("[SES_RESULT] Success: Sent Purchase email to %s with %d tickets", req.MultipleTickets.UserEmail, len(req.MultipleTickets.Tickets))
+	return resp, nil
+}
+
+// HandleRefundEmail - POST /internal/notify/refund
+// Gửi 1 email aggregate cho 1 user + 1 event khi hủy sự kiện.
+func (h *NotificationHandler) HandleRefundEmail(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	if !isNotifyInternalCall(request) {
+		return createNotifyResponse(http.StatusForbidden, map[string]interface{}{"success": false, "error": "internal only"})
+	}
+
+	var req RefundNotifyRequest
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "invalid request body"})
+	}
+
+	if req.UserEmail == "" || req.EventName == "" || req.TotalAmount == "" || len(req.TicketIDs) == 0 {
+		return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "userEmail, eventName, totalAmount, ticketIds are required"})
+	}
+
+	ticketIDs := make([]string, 0, len(req.TicketIDs))
+	for _, id := range req.TicketIDs {
+		ticketIDs = append(ticketIDs, fmt.Sprintf("%d", id))
+	}
+
+	htmlBody := fmt.Sprintf(
+		`<p>Sự kiện <b>%s</b> của bạn đã bị hủy. Chúng tôi đã hoàn lại tổng cộng <b>%s VND</b> cho các vé có mã: [%s]. Số tiền đã được cộng vào ví ảo của bạn.</p><p>Chúng tôi thật sự xin lỗi vì sự bất tiện này!</p>`,
+		req.EventName,
+		req.TotalAmount,
+		strings.Join(ticketIDs, ", "),
+	)
+
+	err := h.emailService.Send(email.EmailMessage{
+		To:       []string{req.UserEmail},
+		Subject:  "[FPT Event] Sự kiện đã bị hủy - Hoàn tiền vé",
+		HTMLBody: htmlBody,
 	})
+	if err != nil {
+		h.logger.Warn("[SES_ERROR] Failed to send Refund email to %s with %d tickets: %v", req.UserEmail, len(req.TicketIDs), err)
+		return createNotifyResponse(http.StatusInternalServerError, map[string]interface{}{"success": false, "error": "failed to send refund email"})
+	}
+
+	h.logger.Info("[SES_RESULT] Success: Sent Refund email to %s with %d tickets", req.UserEmail, len(req.TicketIDs))
+	return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true})
 }
 
 // ============================================================
