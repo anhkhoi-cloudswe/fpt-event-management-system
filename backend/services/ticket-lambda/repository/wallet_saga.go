@@ -10,10 +10,8 @@ import (
 	"time"
 
 	"github.com/fpt-event-services/common/config"
-	"github.com/fpt-event-services/common/email"
 	"github.com/fpt-event-services/common/logger"
 	walletModels "github.com/fpt-event-services/common/models"
-	ticketpdf "github.com/fpt-event-services/common/pdf"
 	"github.com/fpt-event-services/common/qrcode"
 	"github.com/fpt-event-services/common/utils"
 )
@@ -372,7 +370,6 @@ func (r *TicketRepository) sendTicketEmailsAsync(data *sagaTicketData, userID, e
 	log := logger.Default()
 	log.Info("[SAGA_EMAIL] 📧 Generating PDFs and sending emails for %d tickets...", len(data.TicketIDs))
 
-	// Phase 6: Dual path - Notification API or local PDF+email
 	if config.IsFeatureEnabled(config.FlagNotificationAPIEnabled) {
 		ctx := context.Background()
 		if len(data.TicketIDs) == 1 {
@@ -396,7 +393,7 @@ func (r *TicketRepository) sendTicketEmailsAsync(data *sagaTicketData, userID, e
 				"map_url":        fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(data.VenueAddress)),
 				"payment_method": "wallet",
 			}); err != nil {
-				log.Warn("[SAGA_EMAIL] Notification API failed, falling back to local: %v", err)
+				log.Error("[SAGA_EMAIL] Notification API failed for single ticket dispatch: %v", err)
 			} else {
 				log.Info("[SAGA_EMAIL] ✅ Single ticket email sent via Notification API")
 				return
@@ -428,105 +425,17 @@ func (r *TicketRepository) sendTicketEmailsAsync(data *sagaTicketData, userID, e
 				"map_url":       fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(data.VenueAddress)),
 				"items":         items,
 			}); err != nil {
-				log.Warn("[SAGA_EMAIL] Notification API failed for multiple tickets, falling back: %v", err)
+				log.Error("[SAGA_EMAIL] Notification API failed for multiple ticket dispatch: %v", err)
 			} else {
 				log.Info("[SAGA_EMAIL] ✅ Multiple tickets email sent via Notification API")
 				return
 			}
 		}
-	}
-
-	// Legacy path: Generate PDF locally + send email directly
-
-	// Generate PDF attachments
-	pdfAttachments := []email.PDFAttachment{}
-	for i, ticketIDStr := range data.TicketIDs {
-		ticketID, _ := strconv.Atoi(ticketIDStr)
-
-		// Parse QR Base64 to PNG bytes
-		qrPngBytes, err := parseBase64ToPNG(data.QRValues[i])
-		if err != nil {
-			fmt.Printf("[SAGA_PDF] ⚠️ Failed to parse QR for ticket %d: %v\n", ticketID, err)
-			continue
-		}
-
-		// Parse seat code to row + number
-		seatRow, seatNumber := parseSeatCode(data.SeatCodes[i])
-
-		pdfBytes, err := ticketpdf.GenerateTicketPDF(ticketpdf.TicketPDFData{
-			TicketCode:     fmt.Sprintf("TKT_%d", ticketID),
-			EventName:      data.EventTitle,
-			EventDate:      startTime,
-			VenueName:      data.VenueName,
-			AreaName:       data.AreaNames[i],
-			Address:        data.VenueAddress,
-			SeatRow:        seatRow,
-			SeatNumber:     seatNumber,
-			CategoryName:   data.CategoryNames[i],
-			Price:          formatCurrency(fmt.Sprintf("%.0f", data.Prices[i])),
-			UserName:       data.UserName,
-			UserEmail:      data.UserEmail,
-			QRCodePngBytes: qrPngBytes,
-		})
-		if err != nil {
-			fmt.Printf("[SAGA_PDF] ⚠️ Failed to generate PDF for ticket %d: %v\n", ticketID, err)
-			continue
-		}
-
-		pdfAttachments = append(pdfAttachments, email.PDFAttachment{
-			Filename: fmt.Sprintf("ticket_%d_%s.pdf", ticketID, data.SeatCodes[i]),
-			Data:     pdfBytes,
-		})
-	}
-
-	// Send email
-	emailService := email.NewEmailService(nil)
-
-	if len(data.TicketIDs) == 1 {
-		emailData := email.TicketEmailData{
-			UserEmail:     data.UserEmail,
-			UserName:      data.UserName,
-			EventTitle:    data.EventTitle,
-			TicketIDs:     data.TicketIDs[0],
-			TicketTypes:   data.CategoryNames[0],
-			SeatCodes:     data.SeatCodes[0],
-			VenueName:     data.VenueName,
-			VenueAddress:  data.VenueAddress,
-			TotalAmount:   fmt.Sprintf("%.0f", data.TotalPrice),
-			StartTime:     startTime.Format("2006-01-02 15:04"),
-			PaymentMethod: "wallet",
-			MapURL:        fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(data.VenueAddress)),
-		}
-		if len(pdfAttachments) > 0 {
-			emailData.PDFAttachment = pdfAttachments[0].Data
-			emailData.PDFFilename = pdfAttachments[0].Filename
-		}
-		if err := emailService.SendTicketEmail(emailData); err != nil {
-			fmt.Printf("[SAGA_EMAIL] ⚠️ Failed to send email: %v\n", err)
-		}
 	} else {
-		seatList := strings.Join(data.SeatCodes, ", ")
-		emailData := email.MultipleTicketsEmailData{
-			UserEmail:     data.UserEmail,
-			UserName:      data.UserName,
-			EventTitle:    data.EventTitle,
-			EventDate:     startTime.Format("2006-01-02 15:04"),
-			VenueName:     data.VenueName,
-			VenueAddress:  data.VenueAddress,
-			TicketCount:   len(data.TicketIDs),
-			SeatList:      seatList,
-			TotalAmount:   fmt.Sprintf("%.0f", data.TotalPrice),
-			GoogleMapsURL: fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(data.VenueAddress)),
-		}
-		if len(pdfAttachments) > 0 {
-			emailData.PDFAttachments = pdfAttachments
-		}
-		if err := emailService.SendMultipleTicketsEmail(emailData); err != nil {
-			fmt.Printf("[SAGA_EMAIL] ⚠️ Failed to send multi-ticket email: %v\n", err)
-		}
+		log.Warn("[SAGA_EMAIL] Notification API is disabled; skip direct email dispatch in ticket-service")
 	}
 
-	log.Info("[SAGA_EMAIL] ✅ Email sent for %d tickets", len(data.TicketIDs))
+	log.Info("[SAGA_EMAIL] ✅ Email dispatch request completed for %d tickets", len(data.TicketIDs))
 }
 
 // ============================================================
