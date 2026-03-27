@@ -38,7 +38,8 @@ func init() {
 
 	// Log the service discovery mode
 	if albURL := strings.TrimSpace(os.Getenv("INTERNAL_ALB_URL")); albURL != "" {
-		logger.Info("🚀 SERVICE DISCOVERY MODE: AWS (using INTERNAL_ALB_URL)", "alb_url", albURL)
+		resolvedALBURL := config.GetServiceURL("INTERNAL_ALB_URL")
+		logger.Info("🚀 SERVICE DISCOVERY MODE: AWS (using INTERNAL_ALB_URL)", "alb_url", resolvedALBURL)
 	} else {
 		logger.Info("🚀 SERVICE DISCOVERY MODE: LOCAL (using SERVICE_URL env vars or localhost fallback)")
 	}
