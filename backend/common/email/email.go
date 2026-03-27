@@ -213,11 +213,13 @@ func (s *EmailService) Send(msg EmailMessage) error {
 	log := logger.Default()
 	if s.devMode {
 		log.Info("[EMAIL] 📧 DEV MODE - Skipping actual send to %v (Subject: %s)", msg.To, msg.Subject)
+		log.Warn("[SES_RESULT] Error: dev mode enabled, SES/SMTP provider was not called")
 		return nil
 	}
 	addr := fmt.Sprintf("%s:%s", s.config.Host, s.config.Port)
 	recipients := strings.Join(msg.To, ", ")
 	log.Info("[EMAIL] 🚀 Attempting to send email to %s via %s (Host: %s, Port: %s)", recipients, msg.Subject, s.config.Host, s.config.Port)
+	log.Info("[SES_DEBUG] Starting to send email via SES... to=%s subject=%s from=%s host=%s", recipients, msg.Subject, s.config.From, s.config.Host)
 	auth := smtp.PlainAuth("", s.config.Username, s.config.Password, s.config.Host)
 	var body bytes.Buffer
 	boundary := fmt.Sprintf("boundary_%d", time.Now().UnixNano())
@@ -230,9 +232,11 @@ func (s *EmailService) Send(msg EmailMessage) error {
 	err := smtp.SendMail(addr, auth, s.config.From, msg.To, body.Bytes())
 	if err != nil {
 		log.Warn("[EMAIL] ❌ Failed to send email to %s: %v", recipients, err)
+		log.Warn("[SES_RESULT] Error: %v", err)
 		return err
 	}
 	log.Info("[EMAIL] ✅ Email sent successfully to %s!", recipients)
+	log.Info("[SES_RESULT] Success: to=%s subject=%s", recipients, msg.Subject)
 	return nil
 }
 

@@ -395,6 +395,7 @@ func (h *NotificationHandler) HandleSendTickets(ctx context.Context, request eve
 	}
 
 	h.logger.Info("[NOTIFY] ✅ Nhận lệnh từ Ticket Service. Bắt đầu tạo PDF cho TicketIDs: %v", req.TicketIDs)
+	h.logger.Info("[SES_DEBUG] HandleSendTickets is QR-only and does not call SES email send APIs")
 
 	// Sinh QR xác nhận cho từng vé (stateless — chỉ cần ticketId)
 	processed := 0
