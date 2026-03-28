@@ -199,6 +199,8 @@ type sagaTicketData struct {
 	Prices        []float64
 	AreaNames     []string
 	EventTitle    string
+	EventStart    time.Time
+	EventEnd      time.Time
 	VenueName     string
 	VenueAddress  string
 	UserEmail     string
@@ -206,7 +208,7 @@ type sagaTicketData struct {
 	TotalPrice    float64
 }
 
-func (r *TicketRepository) createTicketsInDB(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int) ([]string, *sagaTicketData, error) {
+func (r *TicketRepository) createTicketsInDB(ctx context.Context, userID, eventID, _ int, seatIDs []int) ([]string, *sagaTicketData, error) {
 	// Start local transaction for ticket creation only
 	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
@@ -224,17 +226,30 @@ func (r *TicketRepository) createTicketsInDB(ctx context.Context, userID, eventI
 	prices := []float64{}
 	areaNames := []string{}
 	var eventTitle, venueName, venueAddress, userEmail, userName string
+	var eventStart, eventEnd time.Time
 	var totalPrice float64
 
 	for _, seatID := range seatIDs {
 		fmt.Printf("[SAGA] Creating ticket for seatID: %d, userID: %d, eventID: %d\n", seatID, userID, eventID)
+
+		// Always resolve category by seat to support mixed-seat wallet purchases.
+		var currentCategoryTicketID int
+		err = tx.QueryRowContext(ctx, `
+			SELECT s.category_ticket_id
+			FROM Seat s
+			JOIN Category_Ticket ct ON s.category_ticket_id = ct.category_ticket_id
+			WHERE s.seat_id = ? AND ct.event_id = ?
+		`, seatID, eventID).Scan(&currentCategoryTicketID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error resolving category for seat %d: %w", seatID, err)
+		}
 
 		// Create ticket
 		insertTicketQuery := `
 			INSERT INTO Ticket (user_id, event_id, category_ticket_id, seat_id, qr_code_value, status, created_at)
 			VALUES (?, ?, ?, ?, 'PENDING_QR', 'BOOKED', NOW())
 		`
-		result, err := tx.ExecContext(ctx, insertTicketQuery, userID, eventID, categoryTicketID, seatID)
+		result, err := tx.ExecContext(ctx, insertTicketQuery, userID, eventID, currentCategoryTicketID, seatID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error creating ticket for seat %d: %w", seatID, err)
 		}
@@ -263,7 +278,7 @@ func (r *TicketRepository) createTicketsInDB(ctx context.Context, userID, eventI
 		// Get ticket details for email (same JOIN as monolith)
 		selectTicketQuery := `
 			SELECT 
-				e.title, e.start_time, v.location, v.venue_name,
+				e.title, e.start_time, e.end_time, v.location, v.venue_name,
 				va.area_name, s.seat_code, ct.name, ct.price, u.email, u.full_name
 			FROM Ticket t
 			JOIN Event e ON t.event_id = e.event_id
@@ -278,12 +293,17 @@ func (r *TicketRepository) createTicketsInDB(ctx context.Context, userID, eventI
 		var categoryName, areaName, seatCode string
 		var price float64
 		var scanStartTime time.Time
+		var scanEndTime sql.NullTime
 		err = tx.QueryRowContext(ctx, selectTicketQuery, ticketID).Scan(
-			&eventTitle, &scanStartTime, &venueAddress, &venueName,
+			&eventTitle, &scanStartTime, &scanEndTime, &venueAddress, &venueName,
 			&areaName, &seatCode, &categoryName, &price, &userEmail, &userName,
 		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error getting ticket details for ticket %d: %w", ticketID, err)
+		}
+		eventStart = scanStartTime
+		if scanEndTime.Valid {
+			eventEnd = scanEndTime.Time
 		}
 
 		seatCodes = append(seatCodes, seatCode)
@@ -306,6 +326,8 @@ func (r *TicketRepository) createTicketsInDB(ctx context.Context, userID, eventI
 		Prices:        prices,
 		AreaNames:     areaNames,
 		EventTitle:    eventTitle,
+		EventStart:    eventStart,
+		EventEnd:      eventEnd,
 		VenueName:     venueName,
 		VenueAddress:  venueAddress,
 		UserEmail:     userEmail,
@@ -372,6 +394,11 @@ func (r *TicketRepository) sendTicketEmailsAsync(data *sagaTicketData, userID, e
 
 	if config.IsFeatureEnabled(config.FlagNotificationAPIEnabled) {
 		ctx := context.Background()
+		startTimeVN := utils.ToVietnamTime(startTime).Format(time.RFC3339)
+		endTimeVN := ""
+		if !data.EventEnd.IsZero() {
+			endTimeVN = utils.ToVietnamTime(data.EventEnd).Format(time.RFC3339)
+		}
 		if len(data.TicketIDs) == 1 {
 			ticketID, _ := strconv.Atoi(data.TicketIDs[0])
 			seatRow, seatNumber := parseSeatCode(data.SeatCodes[0])
@@ -380,7 +407,8 @@ func (r *TicketRepository) sendTicketEmailsAsync(data *sagaTicketData, userID, e
 				"user_email":     data.UserEmail,
 				"user_name":      data.UserName,
 				"event_title":    data.EventTitle,
-				"start_time":     startTime.Format(time.RFC3339),
+				"start_time":     startTimeVN,
+				"end_time":       endTimeVN,
 				"venue_name":     data.VenueName,
 				"area_name":      data.AreaNames[0],
 				"venue_address":  data.VenueAddress,
@@ -417,7 +445,8 @@ func (r *TicketRepository) sendTicketEmailsAsync(data *sagaTicketData, userID, e
 				"user_email":    data.UserEmail,
 				"user_name":     data.UserName,
 				"event_title":   data.EventTitle,
-				"start_time":    startTime.Format(time.RFC3339),
+				"start_time":    startTimeVN,
+				"end_time":      endTimeVN,
 				"venue_name":    data.VenueName,
 				"area_name":     data.AreaNames[0],
 				"venue_address": data.VenueAddress,

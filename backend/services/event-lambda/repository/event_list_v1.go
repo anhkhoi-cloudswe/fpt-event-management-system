@@ -42,13 +42,13 @@ type EventListV1Result struct {
 //     → Shows future events
 //   - 'past'/'closed': status='CLOSED' OR (status='OPEN' AND start_time < NOW())
 //     → Shows past events (closed or old open events)
-//  2. If search provided: AND (e.title LIKE ? OR va.area_name LIKE ? OR v.venue_name LIKE ?)
+//     2. If search provided: AND (e.title LIKE ? OR va.area_name LIKE ? OR v.venue_name LIKE ?)
 //     → Search is combined with status filter using AND
-//  3. Calculate OFFSET = (page - 1) * limit
-//  4. Run 2 queries:
-//     - COUNT(DISTINCT e.event_id) for total matching records
-//     - SELECT ... LIMIT ? OFFSET ? for paginated results
-//  5. Return both total count and results
+//     3. Calculate OFFSET = (page - 1) * limit
+//     4. Run 2 queries:
+//   - COUNT(DISTINCT e.event_id) for total matching records
+//   - SELECT ... LIMIT ? OFFSET ? for paginated results
+//     5. Return both total count and results
 //
 // Frontend Mapping:
 //   - Tab "Sự kiện hôm nay" → sends status='open' → Backend filters TODAY's events
@@ -75,6 +75,7 @@ func (r *EventRepository) GetEventsByStatusV1(
 	// Normalize status
 	status = strings.ToLower(strings.TrimSpace(status))
 	search = strings.TrimSpace(search)
+	vnLoc := utils.VietnamLocation()
 
 	// ==================== STEP 1: BUILD WHERE CONDITIONS ====================
 
@@ -231,8 +232,8 @@ func (r *EventRepository) GetEventsByStatusV1(
 			EventID:       eventID,
 			Title:         title,
 			Description:   nullStringToPointer(description),
-			StartTime:     utils.ToVietnamTime(startTime).Format(time.RFC3339),
-			EndTime:       utils.ToVietnamTime(endTime).Format(time.RFC3339),
+			StartTime:     startTime.In(vnLoc).Format(time.RFC3339),
+			EndTime:       endTime.In(vnLoc).Format(time.RFC3339),
 			MaxSeats:      maxSeats,
 			Status:        status,
 			BannerURL:     nullStringToPointer(bannerURL),
@@ -292,6 +293,7 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 	status = strings.ToLower(strings.TrimSpace(status))
 	search = strings.TrimSpace(search)
 	role = strings.ToUpper(strings.TrimSpace(role))
+	vnLoc := utils.VietnamLocation()
 
 	// ==================== STEP 1: BUILD WHERE CONDITIONS ====================
 
@@ -451,8 +453,8 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			EventID:       eventID,
 			Title:         title,
 			Description:   nullStringToPointer(description),
-			StartTime:     utils.ToVietnamTime(startTime).Format(time.RFC3339),
-			EndTime:       utils.ToVietnamTime(endTime).Format(time.RFC3339),
+			StartTime:     startTime.In(vnLoc).Format(time.RFC3339),
+			EndTime:       endTime.In(vnLoc).Format(time.RFC3339),
 			MaxSeats:      maxSeats,
 			Status:        eventStatus,
 			BannerURL:     nullStringToPointer(bannerURL),
