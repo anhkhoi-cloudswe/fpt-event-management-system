@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
@@ -268,9 +269,15 @@ func (h *EventHandler) HandleCreateEventRequest(ctx context.Context, request eve
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
 
-	// Persist preferred times in UTC to avoid storing Vietnam local wall-clock as UTC.
+	// ===== CRITICAL: INPUT LAYER - VIETNAM → UTC CONVERSION =====
+	// User inputs times as Vietnam local time (e.g., "09:00")
+	// We MUST convert to UTC before storage to maintain integrity
+	// Example: 09:00 VN (2026-04-01T09:00:00+07:00) → 02:00 UTC (2026-04-01 02:00:00)
+	// This ensures the database stores UTC, preventing timezone drift in DST regions
 	req.PreferredStartTime = FormatEventTimeForUTCStorage(startTime)
 	req.PreferredEndTime = FormatEventTimeForUTCStorage(endTime)
+	log.Info("HandleCreateEventRequest - Time conversion complete: Input=%s UTC=%s",
+		startTime.Format(time.RFC3339), req.PreferredStartTime)
 
 	// Create event request
 	requestID, err := h.useCase.CreateEventRequest(ctx, userID, &req)

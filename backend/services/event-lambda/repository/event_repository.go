@@ -21,10 +21,16 @@ func pointer[T any](v T) *T {
 	return &v
 }
 
+// formatTimeToVNRFC3339 converts a DB time to Vietnam RFC3339 format
+// ⚠️ CRITICAL: This function is called on times READ FROM DATABASE
+// The DB stores times in UTC (e.g., "2026-04-01 02:00:00")
+// We convert to Vietnam zone once (e.g., "2026-04-01T09:00:00+07:00")
+// NO double conversion - single .In(loc) call only
 func formatTimeToVNRFC3339(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
+	// Single conversion: DB time (which has zone=UTC) → Vietnam time with proper offset
 	return utils.DBTimeToVietnamTime(t).Format(time.RFC3339)
 }
 
