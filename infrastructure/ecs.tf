@@ -91,7 +91,16 @@ module "ecs" {
             { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
             { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
+            { name = "USE_API_COMPOSITION", value = "true" },
+            { name = "VENUE_API_ENABLED", value = "true" },
+            { name = "AUTH_API_ENABLED", value = "true" },
+            { name = "TICKET_API_ENABLED", value = "true" },
+            { name = "EVENT_API_ENABLED", value = "true" },
+            { name = "WALLET_SERVICE_ENABLED", value = "true" },
+            { name = "SAGA_ENABLED", value = "true" },
             { name = "NOTIFICATION_API_ENABLED", value = "true" },
+            { name = "SERVICE_SPECIFIC_SCHEDULER", value = "true" },
+            { name = "SERVICE_SPECIFIC_DB", value = "true" },
           ]
 
           portMappings = [
@@ -175,6 +184,16 @@ module "ecs" {
             { name = "AWS_ACCESS_KEY_ID", value = local.aws_access_key_id },
             { name = "***REMOVED***", value = local.aws_secret_access_key },
             { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
+            { name = "USE_API_COMPOSITION", value = "true" },
+            { name = "VENUE_API_ENABLED", value = "true" },
+            { name = "AUTH_API_ENABLED", value = "true" },
+            { name = "TICKET_API_ENABLED", value = "true" },
+            { name = "EVENT_API_ENABLED", value = "true" },
+            { name = "WALLET_SERVICE_ENABLED", value = "true" },
+            { name = "SAGA_ENABLED", value = "true" },
+            { name = "NOTIFICATION_API_ENABLED", value = "true" },
+            { name = "SERVICE_SPECIFIC_SCHEDULER", value = "true" },
+            { name = "SERVICE_SPECIFIC_DB", value = "true" },
           ]
 
           portMappings = [
@@ -259,6 +278,16 @@ module "ecs" {
             { name = "VNPAY_RETURN_URL", value = local.vnpay_return_url },
             { name = "RECAPTCHA_SECRET", value = local.recaptcha_secret },
             { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
+            { name = "USE_API_COMPOSITION", value = "true" },
+            { name = "VENUE_API_ENABLED", value = "true" },
+            { name = "AUTH_API_ENABLED", value = "true" },
+            { name = "TICKET_API_ENABLED", value = "true" },
+            { name = "EVENT_API_ENABLED", value = "true" },
+            { name = "WALLET_SERVICE_ENABLED", value = "true" },
+            { name = "SAGA_ENABLED", value = "true" },
+            { name = "NOTIFICATION_API_ENABLED", value = "true" },
+            { name = "SERVICE_SPECIFIC_SCHEDULER", value = "true" },
+            { name = "SERVICE_SPECIFIC_DB", value = "true" },
           ]
 
           portMappings = [
@@ -338,6 +367,16 @@ module "ecs" {
             { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
             { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
+            { name = "USE_API_COMPOSITION", value = "true" },
+            { name = "VENUE_API_ENABLED", value = "true" },
+            { name = "AUTH_API_ENABLED", value = "true" },
+            { name = "TICKET_API_ENABLED", value = "true" },
+            { name = "EVENT_API_ENABLED", value = "true" },
+            { name = "WALLET_SERVICE_ENABLED", value = "true" },
+            { name = "SAGA_ENABLED", value = "true" },
+            { name = "NOTIFICATION_API_ENABLED", value = "true" },
+            { name = "SERVICE_SPECIFIC_SCHEDULER", value = "true" },
+            { name = "SERVICE_SPECIFIC_DB", value = "true" },
           ]
 
           portMappings = [
@@ -417,6 +456,16 @@ module "ecs" {
             { name = "JWT_SECRET", value = local.jwt_secret },
             { name = "INTERNAL_AUTH_TOKEN", value = local.internal_auth_token },
             { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
+            { name = "USE_API_COMPOSITION", value = "true" },
+            { name = "VENUE_API_ENABLED", value = "true" },
+            { name = "AUTH_API_ENABLED", value = "true" },
+            { name = "TICKET_API_ENABLED", value = "true" },
+            { name = "EVENT_API_ENABLED", value = "true" },
+            { name = "WALLET_SERVICE_ENABLED", value = "true" },
+            { name = "SAGA_ENABLED", value = "true" },
+            { name = "NOTIFICATION_API_ENABLED", value = "true" },
+            { name = "SERVICE_SPECIFIC_SCHEDULER", value = "true" },
+            { name = "SERVICE_SPECIFIC_DB", value = "true" },
           ]
 
           portMappings = [
@@ -501,7 +550,17 @@ module "ecs" {
             { name = "SMTP_USERNAME", value = local.smtp_username },
             { name = "SMTP_PASSWORD", value = local.smtp_password },
             { name = "JWT_SECRET", value = local.jwt_secret },
-            { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" }
+            { name = "INTERNAL_ALB_URL", value = "http://${module.loadbalancer.dns_name}" },
+            { name = "USE_API_COMPOSITION", value = "true" },
+            { name = "VENUE_API_ENABLED", value = "true" },
+            { name = "AUTH_API_ENABLED", value = "true" },
+            { name = "TICKET_API_ENABLED", value = "true" },
+            { name = "EVENT_API_ENABLED", value = "true" },
+            { name = "WALLET_SERVICE_ENABLED", value = "true" },
+            { name = "SAGA_ENABLED", value = "true" },
+            { name = "NOTIFICATION_API_ENABLED", value = "true" },
+            { name = "SERVICE_SPECIFIC_SCHEDULER", value = "true" },
+            { name = "SERVICE_SPECIFIC_DB", value = "true" },
           ]
 
           portMappings = [
