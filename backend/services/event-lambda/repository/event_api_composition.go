@@ -319,9 +319,8 @@ func (r *EventRepository) GetAllEventsSeparatedComposed(ctx context.Context, rol
 			return nil, nil, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		vnLoc := utils.VietnamLocation()
-		re.item.StartTime = utils.DBTimeToVietnamTime(startTime).In(vnLoc).Format(time.RFC3339)
-		re.item.EndTime = utils.DBTimeToVietnamTime(endTime).In(vnLoc).Format(time.RFC3339)
+		re.item.StartTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(startTime)).Format(time.RFC3339)
+		re.item.EndTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(endTime)).Format(time.RFC3339)
 		re.endTime = endTime
 
 		if description.Valid {
@@ -447,9 +446,8 @@ func (r *EventRepository) GetEventDetailComposed(ctx context.Context, eventID in
 	if description.Valid {
 		detail.Description = &description.String
 	}
-	vnLoc := utils.VietnamLocation()
-	detail.StartTime = utils.DBTimeToVietnamTime(startTime).In(vnLoc).Format(time.RFC3339)
-	detail.EndTime = utils.DBTimeToVietnamTime(endTime).In(vnLoc).Format(time.RFC3339)
+	detail.StartTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(startTime)).Format(time.RFC3339)
+	detail.EndTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(endTime)).Format(time.RFC3339)
 	if maxSeats.Valid {
 		detail.MaxSeats = int(maxSeats.Int64)
 	}
@@ -568,9 +566,8 @@ func (r *EventRepository) GetOpenEventsComposed(ctx context.Context) ([]models.E
 			return nil, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		vnLoc := utils.VietnamLocation()
-		re.item.StartTime = utils.DBTimeToVietnamTime(startTime).In(vnLoc).Format(time.RFC3339)
-		re.item.EndTime = utils.DBTimeToVietnamTime(endTime).In(vnLoc).Format(time.RFC3339)
+		re.item.StartTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(startTime)).Format(time.RFC3339)
+		re.item.EndTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(endTime)).Format(time.RFC3339)
 
 		if description.Valid {
 			re.item.Description = &description.String

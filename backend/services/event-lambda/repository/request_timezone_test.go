@@ -38,15 +38,25 @@ func TestRequestDetail_VietnamInputStoredAsUTCReadBackAsVietnam(t *testing.T) {
 	}
 	t.Logf("Stored in DB as UTC: %s", utcString)
 
-	// ===== STEP 3: Simulate DB read (MySQL returns wall-clock as UTC zone) =====
+	// ===== STEP 3: Simulate DB read (MySQL DSN has loc=Asia/Ho_Chi_Minh) =====
+	// The DSN with loc=Asia/Ho_Chi_Minh causes MySQL driver to reinterpret DATETIME as Vietnam time
+	// So "2026-04-01 02:00:00" is read as "2026-04-01 02:00:00 +07:00" (not as UTC)
 	dbReadTime, _ := time.Parse("2006-01-02 15:04:05", utcString)
-	dbReadTime = dbReadTime.UTC()
+	// Reinterpret as Vietnam zone (simulating DSN behavior)
+	dbReadTimeWithVNZone := time.Date(
+		dbReadTime.Year(), dbReadTime.Month(), dbReadTime.Day(),
+		dbReadTime.Hour(), dbReadTime.Minute(), dbReadTime.Second(), 0,
+		vnLoc,
+	)
 	
-	t.Logf("After DB read: %s (zone=%v)", dbReadTime.Format(time.RFC3339), dbReadTime.Location())
+	t.Logf("After DB read (with DSN loc reinterpretation): %s (zone=%v)", dbReadTimeWithVNZone.Format(time.RFC3339), dbReadTimeWithVNZone.Location())
 
 	// ===== STEP 4: Repository converts back to Vietnam time =====
-	// This is what formatTimeToVNRFC3339 does
-	vietnamOutput := utils.DBTimeToVietnamTime(dbReadTime).Format(time.RFC3339)
+	// formatTimeToVNRFC3339 now: NormalizeDBTimeAsUTC -> DBTimeToVietnamTime
+	// Step 1: Reinterpret back to UTC
+	normalized := utils.NormalizeDBTimeAsUTC(dbReadTimeWithVNZone)
+	// Step 2: Convert from UTC to Vietnam
+	vietnamOutput := utils.DBTimeToVietnamTime(normalized).Format(time.RFC3339)
 	expectedOutput := "2026-04-01T09:00:00+07:00"
 	
 	t.Logf("Final JSON output: %s", vietnamOutput)
