@@ -103,10 +103,10 @@ func contains(str, substr string) bool {
 // Trả về PDF bytes có thể lưu file hoặc attach email
 func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	vnLoc := commonutils.VietnamLocation()
-	eventStart := commonutils.ToVietnamTime(data.EventDate)
+	eventStart := commonutils.DBTimeToVietnamTime(data.EventDate)
 	eventEnd := data.EndTime
 	if !eventEnd.IsZero() {
-		eventEnd = commonutils.ToVietnamTime(eventEnd)
+		eventEnd = commonutils.DBTimeToVietnamTime(eventEnd)
 	}
 
 	// Khởi tạo PDF
@@ -164,11 +164,7 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	dateStr := eventStart.Format("January 2, 2006")
 	pdf.CellFormat(75, 6, dateStr, "", 1, "L", false, 0, "") // +20%: 5 → 6
 	pdf.SetX(115)
-	startTimeStr := eventStart.In(vnLoc).Format("15:04")
-	timeStr := startTimeStr
-	if !eventEnd.IsZero() {
-		timeStr = fmt.Sprintf("%s - %s", startTimeStr, eventEnd.In(vnLoc).Format("15:04"))
-	}
+	timeStr := formatEventTimeRange(eventStart, eventEnd, vnLoc)
 	pdf.CellFormat(75, 6, timeStr, "", 1, "L", false, 0, "")
 	pdf.Ln(2.4)
 
@@ -266,4 +262,17 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func formatEventTimeRange(startTime, endTime time.Time, loc *time.Location) string {
+	if startTime.IsZero() {
+		return ""
+	}
+
+	startTimeStr := startTime.In(loc).Format("15:04")
+	if endTime.IsZero() {
+		return startTimeStr
+	}
+
+	return fmt.Sprintf("%s - %s", startTimeStr, endTime.In(loc).Format("15:04"))
 }
