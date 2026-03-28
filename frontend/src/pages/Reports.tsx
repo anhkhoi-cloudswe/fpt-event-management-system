@@ -41,6 +41,7 @@ type EventOption = {
   title: string
   startTime?: string
   type?: string
+  status?: string // OPEN | CLOSED | CANCELLED
 }
 
 // Registration: 1 vé / 1 lượt đăng ký (để hiển thị bảng danh sách vé)
@@ -278,19 +279,29 @@ export default function Reports() {
           throw new Error(data?.error || data?.message || `HTTP ${res.status}`)
         }
 
-        // gộp open + closed
+        // gộp open + closed + cancelled
+        const openEvents = data.openEvents ?? []
+        const closedEvents = data.closedEvents ?? []
+        const cancelledEvents = data.cancelledEvents ?? []
+
+        // map events với status marker
+        const mapWithStatus = (events: any[], status: string) =>
+          events.map((e: any) => ({
+            id: e.eventId ?? e.id,
+            title: e.title,
+            startTime: e.startTime,
+            type: e.type || e.category || undefined,
+            status: status, // Mark event status
+          }))
+
         const rawEvents = [
-          ...(data.openEvents ?? []),
-          ...(data.closedEvents ?? []),
+          ...mapWithStatus(openEvents, 'OPEN'),
+          ...mapWithStatus(closedEvents, 'CLOSED'),
+          ...mapWithStatus(cancelledEvents, 'CANCELLED'),
         ]
 
         // map dữ liệu BE -> EventOption
-        const list: EventOption[] = rawEvents.map((e: any) => ({
-          id: e.eventId ?? e.id,
-          title: e.title,
-          startTime: e.startTime,
-          type: e.type || e.category || undefined,
-        }))
+        const list: EventOption[] = rawEvents
 
         // ✅ ADD "All Events" option at the top
         const allEventsLabel = user?.role === 'ADMIN'
@@ -300,7 +311,8 @@ export default function Reports() {
         const allEventsOption: EventOption = {
           id: 0,  // Special ID for "All Events"
           title: allEventsLabel,
-          type: undefined
+          type: undefined,
+          status: undefined
         }
 
         setEvents([allEventsOption, ...list])
@@ -1015,27 +1027,62 @@ export default function Reports() {
                   )}
 
                   {!eventsLoading &&
-                    searchableFilteredEvents.map((event) => (
-                      <div
-                        key={event.id}
-                        onClick={() => {
-                          setSelectedEventId(String(event.id))
-                          setSearchInput('')
-                          setIsDropdownOpen(false)
-                          // ✅ FIX: Reset aggregatedStats khi chọn event mới để tránh kẹt dữ liệu
-                          setAggregatedStats(null)
-                        }}
-                        className={`px-4 py-2 cursor-pointer transition-colors ${String(selectedEventId) === String(event.id)
-                          ? 'bg-blue-500 text-white'
-                          : 'hover:bg-gray-100'
-                          }`}
-                      >
-                        <div className="font-medium text-sm">{event.title}</div>
-                        {event.type && (
-                          <div className="text-xs opacity-75">{event.type}</div>
-                        )}
-                      </div>
-                    ))}
+                    searchableFilteredEvents.map((event) => {
+                      // Get status badge style
+                      const getStatusBadge = (status?: string) => {
+                        if (!status) return null
+                        let bgColor = ''
+                        let label = ''
+                        
+                        switch (status) {
+                          case 'OPEN':
+                            bgColor = 'bg-green-100 text-green-800'
+                            label = 'Đang diễn ra'
+                            break
+                          case 'CLOSED':
+                            bgColor = 'bg-gray-100 text-gray-800'
+                            label = 'Đã đóng'
+                            break
+                          case 'CANCELLED':
+                            bgColor = 'bg-red-100 text-red-800'
+                            label = 'Đã hủy'
+                            break
+                          default:
+                            return null
+                        }
+                        
+                        return (
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${bgColor} ml-2`}>
+                            {label}
+                          </span>
+                        )
+                      }
+
+                      return (
+                        <div
+                          key={event.id}
+                          onClick={() => {
+                            setSelectedEventId(String(event.id))
+                            setSearchInput('')
+                            setIsDropdownOpen(false)
+                            // ✅ FIX: Reset aggregatedStats khi chọn event mới để tránh kẹt dữ liệu
+                            setAggregatedStats(null)
+                          }}
+                          className={`px-4 py-2 cursor-pointer transition-colors ${String(selectedEventId) === String(event.id)
+                            ? 'bg-blue-500 text-white'
+                            : 'hover:bg-gray-100'
+                            }`}
+                        >
+                          <div className="font-medium text-sm">
+                            {event.title}
+                            {getStatusBadge(event.status)}
+                          </div>
+                          {event.type && (
+                            <div className="text-xs opacity-75">{event.type}</div>
+                          )}
+                        </div>
+                      )
+                    })}
                 </div>
               )}
 
@@ -1044,10 +1091,26 @@ export default function Reports() {
               )}
             </div>
 
-            {/* ✅ INFO: Selected event indicator */}
+            {/* ✅ INFO: Selected event indicator with status badge */}
             {selectedEventId && selectedEvent && (
               <p className="mt-2 text-xs text-green-600">
                 ✓ Đã chọn: {selectedEvent.title}
+                {selectedEvent.status && (
+                  <>
+                    {' '}
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                      selectedEvent.status === 'OPEN' ? 'bg-green-100 text-green-800' :
+                      selectedEvent.status === 'CLOSED' ? 'bg-gray-100 text-gray-800' :
+                      selectedEvent.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {selectedEvent.status === 'OPEN' ? 'Đang diễn ra' :
+                       selectedEvent.status === 'CLOSED' ? 'Đã đóng' :
+                       selectedEvent.status === 'CANCELLED' ? 'Đã hủy' :
+                       selectedEvent.status}
+                    </span>
+                  </>
+                )}
               </p>
             )}
           </div>

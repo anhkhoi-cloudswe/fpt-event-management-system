@@ -1703,13 +1703,25 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 	for _, seatID := range seatIDs {
 		fmt.Printf("[SQL_FIX] Creating ticket for seatID: %d, userID: %d, eventID: %d\n", seatID, userID, eventID)
 
+		// Resolve ticket category from seat to preserve mixed-category purchases.
+		currentCategoryTicketID := categoryTicketID
+		err = tx.QueryRowContext(ctx, `
+			SELECT s.category_ticket_id
+			FROM Seat s
+			JOIN Category_Ticket ct ON s.category_ticket_id = ct.category_ticket_id
+			WHERE s.seat_id = ? AND ct.event_id = ?
+		`, seatID, eventID).Scan(&currentCategoryTicketID)
+		if err != nil {
+			return "", fmt.Errorf("error resolving category for seat %d: %w", seatID, err)
+		}
+
 		// Create ticket in database with PENDING_QR (will update after getting ticketID)
 		insertTicketQuery := `
 			INSERT INTO Ticket (user_id, event_id, category_ticket_id, seat_id, qr_code_value, status, created_at)
 			VALUES (?, ?, ?, ?, 'PENDING_QR', 'BOOKED', NOW())
 		`
 
-		result, err := tx.ExecContext(ctx, insertTicketQuery, userID, eventID, categoryTicketID, seatID)
+		result, err := tx.ExecContext(ctx, insertTicketQuery, userID, eventID, currentCategoryTicketID, seatID)
 		if err != nil {
 			fmt.Printf("[SQL_FIX] ❌ Error creating ticket: %v\n", err)
 			return "", fmt.Errorf("error creating ticket: %w", err)
@@ -1969,6 +1981,34 @@ func parseSeatCodeHelper(seatCode string) (string, string) {
 	return seatCode, "1"
 }
 
+func normalizeVNTimeString(timeValue interface{}) string {
+	timeStr, _ := timeValue.(string)
+	if strings.TrimSpace(timeStr) == "" {
+		return ""
+	}
+
+	parsed, err := time.Parse(time.RFC3339, timeStr)
+	if err != nil {
+		return timeStr
+	}
+
+	return utils.ToVietnamTime(parsed).Format(time.RFC3339)
+}
+
+func formatVNClockFromRFC3339(timeValue interface{}) string {
+	normalized := normalizeVNTimeString(timeValue)
+	if strings.TrimSpace(normalized) == "" {
+		return ""
+	}
+
+	parsed, err := time.Parse(time.RFC3339, normalized)
+	if err != nil {
+		return ""
+	}
+
+	return utils.FormatToVNTime(parsed)
+}
+
 // sendSingleTicketViaNotifyAPI sends single ticket email via Notification Service API.
 // Payload must match SingleTicketData in notification handler (camelCase JSON).
 func sendSingleTicketViaNotifyAPI(ctx context.Context, data map[string]interface{}) error {
@@ -1982,7 +2022,10 @@ func sendSingleTicketViaNotifyAPI(ctx context.Context, data map[string]interface
 	seatRow, _ := data["seat_row"].(string)
 	seatNumber, _ := data["seat_number"].(string)
 	categoryName, _ := data["category_name"].(string)
-	startTime, _ := data["start_time"].(string)
+	startTime := normalizeVNTimeString(data["start_time"])
+	endTime := normalizeVNTimeString(data["end_time"])
+	startTimeDisplay := formatVNClockFromRFC3339(data["start_time"])
+	endTimeDisplay := formatVNClockFromRFC3339(data["end_time"])
 	userEmail, _ := data["user_email"].(string)
 
 	fmt.Printf("[NOTIFY] 📧 Đang gửi vé #%d tới email %s...\n", ticketID, userEmail)
@@ -1997,7 +2040,7 @@ func sendSingleTicketViaNotifyAPI(ctx context.Context, data map[string]interface
 			"userName":       data["user_name"],
 			"eventTitle":     data["event_title"],
 			"eventDate":      startTime,
-			"endTime":        data["end_time"],
+			"endTime":        endTime,
 			"venueName":      data["venue_name"],
 			"venueAddress":   data["venue_address"],
 			"areaName":       data["area_name"],
@@ -2006,12 +2049,13 @@ func sendSingleTicketViaNotifyAPI(ctx context.Context, data map[string]interface
 			"categoryName":   categoryName,
 			"price":          data["price"],
 			"totalAmount":    data["price"],
-			"startTime":      startTime,
+			"startTime":      startTimeDisplay,
 			"paymentMethod":  data["payment_method"],
 			"mapUrl":         data["map_url"],
 			"ticketIds":      fmt.Sprintf("%d", ticketID),
 			"ticketTypes":    categoryName,
 			"seatCodes":      fmt.Sprintf("%s%s", seatRow, seatNumber),
+			"timeRange":      strings.TrimSpace(startTimeDisplay + " - " + endTimeDisplay),
 			"organizerName":  data["organizer_name"],
 			"organizerEmail": data["organizer_email"],
 		},
@@ -2040,6 +2084,10 @@ func sendMultipleTicketsViaNotifyAPI(ctx context.Context, data map[string]interf
 	userEmail, _ := data["user_email"].(string)
 	userName, _ := data["user_name"].(string)
 	eventAreaName, _ := data["area_name"].(string)
+	startTime := normalizeVNTimeString(data["start_time"])
+	endTime := normalizeVNTimeString(data["end_time"])
+	startTimeDisplay := formatVNClockFromRFC3339(data["start_time"])
+	endTimeDisplay := formatVNClockFromRFC3339(data["end_time"])
 
 	// Chuyển đổi items → TicketPDFItem camelCase
 	rawItems, _ := data["items"].([]map[string]interface{})
@@ -2063,7 +2111,7 @@ func sendMultipleTicketsViaNotifyAPI(ctx context.Context, data map[string]interf
 		ticketItems = append(ticketItems, map[string]interface{}{
 			"ticketId":     ticketID,
 			"ticketCode":   fmt.Sprintf("TKT_%d", ticketID),
-			"eventDate":    data["start_time"],
+			"eventDate":    startTime,
 			"venueName":    data["venue_name"],
 			"areaName":     itemArea,
 			"venueAddress": data["venue_address"],
@@ -2086,8 +2134,8 @@ func sendMultipleTicketsViaNotifyAPI(ctx context.Context, data map[string]interf
 			"userEmail":      userEmail,
 			"userName":       userName,
 			"eventTitle":     data["event_title"],
-			"eventDate":      data["start_time"],
-			"endTime":        data["end_time"],
+			"eventDate":      startTime,
+			"endTime":        endTime,
 			"venueName":      data["venue_name"],
 			"venueAddress":   data["venue_address"],
 			"seatList":       seatList,
@@ -2096,6 +2144,7 @@ func sendMultipleTicketsViaNotifyAPI(ctx context.Context, data map[string]interf
 			"organizerName":  data["organizer_name"],
 			"organizerEmail": data["organizer_email"],
 			"tickets":        ticketItems,
+			"timeRange":      strings.TrimSpace(startTimeDisplay + " - " + endTimeDisplay),
 		},
 	}
 

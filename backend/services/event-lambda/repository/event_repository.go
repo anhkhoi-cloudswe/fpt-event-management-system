@@ -21,6 +21,28 @@ func pointer[T any](v T) *T {
 	return &v
 }
 
+func formatTimeToVNRFC3339(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.In(utils.VietnamLocation()).Format(time.RFC3339)
+}
+
+func formatNullTimeToVNRFC3339(value sql.NullTime) *string {
+	if !value.Valid || value.Time.IsZero() {
+		return nil
+	}
+	formatted := formatTimeToVNRFC3339(value.Time)
+	return &formatted
+}
+
+func setEventRequestTimeFields(req *models.EventRequest, preferredStart, preferredEnd, createdAt, processedAt sql.NullTime) {
+	req.PreferredStartTime = formatNullTimeToVNRFC3339(preferredStart)
+	req.PreferredEndTime = formatNullTimeToVNRFC3339(preferredEnd)
+	req.CreatedAt = formatNullTimeToVNRFC3339(createdAt)
+	req.ProcessedAt = formatNullTimeToVNRFC3339(processedAt)
+}
+
 // rowNameFromIndex converts a 0-based row index to spreadsheet-style letters:
 // 0 -> A, 25 -> Z, 26 -> AA, 27 -> AB, ...
 func rowNameFromIndex(n int) string {
@@ -740,13 +762,15 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 }
 
 // ✅ NEW: GetAllEventsSeparatedWithPagination - WITH PAGINATION SUPPORT
-// Returns paginated events separated by status (open vs closed)
+// Returns paginated events separated by status (open vs closed vs cancelled)
 // Also returns total counts for calculation of totalPages in frontend
 func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Context, role string, userID int, page int, limit int) (
 	[]models.EventListItem,
 	[]models.EventListItem,
+	[]models.EventListItem,
 	int, // totalOpen
 	int, // totalClosed
+	int, // totalCancelled
 	error,
 ) {
 	// NOTE: Pagination is always SQL-based; no API composition route needed here.
@@ -782,15 +806,15 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 	var args []interface{}
 
 	if role == "ORGANIZER" {
-		// Organizer should see events they created including active and historical ones.
-		whereClause = ` WHERE e.created_by = ? AND (e.status IN ('OPEN','CLOSED','APPROVED','UPDATING') OR e.end_time < NOW())`
+		// Organizer should see events they created including active, historical, and cancelled ones.
+		whereClause = ` WHERE e.created_by = ? AND (e.status IN ('OPEN','CLOSED','CANCELLED','APPROVED','UPDATING') OR e.end_time < NOW())`
 		args = append(args, userID)
 	} else if role == "STAFF" {
-		// Staff sees OPEN events and events that have already ended
-		whereClause = ` WHERE (e.status = 'OPEN' OR e.end_time < NOW())`
+		// Staff sees OPEN, CLOSED, and CANCELLED events
+		whereClause = ` WHERE (e.status IN ('OPEN', 'CLOSED', 'CANCELLED') OR e.end_time < NOW())`
 	} else {
-		// Public: show open events and historical events (by end_time)
-		whereClause = ` WHERE (e.status = 'OPEN' OR e.end_time < NOW())`
+		// Public: show open events and historical events (by end_time), but NOT cancelled
+		whereClause = ` WHERE (e.status = 'OPEN' OR (e.end_time < NOW() AND e.status != 'CANCELLED'))`
 	}
 
 	// Query with LIMIT and OFFSET
@@ -799,11 +823,11 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, nil, 0, 0, fmt.Errorf("failed to query events: %w", err)
+		return nil, nil, nil, 0, 0, 0, fmt.Errorf("failed to query events: %w", err)
 	}
 	defer rows.Close()
 
-	var openEvents, closedEvents []models.EventListItem
+	var openEvents, closedEvents, cancelledEvents []models.EventListItem
 	for rows.Next() {
 		var item models.EventListItem
 		var description, bannerURL, areaName, floor, venueName, venueLoc sql.NullString
@@ -817,7 +841,7 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 			&createdBy,
 		)
 		if err != nil {
-			return nil, nil, 0, 0, fmt.Errorf("failed to scan event: %w", err)
+			return nil, nil, nil, 0, 0, 0, fmt.Errorf("failed to scan event: %w", err)
 		}
 
 		// Convert timestamps to ISO string
@@ -850,12 +874,16 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 			item.OrganizerID = pointer(int(createdBy.Int64))
 		}
 
-		// Classify events into open vs closed/historical.
-		now := utils.NowInVietnam()
-		if item.Status == "CLOSED" || endTime.Before(now) {
-			closedEvents = append(closedEvents, item)
+		// Classify events into open vs closed vs cancelled
+		if item.Status == "CANCELLED" {
+			cancelledEvents = append(cancelledEvents, item)
 		} else {
-			openEvents = append(openEvents, item)
+			now := utils.NowInVietnam()
+			if item.Status == "CLOSED" || endTime.Before(now) {
+				closedEvents = append(closedEvents, item)
+			} else {
+				openEvents = append(openEvents, item)
+			}
 		}
 	}
 
@@ -863,7 +891,7 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 	countQuery := baseQuery + whereClause
 	countArgs := args[:len(args)-2] // Remove LIMIT OFFSET from args
 
-	var totalOpen, totalClosed int
+	var totalOpen, totalClosed, totalCancelled int
 
 	// Count total open events (status = OPEN and end_time >= NOW)
 	countOpenQuery := countQuery + ` AND e.status = 'OPEN' AND e.end_time >= NOW()`
@@ -872,17 +900,24 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 		fmt.Printf("[PAGINATION_ERROR] Failed to count open events: %v\n", err)
 	}
 
-	// Count total closed events (status != OPEN OR end_time < NOW)
-	countClosedQuery := countQuery + ` AND (e.status = 'CLOSED' OR e.end_time < NOW())`
+	// Count total closed events (status != OPEN OR end_time < NOW) but not CANCELLED
+	countClosedQuery := countQuery + ` AND (e.status = 'CLOSED' OR (e.end_time < NOW() AND e.status != 'CANCELLED'))`
 	err = r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM ("+countClosedQuery+") as count", countArgs...).Scan(&totalClosed)
 	if err != nil && err != sql.ErrNoRows {
 		fmt.Printf("[PAGINATION_ERROR] Failed to count closed events: %v\n", err)
 	}
 
-	fmt.Printf("[PAGINATION] Page=%d, Limit=%d, Offset=%d, TotalOpen=%d, TotalClosed=%d\n",
-		page, limit, offset, totalOpen, totalClosed)
+	// Count total cancelled events
+	countCancelledQuery := countQuery + ` AND e.status = 'CANCELLED'`
+	err = r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM ("+countCancelledQuery+") as count", countArgs...).Scan(&totalCancelled)
+	if err != nil && err != sql.ErrNoRows {
+		fmt.Printf("[PAGINATION_ERROR] Failed to count cancelled events: %v\n", err)
+	}
 
-	return openEvents, closedEvents, totalOpen, totalClosed, rows.Err()
+	fmt.Printf("[PAGINATION] Page=%d, Limit=%d, Offset=%d, TotalOpen=%d, TotalClosed=%d, TotalCancelled=%d\n",
+		page, limit, offset, totalOpen, totalClosed, totalCancelled)
+
+	return openEvents, closedEvents, cancelledEvents, totalOpen, totalClosed, totalCancelled, rows.Err()
 }
 
 func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*models.EventDetailDto, error) {
@@ -932,8 +967,8 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 	if description.Valid {
 		detail.Description = &description.String
 	}
-	detail.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
-	detail.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
+	detail.StartTime = formatTimeToVNRFC3339(startTime)
+	detail.EndTime = formatTimeToVNRFC3339(endTime)
 	if maxSeats.Valid {
 		detail.MaxSeats = int(maxSeats.Int64)
 	}
@@ -1291,6 +1326,7 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 		var req models.EventRequest
 		var requesterName, processedByName sql.NullString
 		var processedBy sql.NullInt64
+		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
 		var venueName, areaName, floor sql.NullString
 		var areaCapacity sql.NullInt64
@@ -1298,7 +1334,7 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
 			&req.Title, &req.Description,
-			&req.PreferredStartTime, &req.PreferredEndTime,
+			&preferredStartTime, &preferredEndTime,
 			&req.ExpectedCapacity, &req.Status,
 			&createdAt, &processedBy, &processedByName,
 			&processedAt, &req.OrganizerNote, &req.RejectReason,
@@ -1314,17 +1350,12 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 		if requesterName.Valid {
 			req.RequesterName = &requesterName.String
 		}
-		if createdAt.Valid {
-			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
-		}
+		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
 		}
 		if processedByName.Valid {
 			req.ProcessedByName = &processedByName.String
-		}
-		if processedAt.Valid {
-			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if venueName.Valid {
 			req.VenueName = &venueName.String
@@ -1386,6 +1417,7 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 		var req models.EventRequest
 		var requesterName, processedByName sql.NullString
 		var processedBy sql.NullInt64
+		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
 		var eventStatus sql.NullString
 		var venueName, areaName, floor sql.NullString
@@ -1394,7 +1426,7 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
 			&req.Title, &req.Description,
-			&req.PreferredStartTime, &req.PreferredEndTime,
+			&preferredStartTime, &preferredEndTime,
 			&req.ExpectedCapacity, &req.Status,
 			&createdAt, &processedBy, &processedByName,
 			&processedAt, &req.OrganizerNote, &req.RejectReason,
@@ -1409,17 +1441,12 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 		if requesterName.Valid {
 			req.RequesterName = &requesterName.String
 		}
-		if createdAt.Valid {
-			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
-		}
+		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
 		}
 		if processedByName.Valid {
 			req.ProcessedByName = &processedByName.String
-		}
-		if processedAt.Valid {
-			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if eventStatus.Valid {
 			req.EventStatus = &eventStatus.String
@@ -1498,6 +1525,7 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 		var req models.EventRequest
 		var requesterName, processedByName sql.NullString
 		var processedBy sql.NullInt64
+		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
 		var eventStatus sql.NullString
 		var venueName, areaName, floor sql.NullString
@@ -1506,7 +1534,7 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
 			&req.Title, &req.Description,
-			&req.PreferredStartTime, &req.PreferredEndTime,
+			&preferredStartTime, &preferredEndTime,
 			&req.ExpectedCapacity, &req.Status,
 			&createdAt, &processedBy, &processedByName,
 			&processedAt, &req.OrganizerNote, &req.RejectReason,
@@ -1521,17 +1549,12 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 		if requesterName.Valid {
 			req.RequesterName = &requesterName.String
 		}
-		if createdAt.Valid {
-			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
-		}
+		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
 		}
 		if processedByName.Valid {
 			req.ProcessedByName = &processedByName.String
-		}
-		if processedAt.Valid {
-			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if eventStatus.Valid {
 			req.EventStatus = &eventStatus.String
@@ -1608,6 +1631,7 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 		var req models.EventRequest
 		var requesterName, processedByName sql.NullString
 		var processedBy sql.NullInt64
+		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
 		var venueName, areaName, floor sql.NullString
 		var areaCapacity sql.NullInt64
@@ -1615,7 +1639,7 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
 			&req.Title, &req.Description,
-			&req.PreferredStartTime, &req.PreferredEndTime,
+			&preferredStartTime, &preferredEndTime,
 			&req.ExpectedCapacity, &req.Status,
 			&createdAt, &processedBy, &processedByName,
 			&processedAt, &req.OrganizerNote, &req.RejectReason,
@@ -1630,17 +1654,12 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 		if requesterName.Valid {
 			req.RequesterName = &requesterName.String
 		}
-		if createdAt.Valid {
-			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
-		}
+		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
 		}
 		if processedByName.Valid {
 			req.ProcessedByName = &processedByName.String
-		}
-		if processedAt.Valid {
-			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if venueName.Valid {
 			req.VenueName = &venueName.String
@@ -1690,6 +1709,7 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 	var req models.EventRequest
 	var requesterName, processedByName sql.NullString
 	var processedBy sql.NullInt64
+	var preferredStartTime, preferredEndTime sql.NullTime
 	var processedAt, createdAt sql.NullTime
 	var venueName, areaName, floor sql.NullString
 	var areaCapacity sql.NullInt64
@@ -1697,7 +1717,7 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 	err := r.db.QueryRowContext(ctx, query, requestID).Scan(
 		&req.RequestID, &req.RequesterID, &requesterName,
 		&req.Title, &req.Description,
-		&req.PreferredStartTime, &req.PreferredEndTime,
+		&preferredStartTime, &preferredEndTime,
 		&req.ExpectedCapacity, &req.Status,
 		&createdAt, &processedBy, &processedByName,
 		&processedAt, &req.OrganizerNote, &req.RejectReason,
@@ -1716,17 +1736,12 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 	if requesterName.Valid {
 		req.RequesterName = &requesterName.String
 	}
-	if createdAt.Valid {
-		req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
-	}
+	setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
 	if processedBy.Valid {
 		req.ProcessedBy = pointer(int(processedBy.Int64))
 	}
 	if processedByName.Valid {
 		req.ProcessedByName = &processedByName.String
-	}
-	if processedAt.Valid {
-		req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 	}
 	if venueName.Valid {
 		req.VenueName = &venueName.String
