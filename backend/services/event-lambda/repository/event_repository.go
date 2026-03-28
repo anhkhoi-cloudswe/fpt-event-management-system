@@ -1886,7 +1886,7 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 
 		// Get request details to create event
 		var requestTitle, requestDesc string
-		var requestStartTime, requestEndTime string
+		var requestStartTime, requestEndTime sql.NullTime
 		var requestCapacity int
 		var requesterID int
 
@@ -1904,6 +1904,26 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		if err != nil {
 			fmt.Printf("[DB_PROCESS] Failed to get request details: %v\n", err)
 			return fmt.Errorf("failed to get request details: %w", err)
+		}
+
+		// ⚠️ CRITICAL TIMEZONE FIX: 
+		// Times read from Event_Request have DSN loc reinterpretation.
+		// We need to:
+		// 1. Normalize them back to UTC (undo DSN reinterpretation)
+		// 2. Format them as UTC storage format for Event table
+		startTimeUTC := ""
+		endTimeUTC := ""
+		if requestStartTime.Valid {
+			normalized := utils.NormalizeDBTimeAsUTC(requestStartTime.Time)
+			startTimeUTC = normalized.Format("2006-01-02 15:04:05")
+			fmt.Printf("[DB_PROCESS] ProcessEventRequest timezone fix: startTime=%v -> normalized=%v -> storage=%s\n", 
+				requestStartTime.Time, normalized, startTimeUTC)
+		}
+		if requestEndTime.Valid {
+			normalized := utils.NormalizeDBTimeAsUTC(requestEndTime.Time)
+			endTimeUTC = normalized.Format("2006-01-02 15:04:05")
+			fmt.Printf("[DB_PROCESS] ProcessEventRequest timezone fix: endTime=%v -> normalized=%v -> storage=%s\n", 
+				requestEndTime.Time, normalized, endTimeUTC)
 		}
 
 		// B1: Update Event_Request to APPROVED
@@ -1954,7 +1974,7 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		}
 
 		eventResult, err := tx.ExecContext(ctx, insertEventQuery,
-			requestTitle, requestDesc, requestStartTime, requestEndTime, requestCapacity,
+			requestTitle, requestDesc, startTimeUTC, endTimeUTC, requestCapacity,
 			bannerURLValue, *req.AreaID, speakerIDValue, requesterID,
 		)
 		if err != nil {

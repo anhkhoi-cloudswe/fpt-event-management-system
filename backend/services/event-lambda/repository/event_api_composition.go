@@ -1161,7 +1161,7 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 
 		// B0: Get request details
 		var requestTitle, requestDesc string
-		var requestStartTime, requestEndTime string
+		var requestStartTime, requestEndTime sql.NullTime
 		var requestCapacity int
 		var requesterID int
 
@@ -1179,6 +1179,26 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 			return fmt.Errorf("failed to get request details: %w", err)
 		}
 
+		// ⚠️ CRITICAL TIMEZONE FIX: 
+		// Times read from Event_Request have DSN loc reinterpretation.
+		// We need to:
+		// 1. Normalize them back to UTC (undo DSN reinterpretation)
+		// 2. Format them as UTC storage format for Event table
+		startTimeUTC := ""
+		endTimeUTC := ""
+		if requestStartTime.Valid {
+			normalized := utils.NormalizeDBTimeAsUTC(requestStartTime.Time)
+			startTimeUTC = normalized.Format("2006-01-02 15:04:05")
+			fmt.Printf("[API_COMPOSITION] ProcessEventRequestComposed timezone fix: startTime=%v -> normalized=%v -> storage=%s\n", 
+				requestStartTime.Time, normalized, startTimeUTC)
+		}
+		if requestEndTime.Valid {
+			normalized := utils.NormalizeDBTimeAsUTC(requestEndTime.Time)
+			endTimeUTC = normalized.Format("2006-01-02 15:04:05")
+			fmt.Printf("[API_COMPOSITION] ProcessEventRequestComposed timezone fix: endTime=%v -> normalized=%v -> storage=%s\n", 
+				requestEndTime.Time, normalized, endTimeUTC)
+		}
+
 		// B0.5: Anti Race Condition - Kiểm tra hạn ngạch 2 sự kiện/ngày với FOR UPDATE lock
 		// FOR UPDATE khóa các rows phù hợp lại, buộc các transaction đồng thời phải xếp hàng chờ nhau.
 		// Nhờ đó, nếu 2 staff duyệt cùng lúc cho cùng ngày, chỉ 1 transaction thành công,
@@ -1190,15 +1210,15 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 			WHERE DATE(start_time) = DATE(?)
 			AND status NOT IN ('CANCELLED', 'REJECTED')
 			FOR UPDATE`
-		err = tx.QueryRowContext(ctx, checkQuotaQuery, requestStartTime).Scan(&dailyCount)
+		err = tx.QueryRowContext(ctx, checkQuotaQuery, startTimeUTC).Scan(&dailyCount)
 		if err != nil {
 			return fmt.Errorf("failed to check daily quota: %w", err)
 		}
 		if dailyCount >= 2 {
-			fmt.Printf("[QUOTA_LOCK] ❌ Daily limit reached for date %s: currentCount=%d/2. Rolling back.\n", requestStartTime[:10], dailyCount)
+			fmt.Printf("[QUOTA_LOCK] ❌ Daily limit reached for date %s: currentCount=%d/2. Rolling back.\n", startTimeUTC[:10], dailyCount)
 			return fmt.Errorf("Ngày này đã đạt giới hạn 2 sự kiện. Không thể duyệt thêm")
 		}
-		fmt.Printf("[QUOTA_LOCK] ✅ Daily quota OK for date %s: currentCount=%d/2. Proceeding.\n", requestStartTime[:10], dailyCount)
+		fmt.Printf("[QUOTA_LOCK] ✅ Daily quota OK for date %s: currentCount=%d/2. Proceeding.\n", startTimeUTC[:10], dailyCount)
 
 		// B1: Update Event_Request to APPROVED
 		organizerNote := ""
@@ -1239,7 +1259,7 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		}
 
 		eventResult, err := tx.ExecContext(ctx, insertEventQuery,
-			requestTitle, requestDesc, requestStartTime, requestEndTime, requestCapacity,
+			requestTitle, requestDesc, startTimeUTC, endTimeUTC, requestCapacity,
 			bannerURLValue, *req.AreaID, speakerIDValue, requesterID,
 		)
 		if err != nil {
