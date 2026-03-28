@@ -546,6 +546,118 @@ module "loadbalancer" {
             }
           ]
         }
+        # =========================================================
+        # Internal service-to-service routing rules (/internal/*)
+        # Used when services call each other via INTERNAL_ALB_URL
+        # =========================================================
+        auth_paths_internal = {
+          priority = 70
+          actions = [
+            {
+              forward = {
+                target_group_key = "auth-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/internal/auth",
+                  "/internal/auth/*",
+                  "/internal/user",
+                  "/internal/user/*"
+                ]
+              }
+            }
+          ]
+        }
+        event_paths_internal = {
+          priority = 71
+          actions = [
+            {
+              forward = {
+                target_group_key = "event-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/internal/events",
+                  "/internal/events/*",
+                  "/internal/event",
+                  "/internal/event/*"
+                ]
+              }
+            }
+          ]
+        }
+        ticket_paths_internal = {
+          priority = 72
+          actions = [
+            {
+              forward = {
+                target_group_key = "ticket-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/internal/tickets",
+                  "/internal/tickets/*",
+                  "/internal/ticket",
+                  "/internal/ticket/*"
+                ]
+              }
+            }
+          ]
+        }
+        venue_paths_internal = {
+          priority = 73
+          actions = [
+            {
+              forward = {
+                target_group_key = "venue-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/internal/venue",
+                  "/internal/venue/*",
+                  "/internal/venues",
+                  "/internal/venues/*"
+                ]
+              }
+            }
+          ]
+        }
+        staff_paths_internal = {
+          priority = 74
+          actions = [
+            {
+              forward = {
+                target_group_key = "staff-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/internal/staff",
+                  "/internal/staff/*"
+                ]
+              }
+            }
+          ]
+        }
       }
     }
   }
