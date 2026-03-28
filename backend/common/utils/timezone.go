@@ -39,12 +39,13 @@ func NormalizeDBTimeAsUTC(t time.Time) time.Time {
 	)
 }
 
-// DBTimeToVietnamTime converts DB time to Vietnam time using UTC reinterpretation.
+// DBTimeToVietnamTime converts DB time to Vietnam time via timezone conversion.
 func DBTimeToVietnamTime(t time.Time) time.Time {
 	if t.IsZero() {
 		return t
 	}
-	return ToVietnamTime(NormalizeDBTimeAsUTC(t))
+	loc := VietnamLocation()
+	return t.In(loc)
 }
 
 // DBTimeToVNRFC3339 formats DB time as RFC3339 in Vietnam timezone.

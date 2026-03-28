@@ -8,11 +8,8 @@ import (
 )
 
 func TestNotificationPayloadTime_IsVietnamClockAfterDBNormalization(t *testing.T) {
-	vnLoc := utils.VietnamLocation()
-
-	// Simulate DB-scanned wall-clock timestamps that represent UTC values.
-	startDB := time.Date(2026, 3, 31, 2, 0, 0, 0, vnLoc)
-	endDB := time.Date(2026, 3, 31, 9, 0, 0, 0, vnLoc)
+	startDB := time.Date(2026, 3, 31, 2, 0, 0, 0, time.UTC)
+	endDB := time.Date(2026, 3, 31, 9, 0, 0, 0, time.UTC)
 
 	startRFC3339 := utils.DBTimeToVNRFC3339(startDB)
 	endRFC3339 := utils.DBTimeToVNRFC3339(endDB)

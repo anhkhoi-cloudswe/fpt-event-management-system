@@ -78,6 +78,40 @@ func TestJSONOutput_PublicDashboardTimes_Converts0100UTCTo0800VN(t *testing.T) {
 	}
 }
 
+func TestJSONOutput_PublicDashboardTimes_Converts0000UTCTo0700VN(t *testing.T) {
+	startUTC := time.Date(2026, 3, 30, 0, 0, 0, 0, time.UTC)
+	endUTC := time.Date(2026, 3, 30, 5, 0, 0, 0, time.UTC)
+
+	payload := EventListV1Result{
+		Data: []models.EventListItem{
+			{
+				EventID:   1062,
+				Title:     "UTC Midnight Conversion",
+				StartTime: formatTimeToVNRFC3339(startUTC),
+				EndTime:   formatTimeToVNRFC3339(endUTC),
+			},
+		},
+		Total:      1,
+		Page:       1,
+		Limit:      10,
+		TotalPages: 1,
+	}
+
+	body, err := utils.MarshalVietnamJSON(payload)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	jsonStr := string(body)
+	t.Logf("/api/events/detail raw json (id=1062): %s", jsonStr)
+	if !strings.Contains(jsonStr, `"startTime":"2026-03-30T07:00:00+07:00"`) {
+		t.Fatalf("public startTime is not converted to VN time: %s", jsonStr)
+	}
+	if !strings.Contains(jsonStr, `"endTime":"2026-03-30T12:00:00+07:00"`) {
+		t.Fatalf("public endTime is not converted to VN time: %s", jsonStr)
+	}
+}
+
 func TestJSONOutput_AuditFields_AreVietnam(t *testing.T) {
 	createdUTC := time.Date(2026, 3, 28, 9, 36, 0, 0, time.UTC)
 	processedUTC := time.Date(2026, 3, 28, 9, 36, 0, 0, time.UTC)
@@ -141,12 +175,10 @@ func TestJSONOutput_EventDetailTimes_AreVietnam(t *testing.T) {
 	}
 }
 
-func TestFormatTimeToVNRFC3339_ReinterpretsDBWallClockAsUTC(t *testing.T) {
-	// Simulate a DB-scanned DATETIME with local +07 label but UTC wall-clock value.
-	vnLoc := utils.VietnamLocation()
-	mislabeled := time.Date(2026, 3, 31, 2, 0, 0, 0, vnLoc)
+func TestFormatTimeToVNRFC3339_ConvertsUTCToVietnam(t *testing.T) {
+	utcInput := time.Date(2026, 3, 31, 2, 0, 0, 0, time.UTC)
 
-	got := formatTimeToVNRFC3339(mislabeled)
+	got := formatTimeToVNRFC3339(utcInput)
 	want := "2026-03-31T09:00:00+07:00"
 
 	if got != want {
@@ -154,20 +186,17 @@ func TestFormatTimeToVNRFC3339_ReinterpretsDBWallClockAsUTC(t *testing.T) {
 	}
 }
 
-func TestSetEventRequestTimeFields_ReinterpretsAuditFieldsAsUTC(t *testing.T) {
-	vnLoc := utils.VietnamLocation()
-
-	// Simulate DB wall-clock values that represent UTC instants.
-	createdWallClock := time.Date(2026, 3, 28, 8, 36, 0, 0, vnLoc)
-	processedWallClock := time.Date(2026, 3, 28, 9, 36, 0, 0, vnLoc)
+func TestSetEventRequestTimeFields_ConvertsAuditFieldsFromUTC(t *testing.T) {
+	createdUTC := time.Date(2026, 3, 28, 8, 36, 0, 0, time.UTC)
+	processedUTC := time.Date(2026, 3, 28, 9, 36, 0, 0, time.UTC)
 
 	req := models.EventRequest{}
 	setEventRequestTimeFields(
 		&req,
 		sql.NullTime{},
 		sql.NullTime{},
-		sql.NullTime{Time: createdWallClock, Valid: true},
-		sql.NullTime{Time: processedWallClock, Valid: true},
+		sql.NullTime{Time: createdUTC, Valid: true},
+		sql.NullTime{Time: processedUTC, Valid: true},
 	)
 
 	if req.CreatedAt == nil || req.ProcessedAt == nil {
