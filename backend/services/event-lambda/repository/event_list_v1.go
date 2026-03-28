@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/event-lambda/models"
 )
 
@@ -75,7 +74,6 @@ func (r *EventRepository) GetEventsByStatusV1(
 	// Normalize status
 	status = strings.ToLower(strings.TrimSpace(status))
 	search = strings.TrimSpace(search)
-	vnLoc := utils.VietnamLocation()
 
 	// ==================== STEP 1: BUILD WHERE CONDITIONS ====================
 
@@ -232,8 +230,8 @@ func (r *EventRepository) GetEventsByStatusV1(
 			EventID:       eventID,
 			Title:         title,
 			Description:   nullStringToPointer(description),
-			StartTime:     startTime.In(vnLoc).Format(time.RFC3339),
-			EndTime:       endTime.In(vnLoc).Format(time.RFC3339),
+			StartTime:     formatTimeToVNRFC3339(startTime),
+			EndTime:       formatTimeToVNRFC3339(endTime),
 			MaxSeats:      maxSeats,
 			Status:        status,
 			BannerURL:     nullStringToPointer(bannerURL),
@@ -293,7 +291,6 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 	status = strings.ToLower(strings.TrimSpace(status))
 	search = strings.TrimSpace(search)
 	role = strings.ToUpper(strings.TrimSpace(role))
-	vnLoc := utils.VietnamLocation()
 
 	// ==================== STEP 1: BUILD WHERE CONDITIONS ====================
 
@@ -453,8 +450,8 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			EventID:       eventID,
 			Title:         title,
 			Description:   nullStringToPointer(description),
-			StartTime:     startTime.In(vnLoc).Format(time.RFC3339),
-			EndTime:       endTime.In(vnLoc).Format(time.RFC3339),
+			StartTime:     formatTimeToVNRFC3339(startTime),
+			EndTime:       formatTimeToVNRFC3339(endTime),
 			MaxSeats:      maxSeats,
 			Status:        eventStatus,
 			BannerURL:     nullStringToPointer(bannerURL),
