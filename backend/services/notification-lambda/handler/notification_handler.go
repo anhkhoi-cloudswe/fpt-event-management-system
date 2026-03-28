@@ -258,6 +258,12 @@ func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (eve
 		eventEndTime = utils.ToVietnamTime(eventEndTime)
 	}
 
+	startTimeRFC3339 := eventDate.Format(time.RFC3339)
+	endTimeRFC3339 := ""
+	if !eventEndTime.IsZero() {
+		endTimeRFC3339 = eventEndTime.Format(time.RFC3339)
+	}
+
 	// Step 4: Generate PDF
 	pdfBytes, err := ticketpdf.GenerateTicketPDF(ticketpdf.TicketPDFData{
 		TicketCode:     data.TicketCode,
@@ -294,8 +300,8 @@ func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (eve
 		AreaName:       data.AreaName,
 		MapURL:         data.MapURL,
 		TotalAmount:    data.TotalAmount,
-		StartTime:      data.EventDate, // Use EventDate (RFC3339) as StartTime
-		EndTime:        data.EndTime,   // Add EndTime
+		StartTime:      startTimeRFC3339,
+		EndTime:        endTimeRFC3339,
 		QRCodeBase64:   qrBase64,
 		PaymentMethod:  data.PaymentMethod,
 		PDFAttachment:  pdfBytes,
@@ -325,6 +331,18 @@ func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData
 	}
 	if !eventEndTime.IsZero() {
 		eventEndTime = utils.ToVietnamTime(eventEndTime)
+	}
+
+	multipleStartTime, err := time.Parse(time.RFC3339, data.EventDate)
+	if err != nil {
+		multipleStartTime = time.Now()
+	}
+	multipleStartTime = utils.ToVietnamTime(multipleStartTime)
+
+	multipleStartTimeRFC3339 := multipleStartTime.Format(time.RFC3339)
+	multipleEndTimeRFC3339 := ""
+	if !eventEndTime.IsZero() {
+		multipleEndTimeRFC3339 = eventEndTime.Format(time.RFC3339)
 	}
 
 	for _, ticket := range data.Tickets {
@@ -376,8 +394,8 @@ func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData
 		UserEmail:      data.UserEmail,
 		UserName:       data.UserName,
 		EventTitle:     data.EventTitle,
-		EventDate:      data.EventDate,
-		EndTime:        data.EndTime,
+		EventDate:      multipleStartTimeRFC3339,
+		EndTime:        multipleEndTimeRFC3339,
 		VenueName:      data.VenueName,
 		VenueAddress:   data.VenueAddress,
 		TicketCount:    len(data.Tickets),

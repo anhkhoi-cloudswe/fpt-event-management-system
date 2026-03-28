@@ -44,6 +44,40 @@ func TestJSONOutput_PublicDashboardTimes_AreVietnam(t *testing.T) {
 	}
 }
 
+func TestJSONOutput_PublicDashboardTimes_Converts0100UTCTo0800VN(t *testing.T) {
+	startUTC := time.Date(2026, 3, 31, 1, 0, 0, 0, time.UTC)
+	endUTC := time.Date(2026, 3, 31, 5, 0, 0, 0, time.UTC)
+
+	payload := EventListV1Result{
+		Data: []models.EventListItem{
+			{
+				EventID:   1061,
+				Title:     "Timezone Regression Check",
+				StartTime: formatTimeToVNRFC3339(startUTC),
+				EndTime:   formatTimeToVNRFC3339(endUTC),
+			},
+		},
+		Total:      1,
+		Page:       1,
+		Limit:      10,
+		TotalPages: 1,
+	}
+
+	body, err := utils.MarshalVietnamJSON(payload)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	jsonStr := string(body)
+	t.Logf("/api/events/detail raw json (id=1061): %s", jsonStr)
+	if !strings.Contains(jsonStr, `"startTime":"2026-03-31T08:00:00+07:00"`) {
+		t.Fatalf("public startTime is not converted to VN time: %s", jsonStr)
+	}
+	if !strings.Contains(jsonStr, `"endTime":"2026-03-31T12:00:00+07:00"`) {
+		t.Fatalf("public endTime is not converted to VN time: %s", jsonStr)
+	}
+}
+
 func TestJSONOutput_AuditFields_AreVietnam(t *testing.T) {
 	createdUTC := time.Date(2026, 3, 28, 9, 36, 0, 0, time.UTC)
 	processedUTC := time.Date(2026, 3, 28, 9, 36, 0, 0, time.UTC)
