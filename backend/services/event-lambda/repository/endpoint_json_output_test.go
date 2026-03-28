@@ -49,10 +49,10 @@ func TestJSONOutput_AuditFields_AreVietnam(t *testing.T) {
 	processedUTC := time.Date(2026, 3, 28, 9, 36, 0, 0, time.UTC)
 
 	req := models.EventRequest{
-		RequestID:  101,
+		RequestID:   101,
 		RequesterID: 7,
-		Title:      "AWS re:Invent 2025",
-		Status:     "APPROVED",
+		Title:       "AWS re:Invent 2025",
+		Status:      "APPROVED",
 	}
 	setEventRequestTimeFields(
 		&req,
@@ -104,5 +104,46 @@ func TestJSONOutput_EventDetailTimes_AreVietnam(t *testing.T) {
 	}
 	if !strings.Contains(jsonStr, `"endTime":"2026-03-31T16:00:00+07:00"`) {
 		t.Fatalf("detail endTime is not VN time: %s", jsonStr)
+	}
+}
+
+func TestFormatTimeToVNRFC3339_ReinterpretsDBWallClockAsUTC(t *testing.T) {
+	// Simulate a DB-scanned DATETIME with local +07 label but UTC wall-clock value.
+	vnLoc := utils.VietnamLocation()
+	mislabeled := time.Date(2026, 3, 31, 2, 0, 0, 0, vnLoc)
+
+	got := formatTimeToVNRFC3339(mislabeled)
+	want := "2026-03-31T09:00:00+07:00"
+
+	if got != want {
+		t.Fatalf("unexpected formatted time: got=%s want=%s", got, want)
+	}
+}
+
+func TestSetEventRequestTimeFields_ReinterpretsAuditFieldsAsUTC(t *testing.T) {
+	vnLoc := utils.VietnamLocation()
+
+	// Simulate DB wall-clock values that represent UTC instants.
+	createdWallClock := time.Date(2026, 3, 28, 8, 36, 0, 0, vnLoc)
+	processedWallClock := time.Date(2026, 3, 28, 9, 36, 0, 0, vnLoc)
+
+	req := models.EventRequest{}
+	setEventRequestTimeFields(
+		&req,
+		sql.NullTime{},
+		sql.NullTime{},
+		sql.NullTime{Time: createdWallClock, Valid: true},
+		sql.NullTime{Time: processedWallClock, Valid: true},
+	)
+
+	if req.CreatedAt == nil || req.ProcessedAt == nil {
+		t.Fatalf("expected CreatedAt and ProcessedAt to be set")
+	}
+
+	if *req.CreatedAt != "2026-03-28T15:36:00+07:00" {
+		t.Fatalf("createdAt not converted correctly: got=%s", *req.CreatedAt)
+	}
+	if *req.ProcessedAt != "2026-03-28T16:36:00+07:00" {
+		t.Fatalf("processedAt not converted correctly: got=%s", *req.ProcessedAt)
 	}
 }

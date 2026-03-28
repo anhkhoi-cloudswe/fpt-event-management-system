@@ -21,11 +21,27 @@ func pointer[T any](v T) *T {
 	return &v
 }
 
+// normalizeDBTimeAsUTC reinterprets DB-scanned wall-clock time as UTC.
+// This avoids "fake +07" output when DATETIME values are stored in UTC
+// but scanned with a non-UTC location.
+func normalizeDBTimeAsUTC(t time.Time) time.Time {
+	if t.IsZero() {
+		return t
+	}
+
+	return time.Date(
+		t.Year(), t.Month(), t.Day(),
+		t.Hour(), t.Minute(), t.Second(), t.Nanosecond(),
+		time.UTC,
+	)
+}
+
 func formatTimeToVNRFC3339(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
-	return t.In(utils.VietnamLocation()).Format(time.RFC3339)
+	utcTime := normalizeDBTimeAsUTC(t)
+	return utcTime.In(utils.VietnamLocation()).Format(time.RFC3339)
 }
 
 func formatNullTimeToVNRFC3339(value sql.NullTime) *string {
