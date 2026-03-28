@@ -268,6 +268,10 @@ func (h *EventHandler) HandleCreateEventRequest(ctx context.Context, request eve
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
 
+	// Persist preferred times in UTC to avoid storing Vietnam local wall-clock as UTC.
+	req.PreferredStartTime = FormatEventTimeForUTCStorage(startTime)
+	req.PreferredEndTime = FormatEventTimeForUTCStorage(endTime)
+
 	// Create event request
 	requestID, err := h.useCase.CreateEventRequest(ctx, userID, &req)
 	if err != nil {
@@ -687,6 +691,10 @@ func (h *EventHandler) HandleUpdateEvent(ctx context.Context, request events.API
 		if err := ValidateEventTime(startTime, endTime); err != nil {
 			return createMessageResponse(http.StatusBadRequest, err.Error())
 		}
+
+		// Keep storage timezone-consistent: UTC in DB, VN conversion at response/render.
+		req.StartTime = FormatEventTimeForUTCStorage(startTime)
+		req.EndTime = FormatEventTimeForUTCStorage(endTime)
 	}
 
 	// Update event

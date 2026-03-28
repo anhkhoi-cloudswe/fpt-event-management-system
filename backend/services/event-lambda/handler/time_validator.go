@@ -156,3 +156,9 @@ func ParseEventTime(timeStr string) (time.Time, error) {
 
 	return time.Time{}, fmt.Errorf("invalid time format: %s", timeStr)
 }
+
+// FormatEventTimeForUTCStorage converts a parsed event time to UTC SQL datetime.
+// Input can be Vietnam-local or any timezone-aware time; output is always UTC.
+func FormatEventTimeForUTCStorage(t time.Time) string {
+	return t.UTC().Format("2006-01-02 15:04:05")
+}
