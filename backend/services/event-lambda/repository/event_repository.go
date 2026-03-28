@@ -24,13 +24,16 @@ func pointer[T any](v T) *T {
 // formatTimeToVNRFC3339 converts a DB time to Vietnam RFC3339 format
 // ⚠️ CRITICAL: This function is called on times READ FROM DATABASE
 // The DB stores times in UTC (e.g., "2026-04-01 02:00:00")
-// We convert to Vietnam zone once (e.g., "2026-04-01T09:00:00+07:00")
-// NO double conversion - single .In(loc) call only
+// BUT: DSN has loc=Asia/Ho_Chi_Minh, so driver REINTERPRETS them as Vietnam time
+// We must normalize back to UTC first, then convert to Vietnam zone
+// Result: "2026-04-01T09:00:00+07:00"
 func formatTimeToVNRFC3339(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
-	// Single conversion: DB time (which has zone=UTC) → Vietnam time with proper offset
+	// Step 1: Reinterpret DB-scanned time back to UTC (undo DSN loc reinterpretation)
+	// Step 2: Convert from UTC to Vietnam timezone with +07:00 offset
+	t = utils.NormalizeDBTimeAsUTC(t)
 	return utils.DBTimeToVietnamTime(t).Format(time.RFC3339)
 }
 
