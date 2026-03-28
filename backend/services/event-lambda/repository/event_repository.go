@@ -717,9 +717,9 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 			return nil, nil, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		// Convert timestamps to ISO string
-		item.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
-		item.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
+		// Convert timestamps to ISO string in Vietnam timezone
+		item.StartTime = formatTimeToVNRFC3339(startTime)
+		item.EndTime = formatTimeToVNRFC3339(endTime)
 
 		// Convert sql.Null to pointers
 		if description.Valid {
@@ -844,9 +844,9 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 			return nil, nil, nil, 0, 0, 0, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		// Convert timestamps to ISO string
-		item.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
-		item.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
+		// Convert timestamps to ISO string in Vietnam timezone
+		item.StartTime = formatTimeToVNRFC3339(startTime)
+		item.EndTime = formatTimeToVNRFC3339(endTime)
 
 		// Convert sql.Null to pointers
 		if description.Valid {
@@ -1217,9 +1217,9 @@ func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventList
 			return nil, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		// Convert timestamps to ISO string
-		item.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
-		item.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
+		// Convert timestamps to ISO string in Vietnam timezone
+		item.StartTime = formatTimeToVNRFC3339(startTime)
+		item.EndTime = formatTimeToVNRFC3339(endTime)
 
 		// Convert sql.Null to pointers
 		if description.Valid {

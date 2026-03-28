@@ -319,8 +319,8 @@ func (r *EventRepository) GetAllEventsSeparatedComposed(ctx context.Context, rol
 			return nil, nil, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		re.item.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
-		re.item.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
+		re.item.StartTime = formatTimeToVNRFC3339(startTime)
+		re.item.EndTime = formatTimeToVNRFC3339(endTime)
 		re.endTime = endTime
 
 		if description.Valid {
@@ -566,8 +566,8 @@ func (r *EventRepository) GetOpenEventsComposed(ctx context.Context) ([]models.E
 			return nil, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		re.item.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
-		re.item.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
+		re.item.StartTime = formatTimeToVNRFC3339(startTime)
+		re.item.EndTime = formatTimeToVNRFC3339(endTime)
 
 		if description.Valid {
 			re.item.Description = &description.String
