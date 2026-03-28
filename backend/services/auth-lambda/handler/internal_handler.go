@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -159,7 +158,7 @@ func isAuthInternalCall(request events.APIGatewayProxyRequest) bool {
 }
 
 func createAuthInternalResponse(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {
-	body, err := json.Marshal(data)
+	body, err := utils.MarshalVietnamJSON(data)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusInternalServerError,

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/venue-lambda/models"
 	"github.com/fpt-event-services/services/venue-lambda/usecase"
 )
@@ -354,7 +355,7 @@ func (h *VenueHandler) HandleGetSeats(ctx context.Context, request events.APIGat
 
 // Helper functions
 func createJSONResponse(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {
-	body, err := json.Marshal(data)
+	body, err := utils.MarshalVietnamJSON(data)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusInternalServerError,

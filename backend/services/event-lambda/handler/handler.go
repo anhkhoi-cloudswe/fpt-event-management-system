@@ -170,7 +170,7 @@ func (h *EventHandler) HandleGetEventDetail(ctx context.Context, request events.
 
 // createJSONResponse creates a JSON response (trả trực tiếp data, không wrap)
 func createJSONResponse(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {
-	body, err := json.Marshal(data)
+	body, err := utils.MarshalVietnamJSON(data)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusInternalServerError,

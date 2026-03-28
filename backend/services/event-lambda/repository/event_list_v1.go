@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/event-lambda/models"
 )
 
@@ -157,8 +159,8 @@ func (r *EventRepository) GetEventsByStatusV1(
 			e.event_id,
 			e.title,
 			e.description,
-			DATE_FORMAT(e.start_time, '%%Y-%%m-%%dT%%H:%%i:%%sZ') as start_time,
-			DATE_FORMAT(e.end_time, '%%Y-%%m-%%dT%%H:%%i:%%sZ') as end_time,
+			e.start_time,
+			e.end_time,
 			e.max_seats,
 			e.status,
 			e.banner_url,
@@ -192,8 +194,8 @@ func (r *EventRepository) GetEventsByStatusV1(
 			eventID       int
 			title         string
 			description   sql.NullString
-			startTime     string
-			endTime       string
+			startTime     time.Time
+			endTime       time.Time
 			maxSeats      int
 			status        string
 			bannerURL     sql.NullString
@@ -229,8 +231,8 @@ func (r *EventRepository) GetEventsByStatusV1(
 			EventID:       eventID,
 			Title:         title,
 			Description:   nullStringToPointer(description),
-			StartTime:     startTime,
-			EndTime:       endTime,
+			StartTime:     utils.ToVietnamTime(startTime).Format(time.RFC3339),
+			EndTime:       utils.ToVietnamTime(endTime).Format(time.RFC3339),
 			MaxSeats:      maxSeats,
 			Status:        status,
 			BannerURL:     nullStringToPointer(bannerURL),
@@ -377,8 +379,8 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			e.event_id,
 			e.title,
 			e.description,
-			DATE_FORMAT(e.start_time, '%%Y-%%m-%%dT%%H:%%i:%%sZ') as start_time,
-			DATE_FORMAT(e.end_time, '%%Y-%%m-%%dT%%H:%%i:%%sZ') as end_time,
+			e.start_time,
+			e.end_time,
 			e.max_seats,
 			e.status,
 			e.banner_url,
@@ -412,8 +414,8 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			eventID       int
 			title         string
 			description   sql.NullString
-			startTime     string
-			endTime       string
+			startTime     time.Time
+			endTime       time.Time
 			maxSeats      int
 			eventStatus   string
 			bannerURL     sql.NullString
@@ -449,8 +451,8 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			EventID:       eventID,
 			Title:         title,
 			Description:   nullStringToPointer(description),
-			StartTime:     startTime,
-			EndTime:       endTime,
+			StartTime:     utils.ToVietnamTime(startTime).Format(time.RFC3339),
+			EndTime:       utils.ToVietnamTime(endTime).Format(time.RFC3339),
 			MaxSeats:      maxSeats,
 			Status:        eventStatus,
 			BannerURL:     nullStringToPointer(bannerURL),

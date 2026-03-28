@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/staff-lambda/models"
 	"github.com/fpt-event-services/services/staff-lambda/usecase"
 )
@@ -121,7 +122,7 @@ func (h *StaffHandler) HandleCheckout(ctx context.Context, request events.APIGat
 
 // createJSONResponse creates a JSON response
 func createJSONResponse(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {
-	body, err := json.Marshal(data)
+	body, err := utils.MarshalVietnamJSON(data)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusInternalServerError,

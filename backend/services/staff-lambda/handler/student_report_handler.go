@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
+	"github.com/fpt-event-services/common/utils"
 )
 
 // ============================================================
@@ -216,7 +217,7 @@ func (h *StudentReportHandler) HandleGetPendingTicketIDs(ctx context.Context, re
 // HELPERS
 // ============================================================
 func createStudentReportResponse(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {
-	body, err := json.Marshal(data)
+	body, err := utils.MarshalVietnamJSON(data)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusInternalServerError,

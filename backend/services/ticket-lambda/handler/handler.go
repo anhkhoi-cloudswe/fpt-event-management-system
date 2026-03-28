@@ -197,7 +197,7 @@ func (h *TicketHandler) HandleGetMyBills(ctx context.Context, request events.API
 
 // Helper functions
 func createJSONResponse(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {
-	body, err := json.Marshal(data)
+	body, err := utils.MarshalVietnamJSON(data)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusInternalServerError,
