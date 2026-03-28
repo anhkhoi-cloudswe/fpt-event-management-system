@@ -6,10 +6,11 @@ import (
 )
 
 func TestValidateEventTime(t *testing.T) {
-	now := time.Now()
+	vnLoc := time.FixedZone("+07", 7*60*60)
+	now := time.Now().In(vnLoc)
 
-	// Create a valid base time (tomorrow at 2 PM)
-	tomorrow := now.AddDate(0, 0, 2).Truncate(24 * time.Hour).Add(14 * time.Hour)
+	// Create a valid base time in Vietnam timezone (2 days later, 10:00 -> 12:00)
+	validStart := time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, vnLoc).AddDate(0, 0, 2)
 
 	tests := []struct {
 		name        string
@@ -20,8 +21,8 @@ func TestValidateEventTime(t *testing.T) {
 	}{
 		{
 			name:        "Valid future event",
-			startTime:   tomorrow,                    // Tomorrow 2 PM
-			endTime:     tomorrow.Add(2 * time.Hour), // Tomorrow 4 PM
+			startTime:   validStart,
+			endTime:     validStart.Add(2 * time.Hour),
 			shouldError: false,
 		},
 		{
@@ -33,31 +34,31 @@ func TestValidateEventTime(t *testing.T) {
 		},
 		{
 			name:        "End before start",
-			startTime:   tomorrow,
-			endTime:     tomorrow.Add(-1 * time.Hour), // 1 hour before start
+			startTime:   validStart,
+			endTime:     validStart.Add(-1 * time.Hour), // 1 hour before start
 			shouldError: true,
 			errorMsg:    "phải sau",
 		},
 		{
 			name:        "Different days",
-			startTime:   tomorrow.Truncate(24 * time.Hour).Add(15 * time.Hour), // 3 PM
-			endTime:     tomorrow.Add(24 * time.Hour).Add(9 * time.Hour),       // 9 AM next day
+			startTime:   time.Date(validStart.Year(), validStart.Month(), validStart.Day(), 15, 0, 0, 0, vnLoc),
+			endTime:     time.Date(validStart.Year(), validStart.Month(), validStart.Day(), 9, 0, 0, 0, vnLoc).Add(24 * time.Hour),
 			shouldError: true,
 			errorMsg:    "cùng một ngày",
 		},
 		{
 			name:        "Too short duration (15 minutes)",
-			startTime:   tomorrow,
-			endTime:     tomorrow.Add(15 * time.Minute),
+			startTime:   validStart,
+			endTime:     validStart.Add(15 * time.Minute),
 			shouldError: true,
-			errorMsg:    "30 phút",
+			errorMsg:    "60 phút",
 		},
 		{
 			name:        "Too long duration (20 hours)",
-			startTime:   tomorrow.Truncate(24 * time.Hour).Add(7 * time.Hour),  // 7 AM
-			endTime:     tomorrow.Truncate(24 * time.Hour).Add(27 * time.Hour), // 3 AM next day (would fail same-day first)
+			startTime:   time.Date(validStart.Year(), validStart.Month(), validStart.Day(), 7, 0, 0, 0, vnLoc),
+			endTime:     time.Date(validStart.Year(), validStart.Month(), validStart.Day(), 21, 30, 0, 0, vnLoc),
 			shouldError: true,
-			// Will fail on same-day check before duration check
+			errorMsg:    "kết thúc trước 21:00",
 		},
 		{
 			name:        "Less than 24h advance",
@@ -71,7 +72,7 @@ func TestValidateEventTime(t *testing.T) {
 			startTime:   now.AddDate(2, 0, 0),
 			endTime:     now.AddDate(2, 0, 0).Add(2 * time.Hour),
 			shouldError: true,
-			errorMsg:    "1 năm",
+			errorMsg:    "365 ngày",
 		},
 	}
 
@@ -143,6 +144,32 @@ func TestParseEventTime(t *testing.T) {
 				t.Errorf("Expected no error, got: %v", err)
 			}
 		})
+	}
+}
+
+func TestFormatEventTimeForUTCStorage(t *testing.T) {
+	vnLoc := time.FixedZone("+07", 7*60*60)
+	input := time.Date(2026, 3, 31, 7, 0, 0, 0, vnLoc)
+
+	got := FormatEventTimeForUTCStorage(input)
+	want := "2026-03-31 00:00:00"
+
+	if got != want {
+		t.Fatalf("FormatEventTimeForUTCStorage() = %q, want %q", got, want)
+	}
+}
+
+func TestParseEventTimeAndFormatUTCStorage_FromVietnamLocalString(t *testing.T) {
+	parsed, err := ParseEventTime("2026-03-31T07:00:00")
+	if err != nil {
+		t.Fatalf("ParseEventTime() unexpected error: %v", err)
+	}
+
+	got := FormatEventTimeForUTCStorage(parsed)
+	want := "2026-03-31 00:00:00"
+
+	if got != want {
+		t.Fatalf("Parse+Format UTC storage = %q, want %q", got, want)
 	}
 }
 
