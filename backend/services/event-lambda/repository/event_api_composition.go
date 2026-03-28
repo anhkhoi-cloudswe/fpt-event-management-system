@@ -395,8 +395,10 @@ func (r *EventRepository) GetAllEventsSeparatedComposed(ctx context.Context, rol
 func (r *EventRepository) GetAllEventsSeparatedWithPaginationComposed(ctx context.Context, role string, userID int, page int, limit int) (
 	[]models.EventListItem,
 	[]models.EventListItem,
+	[]models.EventListItem,
 	int, // totalOpen
 	int, // totalClosed
+	int, // totalCancelled
 	error,
 ) {
 	log.Printf("[API_COMPOSITION] GetAllEventsSeparatedWithPaginationComposed: role=%s, userID=%d, page=%d, limit=%d", role, userID, page, limit)
@@ -444,8 +446,8 @@ func (r *EventRepository) GetEventDetailComposed(ctx context.Context, eventID in
 	if description.Valid {
 		detail.Description = &description.String
 	}
-	detail.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
-	detail.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
+	detail.StartTime = formatTimeToVNRFC3339(startTime)
+	detail.EndTime = formatTimeToVNRFC3339(endTime)
 	if maxSeats.Valid {
 		detail.MaxSeats = int(maxSeats.Int64)
 	}
@@ -753,12 +755,13 @@ func (r *EventRepository) GetMyEventRequestsComposed(ctx context.Context, reques
 	for rows.Next() {
 		var req models.EventRequest
 		var processedBy sql.NullInt64
+		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID,
 			&req.Title, &req.Description,
-			&req.PreferredStartTime, &req.PreferredEndTime,
+			&preferredStartTime, &preferredEndTime,
 			&req.ExpectedCapacity, &req.Status,
 			&createdAt, &processedBy,
 			&processedAt, &req.OrganizerNote, &req.RejectReason,
@@ -768,14 +771,9 @@ func (r *EventRepository) GetMyEventRequestsComposed(ctx context.Context, reques
 			return nil, fmt.Errorf("failed to scan event request: %w", err)
 		}
 
-		if createdAt.Valid {
-			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
-		}
+		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
-		}
-		if processedAt.Valid {
-			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 
 		requests = append(requests, req)
@@ -821,13 +819,14 @@ func (r *EventRepository) GetMyActiveEventRequestsComposed(ctx context.Context, 
 	for rows.Next() {
 		var req models.EventRequest
 		var processedBy sql.NullInt64
+		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
 		var eventStatus sql.NullString
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID,
 			&req.Title, &req.Description,
-			&req.PreferredStartTime, &req.PreferredEndTime,
+			&preferredStartTime, &preferredEndTime,
 			&req.ExpectedCapacity, &req.Status,
 			&createdAt, &processedBy,
 			&processedAt, &req.OrganizerNote, &req.RejectReason,
@@ -837,14 +836,9 @@ func (r *EventRepository) GetMyActiveEventRequestsComposed(ctx context.Context, 
 			return nil, 0, fmt.Errorf("failed to scan event request: %w", err)
 		}
 
-		if createdAt.Valid {
-			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
-		}
+		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
-		}
-		if processedAt.Valid {
-			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if eventStatus.Valid {
 			req.EventStatus = &eventStatus.String
@@ -907,13 +901,14 @@ func (r *EventRepository) GetMyArchivedEventRequestsComposed(ctx context.Context
 	for rows.Next() {
 		var req models.EventRequest
 		var processedBy sql.NullInt64
+		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
 		var eventStatus sql.NullString
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID,
 			&req.Title, &req.Description,
-			&req.PreferredStartTime, &req.PreferredEndTime,
+			&preferredStartTime, &preferredEndTime,
 			&req.ExpectedCapacity, &req.Status,
 			&createdAt, &processedBy,
 			&processedAt, &req.OrganizerNote, &req.RejectReason,
@@ -923,14 +918,9 @@ func (r *EventRepository) GetMyArchivedEventRequestsComposed(ctx context.Context
 			return nil, 0, fmt.Errorf("failed to scan event request: %w", err)
 		}
 
-		if createdAt.Valid {
-			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
-		}
+		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
-		}
-		if processedAt.Valid {
-			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if eventStatus.Valid {
 			req.EventStatus = &eventStatus.String
@@ -990,12 +980,13 @@ func (r *EventRepository) GetPendingEventRequestsComposed(ctx context.Context) (
 	for rows.Next() {
 		var req models.EventRequest
 		var processedBy sql.NullInt64
+		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID,
 			&req.Title, &req.Description,
-			&req.PreferredStartTime, &req.PreferredEndTime,
+			&preferredStartTime, &preferredEndTime,
 			&req.ExpectedCapacity, &req.Status,
 			&createdAt, &processedBy,
 			&processedAt, &req.OrganizerNote, &req.RejectReason,
@@ -1005,14 +996,9 @@ func (r *EventRepository) GetPendingEventRequestsComposed(ctx context.Context) (
 			return nil, fmt.Errorf("failed to scan event request: %w", err)
 		}
 
-		if createdAt.Valid {
-			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
-		}
+		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
-		}
-		if processedAt.Valid {
-			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 
 		requests = append(requests, req)
@@ -1047,12 +1033,13 @@ func (r *EventRepository) GetEventRequestByIDComposed(ctx context.Context, reque
 
 	var req models.EventRequest
 	var processedBy sql.NullInt64
+	var preferredStartTime, preferredEndTime sql.NullTime
 	var processedAt, createdAt sql.NullTime
 
 	err := r.db.QueryRowContext(ctx, query, requestID).Scan(
 		&req.RequestID, &req.RequesterID,
 		&req.Title, &req.Description,
-		&req.PreferredStartTime, &req.PreferredEndTime,
+		&preferredStartTime, &preferredEndTime,
 		&req.ExpectedCapacity, &req.Status,
 		&createdAt, &processedBy,
 		&processedAt, &req.OrganizerNote, &req.RejectReason,
@@ -1066,14 +1053,9 @@ func (r *EventRepository) GetEventRequestByIDComposed(ctx context.Context, reque
 		return nil, fmt.Errorf("failed to query event request: %w", err)
 	}
 
-	if createdAt.Valid {
-		req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
-	}
+	setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
 	if processedBy.Valid {
 		req.ProcessedBy = pointer(int(processedBy.Int64))
-	}
-	if processedAt.Valid {
-		req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 	}
 
 	// Enrich with API calls (single request)

@@ -33,15 +33,17 @@ func (uc *EventUseCase) GetAllEventsSeparated(ctx context.Context, role string, 
 
 // ============================================================
 // GetAllEventsSeparatedWithPagination - ✅ NEW: WITH PAGINATION SUPPORT
-// Trả về 2 list: openEvents và closedEvents, cùng với total count
+// Trả về 3 list: openEvents, closedEvents và cancelledEvents, cùng với total count
 // With permission filtering: role and userID
 // Pagination: limit items per page, calculate offset
 // ============================================================
 func (uc *EventUseCase) GetAllEventsSeparatedWithPagination(ctx context.Context, role string, userID int, page int, limit int) (
 	openEvents []models.EventListItem,
 	closedEvents []models.EventListItem,
+	cancelledEvents []models.EventListItem,
 	totalOpen int,
 	totalClosed int,
+	totalCancelled int,
 	err error,
 ) {
 	return uc.eventRepo.GetAllEventsSeparatedWithPagination(ctx, role, userID, page, limit)
