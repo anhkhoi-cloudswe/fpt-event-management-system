@@ -33,8 +33,11 @@ func formatTimeToVNRFC3339(t time.Time) string {
 	}
 	// Step 1: Reinterpret DB-scanned time back to UTC (undo DSN loc reinterpretation)
 	// Step 2: Convert from UTC to Vietnam timezone with +07:00 offset
-	t = utils.NormalizeDBTimeAsUTC(t)
-	return utils.DBTimeToVietnamTime(t).Format(time.RFC3339)
+	normalized := utils.NormalizeDBTimeAsUTC(t)
+	result := utils.DBTimeToVietnamTime(normalized).Format(time.RFC3339)
+	log.Printf("[TIMEZONE_DEBUG] formatTimeToVNRFC3339: input=%s -> normalized=%s -> result=%s", 
+		t.Format(time.RFC3339), normalized.Format(time.RFC3339), result)
+	return result
 }
 
 func formatNullTimeToVNRFC3339(value sql.NullTime) *string {
