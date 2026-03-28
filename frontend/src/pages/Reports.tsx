@@ -1033,7 +1033,7 @@ export default function Reports() {
                         if (!status) return null
                         let bgColor = ''
                         let label = ''
-                        
+
                         switch (status) {
                           case 'OPEN':
                             bgColor = 'bg-green-100 text-green-800'
@@ -1050,7 +1050,7 @@ export default function Reports() {
                           default:
                             return null
                         }
-                        
+
                         return (
                           <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${bgColor} ml-2`}>
                             {label}
@@ -1098,16 +1098,15 @@ export default function Reports() {
                 {selectedEvent.status && (
                   <>
                     {' '}
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                      selectedEvent.status === 'OPEN' ? 'bg-green-100 text-green-800' :
-                      selectedEvent.status === 'CLOSED' ? 'bg-gray-100 text-gray-800' :
-                      selectedEvent.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${selectedEvent.status === 'OPEN' ? 'bg-green-100 text-green-800' :
+                        selectedEvent.status === 'CLOSED' ? 'bg-gray-100 text-gray-800' :
+                          selectedEvent.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                      }`}>
                       {selectedEvent.status === 'OPEN' ? 'Đang diễn ra' :
-                       selectedEvent.status === 'CLOSED' ? 'Đã đóng' :
-                       selectedEvent.status === 'CANCELLED' ? 'Đã hủy' :
-                       selectedEvent.status}
+                        selectedEvent.status === 'CLOSED' ? 'Đã đóng' :
+                          selectedEvent.status === 'CANCELLED' ? 'Đã hủy' :
+                            selectedEvent.status}
                     </span>
                   </>
                 )}

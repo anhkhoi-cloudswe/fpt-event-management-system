@@ -115,8 +115,8 @@ func (h *EventHandler) HandleGetEvents(ctx context.Context, request events.APIGa
 
 	// ✅ NEW RESPONSE FORMAT with pagination metadata
 	response := map[string]interface{}{
-		"openEvents":     openEvents,
-		"closedEvents":   closedEvents,
+		"openEvents":      openEvents,
+		"closedEvents":    closedEvents,
 		"cancelledEvents": cancelledEvents,
 		"pagination": map[string]int{
 			"currentPage": page,
