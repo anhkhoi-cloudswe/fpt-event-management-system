@@ -7,20 +7,14 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	commonutils "github.com/fpt-event-services/common/utils"
 )
 
-func TestFormatEventTimeRange_UsesVietnamTime(t *testing.T) {
-	vnLoc := commonutils.VietnamLocation()
+func TestFormatEventTimeRange_UsesInputTimeWithoutReconversion(t *testing.T) {
+	vnLoc := time.FixedZone("+07", 7*60*60)
+	start := time.Date(2026, 3, 31, 9, 0, 0, 0, vnLoc)
+	end := time.Date(2026, 3, 31, 16, 0, 0, 0, vnLoc)
 
-	startDB := time.Date(2026, 3, 31, 2, 0, 0, 0, vnLoc)
-	endDB := time.Date(2026, 3, 31, 9, 0, 0, 0, vnLoc)
-
-	startVN := commonutils.DBTimeToVietnamTime(startDB)
-	endVN := commonutils.DBTimeToVietnamTime(endDB)
-
-	got := formatEventTimeRange(startVN, endVN, vnLoc)
+	got := formatEventTimeRange(start, end)
 	want := "09:00 - 16:00"
 
 	if got != want {
@@ -28,14 +22,14 @@ func TestFormatEventTimeRange_UsesVietnamTime(t *testing.T) {
 	}
 }
 
-func TestGenerateTicketPDF_ContainsVietnamEventTime(t *testing.T) {
-	vnLoc := commonutils.VietnamLocation()
+func TestGenerateTicketPDF_ContainsProvidedEventTime(t *testing.T) {
+	vnLoc := time.FixedZone("+07", 7*60*60)
 
 	data := TicketPDFData{
 		TicketCode:   "TKT_123",
 		EventName:    "Timezone Test Event",
-		EventDate:    time.Date(2026, 3, 31, 2, 0, 0, 0, vnLoc),
-		EndTime:      time.Date(2026, 3, 31, 9, 0, 0, 0, vnLoc),
+		EventDate:    time.Date(2026, 3, 31, 9, 0, 0, 0, vnLoc),
+		EndTime:      time.Date(2026, 3, 31, 16, 0, 0, 0, vnLoc),
 		VenueName:    "FPT Hall",
 		AreaName:     "A",
 		Address:      "Hoa Lac",
@@ -55,7 +49,7 @@ func TestGenerateTicketPDF_ContainsVietnamEventTime(t *testing.T) {
 	pdfText := string(pdfBytes)
 	decoded := decodeFirstPDFStream(t, pdfBytes)
 	if !strings.Contains(decoded, "09:00 - 16:00") {
-		t.Fatalf("expected PDF to contain Vietnam time range, decoded stream=%q raw=%q", decoded, pdfText)
+		t.Fatalf("expected PDF to contain provided time range, decoded stream=%q raw=%q", decoded, pdfText)
 	}
 }
 
