@@ -85,7 +85,7 @@ func (h *EventHandler) HandleGetEvents(ctx context.Context, request events.APIGa
 	log.Debug("HandleGetEvents - Role=%s UserID=%d Page=%d Limit=%d", role, userID, page, limit)
 
 	// Get all events separated by status with pagination
-	openEvents, closedEvents, totalOpen, totalClosed, err := h.useCase.GetAllEventsSeparatedWithPagination(ctx, role, userID, page, limit)
+	openEvents, closedEvents, cancelledEvents, totalOpen, totalClosed, totalCancelled, err := h.useCase.GetAllEventsSeparatedWithPagination(ctx, role, userID, page, limit)
 	if err != nil {
 		log.Error("GetAllEventsSeparatedWithPagination error: %v", err)
 		return createMessageResponse(http.StatusInternalServerError, fmt.Sprintf("Internal server error when loading events: %v", err))
@@ -98,22 +98,26 @@ func (h *EventHandler) HandleGetEvents(ctx context.Context, request events.APIGa
 	if closedEvents == nil {
 		closedEvents = []models.EventListItem{}
 	}
+	if cancelledEvents == nil {
+		cancelledEvents = []models.EventListItem{}
+	}
 
 	// Calculate pagination metadata
-	totalItems := totalOpen + totalClosed
+	totalItems := totalOpen + totalClosed + totalCancelled
 	totalPages := (totalItems + limit - 1) / limit
 	if totalPages < 1 {
 		totalPages = 1
 	}
 
 	// ✅ SECURITY LOG: Track filtered events access
-	log.Info("GetEvents filtered - UserID=%d Role=%s Page=%d TotalItems=%d Open=%d Closed=%d",
-		userID, role, page, totalItems, len(openEvents), len(closedEvents))
+	log.Info("GetEvents filtered - UserID=%d Role=%s Page=%d TotalItems=%d Open=%d Closed=%d Cancelled=%d",
+		userID, role, page, totalItems, len(openEvents), len(closedEvents), len(cancelledEvents))
 
 	// ✅ NEW RESPONSE FORMAT with pagination metadata
 	response := map[string]interface{}{
-		"openEvents":   openEvents,
-		"closedEvents": closedEvents,
+		"openEvents":     openEvents,
+		"closedEvents":   closedEvents,
+		"cancelledEvents": cancelledEvents,
 		"pagination": map[string]int{
 			"currentPage": page,
 			"pageSize":    limit,
@@ -1164,13 +1168,14 @@ func (h *EventHandler) HandleDisableEvent(ctx context.Context, request events.AP
 // - X-User-Id: User ID for organizer filtering
 //
 // Response Format:
-// {
-//   "data": [...EventListItem...],
-//   "total": 100,
-//   "page": 1,
-//   "limit": 8,
-//   "totalPages": 13
-// }
+//
+//	{
+//	  "data": [...EventListItem...],
+//	  "total": 100,
+//	  "page": 1,
+//	  "limit": 8,
+//	  "totalPages": 13
+//	}
 //
 // Status Logic:
 // - 'today': OPEN events with start_time on today's date

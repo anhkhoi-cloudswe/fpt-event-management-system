@@ -102,6 +102,7 @@ func contains(str, substr string) bool {
 // GenerateTicketPDF tạo PDF vé điện tử với QR code
 // Trả về PDF bytes có thể lưu file hoặc attach email
 func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
+	vnLoc := commonutils.VietnamLocation()
 	eventStart := commonutils.ToVietnamTime(data.EventDate)
 	eventEnd := data.EndTime
 	if !eventEnd.IsZero() {
@@ -163,10 +164,10 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	dateStr := eventStart.Format("January 2, 2006")
 	pdf.CellFormat(75, 6, dateStr, "", 1, "L", false, 0, "") // +20%: 5 → 6
 	pdf.SetX(115)
-	startTimeStr := commonutils.FormatToVNTime(eventStart)
+	startTimeStr := eventStart.In(vnLoc).Format("15:04")
 	timeStr := startTimeStr
 	if !eventEnd.IsZero() {
-		timeStr = fmt.Sprintf("%s - %s", startTimeStr, commonutils.FormatToVNTime(eventEnd))
+		timeStr = fmt.Sprintf("%s - %s", startTimeStr, eventEnd.In(vnLoc).Format("15:04"))
 	}
 	pdf.CellFormat(75, 6, timeStr, "", 1, "L", false, 0, "")
 	pdf.Ln(2.4)
