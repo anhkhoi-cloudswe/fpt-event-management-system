@@ -399,7 +399,7 @@ func (h *VenueInternalHandler) HandleUpdateAreaStatus(ctx context.Context, reque
 			SELECT COUNT(1)
 			FROM Event
 			WHERE area_id = ?
-			  AND status IN ('OPEN', 'UPDATING')
+			  AND status IN ('OPEN', 'UPDATING', 'PENDING')
 		`
 		if err := h.db.QueryRowContext(ctx, activeEventQuery, body.AreaID).Scan(&activeEventCount); err != nil {
 			h.logger.Warn("[INTERNAL_VENUE] Failed to validate active events for area %d: %v", body.AreaID, err)
@@ -407,8 +407,8 @@ func (h *VenueInternalHandler) HandleUpdateAreaStatus(ctx context.Context, reque
 		}
 
 		if activeEventCount > 0 {
-			h.logger.Warn("[INTERNAL_VENUE] Blocked area release: areaId=%d still has %d OPEN/UPDATING event(s)", body.AreaID, activeEventCount)
-			return createInternalResponse(http.StatusConflict, map[string]string{"error": "cannot release area while event is OPEN or UPDATING"})
+			h.logger.Warn("[INTERNAL_VENUE] Blocked area release (Global Guard): areaId=%d still has %d OPEN/UPDATING/PENDING event(s)", body.AreaID, activeEventCount)
+			return createInternalResponse(http.StatusConflict, map[string]string{"error": "cannot release area: found active/pending events. Area can only become AVAILABLE when ALL events are CLOSED or CANCELLED"})
 		}
 
 		var doneEventCount int
@@ -424,7 +424,7 @@ func (h *VenueInternalHandler) HandleUpdateAreaStatus(ctx context.Context, reque
 		}
 
 		if doneEventCount == 0 {
-			h.logger.Warn("[INTERNAL_VENUE] Blocked area release: areaId=%d has no CLOSED/CANCELLED event", body.AreaID)
+			h.logger.Warn("[INTERNAL_VENUE] Blocked area release (Global Guard): areaId=%d has no CLOSED/CANCELLED event", body.AreaID)
 			return createInternalResponse(http.StatusConflict, map[string]string{"error": "cannot release area without CLOSED or CANCELLED event"})
 		}
 	}
