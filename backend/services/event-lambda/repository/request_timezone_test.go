@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fpt-event-services/services/event-lambda/models"
 	"github.com/fpt-event-services/common/utils"
+	"github.com/fpt-event-services/services/event-lambda/models"
 )
 
 // ===== COMPREHENSIVE TIMEZONE REGRESSION TEST SUITE =====
@@ -24,14 +24,14 @@ func TestRequestDetail_VietnamInputStoredAsUTCReadBackAsVietnam(t *testing.T) {
 
 	// ===== STEP 1: User inputs 09:00 Vietnam time =====
 	userInput := time.Date(2026, 4, 1, 9, 0, 0, 0, vnLoc) // 09:00+07:00 wall-clock
-	
+
 	t.Logf("User input: %s (zone=%v)", userInput.Format(time.RFC3339), userInput.Location())
 
 	// ===== STEP 2: Handler converts to UTC for storage =====
 	// Simulating what FormatEventTimeForUTCStorage does
 	utcString := userInput.UTC().Format("2006-01-02 15:04:05")
 	expectedUTCString := "2026-04-01 02:00:00"
-	
+
 	if utcString != expectedUTCString {
 		t.Errorf("UTC storage conversion failed:\n  input:    %s\n  got:      %s\n  expected: %s",
 			userInput.Format(time.RFC3339), utcString, expectedUTCString)
@@ -48,7 +48,7 @@ func TestRequestDetail_VietnamInputStoredAsUTCReadBackAsVietnam(t *testing.T) {
 		dbReadTime.Hour(), dbReadTime.Minute(), dbReadTime.Second(), 0,
 		vnLoc,
 	)
-	
+
 	t.Logf("After DB read (with DSN loc reinterpretation): %s (zone=%v)", dbReadTimeWithVNZone.Format(time.RFC3339), dbReadTimeWithVNZone.Location())
 
 	// ===== STEP 4: Repository converts back to Vietnam time =====
@@ -58,7 +58,7 @@ func TestRequestDetail_VietnamInputStoredAsUTCReadBackAsVietnam(t *testing.T) {
 	// Step 2: Convert from UTC to Vietnam
 	vietnamOutput := utils.DBTimeToVietnamTime(normalized).Format(time.RFC3339)
 	expectedOutput := "2026-04-01T09:00:00+07:00"
-	
+
 	t.Logf("Final JSON output: %s", vietnamOutput)
 
 	// ===== CRITICAL VERIFICATION =====
@@ -129,12 +129,12 @@ func TestRequestDetailJSON_NoDoubleOffsetInMarshal(t *testing.T) {
 	sqlNullTime := sql.NullTime{Time: utcTime, Valid: true}
 
 	req := &models.EventRequest{
-		RequestID:    1055,
-		RequesterID:  100,
-		Title:        "Test Event with Input 09:00 VN",
-		Status:       "PENDING",
+		RequestID:   1055,
+		RequesterID: 100,
+		Title:       "Test Event with Input 09:00 VN",
+		Status:      "PENDING",
 	}
-	
+
 	// This populates PreferredStartTime with formatTimeToVNRFC3339
 	setEventRequestTimeFields(req, sqlNullTime, sqlNullTime, sqlNullTime, sqlNullTime)
 
@@ -149,18 +149,18 @@ func TestRequestDetailJSON_NoDoubleOffsetInMarshal(t *testing.T) {
 
 	// ===== CRITICAL CHECKS =====
 	expectedTimeStr := "2026-04-01T09:00:00+07:00"
-	
+
 	if !strings.Contains(jsonStr, expectedTimeStr) {
 		if strings.Contains(jsonStr, "2026-04-01T02:00:00") {
-			t.Errorf("DOUBLE OFFSET BUG: JSON contains UTC time instead of VN time!\n" +
-				"  This means timezone conversion was NOT applied\n" +
+			t.Errorf("DOUBLE OFFSET BUG: JSON contains UTC time instead of VN time!\n"+
+				"  This means timezone conversion was NOT applied\n"+
 				"  JSON: %s", jsonStr)
 		} else if strings.Contains(jsonStr, "2026-04-01T16:00:00") {
-			t.Errorf("DOUBLE OFFSET BUG: JSON contains doubly-offset time (02:00 UTC → 09:00 VN → 16:00?)\n" +
-				"  This means timezone was applied twice\n" +
+			t.Errorf("DOUBLE OFFSET BUG: JSON contains doubly-offset time (02:00 UTC → 09:00 VN → 16:00?)\n"+
+				"  This means timezone was applied twice\n"+
 				"  JSON: %s", jsonStr)
 		} else {
-			t.Errorf("JSON does not contain expected time %s:\n" +
+			t.Errorf("JSON does not contain expected time %s:\n"+
 				"  JSON: %s", expectedTimeStr, jsonStr)
 		}
 	} else {
@@ -211,27 +211,27 @@ func TestAllRequestTimePaths_NoDoubleOffset(t *testing.T) {
 		assertFunc func(*models.EventRequest) *string
 	}{
 		{
-			name:      "PreferredStartTime",
-			fieldScan: sqlNullTime,
-			fieldName: "PreferredStartTime",
+			name:       "PreferredStartTime",
+			fieldScan:  sqlNullTime,
+			fieldName:  "PreferredStartTime",
 			assertFunc: func(r *models.EventRequest) *string { return r.PreferredStartTime },
 		},
 		{
-			name:      "PreferredEndTime",
-			fieldScan: sqlNullTime,
-			fieldName: "PreferredEndTime",
+			name:       "PreferredEndTime",
+			fieldScan:  sqlNullTime,
+			fieldName:  "PreferredEndTime",
 			assertFunc: func(r *models.EventRequest) *string { return r.PreferredEndTime },
 		},
 		{
-			name:      "CreatedAt",
-			fieldScan: sqlNullTime,
-			fieldName: "CreatedAt",
+			name:       "CreatedAt",
+			fieldScan:  sqlNullTime,
+			fieldName:  "CreatedAt",
 			assertFunc: func(r *models.EventRequest) *string { return r.CreatedAt },
 		},
 		{
-			name:      "ProcessedAt",
-			fieldScan: sqlNullTime,
-			fieldName: "ProcessedAt",
+			name:       "ProcessedAt",
+			fieldScan:  sqlNullTime,
+			fieldName:  "ProcessedAt",
 			assertFunc: func(r *models.EventRequest) *string { return r.ProcessedAt },
 		},
 	}
