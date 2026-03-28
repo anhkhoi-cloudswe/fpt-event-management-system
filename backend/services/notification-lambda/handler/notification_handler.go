@@ -248,10 +248,14 @@ func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (eve
 	if err != nil {
 		eventDate = time.Now()
 	}
+	eventDate = utils.ToVietnamTime(eventDate)
 
 	eventEndTime, err := time.Parse(time.RFC3339, data.EndTime)
 	if err != nil {
 		eventEndTime = time.Time{}
+	}
+	if !eventEndTime.IsZero() {
+		eventEndTime = utils.ToVietnamTime(eventEndTime)
 	}
 
 	// Step 4: Generate PDF
@@ -319,6 +323,9 @@ func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData
 	if err != nil {
 		eventEndTime = time.Time{}
 	}
+	if !eventEndTime.IsZero() {
+		eventEndTime = utils.ToVietnamTime(eventEndTime)
+	}
 
 	for _, ticket := range data.Tickets {
 		// Generate QR PNG bytes
@@ -333,6 +340,7 @@ func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData
 		if err != nil {
 			eventDate = time.Now()
 		}
+		eventDate = utils.ToVietnamTime(eventDate)
 
 		// Generate PDF
 		pdfBytes, err := ticketpdf.GenerateTicketPDF(ticketpdf.TicketPDFData{
