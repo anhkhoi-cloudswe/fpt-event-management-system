@@ -64,19 +64,32 @@ jobs:
 
       - name: Sync to S3
         run: |
-          aws s3 sync dist/ s3://${{ vars.FRONTEND_S3_BUCKET }} --delete \
+          aws s3 sync dist/ s3://fpt-event-frontend-436756555762 --delete \
             --cache-control "public,max-age=31536000,immutable" \
             --exclude "index.html" \
             --exclude "*.css" \
             --exclude "*.js"
-          aws s3 sync dist/ s3://${{ vars.FRONTEND_S3_BUCKET }} --delete \
+          aws s3 sync dist/ s3://fpt-event-frontend-436756555762 --delete \
             --cache-control "no-cache,must-revalidate" \
             --include "index.html" \
             --include "*.css" \
             --include "*.js"
 
+      - name: Get CloudFront Distribution ID
+        id: get_cloudfront_id
+        run: |
+          DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[0].Id" --output text)
+          
+          if [ "$DIST_ID" == "None" ] || [ -z "$DIST_ID" ]; then
+            echo "Error: Could not find any CloudFront distribution"
+            exit 1
+          fi
+          
+          echo "DISTRIBUTION_ID=$DIST_ID" >> $GITHUB_ENV
+          echo "Found CloudFront Distribution ID: $DIST_ID"
+
       - name: Create CloudFront invalidation
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --distribution-id ${{ env.DISTRIBUTION_ID }} \
             --paths "/*"
