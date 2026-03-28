@@ -37,3 +37,12 @@ func FormatVietnamDateTime(t time.Time) string {
 	}
 	return t.Format("15:04 02/01/2006")
 }
+
+// FormatToVNTime formats a timestamp as HH:mm in Vietnam timezone.
+func FormatToVNTime(t time.Time) string {
+	t = ToVietnamTime(t)
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format("15:04")
+}
