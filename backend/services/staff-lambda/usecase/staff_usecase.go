@@ -13,6 +13,7 @@ import (
 	"github.com/fpt-event-services/services/staff-lambda/models"
 	"github.com/fpt-event-services/services/staff-lambda/repository"
 )
+import "github.com/fpt-event-services/common/utils"
 
 var log = logger.Default()
 
@@ -172,7 +173,7 @@ func (uc *StaffUseCase) processCheckin(ctx context.Context, userID int, ticketID
 		result.ErrorCode = &errCode
 		checkInTimeStr := "lúc đó"
 		if ticket.CheckInTime != nil {
-			checkInTimeStr = ticket.CheckInTime.Format("15:04 02/01")
+			checkInTimeStr = utils.ToVietnamTime(*ticket.CheckInTime).Format("15:04 02/01")
 		}
 		errMsg := fmt.Sprintf("📢 Vé đã vào cổng!\nKhách %s đã check-in %s.\nVui lòng không cho vào lần 2!", ticket.CustomerName, checkInTimeStr)
 		result.Error = &errMsg
@@ -231,7 +232,7 @@ func (uc *StaffUseCase) processCheckin(ctx context.Context, userID int, ticketID
 		errCode := "EventEnded"
 		result.ErrorCode = &errCode
 		errMsg := fmt.Sprintf("Sự kiện '%s' đã kết thúc lúc %s. Không thể check-in thêm.",
-			ticket.EventName, ticket.EventEndTime.Format("15:04 02/01"))
+			ticket.EventName, utils.ToVietnamTime(ticket.EventEndTime).Format("15:04 02/01"))
 		result.Error = &errMsg
 		log.Info("processCheckin - event ended TicketID=%d", ticketID)
 		return result
@@ -373,7 +374,7 @@ func (uc *StaffUseCase) processCheckout(ctx context.Context, userID int, ticketI
 			result.ErrorCode = &errCode
 			checkOutTimeStr := "lúc đó"
 			if ticket.CheckOutTime != nil {
-				checkOutTimeStr = ticket.CheckOutTime.Format("15:04 02/01")
+				checkOutTimeStr = utils.ToVietnamTime(*ticket.CheckOutTime).Format("15:04 02/01")
 			}
 			errMsg := fmt.Sprintf("Khách %s đã check-out lúc %s. Vé không còn giá trị.", ticket.CustomerName, checkOutTimeStr)
 			result.Error = &errMsg

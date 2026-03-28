@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fpt-event-services/common/logger"
@@ -49,7 +51,7 @@ type Config struct {
 func InitDB() error {
 	// Check for DB_URL first (full DSN string, used by both AWS SAM and .env)
 	if dsn := os.Getenv("DB_URL"); dsn != "" {
-		return initDBWithDSN(dsn)
+		return initDBWithDSN(ensureTimezoneDSN(dsn))
 	}
 
 	config := Config{
@@ -66,7 +68,7 @@ func InitDB() error {
 // initDBWithDSN initializes global DB using a full DSN string (from DB_URL)
 func initDBWithDSN(dsn string) error {
 	var err error
-	db, err = sql.Open("mysql", dsn)
+	db, err = sql.Open("mysql", ensureTimezoneDSN(dsn))
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
@@ -144,7 +146,7 @@ func InitServiceDB(serviceName string) (*sql.DB, error) {
 	// Check for DB_URL first (full DSN string, used by both AWS SAM and .env)
 	var dsn string
 	if envDSN := os.Getenv("DB_URL"); envDSN != "" {
-		dsn = envDSN
+		dsn = ensureTimezoneDSN(envDSN)
 	} else {
 		config := Config{
 			Server:   getEnv("DB_SERVER", "127.0.0.1"),
@@ -186,6 +188,42 @@ func InitServiceDB(serviceName string) (*sql.DB, error) {
 	}
 
 	return serviceDB, nil
+}
+
+func ensureTimezoneDSN(dsn string) string {
+	trimmed := strings.TrimSpace(dsn)
+	if trimmed == "" {
+		return trimmed
+	}
+
+	parts := strings.SplitN(trimmed, "?", 2)
+	base := parts[0]
+
+	params := url.Values{}
+	if len(parts) == 2 && parts[1] != "" {
+		if parsed, err := url.ParseQuery(parts[1]); err == nil {
+			params = parsed
+		}
+	}
+
+	if params.Get("parseTime") == "" {
+		params.Set("parseTime", "true")
+	}
+	if params.Get("loc") == "" {
+		params.Set("loc", "Asia/Ho_Chi_Minh")
+	}
+
+	encoded := params.Encode()
+	if encoded == "" {
+		return base
+	}
+
+	return base + "?" + encoded
+}
+
+// EnsureTimezoneDSN ensures parseTime=true and loc=Asia/Ho_Chi_Minh in MySQL DSN.
+func EnsureTimezoneDSN(dsn string) string {
+	return ensureTimezoneDSN(dsn)
 }
 
 // getEnv gets environment variable with fallback

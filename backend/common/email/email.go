@@ -125,29 +125,41 @@ type PDFAttachment struct {
 	Data     []byte
 }
 
+func loadVNLocation() *time.Location {
+	loc, err := time.LoadLocation("Asia/Ho_Chi_Minh")
+	if err != nil {
+		return time.FixedZone("GMT+7", 7*60*60)
+	}
+	return loc
+}
+
 // ============================================================
 // HELPER FUNCTIONS
 // ============================================================
 
 func formatEventDateTime(startTimeISO, endTimeISO string) (string, string) {
+	loc := loadVNLocation()
+
 	// Parse start time
 	startTime, err := time.Parse(time.RFC3339, startTimeISO)
 	if err != nil {
 		return startTimeISO, ""
 	}
+	startTime = startTime.In(loc)
 
-	// Format start date as "January 2, 2006"
-	startDate := startTime.Format("January 2, 2006")
+	// Format start date as "28/03/2026"
+	startDate := startTime.Format("02/01/2006")
 
-	// Format time range as "3:04PM - 4:00PM"
-	startTimeStr := startTime.Format("3:04PM")
+	// Format time range as "15:04 - 16:00"
+	startTimeStr := startTime.Format("15:04")
 
 	// If end time is provided, format it
 	endTimeStr := ""
 	if endTimeISO != "" && endTimeISO != "0001-01-01T00:00:00Z" {
 		endTime, err := time.Parse(time.RFC3339, endTimeISO)
 		if err == nil {
-			endTimeStr = endTime.Format("3:04PM")
+			endTime = endTime.In(loc)
+			endTimeStr = endTime.Format("15:04")
 		}
 	}
 

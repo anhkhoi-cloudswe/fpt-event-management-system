@@ -64,8 +64,8 @@ func (s *EventCleanupScheduler) cleanupEndedEvents() {
 		SELECT event_id, area_id, title, end_time 
 		FROM Event 
 		WHERE end_time < NOW() 
-		  AND status NOT IN ('CLOSED', 'CANCELLED')
-		  AND status = 'OPEN'
+		  AND status <> 'CANCELLED'
+		  AND status <> 'CLOSED'
 	`
 
 	rows, err := s.db.QueryContext(ctx, query)

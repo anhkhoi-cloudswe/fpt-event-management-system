@@ -283,6 +283,9 @@ func corsMiddleware(next http.Handler) http.Handler {
 }
 
 func main() {
+	loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
+	time.Local = loc
+
 	port := getEnv("GATEWAY_PORT", "8080")
 
 	// Pre-create proxies for each backend

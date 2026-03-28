@@ -83,7 +83,8 @@ func (s *VenueReleaseScheduler) releaseVenues() {
 
 	fmt.Println("[VENUE_SCHEDULER] Venue release routine triggered")
 
-	// Release only when area has closed/cancelled events and no active OPEN/UPDATING event.
+	// Release only when area has CLOSED/CANCELLED events and no OPEN/UPDATING event.
+	// Never release by time alone.
 	query := `
 		UPDATE Venue_Area va
 		SET va.status = 'AVAILABLE'
@@ -93,13 +94,12 @@ func (s *VenueReleaseScheduler) releaseVenues() {
 			FROM Event e_done
 			WHERE e_done.area_id = va.area_id
 			  AND e_done.status IN ('CLOSED', 'CANCELLED')
-			  AND (e_done.status = 'CANCELLED' OR e_done.end_time < NOW())
 		  )
 		  AND NOT EXISTS (
 			SELECT 1
 			FROM Event e_active
 			WHERE e_active.area_id = va.area_id
-			  AND e_active.status IN ('OPEN', 'UPDATING', 'PENDING')
+			  AND e_active.status IN ('OPEN', 'UPDATING')
 		  )
 	`
 

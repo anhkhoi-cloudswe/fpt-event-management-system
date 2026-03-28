@@ -319,8 +319,8 @@ func (r *EventRepository) GetAllEventsSeparatedComposed(ctx context.Context, rol
 			return nil, nil, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		re.item.StartTime = startTime.Format(time.RFC3339)
-		re.item.EndTime = endTime.Format(time.RFC3339)
+		re.item.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
+		re.item.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
 		re.endTime = endTime
 
 		if description.Valid {
@@ -359,7 +359,7 @@ func (r *EventRepository) GetAllEventsSeparatedComposed(ctx context.Context, rol
 
 	// Enrich events with area+venue info
 	var openEvents, closedEvents []models.EventListItem
-	now := time.Now()
+	now := utils.NowInVietnam()
 
 	for _, re := range rawEvents {
 		item := re.item
@@ -444,8 +444,8 @@ func (r *EventRepository) GetEventDetailComposed(ctx context.Context, eventID in
 	if description.Valid {
 		detail.Description = &description.String
 	}
-	detail.StartTime = startTime.Format(time.RFC3339)
-	detail.EndTime = endTime.Format(time.RFC3339)
+	detail.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
+	detail.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
 	if maxSeats.Valid {
 		detail.MaxSeats = int(maxSeats.Int64)
 	}
@@ -564,8 +564,8 @@ func (r *EventRepository) GetOpenEventsComposed(ctx context.Context) ([]models.E
 			return nil, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		re.item.StartTime = startTime.Format(time.RFC3339)
-		re.item.EndTime = endTime.Format(time.RFC3339)
+		re.item.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
+		re.item.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
 
 		if description.Valid {
 			re.item.Description = &description.String
@@ -769,13 +769,13 @@ func (r *EventRepository) GetMyEventRequestsComposed(ctx context.Context, reques
 		}
 
 		if createdAt.Valid {
-			req.CreatedAt = pointer(createdAt.Time.Format(time.RFC3339))
+			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
 		}
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
 		}
 		if processedAt.Valid {
-			req.ProcessedAt = pointer(processedAt.Time.Format(time.RFC3339))
+			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 
 		requests = append(requests, req)
@@ -838,13 +838,13 @@ func (r *EventRepository) GetMyActiveEventRequestsComposed(ctx context.Context, 
 		}
 
 		if createdAt.Valid {
-			req.CreatedAt = pointer(createdAt.Time.Format(time.RFC3339))
+			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
 		}
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
 		}
 		if processedAt.Valid {
-			req.ProcessedAt = pointer(processedAt.Time.Format(time.RFC3339))
+			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if eventStatus.Valid {
 			req.EventStatus = &eventStatus.String
@@ -924,13 +924,13 @@ func (r *EventRepository) GetMyArchivedEventRequestsComposed(ctx context.Context
 		}
 
 		if createdAt.Valid {
-			req.CreatedAt = pointer(createdAt.Time.Format(time.RFC3339))
+			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
 		}
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
 		}
 		if processedAt.Valid {
-			req.ProcessedAt = pointer(processedAt.Time.Format(time.RFC3339))
+			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if eventStatus.Valid {
 			req.EventStatus = &eventStatus.String
@@ -1006,13 +1006,13 @@ func (r *EventRepository) GetPendingEventRequestsComposed(ctx context.Context) (
 		}
 
 		if createdAt.Valid {
-			req.CreatedAt = pointer(createdAt.Time.Format(time.RFC3339))
+			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
 		}
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
 		}
 		if processedAt.Valid {
-			req.ProcessedAt = pointer(processedAt.Time.Format(time.RFC3339))
+			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 
 		requests = append(requests, req)
@@ -1067,13 +1067,13 @@ func (r *EventRepository) GetEventRequestByIDComposed(ctx context.Context, reque
 	}
 
 	if createdAt.Valid {
-		req.CreatedAt = pointer(createdAt.Time.Format(time.RFC3339))
+		req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
 	}
 	if processedBy.Valid {
 		req.ProcessedBy = pointer(int(processedBy.Int64))
 	}
 	if processedAt.Valid {
-		req.ProcessedAt = pointer(processedAt.Time.Format(time.RFC3339))
+		req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 	}
 
 	// Enrich with API calls (single request)
@@ -1342,7 +1342,7 @@ func (r *EventRepository) CancelEventComposed(ctx context.Context, userID, event
 	}
 
 	// 24-hour rule
-	now := time.Now()
+	now := utils.NowInVietnam()
 	hoursUntilStart := startTime.Sub(now).Hours()
 	if hoursUntilStart < 24 {
 		return fmt.Errorf("không thể hủy sự kiện trong vòng 24 giờ trước khi bắt đầu (còn %.1f giờ)", hoursUntilStart)

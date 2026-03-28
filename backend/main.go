@@ -165,6 +165,9 @@ func runStartupJanitor() {
 }
 
 func main() {
+	loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
+	time.Local = loc
+
 	// Load environment from .env file if exists
 	loadEnvFile(".env")
 
@@ -203,6 +206,7 @@ func main() {
 	if dsn == "" {
 		log.Fatal("DB_URL is required for auth module")
 	}
+	dsn = db.EnsureTimezoneDSN(dsn)
 
 	gormDB, err := authmodule.NewMySQLGormDB(dsn)
 	if err != nil {
@@ -1347,18 +1351,27 @@ func main() {
 
 	// GET /internal/events/area - Lấy area_id của event (internal)
 	http.HandleFunc("/internal/events/area", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		writeJSONErr := func(status int, message string) {
+			body, _ := json.Marshal(map[string]string{"error": message})
+			writeResponse(w, events.APIGatewayProxyResponse{
+				StatusCode: status,
+				Headers:    map[string]string{"Content-Type": "application/json;charset=UTF-8"},
+				Body:       string(body),
+			})
+		}
+
 		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			writeJSONErr(http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 		req, err := adaptRequest(r)
 		if err != nil {
-			http.Error(w, "Failed to read request", http.StatusBadRequest)
+			writeJSONErr(http.StatusBadRequest, "failed to read request")
 			return
 		}
 		resp, err := eventInternalH.HandleGetEventArea(context.Background(), req)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONErr(http.StatusInternalServerError, err.Error())
 			return
 		}
 		writeResponse(w, resp)

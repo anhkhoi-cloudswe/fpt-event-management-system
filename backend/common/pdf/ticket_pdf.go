@@ -14,6 +14,7 @@ type TicketPDFData struct {
 	TicketCode     string
 	EventName      string
 	EventDate      time.Time
+	EndTime        time.Time
 	VenueName      string
 	AreaName       string
 	Address        string
@@ -97,9 +98,24 @@ func contains(str, substr string) bool {
 	return false
 }
 
+func loadVNLocation() *time.Location {
+	loc, err := time.LoadLocation("Asia/Ho_Chi_Minh")
+	if err != nil {
+		return time.FixedZone("GMT+7", 7*60*60)
+	}
+	return loc
+}
+
 // GenerateTicketPDF tạo PDF vé điện tử với QR code
 // Trả về PDF bytes có thể lưu file hoặc attach email
 func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
+	loc := loadVNLocation()
+	eventStart := data.EventDate.In(loc)
+	eventEnd := data.EndTime
+	if !eventEnd.IsZero() {
+		eventEnd = eventEnd.In(loc)
+	}
+
 	// Khởi tạo PDF
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.AddPage()
@@ -152,12 +168,14 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	pdf.CellFormat(75, 7.2, "Event Time:", "", 1, "L", false, 0, "") // +20%: 6 → 7.2
 	pdf.SetFont("Arial", "B", 16.8)
 	pdf.SetX(115)
-	dateStr := data.EventDate.Format("January 2, 2006")
+	dateStr := eventStart.Format("January 2, 2006")
 	pdf.CellFormat(75, 6, dateStr, "", 1, "L", false, 0, "") // +20%: 5 → 6
 	pdf.SetX(115)
-	startTime := data.EventDate.Format("3:04PM")
-	endTime := data.EventDate.Add(7 * time.Hour).Format("3:04PM")
-	timeStr := fmt.Sprintf("%s - %s", startTime, endTime)
+	startTimeStr := eventStart.Format("3:04PM")
+	timeStr := startTimeStr
+	if !eventEnd.IsZero() {
+		timeStr = fmt.Sprintf("%s - %s", startTimeStr, eventEnd.Format("3:04PM"))
+	}
 	pdf.CellFormat(75, 6, timeStr, "", 1, "L", false, 0, "")
 	pdf.Ln(2.4)
 
