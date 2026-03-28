@@ -3,7 +3,7 @@
 # =============================================================================
 
 resource "aws_s3_bucket" "frontend" {
-  bucket        = "fpt-event-frontend-${data.aws_caller_identity.current.account_id}"
+  bucket        = "fpt-event-frontend-436756555762"
   force_destroy = true
 
   tags = {
