@@ -979,7 +979,7 @@ func isTicketInternalCall(request events.APIGatewayProxyRequest) bool {
 }
 
 func createTicketInternalResponse(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {
-	body, err := json.Marshal(data)
+	body, err := utils.MarshalVietnamJSON(data)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusInternalServerError,

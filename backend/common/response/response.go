@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	commonutils "github.com/fpt-event-services/common/utils"
 )
 
 // CORS Headers for API responses
@@ -35,7 +36,7 @@ func LambdaHeaders() map[string]string {
 // LambdaJSON serialises data to JSON and returns an APIGatewayProxyResponse.
 // Equivalent to the per-service createJSONResponse helpers.
 func LambdaJSON(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {
-	body, err := json.Marshal(data)
+	body, err := commonutils.MarshalVietnamJSON(data)
 	if err != nil {
 		return LambdaMsg(http.StatusInternalServerError, "Failed to serialize response")
 	}
@@ -112,7 +113,7 @@ func MessageResponse(message string) APIResponse {
 
 // ToJSON converts response to JSON string
 func (r APIResponse) ToJSON() (string, error) {
-	bytes, err := json.Marshal(r)
+	bytes, err := commonutils.MarshalVietnamJSON(r)
 	if err != nil {
 		return "", err
 	}
