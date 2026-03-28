@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -238,6 +239,9 @@ func handleUploadImage(ctx context.Context, request events.APIGatewayProxyReques
 }
 
 func main() {
+	loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
+	time.Local = loc
+
 	// Load .env and sync JWT secret FIRST — in main() so it's guaranteed
 	// to run after all package-level vars and init() functions are done.
 	localserver.LoadEnvAndSyncJWT("Event")

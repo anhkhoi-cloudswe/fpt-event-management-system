@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fpt-event-services/common/config"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/event-lambda/models"
 )
 
@@ -695,8 +696,8 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 		}
 
 		// Convert timestamps to ISO string
-		item.StartTime = startTime.Format(time.RFC3339)
-		item.EndTime = endTime.Format(time.RFC3339)
+		item.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
+		item.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
 
 		// Convert sql.Null to pointers
 		if description.Valid {
@@ -726,7 +727,7 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 
 		// Classify events into open vs closed/historical.
 		// Treat any event whose end_time is before now as closed, regardless of status.
-		now := time.Now()
+		now := utils.NowInVietnam()
 		if item.Status == "CLOSED" || endTime.Before(now) {
 			closedEvents = append(closedEvents, item)
 		} else {
@@ -820,8 +821,8 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 		}
 
 		// Convert timestamps to ISO string
-		item.StartTime = startTime.Format(time.RFC3339)
-		item.EndTime = endTime.Format(time.RFC3339)
+		item.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
+		item.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
 
 		// Convert sql.Null to pointers
 		if description.Valid {
@@ -850,7 +851,7 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 		}
 
 		// Classify events into open vs closed/historical.
-		now := time.Now()
+		now := utils.NowInVietnam()
 		if item.Status == "CLOSED" || endTime.Before(now) {
 			closedEvents = append(closedEvents, item)
 		} else {
@@ -931,8 +932,8 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 	if description.Valid {
 		detail.Description = &description.String
 	}
-	detail.StartTime = startTime.Format(time.RFC3339)
-	detail.EndTime = endTime.Format(time.RFC3339)
+	detail.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
+	detail.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
 	if maxSeats.Valid {
 		detail.MaxSeats = int(maxSeats.Int64)
 	}
@@ -1182,8 +1183,8 @@ func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventList
 		}
 
 		// Convert timestamps to ISO string
-		item.StartTime = startTime.Format(time.RFC3339)
-		item.EndTime = endTime.Format(time.RFC3339)
+		item.StartTime = utils.ToVietnamTime(startTime).Format(time.RFC3339)
+		item.EndTime = utils.ToVietnamTime(endTime).Format(time.RFC3339)
 
 		// Convert sql.Null to pointers
 		if description.Valid {
@@ -1314,7 +1315,7 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 			req.RequesterName = &requesterName.String
 		}
 		if createdAt.Valid {
-			req.CreatedAt = pointer(createdAt.Time.Format(time.RFC3339))
+			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
 		}
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
@@ -1323,7 +1324,7 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 			req.ProcessedByName = &processedByName.String
 		}
 		if processedAt.Valid {
-			req.ProcessedAt = pointer(processedAt.Time.Format(time.RFC3339))
+			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if venueName.Valid {
 			req.VenueName = &venueName.String
@@ -1409,7 +1410,7 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 			req.RequesterName = &requesterName.String
 		}
 		if createdAt.Valid {
-			req.CreatedAt = pointer(createdAt.Time.Format(time.RFC3339))
+			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
 		}
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
@@ -1418,7 +1419,7 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 			req.ProcessedByName = &processedByName.String
 		}
 		if processedAt.Valid {
-			req.ProcessedAt = pointer(processedAt.Time.Format(time.RFC3339))
+			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if eventStatus.Valid {
 			req.EventStatus = &eventStatus.String
@@ -1521,7 +1522,7 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 			req.RequesterName = &requesterName.String
 		}
 		if createdAt.Valid {
-			req.CreatedAt = pointer(createdAt.Time.Format(time.RFC3339))
+			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
 		}
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
@@ -1530,7 +1531,7 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 			req.ProcessedByName = &processedByName.String
 		}
 		if processedAt.Valid {
-			req.ProcessedAt = pointer(processedAt.Time.Format(time.RFC3339))
+			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if eventStatus.Valid {
 			req.EventStatus = &eventStatus.String
@@ -1630,7 +1631,7 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 			req.RequesterName = &requesterName.String
 		}
 		if createdAt.Valid {
-			req.CreatedAt = pointer(createdAt.Time.Format(time.RFC3339))
+			req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
 		}
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
@@ -1639,7 +1640,7 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 			req.ProcessedByName = &processedByName.String
 		}
 		if processedAt.Valid {
-			req.ProcessedAt = pointer(processedAt.Time.Format(time.RFC3339))
+			req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 		}
 		if venueName.Valid {
 			req.VenueName = &venueName.String
@@ -1716,7 +1717,7 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 		req.RequesterName = &requesterName.String
 	}
 	if createdAt.Valid {
-		req.CreatedAt = pointer(createdAt.Time.Format(time.RFC3339))
+		req.CreatedAt = pointer(utils.ToVietnamTime(createdAt.Time).Format(time.RFC3339))
 	}
 	if processedBy.Valid {
 		req.ProcessedBy = pointer(int(processedBy.Int64))
@@ -1725,7 +1726,7 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 		req.ProcessedByName = &processedByName.String
 	}
 	if processedAt.Valid {
-		req.ProcessedAt = pointer(processedAt.Time.Format(time.RFC3339))
+		req.ProcessedAt = pointer(utils.ToVietnamTime(processedAt.Time).Format(time.RFC3339))
 	}
 	if venueName.Valid {
 		req.VenueName = &venueName.String
@@ -2846,7 +2847,7 @@ func (r *EventRepository) CancelEvent(ctx context.Context, userID, eventID int) 
 	}
 
 	// Step 4: ✅ 24-HOUR RULE - Không cho phép hủy nếu còn dưới 24 giờ
-	now := time.Now()
+	now := utils.NowInVietnam()
 	hoursUntilStart := startTime.Sub(now).Hours()
 	if hoursUntilStart < 24 {
 		log.Printf("[DB_UPDATE] ❌ REJECTED: Cannot cancel event %d - only %.1f hours until start (< 24h)", eventID, hoursUntilStart)

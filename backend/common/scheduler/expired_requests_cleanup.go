@@ -7,6 +7,7 @@ import (
 
 	"github.com/fpt-event-services/common/db"
 	"github.com/fpt-event-services/common/logger"
+	"github.com/fpt-event-services/common/utils"
 )
 
 // ExpiredRequestsCleanupScheduler handles automatic closing of expired event update requests
@@ -157,7 +158,7 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 		}
 
 		processedCount++
-		hoursUntilStart := startTime.Sub(time.Now()).Hours()
+		hoursUntilStart := startTime.Sub(utils.NowInVietnam()).Hours()
 		logger.Default().Info("[AUTO_CANCEL] Event #%d \"%s\" closed update deadline elapsed (%.1fh to start) venue released",
 			eventID, truncateStringScheduler(title, 50), hoursUntilStart)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -104,6 +105,9 @@ func buildResourceArn(req events.APIGatewayCustomAuthorizerRequestTypeRequest) s
 }
 
 func main() {
+	loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
+	time.Local = loc
+
 	localserver.LoadEnvAndSyncJWT("Authorizer")
 	lambda.Start(Handler)
 }

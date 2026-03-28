@@ -550,6 +550,12 @@ func (r *TicketRepository) GetBillsByUserID(ctx context.Context, userID int) ([]
 			bill.PaymentMethod = &paymentMethod.String
 		}
 
+		bill.CreatedAt = utils.ToVietnamTime(bill.CreatedAt)
+		if bill.PaidAt != nil {
+			paidAt := utils.ToVietnamTime(*bill.PaidAt)
+			bill.PaidAt = &paidAt
+		}
+
 		// Set default values for fields we can't get without Bill_Detail
 		defaultEventName := "Event"
 		bill.EventName = &defaultEventName
@@ -657,6 +663,12 @@ func (r *TicketRepository) GetBillsByUserIDPaginated(ctx context.Context, userID
 			bill.PaymentMethod = &paymentMethodVal.String
 		}
 
+		bill.CreatedAt = utils.ToVietnamTime(bill.CreatedAt)
+		if bill.PaidAt != nil {
+			paidAt := utils.ToVietnamTime(*bill.PaidAt)
+			bill.PaidAt = &paidAt
+		}
+
 		// Set default values
 		defaultEventName := "Event"
 		bill.EventName = &defaultEventName
@@ -727,7 +739,7 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 
 	// ⭐ SECURITY: Kiểm tra xem event đã bắt đầu chưa
 	// Nếu thời gian hiện tại >= start_time: từ chối đặt vé
-	now := time.Now()
+	now := utils.NowInVietnam()
 	if now.After(startTime) || now.Equal(startTime) {
 		log.Warn("[BOOKING_SECURITY] User blocked from buying ticket for event that has started",
 			"user_id", userID, "event_id", eventID, "event_start_time", startTime, "current_time", now)
@@ -866,7 +878,7 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 	}
 
 	// Tạo mã giao dịch - Chứa ALL pendingTicketIDs (comma-separated)
-	timestamp := fmt.Sprintf("%d", time.Now().UnixMilli())
+	timestamp := fmt.Sprintf("%d", utils.NowInVietnam().UnixMilli())
 	// Format: userID_eventID_categoryID_ticketIDs_timestamp
 	// ticketIDs: "123,124,125,126" (tối đa 4 IDs)
 	ticketIDsStr := ""
@@ -1056,7 +1068,7 @@ func (r *TicketRepository) ProcessVNPayCallback(ctx context.Context, amount, res
 	}
 
 	// Check if event has already started
-	now := time.Now()
+	now := utils.NowInVietnam()
 	if now.After(startTime) || now.Equal(startTime) {
 		log.Warn("[BOOKING_SECURITY] Payment callback rejected - Event has started",
 			"user_id", userID, "event_id", eventID, "event_start_time", startTime, "current_time", now)
@@ -1322,7 +1334,7 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 		"user_email":     userEmail,
 		"user_name":      userName,
 		"event_title":    eventTitle,
-		"start_time":     startTime.Format(time.RFC3339),
+		"start_time":     utils.ToVietnamTime(startTime).Format(time.RFC3339),
 		"venue_name":     finalVenueName,
 		"area_name":      finalAreaName,
 		"venue_address":  finalVenueAddress,
@@ -1467,8 +1479,8 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 		"user_email":      userEmail,
 		"user_name":       userName,
 		"event_title":     eventTitle,
-		"start_time":      startTime.Format(time.RFC3339),
-		"end_time":        endTime.Format(time.RFC3339),
+		"start_time":      utils.ToVietnamTime(startTime).Format(time.RFC3339),
+		"end_time":        utils.ToVietnamTime(endTime).Format(time.RFC3339),
 		"venue_name":      finalVenueName,
 		"area_name":       finalAreaName,
 		"venue_address":   finalVenueAddress,
@@ -1616,7 +1628,7 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 
 	// ⭐ SECURITY: Kiểm tra xem event đã bắt đầu chưa
 	// Nếu thời gian hiện tại >= start_time: từ chối đặt vé
-	now := time.Now()
+	now := utils.NowInVietnam()
 	if now.After(startTime) || now.Equal(startTime) {
 		fmt.Printf("[BOOKING_SECURITY] User %d blocked from buying ticket for Event %d (Event started at %s)\n", userID, eventID, startTime.Format(time.RFC3339))
 		return "", fmt.Errorf("Sự kiện đã bắt đầu hoặc kết thúc, không thể đặt thêm vé")
@@ -1874,8 +1886,8 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 				"user_email":      userEmail,
 				"user_name":       userName,
 				"event_title":     eventTitle,
-				"start_time":      startTime.Format(time.RFC3339),
-				"end_time":        endTime.Format(time.RFC3339),
+				"start_time":      utils.ToVietnamTime(startTime).Format(time.RFC3339),
+				"end_time":        utils.ToVietnamTime(endTime).Format(time.RFC3339),
 				"venue_name":      venueName,
 				"area_name":       areaNames[0],
 				"venue_address":   venueAddress,
@@ -1915,8 +1927,8 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 				"user_email":      userEmail,
 				"user_name":       userName,
 				"event_title":     eventTitle,
-				"start_time":      startTime.Format(time.RFC3339),
-				"end_time":        endTime.Format(time.RFC3339),
+				"start_time":      utils.ToVietnamTime(startTime).Format(time.RFC3339),
+				"end_time":        utils.ToVietnamTime(endTime).Format(time.RFC3339),
 				"venue_name":      venueName,
 				"area_name":       areaNames[0],
 				"venue_address":   venueAddress,

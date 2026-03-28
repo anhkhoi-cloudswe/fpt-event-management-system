@@ -148,7 +148,7 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 		}
 
 		processedCount++
-		hoursUntilStart := startTime.Sub(time.Now()).Hours()
+		hoursUntilStart := startTime.Sub(utils.NowInVietnam()).Hours()
 		log.Printf("[AUTO_CANCEL] Event #%d \"%s\" closed due to update deadline (%.1f hours until start). Venue area released.",
 			eventID, truncateString(title, 50), hoursUntilStart)
 	}

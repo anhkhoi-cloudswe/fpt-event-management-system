@@ -60,7 +60,7 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 		return "", fmt.Errorf("Sự kiện đã kết thúc hoặc đã đóng, không thể đặt thêm ghế")
 	}
 
-	now := time.Now()
+	now := utils.NowInVietnam()
 	if now.After(startTime) || now.Equal(startTime) {
 		fmt.Printf("[BOOKING_SECURITY] User %d blocked from buying ticket for Event %d (Event started at %s)\n", userID, eventID, startTime.Format(time.RFC3339))
 		return "", fmt.Errorf("Sự kiện đã bắt đầu hoặc kết thúc, không thể đặt thêm vé")

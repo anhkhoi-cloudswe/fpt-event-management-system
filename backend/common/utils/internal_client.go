@@ -266,8 +266,24 @@ func (c *InternalClient) GetJSON(ctx context.Context, baseURL string, queryParam
 		return statusCode, err
 	}
 
+	bodyStr := strings.TrimSpace(string(body))
+	if statusCode < 200 || statusCode >= 300 {
+		if bodyStr == "" {
+			bodyStr = http.StatusText(statusCode)
+		}
+		return statusCode, fmt.Errorf("non-2xx response from %s: status=%d body=%s", baseURL, statusCode, bodyStr)
+	}
+
+	if bodyStr == "" {
+		return statusCode, fmt.Errorf("empty response from %s", baseURL)
+	}
+
+	if !strings.HasPrefix(bodyStr, "{") && !strings.HasPrefix(bodyStr, "[") {
+		return statusCode, fmt.Errorf("non-json response from %s: %s", baseURL, bodyStr)
+	}
+
 	if err := json.Unmarshal(body, target); err != nil {
-		return statusCode, fmt.Errorf("failed to decode response from %s: %w", baseURL, err)
+		return statusCode, fmt.Errorf("failed to decode response from %s: %w (body=%s)", baseURL, err, bodyStr)
 	}
 
 	return statusCode, nil

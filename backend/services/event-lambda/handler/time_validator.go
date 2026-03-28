@@ -3,6 +3,8 @@ package handler
 import (
 	"fmt"
 	"time"
+
+	"github.com/fpt-event-services/common/utils"
 )
 
 // TimeValidationError represents a time validation error
@@ -28,7 +30,9 @@ func (e *TimeValidationError) Error() string {
 // 8. Event start time must be between 07:00 and 21:00
 // 9. Event end time must be before 21:00
 func ValidateEventTime(startTime, endTime time.Time) error {
-	now := time.Now()
+	now := utils.NowInVietnam()
+	startTime = utils.ToVietnamTime(startTime)
+	endTime = utils.ToVietnamTime(endTime)
 
 	// 1. Start time must not be in the past (allow 5 minute buffer for clock skew)
 	if startTime.Before(now.Add(-5 * time.Minute)) {
@@ -127,25 +131,25 @@ func ParseEventTime(timeStr string) (time.Time, error) {
 	}
 
 	// Try ISO8601 without Z: "2006-01-02T15:04:05"
-	t, err = time.Parse("2006-01-02T15:04:05", timeStr)
+	t, err = time.ParseInLocation("2006-01-02T15:04:05", timeStr, utils.VietnamLocation())
 	if err == nil {
 		return t, nil
 	}
 
 	// Try datetime-local format from HTML input: "2006-01-02T15:04"
-	t, err = time.Parse("2006-01-02T15:04", timeStr)
+	t, err = time.ParseInLocation("2006-01-02T15:04", timeStr, utils.VietnamLocation())
 	if err == nil {
 		return t, nil
 	}
 
 	// Try SQL datetime format: "2006-01-02 15:04:05"
-	t, err = time.Parse("2006-01-02 15:04:05", timeStr)
+	t, err = time.ParseInLocation("2006-01-02 15:04:05", timeStr, utils.VietnamLocation())
 	if err == nil {
 		return t, nil
 	}
 
 	// Try without seconds: "2006-01-02 15:04"
-	t, err = time.Parse("2006-01-02 15:04", timeStr)
+	t, err = time.ParseInLocation("2006-01-02 15:04", timeStr, utils.VietnamLocation())
 	if err == nil {
 		return t, nil
 	}

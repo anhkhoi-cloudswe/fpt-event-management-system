@@ -107,27 +107,16 @@ func (r *StaffRepository) getTicketForCheckinAPI(ctx context.Context, ticketID i
 
 	ticket.TicketCode = qrCodeValue
 
-	// Load ICT timezone
-	loc, err := time.LoadLocation("Asia/Bangkok")
-	if err != nil {
-		loc = time.FixedZone("ICT", 7*60*60)
-	}
-	ticket.EventStartTime = time.Date(
-		ticket.EventStartTime.Year(), ticket.EventStartTime.Month(), ticket.EventStartTime.Day(),
-		ticket.EventStartTime.Hour(), ticket.EventStartTime.Minute(), ticket.EventStartTime.Second(),
-		ticket.EventStartTime.Nanosecond(), loc,
-	)
-	ticket.EventEndTime = time.Date(
-		ticket.EventEndTime.Year(), ticket.EventEndTime.Month(), ticket.EventEndTime.Day(),
-		ticket.EventEndTime.Hour(), ticket.EventEndTime.Minute(), ticket.EventEndTime.Second(),
-		ticket.EventEndTime.Nanosecond(), loc,
-	)
+	ticket.EventStartTime = utils.ToVietnamTime(ticket.EventStartTime)
+	ticket.EventEndTime = utils.ToVietnamTime(ticket.EventEndTime)
 
 	if checkInTime.Valid {
-		ticket.CheckInTime = &checkInTime.Time
+		checkInAt := utils.ToVietnamTime(checkInTime.Time)
+		ticket.CheckInTime = &checkInAt
 	}
 	if checkOutTime.Valid {
-		ticket.CheckOutTime = &checkOutTime.Time
+		checkOutAt := utils.ToVietnamTime(checkOutTime.Time)
+		ticket.CheckOutTime = &checkOutAt
 	}
 	if seatCode.Valid {
 		ticket.SeatCode = &seatCode.String
@@ -202,39 +191,16 @@ func (r *StaffRepository) getTicketForCheckinJoin(ctx context.Context, ticketID 
 	// Map qr_code_value to TicketCode
 	ticket.TicketCode = qrCodeValue
 
-	// Load ICT timezone to interpret datetime from database
-	loc, err := time.LoadLocation("Asia/Bangkok")
-	if err != nil {
-		loc = time.FixedZone("ICT", 7*60*60)
-	}
-
-	// Convert event times to ICT timezone (database stores datetime without timezone)
-	ticket.EventStartTime = time.Date(
-		ticket.EventStartTime.Year(),
-		ticket.EventStartTime.Month(),
-		ticket.EventStartTime.Day(),
-		ticket.EventStartTime.Hour(),
-		ticket.EventStartTime.Minute(),
-		ticket.EventStartTime.Second(),
-		ticket.EventStartTime.Nanosecond(),
-		loc,
-	)
-	ticket.EventEndTime = time.Date(
-		ticket.EventEndTime.Year(),
-		ticket.EventEndTime.Month(),
-		ticket.EventEndTime.Day(),
-		ticket.EventEndTime.Hour(),
-		ticket.EventEndTime.Minute(),
-		ticket.EventEndTime.Second(),
-		ticket.EventEndTime.Nanosecond(),
-		loc,
-	)
+	ticket.EventStartTime = utils.ToVietnamTime(ticket.EventStartTime)
+	ticket.EventEndTime = utils.ToVietnamTime(ticket.EventEndTime)
 
 	if checkInTime.Valid {
-		ticket.CheckInTime = &checkInTime.Time
+		checkInAt := utils.ToVietnamTime(checkInTime.Time)
+		ticket.CheckInTime = &checkInAt
 	}
 	if checkOutTime.Valid {
-		ticket.CheckOutTime = &checkOutTime.Time
+		checkOutAt := utils.ToVietnamTime(checkOutTime.Time)
+		ticket.CheckOutTime = &checkOutAt
 	}
 	if seatCode.Valid {
 		ticket.SeatCode = &seatCode.String
@@ -491,15 +457,9 @@ func (r *StaffRepository) GetCheckoutMinMinutes(ctx context.Context) (int, error
 	return minutes, nil
 }
 
-// GetCurrentTime helper function - return time in ICT (GMT+7)
+// GetCurrentTime helper function - return time in Vietnam timezone (GMT+7)
 func (r *StaffRepository) GetCurrentTime() time.Time {
-	// Load ICT timezone (Asia/Bangkok = GMT+7, same as Vietnam)
-	loc, err := time.LoadLocation("Asia/Bangkok")
-	if err != nil {
-		// Fallback to UTC+7 if timezone loading fails
-		loc = time.FixedZone("ICT", 7*60*60)
-	}
-	return time.Now().In(loc)
+	return utils.NowInVietnam()
 }
 
 // ============================================================

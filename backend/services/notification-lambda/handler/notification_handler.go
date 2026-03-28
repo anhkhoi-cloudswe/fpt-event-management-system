@@ -249,11 +249,17 @@ func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (eve
 		eventDate = time.Now()
 	}
 
+	eventEndTime, err := time.Parse(time.RFC3339, data.EndTime)
+	if err != nil {
+		eventEndTime = time.Time{}
+	}
+
 	// Step 4: Generate PDF
 	pdfBytes, err := ticketpdf.GenerateTicketPDF(ticketpdf.TicketPDFData{
 		TicketCode:     data.TicketCode,
 		EventName:      data.EventTitle,
 		EventDate:      eventDate,
+		EndTime:        eventEndTime,
 		VenueName:      data.VenueName,
 		AreaName:       data.AreaName,
 		Address:        data.VenueAddress,
@@ -309,6 +315,11 @@ func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (eve
 func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData) (events.APIGatewayProxyResponse, error) {
 	var pdfAttachments []email.PDFAttachment
 
+	eventEndTime, err := time.Parse(time.RFC3339, data.EndTime)
+	if err != nil {
+		eventEndTime = time.Time{}
+	}
+
 	for _, ticket := range data.Tickets {
 		// Generate QR PNG bytes
 		qrPngBytes, err := qrcode.GenerateTicketQRPngBytes(ticket.TicketID, 300)
@@ -328,6 +339,7 @@ func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData
 			TicketCode:     ticket.TicketCode,
 			EventName:      ticket.EventName,
 			EventDate:      eventDate,
+			EndTime:        eventEndTime,
 			VenueName:      ticket.VenueName,
 			AreaName:       ticket.AreaName,
 			Address:        ticket.VenueAddress,
