@@ -10,10 +10,10 @@ import (
 
 	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/common/logger"
+	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/staff-lambda/models"
 	"github.com/fpt-event-services/services/staff-lambda/repository"
 )
-import "github.com/fpt-event-services/common/utils"
 
 var log = logger.Default()
 

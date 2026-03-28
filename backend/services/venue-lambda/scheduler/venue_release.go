@@ -78,28 +78,33 @@ func (s *VenueReleaseScheduler) RunOnce() {
 
 // releaseVenues releases venue areas for events that have ended
 // Phase 6: Direct DB query within venue domain (no cross-service dependency)
+// GLOBAL GUARD RULE: Area only becomes AVAILABLE if & only if:
+//
+//	ALL events assigned to that area_id have status CLOSED or CANCELLED.
+//	If even ONE event has status OPEN, UPDATING, or PENDING → keep UNAVAILABLE.
 func (s *VenueReleaseScheduler) releaseVenues() {
 	ctx := context.Background()
 
 	fmt.Println("[VENUE_SCHEDULER] Venue release routine triggered")
 
-	// Release only when area has CLOSED/CANCELLED events and no OPEN/UPDATING event.
-	// Never release by time alone.
+	// GLOBAL GUARD: Release only when ALL events for area are CLOSED/CANCELLED
+	// Logic: NOT EXISTS (any event with status != CLOSED, CANCELLED)
+	// Equivalent: NOT EXISTS (any event with status IN OPEN, UPDATING, PENDING)
 	query := `
 		UPDATE Venue_Area va
 		SET va.status = 'AVAILABLE'
 		WHERE va.status = 'UNAVAILABLE'
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM Event e
+			WHERE e.area_id = va.area_id
+			  AND e.status IN ('OPEN', 'UPDATING', 'PENDING')
+		  )
 		  AND EXISTS (
 			SELECT 1
 			FROM Event e_done
 			WHERE e_done.area_id = va.area_id
 			  AND e_done.status IN ('CLOSED', 'CANCELLED')
-		  )
-		  AND NOT EXISTS (
-			SELECT 1
-			FROM Event e_active
-			WHERE e_active.area_id = va.area_id
-			  AND e_active.status IN ('OPEN', 'UPDATING')
 		  )
 	`
 
@@ -112,7 +117,9 @@ func (s *VenueReleaseScheduler) releaseVenues() {
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected > 0 {
-		fmt.Printf("[VENUE_SCHEDULER] ✅ Released %d venue areas for ended events\n", rowsAffected)
+		fmt.Printf("[VENUE_SCHEDULER] ✅ Released %d venue areas (Global Guard: ALL events are CLOSED/CANCELLED)\n", rowsAffected)
 		log.Printf("[VENUE_SCHEDULER] Released %d venue areas", rowsAffected)
+	} else {
+		fmt.Println("[VENUE_SCHEDULER] ℹ️  No venues to release (all areas either AVAILABLE or have active/pending events)")
 	}
 }
