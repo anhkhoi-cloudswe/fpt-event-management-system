@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	commonutils "github.com/fpt-event-services/common/utils"
 	"github.com/jung-kurt/gofpdf"
 )
 
@@ -98,22 +99,13 @@ func contains(str, substr string) bool {
 	return false
 }
 
-func loadVNLocation() *time.Location {
-	loc, err := time.LoadLocation("Asia/Ho_Chi_Minh")
-	if err != nil {
-		return time.FixedZone("GMT+7", 7*60*60)
-	}
-	return loc
-}
-
 // GenerateTicketPDF tạo PDF vé điện tử với QR code
 // Trả về PDF bytes có thể lưu file hoặc attach email
 func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
-	loc := loadVNLocation()
-	eventStart := data.EventDate.In(loc)
+	eventStart := commonutils.ToVietnamTime(data.EventDate)
 	eventEnd := data.EndTime
 	if !eventEnd.IsZero() {
-		eventEnd = eventEnd.In(loc)
+		eventEnd = commonutils.ToVietnamTime(eventEnd)
 	}
 
 	// Khởi tạo PDF
@@ -171,10 +163,10 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	dateStr := eventStart.Format("January 2, 2006")
 	pdf.CellFormat(75, 6, dateStr, "", 1, "L", false, 0, "") // +20%: 5 → 6
 	pdf.SetX(115)
-	startTimeStr := eventStart.Format("3:04PM")
+	startTimeStr := commonutils.FormatToVNTime(eventStart)
 	timeStr := startTimeStr
 	if !eventEnd.IsZero() {
-		timeStr = fmt.Sprintf("%s - %s", startTimeStr, eventEnd.Format("3:04PM"))
+		timeStr = fmt.Sprintf("%s - %s", startTimeStr, commonutils.FormatToVNTime(eventEnd))
 	}
 	pdf.CellFormat(75, 6, timeStr, "", 1, "L", false, 0, "")
 	pdf.Ln(2.4)
