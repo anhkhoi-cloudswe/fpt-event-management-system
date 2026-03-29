@@ -35,7 +35,7 @@ func formatTimeToVNRFC3339(t time.Time) string {
 	// Step 2: Convert from UTC to Vietnam timezone with +07:00 offset
 	normalized := utils.NormalizeDBTimeAsUTC(t)
 	result := utils.DBTimeToVietnamTime(normalized).Format(time.RFC3339)
-	log.Printf("[TIMEZONE_DEBUG] formatTimeToVNRFC3339: input=%s -> normalized=%s -> result=%s", 
+	log.Printf("[TIMEZONE_DEBUG] formatTimeToVNRFC3339: input=%s -> normalized=%s -> result=%s",
 		t.Format(time.RFC3339), normalized.Format(time.RFC3339), result)
 	return result
 }
@@ -793,7 +793,7 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 		page = 1
 	}
 	if limit < 1 {
-		limit = 10
+		limit = 12
 	}
 	if limit > 100 {
 		limit = 100
@@ -930,6 +930,121 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 		page, limit, offset, totalOpen, totalClosed, totalCancelled)
 
 	return openEvents, closedEvents, cancelledEvents, totalOpen, totalClosed, totalCancelled, rows.Err()
+}
+
+// GetEventsWithPagination - Unified paginated list for /api/events
+// Returns a single list with total count for pagination.
+func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role string, userID int, page int, limit int) ([]models.EventListItem, int, error) {
+	// Validate pagination parameters
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 12
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	offset := (page - 1) * limit
+
+	baseQuery := `
+		SELECT 
+			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
+			e.area_id, va.area_name, va.floor,
+			v.venue_name, v.location,
+			e.created_by
+		FROM Event e
+		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
+		LEFT JOIN Venue v ON va.venue_id = v.venue_id
+	`
+
+	var whereClause string
+	var args []interface{}
+
+	if role == "ORGANIZER" {
+		whereClause = ` WHERE e.created_by = ? AND (e.status IN ('OPEN','CLOSED','CANCELLED','APPROVED','UPDATING') OR e.end_time < NOW())`
+		args = append(args, userID)
+	} else if role == "STAFF" {
+		whereClause = ` WHERE (e.status IN ('OPEN', 'CLOSED', 'CANCELLED') OR e.end_time < NOW())`
+	} else {
+		whereClause = ` WHERE (e.status = 'OPEN' OR (e.end_time < NOW() AND e.status != 'CANCELLED'))`
+	}
+
+	countQuery := `
+		SELECT COUNT(DISTINCT e.event_id)
+		FROM Event e
+		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
+		LEFT JOIN Venue v ON va.venue_id = v.venue_id
+	` + whereClause
+
+	var totalCount int
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&totalCount); err != nil && err != sql.ErrNoRows {
+		return nil, 0, fmt.Errorf("failed to count events: %w", err)
+	}
+
+	query := baseQuery + whereClause + ` ORDER BY e.start_time DESC LIMIT ? OFFSET ?`
+	queryArgs := append(args, limit, offset)
+
+	rows, err := r.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query events: %w", err)
+	}
+	defer rows.Close()
+
+	var items []models.EventListItem
+	for rows.Next() {
+		var item models.EventListItem
+		var description, bannerURL, areaName, floor, venueName, venueLoc sql.NullString
+		var areaID, createdBy sql.NullInt64
+		var startTime, endTime time.Time
+
+		err := rows.Scan(
+			&item.EventID, &item.Title, &description, &startTime, &endTime, &item.MaxSeats, &item.Status, &bannerURL,
+			&areaID, &areaName, &floor,
+			&venueName, &venueLoc,
+			&createdBy,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan event: %w", err)
+		}
+
+		item.StartTime = formatTimeToVNRFC3339(startTime)
+		item.EndTime = formatTimeToVNRFC3339(endTime)
+
+		if description.Valid {
+			item.Description = &description.String
+		}
+		if bannerURL.Valid {
+			item.BannerURL = &bannerURL.String
+		}
+		if areaID.Valid {
+			item.AreaID = pointer(int(areaID.Int64))
+		}
+		if areaName.Valid {
+			item.AreaName = &areaName.String
+		}
+		if floor.Valid {
+			item.Floor = &floor.String
+		}
+		if venueName.Valid {
+			item.VenueName = &venueName.String
+		}
+		if venueLoc.Valid {
+			item.VenueLocation = &venueLoc.String
+		}
+		if createdBy.Valid {
+			item.OrganizerID = pointer(int(createdBy.Int64))
+		}
+
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return items, totalCount, nil
 }
 
 func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*models.EventDetailDto, error) {
@@ -1263,6 +1378,110 @@ func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventList
 	}
 
 	return items, rows.Err()
+}
+
+// GetOpenEventsWithPagination - OPEN events with pagination support
+func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page int, limit int) ([]models.EventListItem, int, error) {
+	if config.IsFeatureEnabled(config.FlagUseAPIComposition) {
+		return r.GetOpenEventsComposedWithPagination(ctx, page, limit)
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 12
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	offset := (page - 1) * limit
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM Event e
+		WHERE e.status = 'OPEN'
+	`
+
+	var totalCount int
+	if err := r.db.QueryRowContext(ctx, countQuery).Scan(&totalCount); err != nil && err != sql.ErrNoRows {
+		return nil, 0, fmt.Errorf("failed to count open events: %w", err)
+	}
+
+	query := `
+		SELECT 
+			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
+			e.area_id, va.area_name, va.floor,
+			v.venue_name, v.location,
+			e.created_by
+		FROM Event e
+		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
+		LEFT JOIN Venue v ON va.venue_id = v.venue_id
+		WHERE e.status = 'OPEN'
+		ORDER BY e.start_time DESC
+		LIMIT ? OFFSET ?
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query open events: %w", err)
+	}
+	defer rows.Close()
+
+	var items []models.EventListItem
+	for rows.Next() {
+		var item models.EventListItem
+		var description, bannerURL, areaName, floor, venueName, venueLoc sql.NullString
+		var areaID, createdBy sql.NullInt64
+		var startTime, endTime time.Time
+
+		err := rows.Scan(
+			&item.EventID, &item.Title, &description, &startTime, &endTime, &item.MaxSeats, &item.Status, &bannerURL,
+			&areaID, &areaName, &floor,
+			&venueName, &venueLoc,
+			&createdBy,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan event: %w", err)
+		}
+
+		item.StartTime = formatTimeToVNRFC3339(startTime)
+		item.EndTime = formatTimeToVNRFC3339(endTime)
+
+		if description.Valid {
+			item.Description = &description.String
+		}
+		if bannerURL.Valid {
+			item.BannerURL = &bannerURL.String
+		}
+		if areaID.Valid {
+			item.AreaID = pointer(int(areaID.Int64))
+		}
+		if areaName.Valid {
+			item.AreaName = &areaName.String
+		}
+		if floor.Valid {
+			item.Floor = &floor.String
+		}
+		if venueName.Valid {
+			item.VenueName = &venueName.String
+		}
+		if venueLoc.Valid {
+			item.VenueLocation = &venueLoc.String
+		}
+		if createdBy.Valid {
+			item.OrganizerID = pointer(int(createdBy.Int64))
+		}
+
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return items, totalCount, nil
 }
 
 func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID int, req *models.CreateEventRequestBody) (int, error) {
@@ -1906,7 +2125,7 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 			return fmt.Errorf("failed to get request details: %w", err)
 		}
 
-		// ⚠️ CRITICAL TIMEZONE FIX: 
+		// ⚠️ CRITICAL TIMEZONE FIX:
 		// Times read from Event_Request have DSN loc reinterpretation.
 		// We need to:
 		// 1. Normalize them back to UTC (undo DSN reinterpretation)
@@ -1916,13 +2135,13 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		if requestStartTime.Valid {
 			normalized := utils.NormalizeDBTimeAsUTC(requestStartTime.Time)
 			startTimeUTC = normalized.Format("2006-01-02 15:04:05")
-			fmt.Printf("[DB_PROCESS] ProcessEventRequest timezone fix: startTime=%v -> normalized=%v -> storage=%s\n", 
+			fmt.Printf("[DB_PROCESS] ProcessEventRequest timezone fix: startTime=%v -> normalized=%v -> storage=%s\n",
 				requestStartTime.Time, normalized, startTimeUTC)
 		}
 		if requestEndTime.Valid {
 			normalized := utils.NormalizeDBTimeAsUTC(requestEndTime.Time)
 			endTimeUTC = normalized.Format("2006-01-02 15:04:05")
-			fmt.Printf("[DB_PROCESS] ProcessEventRequest timezone fix: endTime=%v -> normalized=%v -> storage=%s\n", 
+			fmt.Printf("[DB_PROCESS] ProcessEventRequest timezone fix: endTime=%v -> normalized=%v -> storage=%s\n",
 				requestEndTime.Time, normalized, endTimeUTC)
 		}
 

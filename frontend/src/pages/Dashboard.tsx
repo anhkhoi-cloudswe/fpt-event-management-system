@@ -88,8 +88,8 @@ export default function Dashboard() {
   // currentPage: trang hiện tại trong phân trang
   const [currentPage, setCurrentPage] = useState(getInitialPage())
 
-  // itemsPerPage: số sự kiện hiển thị trên mỗi trang (2 hàng x 4 cột = 8 sự kiện)
-  const itemsPerPage = 8
+  // itemsPerPage: số sự kiện hiển thị trên mỗi trang (3 hàng x 4 cột = 12 sự kiện)
+  const itemsPerPage = 12
 
   // totalItems: tổng số sự kiện từ API response
   const [totalItems, setTotalItems] = useState(0)
@@ -119,22 +119,22 @@ export default function Dashboard() {
   // Effect: cập nhật URL khi tab, page, hoặc search thay đổi
   useEffect(() => {
     const newParams = new URLSearchParams()
-    
+
     // Thêm tab vào URL (mặc định là 'open')
     if (activeTab !== 'open') {
       newParams.set('tab', activeTab)
     }
-    
+
     // Thêm page vào URL (mặc định là '1')
     if (currentPage !== 1) {
       newParams.set('page', currentPage.toString())
     }
-    
+
     // Thêm search vào URL (nếu có từ khóa)
     if (searchQuery.trim() !== '') {
       newParams.set('search', searchQuery)
     }
-    
+
     // Cập nhật URL search params
     setSearchParams(newParams)
   }, [activeTab, currentPage, searchQuery, setSearchParams])
@@ -157,16 +157,16 @@ export default function Dashboard() {
 
         // Tạo query params cho API
         const queryParams = new URLSearchParams()
-        
+
         // Thêm status parameter (mapping tab name to API status)
         // Lưu ý: backend có thể cần map từ tab name (open/upcoming/closed) thành status API
         queryParams.append('status', activeTab)
-        
+
         // Thêm search parameter nếu có
         if (searchQuery.trim() !== '') {
           queryParams.append('search', searchQuery)
         }
-        
+
         // Thêm pagination parameters
         queryParams.append('page', currentPage.toString())
         queryParams.append('limit', itemsPerPage.toString())
@@ -218,7 +218,7 @@ export default function Dashboard() {
          */
         let eventsArray: EventListItem[] = []
         let total = 0
-        
+
         if (Array.isArray(data)) {
           eventsArray = data
           total = data.length || 0
@@ -357,7 +357,7 @@ export default function Dashboard() {
   const handleSearchChange = useCallback((newQuery: string) => {
     // Update local state ngay để UI responsive
     setSearchQuery(newQuery)
-    
+
     // Nếu có timer debounce đang chạy, hủy nó
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current)
@@ -454,7 +454,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div>
+    <div className="w-full mx-auto">
       {/* Tiêu đề + Tìm kiếm */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -485,11 +485,10 @@ export default function Dashboard() {
             {/* Tab 1: Sự kiện hôm nay */}
             <button
               onClick={() => handleTabChange('open')}
-              className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${
-                activeTab === 'open'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${activeTab === 'open'
+                ? 'border-orange-500 text-orange-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               <div className="flex flex-col items-start">
                 <span>Sự kiện hôm nay</span>
@@ -499,11 +498,10 @@ export default function Dashboard() {
             {/* Tab 2: Sự kiện sắp diễn ra */}
             <button
               onClick={() => handleTabChange('upcoming')}
-              className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${
-                activeTab === 'upcoming'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${activeTab === 'upcoming'
+                ? 'border-orange-500 text-orange-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               <div className="flex flex-col items-start">
                 <span>Sự kiện sắp diễn ra</span>
@@ -513,11 +511,10 @@ export default function Dashboard() {
             {/* Tab 3: Sự kiện đã kết thúc */}
             <button
               onClick={() => handleTabChange('closed')}
-              className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${
-                activeTab === 'closed'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${activeTab === 'closed'
+                ? 'border-orange-500 text-orange-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               <div className="flex flex-col items-start">
                 <span>Sự kiện đã kết thúc</span>
@@ -532,14 +529,23 @@ export default function Dashboard() {
       {/* ===== TAB OPEN: Sự kiện hôm nay ===== */}
       {activeTab === 'open' && (
         <>
-          {events.length === 0 ? (
+          {events.length === 0 && totalItems === 0 ? (
             <div className="bg-white rounded-lg shadow p-12 text-center">
-              <p className="text-gray-500 text-lg">Hiện chưa có sự kiện đang mở</p>
+              <div className="flex justify-center mb-4">
+                <Calendar className="w-16 h-16 text-gray-300" />
+              </div>
+              <p className="text-gray-500 text-lg font-medium">Chưa có sự kiện nào trong mục này</p>
+              <p className="text-gray-400 text-sm mt-2">Hãy quay lại sau để xem các sự kiện hôm nay</p>
             </div>
           ) : (
             <>
-              {/* Grid Sự kiện (hiển thị events từ API) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {/* Results Count */}
+              <div className="mb-4 text-sm text-gray-600">
+                <p>Hiển thị <span className="font-semibold">{displayedEvents.length}</span> trên tổng số <span className="font-semibold">{totalItems}</span> sự kiện</p>
+              </div>
+
+              {/* Grid Sự kiện (hiển thị events từ API) - đúng 4 cột trên Desktop */}
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
                 {displayedEvents.map((event) => {
                   // Parse ngày giờ event
                   const eventDate = new Date(event.startTime)
@@ -553,12 +559,12 @@ export default function Dashboard() {
                     <button
                       key={event.eventId}
                       onClick={() => openEventDetail(event.eventId)} // click -> mở modal + fetch detail
-                      className={`text-left block rounded-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer bg-white ${
+                      className={`text-left block rounded-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer bg-white h-full flex flex-col ${
                         // Nếu hôm nay -> highlight đỏ + scale
-                        isToday 
-                          ? 'border-4 border-red-500 shadow-2xl shadow-red-500/50 transform scale-105' 
+                        isToday
+                          ? 'border-4 border-red-500 shadow-2xl shadow-red-500/50 transform scale-105'
                           : 'border border-gray-200'
-                      }`}
+                        }`}
                     >
                       {/* Banner Image */}
                       {event.bannerUrl ? (
@@ -566,19 +572,19 @@ export default function Dashboard() {
                           <img
                             src={event.bannerUrl}
                             alt={event.title}
-                            className="w-full h-48 object-cover"
+                            className="w-full h-40 object-cover"
                           />
                           {/* Nếu hôm nay -> show badge "🔥 HÔM NAY" */}
                           {isToday && (
-                            <span className="absolute top-3 right-3 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg shadow-lg animate-pulse">
+                            <span className="absolute top-3 right-3 px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg shadow-lg animate-pulse">
                               🔥 HÔM NAY
                             </span>
                           )}
                         </div>
                       ) : (
                         // Nếu không có bannerUrl -> hiển thị background + icon Calendar
-                        <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center relative">
-                          <Calendar className="w-16 h-16 text-blue-400" />
+                        <div className="w-full h-40 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center relative">
+                          <Calendar className="w-12 h-12 text-blue-400" />
                           {isToday && (
                             <span className="absolute top-3 right-3 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg shadow-lg animate-pulse">
                               🔥 HÔM NAY
@@ -588,25 +594,35 @@ export default function Dashboard() {
                       )}
 
                       {/* Content */}
-                      <div className="p-4">
+                      <div className="p-4 flex-1 flex flex-col">
+                        {/* Status Badge - For today events */}
+                        {isToday && (
+                          <span className="inline-block px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded mb-2 w-fit">
+                            Đang mở
+                          </span>
+                        )}
+
                         {/* Title */}
-                        <h3 className={`text-lg font-bold mb-2 line-clamp-2 min-h-[56px] ${
-                          isToday ? 'text-red-600' : 'text-gray-900'
-                        }`}>
+                        <h3 className={`text-sm font-bold mb-2 line-clamp-2 ${isToday ? 'text-red-600' : 'text-gray-900'
+                          }`}>
                           {event.title}
                         </h3>
 
                         {/* Date & Time */}
-                        <p className={`text-sm mb-1 font-semibold ${
-                          isToday ? 'text-red-600' : 'text-gray-600'
-                        }`}>
+                        <p className={`text-xs mb-2 font-semibold line-clamp-1 ${isToday ? 'text-red-600' : 'text-gray-600'
+                          }`}>
                           {format(eventDate, 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
                         </p>
 
                         {/* Location */}
-                        <p className="text-sm text-gray-600 line-clamp-1">
+                        <p className="text-xs text-gray-600 line-clamp-2 mt-auto">
                           {event.venueLocation || event.location || 'Trực tuyến'}
                         </p>
+
+                        {/* View Details Button Spacer */}
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <p className="text-orange-600 text-xs font-semibold">Xem chi tiết →</p>
+                        </div>
                       </div>
                     </button>
                   )
@@ -615,7 +631,7 @@ export default function Dashboard() {
 
               {/* Pagination - Only show if totalPages > 1 */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-8">
+                <div className="w-full flex justify-center items-center gap-2 mt-8">
                   {/* Nút Trước */}
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
@@ -636,13 +652,12 @@ export default function Dashboard() {
                           }
                         }}
                         disabled={typeof item === 'string'}
-                        className={`px-3 py-2 rounded-lg transition-colors ${
-                          item === currentPage
-                            ? 'bg-orange-500 text-white font-semibold'
-                            : typeof item === 'number'
-                              ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                              : 'text-gray-500 cursor-default'
-                        }`}
+                        className={`px-3 py-2 rounded-lg transition-colors ${item === currentPage
+                          ? 'bg-orange-500 text-white font-semibold'
+                          : typeof item === 'number'
+                            ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                            : 'text-gray-500 cursor-default'
+                          }`}
                       >
                         {item}
                       </button>
@@ -667,14 +682,23 @@ export default function Dashboard() {
       {/* ===== TAB UPCOMING: Sự kiện sắp diễn ra ===== */}
       {activeTab === 'upcoming' && (
         <>
-          {events.length === 0 ? (
+          {events.length === 0 && totalItems === 0 ? (
             <div className="bg-white rounded-lg shadow p-12 text-center">
-              <p className="text-gray-500 text-lg">Hiện chưa có sự kiện sắp mở</p>
+              <div className="flex justify-center mb-4">
+                <Calendar className="w-16 h-16 text-yellow-300" />
+              </div>
+              <p className="text-gray-500 text-lg font-medium">Chưa có sự kiện nào trong mục này</p>
+              <p className="text-gray-400 text-sm mt-2">Các sự kiện sắp diễn ra sẽ hiển thị tại đây</p>
             </div>
           ) : (
             <>
-              {/* Grid Sự kiện (hiển thị events từ API) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {/* Results Count */}
+              <div className="mb-4 text-sm text-gray-600">
+                <p>Hiển thị <span className="font-semibold">{displayedEvents.length}</span> trên tổng số <span className="font-semibold">{totalItems}</span> sự kiện</p>
+              </div>
+
+              {/* Grid Sự kiện (hiển thị events từ API) - đúng 4 cột trên Desktop */}
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
                 {displayedEvents.map((event) => {
                   const eventDate = new Date(event.startTime)
                   const isToday = isSameDay(eventDate, today)
@@ -683,7 +707,7 @@ export default function Dashboard() {
                     <button
                       key={event.eventId}
                       onClick={() => openEventDetail(event.eventId)} // click -> modal + fetch detail
-                      className="text-left block rounded-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer bg-white border border-gray-200"
+                      className="text-left block rounded-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer bg-white border border-gray-200 h-full flex flex-col"
                     >
                       {/* Banner */}
                       {event.bannerUrl ? (
@@ -691,7 +715,7 @@ export default function Dashboard() {
                           <img
                             src={event.bannerUrl}
                             alt={event.title}
-                            className="w-full h-48 object-cover"
+                            className="w-full h-40 object-cover"
                           />
                           {/* Badge (đoạn này hiện tại chỉ show nếu isToday, nhưng upcoming đã lọc > today nên thường không xảy ra) */}
                           {isToday && (
@@ -701,8 +725,8 @@ export default function Dashboard() {
                           )}
                         </div>
                       ) : (
-                        <div className="w-full h-48 bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center relative">
-                          <Calendar className="w-16 h-16 text-yellow-400" />
+                        <div className="w-full h-40 bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center relative">
+                          <Calendar className="w-12 h-12 text-yellow-400" />
                           {isToday && (
                             <span className="absolute top-3 right-3 px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded">
                               SẮP MỞ
@@ -712,16 +736,26 @@ export default function Dashboard() {
                       )}
 
                       {/* Content */}
-                      <div className="p-4">
-                        <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 min-h-[56px]">
+                      <div className="p-4 flex-1 flex flex-col">
+                        {/* Status Badge */}
+                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded mb-2 w-fit">
+                          Sắp mở
+                        </span>
+
+                        <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">
                           {event.title}
                         </h3>
-                        <p className="text-sm text-gray-600 mb-1 font-semibold">
+                        <p className="text-xs text-gray-600 mb-2 font-semibold line-clamp-1">
                           {format(eventDate, 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
                         </p>
-                        <p className="text-sm text-gray-600 line-clamp-1">
+                        <p className="text-xs text-gray-600 line-clamp-2 mt-auto">
                           {event.venueLocation || event.location || 'Trực tuyến'}
                         </p>
+
+                        {/* View Details Button Spacer */}
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <p className="text-orange-600 text-xs font-semibold">Xem chi tiết →</p>
+                        </div>
                       </div>
                     </button>
                   )
@@ -730,7 +764,7 @@ export default function Dashboard() {
 
               {/* Pagination - Only show if totalPages > 1 */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-8">
+                <div className="w-full flex justify-center items-center gap-2 mt-8">
                   {/* Nút Trước */}
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
@@ -751,13 +785,12 @@ export default function Dashboard() {
                           }
                         }}
                         disabled={typeof item === 'string'}
-                        className={`px-3 py-2 rounded-lg transition-colors ${
-                          item === currentPage
-                            ? 'bg-orange-500 text-white font-semibold'
-                            : typeof item === 'number'
-                              ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                              : 'text-gray-500 cursor-default'
-                        }`}
+                        className={`px-3 py-2 rounded-lg transition-colors ${item === currentPage
+                          ? 'bg-orange-500 text-white font-semibold'
+                          : typeof item === 'number'
+                            ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                            : 'text-gray-500 cursor-default'
+                          }`}
                       >
                         {item}
                       </button>
@@ -782,50 +815,64 @@ export default function Dashboard() {
       {/* ===== TAB CLOSED: Sự kiện đã kết thúc ===== */}
       {activeTab === 'closed' && (
         <>
-          {events.length === 0 ? (
+          {events.length === 0 && totalItems === 0 ? (
             <div className="bg-white rounded-lg shadow p-12 text-center">
-              <p className="text-gray-500 text-lg">Chưa có sự kiện đã kết thúc</p>
+              <div className="flex justify-center mb-4">
+                <Calendar className="w-16 h-16 text-gray-300" />
+              </div>
+              <p className="text-gray-500 text-lg font-medium">Chưa có sự kiện nào trong mục này</p>
+              <p className="text-gray-400 text-sm mt-2">Các sự kiện đã kết thúc sẽ hiển thị tại đây</p>
             </div>
           ) : (
             <>
-              {/* Grid Sự kiện (hiển thị events từ API) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {/* Results Count */}
+              <div className="mb-4 text-sm text-gray-600">
+                <p>Hiển thị <span className="font-semibold">{displayedEvents.length}</span> trên tổng số <span className="font-semibold">{totalItems}</span> sự kiện</p>
+              </div>
+
+              {/* Grid Sự kiện (hiển thị events từ API) - đúng 4 cột trên Desktop */}
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
                 {displayedEvents.map((event) => (
                   <button
                     key={event.eventId}
                     onClick={() => openEventDetail(event.eventId)} // click -> modal + fetch detail
-                    className="text-left block rounded-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer bg-white border border-gray-200 opacity-75"
+                    className="text-left block rounded-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer bg-white border border-gray-200 opacity-75 h-full flex flex-col"
                   >
                     {/* Banner */}
                     {event.bannerUrl ? (
                       <img
                         src={event.bannerUrl}
                         alt={event.title}
-                        className="w-full h-48 object-cover"
+                        className="w-full h-40 object-cover"
                       />
                     ) : (
-                      <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                        <Calendar className="w-16 h-16 text-gray-400" />
+                      <div className="w-full h-40 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                        <Calendar className="w-12 h-12 text-gray-400" />
                       </div>
                     )}
 
                     {/* Content */}
-                    <div className="p-4">
-                      <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded mb-3">
+                    <div className="p-4 flex-1 flex flex-col">
+                      <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded mb-4 w-fit">
                         Đã kết thúc
                       </span>
 
-                      <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 min-h-[56px]">
+                      <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">
                         {event.title}
                       </h3>
 
-                      <p className="text-sm text-gray-600 mb-1 font-semibold">
+                      <p className="text-xs text-gray-600 mb-2 font-semibold line-clamp-1">
                         {format(new Date(event.startTime), 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
                       </p>
 
-                      <p className="text-sm text-gray-600 line-clamp-1">
+                      <p className="text-xs text-gray-600 line-clamp-2 mt-auto">
                         {event.venueLocation || event.location || 'Trực tuyến'}
                       </p>
+
+                      {/* View Details Button Spacer */}
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <p className="text-orange-600 text-xs font-semibold">Xem chi tiết →</p>
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -833,7 +880,7 @@ export default function Dashboard() {
 
               {/* Pagination - Only show if totalPages > 1 */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-8">
+                <div className="w-full flex justify-center items-center gap-2 mt-8">
                   {/* Nút Trước */}
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
@@ -854,13 +901,12 @@ export default function Dashboard() {
                           }
                         }}
                         disabled={typeof item === 'string'}
-                        className={`px-3 py-2 rounded-lg transition-colors ${
-                          item === currentPage
-                            ? 'bg-orange-500 text-white font-semibold'
-                            : typeof item === 'number'
-                              ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                              : 'text-gray-500 cursor-default'
-                        }`}
+                        className={`px-3 py-2 rounded-lg transition-colors ${item === currentPage
+                          ? 'bg-orange-500 text-white font-semibold'
+                          : typeof item === 'number'
+                            ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                            : 'text-gray-500 cursor-default'
+                          }`}
                       >
                         {item}
                       </button>

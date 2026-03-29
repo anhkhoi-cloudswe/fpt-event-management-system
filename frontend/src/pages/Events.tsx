@@ -51,7 +51,7 @@ type ViewMode = 'list' | 'calendar'
  * =============================================================================
  *
  * Chức năng chính:
- * - Load danh sách sự kiện từ BE (/api/events)
+ * - Load danh sách sự kiện từ BE (/api/events) với pagination
  * - Chỉ hiển thị các event đang OPEN (đang mở)
  * - Cho người dùng xem theo 2 chế độ:
  *   1) Calendar view: hiển thị trên lịch
@@ -65,7 +65,7 @@ type ViewMode = 'list' | 'calendar'
  *
  * Luồng hoạt động:
  * 1) Mount component → useEffect gọi fetchEvents()
- * 2) fetchEvents gọi BE lấy danh sách openEvents + closedEvents (hoặc mảng legacy)
+ * 2) fetchEvents gọi BE lấy danh sách events phân trang (data[])
  * 3) setEvents -> tính openEvents/upcoming/past để render
  * 4) Click event -> gọi fetchEventDetail -> mở EventDetailModal
  * 5) Staff bấm disable -> mở ConfirmModal -> confirm -> performDisableEvent() -> gọi API disable -> reload danh sách
@@ -128,17 +128,19 @@ export default function Events() {
   /**
    * fetchEvents:
    * - Lấy token từ localStorage
-   * - Gọi API /api/events
-   * - BE có thể trả:
-   *   + mảng [] (legacy)
-   *   + object {openEvents:[], closedEvents:[]} (new)
-   * - Map về eventsArray rồi setEvents
+   * - Gọi API /api/events với pagination
+   * - BE trả: { data: [...], total, page, limit, totalPages }
    */
   const fetchEvents = async () => {
     try {
       const token = 'cookie-auth'
 
-      const response = await fetch('/api/events', {
+      const queryParams = new URLSearchParams({
+        page: '1',
+        limit: '100'
+      })
+
+      const response = await fetch(`/api/events?${queryParams.toString()}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -147,13 +149,11 @@ export default function Events() {
       if (response.ok) {
         const data = await response.json()
 
-        // Handle both array (legacy) and object structure (new API)
         const eventsArray = Array.isArray(data)
           ? data
-          : [
-            ...(Array.isArray(data.openEvents) ? data.openEvents : []),
-            ...(Array.isArray(data.closedEvents) ? data.closedEvents : [])
-          ]
+          : Array.isArray(data.data)
+            ? data.data
+            : []
 
         setEvents(eventsArray)
       } else {

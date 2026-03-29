@@ -83,7 +83,7 @@ const benefits = [
  *   1) Hero section (giới thiệu)
  *   2) Stats section (đếm số liệu tăng dần khi kéo tới)
  *   3) Features section (tính năng)
- *   4) Events section: lấy danh sách sự kiện từ API (/api/events) -> lấy openEvents -> hiển thị 6 sự kiện nổi bật
+ *   4) Events section: lấy danh sách sự kiện từ API (/api/events/open) -> hiển thị 6 sự kiện nổi bật
  *   5) CTA section -> kêu gọi đăng nhập
  *   6) Footer
  * - Có hiệu ứng:
@@ -92,7 +92,7 @@ const benefits = [
  *   + Carousel ngang phần event nổi bật: kéo ngang bằng wheel + nút trái/phải
  *
  * Luồng hoạt động chính:
- * 1) Mount trang -> gọi fetchEvents() -> lấy openEvents, cắt 6 -> setHighlightedEvents
+ * 1) Mount trang -> gọi fetchEvents() -> lấy data -> setHighlightedEvents
  * 2) Khi user scroll tới stats section -> IntersectionObserver trigger -> animateCounters()
  * 3) Ở events section:
  *    - Có thể scroll ngang bằng:
@@ -148,9 +148,8 @@ export default function GuestLanding() {
 
   /**
    * useEffect 1: fetchEvents khi mount
-   * - Gọi GET /api/events với Authorization header (nếu có token)
-   * - Lấy data.openEvents (sự kiện đang mở)
-   * - Cắt 6 sự kiện đầu để hiển thị
+   * - Gọi GET /api/events/open với pagination
+   * - Lấy data (sự kiện đang mở) để hiển thị
    */
   useEffect(() => {
     const fetchEvents = async () => {
@@ -169,7 +168,12 @@ export default function GuestLanding() {
           headers['Authorization'] = `Bearer ${token}`
         }
 
-        const response = await fetch('/api/events', {
+        const queryParams = new URLSearchParams({
+          page: '1',
+          limit: '6'
+        })
+
+        const response = await fetch(`/api/events/open?${queryParams.toString()}`, {
           headers,
           credentials: 'include',
         })
@@ -180,9 +184,13 @@ export default function GuestLanding() {
 
         const data = await response.json()
 
-        // Lấy openEvents (danh sách sự kiện đang mở), giới hạn 6 sự kiện
-        const events = data.openEvents || []
-        setHighlightedEvents(events.slice(0, 6))
+        const events = Array.isArray(data)
+          ? data
+          : Array.isArray(data.data)
+            ? data.data
+            : []
+
+        setHighlightedEvents(events)
       } catch (error) {
         console.error('Error fetching events:', error)
 

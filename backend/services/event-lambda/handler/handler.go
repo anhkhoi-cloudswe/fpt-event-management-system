@@ -34,11 +34,14 @@ func NewEventHandlerWithDB(dbConn *sql.DB) *EventHandler {
 }
 
 // HandleGetEvents handles GET /api/events
-// Response format khớp với Java Backend:
+// Response format:
 //
 //	{
-//	  "openEvents": [...],
-//	  "closedEvents": [...]
+//	  "data": [...],
+//	  "total": 10,
+//	  "page": 1,
+//	  "limit": 12,
+//	  "totalPages": 1
 //	}
 //
 // Permission Logic:
@@ -64,12 +67,12 @@ func (h *EventHandler) HandleGetEvents(ctx context.Context, request events.APIGa
 		role = "PUBLIC"
 	}
 
-	// ✅ NEW: Parse pagination parameters from query string
+	// Parse pagination parameters from query string
 	pageStr := request.QueryStringParameters["page"]
 	limitStr := request.QueryStringParameters["limit"]
 
 	page := 1
-	limit := 10
+	limit := 12
 
 	if pageStr != "" {
 		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
@@ -85,64 +88,81 @@ func (h *EventHandler) HandleGetEvents(ctx context.Context, request events.APIGa
 
 	log.Debug("HandleGetEvents - Role=%s UserID=%d Page=%d Limit=%d", role, userID, page, limit)
 
-	// Get all events separated by status with pagination
-	openEvents, closedEvents, cancelledEvents, totalOpen, totalClosed, totalCancelled, err := h.useCase.GetAllEventsSeparatedWithPagination(ctx, role, userID, page, limit)
+	// Get paginated events with role-based filtering
+	eventsList, totalItems, err := h.useCase.GetEventsWithPagination(ctx, role, userID, page, limit)
 	if err != nil {
-		log.Error("GetAllEventsSeparatedWithPagination error: %v", err)
+		log.Error("GetEventsWithPagination error: %v", err)
 		return createMessageResponse(http.StatusInternalServerError, fmt.Sprintf("Internal server error when loading events: %v", err))
 	}
 
-	// Return empty arrays if nil
-	if openEvents == nil {
-		openEvents = []models.EventListItem{}
-	}
-	if closedEvents == nil {
-		closedEvents = []models.EventListItem{}
-	}
-	if cancelledEvents == nil {
-		cancelledEvents = []models.EventListItem{}
+	if eventsList == nil {
+		eventsList = []models.EventListItem{}
 	}
 
 	// Calculate pagination metadata
-	totalItems := totalOpen + totalClosed + totalCancelled
-	totalPages := (totalItems + limit - 1) / limit
-	if totalPages < 1 {
-		totalPages = 1
+	totalPages := 0
+	if totalItems > 0 {
+		totalPages = (totalItems + limit - 1) / limit
 	}
 
-	// ✅ SECURITY LOG: Track filtered events access
-	log.Info("GetEvents filtered - UserID=%d Role=%s Page=%d TotalItems=%d Open=%d Closed=%d Cancelled=%d",
-		userID, role, page, totalItems, len(openEvents), len(closedEvents), len(cancelledEvents))
+	log.Info("GetEvents filtered - UserID=%d Role=%s Page=%d TotalItems=%d Returned=%d",
+		userID, role, page, totalItems, len(eventsList))
 
-	// ✅ NEW RESPONSE FORMAT with pagination metadata
-	response := map[string]interface{}{
-		"openEvents":      openEvents,
-		"closedEvents":    closedEvents,
-		"cancelledEvents": cancelledEvents,
-		"pagination": map[string]int{
-			"currentPage": page,
-			"pageSize":    limit,
-			"totalItems":  totalItems,
-			"totalPages":  totalPages,
-		},
+	response := repository.EventListV1Result{
+		Data:       eventsList,
+		Total:      totalItems,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
 	}
 
 	return createJSONResponse(http.StatusOK, response)
 }
 
 // HandleGetOpenEvents handles GET /api/events/open
-// Trả về danh sách events có status OPEN
+// Trả về danh sách events có status OPEN (paginated)
 func (h *EventHandler) HandleGetOpenEvents(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	events, err := h.useCase.GetOpenEvents(ctx)
+	pageStr := request.QueryStringParameters["page"]
+	limitStr := request.QueryStringParameters["limit"]
+
+	page := 1
+	limit := 12
+
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	eventsList, totalItems, err := h.useCase.GetOpenEventsWithPagination(ctx, page, limit)
 	if err != nil {
 		return createMessageResponse(http.StatusInternalServerError, "Error loading open events")
 	}
 
-	if events == nil {
-		events = []models.EventListItem{}
+	if eventsList == nil {
+		eventsList = []models.EventListItem{}
 	}
 
-	return createJSONResponse(http.StatusOK, events)
+	totalPages := 0
+	if totalItems > 0 {
+		totalPages = (totalItems + limit - 1) / limit
+	}
+
+	response := repository.EventListV1Result{
+		Data:       eventsList,
+		Total:      totalItems,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	}
+
+	return createJSONResponse(http.StatusOK, response)
 }
 
 // HandleGetEventDetail handles GET /api/events/detail?id={eventId}
@@ -1176,7 +1196,7 @@ func (h *EventHandler) HandleDisableEvent(ctx context.Context, request events.AP
 // - status: 'today' | 'upcoming' | 'past' (required)
 // - search: search query string (optional)
 // - page: page number (default: 1)
-// - limit: items per page (default: 10, max: 100)
+// - limit: items per page (default: 12, max: 100)
 //
 // Headers:
 // - X-User-Role: User role for permission filtering (ADMIN, ORGANIZER, PUBLIC)
@@ -1245,7 +1265,7 @@ func (h *EventHandler) HandleGetEventsByStatusV1(ctx context.Context, request ev
 
 	// Parse pagination parameters
 	page := 1
-	limit := 10
+	limit := 12
 
 	if pageStr != "" {
 		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
