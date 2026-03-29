@@ -237,9 +237,10 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 	resp := map[string]interface{}{
 		"status": "success",
 		"user": map[string]interface{}{
-			"id":    claims.UserID,
-			"email": claims.Email,
-			"role":  claims.Role,
+			"id":       claims.UserID,
+			"email":    claims.Email,
+			"fullName": claims.FullName,
+			"role":     claims.Role,
 		},
 	}
 	body, _ := json.Marshal(resp)

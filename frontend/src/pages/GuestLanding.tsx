@@ -17,6 +17,9 @@ import {
 // React hooks: useState (state), useEffect (chạy side-effect), useRef (tham chiếu DOM)
 import { useState, useEffect, useRef } from 'react'
 
+// Import RealtimeClock component
+import { RealtimeClock } from '../components/RealtimeClock'
+
 // Import helper để format thời gian theo Vietnam timezone
 import { formatVietnamDateTime } from '../utils/dateFormat'
 
@@ -400,6 +403,7 @@ export default function GuestLanding() {
 
           {/* Nút đăng nhập */}
           <div className="flex items-center gap-4">
+            <RealtimeClock />
             <button
               onClick={handleLoginClick}
               className="rounded-full bg-gradient-to-r from-orange-600 to-orange-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/50 transition-all duration-300 hover:-translate-y-0.5"

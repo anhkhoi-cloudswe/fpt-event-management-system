@@ -13,9 +13,10 @@ import (
 
 // Claims represents JWT claims structure
 type Claims struct {
-	UserID int    `json:"userId"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
+	UserID   int    `json:"userId"`
+	Email    string `json:"email"`
+	FullName string `json:"fullName"`
+	Role     string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -28,13 +29,14 @@ var (
 )
 
 // GenerateToken generates a JWT token for a user (khớp JwtUtils.generateToken)
-func GenerateToken(userID int, email, role string) (string, error) {
+func GenerateToken(userID int, email, fullName, role string) (string, error) {
 	now := time.Now()
 
 	claims := Claims{
-		UserID: userID,
-		Email:  email,
-		Role:   role,
+		UserID:   userID,
+		Email:    email,
+		FullName: fullName,
+		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(tokenExpiration)),

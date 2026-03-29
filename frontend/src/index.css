@@ -16,6 +16,53 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dark mode base styles */
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html.dark body {
+    @apply bg-gray-950 text-white;
+  }
+
+  html.dark h1,
+  html.dark h2,
+  html.dark h3,
+  html.dark h4,
+  html.dark h5,
+  html.dark h6 {
+    @apply text-white;
+  }
+
+  html.dark p,
+  html.dark span,
+  html.dark li,
+  html.dark a,
+  html.dark label {
+    @apply text-gray-100;
+  }
+
+  html.dark input,
+  html.dark textarea,
+  html.dark select {
+    @apply bg-gray-800 text-white border-gray-700;
+  }
+
+  html.dark input::placeholder,
+  html.dark textarea::placeholder {
+    @apply text-gray-500;
+  }
+
+  html.dark button {
+    @apply dark:text-white;
+  }
+}
+
 /* Hide scrollbar for events carousel */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
@@ -32,6 +79,7 @@ body {
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -41,4 +89,3 @@ body {
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
 }
-
