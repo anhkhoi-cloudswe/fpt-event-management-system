@@ -658,6 +658,26 @@ module "loadbalancer" {
             }
           ]
         }
+        wallet_paths_internal = {
+          priority = 75
+          actions = [
+            {
+              forward = {
+                target_group_key = "ticket-target"
+              }
+            }
+          ]
+          conditions = [
+            {
+              path_pattern = {
+                values = [
+                  "/internal/wallet",
+                  "/internal/wallet/*"
+                ]
+              }
+            }
+          ]
+        }
       }
     }
   }
