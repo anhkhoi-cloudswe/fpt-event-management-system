@@ -559,11 +559,11 @@ export default function Dashboard() {
                     <button
                       key={event.eventId}
                       onClick={() => openEventDetail(event.eventId)} // click -> mở modal + fetch detail
-                      className={`text-left block rounded-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer bg-white h-full flex flex-col ${
+                      className={`text-left block rounded-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer bg-white h-full flex flex-col dark:bg-gray-800 ${
                         // Nếu hôm nay -> highlight đỏ + scale
                         isToday
                           ? 'border-4 border-red-500 shadow-2xl shadow-red-500/50 transform scale-105'
-                          : 'border border-gray-200'
+                          : 'border border-gray-200 dark:border-gray-700'
                         }`}
                     >
                       {/* Banner Image */}
@@ -603,25 +603,25 @@ export default function Dashboard() {
                         )}
 
                         {/* Title */}
-                        <h3 className={`text-sm font-bold mb-2 line-clamp-2 ${isToday ? 'text-red-600' : 'text-gray-900'
+                        <h3 className={`text-sm font-bold mb-2 line-clamp-2 ${isToday ? 'text-red-600' : 'text-gray-900 dark:text-white'
                           }`}>
                           {event.title}
                         </h3>
 
                         {/* Date & Time */}
-                        <p className={`text-xs mb-2 font-semibold line-clamp-1 ${isToday ? 'text-red-600' : 'text-gray-600'
+                        <p className={`text-xs mb-2 font-semibold line-clamp-1 ${isToday ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'
                           }`}>
                           {format(eventDate, 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
                         </p>
 
                         {/* Location */}
-                        <p className="text-xs text-gray-600 line-clamp-2 mt-auto">
+                        <p className="text-xs text-gray-600 line-clamp-2 mt-auto dark:text-gray-400">
                           {event.venueLocation || event.location || 'Trực tuyến'}
                         </p>
 
                         {/* View Details Button Spacer */}
-                        <div className="mt-2 pt-2 border-t border-gray-200">
-                          <p className="text-orange-600 text-xs font-semibold">Xem chi tiết →</p>
+                        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                          <p className="text-orange-600 dark:text-orange-400 text-xs font-semibold">Xem chi tiết →</p>
                         </div>
                       </div>
                     </button>

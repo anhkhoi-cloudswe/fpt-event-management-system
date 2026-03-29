@@ -44,7 +44,7 @@ func (uc *AuthUseCase) Login(ctx context.Context, req models.LoginRequest) (*mod
 	}
 
 	// Generate JWT token
-	token, err := jwt.GenerateToken(user.ID, user.Email, user.Role)
+	token, err := jwt.GenerateToken(user.ID, user.Email, user.FullName, user.Role)
 	if err != nil {
 		return nil, errors.New("failed to generate token")
 	}
@@ -102,7 +102,7 @@ func (uc *AuthUseCase) Register(ctx context.Context, req models.RegisterRequest)
 	}
 
 	// Generate JWT token
-	token, err := jwt.GenerateToken(userID, createdUser.Email, createdUser.Role)
+	token, err := jwt.GenerateToken(userID, createdUser.Email, createdUser.FullName, createdUser.Role)
 	if err != nil {
 		return nil, errors.New("failed to generate token")
 	}
@@ -325,7 +325,7 @@ func (uc *AuthUseCase) VerifyRegisterOTP(ctx context.Context, email, otp string)
 	otpManager.Invalidate(email)
 
 	// Generate JWT
-	token, err := jwt.GenerateToken(userID, user.Email, user.Role)
+	token, err := jwt.GenerateToken(userID, user.Email, user.FullName, user.Role)
 	if err != nil {
 		return nil, errors.New("Không thể tạo token")
 	}
