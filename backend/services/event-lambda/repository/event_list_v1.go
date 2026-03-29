@@ -27,7 +27,7 @@ type EventListV1Result struct {
 //   - status: 'open' or 'today' (today's events), 'upcoming' (future events), 'past' or 'closed' (past events)
 //   - search: search string to filter by title (optional, uses LIKE)
 //   - page: page number (default 1)
-//   - limit: items per page (default 10, max 100)
+//   - limit: items per page (default 12, max 100)
 //
 // Returns:
 //   - Total count of matching events
@@ -66,7 +66,7 @@ func (r *EventRepository) GetEventsByStatusV1(
 		page = 1
 	}
 	if limit < 1 {
-		limit = 10
+		limit = 12
 	}
 	if limit > 100 {
 		limit = 100
@@ -152,7 +152,23 @@ func (r *EventRepository) GetEventsByStatusV1(
 	offset := (page - 1) * limit
 	totalPages := (totalCount + limit - 1) / limit
 
-	// ==================== STEP 4: FETCH PAGINATED RESULTS ====================
+	// ==================== STEP 4: BUILD SMART SORTING ====================
+
+	// Sort order depends on status for better UX:
+	// - 'upcoming': Sort by start_time ASC (nearest events first)
+	// - 'closed'/'past': Sort by end_time DESC (most recently ended first)
+	// - 'open'/'today': Sort by start_time DESC (newer/later events first)
+	var orderByClause string
+	switch status {
+	case "upcoming":
+		orderByClause = "ORDER BY e.start_time ASC"
+	case "past", "closed":
+		orderByClause = "ORDER BY e.end_time DESC"
+	default: // 'open', 'today'
+		orderByClause = "ORDER BY e.start_time DESC"
+	}
+
+	// ==================== STEP 5: FETCH PAGINATED RESULTS ====================
 
 	dataQuery := fmt.Sprintf(`
 		SELECT 
@@ -174,9 +190,9 @@ func (r *EventRepository) GetEventsByStatusV1(
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
 		WHERE %s
-		ORDER BY e.start_time DESC
+		%s
 		LIMIT ? OFFSET ?
-	`, whereClause)
+	`, whereClause, orderByClause)
 
 	// Append pagination parameters
 	paginationArgs := append(queryArgs, limit, offset)
@@ -372,7 +388,23 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 	offset := (page - 1) * limit
 	totalPages := (totalCount + limit - 1) / limit
 
-	// ==================== STEP 4: FETCH PAGINATED RESULTS ====================
+	// ==================== STEP 4: BUILD SMART SORTING ====================
+
+	// Sort order depends on status for better UX:
+	// - 'upcoming': Sort by start_time ASC (nearest events first)
+	// - 'closed'/'past': Sort by end_time DESC (most recently ended first)
+	// - 'open'/'today': Sort by start_time DESC (newer/later events first)
+	var orderByClause string
+	switch status {
+	case "upcoming":
+		orderByClause = "ORDER BY e.start_time ASC"
+	case "past", "closed":
+		orderByClause = "ORDER BY e.end_time DESC"
+	default: // 'open', 'today'
+		orderByClause = "ORDER BY e.start_time DESC"
+	}
+
+	// ==================== STEP 5: FETCH PAGINATED RESULTS ====================
 
 	dataQuery := fmt.Sprintf(`
 		SELECT 
@@ -394,9 +426,9 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
 		WHERE %s
-		ORDER BY e.start_time DESC
+		%s
 		LIMIT ? OFFSET ?
-	`, whereClause)
+	`, whereClause, orderByClause)
 
 	// Append pagination parameters
 	paginationArgs := append(queryArgs, limit, offset)
@@ -417,7 +449,7 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			startTime     time.Time
 			endTime       time.Time
 			maxSeats      int
-			eventStatus   string
+			status        string
 			bannerURL     sql.NullString
 			areaID        sql.NullInt64
 			areaName      sql.NullString
@@ -434,7 +466,7 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			&startTime,
 			&endTime,
 			&maxSeats,
-			&eventStatus,
+			&status,
 			&bannerURL,
 			&areaID,
 			&areaName,
@@ -454,7 +486,7 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			StartTime:     utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(startTime)).Format(time.RFC3339),
 			EndTime:       utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(endTime)).Format(time.RFC3339),
 			MaxSeats:      maxSeats,
-			Status:        eventStatus,
+			Status:        status,
 			BannerURL:     nullStringToPointer(bannerURL),
 			AreaID:        nullInt64ToPointer(areaID),
 			AreaName:      nullStringToPointer(areaName),
@@ -471,7 +503,7 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 		return nil, fmt.Errorf("error iterating events: %w", err)
 	}
 
-	// ==================== STEP 5: RETURN RESULT ====================
+	// ==================== STEP 6: RETURN RESULT ====================
 
 	result := &EventListV1Result{
 		Data:       events,
@@ -484,6 +516,7 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 	return result, nil
 }
 
+// GetEventsByStatusV1WithRole - Same as GetEventsByStatusV1, but filters by organizer role
 // Helper functions
 func nullStringToPointer(ns sql.NullString) *string {
 	if ns.Valid {

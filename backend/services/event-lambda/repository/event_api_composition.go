@@ -627,6 +627,130 @@ func (r *EventRepository) GetOpenEventsComposed(ctx context.Context) ([]models.E
 	return items, nil
 }
 
+// GetOpenEventsComposedWithPagination - OPEN events with pagination (API composition mode)
+func (r *EventRepository) GetOpenEventsComposedWithPagination(ctx context.Context, page int, limit int) ([]models.EventListItem, int, error) {
+	log.Printf("[API_COMPOSITION] GetOpenEventsComposedWithPagination")
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 12
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	offset := (page - 1) * limit
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM Event e
+		WHERE e.status = 'OPEN'
+	`
+
+	var totalCount int
+	if err := r.db.QueryRowContext(ctx, countQuery).Scan(&totalCount); err != nil && err != sql.ErrNoRows {
+		return nil, 0, fmt.Errorf("failed to count open events: %w", err)
+	}
+
+	query := `
+		SELECT 
+			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
+			e.area_id, e.created_by
+		FROM Event e
+		WHERE e.status = 'OPEN'
+		ORDER BY e.start_time DESC
+		LIMIT ? OFFSET ?
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query open events: %w", err)
+	}
+	defer rows.Close()
+
+	type rawEvent struct {
+		item   models.EventListItem
+		areaID sql.NullInt64
+	}
+
+	var rawEvents []rawEvent
+	areaIDSet := make(map[int]bool)
+
+	for rows.Next() {
+		var re rawEvent
+		var description, bannerURL sql.NullString
+		var createdBy sql.NullInt64
+		var startTime, endTime time.Time
+
+		err := rows.Scan(
+			&re.item.EventID, &re.item.Title, &description, &startTime, &endTime,
+			&re.item.MaxSeats, &re.item.Status, &bannerURL,
+			&re.areaID, &createdBy,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan event: %w", err)
+		}
+
+		re.item.StartTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(startTime)).Format(time.RFC3339)
+		re.item.EndTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(endTime)).Format(time.RFC3339)
+
+		if description.Valid {
+			re.item.Description = &description.String
+		}
+		if bannerURL.Valid {
+			re.item.BannerURL = &bannerURL.String
+		}
+		if re.areaID.Valid {
+			re.item.AreaID = pointer(int(re.areaID.Int64))
+			areaIDSet[int(re.areaID.Int64)] = true
+		}
+		if createdBy.Valid {
+			re.item.OrganizerID = pointer(int(createdBy.Int64))
+		}
+
+		rawEvents = append(rawEvents, re)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	areaCache := make(map[int]*AreaWithVenueDTO)
+	for areaID := range areaIDSet {
+		areaInfo, err := fetchAreaWithVenue(ctx, areaID)
+		if err != nil {
+			log.Printf("[API_COMPOSITION] ⚠️ Failed to fetch area %d: %v", areaID, err)
+			continue
+		}
+		areaCache[areaID] = areaInfo
+	}
+
+	var items []models.EventListItem
+	for _, re := range rawEvents {
+		item := re.item
+		if re.areaID.Valid {
+			areaID := int(re.areaID.Int64)
+			if areaInfo, ok := areaCache[areaID]; ok {
+				item.AreaName = &areaInfo.AreaName
+				item.Floor = areaInfo.Floor
+				if areaInfo.VenueName != nil {
+					item.VenueName = areaInfo.VenueName
+				}
+				if areaInfo.VenueLocation != nil {
+					item.VenueLocation = areaInfo.VenueLocation
+				}
+			}
+		}
+
+		items = append(items, item)
+	}
+
+	log.Printf("[API_COMPOSITION] ✅ GetOpenEventsWithPagination: count=%d", len(items))
+	return items, totalCount, nil
+}
+
 // ============================================================
 // Event Request Composed Functions - Thay JOIN Users + Venue bằng API
 // ============================================================
@@ -1179,7 +1303,7 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 			return fmt.Errorf("failed to get request details: %w", err)
 		}
 
-		// ⚠️ CRITICAL TIMEZONE FIX: 
+		// ⚠️ CRITICAL TIMEZONE FIX:
 		// Times read from Event_Request have DSN loc reinterpretation.
 		// We need to:
 		// 1. Normalize them back to UTC (undo DSN reinterpretation)
@@ -1189,13 +1313,13 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		if requestStartTime.Valid {
 			normalized := utils.NormalizeDBTimeAsUTC(requestStartTime.Time)
 			startTimeUTC = normalized.Format("2006-01-02 15:04:05")
-			fmt.Printf("[API_COMPOSITION] ProcessEventRequestComposed timezone fix: startTime=%v -> normalized=%v -> storage=%s\n", 
+			fmt.Printf("[API_COMPOSITION] ProcessEventRequestComposed timezone fix: startTime=%v -> normalized=%v -> storage=%s\n",
 				requestStartTime.Time, normalized, startTimeUTC)
 		}
 		if requestEndTime.Valid {
 			normalized := utils.NormalizeDBTimeAsUTC(requestEndTime.Time)
 			endTimeUTC = normalized.Format("2006-01-02 15:04:05")
-			fmt.Printf("[API_COMPOSITION] ProcessEventRequestComposed timezone fix: endTime=%v -> normalized=%v -> storage=%s\n", 
+			fmt.Printf("[API_COMPOSITION] ProcessEventRequestComposed timezone fix: endTime=%v -> normalized=%v -> storage=%s\n",
 				requestEndTime.Time, normalized, endTimeUTC)
 		}
 

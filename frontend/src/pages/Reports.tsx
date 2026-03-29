@@ -254,8 +254,8 @@ export default function Reports() {
     /**
      * fetchEvents:
      * - gọi /api/events (có Bearer token)
-     * - BE trả { openEvents: [...], closedEvents: [...] }
-     * - gộp lại thành 1 list cho dropdown
+     * - BE trả { data: [...], total, page, limit, totalPages }
+     * - dùng data cho dropdown
      */
     const fetchEvents = async () => {
       if (!token) return
@@ -264,7 +264,12 @@ export default function Reports() {
       setEventsError(null)
 
       try {
-        const res = await fetch('/api/events', {
+        const queryParams = new URLSearchParams({
+          page: '1',
+          limit: '100'
+        })
+
+        const res = await fetch(`/api/events?${queryParams.toString()}`, {
           headers: {
             Authorization: `Bearer ${token}`,
             'ngrok-skip-browser-warning': '1',
@@ -279,29 +284,19 @@ export default function Reports() {
           throw new Error(data?.error || data?.message || `HTTP ${res.status}`)
         }
 
-        // gộp open + closed + cancelled
-        const openEvents = data.openEvents ?? []
-        const closedEvents = data.closedEvents ?? []
-        const cancelledEvents = data.cancelledEvents ?? []
+        const rawEvents = Array.isArray(data)
+          ? data
+          : Array.isArray(data.data)
+            ? data.data
+            : []
 
-        // map events với status marker
-        const mapWithStatus = (events: any[], status: string) =>
-          events.map((e: any) => ({
-            id: e.eventId ?? e.id,
-            title: e.title,
-            startTime: e.startTime,
-            type: e.type || e.category || undefined,
-            status: status, // Mark event status
-          }))
-
-        const rawEvents = [
-          ...mapWithStatus(openEvents, 'OPEN'),
-          ...mapWithStatus(closedEvents, 'CLOSED'),
-          ...mapWithStatus(cancelledEvents, 'CANCELLED'),
-        ]
-
-        // map dữ liệu BE -> EventOption
-        const list: EventOption[] = rawEvents
+        const list: EventOption[] = rawEvents.map((e: any) => ({
+          id: e.eventId ?? e.id,
+          title: e.title,
+          startTime: e.startTime,
+          type: e.type || e.category || undefined,
+          status: e.status,
+        }))
 
         // ✅ ADD "All Events" option at the top
         const allEventsLabel = user?.role === 'ADMIN'
@@ -1099,9 +1094,9 @@ export default function Reports() {
                   <>
                     {' '}
                     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${selectedEvent.status === 'OPEN' ? 'bg-green-100 text-green-800' :
-                        selectedEvent.status === 'CLOSED' ? 'bg-gray-100 text-gray-800' :
-                          selectedEvent.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
+                      selectedEvent.status === 'CLOSED' ? 'bg-gray-100 text-gray-800' :
+                        selectedEvent.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
                       }`}>
                       {selectedEvent.status === 'OPEN' ? 'Đang diễn ra' :
                         selectedEvent.status === 'CLOSED' ? 'Đã đóng' :

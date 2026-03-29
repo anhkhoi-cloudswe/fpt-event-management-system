@@ -50,6 +50,14 @@ func (uc *EventUseCase) GetAllEventsSeparatedWithPagination(ctx context.Context,
 }
 
 // ============================================================
+// GetEventsWithPagination - Trả về danh sách events đã phân trang
+// Response dùng chung cho public/internal list
+// ============================================================
+func (uc *EventUseCase) GetEventsWithPagination(ctx context.Context, role string, userID int, page int, limit int) ([]models.EventListItem, int, error) {
+	return uc.eventRepo.GetEventsWithPagination(ctx, role, userID, page, limit)
+}
+
+// ============================================================
 // GetEventDetail - KHỚP VỚI Java EventDetailServlet
 // Trả về thông tin chi tiết event với tickets
 // ============================================================
@@ -62,6 +70,13 @@ func (uc *EventUseCase) GetEventDetail(ctx context.Context, eventID int) (*model
 // ============================================================
 func (uc *EventUseCase) GetOpenEvents(ctx context.Context) ([]models.EventListItem, error) {
 	return uc.eventRepo.GetOpenEvents(ctx)
+}
+
+// ============================================================
+// GetOpenEventsWithPagination - Lấy events OPEN có phân trang
+// ============================================================
+func (uc *EventUseCase) GetOpenEventsWithPagination(ctx context.Context, page int, limit int) ([]models.EventListItem, int, error) {
+	return uc.eventRepo.GetOpenEventsWithPagination(ctx, page, limit)
 }
 
 // ============================================================

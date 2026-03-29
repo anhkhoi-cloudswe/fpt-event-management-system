@@ -229,7 +229,12 @@ export default function EventRequests() {
         console.log('Event requests data:', data)
 
         // ===== BƯỚC 2: Fetch events để lấy bannerUrl (mapping eventId -> bannerUrl) =====
-        const eventsResponse = await fetch('/api/events', {
+        const queryParams = new URLSearchParams({
+          page: '1',
+          limit: '100'
+        })
+
+        const eventsResponse = await fetch(`/api/events?${queryParams.toString()}`, {
           headers: {
             Authorization: `Bearer ${token}`,
             'ngrok-skip-browser-warning': 'true',
@@ -240,11 +245,11 @@ export default function EventRequests() {
         if (eventsResponse.ok) {
           const eventsData = await eventsResponse.json()
 
-          // BE trả cấu trúc {openEvents:[], closedEvents:[]}
-          const allEvents = [
-            ...(eventsData.openEvents || []),
-            ...(eventsData.closedEvents || []),
-          ]
+          const allEvents = Array.isArray(eventsData)
+            ? eventsData
+            : Array.isArray(eventsData.data)
+              ? eventsData.data
+              : []
 
           // Map eventId -> bannerUrl để check thiếu banner
           allEvents.forEach((event: any) => {

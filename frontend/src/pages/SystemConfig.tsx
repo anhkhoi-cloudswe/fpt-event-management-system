@@ -159,30 +159,23 @@ export default function SystemConfig() {
       if (response.ok) {
         const data = await response.json()
 
-        // ✅ NEW: Handle pagination response format
-        if (data.pagination) {
-          // New format with pagination metadata
-          const eventsArray = [
-            ...(Array.isArray(data.openEvents) ? data.openEvents : []),
-            ...(Array.isArray(data.closedEvents) ? data.closedEvents : [])
-          ]
-          setEvents(eventsArray)
+        const eventsArray = Array.isArray(data)
+          ? data
+          : Array.isArray(data.data)
+            ? data.data
+            : []
+
+        setEvents(eventsArray)
+
+        if (!Array.isArray(data)) {
           setPaginationData({
-            totalItems: data.pagination.totalItems,
-            totalPages: data.pagination.totalPages,
-            currentPage: data.pagination.currentPage,
-            pageSize: data.pagination.pageSize
+            totalItems: data.total ?? eventsArray.length,
+            totalPages: data.totalPages ?? 1,
+            currentPage: data.page ?? page,
+            pageSize: data.limit ?? pageSize
           })
-          console.log('[PAGINATION] Received pagination data:', data.pagination)
+          console.log('[PAGINATION] Received pagination data:', data)
         } else {
-          // Legacy format (no pagination)
-          const eventsArray = Array.isArray(data)
-            ? data
-            : [
-              ...(Array.isArray(data.openEvents) ? data.openEvents : []),
-              ...(Array.isArray(data.closedEvents) ? data.closedEvents : [])
-            ]
-          setEvents(eventsArray)
           setPaginationData({
             totalItems: eventsArray.length,
             totalPages: 1,
