@@ -16,7 +16,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -24,6 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	smithy "github.com/aws/smithy-go"
 	"github.com/fpt-event-services/common/logger"
+	"github.com/fpt-event-services/common/timeutil"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
@@ -153,7 +153,7 @@ func GenerateKey(originalFilename string) string {
 
 	b := make([]byte, 4)
 	rand.Read(b) //nolint:errcheck – crypto/rand.Read never fails
-	return fmt.Sprintf("uploads/%d-%s-%s%s", time.Now().UnixNano(), hex.EncodeToString(b), safeStem, ext)
+	return fmt.Sprintf("uploads/%d-%s-%s%s", timeutil.GetNow().UnixNano(), hex.EncodeToString(b), safeStem, ext)
 }
 
 // sanitizeFilename loại bỏ dấu tiếng Việt và ký tự đặc biệt khỏi tên file.

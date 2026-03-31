@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/fpt-event-services/common/timeutil"
 )
 
 // Level represents log level
@@ -207,7 +209,7 @@ func (l *Logger) log(level Level, msg string, args ...interface{}) {
 	}
 
 	entry := LogEntry{
-		Timestamp: time.Now().Format(l.config.TimeFormat),
+		Timestamp: timeutil.GetNow().Format(l.config.TimeFormat),
 		Level:     levelNames[level],
 		Message:   msg,
 		Service:   l.config.ServiceName,

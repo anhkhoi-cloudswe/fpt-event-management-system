@@ -446,8 +446,8 @@ func (r *EventRepository) GetEventDetailComposed(ctx context.Context, eventID in
 	if description.Valid {
 		detail.Description = &description.String
 	}
-	detail.StartTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(startTime)).Format(time.RFC3339)
-	detail.EndTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(endTime)).Format(time.RFC3339)
+	detail.StartTime = formatTimeToWallClockRFC3339(startTime)
+	detail.EndTime = formatTimeToWallClockRFC3339(endTime)
 	if maxSeats.Valid {
 		detail.MaxSeats = int(maxSeats.Int64)
 	}
@@ -566,8 +566,8 @@ func (r *EventRepository) GetOpenEventsComposed(ctx context.Context) ([]models.E
 			return nil, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		re.item.StartTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(startTime)).Format(time.RFC3339)
-		re.item.EndTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(endTime)).Format(time.RFC3339)
+		re.item.StartTime = formatTimeToWallClockRFC3339(startTime)
+		re.item.EndTime = formatTimeToWallClockRFC3339(endTime)
 
 		if description.Valid {
 			re.item.Description = &description.String
@@ -693,8 +693,8 @@ func (r *EventRepository) GetOpenEventsComposedWithPagination(ctx context.Contex
 			return nil, 0, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		re.item.StartTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(startTime)).Format(time.RFC3339)
-		re.item.EndTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(endTime)).Format(time.RFC3339)
+		re.item.StartTime = formatTimeToWallClockRFC3339(startTime)
+		re.item.EndTime = formatTimeToWallClockRFC3339(endTime)
 
 		if description.Valid {
 			re.item.Description = &description.String
@@ -1303,24 +1303,23 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 			return fmt.Errorf("failed to get request details: %w", err)
 		}
 
-		// ⚠️ CRITICAL TIMEZONE FIX:
-		// Times read from Event_Request have DSN loc reinterpretation.
-		// We need to:
-		// 1. Normalize them back to UTC (undo DSN reinterpretation)
-		// 2. Format them as UTC storage format for Event table
-		startTimeUTC := ""
-		endTimeUTC := ""
+		// ✅ WALL-CLOCK TIME PRESERVATION:
+		// Times read from Event_Request are already in wall-clock format (e.g., "09:00:00")
+		// due to our storage strategy. The DSN loc=Asia/Ho_Chi_Minh interprets them correctly.
+		// We copy them as-is to the Event table WITHOUT any normalization.
+		startTimeWallClock := ""
+		endTimeWallClock := ""
 		if requestStartTime.Valid {
-			normalized := utils.NormalizeDBTimeAsUTC(requestStartTime.Time)
-			startTimeUTC = normalized.Format("2006-01-02 15:04:05")
-			fmt.Printf("[API_COMPOSITION] ProcessEventRequestComposed timezone fix: startTime=%v -> normalized=%v -> storage=%s\n",
-				requestStartTime.Time, normalized, startTimeUTC)
+			// Format directly WITHOUT any timezone conversion - preserve the wall-clock time
+			startTimeWallClock = requestStartTime.Time.Format("2006-01-02 15:04:05")
+			fmt.Printf("[API_COMPOSITION] Wall-clock time copy: startTime=%v -> storage=%s\n",
+				requestStartTime.Time, startTimeWallClock)
 		}
 		if requestEndTime.Valid {
-			normalized := utils.NormalizeDBTimeAsUTC(requestEndTime.Time)
-			endTimeUTC = normalized.Format("2006-01-02 15:04:05")
-			fmt.Printf("[API_COMPOSITION] ProcessEventRequestComposed timezone fix: endTime=%v -> normalized=%v -> storage=%s\n",
-				requestEndTime.Time, normalized, endTimeUTC)
+			// Format directly WITHOUT any timezone conversion - preserve the wall-clock time
+			endTimeWallClock = requestEndTime.Time.Format("2006-01-02 15:04:05")
+			fmt.Printf("[API_COMPOSITION] Wall-clock time copy: endTime=%v -> storage=%s\n",
+				requestEndTime.Time, endTimeWallClock)
 		}
 
 		// B0.5: Anti Race Condition - Kiểm tra hạn ngạch 2 sự kiện/ngày với FOR UPDATE lock
@@ -1334,15 +1333,15 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 			WHERE DATE(start_time) = DATE(?)
 			AND status NOT IN ('CANCELLED', 'REJECTED')
 			FOR UPDATE`
-		err = tx.QueryRowContext(ctx, checkQuotaQuery, startTimeUTC).Scan(&dailyCount)
+		err = tx.QueryRowContext(ctx, checkQuotaQuery, startTimeWallClock).Scan(&dailyCount)
 		if err != nil {
 			return fmt.Errorf("failed to check daily quota: %w", err)
 		}
 		if dailyCount >= 2 {
-			fmt.Printf("[QUOTA_LOCK] ❌ Daily limit reached for date %s: currentCount=%d/2. Rolling back.\n", startTimeUTC[:10], dailyCount)
+			fmt.Printf("[QUOTA_LOCK] ❌ Daily limit reached for date %s: currentCount=%d/2. Rolling back.\n", startTimeWallClock[:10], dailyCount)
 			return fmt.Errorf("Ngày này đã đạt giới hạn 2 sự kiện. Không thể duyệt thêm")
 		}
-		fmt.Printf("[QUOTA_LOCK] ✅ Daily quota OK for date %s: currentCount=%d/2. Proceeding.\n", startTimeUTC[:10], dailyCount)
+		fmt.Printf("[QUOTA_LOCK] ✅ Daily quota OK for date %s: currentCount=%d/2. Proceeding.\n", startTimeWallClock[:10], dailyCount)
 
 		// B1: Update Event_Request to APPROVED
 		organizerNote := ""
@@ -1383,7 +1382,7 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		}
 
 		eventResult, err := tx.ExecContext(ctx, insertEventQuery,
-			requestTitle, requestDesc, startTimeUTC, endTimeUTC, requestCapacity,
+			requestTitle, requestDesc, startTimeWallClock, endTimeWallClock, requestCapacity,
 			bannerURLValue, *req.AreaID, speakerIDValue, requesterID,
 		)
 		if err != nil {

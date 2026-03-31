@@ -21,38 +21,34 @@ func pointer[T any](v T) *T {
 	return &v
 }
 
-// formatTimeToVNRFC3339 converts a DB time to Vietnam RFC3339 format
-// ⚠️ CRITICAL: This function is called on times READ FROM DATABASE
-// The DB stores times in UTC (e.g., "2026-04-01 02:00:00")
-// BUT: DSN has loc=Asia/Ho_Chi_Minh, so driver REINTERPRETS them as Vietnam time
-// We must normalize back to UTC first, then convert to Vietnam zone
-// Result: "2026-04-01T09:00:00+07:00"
-func formatTimeToVNRFC3339(t time.Time) string {
+// formatTimeToWallClockRFC3339 returns wall-clock time in RFC3339 format without Go timezone interpretation
+// ✅ CRITICAL: Without loc=Asia/Ho_Chi_Minh in DSN, Go reads DATETIME as UTC
+// We read the wall-clock values and just append +07:00 offset
+// Example: DB has "09:00:00", Go reads as "09:00:00 UTC", we output "09:00:00+07:00"
+func formatTimeToWallClockRFC3339(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
-	// Step 1: Reinterpret DB-scanned time back to UTC (undo DSN loc reinterpretation)
-	// Step 2: Convert from UTC to Vietnam timezone with +07:00 offset
-	normalized := utils.NormalizeDBTimeAsUTC(t)
-	result := utils.DBTimeToVietnamTime(normalized).Format(time.RFC3339)
-	log.Printf("[TIMEZONE_DEBUG] formatTimeToVNRFC3339: input=%s -> normalized=%s -> result=%s",
-		t.Format(time.RFC3339), normalized.Format(time.RFC3339), result)
-	return result
+
+	// Format the time.Time object's date/time values directly (no timezone conversion)
+	// t.Format("2006-01-02T15:04:05") gives us the wall-clock values stored in t
+	// We manually append +07:00 instead of letting RFC3339 format it as Z or the Go timezone
+	return t.Format("2006-01-02T15:04:05") + "+07:00"
 }
 
-func formatNullTimeToVNRFC3339(value sql.NullTime) *string {
+func formatNullTimeToWallClockRFC3339(value sql.NullTime) *string {
 	if !value.Valid || value.Time.IsZero() {
 		return nil
 	}
-	formatted := formatTimeToVNRFC3339(value.Time)
+	formatted := formatTimeToWallClockRFC3339(value.Time)
 	return &formatted
 }
 
 func setEventRequestTimeFields(req *models.EventRequest, preferredStart, preferredEnd, createdAt, processedAt sql.NullTime) {
-	req.PreferredStartTime = formatNullTimeToVNRFC3339(preferredStart)
-	req.PreferredEndTime = formatNullTimeToVNRFC3339(preferredEnd)
-	req.CreatedAt = formatNullTimeToVNRFC3339(createdAt)
-	req.ProcessedAt = formatNullTimeToVNRFC3339(processedAt)
+	req.PreferredStartTime = formatNullTimeToWallClockRFC3339(preferredStart)
+	req.PreferredEndTime = formatNullTimeToWallClockRFC3339(preferredEnd)
+	req.CreatedAt = formatNullTimeToWallClockRFC3339(createdAt)
+	req.ProcessedAt = formatNullTimeToWallClockRFC3339(processedAt)
 }
 
 // rowNameFromIndex converts a 0-based row index to spreadsheet-style letters:
@@ -730,8 +726,8 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 		}
 
 		// Convert timestamps to ISO string in Vietnam timezone
-		item.StartTime = formatTimeToVNRFC3339(startTime)
-		item.EndTime = formatTimeToVNRFC3339(endTime)
+		item.StartTime = formatTimeToWallClockRFC3339(startTime)
+		item.EndTime = formatTimeToWallClockRFC3339(endTime)
 
 		// Convert sql.Null to pointers
 		if description.Valid {
@@ -857,8 +853,8 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 		}
 
 		// Convert timestamps to ISO string in Vietnam timezone
-		item.StartTime = formatTimeToVNRFC3339(startTime)
-		item.EndTime = formatTimeToVNRFC3339(endTime)
+		item.StartTime = formatTimeToWallClockRFC3339(startTime)
+		item.EndTime = formatTimeToWallClockRFC3339(endTime)
 
 		// Convert sql.Null to pointers
 		if description.Valid {
@@ -1009,8 +1005,8 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 			return nil, 0, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		item.StartTime = formatTimeToVNRFC3339(startTime)
-		item.EndTime = formatTimeToVNRFC3339(endTime)
+		item.StartTime = formatTimeToWallClockRFC3339(startTime)
+		item.EndTime = formatTimeToWallClockRFC3339(endTime)
 
 		if description.Valid {
 			item.Description = &description.String
@@ -1094,8 +1090,8 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 	if description.Valid {
 		detail.Description = &description.String
 	}
-	detail.StartTime = formatTimeToVNRFC3339(startTime)
-	detail.EndTime = formatTimeToVNRFC3339(endTime)
+	detail.StartTime = formatTimeToWallClockRFC3339(startTime)
+	detail.EndTime = formatTimeToWallClockRFC3339(endTime)
 	if maxSeats.Valid {
 		detail.MaxSeats = int(maxSeats.Int64)
 	}
@@ -1345,8 +1341,8 @@ func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventList
 		}
 
 		// Convert timestamps to ISO string in Vietnam timezone
-		item.StartTime = formatTimeToVNRFC3339(startTime)
-		item.EndTime = formatTimeToVNRFC3339(endTime)
+		item.StartTime = formatTimeToWallClockRFC3339(startTime)
+		item.EndTime = formatTimeToWallClockRFC3339(endTime)
 
 		// Convert sql.Null to pointers
 		if description.Valid {
@@ -1446,8 +1442,8 @@ func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page 
 			return nil, 0, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		item.StartTime = formatTimeToVNRFC3339(startTime)
-		item.EndTime = formatTimeToVNRFC3339(endTime)
+		item.StartTime = formatTimeToWallClockRFC3339(startTime)
+		item.EndTime = formatTimeToWallClockRFC3339(endTime)
 
 		if description.Valid {
 			item.Description = &description.String
@@ -2125,24 +2121,23 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 			return fmt.Errorf("failed to get request details: %w", err)
 		}
 
-		// ⚠️ CRITICAL TIMEZONE FIX:
-		// Times read from Event_Request have DSN loc reinterpretation.
-		// We need to:
-		// 1. Normalize them back to UTC (undo DSN reinterpretation)
-		// 2. Format them as UTC storage format for Event table
-		startTimeUTC := ""
-		endTimeUTC := ""
+		// ✅ WALL-CLOCK TIME PRESERVATION:
+		// Times read from Event_Request are already in wall-clock format (e.g., "09:00:00")
+		// due to our storage strategy. The DSN loc=Asia/Ho_Chi_Minh interprets them correctly.
+		// We copy them as-is to the Event table WITHOUT any normalization.
+		startTimeWallClock := ""
+		endTimeWallClock := ""
 		if requestStartTime.Valid {
-			normalized := utils.NormalizeDBTimeAsUTC(requestStartTime.Time)
-			startTimeUTC = normalized.Format("2006-01-02 15:04:05")
-			fmt.Printf("[DB_PROCESS] ProcessEventRequest timezone fix: startTime=%v -> normalized=%v -> storage=%s\n",
-				requestStartTime.Time, normalized, startTimeUTC)
+			// Format directly WITHOUT any timezone conversion - preserve the wall-clock time
+			startTimeWallClock = requestStartTime.Time.Format("2006-01-02 15:04:05")
+			fmt.Printf("[DB_PROCESS] Wall-clock time copy: startTime=%v -> storage=%s\n",
+				requestStartTime.Time, startTimeWallClock)
 		}
 		if requestEndTime.Valid {
-			normalized := utils.NormalizeDBTimeAsUTC(requestEndTime.Time)
-			endTimeUTC = normalized.Format("2006-01-02 15:04:05")
-			fmt.Printf("[DB_PROCESS] ProcessEventRequest timezone fix: endTime=%v -> normalized=%v -> storage=%s\n",
-				requestEndTime.Time, normalized, endTimeUTC)
+			// Format directly WITHOUT any timezone conversion - preserve the wall-clock time
+			endTimeWallClock = requestEndTime.Time.Format("2006-01-02 15:04:05")
+			fmt.Printf("[DB_PROCESS] Wall-clock time copy: endTime=%v -> storage=%s\n",
+				requestEndTime.Time, endTimeWallClock)
 		}
 
 		// B1: Update Event_Request to APPROVED
@@ -2193,7 +2188,7 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		}
 
 		eventResult, err := tx.ExecContext(ctx, insertEventQuery,
-			requestTitle, requestDesc, startTimeUTC, endTimeUTC, requestCapacity,
+			requestTitle, requestDesc, startTimeWallClock, endTimeWallClock, requestCapacity,
 			bannerURLValue, *req.AreaID, speakerIDValue, requesterID,
 		)
 		if err != nil {
@@ -2751,7 +2746,7 @@ func (r *EventRepository) UpdateEventConfig(ctx context.Context, userID int, rol
 	if role == "ORGANIZER" {
 		var ownerID int
 		err = r.db.QueryRowContext(ctx,
-			"SELECT organizer_id FROM Event WHERE event_id = ?", updateReq.EventID,
+			"SELECT created_by FROM Event WHERE event_id = ?", updateReq.EventID,
 		).Scan(&ownerID)
 		if err != nil {
 			return fmt.Errorf("failed to check event ownership: %w", err)
@@ -3002,7 +2997,7 @@ func (r *EventRepository) GetAggregateEventStats(ctx context.Context, role strin
 			INNER JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
 			INNER JOIN Event e ON ct.event_id = e.event_id
 			WHERE t.status IN ('BOOKED', 'CHECKED_IN', 'CHECKED_OUT', 'REFUNDED')
-			AND e.organizer_id = ?
+			AND e.created_by = ?
 		`
 		args = append(args, userID)
 		log.Printf("[STATS_QUERY] ORGANIZER (UserID=%d) viewing their events only", userID)

@@ -82,6 +82,16 @@ func initDBWithDSN(dsn string) error {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	// ✅ CRITICAL: Set MySQL session timezone to +07:00 (Vietnam)
+	// This ensures all DATETIME reads are in Vietnam timezone, preventing "fake UTC" misinterpretation
+	// With loc=Local in DSN, MySQL will treat all timestamps as +07:00
+	if _, err := db.ExecContext(ctx, "SET time_zone = '+07:00'"); err != nil {
+		logger.Warn("[DB] Failed to set time_zone session variable: %v", err)
+		// Log warning but don't fail - connection still works, but timezone may be off
+	} else {
+		logger.Info("[DB] MySQL session timezone set to +07:00 (Vietnam)")
+	}
+
 	logger.Info("[DB] Connected successfully (via DB_URL)")
 	return nil
 }
@@ -117,6 +127,15 @@ func InitDBWithConfig(config Config) error {
 
 	if err := db.PingContext(ctx); err != nil {
 		return fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	// ✅ CRITICAL: Set MySQL session timezone to +07:00 (Vietnam)
+	// This ensures all DATETIME reads are in Vietnam timezone, preventing "fake UTC" misinterpretation
+	if _, err := db.ExecContext(ctx, "SET time_zone = '+07:00'"); err != nil {
+		logger.Warn("[DB] Failed to set time_zone session variable: %v", err)
+		// Log warning but don't fail - connection still works, but timezone may be off
+	} else {
+		logger.Info("[DB] MySQL session timezone set to +07:00 (Vietnam)")
 	}
 
 	// ✅ Log successful connection with timezone confirmation
@@ -206,12 +225,16 @@ func ensureTimezoneDSN(dsn string) string {
 		}
 	}
 
+	// ✅ CRITICAL FIX: Set parseTime=true but DO NOT set loc parameter
+	// Setting loc causes MySQL driver to apply timezone conversions,
+	// resulting in double +7h shifting (09:00 -> 16:00 -> 23:00)
+	// Instead, we let MySQL use its own timezone context (SET time_zone= '+07:00')
+	// and read times as raw UTC-style values without Go-side interpretation
 	if params.Get("parseTime") == "" {
 		params.Set("parseTime", "true")
 	}
-	if params.Get("loc") == "" {
-		params.Set("loc", "Asia/Ho_Chi_Minh")
-	}
+	// REMOVED: params.Set("loc", "Asia/Ho_Chi_Minh")
+	// This was causing the double conversion issue
 
 	encoded := params.Encode()
 	if encoded == "" {

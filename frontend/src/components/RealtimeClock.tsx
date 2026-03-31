@@ -1,9 +1,33 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Clock } from 'lucide-react'
+import { getSystemTime, getSystemTimeSync, syncSystemTime } from '../utils/systemTime'
 
 export function RealtimeClock() {
     const [time, setTime] = useState<string>('')
     const [userTimeZone, setUserTimeZone] = useState<string>('')
+    const [isSyncing, setIsSyncing] = useState(true)
+
+    // Sync with Backend on mount and periodically
+    useEffect(() => {
+        const syncWithBackend = async () => {
+            setIsSyncing(true)
+            try {
+                await syncSystemTime()
+                console.log('[RealtimeClock] Synced with Backend Time Machine')
+            } catch (error) {
+                console.error('[RealtimeClock] Failed to sync:', error)
+            } finally {
+                setIsSyncing(false)
+            }
+        }
+
+        // Sync immediately on mount
+        syncWithBackend()
+
+        // Re-sync every 60 seconds
+        const syncInterval = setInterval(syncWithBackend, 60000)
+        return () => clearInterval(syncInterval)
+    }, [])
 
     // Detect user's timezone on mount
     useEffect(() => {
@@ -28,12 +52,13 @@ export function RealtimeClock() {
         return `GMT${sign}${offset}`
     }, [userTimeZone])
 
-    // Update time every second
+    // Update time every second using Time Machine offset
     useEffect(() => {
         if (!userTimeZone) return
 
         const updateTime = () => {
-            const now = new Date()
+            // Use system time (respects Time Machine offset)
+            const now = getSystemTimeSync()
             const formatter = new Intl.DateTimeFormat('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
@@ -50,10 +75,12 @@ export function RealtimeClock() {
 
     return (
         <div
-            className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200 hover:shadow-md transition-shadow cursor-help"
-            title={`Timezone: ${userTimeZone}`}
+            className={`flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200 hover:shadow-md transition-shadow ${isSyncing ? 'opacity-75' : ''
+                } cursor-help`}
+            title={`Timezone: ${userTimeZone}${isSyncing ? ' (syncing with Backend...)' : ''}`}
         >
-            <Clock size={16} className="text-orange-600 animate-pulse" />
+            <Clock size={16} className={`${isSyncing ? 'animate-spin' : 'animate-pulse'
+                } text-orange-600`} />
             <span className="text-sm font-semibold text-gray-900">
                 {time || '--:-- --'}
             </span>

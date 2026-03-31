@@ -19,8 +19,8 @@ func TestJSONOutput_PublicDashboardTimes_AreVietnam(t *testing.T) {
 			{
 				EventID:   1,
 				Title:     "AWS re:Invent 2025",
-				StartTime: formatTimeToVNRFC3339(startUTC),
-				EndTime:   formatTimeToVNRFC3339(endUTC),
+				StartTime: formatTimeToWallClockRFC3339(startUTC),
+				EndTime:   formatTimeToWallClockRFC3339(endUTC),
 			},
 		},
 		Total:      1,
@@ -53,8 +53,8 @@ func TestJSONOutput_PublicDashboardTimes_Converts0100UTCTo0800VN(t *testing.T) {
 			{
 				EventID:   1061,
 				Title:     "Timezone Regression Check",
-				StartTime: formatTimeToVNRFC3339(startUTC),
-				EndTime:   formatTimeToVNRFC3339(endUTC),
+				StartTime: formatTimeToWallClockRFC3339(startUTC),
+				EndTime:   formatTimeToWallClockRFC3339(endUTC),
 			},
 		},
 		Total:      1,
@@ -87,8 +87,8 @@ func TestJSONOutput_PublicDashboardTimes_Converts0000UTCTo0700VN(t *testing.T) {
 			{
 				EventID:   1062,
 				Title:     "UTC Midnight Conversion",
-				StartTime: formatTimeToVNRFC3339(startUTC),
-				EndTime:   formatTimeToVNRFC3339(endUTC),
+				StartTime: formatTimeToWallClockRFC3339(startUTC),
+				EndTime:   formatTimeToWallClockRFC3339(endUTC),
 			},
 		},
 		Total:      1,
@@ -152,8 +152,8 @@ func TestJSONOutput_EventDetailTimes_AreVietnam(t *testing.T) {
 	payload := models.EventDetailDto{
 		EventID:   1,
 		Title:     "AWS re:Invent 2025",
-		StartTime: formatTimeToVNRFC3339(startUTC),
-		EndTime:   formatTimeToVNRFC3339(endUTC),
+		StartTime: formatTimeToWallClockRFC3339(startUTC),
+		EndTime:   formatTimeToWallClockRFC3339(endUTC),
 		MaxSeats:  500,
 		Status:    "APPROVED",
 		Tickets:   []models.CategoryTicket{},
@@ -175,10 +175,10 @@ func TestJSONOutput_EventDetailTimes_AreVietnam(t *testing.T) {
 	}
 }
 
-func TestFormatTimeToVNRFC3339_ConvertsUTCToVietnam(t *testing.T) {
+func TestformatTimeToWallClockRFC3339_ConvertsUTCToVietnam(t *testing.T) {
 	utcInput := time.Date(2026, 3, 31, 2, 0, 0, 0, time.UTC)
 
-	got := formatTimeToVNRFC3339(utcInput)
+	got := formatTimeToWallClockRFC3339(utcInput)
 	want := "2026-03-31T09:00:00+07:00"
 
 	if got != want {
@@ -210,3 +210,4 @@ func TestSetEventRequestTimeFields_ConvertsAuditFieldsFromUTC(t *testing.T) {
 		t.Fatalf("processedAt not converted correctly: got=%s", *req.ProcessedAt)
 	}
 }
+

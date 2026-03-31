@@ -13,11 +13,7 @@ import { X, Calendar, Users, FileText, User, Clock, Edit, XCircle, MapPin } from
 
 // format: format ngày giờ theo pattern (dd/MM/yyyy HH:mm)
 // vi: locale tiếng Việt (hiển thị đúng định dạng)
-import { format } from 'date-fns'
-import { vi } from 'date-fns/locale'
-
-// ✅ NEW: Import timezone-aware formatter
-import { formatVietnamDateTime } from '../../utils/dateFormat'
+import { formatWallClockTimeFromRFC3339 } from '../../utils/dateFormat'
 
 // ===================== TYPE DEFINITIONS =====================
 
@@ -183,250 +179,250 @@ export function EventRequestDetailModal({
             </button>
           </div>
 
-        {/* ===================== CONTENT ===================== */}
-        <div className="px-6 py-4">
+          {/* ===================== CONTENT ===================== */}
+          <div className="px-6 py-4">
 
-          {/* ✅ NEW: Loading Spinner - hiển thị khi fetch chi tiết */}
-          {loading && (
-            <div className="flex justify-center items-center py-8">
-              <div className="inline-flex items-center gap-3">
-                <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-200 border-t-blue-600"></div>
-                <span className="text-gray-600">Đang tải thông tin chi tiết...</span>
-              </div>
-            </div>
-          )}
-
-          {/* ===== Badge trạng thái ===== */}
-          <div className="mb-6">
-            <span
-              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusClass(
-                request.status,
-              )}`}
-            >
-              {getStatusLabel(request.status)}
-            </span>
-          </div>
-
-          {/* ===== Mô tả (Description) ===== */}
-          {/* Chỉ hiển thị nếu request.description có dữ liệu */}
-          {request.description && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-2 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-blue-600" />
-                Mô tả
-              </h3>
-              {/* whitespace-pre-wrap: giữ xuống dòng đúng như text */}
-              <p className="text-gray-700 whitespace-pre-wrap">{request.description}</p>
-            </div>
-          )}
-
-          {/* ===== LÝ DO TỪ CHỐI (Rejection Reason) - Only for REJECTED ===== */}
-          {/* ✅ NEW: Hiển thị lý do từ chối khi request bị từ chối (REJECTED) */}
-          {request.status === 'REJECTED' && request.rejectReason && (
-            <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
-              <h3 className="text-lg font-semibold text-red-700 mb-2 flex items-center">
-                <XCircle className="w-5 h-5 mr-2 text-red-600" />
-                Lý do từ chối từ Staff
-              </h3>
-              <p className="text-sm text-red-800 whitespace-pre-wrap">{request.rejectReason}</p>
-            </div>
-          )}
-
-          {/* ===== Địa điểm tổ chức (Venue) - Only for APPROVED ===== */}
-          {/* ✅ NEW: Hiển thị thông tin địa điểm khi request đã được duyệt (APPROVED) */}
-          {request.status === 'APPROVED' && (
-            <div className="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-              <h3 className="text-lg font-semibold mb-3 flex items-center">
-                <MapPin className="w-5 h-5 mr-2 text-indigo-600" />
-                Địa điểm tổ chức
-              </h3>
-              {request.areaName || request.venueName ? (
-                <div className="space-y-2">
-                  {request.venueName && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-indigo-700 font-medium">Địa điểm:</span>
-                      <span className="text-sm text-indigo-900 font-semibold">{request.venueName}</span>
-                    </div>
-                  )}
-                  {request.areaName && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-indigo-700 font-medium">Khu vực:</span>
-                      <span className="text-sm text-indigo-900 font-semibold">
-                        {request.areaName}
-                        {request.floor && ` (Tầng ${request.floor})`}
-                      </span>
-                    </div>
-                  )}
-                  {request.areaCapacity && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-indigo-700 font-medium">Sức chứa khu vực:</span>
-                      <span className="text-sm text-indigo-900 font-semibold">{request.areaCapacity} chỗ</span>
-                    </div>
-                  )}
+            {/* ✅ NEW: Loading Spinner - hiển thị khi fetch chi tiết */}
+            {loading && (
+              <div className="flex justify-center items-center py-8">
+                <div className="inline-flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-200 border-t-blue-600"></div>
+                  <span className="text-gray-600">Đang tải thông tin chi tiết...</span>
                 </div>
-              ) : (
-                <p className="text-sm text-indigo-600 italic">Thông tin địa điểm đang được cập nhật...</p>
-              )}
-            </div>
-          )}
-
-          {/* ===== Grid thông tin request ===== */}
-          {/* grid 1 cột ở mobile, 2 cột ở desktop */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-
-            {/* -------- Người đề xuất -------- */}
-            <div className="flex items-start">
-              <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                <User className="w-5 h-5 text-purple-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Người đề xuất</p>
-                <p className="font-medium text-gray-900">
-                  {request.requesterName || 'Không có thông tin'}
-                </p>
-              </div>
+            )}
+
+            {/* ===== Badge trạng thái ===== */}
+            <div className="mb-6">
+              <span
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusClass(
+                  request.status,
+                )}`}
+              >
+                {getStatusLabel(request.status)}
+              </span>
             </div>
 
-            {/* -------- Số lượng dự kiến -------- */}
-            <div className="flex items-start">
-              <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                <Users className="w-5 h-5 text-blue-600" />
+            {/* ===== Mô tả (Description) ===== */}
+            {/* Chỉ hiển thị nếu request.description có dữ liệu */}
+            {request.description && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-2 flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-blue-600" />
+                  Mô tả
+                </h3>
+                {/* whitespace-pre-wrap: giữ xuống dòng đúng như text */}
+                <p className="text-gray-700 whitespace-pre-wrap">{request.description}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Số lượng dự kiến</p>
-                <p className="font-medium text-gray-900">{request.expectedCapacity} người</p>
-              </div>
-            </div>
+            )}
 
-            {/* -------- Thời gian bắt đầu mong muốn -------- */}
-            <div className="flex items-start">
-              <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                <Calendar className="w-5 h-5 text-green-600" />
+            {/* ===== LÝ DO TỪ CHỐI (Rejection Reason) - Only for REJECTED ===== */}
+            {/* ✅ NEW: Hiển thị lý do từ chối khi request bị từ chối (REJECTED) */}
+            {request.status === 'REJECTED' && request.rejectReason && (
+              <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
+                <h3 className="text-lg font-semibold text-red-700 mb-2 flex items-center">
+                  <XCircle className="w-5 h-5 mr-2 text-red-600" />
+                  Lý do từ chối từ Staff
+                </h3>
+                <p className="text-sm text-red-800 whitespace-pre-wrap">{request.rejectReason}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Thời gian bắt đầu mong muốn</p>
-                <p className="font-medium text-gray-900">
-                  {/* ✅ Using timezone-aware formatter */}
-                  {formatVietnamDateTime(request.preferredStartTime, 'dd/MM/yyyy HH:mm')}
-                </p>
-              </div>
-            </div>
+            )}
 
-            {/* -------- Thời gian kết thúc mong muốn -------- */}
-            <div className="flex items-start">
-              <div className="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
-                <Calendar className="w-5 h-5 text-orange-600" />
+            {/* ===== Địa điểm tổ chức (Venue) - Only for APPROVED ===== */}
+            {/* ✅ NEW: Hiển thị thông tin địa điểm khi request đã được duyệt (APPROVED) */}
+            {request.status === 'APPROVED' && (
+              <div className="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                <h3 className="text-lg font-semibold mb-3 flex items-center">
+                  <MapPin className="w-5 h-5 mr-2 text-indigo-600" />
+                  Địa điểm tổ chức
+                </h3>
+                {request.areaName || request.venueName ? (
+                  <div className="space-y-2">
+                    {request.venueName && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-indigo-700 font-medium">Địa điểm:</span>
+                        <span className="text-sm text-indigo-900 font-semibold">{request.venueName}</span>
+                      </div>
+                    )}
+                    {request.areaName && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-indigo-700 font-medium">Khu vực:</span>
+                        <span className="text-sm text-indigo-900 font-semibold">
+                          {request.areaName}
+                          {request.floor && ` (Tầng ${request.floor})`}
+                        </span>
+                      </div>
+                    )}
+                    {request.areaCapacity && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-indigo-700 font-medium">Sức chứa khu vực:</span>
+                        <span className="text-sm text-indigo-900 font-semibold">{request.areaCapacity} chỗ</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-indigo-600 italic">Thông tin địa điểm đang được cập nhật...</p>
+                )}
               </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Thời gian kết thúc mong muốn</p>
-                <p className="font-medium text-gray-900">
-                  {/* ✅ Using timezone-aware formatter */}
-                  {formatVietnamDateTime(request.preferredEndTime, 'dd/MM/yyyy HH:mm')}
-                </p>
-              </div>
-            </div>
+            )}
 
-            {/* -------- Ngày tạo request -------- */}
-            <div className="flex items-start">
-              <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                <Clock className="w-5 h-5 text-gray-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Ngày tạo</p>
-                <p className="font-medium text-gray-900">
-                  {/* ✅ Using timezone-aware formatter */}
-                  {formatVietnamDateTime(request.createdAt, 'dd/MM/yyyy HH:mm')}
-                </p>
-              </div>
-            </div>
+            {/* ===== Grid thông tin request ===== */}
+            {/* grid 1 cột ở mobile, 2 cột ở desktop */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 
-            {/* -------- Ngày xử lý (chỉ hiển thị nếu đã xử lý) -------- */}
-            {request.processedAt && (
+              {/* -------- Người đề xuất -------- */}
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                  <User className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Người đề xuất</p>
+                  <p className="font-medium text-gray-900">
+                    {request.requesterName || 'Không có thông tin'}
+                  </p>
+                </div>
+              </div>
+
+              {/* -------- Số lượng dự kiến -------- */}
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                  <Users className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Số lượng dự kiến</p>
+                  <p className="font-medium text-gray-900">{request.expectedCapacity} người</p>
+                </div>
+              </div>
+
+              {/* -------- Thời gian bắt đầu mong muốn -------- */}
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                  <Calendar className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Thời gian bắt đầu mong muốn</p>
+                  <p className="font-medium text-gray-900">
+                    {/* ✅ Wall-clock time formatter ensures exact displayed time matches DB */}
+                    {formatWallClockTimeFromRFC3339(request.preferredStartTime)}
+                  </p>
+                </div>
+              </div>
+
+              {/* -------- Thời gian kết thúc mong muốn -------- */}
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                  <Calendar className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Thời gian kết thúc mong muốn</p>
+                  <p className="font-medium text-gray-900">
+                    {/* ✅ Wall-clock time formatter ensures exact displayed time matches DB */}
+                    {formatWallClockTimeFromRFC3339(request.preferredEndTime)}
+                  </p>
+                </div>
+              </div>
+
+              {/* -------- Ngày tạo request -------- */}
               <div className="flex items-start">
                 <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
                   <Clock className="w-5 h-5 text-gray-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Ngày xử lý</p>
+                  <p className="text-sm text-gray-600 mb-1">Ngày tạo</p>
                   <p className="font-medium text-gray-900">
-                    {/* ✅ Using timezone-aware formatter */}
-                    {formatVietnamDateTime(request.processedAt, 'dd/MM/yyyy HH:mm')}
+                    {/* ✅ Wall-clock time formatter */}
+                    {formatWallClockTimeFromRFC3339(request.createdAt)}
                   </p>
                 </div>
               </div>
-            )}
 
-            {/* -------- Người xử lý (chỉ hiển thị nếu có processedByName) -------- */}
-            {request.processedByName && (
-              <div className="flex items-start">
-                <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                  <User className="w-5 h-5 text-indigo-600" />
+              {/* -------- Ngày xử lý (chỉ hiển thị nếu đã xử lý) -------- */}
+              {request.processedAt && (
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                    <Clock className="w-5 h-5 text-gray-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Ngày xử lý</p>
+                    <p className="font-medium text-gray-900">
+                      {/* ✅ Wall-clock time formatter */}
+                      {formatWallClockTimeFromRFC3339(request.processedAt)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Người xử lý</p>
-                  <p className="font-medium text-gray-900">{request.processedByName}</p>
+              )}
+
+              {/* -------- Người xử lý (chỉ hiển thị nếu có processedByName) -------- */}
+              {request.processedByName && (
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                    <User className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Người xử lý</p>
+                    <p className="font-medium text-gray-900">{request.processedByName}</p>
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* ===== Ghi chú từ ban tổ chức ===== */}
+            {/* Chỉ hiển thị nếu organizerNote tồn tại */}
+            {request.organizerNote && (
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 className="text-sm font-semibold text-blue-900 mb-2">
+                  Ghi chú từ ban tổ chức
+                </h3>
+                <p className="text-sm text-blue-800 whitespace-pre-wrap">
+                  {request.organizerNote}
+                </p>
               </div>
             )}
-          </div>
 
-          {/* ===== Ghi chú từ ban tổ chức ===== */}
-          {/* Chỉ hiển thị nếu organizerNote tồn tại */}
-          {request.organizerNote && (
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h3 className="text-sm font-semibold text-blue-900 mb-2">
-                Ghi chú từ ban tổ chức
-              </h3>
-              <p className="text-sm text-blue-800 whitespace-pre-wrap">
-                {request.organizerNote}
-              </p>
-            </div>
-          )}
+            {/* ===== Hiển thị createdEventId nếu request đã APPROVED ===== */}
+            {/* Ý nghĩa: sau khi staff duyệt, backend tạo event thật và trả eventId */}
+            {request.status === 'APPROVED' && request.createdEventId && (
+              <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-sm text-green-800">
+                  <span className="font-semibold">Sự kiện đã được tạo với ID:</span> {request.createdEventId}
+                </p>
+              </div>
+            )}
 
-          {/* ===== Hiển thị createdEventId nếu request đã APPROVED ===== */}
-          {/* Ý nghĩa: sau khi staff duyệt, backend tạo event thật và trả eventId */}
-          {request.status === 'APPROVED' && request.createdEventId && (
-            <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-sm text-green-800">
-                <span className="font-semibold">Sự kiện đã được tạo với ID:</span> {request.createdEventId}
-              </p>
-            </div>
-          )}
+            {/* ===================== ACTION BUTTONS ===================== */}
+            {/* Footer nút action */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
 
-          {/* ===================== ACTION BUTTONS ===================== */}
-          {/* Footer nút action */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-
-            {/* Nút “Cập nhật thông tin” chỉ hiện khi:
+              {/* Nút “Cập nhật thông tin” chỉ hiện khi:
                 - userRole là ORGANIZER
                 - status là UPDATING (tức là staff yêu cầu cập nhật)
                 - có createdEventId (đã có event được tạo)
                 - có callback onEdit
              */}
-            {userRole === 'ORGANIZER' &&
-              request.status === 'UPDATING' &&
-              request.createdEventId &&
-              onEdit && (
-                <button
-                  onClick={onEdit}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Edit className="w-4 h-4" />
-                  Cập nhật thông tin
-                </button>
-              )}
+              {userRole === 'ORGANIZER' &&
+                request.status === 'UPDATING' &&
+                request.createdEventId &&
+                onEdit && (
+                  <button
+                    onClick={onEdit}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Cập nhật thông tin
+                  </button>
+                )}
 
-            {/* Nút đóng modal luôn có */}
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              Đóng
-            </button>
+              {/* Nút đóng modal luôn có */}
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </div>
   )
 }
