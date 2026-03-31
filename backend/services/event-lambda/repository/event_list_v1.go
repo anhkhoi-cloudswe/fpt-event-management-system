@@ -36,12 +36,12 @@ type EventListV1Result struct {
 //
 // Logic:
 // 1. Build WHERE conditions based on status:
-//   - 'open'/'today': status='OPEN' AND DATE(start_time) = CURDATE()
-//     → Only shows today's events (server timezone)
+//   - 'open'/'today': DATE(start_time) = CURDATE() AND status != 'CLOSED'
+//     → Only shows today's events (server timezone), excluding closed events
 //   - 'upcoming': status='OPEN' AND start_time > NOW()
 //     → Shows future events
-//   - 'past'/'closed': status='CLOSED' OR (status='OPEN' AND start_time < NOW())
-//     → Shows past events (closed or old open events)
+//   - 'past'/'closed': status='CLOSED' ONLY
+//     → Shows only explicitly closed events (NOT based on end_time < NOW())
 //     2. If search provided: AND (e.title LIKE ? OR va.area_name LIKE ? OR v.venue_name LIKE ?)
 //     → Search is combined with status filter using AND
 //     3. Calculate OFFSET = (page - 1) * limit
@@ -84,10 +84,10 @@ func (r *EventRepository) GetEventsByStatusV1(
 	// Add status condition
 	switch status {
 	case "open", "today":
-		// Today's events: status = 'OPEN' AND start_time is TODAY
-		// Using DATE(e.start_time) = CURDATE() ensures only today's events (server timezone)
-		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE()")
-		queryArgs = append(queryArgs, "OPEN")
+		// Today's events: DATE(start_time) = CURDATE() AND status != 'CLOSED'
+		// Excludes closed events that happen to be today
+		whereConditions = append(whereConditions, "DATE(e.start_time) = CURDATE() AND e.status != ?")
+		queryArgs = append(queryArgs, "CLOSED")
 
 	case "upcoming":
 		// Upcoming events: status = 'OPEN' AND start_time > NOW()
@@ -95,16 +95,16 @@ func (r *EventRepository) GetEventsByStatusV1(
 		queryArgs = append(queryArgs, "OPEN")
 
 	case "past", "closed":
-		// Past events: status = 'CLOSED' OR (status = 'OPEN' AND start_time < NOW())
-		// Typically we use status = 'CLOSED', but include old OPEN events too
-		whereConditions = append(whereConditions, "(e.status = ? OR (e.status = ? AND e.start_time < NOW()))")
-		queryArgs = append(queryArgs, "CLOSED", "OPEN")
+		// Closed events: status = 'CLOSED' ONLY
+		// Do NOT filter by end_time < NOW() - rely on explicit status field
+		whereConditions = append(whereConditions, "e.status = ?")
+		queryArgs = append(queryArgs, "CLOSED")
 
 	default:
-		// Invalid status - default to today's OPEN events
+		// Invalid status - default to today's events
 		status = "open"
-		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE()")
-		queryArgs = append(queryArgs, "OPEN")
+		whereConditions = append(whereConditions, "DATE(e.start_time) = CURDATE() AND e.status != ?")
+		queryArgs = append(queryArgs, "CLOSED")
 	}
 
 	// Add search condition
