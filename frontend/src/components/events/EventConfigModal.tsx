@@ -201,215 +201,215 @@ export function EventConfigModal({
                 <div className="flex items-center justify-center min-h-screen p-4">
                     {/* Modal Card: responsive width + scrollable */}
                     <div className="bg-white rounded-lg shadow-xl max-w-[90vw] w-full max-h-[90vh] overflow-y-auto">
-                    {/* Header */}
-                    <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                        <div className="flex items-center gap-3">
-                            <Settings className="w-6 h-6 text-orange-600" />
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-900">
-                                    Cấu hình Check-in/Check-out
-                                </h2>
-                                <p className="text-sm text-gray-500 mt-1">{eventTitle}</p>
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <div className="flex items-center gap-3">
+                                <Settings className="w-6 h-6 text-orange-600" />
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">
+                                        Cấu hình Check-in/Check-out
+                                    </h2>
+                                    <p className="text-sm text-gray-500 mt-1">{eventTitle}</p>
+                                </div>
                             </div>
+
+                            <button
+                                onClick={onClose}
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
 
-                        <button
-                            onClick={onClose}
-                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
+                        {/* Body */}
+                        <div className="p-6 space-y-6">
+                            {/* Loading */}
+                            {loading && (
+                                <div className="flex justify-center items-center py-8">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                                </div>
+                            )}
 
-                    {/* Body */}
-                    <div className="p-6 space-y-6">
-                        {/* Loading */}
-                        {loading && (
-                            <div className="flex justify-center items-center py-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
-                            </div>
-                        )}
+                            {/* Error */}
+                            {error && (
+                                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                                    <p className="text-sm text-red-600">{error}</p>
+                                </div>
+                            )}
 
-                        {/* Error */}
-                        {error && (
-                            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                                <p className="text-sm text-red-600">{error}</p>
-                            </div>
-                        )}
+                            {/* Form */}
+                            {!loading && (
+                                <>
+                                    {/* Check-in Config */}
+                                    <div className="border border-green-200 bg-green-50/30 rounded-lg p-6">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                            <label className="block text-lg font-semibold text-gray-900">
+                                                Thời gian cho phép Check-in trước sự kiện (phút)
+                                            </label>
+                                            {/* Badge hiển thị nguồn config */}
+                                            {config.source === 'global' ? (
+                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full border border-blue-200">
+                                                    📋 Đang dùng mặc định
+                                                </span>
+                                            ) : (
+                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full border border-purple-200">
+                                                    ⚙️ Cấu hình riêng
+                                                </span>
+                                            )}
+                                        </div>
 
-                        {/* Form */}
-                        {!loading && (
-                            <>
-                                {/* Check-in Config */}
-                                <div className="border border-green-200 bg-green-50/30 rounded-lg p-6">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                        <label className="block text-lg font-semibold text-gray-900">
-                                            Thời gian cho phép Check-in trước sự kiện (phút)
-                                        </label>
-                                        {/* Badge hiển thị nguồn config */}
-                                        {config.source === 'global' ? (
-                                            <span className="ml-auto px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full border border-blue-200">
-                                                📋 Đang dùng mặc định
-                                            </span>
-                                        ) : (
-                                            <span className="ml-auto px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full border border-purple-200">
-                                                ⚙️ Cấu hình riêng
-                                            </span>
-                                        )}
-                                    </div>
+                                        <p className="text-sm text-gray-500 mb-4">
+                                            Số phút trước khi sự kiện bắt đầu mà người dùng có thể
+                                            check-in. Giá trị từ 0 đến 600 phút (10 giờ).
+                                        </p>
 
-                                    <p className="text-sm text-gray-500 mb-4">
-                                        Số phút trước khi sự kiện bắt đầu mà người dùng có thể
-                                        check-in. Giá trị từ 0 đến 600 phút (10 giờ).
-                                    </p>
+                                        <div className="flex items-center gap-4">
+                                            <input
+                                                type="number"
+                                                name="checkinAllowedBeforeStartMinutes"
+                                                value={config.checkinAllowedBeforeStartMinutes}
+                                                onChange={handleChange}
+                                                min="0"
+                                                max="600"
+                                                className="w-32 px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-center text-lg font-medium"
+                                            />
+                                            <span className="text-gray-600">phút trước khi bắt đầu</span>
+                                        </div>
 
-                                    <div className="flex items-center gap-4">
-                                        <input
-                                            type="number"
-                                            name="checkinAllowedBeforeStartMinutes"
-                                            value={config.checkinAllowedBeforeStartMinutes}
-                                            onChange={handleChange}
-                                            min="0"
-                                            max="600"
-                                            className="w-32 px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-center text-lg font-medium"
-                                        />
-                                        <span className="text-gray-600">phút trước khi bắt đầu</span>
-                                    </div>
-
-                                    {/* Quick Suggestions */}
-                                    <div className="mt-3 flex items-center gap-2">
-                                        <span className="text-xs text-gray-400">Gợi ý:</span>
-                                        {[15, 30, 60, 120].map(val => (
-                                            <button
-                                                key={val}
-                                                type="button"
-                                                onClick={() =>
-                                                    setConfig(prev => ({
-                                                        ...prev,
-                                                        checkinAllowedBeforeStartMinutes: val,
-                                                        source: 'per-event'
-                                                    }))
-                                                }
-                                                className={`px-3 py-1 text-xs rounded-full transition-colors ${config.checkinAllowedBeforeStartMinutes === val
+                                        {/* Quick Suggestions */}
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <span className="text-xs text-gray-400">Gợi ý:</span>
+                                            {[15, 30, 60, 120].map(val => (
+                                                <button
+                                                    key={val}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setConfig(prev => ({
+                                                            ...prev,
+                                                            checkinAllowedBeforeStartMinutes: val,
+                                                            source: 'per-event'
+                                                        }))
+                                                    }
+                                                    className={`px-3 py-1 text-xs rounded-full transition-colors ${config.checkinAllowedBeforeStartMinutes === val
                                                         ? 'bg-green-600 text-white'
                                                         : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-600'
-                                                    }`}
-                                            >
-                                                {val} phút
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Check-out Config */}
-                                <div className="border border-purple-200 bg-purple-50/30 rounded-lg p-6">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                                        <label className="block text-lg font-semibold text-gray-900">
-                                            Thời gian tối thiểu sau khi sự kiện bắt đầu để Check-out
-                                            (phút)
-                                        </label>
-                                        {/* Badge hiển thị nguồn config */}
-                                        {config.source === 'global' ? (
-                                            <span className="ml-auto px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full border border-blue-200">
-                                                📋 Đang dùng mặc định
-                                            </span>
-                                        ) : (
-                                            <span className="ml-auto px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full border border-purple-200">
-                                                ⚙️ Cấu hình riêng
-                                            </span>
-                                        )}
+                                                        }`}
+                                                >
+                                                    {val} phút
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
 
-                                    <p className="text-sm text-gray-500 mb-4">
-                                        Số phút tối thiểu sau khi sự kiện bắt đầu mà người dùng mới
-                                        có thể check-out. Giá trị từ 0 đến 600 phút (10 giờ).
-                                    </p>
+                                    {/* Check-out Config */}
+                                    <div className="border border-purple-200 bg-purple-50/30 rounded-lg p-6">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                                            <label className="block text-lg font-semibold text-gray-900">
+                                                Thời gian tối thiểu TRƯỚC KHI kết thúc để cho phép Check-out
+                                                (phút)
+                                            </label>
+                                            {/* Badge hiển thị nguồn config */}
+                                            {config.source === 'global' ? (
+                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full border border-blue-200">
+                                                    📋 Đang dùng mặc định
+                                                </span>
+                                            ) : (
+                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full border border-purple-200">
+                                                    ⚙️ Cấu hình riêng
+                                                </span>
+                                            )}
+                                        </div>
 
-                                    <div className="flex items-center gap-4">
-                                        <input
-                                            type="number"
-                                            name="minMinutesAfterStart"
-                                            value={config.minMinutesAfterStart}
-                                            onChange={handleChange}
-                                            min="0"
-                                            max="600"
-                                            className="w-32 px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-center text-lg font-medium"
-                                        />
-                                        <span className="text-gray-600">phút sau khi bắt đầu</span>
-                                    </div>
+                                        <p className="text-sm text-gray-500 mb-4">
+                                            Số phút trước khi sự kiện kết thúc mà người dùng mới có thể
+                                            check-out. Giá trị từ 0 đến 600 phút (10 giờ).
+                                        </p>
 
-                                    {/* Quick Suggestions */}
-                                    <div className="mt-3 flex items-center gap-2">
-                                        <span className="text-xs text-gray-400">Gợi ý:</span>
-                                        {[15, 30, 60, 120].map(val => (
-                                            <button
-                                                key={val}
-                                                type="button"
-                                                onClick={() =>
-                                                    setConfig(prev => ({
-                                                        ...prev,
-                                                        minMinutesAfterStart: val,
-                                                        source: 'per-event'
-                                                    }))
-                                                }
-                                                className={`px-3 py-1 text-xs rounded-full transition-colors ${config.minMinutesAfterStart === val
+                                        <div className="flex items-center gap-4">
+                                            <input
+                                                type="number"
+                                                name="minMinutesAfterStart"
+                                                value={config.minMinutesAfterStart}
+                                                onChange={handleChange}
+                                                min="0"
+                                                max="600"
+                                                className="w-32 px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-center text-lg font-medium"
+                                            />
+                                            <span className="text-gray-600">phút trước khi kết thúc</span>
+                                        </div>
+
+                                        {/* Quick Suggestions */}
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <span className="text-xs text-gray-400">Gợi ý:</span>
+                                            {[15, 30, 60, 120].map(val => (
+                                                <button
+                                                    key={val}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setConfig(prev => ({
+                                                            ...prev,
+                                                            minMinutesAfterStart: val,
+                                                            source: 'per-event'
+                                                        }))
+                                                    }
+                                                    className={`px-3 py-1 text-xs rounded-full transition-colors ${config.minMinutesAfterStart === val
                                                         ? 'bg-purple-600 text-white'
                                                         : 'bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-600'
-                                                    }`}
-                                            >
-                                                {val} phút
-                                            </button>
-                                        ))}
+                                                        }`}
+                                                >
+                                                    {val} phút
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Info Box */}
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                    <h3 className="font-semibold text-blue-800 mb-2">
-                                        Hướng dẫn
-                                    </h3>
-                                    <ul className="text-sm text-blue-700 space-y-1">
-                                        <li>
-                                            • <strong>Check-in</strong>: Người dùng có thể check-in
-                                            trước thời gian bắt đầu sự kiện theo số phút đã cấu hình
-                                        </li>
-                                        <li>
-                                            • <strong>Check-out</strong>: Người dùng chỉ có thể
-                                            check-out sau khi sự kiện đã bắt đầu được số phút đã cấu
-                                            hình
-                                        </li>
-                                        {config.source === 'global' && (
-                                            <li className="mt-2 pt-2 border-t border-blue-200">
-                                                ℹ️ <strong>Hiện đang dùng cấu hình hệ thống mặc định</strong>. Sau khi lưu, sự kiện này sẽ dùng cấu hình riêng.
+                                    {/* Info Box */}
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <h3 className="font-semibold text-blue-800 mb-2">
+                                            Hướng dẫn
+                                        </h3>
+                                        <ul className="text-sm text-blue-700 space-y-1">
+                                            <li>
+                                                • <strong>Check-in</strong>: Người dùng có thể check-in
+                                                trước thời gian bắt đầu sự kiện theo số phút đã cấu hình
                                             </li>
-                                        )}
-                                    </ul>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                                            <li>
+                                                • <strong>Check-out</strong>: Người dùng chỉ có thể
+                                                check-out sau khi sự kiện đã bắt đầu được số phút đã cấu
+                                                hình
+                                            </li>
+                                            {config.source === 'global' && (
+                                                <li className="mt-2 pt-2 border-t border-blue-200">
+                                                    ℹ️ <strong>Hiện đang dùng cấu hình hệ thống mặc định</strong>. Sau khi lưu, sự kiện này sẽ dùng cấu hình riêng.
+                                                </li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                </>
+                            )}
+                        </div>
 
-                    {/* Footer */}
-                    <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
-                        <button
-                            onClick={onClose}
-                            className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-                        >
-                            Hủy
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={saving || loading}
-                            className="inline-flex items-center px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
-                        >
-                            <Save className="w-4 h-4 mr-2" />
-                            {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
-                        </button>
+                        {/* Footer */}
+                        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+                            <button
+                                onClick={onClose}
+                                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={saving || loading}
+                                className="inline-flex items-center px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
+                            >
+                                <Save className="w-4 h-4 mr-2" />
+                                {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
             </div>
         </>
     )

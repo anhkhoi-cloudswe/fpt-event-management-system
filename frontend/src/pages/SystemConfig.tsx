@@ -539,13 +539,13 @@ export default function SystemConfig() {
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-3 h-3 rounded-full bg-purple-500"></div>
                 <label className="block text-lg font-semibold text-gray-900">
-                  Thời gian tối thiểu sau khi sự kiện bắt đầu để Check-out (phút)
+                  Thời gian tối thiểu TRƯỚC KHI kết thúc để cho phép Check-out (phút)
                 </label>
               </div>
 
               <p className="text-sm text-gray-500 mb-4">
-                Số phút tối thiểu sau khi sự kiện bắt đầu mà người dùng mới có thể
-                check-out. Giá trị từ 0 đến 600 phút (10 giờ).
+                Số phút trước khi sự kiện kết thúc mà người dùng mới có thể check-out.
+                Giá trị từ 0 đến 600 phút (10 giờ).
               </p>
 
               <div className="flex items-center gap-4">
@@ -558,7 +558,7 @@ export default function SystemConfig() {
                   max="600"
                   className="w-32 px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-center text-lg font-medium"
                 />
-                <span className="text-gray-600">phút sau khi bắt đầu</span>
+                <span className="text-gray-600">phút trước khi kết thúc</span>
               </div>
 
               <div className="mt-3 flex items-center gap-2">
@@ -595,15 +595,15 @@ export default function SystemConfig() {
                 <li className="flex items-start gap-2">
                   <span className="w-2 h-2 rounded-full bg-purple-500 mt-1.5 flex-shrink-0"></span>
                   <span>
-                    <strong>Check-out</strong>: Người dùng chỉ có thể check-out
-                    sau khi sự kiện đã bắt đầu được số phút đã cấu hình
+                    <strong>Check-out</strong>: Người dùng chỉ có thể check-out trước
+                    thời gian kết thúc sự kiện theo số phút đã cấu hình
                   </span>
                 </li>
                 <li className="mt-2 pt-2 border-t border-blue-200">
-                  <strong>Ví dụ:</strong> Sự kiện bắt đầu lúc 14:00
+                  <strong>Ví dụ:</strong> Sự kiện kế thúc lúc 17:00
                   <ul className="ml-4 mt-1">
                     <li>• Check-in = 60 phút → Có thể check-in từ 13:00</li>
-                    <li>• Check-out = 30 phút → Có thể check-out từ 14:30</li>
+                    <li>• Check-out = 30 phút → Có thể check-out trước 16:30</li>
                   </ul>
                 </li>
               </ul>

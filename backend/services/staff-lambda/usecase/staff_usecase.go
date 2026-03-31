@@ -400,20 +400,17 @@ func (uc *StaffUseCase) processCheckout(ctx context.Context, userID int, ticketI
 	// ✅ CRITICAL FIX: Ensure all times are in Vietnam timezone for correct comparison
 	// DB returns times in server local timezone (loc=Local in DSN)
 	// Convert to Vietnam timezone for consistent comparison
-	eventStartTime := utils.ToVietnamTime(ticket.EventStartTime)
 	eventEndTime := utils.ToVietnamTime(ticket.EventEndTime)
 
-	// Kiểm tra thời gian (phải sau start_time + minMinutes)
+	// Kiểm tra thời gian (phải trước end_time - minMinutes)
 	// ✅ Sử dụng per-event config nếu có, fallback to global
-	minMinutes := config.GetEffectiveCheckoutOffset(ticket.EventCheckoutOffset)
-	allowedTime := eventStartTime.Add(time.Duration(minMinutes) * time.Minute)
+	minMinutesBeforeEnd := config.GetEffectiveCheckoutOffset(ticket.EventCheckoutOffset)
+	allowedTime := eventEndTime.Add(-time.Duration(minMinutesBeforeEnd) * time.Minute)
 	if now.Before(allowedTime) {
 		errCode := "TooEarlyToCheckOut"
 		result.ErrorCode = &errCode
-		minutesRemaining := int(allowedTime.Sub(now).Minutes())
-		errMsg := fmt.Sprintf("Check-out chỉ được phép từ %s (còn %d phút nữa).\nSự kiện: %s | Khách: %s",
+		errMsg := fmt.Sprintf("Chưa đến giờ check-out. Bạn cần ở lại đến ít nhất %s để được ghi nhận!\nSự kiện: %s | Khách: %s",
 			allowedTime.Format("15:04"),
-			minutesRemaining,
 			ticket.EventName,
 			ticket.CustomerName)
 		result.Error = &errMsg
