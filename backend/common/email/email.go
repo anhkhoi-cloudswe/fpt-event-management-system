@@ -9,10 +9,9 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/fpt-event-services/common/logger"
-	commonutils "github.com/fpt-event-services/common/utils"
+	"github.com/fpt-event-services/common/timeutil"
 )
 
 // ============================================================
@@ -131,30 +130,52 @@ type PDFAttachment struct {
 // ============================================================
 
 func formatEventDateTime(startTimeISO, endTimeISO string) (string, string) {
-	// Parse start time
-	startTime, err := time.Parse(time.RFC3339, startTimeISO)
-	if err != nil {
-		return startTimeISO, ""
-	}
-	startTime = commonutils.ToVietnamTime(startTime)
+	// ✅ WALL-CLOCK APPROACH: Extract datetime components directly from RFC3339 string
+	// WITHOUT parsing through time.Time objects which apply timezone logic
+	// This ensures "2026-04-01T09:00:00+07:00" displays as "01/04/2026" and "09:00"
 
-	// Format start date as "28/03/2026"
-	startDate := startTime.Format("02/01/2006")
-
-	// Format time range as "15:04 - 16:00" in Vietnam timezone
-	startTimeStr := commonutils.FormatToVNTime(startTime)
-
-	// If end time is provided, format it
-	endTimeStr := ""
-	if endTimeISO != "" && endTimeISO != "0001-01-01T00:00:00Z" {
-		endTime, err := time.Parse(time.RFC3339, endTimeISO)
-		if err == nil {
-			endTime = commonutils.ToVietnamTime(endTime)
-			endTimeStr = commonutils.FormatToVNTime(endTime)
+	// Extract date from startTimeISO: "2026-04-01T09:00:00+07:00" -> "2026-04-01"
+	var startDate string
+	if len(startTimeISO) >= 10 {
+		// Extract YYYY-MM-DD
+		parts := strings.Split(startTimeISO[:10], "-")
+		if len(parts) == 3 {
+			// Format as DD/MM/YYYY
+			startDate = parts[2] + "/" + parts[1] + "/" + parts[0]
 		}
 	}
 
-	// Create the formatted string
+	// Extract time from startTimeISO: "2026-04-01T09:00:00+07:00" -> "09:00"
+	var startTimeStr string
+	if len(startTimeISO) > 10 && startTimeISO[10] == 'T' {
+		// Expected format: "2026-04-01T09:00:00+07:00"
+		// Extract substring from T to the next timezone indicator or +
+		timePartStart := 11
+		timePartEnd := strings.IndexAny(startTimeISO[timePartStart:], "+-Z")
+		if timePartEnd > 0 {
+			timePart := startTimeISO[timePartStart : timePartStart+timePartEnd]
+			// Extract HH:mm from HH:mm:ss
+			if len(timePart) >= 5 {
+				startTimeStr = timePart[:5]
+			}
+		}
+	}
+
+	// If end time is provided, extract time portion only
+	endTimeStr := ""
+	if endTimeISO != "" && endTimeISO != "0001-01-01T00:00:00Z" && len(endTimeISO) > 10 && endTimeISO[10] == 'T' {
+		timePartStart := 11
+		timePartEnd := strings.IndexAny(endTimeISO[timePartStart:], "+-Z")
+		if timePartEnd > 0 {
+			timePart := endTimeISO[timePartStart : timePartStart+timePartEnd]
+			// Extract HH:mm from HH:mm:ss
+			if len(timePart) >= 5 {
+				endTimeStr = timePart[:5]
+			}
+		}
+	}
+
+	// Create output: "09:00 - 16:00"
 	if endTimeStr != "" {
 		return startDate, startTimeStr + " - " + endTimeStr
 	}
@@ -225,7 +246,7 @@ func (s *EmailService) Send(msg EmailMessage) error {
 	log.Info("[SES_DEBUG] Starting to send email via SES... to=%s subject=%s from=%s host=%s", recipients, msg.Subject, s.config.From, s.config.Host)
 	auth := smtp.PlainAuth("", s.config.Username, s.config.Password, s.config.Host)
 	var body bytes.Buffer
-	boundary := fmt.Sprintf("boundary_%d", time.Now().UnixNano())
+	boundary := fmt.Sprintf("boundary_%d", timeutil.GetNow().UnixNano())
 	body.WriteString(fmt.Sprintf("From: %s <%s>\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=%s\r\n\r\n", s.config.FromName, s.config.From, strings.Join(msg.To, ", "), msg.Subject, boundary))
 	body.WriteString(fmt.Sprintf("--%s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s\r\n", boundary, msg.HTMLBody))
 	for _, att := range msg.Attachments {

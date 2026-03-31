@@ -133,6 +133,10 @@ services:
       SQS_QUEUE_URL: ${SQS_QUEUE_URL}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
+      # ⏰ Time Machine Environment (read from .env for synchronized testing)
+      SYSTEM_TIME_OVERRIDE: ${SYSTEM_TIME_OVERRIDE}
+      # 🕐 Timezone synchronization (database and service)
+      TZ: Asia/Ho_Chi_Minh
     depends_on:
       mysql:
         condition: service_healthy
@@ -160,6 +164,10 @@ services:
       INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
+      # ⏰ Time Machine Environment (read from .env for synchronized testing)
+      SYSTEM_TIME_OVERRIDE: ${SYSTEM_TIME_OVERRIDE}
+      # 🕐 Timezone synchronization (database and service)
+      TZ: Asia/Ho_Chi_Minh
     depends_on:
       mysql:
         condition: service_healthy
@@ -195,6 +203,10 @@ services:
       ***REMOVED***: ${***REMOVED***}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
       SQS_QUEUE_URL: ${SQS_QUEUE_URL}
+      # ⏰ Time Machine Environment (read from .env for synchronized testing)
+      SYSTEM_TIME_OVERRIDE: ${SYSTEM_TIME_OVERRIDE}
+      # 🕐 Timezone synchronization (database and service)
+      TZ: Asia/Ho_Chi_Minh
     depends_on:
       mysql:
         condition: service_healthy
@@ -218,6 +230,10 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
+      # ⏰ Time Machine Environment (read from .env for synchronized testing)
+      SYSTEM_TIME_OVERRIDE: ${SYSTEM_TIME_OVERRIDE}
+      # 🕐 Timezone synchronization (database and service)
+      TZ: Asia/Ho_Chi_Minh
     depends_on:
       mysql:
         condition: service_healthy
@@ -239,6 +255,10 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
+      # ⏰ Time Machine Environment (read from .env for synchronized testing)
+      SYSTEM_TIME_OVERRIDE: ${SYSTEM_TIME_OVERRIDE}
+      # 🕐 Timezone synchronization (database and service)
+      TZ: Asia/Ho_Chi_Minh
     depends_on:
       mysql:
         condition: service_healthy
@@ -273,6 +293,10 @@ services:
       ***REMOVED***: ${***REMOVED***}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
       SQS_QUEUE_URL: ${SQS_QUEUE_URL}
+      # ⏰ Time Machine Environment (read from .env for synchronized testing)
+      SYSTEM_TIME_OVERRIDE: ${SYSTEM_TIME_OVERRIDE}
+      # 🕐 Timezone synchronization (database and service)
+      TZ: Asia/Ho_Chi_Minh
     depends_on:
       mysql:
         condition: service_healthy
@@ -305,6 +329,10 @@ services:
       VENUE_SERVICE_URL: "http://venue-service:8084"
       STAFF_SERVICE_URL: "http://staff-service:8085"
       NOTIFICATION_SERVICE_URL: "http://notification-service:8086"
+      # ⏰ Time Machine Environment (read from .env for synchronized testing)
+      SYSTEM_TIME_OVERRIDE: ${SYSTEM_TIME_OVERRIDE}
+      # 🕐 Timezone synchronization (database and service)
+      TZ: Asia/Ho_Chi_Minh
     depends_on:
       - auth-service
       - event-service
@@ -322,6 +350,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY}
+        VITE_SYSTEM_TIME_OVERRIDE: ${SYSTEM_TIME_OVERRIDE}
     env_file: .env
     container_name: fpt-frontend
     networks:

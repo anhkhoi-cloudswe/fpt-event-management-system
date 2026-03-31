@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
+	"github.com/fpt-event-services/common/timeutil"
 	"github.com/fpt-event-services/common/utils"
 )
 
@@ -137,7 +137,7 @@ func (h *StudentReportHandler) HandleSubmitReport(ctx context.Context, request e
 	}
 
 	// 10) Insert report
-	now := time.Now()
+	now := timeutil.GetNow()
 	insertQuery := `
 		INSERT INTO report (user_id, ticket_id, title, description, image_url, status, created_at)
 		VALUES (?, ?, ?, ?, ?, 'PENDING', ?)

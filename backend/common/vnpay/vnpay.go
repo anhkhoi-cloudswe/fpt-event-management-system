@@ -9,7 +9,8 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"time"
+
+	"github.com/fpt-event-services/common/timeutil"
 )
 
 // Config holds VNPay configuration
@@ -127,7 +128,7 @@ func (s *VNPayService) CreatePaymentURL(req PaymentRequest) (string, error) {
 		req.OrderType = "other"
 	}
 	if req.CreateDate == "" {
-		req.CreateDate = time.Now().Format("20060102150405")
+		req.CreateDate = timeutil.GetNow().Format("20060102150405")
 	}
 
 	// Build parameters map

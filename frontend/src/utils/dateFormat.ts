@@ -1,120 +1,180 @@
 /**
- * dateFormat.ts - Xử lý timezone Vietnam (UTC+7)
+ * dateFormat.ts - Pure String-based Timezone Handling (NO Date objects)
  * 
- * ⚠️ CRITICAL: Backend đã cấu hình database với loc=Asia/Ho_Chi_Minh
- * => Backend luôn trả thời gian theo UTC+7
- * 
- * VẤN ĐỀ: JavaScript's new Date() sẽ interpret string dựa trên timezone của browser
- * => Nếu browser ở UTC+0, sẽ cộng thêm 7 tiếng ❌
- * 
- * GIẢI PHÁP: Xử lý string thời gian từ backend như là Vietnam time (UTC+7)
+ * ✅ PHILOSOPHY: Use only string extraction - NO timezone interpretation
+ * Backend returns RFC3339 with timezone: "2026-04-01T09:00:00+07:00"
+ * Frontend extracts components via regex/substring - NO Date object creation
+ * Result: Wall-clock time displayed exactly as stored (09:00 stays 09:00)
  */
-
-import { format } from 'date-fns'
-import { vi } from 'date-fns/locale'
 
 /**
- * parseVietnamTime - Parse chuỗi thời gian từ backend như Vietnam time
+ * ✅ formatVietnamDateTime - Format RFC3339 string with custom pattern
+ * Pure string extraction, NO Date objects or date-fns library
  * 
- * @param dateStr - Chuỗi thời gian từ backend (dạng: "2025-02-10 09:00:00" hoặc ISO)
- * @returns Date object với giá trị chính xác theo Vietnam timezone
+ * @param dateStr - RFC3339 string like "2026-04-01T09:00:00+07:00" or "2026-04-01 09:00:00"
+ * @param formatPattern - Pattern like "dd/MM/yyyy HH:mm:ss" or "dd/MM/yyyy HH:mm"
+ * @returns Formatted string like "01/04/2026 09:00:00"
  * 
- * LOGIC:
- * 1. Nếu đã là ISO format với timezone -> parse trực tiếp
- * 2. Nếu là string không có timezone info -> coi như Vietnam time (UTC+7)
- *    Tính toán offset cục bộ để đưa về UTC rồi parse
+ * CRITICAL: No Date object parsing - just regex extraction and string formatting
  */
-export const parseVietnamTime = (dateStr: string): Date => {
+export const formatVietnamDateTime = (dateStr: string | undefined | null, formatPattern: string = 'dd/MM/yyyy HH:mm:ss'): string => {
+  if (!dateStr) return ''
+
   try {
-    if (!dateStr) {
-      console.warn('[parseVietnamTime] Empty date string')
-      return new Date()
-    }
+    // Extract datetime components using regex
+    // Handles: "2026-04-01T09:00:00+07:00" or "2026-04-01 09:00:00" or "2026-04-01T09:00:00Z"
+    const match = dateStr.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):?(\d{2})?/)
+    if (!match) return ''
 
-    // Nếu đã là ISO format với Z (UTC) -> parse bình thường
-    if (dateStr.includes('Z') || dateStr.includes('+')) {
-      console.log(`[parseVietnamTime] ISO format detected: ${dateStr}`)
-      return new Date(dateStr)
-    }
+    const [, year, month, day, hours, minutes, secondsStr] = match
+    const seconds = secondsStr || '00'
 
-    // Xử lý format: "2025-02-10 09:00:00" hoặc "2025-02-10T09:00:00"
-    // Coi đây là Vietnam time (UTC+7)
-    const normalizedStr = dateStr.replace(' ', 'T')
-    const d = new Date(normalizedStr)
+    // Build the formatted string based on the pattern
+    let result = formatPattern
+      .replace('yyyy', year)
+      .replace('MM', month)
+      .replace('dd', day)
+      .replace('HH', hours)
+      .replace('mm', minutes)
+      .replace('ss', seconds)
 
-    if (isNaN(d.getTime())) {
-      console.error(`[parseVietnamTime] Invalid date: ${dateStr}`)
-      return new Date()
-    }
-
-    // ⚠️ CRITICAL FIX:
-    // Browser interpret "2025-02-10T09:00:00" theo local timezone
-    // Nếu browser ở UTC+0, JavaScript sẽ tưởng đây là 09:00 UTC => cộng 7h => 16:00 UTC = 23:00 VN ❌
-    // 
-    // Giải pháp: 
-    // - Tính offset giữa browser timezone và Vietnam timezone
-    // - Hiệu chỉnh lại date object để nó hiển thị đúng
-
-    const vietnamOffset = 7 * 60 // Vietnam: UTC+7 = +420 mins
-    const browserOffset = -d.getTimezoneOffset() // Browser's offset in minutes
-    const diffInMinutes = vietnamOffset - browserOffset
-
-    // Tạo date mới bằng cách cộng thêm offset
-    const correctedDate = new Date(d.getTime() + diffInMinutes * 60 * 1000)
-
-    console.log(`[parseVietnamTime] Parsed: "${dateStr}"`)
-    console.log(`                  Browser offset: ${browserOffset} mins, Vietnam offset: ${vietnamOffset} mins`)
-    console.log(`                  Corrected date: ${correctedDate.toISOString()}`)
-
-    return correctedDate
+    return result
   } catch (error) {
-    console.error(`[parseVietnamTime] Error parsing "${dateStr}":`, error)
-    return new Date()
+    console.error(`[formatVietnamDateTime] Error parsing "${dateStr}":`, error)
+    return ''
   }
 }
 
 /**
- * formatVietnamDateTime - Format Date object sang string Vietnam time
- * 
- * @param date - Date object
- * @param formatPattern - date-fns format pattern (default: 'dd/MM/yyyy HH:mm')
- * @returns Formatted string
+ * ✅ extractTimeFromRFC3339 - Extract HH:mm from RFC3339 string
+ * @param rfc3339Str - String like "2026-04-01T09:00:00+07:00"
+ * @returns Time string "09:00"
  */
-export const formatVietnamDateTime = (
-  date: Date | string,
-  formatPattern: string = 'dd/MM/yyyy HH:mm'
-): string => {
+export const extractTimeFromRFC3339 = (rfc3339Str: string): string => {
+  if (!rfc3339Str) return ''
+  // Position 11-16 for ISO format (after "YYYY-MM-DDTHH:mm")
+  if (rfc3339Str.length >= 16 && (rfc3339Str[10] === 'T' || rfc3339Str[10] === ' ')) {
+    return rfc3339Str.substring(11, 16)
+  }
+  return ''
+}
+
+/**
+ * ✅ extractDateFromRFC3339 - Extract YYYY-MM-DD from RFC3339 string
+ * @param rfc3339Str - String like "2026-04-01T09:00:00+07:00"
+ * @returns Date string "2026-04-01"
+ */
+export const extractDateFromRFC3339 = (rfc3339Str: string): string => {
+  if (!rfc3339Str) return ''
+  // Position 0-10 for ISO date format
+  if (rfc3339Str.length >= 10) {
+    return rfc3339Str.substring(0, 10)
+  }
+  return ''
+}
+
+/**
+ * ✅ formatWallClockDateTimeSimple - Format DD/MM/YYYY HH:mm from RFC3339 string
+ * Pure string extraction, NO Date objects
+ * 
+ * @param rfc3339Str - String like "2026-04-01T09:00:00+07:00"
+ * @returns Formatted string "01/04/2026 09:00"
+ */
+export const formatWallClockDateTimeSimple = (rfc3339Str: string): string => {
+  if (!rfc3339Str) return ''
+
   try {
-    const dateObj = typeof date === 'string' ? parseVietnamTime(date) : date
-    return format(dateObj, formatPattern, { locale: vi })
+    // Extract YYYY-MM-DD and HH:mm using regex
+    const match = rfc3339Str.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
+    if (!match) return ''
+
+    const [, year, month, day, hours, minutes] = match
+    // Format as: DD/MM/YYYY HH:mm
+    return `${day}/${month}/${year} ${hours}:${minutes}`
   } catch (error) {
-    console.error('[formatVietnamDateTime] Error formatting:', error)
-    return 'Invalid Date'
+    console.error(`[formatWallClockDateTimeSimple] Error parsing "${rfc3339Str}":`, error)
+    return ''
   }
 }
 
 /**
- * formatVietnamDateTimeWithSeconds - Format với giây
- * @param date - Date object hoặc string
- * @returns String format: dd/MM/yyyy HH:mm:ss
+ * ✅ formatWallClockTimeFromRFC3339 - Format date+time from RFC3339 string
+ * Alias for formatWallClockDateTimeSimple - uses same pure string extraction approach
+ * 
+ * @param rfc3339Str - String like "2026-04-01T09:00:00+07:00"
+ * @returns Formatted string "01/04/2026 09:00"
+ */
+export const formatWallClockTimeFromRFC3339 = (rfc3339Str: string): string => {
+  return formatWallClockDateTimeSimple(rfc3339Str)
+}
+
+/**
+ * ✅ compareTimeStringsForEventStatus - Compare RFC3339 time strings
+ * Determines if an event is currently ongoing or has ended
+ * Pure string comparison, NO Date objects
+ * 
+ * @param currentTime - RFC3339 string (current time)
+ * @param eventStart - RFC3339 string (event start time)
+ * @param eventEnd - RFC3339 string (event end time)
+ * @returns { eventOngoing: boolean, eventEnded: boolean }
+ */
+export const compareTimeStringsForEventStatus = (
+  currentTime: string,
+  eventStart: string,
+  eventEnd: string
+): { eventOngoing: boolean; eventEnded: boolean } => {
+  if (!currentTime || !eventStart || !eventEnd) {
+    return { eventOngoing: false, eventEnded: false }
+  }
+
+  // Extract datetime portion (remove timezone)
+  // "2026-04-01T09:00:00+07:00" => "2026-04-01T09:00:00"
+  const extractDateTime = (str: string) => str.split('+')[0].split('Z')[0]
+
+  const current = extractDateTime(currentTime)
+  const start = extractDateTime(eventStart)
+  const end = extractDateTime(eventEnd)
+
+  // String comparison works correctly for ISO 8601 format
+  const eventOngoing = current >= start && current < end
+  const eventEnded = current > end
+
+  return { eventOngoing, eventEnded }
+}
+
+/**
+ * @deprecated - OLD FUNCTION - DO NOT USE
+ * Reason: Used new Date() which caused timezone shifting
+ * Alternative: Use formatWallClockDateTimeSimple or formatVietnamDateTime instead
+ */
+export const parseVietnamTime = (__dateStr: string): Date => {
+  console.warn('[parseVietnamTime] ❌ DEPRECATED - use string extraction instead')
+  return new Date()
+}
+
+/**
+ * @deprecated - OLD FUNCTION - DO NOT USE
+ * Use formatVietnamDateTime instead
  */
 export const formatVietnamDateTimeWithSeconds = (date: Date | string): string => {
-  return formatVietnamDateTime(date, 'dd/MM/yyyy HH:mm:ss')
+  if (typeof date === 'string') {
+    return formatVietnamDateTime(date, 'dd/MM/yyyy HH:mm:ss')
+  }
+  return formatVietnamDateTime(date.toISOString(), 'dd/MM/yyyy HH:mm:ss')
 }
 
 /**
- * getTodayVietnamDate - Lấy ngày hôm nay theo Vietnam time
- * @returns Date object with today's date in Vietnam timezone
+ * @deprecated - OLD FUNCTION - DO NOT USE
+ * Timezone offset calculation is unreliable
  */
 export const getTodayVietnamDate = (): Date => {
-  const now = new Date()
-  const vietnamOffset = 7 * 60
-  const browserOffset = -now.getTimezoneOffset()
-  const diffInMinutes = vietnamOffset - browserOffset
-  return new Date(now.getTime() + diffInMinutes * 60 * 1000)
+  console.warn('[getTodayVietnamDate] ❌ DEPRECATED - timezone calculation is unreliable')
+  return new Date()
 }
 
-// Export một object tiện dụng
+/**
+ * @deprecated - OLD FUNCTIONS - DO NOT USE
+ */
 export const vietnamDateFormatter = {
   parse: parseVietnamTime,
   format: formatVietnamDateTime,

@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
 	walletModels "github.com/fpt-event-services/common/models"
+	"github.com/fpt-event-services/common/timeutil"
 	"github.com/fpt-event-services/common/utils"
 )
 
@@ -391,7 +392,7 @@ func (h *WalletInternalHandler) HandleReserve(ctx context.Context, request event
 
 	// Generate reservation ID
 	reservationID := generateUUID()
-	expiresAt := time.Now().Add(time.Duration(ttl) * time.Second)
+	expiresAt := timeutil.GetNow().Add(time.Duration(ttl) * time.Second)
 
 	h.logger.Info("[SAGA_RESERVE] 🔒 Starting reserve: user=%d, amount=%.2f, reservationId=%s", req.UserID, req.Amount, reservationID)
 

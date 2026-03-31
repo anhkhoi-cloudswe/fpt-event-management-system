@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fpt-event-services/common/timeutil"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -30,7 +31,7 @@ var (
 
 // GenerateToken generates a JWT token for a user (khớp JwtUtils.generateToken)
 func GenerateToken(userID int, email, fullName, role string) (string, error) {
-	now := time.Now()
+	now := timeutil.GetNow()
 
 	claims := Claims{
 		UserID:   userID,

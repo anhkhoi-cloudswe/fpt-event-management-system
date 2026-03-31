@@ -7,12 +7,9 @@ import { useState, useEffect } from 'react'
 // Điều hướng sang trang khác (payment)
 import { useNavigate } from 'react-router-dom'
 
-// Icon UI
-import { Calendar, Users, Clock, MapPin, X } from 'lucide-react'
-
 // Format ngày giờ
-import { format } from 'date-fns'
-import { vi } from 'date-fns/locale'
+import { Calendar, Users, Clock, MapPin, X } from 'lucide-react'
+import { formatWallClockDateTimeSimple, compareTimeStringsForEventStatus } from '../../utils/dateFormat'
 
 // Kiểu dữ liệu chi tiết event (định nghĩa trong types)
 import type { EventDetail } from '../../types/event'
@@ -360,17 +357,12 @@ export function EventDetailModal({
   //   → Hiển thị ghế (read-only), không cho chọn/ confirm
   // - eventEnded: currentTime > endTime
   //   → Hiển thị ghế (read-only), không cho chọn/ confirm
-  const now = new Date()
-  const eventStart = event ? new Date(event.startTime) : null
-  const eventEnd = event ? new Date(event.endTime) : null
-
-  const eventOngoing = event && eventStart && eventEnd
-    ? (now >= eventStart && now < eventEnd)
-    : false
-
-  const eventEnded = event && eventEnd
-    ? (now > eventEnd)
-    : false
+  // 
+  // ✅ FIX: Dùng string comparison thay vì new Date() để tránh double timezone shifting
+  const now = new Date().toISOString() // RFC3339 format với timezone
+  const { eventOngoing, eventEnded } = event
+    ? compareTimeStringsForEventStatus(now, event.startTime, event.endTime)
+    : { eventOngoing: false, eventEnded: false }
 
   // ===================== CHECK EVENT CLOSED =====================
   // Nếu event.status === 'CLOSED' => event đã đóng => disable chọn ghế/confirm
@@ -427,345 +419,344 @@ export function EventDetailModal({
               </button>
             </div>
 
-          {/* ===== CONTENT ===== */}
-          <div className="p-6">
-            {/* Khi đang load event detail */}
-            {loading && (
-              <p className="text-gray-500 text-center py-4">Đang tải chi tiết...</p>
-            )}
+            {/* ===== CONTENT ===== */}
+            <div className="p-6">
+              {/* Khi đang load event detail */}
+              {loading && (
+                <p className="text-gray-500 text-center py-4">Đang tải chi tiết...</p>
+              )}
 
-            {/* Khi có lỗi */}
-            {error && <p className="text-red-500 text-center py-4">Lỗi: {error}</p>}
+              {/* Khi có lỗi */}
+              {error && <p className="text-red-500 text-center py-4">Lỗi: {error}</p>}
 
-            {/* Khi đã có event detail */}
-            {!loading && !error && event && (
-              <>
-                {/* ===== BANNER CẢNH BÁO SỰ KIỆN ĐÃ ĐÓNG ===== */}
-                {eventClosed && (
-                  <div className="mb-6 p-4 bg-red-50 border border-red-300 rounded-lg flex items-start gap-3">
-                    <div className="text-red-600 text-2xl">⚠️</div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-red-800">Sự kiện này đã đóng</h4>
-                      <p className="text-red-700 text-sm mt-1">
-                        Bạn không thể thực hiện đặt vé vào lúc này. Vui lòng quay lại sau hoặc liên hệ ban tổ chức để biết thêm thông tin.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* ===== BANNER ===== */}
-                {event.bannerUrl && (
-                  <div className="mb-6">
-                    <img
-                      src={event.bannerUrl}
-                      alt={event.title}
-                      className="w-full h-40 sm:h-64 object-cover rounded-lg"
-                    />
-                  </div>
-                )}
-
-                {/* ===== MÔ TẢ ===== */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-2">Mô tả</h3>
-                  <p className="text-gray-700">{event.description}</p>
-                </div>
-
-                {/* ===== THÔNG TIN EVENT ===== */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  {/* Thời gian */}
-                  <div className="flex items-start">
-                    <Calendar className="w-5 h-5 mr-2 mt-0.5 text-blue-600" />
-                    <div>
-                      <p className="text-sm text-gray-600">Thời gian</p>
-                      <p className="font-medium">
-                        {format(new Date(event.startTime), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                      </p>
-                      <p className="text-sm text-gray-600">đến</p>
-                      <p className="font-medium">
-                        {format(new Date(event.endTime), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* venueName + areaName */}
-                  {event.venueName && (
-                    <div className="flex items-start">
-                      <MapPin className="w-5 h-5 mr-2 mt-0.5 text-green-600" />
-                      <div>
-                        <p className="text-sm text-gray-600">Địa điểm</p>
-                        <p className="font-medium">{event.venueName}</p>
-
-                        {/* Khu vực + tầng */}
-                        {event.areaName && (
-                          <p className="text-sm text-gray-700 mt-1">
-                            Khu vực: <span className="font-medium">{event.areaName}</span>
-                            {event.floor && (
-                              <span className="text-gray-600"> (Tầng {event.floor})</span>
-                            )}
-                          </p>
-                        )}
-
-                        {/* Sức chứa khu vực */}
-                        {event.areaCapacity != null && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Sức chứa khu vực: {event.areaCapacity} chỗ
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* location (nếu có) */}
-                  {event.location && (
-                    <div className="flex items-start">
-                      <MapPin className="w-5 h-5 mr-2 mt-0.5 text-green-600" />
-                      <div>
-                        <p className="text-sm text-gray-600">Vị trí</p>
-                        <p className="font-medium">{event.location}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* số chỗ */}
-                  <div className="flex items-start">
-                    <Users className="w-5 h-5 mr-2 mt-0.5 text-purple-600" />
-                    <div>
-                      <p className="text-sm text-gray-600">Số chỗ</p>
-                      <p className="font-medium">Tối đa {event.maxSeats} người</p>
-                      {event.currentParticipants != null && (
-                        <p className="text-sm text-gray-600">Đã đăng ký: {event.currentParticipants}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* trạng thái */}
-                  <div className="flex items-start">
-                    <Clock className="w-5 h-5 mr-2 mt-0.5 text-orange-600" />
-                    <div>
-                      <p className="text-sm text-gray-600">Trạng thái</p>
-                      <p className="font-medium">{event.status}</p>
-                    </div>
-                  </div>
-
-                  {/* speaker (bio ngắn) */}
-                  {event.speakerName && (!event.speakerBio || event.speakerBio.length <= 50) && (
-                    <div className="flex items-start">
-                      {event.speakerAvatarUrl ? (
-                        <img
-                          src={event.speakerAvatarUrl}
-                          alt={event.speakerName}
-                          className="w-10 h-10 sm:w-16 sm:h-16 rounded-full object-cover mr-3 mt-0.5"
-                        />
-                      ) : (
-                        <span className="text-3xl mr-3">👤</span>
-                      )}
-                      <div>
-                        <p className="text-xs sm:text-sm text-gray-600">Diễn giả</p>
-                        <p className="font-semibold text-base sm:text-lg">{event.speakerName}</p>
-                        {event.speakerBio && (
-                          <p className="text-xs sm:text-sm text-gray-600 mt-1">{event.speakerBio}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Speaker Bio dài -> hiển thị block riêng full width */}
-                {event.speakerName && event.speakerBio && event.speakerBio.length > 50 && (
-                  <div className="mb-6 pb-6 border-b bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg">
-                    <div className="flex items-start gap-6">
-                      {event.speakerAvatarUrl && (
-                        <img
-                          src={event.speakerAvatarUrl}
-                          alt={event.speakerName || 'Speaker'}
-                          className="w-20 h-20 sm:w-32 sm:h-32 rounded-full object-cover shadow-lg flex-shrink-0"
-                        />
-                      )}
+              {/* Khi đã có event detail */}
+              {!loading && !error && event && (
+                <>
+                  {/* ===== BANNER CẢNH BÁO SỰ KIỆN ĐÃ ĐÓNG ===== */}
+                  {eventClosed && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-300 rounded-lg flex items-start gap-3">
+                      <div className="text-red-600 text-2xl">⚠️</div>
                       <div className="flex-1">
-                        <h3 className="text-lg sm:text-2xl font-bold mb-3 flex items-center text-gray-900">
-                          {!event.speakerAvatarUrl && <span className="mr-2 text-2xl sm:text-3xl">👤</span>}
-                          Về diễn giả{event.speakerName && `: ${event.speakerName}`}
-                        </h3>
-                        <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
-                          {event.speakerBio}
+                        <h4 className="font-semibold text-red-800">Sự kiện này đã đóng</h4>
+                        <p className="text-red-700 text-sm mt-1">
+                          Bạn không thể thực hiện đặt vé vào lúc này. Vui lòng quay lại sau hoặc liên hệ ban tổ chức để biết thêm thông tin.
                         </p>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* ===== LÝ DO TỪ CHỐI ===== */}
-                {event.status === 'REJECTED' && event.rejectReason && (
-                  <div className="mb-6 border-t pt-6">
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <h3 className="text-base font-semibold text-red-700 mb-2 flex items-center gap-2">
-                        <span>🚫</span> Lý do từ chối từ Staff
-                      </h3>
-                      <p className="text-sm text-red-800 leading-relaxed whitespace-pre-wrap">
-                        {event.rejectReason}
-                      </p>
+                  {/* ===== BANNER ===== */}
+                  {event.bannerUrl && (
+                    <div className="mb-6">
+                      <img
+                        src={event.bannerUrl}
+                        alt={event.title}
+                        className="w-full h-40 sm:h-64 object-cover rounded-lg"
+                      />
                     </div>
+                  )}
+
+                  {/* ===== MÔ TẢ ===== */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-2">Mô tả</h3>
+                    <p className="text-gray-700">{event.description}</p>
                   </div>
-                )}
 
-                {/* ===== GIÁ VÉ ===== */}
-                {event.tickets && event.tickets.length > 0 && (
-                  <div className="border-t pt-6 mb-6">
-                    <h3 className="text-lg font-semibold mb-4">Giá vé</h3>
+                  {/* ===== THÔNG TIN EVENT ===== */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {/* Thời gian */}
+                    <div className="flex items-start">
+                      <Calendar className="w-5 h-5 mr-2 mt-0.5 text-blue-600" />
+                      <div>
+                        <p className="text-sm text-gray-600">Thời gian</p>
+                        <p className="font-medium">
+                          {formatWallClockDateTimeSimple(event.startTime)}
+                        </p>
+                        <p className="text-sm text-gray-600">đến</p>
+                        <p className="font-medium">
+                          {formatWallClockDateTimeSimple(event.endTime)}
+                        </p>
+                      </div>
+                    </div>
 
-                    <div className="space-y-2">
-                      {event.tickets.map((ticket) => {
-                        // ✅ FIX: Số vé tống theo maxQuantity
-                        const total = ticket.maxQuantity
+                    {/* venueName + areaName */}
+                    {event.venueName && (
+                      <div className="flex items-start">
+                        <MapPin className="w-5 h-5 mr-2 mt-0.5 text-green-600" />
+                        <div>
+                          <p className="text-sm text-gray-600">Địa điểm</p>
+                          <p className="font-medium">{event.venueName}</p>
 
-                        // ✅ FIX: Ư u tiên dùng ticket.remaining từ BE (maxQuantity - sold)
-                        // Fallback: đếm ghế ACTIVE theo categoryTicketId trong allSeats
-                        const seatsAvailable = allSeats.filter(
-                          (s: Seat) => {
-                            const status = String(s.status ?? '').toUpperCase()
-                            return s.categoryTicketId === ticket.categoryTicketId && (status === 'ACTIVE' || status === 'AVAILABLE')
-                          }
-                        ).length
-                        const availableCount =
-                          ticket.remaining !== undefined
-                            ? ticket.remaining
-                            : seatsAvailable > 0
-                              ? seatsAvailable
-                              : total // nếu không có thông tin, hiển thị tổng
-
-                        // đang được chọn không? (để highlight UI)
-                        const isSelectedTicket =
-                          selectedTicket?.categoryTicketId === ticket.categoryTicketId
-
-                        return (
-                          <div
-                            key={ticket.categoryTicketId}
-                            onClick={() =>
-                              handleSelectTicket({
-                                categoryTicketId: ticket.categoryTicketId,
-                                name: ticket.name,
-                                price: ticket.price,
-                                maxQuantity: ticket.maxQuantity,
-                                status: ticket.status,
-                              })
-                            }
-                            className={`flex items-center justify-between gap-4 py-2 px-3 rounded-lg border cursor-pointer transition ${
-                              isSelectedTicket
-                                ? 'border-blue-600 bg-blue-50'
-                                : 'border-transparent hover:bg-gray-50'
-                            }`}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium">{ticket.name}</p>
-
-                              {ticket.description && (
-                                <p className="text-xs text-gray-500 line-clamp-2">
-                                  {ticket.description}
-                                </p>
+                          {/* Khu vực + tầng */}
+                          {event.areaName && (
+                            <p className="text-sm text-gray-700 mt-1">
+                              Khu vực: <span className="font-medium">{event.areaName}</span>
+                              {event.floor && (
+                                <span className="text-gray-600"> (Tầng {event.floor})</span>
                               )}
+                            </p>
+                          )}
 
-                              {/* Hiển thị ghế còn lại */}
-                              <p className="text-sm text-gray-600">
-                                Còn lại: {availableCount}/{total}
+                          {/* Sức chứa khu vực */}
+                          {event.areaCapacity != null && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Sức chứa khu vực: {event.areaCapacity} chỗ
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* location (nếu có) */}
+                    {event.location && (
+                      <div className="flex items-start">
+                        <MapPin className="w-5 h-5 mr-2 mt-0.5 text-green-600" />
+                        <div>
+                          <p className="text-sm text-gray-600">Vị trí</p>
+                          <p className="font-medium">{event.location}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* số chỗ */}
+                    <div className="flex items-start">
+                      <Users className="w-5 h-5 mr-2 mt-0.5 text-purple-600" />
+                      <div>
+                        <p className="text-sm text-gray-600">Số chỗ</p>
+                        <p className="font-medium">Tối đa {event.maxSeats} người</p>
+                        {event.currentParticipants != null && (
+                          <p className="text-sm text-gray-600">Đã đăng ký: {event.currentParticipants}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* trạng thái */}
+                    <div className="flex items-start">
+                      <Clock className="w-5 h-5 mr-2 mt-0.5 text-orange-600" />
+                      <div>
+                        <p className="text-sm text-gray-600">Trạng thái</p>
+                        <p className="font-medium">{event.status}</p>
+                      </div>
+                    </div>
+
+                    {/* speaker (bio ngắn) */}
+                    {event.speakerName && (!event.speakerBio || event.speakerBio.length <= 50) && (
+                      <div className="flex items-start">
+                        {event.speakerAvatarUrl ? (
+                          <img
+                            src={event.speakerAvatarUrl}
+                            alt={event.speakerName}
+                            className="w-10 h-10 sm:w-16 sm:h-16 rounded-full object-cover mr-3 mt-0.5"
+                          />
+                        ) : (
+                          <span className="text-3xl mr-3">👤</span>
+                        )}
+                        <div>
+                          <p className="text-xs sm:text-sm text-gray-600">Diễn giả</p>
+                          <p className="font-semibold text-base sm:text-lg">{event.speakerName}</p>
+                          {event.speakerBio && (
+                            <p className="text-xs sm:text-sm text-gray-600 mt-1">{event.speakerBio}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Speaker Bio dài -> hiển thị block riêng full width */}
+                  {event.speakerName && event.speakerBio && event.speakerBio.length > 50 && (
+                    <div className="mb-6 pb-6 border-b bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg">
+                      <div className="flex items-start gap-6">
+                        {event.speakerAvatarUrl && (
+                          <img
+                            src={event.speakerAvatarUrl}
+                            alt={event.speakerName || 'Speaker'}
+                            className="w-20 h-20 sm:w-32 sm:h-32 rounded-full object-cover shadow-lg flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="text-lg sm:text-2xl font-bold mb-3 flex items-center text-gray-900">
+                            {!event.speakerAvatarUrl && <span className="mr-2 text-2xl sm:text-3xl">👤</span>}
+                            Về diễn giả{event.speakerName && `: ${event.speakerName}`}
+                          </h3>
+                          <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
+                            {event.speakerBio}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ===== LÝ DO TỪ CHỐI ===== */}
+                  {event.status === 'REJECTED' && event.rejectReason && (
+                    <div className="mb-6 border-t pt-6">
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <h3 className="text-base font-semibold text-red-700 mb-2 flex items-center gap-2">
+                          <span>🚫</span> Lý do từ chối từ Staff
+                        </h3>
+                        <p className="text-sm text-red-800 leading-relaxed whitespace-pre-wrap">
+                          {event.rejectReason}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ===== GIÁ VÉ ===== */}
+                  {event.tickets && event.tickets.length > 0 && (
+                    <div className="border-t pt-6 mb-6">
+                      <h3 className="text-lg font-semibold mb-4">Giá vé</h3>
+
+                      <div className="space-y-2">
+                        {event.tickets.map((ticket) => {
+                          // ✅ FIX: Số vé tống theo maxQuantity
+                          const total = ticket.maxQuantity
+
+                          // ✅ FIX: Ư u tiên dùng ticket.remaining từ BE (maxQuantity - sold)
+                          // Fallback: đếm ghế ACTIVE theo categoryTicketId trong allSeats
+                          const seatsAvailable = allSeats.filter(
+                            (s: Seat) => {
+                              const status = String(s.status ?? '').toUpperCase()
+                              return s.categoryTicketId === ticket.categoryTicketId && (status === 'ACTIVE' || status === 'AVAILABLE')
+                            }
+                          ).length
+                          const availableCount =
+                            ticket.remaining !== undefined
+                              ? ticket.remaining
+                              : seatsAvailable > 0
+                                ? seatsAvailable
+                                : total // nếu không có thông tin, hiển thị tổng
+
+                          // đang được chọn không? (để highlight UI)
+                          const isSelectedTicket =
+                            selectedTicket?.categoryTicketId === ticket.categoryTicketId
+
+                          return (
+                            <div
+                              key={ticket.categoryTicketId}
+                              onClick={() =>
+                                handleSelectTicket({
+                                  categoryTicketId: ticket.categoryTicketId,
+                                  name: ticket.name,
+                                  price: ticket.price,
+                                  maxQuantity: ticket.maxQuantity,
+                                  status: ticket.status,
+                                })
+                              }
+                              className={`flex items-center justify-between gap-4 py-2 px-3 rounded-lg border cursor-pointer transition ${isSelectedTicket
+                                  ? 'border-blue-600 bg-blue-50'
+                                  : 'border-transparent hover:bg-gray-50'
+                                }`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium">{ticket.name}</p>
+
+                                {ticket.description && (
+                                  <p className="text-xs text-gray-500 line-clamp-2">
+                                    {ticket.description}
+                                  </p>
+                                )}
+
+                                {/* Hiển thị ghế còn lại */}
+                                <p className="text-sm text-gray-600">
+                                  Còn lại: {availableCount}/{total}
+                                </p>
+                              </div>
+
+                              {/* Giá vé */}
+                              <p className="font-semibold text-lg text-gray-900 whitespace-nowrap flex-shrink-0">
+                                {ticket.price.toLocaleString('vi-VN')} đ
                               </p>
                             </div>
-
-                            {/* Giá vé */}
-                            <p className="font-semibold text-lg text-gray-900 whitespace-nowrap flex-shrink-0">
-                              {ticket.price.toLocaleString('vi-VN')} đ
-                            </p>
-                          </div>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* ===== SEAT GRID ===== */}
-                {/* Cho mọi role đều xem sơ đồ ghế, chỉ chặn đặt ghế cho manager hoặc event closed */}
-                {event.areaId && (
-                  <div className="border-t pt-6">
-                    <h3 className="text-lg font-semibold mb-4">Chọn ghế</h3>
-                    <SeatGrid
-                      seats={allSeats}
-                      loading={loadingSeats}
-                      selectedSeats={selectedSeats}
-                      onSeatSelect={(seat) => seat && handleSeatSelect(seat)}
-                      maxReached={selectedSeats.length >= 4}
-                      // disable if event ended OR event closed; allow viewing for managers but prevent selecting
-                      disabled={eventEnded || eventClosed || eventOngoing}
-                      allowSelect={!isManager && !eventClosed && !eventOngoing}
-                    />
-                  </div>
-                )}
+                  {/* ===== SEAT GRID ===== */}
+                  {/* Cho mọi role đều xem sơ đồ ghế, chỉ chặn đặt ghế cho manager hoặc event closed */}
+                  {event.areaId && (
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold mb-4">Chọn ghế</h3>
+                      <SeatGrid
+                        seats={allSeats}
+                        loading={loadingSeats}
+                        selectedSeats={selectedSeats}
+                        onSeatSelect={(seat) => seat && handleSeatSelect(seat)}
+                        maxReached={selectedSeats.length >= 4}
+                        // disable if event ended OR event closed; allow viewing for managers but prevent selecting
+                        disabled={eventEnded || eventClosed || eventOngoing}
+                        allowSelect={!isManager && !eventClosed && !eventOngoing}
+                      />
+                    </div>
+                  )}
 
-                {/* ===== FOOTER ACTIONS ===== */}
-                <div className="border-t mt-6 pt-6 flex justify-between items-center">
-                  {/* Bên trái: tổng tiền + ghế đã chọn */}
-                  <div>
-                    {selectedSeats.length > 0 && (
-                      <div className="text-left">
-                        <p className="text-sm text-gray-600">Tổng tiền</p>
-                        <p className="text-2xl font-bold text-blue-600">
-                          {totalAmount.toLocaleString('vi-VN')} đ
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Ghế: {selectedSeatCodesText || 'Chưa chọn'}
-                          {' · '}Số lượng: {selectedSeats.length}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Bên phải: các nút / thông báo */}
-                  <div className="flex flex-col items-end gap-3">
-                    {/* ONGOING EVENT: Show message instead of button */}
-                    {eventOngoing && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800 max-w-xs">
-                        Sự kiện đang diễn ra - Chỉ hiển thị sơ đồ chỗ ngồi
-                      </div>
-                    )}
-
-                    <div className="flex gap-3">
-                      {/* Nút cập nhật (dành cho organizer) */}
-                      {userRole === 'ORGANIZER' &&
-                        event.status === 'APPROVED' &&
-                        onEdit && (
-                          <button
-                            onClick={onEdit}
-                            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                          >
-                            Cập nhật thông tin
-                          </button>
-                        )}
-
-                      {/* Đóng modal */}
-                      <button
-                        onClick={handleClose}
-                        className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        Đóng
-                      </button>
-
-                      {/* Chỉ hiện nút xác nhận khi đã chọn ít nhất 1 ghế và không phải organizer/staff/admin, event not ongoing, event not ended */}
-                      {selectedSeats.length > 0 && !isManager && !eventOngoing && (
-                        <button
-                          onClick={confirmSeats}
-                          disabled={eventEnded || eventClosed}
-                          className={`px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${eventEnded || eventClosed ? 'opacity-50 cursor-not-allowed bg-gray-400' : ''
-                            }`}
-                        >
-                          {eventClosed ? 'Sự kiện đã kết thúc' : eventEnded ? 'Sự kiện đã kết thúc' : 'Xác nhận đặt ghế'}
-                        </button>
+                  {/* ===== FOOTER ACTIONS ===== */}
+                  <div className="border-t mt-6 pt-6 flex justify-between items-center">
+                    {/* Bên trái: tổng tiền + ghế đã chọn */}
+                    <div>
+                      {selectedSeats.length > 0 && (
+                        <div className="text-left">
+                          <p className="text-sm text-gray-600">Tổng tiền</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {totalAmount.toLocaleString('vi-VN')} đ
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Ghế: {selectedSeatCodesText || 'Chưa chọn'}
+                            {' · '}Số lượng: {selectedSeats.length}
+                          </p>
+                        </div>
                       )}
                     </div>
+
+                    {/* Bên phải: các nút / thông báo */}
+                    <div className="flex flex-col items-end gap-3">
+                      {/* ONGOING EVENT: Show message instead of button */}
+                      {eventOngoing && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800 max-w-xs">
+                          Sự kiện đang diễn ra - Chỉ hiển thị sơ đồ chỗ ngồi
+                        </div>
+                      )}
+
+                      <div className="flex gap-3">
+                        {/* Nút cập nhật (dành cho organizer) */}
+                        {userRole === 'ORGANIZER' &&
+                          event.status === 'APPROVED' &&
+                          onEdit && (
+                            <button
+                              onClick={onEdit}
+                              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                              Cập nhật thông tin
+                            </button>
+                          )}
+
+                        {/* Đóng modal */}
+                        <button
+                          onClick={handleClose}
+                          className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          Đóng
+                        </button>
+
+                        {/* Chỉ hiện nút xác nhận khi đã chọn ít nhất 1 ghế và không phải organizer/staff/admin, event not ongoing, event not ended */}
+                        {selectedSeats.length > 0 && !isManager && !eventOngoing && (
+                          <button
+                            onClick={confirmSeats}
+                            disabled={eventEnded || eventClosed}
+                            className={`px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${eventEnded || eventClosed ? 'opacity-50 cursor-not-allowed bg-gray-400' : ''
+                              }`}
+                          >
+                            {eventClosed ? 'Sự kiện đã kết thúc' : eventEnded ? 'Sự kiện đã kết thúc' : 'Xác nhận đặt ghế'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   )

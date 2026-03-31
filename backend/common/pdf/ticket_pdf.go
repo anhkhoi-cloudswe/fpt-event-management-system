@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/jung-kurt/gofpdf"
 )
@@ -13,8 +12,9 @@ import (
 type TicketPDFData struct {
 	TicketCode     string
 	EventName      string
-	EventDate      time.Time
-	EndTime        time.Time
+	EventDate      string // RFC3339 format: "2026-04-01T09:00:00+07:00"
+	EventStartTime string // RFC3339 format: "2026-04-01T09:00:00+07:00"
+	EventEndTime   string // RFC3339 format: "2026-04-01T16:00:00+07:00"
 	VenueName      string
 	AreaName       string
 	Address        string
@@ -101,8 +101,13 @@ func contains(str, substr string) bool {
 // GenerateTicketPDF tạo PDF vé điện tử với QR code
 // Trả về PDF bytes có thể lưu file hoặc attach email
 func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
-	eventStart := data.EventDate
-	eventEnd := data.EndTime
+	// ✅ WALL-CLOCK APPROACH: Extract date and time directly from RFC3339 strings without parsing
+
+	// Extract date from EventDate: "2026-04-01T09:00:00+07:00" -> "April 1, 2026"
+	dateStr := extractAndFormatDateFromRFC3339(data.EventDate)
+
+	// Extract time range from EventStartTime and EventEndTime
+	timeStr := extractAndFormatTimeRangeFromRFC3339(data.EventStartTime, data.EventEndTime)
 
 	// Khởi tạo PDF
 	pdf := gofpdf.New("P", "mm", "A4", "")
@@ -156,10 +161,8 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	pdf.CellFormat(75, 7.2, "Event Time:", "", 1, "L", false, 0, "") // +20%: 6 → 7.2
 	pdf.SetFont("Arial", "B", 16.8)
 	pdf.SetX(115)
-	dateStr := eventStart.Format("January 2, 2006")
 	pdf.CellFormat(75, 6, dateStr, "", 1, "L", false, 0, "") // +20%: 5 → 6
 	pdf.SetX(115)
-	timeStr := formatEventTimeRange(eventStart, eventEnd)
 	pdf.CellFormat(75, 6, timeStr, "", 1, "L", false, 0, "")
 	pdf.Ln(2.4)
 
@@ -259,15 +262,78 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func formatEventTimeRange(startTime, endTime time.Time) string {
-	if startTime.IsZero() {
+// formatEventTimeRange formats event start and end time as HH:mm - HH:mm
+// ✅ NOTE: Extracts time directly from RFC3339 strings without any Date object manipulation
+func formatEventTimeRange(startTime, endTime string) string {
+	if startTime == "" {
 		return ""
 	}
 
-	startTimeStr := startTime.Format("15:04")
-	if endTime.IsZero() {
+	startTimeStr := extractTimeFromRFC3339(startTime)
+	if endTime == "" {
 		return startTimeStr
 	}
 
-	return fmt.Sprintf("%s - %s", startTimeStr, endTime.Format("15:04"))
+	endTimeStr := extractTimeFromRFC3339(endTime)
+	return fmt.Sprintf("%s - %s", startTimeStr, endTimeStr)
+}
+
+// extractTimeFromRFC3339 extracts HH:mm from RFC3339 string
+// Example: "2026-04-01T09:00:00+07:00" -> "09:00"
+func extractTimeFromRFC3339(rfc3339Str string) string {
+	if len(rfc3339Str) < 16 {
+		return ""
+	}
+	// Format: "2026-04-01T09:00:00..."
+	// Position: 0123456789...
+	// Extract from position 11 to 16: "09:00"
+	if rfc3339Str[10] == 'T' || rfc3339Str[10] == ' ' {
+		return rfc3339Str[11:16]
+	}
+	return ""
+}
+
+// extractAndFormatDateFromRFC3339 extracts and formats date from RFC3339 string
+// Example: "2026-04-01T09:00:00+07:00" -> "April 1, 2026"
+func extractAndFormatDateFromRFC3339(rfc3339Str string) string {
+	if len(rfc3339Str) < 10 {
+		return ""
+	}
+	// Extract YYYY-MM-DD
+	datePart := rfc3339Str[:10]
+	parts := strings.Split(datePart, "-")
+	if len(parts) != 3 {
+		return ""
+	}
+	// parts = ["2026", "04", "01"]
+	// Convert to month name using map
+	monthMap := map[string]string{
+		"01": "January", "02": "February", "03": "March", "04": "April",
+		"05": "May", "06": "June", "07": "July", "08": "August",
+		"09": "September", "10": "October", "11": "November", "12": "December",
+	}
+	monthName := monthMap[parts[1]]
+	day := strings.TrimLeft(parts[2], "0") // Remove leading zero
+	if day == "" {
+		day = "0"
+	}
+	year := parts[0]
+	return fmt.Sprintf("%s %s, %s", monthName, day, year)
+}
+
+// extractAndFormatTimeRangeFromRFC3339 extracts and formats time range
+// Example: ("2026-04-01T09:00:00+07:00", "2026-04-01T16:00:00+07:00") -> "09:00 - 16:00"
+func extractAndFormatTimeRangeFromRFC3339(startRFC, endRFC string) string {
+	startTime := extractTimeFromRFC3339(startRFC)
+	if startTime == "" {
+		return ""
+	}
+	if endRFC == "" {
+		return startTime
+	}
+	endTime := extractTimeFromRFC3339(endRFC)
+	if endTime == "" {
+		return startTime
+	}
+	return fmt.Sprintf("%s - %s", startTime, endTime)
 }

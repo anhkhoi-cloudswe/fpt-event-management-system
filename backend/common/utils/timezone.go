@@ -1,6 +1,10 @@
 package utils
 
-import "time"
+import (
+	"time"
+
+	"github.com/fpt-event-services/common/timeutil"
+)
 
 var (
 	vietnamLocationName = "Asia/Ho_Chi_Minh"
@@ -49,6 +53,8 @@ func DBTimeToVietnamTime(t time.Time) time.Time {
 }
 
 // DBTimeToVNRFC3339 formats DB time as RFC3339 in Vietnam timezone.
+// ⚠️ DEPRECATED: This applies timezone conversion which causes double-shift on wall-clock values.
+// Use FormatTimeToWallClockRFC3339() instead.
 func DBTimeToVNRFC3339(t time.Time) string {
 	t = DBTimeToVietnamTime(t)
 	if t.IsZero() {
@@ -57,9 +63,23 @@ func DBTimeToVNRFC3339(t time.Time) string {
 	return t.Format(time.RFC3339)
 }
 
+// FormatTimeToWallClockRFC3339 formats a wall-clock time.Time as RFC3339 with +07:00 offset.
+// This is the CORRECT function for wall-clock DATETIME values from the database.
+// It does NOT apply timezone conversion - just manual +07:00 append.
+// Use this instead of DBTimeToVNRFC3339 when displaying event times to emails/PDFs.
+func FormatTimeToWallClockRFC3339(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	// Format: "2026-04-01T09:00:00+07:00"
+	// Do NOT use .In() - just append +07:00 to wall-clock value
+	return t.Format("2006-01-02T15:04:05") + "+07:00"
+}
+
 // NowInVietnam returns current time in Asia/Ho_Chi_Minh.
+// This function respects the SYSTEM_TIME_OVERRIDE environment variable.
 func NowInVietnam() time.Time {
-	return time.Now().In(VietnamLocation())
+	return timeutil.GetNow().In(VietnamLocation())
 }
 
 // FormatVietnamDateTime formats a timestamp as HH:mm dd/MM/yyyy in Vietnam timezone.

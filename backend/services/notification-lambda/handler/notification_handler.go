@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/email"
@@ -243,33 +242,17 @@ func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (eve
 		return createNotifyResponse(http.StatusInternalServerError, map[string]interface{}{"success": false, "error": "failed to generate QR PNG"})
 	}
 
-	// Step 3: Parse event date
-	eventDate, err := time.Parse(time.RFC3339, data.EventDate)
-	if err != nil {
-		eventDate = time.Now()
-	}
-	eventDate = utils.ToVietnamTime(eventDate)
+	// ✅ WALL-CLOCK APPROACH: Pass RFC3339 strings directly without any timezone conversions
+	// The database connection has `SET time_zone = '+07:00'`, so the strings are already in correct format
+	// Do NOT parse to time.Time and apply NormalizeDBTimeAsUTC() + ToVietnamTime()
 
-	eventEndTime, err := time.Parse(time.RFC3339, data.EndTime)
-	if err != nil {
-		eventEndTime = time.Time{}
-	}
-	if !eventEndTime.IsZero() {
-		eventEndTime = utils.ToVietnamTime(eventEndTime)
-	}
-
-	startTimeRFC3339 := eventDate.Format(time.RFC3339)
-	endTimeRFC3339 := ""
-	if !eventEndTime.IsZero() {
-		endTimeRFC3339 = eventEndTime.Format(time.RFC3339)
-	}
-
-	// Step 4: Generate PDF
+	// Step 3: Generate PDF
 	pdfBytes, err := ticketpdf.GenerateTicketPDF(ticketpdf.TicketPDFData{
 		TicketCode:     data.TicketCode,
 		EventName:      data.EventTitle,
-		EventDate:      eventDate,
-		EndTime:        eventEndTime,
+		EventDate:      data.EventDate, // RFC3339 string: "2026-04-01T09:00:00+07:00"
+		EventStartTime: data.StartTime, // RFC3339 string: "2026-04-01T09:00:00+07:00"
+		EventEndTime:   data.EndTime,   // RFC3339 string: "2026-04-01T16:00:00+07:00"
 		VenueName:      data.VenueName,
 		AreaName:       data.AreaName,
 		Address:        data.VenueAddress,
@@ -300,8 +283,8 @@ func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (eve
 		AreaName:       data.AreaName,
 		MapURL:         data.MapURL,
 		TotalAmount:    data.TotalAmount,
-		StartTime:      startTimeRFC3339,
-		EndTime:        endTimeRFC3339,
+		StartTime:      data.StartTime, // RFC3339 string: "2026-04-01T09:00:00+07:00"
+		EndTime:        data.EndTime,   // RFC3339 string: "2026-04-01T16:00:00+07:00"
 		QRCodeBase64:   qrBase64,
 		PaymentMethod:  data.PaymentMethod,
 		PDFAttachment:  pdfBytes,
@@ -325,26 +308,6 @@ func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (eve
 func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData) (events.APIGatewayProxyResponse, error) {
 	var pdfAttachments []email.PDFAttachment
 
-	eventEndTime, err := time.Parse(time.RFC3339, data.EndTime)
-	if err != nil {
-		eventEndTime = time.Time{}
-	}
-	if !eventEndTime.IsZero() {
-		eventEndTime = utils.ToVietnamTime(eventEndTime)
-	}
-
-	multipleStartTime, err := time.Parse(time.RFC3339, data.EventDate)
-	if err != nil {
-		multipleStartTime = time.Now()
-	}
-	multipleStartTime = utils.ToVietnamTime(multipleStartTime)
-
-	multipleStartTimeRFC3339 := multipleStartTime.Format(time.RFC3339)
-	multipleEndTimeRFC3339 := ""
-	if !eventEndTime.IsZero() {
-		multipleEndTimeRFC3339 = eventEndTime.Format(time.RFC3339)
-	}
-
 	for _, ticket := range data.Tickets {
 		// Generate QR PNG bytes
 		qrPngBytes, err := qrcode.GenerateTicketQRPngBytes(ticket.TicketID, 300)
@@ -353,19 +316,17 @@ func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData
 			continue
 		}
 
-		// Parse event date
-		eventDate, err := time.Parse(time.RFC3339, ticket.EventDate)
-		if err != nil {
-			eventDate = time.Now()
-		}
-		eventDate = utils.ToVietnamTime(eventDate)
+		// ✅ WALL-CLOCK APPROACH: Pass RFC3339 strings directly without any timezone conversions
+		// The database connection has `SET time_zone = '+07:00'`, so the strings are already in correct format
+		// Do NOT parse to time.Time and apply NormalizeDBTimeAsUTC() + ToVietnamTime()
 
 		// Generate PDF
 		pdfBytes, err := ticketpdf.GenerateTicketPDF(ticketpdf.TicketPDFData{
 			TicketCode:     ticket.TicketCode,
 			EventName:      ticket.EventName,
-			EventDate:      eventDate,
-			EndTime:        eventEndTime,
+			EventDate:      ticket.EventDate, // RFC3339 string: "2026-04-01T09:00:00+07:00"
+			EventStartTime: ticket.EventDate, // RFC3339 string: use EventDate as start time
+			EventEndTime:   data.EndTime,     // RFC3339 string: "2026-04-01T16:00:00+07:00"
 			VenueName:      ticket.VenueName,
 			AreaName:       ticket.AreaName,
 			Address:        ticket.VenueAddress,
@@ -394,8 +355,8 @@ func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData
 		UserEmail:      data.UserEmail,
 		UserName:       data.UserName,
 		EventTitle:     data.EventTitle,
-		EventDate:      multipleStartTimeRFC3339,
-		EndTime:        multipleEndTimeRFC3339,
+		EventDate:      data.EventDate, // RFC3339 string: "2026-04-01T09:00:00+07:00"
+		EndTime:        data.EndTime,   // RFC3339 string: "2026-04-01T16:00:00+07:00"
 		VenueName:      data.VenueName,
 		VenueAddress:   data.VenueAddress,
 		TicketCount:    len(data.Tickets),
@@ -448,6 +409,7 @@ func (h *NotificationHandler) HandleSendTickets(ctx context.Context, request eve
 	}
 
 	if req.SingleTicket != nil {
+		h.logger.Info("[NOTIFY] 🔍 Payload received - StartTime='%s', EndTime='%s'", req.SingleTicket.StartTime, req.SingleTicket.EndTime)
 		h.logger.Info("[NOTIFY] ✅ send-tickets received single ticket payload for %s (ticketId=%d)", req.SingleTicket.UserEmail, req.SingleTicket.TicketID)
 		resp, err := h.handleSingleTicketPDF(req.SingleTicket)
 		if err != nil {

@@ -159,6 +159,18 @@ func ParseEventTime(timeStr string) (time.Time, error) {
 
 // FormatEventTimeForUTCStorage converts a parsed event time to UTC SQL datetime.
 // Input can be Vietnam-local or any timezone-aware time; output is always UTC.
+// ⚠️ DEPRECATED: Use FormatEventTimeAsWallClockTime instead to preserve actual wall-clock times
 func FormatEventTimeForUTCStorage(t time.Time) string {
 	return t.UTC().Format("2006-01-02 15:04:05")
+}
+
+// FormatEventTimeAsWallClockTime preserves the wall-clock time without timezone conversion.
+// This ensures that when a user inputs "09:00 AM Vietnam time", it's saved as "09:00:00"
+// in the database with the DSN timezone handler managing interpretation.
+// ✅ RECOMMENDED: Use this instead of FormatEventTimeForUTCStorage to maintain wall-clock time integrity
+func FormatEventTimeAsWallClockTime(t time.Time) string {
+	// Convert to Vietnam timezone first to ensure we're working with the intended time
+	vietnamTime := t.In(utils.VietnamLocation())
+	// Format WITHOUT timezone conversion - preserve the wall-clock time
+	return vietnamTime.Format("2006-01-02 15:04:05")
 }

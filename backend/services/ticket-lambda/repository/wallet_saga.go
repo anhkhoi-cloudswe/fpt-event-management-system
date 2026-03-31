@@ -394,10 +394,10 @@ func (r *TicketRepository) sendTicketEmailsAsync(data *sagaTicketData, userID, e
 
 	if config.IsFeatureEnabled(config.FlagNotificationAPIEnabled) {
 		ctx := context.Background()
-		startTimeVN := utils.DBTimeToVNRFC3339(startTime)
+		startTimeVN := utils.FormatTimeToWallClockRFC3339(startTime)
 		endTimeVN := ""
 		if !data.EventEnd.IsZero() {
-			endTimeVN = utils.DBTimeToVNRFC3339(data.EventEnd)
+			endTimeVN = utils.FormatTimeToWallClockRFC3339(data.EventEnd)
 		}
 		if len(data.TicketIDs) == 1 {
 			ticketID, _ := strconv.Atoi(data.TicketIDs[0])

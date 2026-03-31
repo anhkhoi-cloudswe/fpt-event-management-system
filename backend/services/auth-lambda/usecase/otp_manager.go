@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fpt-event-services/common/timeutil"
 	"github.com/fpt-event-services/services/auth-lambda/models"
 )
 
@@ -46,7 +47,7 @@ func (m *OTPManager) GenerateOTP(email string) string {
 	m.records[email] = &models.OTPRecord{
 		Email:     email,
 		OTP:       otp,
-		ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
+		ExpiresAt: timeutil.GetNow().Add(5 * time.Minute).Unix(),
 		Attempts:  0,
 		Used:      false,
 	}
@@ -71,7 +72,7 @@ func (m *OTPManager) VerifyOTP(email, otp string) (bool, string) {
 	}
 
 	// Kiểm tra hết hạn
-	if time.Now().Unix() > record.ExpiresAt {
+	if timeutil.GetNow().Unix() > record.ExpiresAt {
 		return false, "OTP đã hết hạn"
 	}
 
@@ -103,7 +104,7 @@ func (m *OTPManager) cleanupExpired() {
 	ticker := time.NewTicker(1 * time.Minute)
 	for range ticker.C {
 		m.mu.Lock()
-		now := time.Now().Unix()
+		now := timeutil.GetNow().Unix()
 		for email, record := range m.records {
 			if now > record.ExpiresAt {
 				delete(m.records, email)

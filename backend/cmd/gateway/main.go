@@ -15,6 +15,7 @@ import (
 	"github.com/fpt-event-services/common/jwt"
 	"github.com/fpt-event-services/common/registry"
 	"github.com/fpt-event-services/common/storage"
+	"github.com/fpt-event-services/common/timeutil"
 	"github.com/joho/godotenv"
 )
 
@@ -300,7 +301,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// Health check — aggregate all backends
+	// Health check — aggregate all backends + Time Machine timestamp
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		results := make(map[string]string)
 		allOK := true
@@ -330,8 +331,10 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"gateway":  "UP",
-			"services": results,
+			"gateway":   "UP",
+			"services":  results,
+			"timestamp": timeutil.GetNow().UnixMilli(), // Time Machine timestamp for frontend sync
+			"iso":       timeutil.GetNow().Format(time.RFC3339),
 		})
 	})
 
@@ -343,6 +346,18 @@ func main() {
 	mux.HandleFunc("/api/upload/image", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[GATEWAY] ↑ UPLOAD %s %s (handled natively)", r.Method, r.URL.Path)
 		storage.HandleImageUpload(w, r)
+	})
+
+	// ── System Health + Time Machine — exposed at /api/health for Frontend ──────────
+	// Frontend RealtimeClock component fetches this to sync with Backend's time
+	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":     "UP",
+			"systemTime": timeutil.GetNow().Format(time.RFC3339),
+			"timestamp":  timeutil.GetNow().UnixMilli(),
+		})
 	})
 
 	// Main routing handler

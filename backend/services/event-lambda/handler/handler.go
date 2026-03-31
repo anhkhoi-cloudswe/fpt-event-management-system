@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
@@ -46,7 +45,7 @@ func NewEventHandlerWithDB(dbConn *sql.DB) *EventHandler {
 //
 // Permission Logic:
 // - Nếu Role == 'ADMIN': Trả về toàn bộ danh sách
-// - Nếu Role == 'ORGANIZER': Chỉ trả về các sự kiện có organizer_id == userID
+// - Nếu Role == 'ORGANIZER': Chỉ trả về các sự kiện có created_by == userID
 // - Nếu Role == ” (public/guest): Trả về toàn bộ danh sách
 func (h *EventHandler) HandleGetEvents(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Extract user info from headers (set by authMiddleware)
@@ -289,15 +288,15 @@ func (h *EventHandler) HandleCreateEventRequest(ctx context.Context, request eve
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
 
-	// ===== CRITICAL: INPUT LAYER - VIETNAM → UTC CONVERSION =====
+	// ===== WALL-CLOCK TIME PRESERVATION =====
 	// User inputs times as Vietnam local time (e.g., "09:00")
-	// We MUST convert to UTC before storage to maintain integrity
-	// Example: 09:00 VN (2026-04-01T09:00:00+07:00) → 02:00 UTC (2026-04-01 02:00:00)
-	// This ensures the database stores UTC, preventing timezone drift in DST regions
-	req.PreferredStartTime = FormatEventTimeForUTCStorage(startTime)
-	req.PreferredEndTime = FormatEventTimeForUTCStorage(endTime)
-	log.Info("HandleCreateEventRequest - Time conversion complete: Input=%s UTC=%s",
-		startTime.Format(time.RFC3339), req.PreferredStartTime)
+	// We MUST preserve the wall-clock time EXACTLY as-is in storage
+	// Example: 09:00 VN → stored as "2026-04-01 09:00:00" (no UTC conversion)
+	// The DSN loc=Asia/Ho_Chi_Minh ensures proper interpretation on read
+	req.PreferredStartTime = FormatEventTimeAsWallClockTime(startTime)
+	req.PreferredEndTime = FormatEventTimeAsWallClockTime(endTime)
+	log.Info("HandleCreateEventRequest - Time preserved as wall-clock: Start=%s End=%s",
+		req.PreferredStartTime, req.PreferredEndTime)
 
 	// Create event request
 	requestID, err := h.useCase.CreateEventRequest(ctx, userID, &req)
@@ -719,9 +718,10 @@ func (h *EventHandler) HandleUpdateEvent(ctx context.Context, request events.API
 			return createMessageResponse(http.StatusBadRequest, err.Error())
 		}
 
-		// Keep storage timezone-consistent: UTC in DB, VN conversion at response/render.
-		req.StartTime = FormatEventTimeForUTCStorage(startTime)
-		req.EndTime = FormatEventTimeForUTCStorage(endTime)
+		// Preserve wall-clock time: keep the actual local time without UTC conversion
+		// The DSN loc=Asia/Ho_Chi_Minh handles proper interpretation on read
+		req.StartTime = FormatEventTimeAsWallClockTime(startTime)
+		req.EndTime = FormatEventTimeAsWallClockTime(endTime)
 	}
 
 	// Update event

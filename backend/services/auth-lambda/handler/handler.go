@@ -18,6 +18,7 @@ import (
 	"github.com/fpt-event-services/common/logger"
 	"github.com/fpt-event-services/common/recaptcha"
 	"github.com/fpt-event-services/common/response"
+	"github.com/fpt-event-services/common/timeutil"
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/auth-lambda/models"
 	"github.com/fpt-event-services/services/auth-lambda/usecase"
@@ -52,7 +53,7 @@ func newForgotPasswordLimiter() *forgotPasswordLimiter {
 }
 
 func (l *forgotPasswordLimiter) allow(email, ip string) bool {
-	now := time.Now()
+	now := timeutil.GetNow()
 	emailKey := strings.ToLower(strings.TrimSpace(email))
 	ipKey := strings.TrimSpace(ip)
 

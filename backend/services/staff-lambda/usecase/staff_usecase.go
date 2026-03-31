@@ -127,7 +127,7 @@ func (uc *StaffUseCase) processCheckin(ctx context.Context, userID int, ticketID
 	if ticket == nil {
 		errCode := "InvalidTicket"
 		result.ErrorCode = &errCode
-		errMsg := fmt.Sprintf("Mã vé không hợp lệ: Không tìm thấy vé #%d trong hệ thống", ticketID)
+		errMsg := "Vé không hợp lệ."
 		result.Error = &errMsg
 		log.Warn("processCheckin - %s", errMsg)
 		return result
@@ -162,7 +162,7 @@ func (uc *StaffUseCase) processCheckin(ctx context.Context, userID int, ticketID
 	if ticket.Status == "CANCELLED" {
 		errCode := "TicketCancelled"
 		result.ErrorCode = &errCode
-		errMsg := fmt.Sprintf("🚫 Vé #%d cỽa %s đã bị hủy, không thể check-in", ticketID, ticket.CustomerName)
+		errMsg := "Vé không hợp lệ. (đã bị hủy)"
 		result.Error = &errMsg
 		log.Warn("processCheckin - ticket CANCELLED TicketID=%d", ticketID)
 		return result
@@ -171,13 +171,16 @@ func (uc *StaffUseCase) processCheckin(ctx context.Context, userID int, ticketID
 	if ticket.Status == "CHECKED_IN" {
 		errCode := "AlreadyCheckedIn"
 		result.ErrorCode = &errCode
-		checkInTimeStr := "lúc đó"
+		checkInTimeStr := ""
 		if ticket.CheckInTime != nil {
 			checkInTimeStr = utils.ToVietnamTime(*ticket.CheckInTime).Format("15:04 02/01")
+			errMsg := fmt.Sprintf("Vé này đã được dùng lúc %s.", checkInTimeStr)
+			result.Error = &errMsg
+			result.PreviousTime = &checkInTimeStr
+		} else {
+			errMsg := "Vé này đã được dùng rồi."
+			result.Error = &errMsg
 		}
-		errMsg := fmt.Sprintf("📢 Vé đã vào cổng!\nKhách %s đã check-in %s.\nVui lòng không cho vào lần 2!", ticket.CustomerName, checkInTimeStr)
-		result.Error = &errMsg
-		result.PreviousTime = &checkInTimeStr
 		log.Warn("processCheckin - already CHECKED_IN TicketID=%d", ticketID)
 		return result
 	}
@@ -185,7 +188,7 @@ func (uc *StaffUseCase) processCheckin(ctx context.Context, userID int, ticketID
 	if ticket.Status == "CHECKED_OUT" {
 		errCode := "AlreadyCheckedOut"
 		result.ErrorCode = &errCode
-		errMsg := fmt.Sprintf("🎫 Vé đã ra về!\nKhách %s đã check-out.\nVé không còn giá trị.", ticket.CustomerName)
+		errMsg := "Vé đã sử dụng xong. Không thể check-in lần nữa."
 		result.Error = &errMsg
 		log.Warn("processCheckin - ticket CHECKED_OUT TicketID=%d", ticketID)
 		return result
@@ -194,21 +197,27 @@ func (uc *StaffUseCase) processCheckin(ctx context.Context, userID int, ticketID
 	if ticket.Status != "BOOKED" {
 		errCode := "InvalidStatus"
 		result.ErrorCode = &errCode
-		errMsg := fmt.Sprintf("Trạng thái vé không hợp lệ: %s (yêu cầu: BOOKED)", ticket.Status)
+		errMsg := "Vé không hợp lệ."
 		result.Error = &errMsg
 		log.Warn("processCheckin - invalid status=%s TicketID=%d", ticket.Status, ticketID)
 		return result
 	}
 	log.Debug("processCheckin - status BOOKED TicketID=%d", ticketID)
 
+	// ✅ CRITICAL FIX: Ensure all times are in Vietnam timezone for correct comparison
+	// DB returns times in server local timezone (loc=Local in DSN)
+	// Convert to Vietnam timezone for consistent comparison
+	eventStartTime := utils.ToVietnamTime(ticket.EventStartTime)
+	eventEndTime := utils.ToVietnamTime(ticket.EventEndTime)
+
 	// Kiểm tra thời gian (cho phép check-in trước X phút)
 	// ✅ Sử dụng per-event config nếu có, fallback to global
 	checkinWindow := config.GetEffectiveCheckinOffset(ticket.EventCheckinOffset)
-	allowedTime := ticket.EventStartTime.Add(-time.Duration(checkinWindow) * time.Minute)
+	allowedTime := eventStartTime.Add(-time.Duration(checkinWindow) * time.Minute)
 
 	log.Debug("processCheckin - time check EventID=%d start=%s allowed=%s now=%s",
 		ticket.EventID,
-		ticket.EventStartTime.Format("15:04:05 02/01/2006 MST"),
+		eventStartTime.Format("15:04:05 02/01/2006 MST"),
 		allowedTime.Format("15:04:05 02/01/2006 MST"),
 		now.Format("15:04:05 02/01/2006 MST"),
 	)
@@ -216,25 +225,20 @@ func (uc *StaffUseCase) processCheckin(ctx context.Context, userID int, ticketID
 	if now.Before(allowedTime) {
 		errCode := "TooEarlyToCheckIn"
 		result.ErrorCode = &errCode
-		minutesRemaining := int(allowedTime.Sub(now).Minutes())
-		errMsg := fmt.Sprintf("Cổng check-in mở lúc %s (còn %d phút nữa).\nSự kiện: %s | Khách: %s",
-			allowedTime.Format("15:04"),
-			minutesRemaining,
-			ticket.EventName,
-			ticket.CustomerName)
+		allowedTimeStr := allowedTime.Format("15:04")
+		errMsg := fmt.Sprintf("Cửa chưa mở. Vui lòng quay lại lúc %s.", allowedTimeStr)
 		result.Error = &errMsg
-		log.Info("processCheckin - too early TicketID=%d minutesRemaining=%d", ticketID, minutesRemaining)
+		log.Info("processCheckin - too early TicketID=%d minutesRemaining=%.0f", ticketID, allowedTime.Sub(now).Minutes())
 		return result
 	}
 
 	// Kiểm tra sự kiện đã kết thúc chưa
-	if now.After(ticket.EventEndTime) {
+	if now.After(eventEndTime) {
 		errCode := "EventEnded"
 		result.ErrorCode = &errCode
-		errMsg := fmt.Sprintf("Sự kiện '%s' đã kết thúc lúc %s. Không thể check-in thêm.",
-			ticket.EventName, utils.ToVietnamTime(ticket.EventEndTime).Format("15:04 02/01"))
+		errMsg := "Sự kiện đã kết thúc."
 		result.Error = &errMsg
-		log.Info("processCheckin - event ended TicketID=%d", ticketID)
+		log.Info("processCheckin - event ended TicketID=%d now=%s eventEndTime=%s", ticketID, now.Format("15:04:05"), eventEndTime.Format("15:04:05"))
 		return result
 	}
 
@@ -393,10 +397,16 @@ func (uc *StaffUseCase) processCheckout(ctx context.Context, userID int, ticketI
 		return result
 	}
 
+	// ✅ CRITICAL FIX: Ensure all times are in Vietnam timezone for correct comparison
+	// DB returns times in server local timezone (loc=Local in DSN)
+	// Convert to Vietnam timezone for consistent comparison
+	eventStartTime := utils.ToVietnamTime(ticket.EventStartTime)
+	eventEndTime := utils.ToVietnamTime(ticket.EventEndTime)
+
 	// Kiểm tra thời gian (phải sau start_time + minMinutes)
 	// ✅ Sử dụng per-event config nếu có, fallback to global
 	minMinutes := config.GetEffectiveCheckoutOffset(ticket.EventCheckoutOffset)
-	allowedTime := ticket.EventStartTime.Add(time.Duration(minMinutes) * time.Minute)
+	allowedTime := eventStartTime.Add(time.Duration(minMinutes) * time.Minute)
 	if now.Before(allowedTime) {
 		errCode := "TooEarlyToCheckOut"
 		result.ErrorCode = &errCode
@@ -411,11 +421,12 @@ func (uc *StaffUseCase) processCheckout(ctx context.Context, userID int, ticketI
 	}
 
 	// Kiểm tra sự kiện đã kết thúc chưa
-	if now.After(ticket.EventEndTime) {
+	if now.After(eventEndTime) {
 		errCode := "EventEnded"
 		result.ErrorCode = &errCode
 		errMsg := fmt.Sprintf("Sự kiện '%s' đã kết thúc. Không thể check-out thêm.", ticket.EventName)
 		result.Error = &errMsg
+		log.Info("processCheckout - event ended TicketID=%d now=%s eventEndTime=%s", ticketID, now.Format("15:04:05"), eventEndTime.Format("15:04:05"))
 		return result
 	}
 
