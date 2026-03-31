@@ -453,6 +453,19 @@ export default function Dashboard() {
     return items
   }
 
+  // ✅ Helper function: Convert event.status to badge label
+  // Based on 100% field value, NOT time-based calculation
+  const getStatusBadge = (status?: string, tab?: 'open' | 'upcoming' | 'closed') => {
+    switch (status) {
+      case 'OPEN':
+        return tab === 'upcoming' ? 'Sắp mở' : 'Đang mở'
+      case 'CLOSED':
+        return 'Đã kết thúc'
+      default:
+        return status || 'Không xác định'
+    }
+  }
+
   return (
     <div className="w-full mx-auto">
       {/* Tiêu đề + Tìm kiếm */}
@@ -550,9 +563,9 @@ export default function Dashboard() {
                   // Parse ngày giờ event
                   const eventDate = new Date(event.startTime)
 
-                  // Kiểm tra event có phải hôm nay không
-                  const today = startOfDay(new Date())
-                  const isToday = isSameDay(eventDate, today)
+                  // ✅ FIXED: Use event.status field from API instead of calculating isToday
+                  // Badge status is determined by the status field, not time-based logic
+                  const showTodayBadge = activeTab === 'open' && event.status === 'OPEN'
 
                   return (
                     // Event card: dùng button để click mở modal detail
@@ -560,8 +573,8 @@ export default function Dashboard() {
                       key={event.eventId}
                       onClick={() => openEventDetail(event.eventId)} // click -> mở modal + fetch detail
                       className={`text-left block rounded-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer bg-white h-full flex flex-col dark:bg-gray-800 ${
-                        // Nếu hôm nay -> highlight đỏ + scale
-                        isToday
+                        // Highlight "today" events
+                        showTodayBadge
                           ? 'border-4 border-red-500 shadow-2xl shadow-red-500/50 transform scale-105'
                           : 'border border-gray-200 dark:border-gray-700'
                         }`}
@@ -574,8 +587,8 @@ export default function Dashboard() {
                             alt={event.title}
                             className="w-full h-40 object-cover"
                           />
-                          {/* Nếu hôm nay -> show badge "🔥 HÔM NAY" */}
-                          {isToday && (
+                          {/* Show "🔥 HÔM NAY" badge only for today's OPEN events */}
+                          {showTodayBadge && (
                             <span className="absolute top-3 right-3 px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg shadow-lg animate-pulse">
                               🔥 HÔM NAY
                             </span>
@@ -585,7 +598,7 @@ export default function Dashboard() {
                         // Nếu không có bannerUrl -> hiển thị background + icon Calendar
                         <div className="w-full h-40 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center relative">
                           <Calendar className="w-12 h-12 text-blue-400" />
-                          {isToday && (
+                          {showTodayBadge && (
                             <span className="absolute top-3 right-3 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg shadow-lg animate-pulse">
                               🔥 HÔM NAY
                             </span>
@@ -595,21 +608,23 @@ export default function Dashboard() {
 
                       {/* Content */}
                       <div className="p-4 flex-1 flex flex-col">
-                        {/* Status Badge - For today events */}
-                        {isToday && (
-                          <span className="inline-block px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded mb-2 w-fit">
-                            Đang mở
-                          </span>
-                        )}
+                        {/* Status Badge - Display based on event.status field */}
+                        <span className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 w-fit ${
+                          event.status === 'CLOSED'
+                            ? 'bg-gray-100 text-gray-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}>
+                          {getStatusBadge(event.status, activeTab)}
+                        </span>
 
                         {/* Title */}
-                        <h3 className={`text-sm font-bold mb-2 line-clamp-2 ${isToday ? 'text-red-600' : 'text-gray-900 dark:text-white'
+                        <h3 className={`text-sm font-bold mb-2 line-clamp-2 ${showTodayBadge ? 'text-red-600' : 'text-gray-900 dark:text-white'
                           }`}>
                           {event.title}
                         </h3>
 
                         {/* Date & Time */}
-                        <p className={`text-xs mb-2 font-semibold line-clamp-1 ${isToday ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'
+                        <p className={`text-xs mb-2 font-semibold line-clamp-1 ${showTodayBadge ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'
                           }`}>
                           {format(eventDate, 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
                         </p>
@@ -701,7 +716,6 @@ export default function Dashboard() {
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
                 {displayedEvents.map((event) => {
                   const eventDate = new Date(event.startTime)
-                  const isToday = isSameDay(eventDate, today)
 
                   return (
                     <button
@@ -717,29 +731,18 @@ export default function Dashboard() {
                             alt={event.title}
                             className="w-full h-40 object-cover"
                           />
-                          {/* Badge (đoạn này hiện tại chỉ show nếu isToday, nhưng upcoming đã lọc > today nên thường không xảy ra) */}
-                          {isToday && (
-                            <span className="absolute top-3 right-3 px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded">
-                              SẮP MỞ
-                            </span>
-                          )}
                         </div>
                       ) : (
                         <div className="w-full h-40 bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center relative">
                           <Calendar className="w-12 h-12 text-yellow-400" />
-                          {isToday && (
-                            <span className="absolute top-3 right-3 px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded">
-                              SẮP MỞ
-                            </span>
-                          )}
                         </div>
                       )}
 
                       {/* Content */}
                       <div className="p-4 flex-1 flex flex-col">
-                        {/* Status Badge */}
+                        {/* Status Badge - Display based on event.status field */}
                         <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded mb-2 w-fit">
-                          Sắp mở
+                          {getStatusBadge()}
                         </span>
 
                         <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">
@@ -854,7 +857,7 @@ export default function Dashboard() {
                     {/* Content */}
                     <div className="p-4 flex-1 flex flex-col">
                       <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded mb-4 w-fit">
-                        Đã kết thúc
+                        {getStatusBadge(event.status, activeTab)}
                       </span>
 
                       <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">
