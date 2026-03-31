@@ -609,11 +609,10 @@ export default function Dashboard() {
                       {/* Content */}
                       <div className="p-4 flex-1 flex flex-col">
                         {/* Status Badge - Display based on event.status field */}
-                        <span className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 w-fit ${
-                          event.status === 'CLOSED'
+                        <span className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 w-fit ${event.status === 'CLOSED'
                             ? 'bg-gray-100 text-gray-700'
                             : 'bg-red-100 text-red-700'
-                        }`}>
+                          }`}>
                           {getStatusBadge(event.status, activeTab)}
                         </span>
 
