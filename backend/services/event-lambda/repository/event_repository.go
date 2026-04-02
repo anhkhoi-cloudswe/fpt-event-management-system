@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -14,6 +15,11 @@ import (
 	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/event-lambda/models"
+)
+
+var (
+	ErrRequestCancelled  = errors.New("Không thể thực hiện: Yêu cầu này đã bị người tổ chức hủy trước đó!")
+	ErrRequestNotPending = errors.New("Không thể thực hiện: Yêu cầu này đã được xử lý.")
 )
 
 // Helper function to convert values to pointers
@@ -2050,6 +2056,29 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 	}
 	defer tx.Rollback()
 
+	// Lock request row and verify status (check-before-action)
+	var currentStatus string
+	lockQuery := `
+		SELECT status
+		FROM Event_Request
+		WHERE request_id = ?
+		FOR UPDATE
+	`
+	lockErr := tx.QueryRowContext(ctx, lockQuery, req.RequestID).Scan(&currentStatus)
+	if lockErr != nil {
+		if errors.Is(lockErr, sql.ErrNoRows) {
+			return fmt.Errorf("request not found")
+		}
+		return fmt.Errorf("failed to lock request: %w", lockErr)
+	}
+
+	if currentStatus == "CANCELLED" {
+		return ErrRequestCancelled
+	}
+	if currentStatus != "PENDING" {
+		return ErrRequestNotPending
+	}
+
 	// ============================================================
 	// SCENARIO 1: REJECTED
 	// ============================================================
@@ -3233,74 +3262,6 @@ func (r *EventRepository) CancelEvent(ctx context.Context, userID, eventID int) 
 
 func (r *EventRepository) CancelEventRequest(ctx context.Context, userID, requestID int) error {
 	log.Printf("[DB_UPDATE] Starting cancel for RequestID=%d, UserID=%d", requestID, userID)
-
-	// Step 1: Get request info and verify ownership
-	var status string
-	var requesterID int
-	var createdEventID sql.NullInt64
-
-	checkQuery := `
-		SELECT status, requester_id, created_event_id 
-		FROM Event_Request 
-		WHERE request_id = ?
-	`
-	err := r.db.QueryRowContext(ctx, checkQuery, requestID).Scan(&status, &requesterID, &createdEventID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			log.Printf("[DB_UPDATE] Request ID %d not found", requestID)
-			return fmt.Errorf("yêu cầu không tồn tại")
-		}
-		log.Printf("[DB_UPDATE] Query error: %v", err)
-		return fmt.Errorf("lỗi kiểm tra yêu cầu: %w", err)
-	}
-
-	// Verify ownership
-	if requesterID != userID {
-		log.Printf("[DB_UPDATE] User %d tried to cancel request %d owned by %d", userID, requestID, requesterID)
-		return fmt.Errorf("bạn không có quyền hủy yêu cầu này")
-	}
-
-	// Check if already cancelled
-	if status == "CANCELLED" {
-		log.Printf("[DB_UPDATE] Request %d already cancelled", requestID)
-		return fmt.Errorf("yêu cầu đã được hủy trước đó")
-	}
-
-	// Case 1: No created_event_id (chưa được duyệt) - Simple UPDATE
-	if !createdEventID.Valid {
-		log.Printf("[DB_UPDATE] Case 1: Request %d has no linked event, simple cancel", requestID)
-
-		updateQuery := `
-			UPDATE Event_Request 
-			SET status = 'CANCELLED' 
-			WHERE request_id = ? AND requester_id = ?
-		`
-		result, err := r.db.ExecContext(ctx, updateQuery, requestID, userID)
-		if err != nil {
-			log.Printf("[DB_UPDATE] Failed to update request: %v", err)
-			return fmt.Errorf("lỗi cập nhật yêu cầu: %w", err)
-		}
-
-		rowsAffected, err := result.RowsAffected()
-		if err != nil {
-			log.Printf("[DB_UPDATE] Failed to get rows affected: %v", err)
-			return fmt.Errorf("lỗi kiểm tra kết quả: %w", err)
-		}
-
-		if rowsAffected == 0 {
-			log.Printf("[DB_UPDATE] No rows affected for request %d", requestID)
-			return fmt.Errorf("không thể hủy yêu cầu")
-		}
-
-		log.Printf("[DB_UPDATE] Cancelled Request ID: %d (Linked Event: none)", requestID)
-		return nil
-	}
-
-	// Case 2: Has created_event_id (đã được duyệt) - Transaction với cả 2 bảng
-	eventID := int(createdEventID.Int64)
-	log.Printf("[DB_UPDATE] Case 2: Request %d linked to Event %d, need transaction", requestID, eventID)
-
-	// Start transaction
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		log.Printf("[DB_UPDATE] Failed to start transaction: %v", err)
@@ -3308,88 +3269,57 @@ func (r *EventRepository) CancelEventRequest(ctx context.Context, userID, reques
 	}
 	defer tx.Rollback()
 
-	// Update Event_Request
-	updateRequestQuery := `
-		UPDATE Event_Request 
-		SET status = 'CANCELLED' 
+	var status string
+	var requesterID int
+	lockQuery := `
+		SELECT status, requester_id
+		FROM Event_Request
 		WHERE request_id = ?
+		FOR UPDATE
 	`
-	result1, err := tx.ExecContext(ctx, updateRequestQuery, requestID)
+	err = tx.QueryRowContext(ctx, lockQuery, requestID).Scan(&status, &requesterID)
 	if err != nil {
-		log.Printf("[DB_UPDATE] Failed to update Event_Request in transaction: %v", err)
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("yêu cầu không tồn tại")
+		}
+		return fmt.Errorf("lỗi kiểm tra yêu cầu: %w", err)
+	}
+
+	if requesterID != userID {
+		return fmt.Errorf("bạn không có quyền hủy yêu cầu này")
+	}
+
+	if status == "CANCELLED" {
+		return fmt.Errorf("yêu cầu đã được hủy trước đó")
+	}
+
+	if status != "PENDING" {
+		return fmt.Errorf("Không thể hủy yêu cầu vì đơn này đã được xử lý (Duyệt/Từ chối) bởi Staff.")
+	}
+
+	updateQuery := `
+		UPDATE Event_Request
+		SET status = 'CANCELLED'
+		WHERE request_id = ? AND requester_id = ? AND status = 'PENDING'
+	`
+	result, err := tx.ExecContext(ctx, updateQuery, requestID, userID)
+	if err != nil {
 		return fmt.Errorf("lỗi cập nhật yêu cầu: %w", err)
 	}
 
-	rowsAffected1, _ := result1.RowsAffected()
-	if rowsAffected1 == 0 {
-		log.Printf("[DB_UPDATE] No rows affected in Event_Request for ID %d", requestID)
-		return fmt.Errorf("không thể cập nhật yêu cầu")
-	}
-
-	// Update Event
-	updateEventQuery := `
-		UPDATE Event 
-		SET status = 'CANCELLED' 
-		WHERE event_id = ?
-	`
-	result2, err := tx.ExecContext(ctx, updateEventQuery, eventID)
+	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		log.Printf("[DB_UPDATE] Failed to update Event in transaction: %v", err)
-		return fmt.Errorf("lỗi cập nhật sự kiện: %w", err)
+		return fmt.Errorf("lỗi kiểm tra kết quả: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("Không thể hủy yêu cầu vì đơn này đã được xử lý (Duyệt/Từ chối) bởi Staff.")
 	}
 
-	rowsAffected2, _ := result2.RowsAffected()
-	if rowsAffected2 == 0 {
-		log.Printf("[DB_UPDATE] No rows affected in Event for ID %d", eventID)
-		return fmt.Errorf("không thể cập nhật sự kiện")
-	}
-
-	// ✅ RELEASE VENUE AREA - Giải phóng địa điểm khi hủy yêu cầu đã được duyệt
-	// Lấy area_id từ Event để giải phóng
-	var areaID sql.NullInt64
-	areaQuery := `SELECT area_id FROM Event WHERE event_id = ?`
-	err = tx.QueryRowContext(ctx, areaQuery, eventID).Scan(&areaID)
-	if err == nil && areaID.Valid {
-		// Cập nhật venue_area status thành AVAILABLE để có thể đặt lại
-		releaseQuery := `
-			UPDATE Venue_Area 
-			SET status = 'AVAILABLE' 
-			WHERE area_id = ?
-			  AND status = 'UNAVAILABLE'
-			  AND EXISTS (
-				SELECT 1
-				FROM Event e_done
-				WHERE e_done.area_id = Venue_Area.area_id
-				  AND e_done.status IN ('CLOSED', 'CANCELLED')
-			  )
-			  AND NOT EXISTS (
-				SELECT 1
-				FROM Event e_active
-				WHERE e_active.area_id = Venue_Area.area_id
-				  AND e_active.status IN ('OPEN', 'UPDATING', 'PENDING')
-			  )
-		`
-		result3, err := tx.ExecContext(ctx, releaseQuery, areaID.Int64)
-		if err != nil {
-			log.Printf("[DB_UPDATE] Failed to release venue area: %v", err)
-			return fmt.Errorf("lỗi giải phóng địa điểm: %w", err)
-		}
-
-		rowsAffected3, _ := result3.RowsAffected()
-		if rowsAffected3 > 0 {
-			log.Printf("[DB_PROCESS] Successfully RELEASED Area [%d] to AVAILABLE after Cancellation of Request [%d]", areaID.Int64, requestID)
-		}
-	} else if err != nil && err != sql.ErrNoRows {
-		log.Printf("[DB_UPDATE] Warning: Failed to query area_id for event %d: %v", eventID, err)
-	}
-
-	// Commit transaction
 	if err := tx.Commit(); err != nil {
-		log.Printf("[DB_UPDATE] Failed to commit transaction: %v", err)
 		return fmt.Errorf("lỗi commit transaction: %w", err)
 	}
 
-	log.Printf("[DB_UPDATE] Cancelled Request ID: %d (Linked Event: %d)", requestID, eventID)
+	log.Printf("[DB_UPDATE] ✅ Cancelled pending request %d", requestID)
 	return nil
 }
 

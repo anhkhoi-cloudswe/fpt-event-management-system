@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -1243,6 +1244,29 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Lock request row and verify status (check-before-action)
+	var currentStatus string
+	lockQuery := `
+		SELECT status
+		FROM Event_Request
+		WHERE request_id = ?
+		FOR UPDATE
+	`
+	lockErr := tx.QueryRowContext(ctx, lockQuery, req.RequestID).Scan(&currentStatus)
+	if lockErr != nil {
+		if errors.Is(lockErr, sql.ErrNoRows) {
+			return fmt.Errorf("request not found")
+		}
+		return fmt.Errorf("failed to lock request: %w", lockErr)
+	}
+
+	if currentStatus == "CANCELLED" {
+		return ErrRequestCancelled
+	}
+	if currentStatus != "PENDING" {
+		return ErrRequestNotPending
+	}
 
 	// REJECTED scenario - same as before (no cross-domain)
 	if req.Action == "REJECTED" {

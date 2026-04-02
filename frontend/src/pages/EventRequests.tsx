@@ -441,14 +441,36 @@ export default function EventRequests() {
         fetchEventRequests()
       } else {
         // Fail
-        const errorData = await response.text()
-        const errorMessage = errorData || 'Failed to process request'
+        let errorMessage = 'Failed to process request'
+        const contentType = response.headers.get('Content-Type') || ''
+        if (contentType.includes('application/json')) {
+          const errorBody = await response.json().catch(() => null)
+          if (errorBody) {
+            if (typeof errorBody.error === 'string' && errorBody.error.trim() !== '') {
+              errorMessage = errorBody.error
+            } else if (typeof errorBody.message === 'string' && errorBody.message.trim() !== '') {
+              errorMessage = errorBody.message
+            }
+          }
+        } else {
+          const errorText = await response.text().catch(() => '')
+          if (errorText.trim() !== '') {
+            errorMessage = errorText
+          }
+        }
+
         showToast('error', errorMessage)
-        throw new Error(errorMessage)
+        fetchEventRequests()
+        return
       }
     } catch (error) {
       console.error('Error processing request:', error)
-      showToast('error', 'Không thể xử lý yêu cầu. Vui lòng thử lại.')
+      const fallbackMessage =
+        error instanceof Error && error.message.trim() !== ''
+          ? error.message
+          : 'Không thể xử lý yêu cầu. Vui lòng thử lại.'
+      showToast('error', fallbackMessage)
+      fetchEventRequests()
     }
   }
 
@@ -457,6 +479,12 @@ export default function EventRequests() {
    * - Organizer bấm "Hủy sự kiện" -> mở modal xác nhận
    */
   const handleCancelClick = (request: EventRequest) => {
+    if (request.status === 'APPROVED' || request.status === 'REJECTED') {
+      showToast('error', 'Đơn đã được duyệt, không thể hủy')
+      fetchEventRequests()
+      return
+    }
+
     setEventToCancel(request)
     setShowCancelModal(true)
   }
@@ -474,13 +502,11 @@ export default function EventRequests() {
       return
     }
 
-    // Determine if this is a request (waiting) or event (approved)
-    const isWaitingRequest = eventToCancel.status === 'PENDING' || eventToCancel.status === 'UPDATING'
-    const isApprovedEvent = eventToCancel.status === 'APPROVED'
-
-    // For approved events, need createdEventId
-    if (isApprovedEvent && !eventToCancel.createdEventId) {
-      showToast('error', 'Không tìm thấy sự kiện để hủy')
+    if (eventToCancel.status !== 'PENDING') {
+      showToast('error', 'Đơn đã được duyệt, không thể hủy')
+      setShowCancelModal(false)
+      setEventToCancel(null)
+      fetchEventRequests()
       return
     }
 
@@ -488,10 +514,9 @@ export default function EventRequests() {
       const token = 'cookie-auth'
       const userIdStr = localStorage.getItem('userId')
 
-      // Use eventId if available (for approved events), otherwise use requestId
       const payload = {
-        eventId: isApprovedEvent ? eventToCancel.createdEventId : 0,
-        requestId: isWaitingRequest ? eventToCancel.requestId : 0
+        eventId: 0,
+        requestId: eventToCancel.requestId,
       }
 
       const response = await fetch('/api/organizer/events/cancel', {
@@ -505,27 +530,26 @@ export default function EventRequests() {
       })
 
       if (response.ok) {
-        // Determine success message based on request status
-        let successMessage = 'Hủy thành công'
-
-        if (isWaitingRequest) {
-          successMessage = 'Yêu cầu đã được rút lại thành công'
-        } else if (isApprovedEvent) {
-          // APPROVED request that has been converted to event - includes refund
-          successMessage = 'Sự kiện đã được hủy và hoàn tiền toàn bộ sinh viên mua vé thành công'
-        }
-
-        showToast('success', successMessage)
+        showToast('success', 'Yêu cầu đã được rút lại thành công')
         setShowCancelModal(false)
         setEventToCancel(null)
         fetchEventRequests() // Reload list
       } else {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Không thể hủy')
+        const errorData = await response.json().catch(() => ({}))
+        const errorMsg =
+          (typeof errorData?.error === 'string' && errorData.error.trim() !== '' && errorData.error) ||
+          (typeof errorData?.message === 'string' && errorData.message.trim() !== '' && errorData.message) ||
+          'Không thể hủy'
+        throw new Error(errorMsg)
       }
     } catch (error: any) {
       console.error('Error cancelling:', error)
-      showToast('error', error.message || 'Lỗi hủy')
+      const msg =
+        error?.message === 'Không thể hủy yêu cầu vì đơn này đã được xử lý (Duyệt/Từ chối) bởi Staff.'
+          ? 'Đơn đã được duyệt, không thể hủy'
+          : error?.message || 'Lỗi hủy'
+      showToast('error', msg)
+      fetchEventRequests()
     }
   }
 
@@ -828,8 +852,8 @@ export default function EventRequests() {
                           )
                         })()}
 
-                        {/* PENDING/UPDATING: Hủy yêu cầu button */}
-                        {(req.status === 'PENDING' || req.status === 'UPDATING') && (
+                        {/* PENDING: Hủy yêu cầu button */}
+                        {req.status === 'PENDING' && (
                           <button
                             onClick={() => handleCancelClick(req)}
                             className="inline-flex items-center justify-center w-12 h-12 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700 transition-all hover:brightness-90"
@@ -839,12 +863,12 @@ export default function EventRequests() {
                           </button>
                         )}
 
-                        {/* APPROVED: Hủy sự kiện button (only if event has been created) */}
-                        {req.status === 'APPROVED' && req.createdEventId && (
+                        {/* APPROVED/REJECTED: hiển thị disabled để thể hiện đã bị khóa nghiệp vụ */}
+                        {(req.status === 'APPROVED' || req.status === 'REJECTED') && (
                           <button
-                            onClick={() => handleCancelClick(req)}
-                            className="inline-flex items-center justify-center w-12 h-12 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700 transition-all hover:brightness-90"
-                            title="Hủy sự kiện"
+                            disabled
+                            className="inline-flex items-center justify-center w-12 h-12 rounded-lg font-medium text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed"
+                            title="Đơn đã được xử lý, không thể hủy"
                           >
                             <XCircle size={24} />
                           </button>
