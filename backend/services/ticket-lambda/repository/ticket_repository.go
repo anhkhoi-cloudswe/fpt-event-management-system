@@ -738,12 +738,13 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 	}
 
 	// ⭐ SECURITY: Kiểm tra xem event đã bắt đầu chưa
-	// Nếu thời gian hiện tại >= start_time: từ chối đặt vé
-	now := utils.NowInVietnam()
+	// Sử dụng giờ thực để so sánh xem sự kiên đã bắt đầu/kết thúc hay chưa - chống hacker bypass
+	now := time.Now()
+	// start_time từ DB đang lưu ở múi giờ UTC, ta đang so sánh với UTC (time.Now() ở backend server)
 	if now.After(startTime) || now.Equal(startTime) {
 		log.Warn("[BOOKING_SECURITY] User blocked from buying ticket for event that has started",
 			"user_id", userID, "event_id", eventID, "event_start_time", startTime, "current_time", now)
-		return "", apperrors.BusinessError("Sự kiện đã bắt đầu hoặc kết thúc, không thể đặt thêm vé")
+		return "", apperrors.BusinessError("Sự kiện đã bắt đầu hoặc kết thúc, không thể đặt vé")
 	}
 
 	// Kiểm tra TẤT CẢ ghế có active và available không
@@ -1627,8 +1628,9 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 	}
 
 	// ⭐ SECURITY: Kiểm tra xem event đã bắt đầu chưa
-	// Nếu thời gian hiện tại >= start_time: từ chối đặt vé
-	now := utils.NowInVietnam()
+	// Sử dụng giờ thực để so sánh xem sự kiên đã bắt đầu/kết thúc hay chưa - chống hacker bypass
+	now := time.Now()
+	// start_time từ DB đang lưu ở múi giờ UTC, ta đang so sánh với UTC (time.Now() ở backend server)
 	if now.After(startTime) || now.Equal(startTime) {
 		fmt.Printf("[BOOKING_SECURITY] User %d blocked from buying ticket for Event %d (Event started at %s)\n", userID, eventID, startTime.Format(time.RFC3339))
 		return "", fmt.Errorf("Sự kiện đã bắt đầu hoặc kết thúc, không thể đặt thêm vé")

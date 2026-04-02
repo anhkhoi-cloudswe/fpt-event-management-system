@@ -458,7 +458,7 @@ export default function Dashboard() {
   const getStatusBadge = (status?: string, tab?: 'open' | 'upcoming' | 'closed') => {
     switch (status) {
       case 'OPEN':
-        return tab === 'upcoming' ? 'Sắp mở' : 'Đang mở'
+        return tab === 'upcoming' ? 'Sắp diễn ra' : 'Đang mở'
       case 'CLOSED':
         return 'Đã kết thúc'
       default:
@@ -572,11 +572,11 @@ export default function Dashboard() {
                     <button
                       key={event.eventId}
                       onClick={() => openEventDetail(event.eventId)} // click -> mở modal + fetch detail
-                      className={`text-left block rounded-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer bg-white h-full flex flex-col dark:bg-gray-800 ${
+                      className={`text-left block rounded-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer bg-white h-full flex flex-col ${
                         // Highlight "today" events
                         showTodayBadge
                           ? 'border-4 border-red-500 shadow-2xl shadow-red-500/50 transform scale-105'
-                          : 'border border-gray-200 dark:border-gray-700'
+                          : 'border border-gray-200'
                         }`}
                     >
                       {/* Banner Image */}
@@ -610,32 +610,32 @@ export default function Dashboard() {
                       <div className="p-4 flex-1 flex flex-col">
                         {/* Status Badge - Display based on event.status field */}
                         <span className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 w-fit ${event.status === 'CLOSED'
-                            ? 'bg-gray-100 text-gray-700'
-                            : 'bg-red-100 text-red-700'
+                          ? 'bg-gray-100 text-gray-700'
+                          : 'bg-red-100 text-red-700'
                           }`}>
                           {getStatusBadge(event.status, activeTab)}
                         </span>
 
                         {/* Title */}
-                        <h3 className={`text-sm font-bold mb-2 line-clamp-2 ${showTodayBadge ? 'text-red-600' : 'text-gray-900 dark:text-white'
+                        <h3 className={`text-sm font-bold mb-2 line-clamp-2 ${showTodayBadge ? 'text-red-600' : 'text-gray-900'
                           }`}>
                           {event.title}
                         </h3>
 
                         {/* Date & Time */}
-                        <p className={`text-xs mb-2 font-semibold line-clamp-1 ${showTodayBadge ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'
+                        <p className={`text-xs mb-2 font-semibold line-clamp-1 ${showTodayBadge ? 'text-red-600' : 'text-gray-600'
                           }`}>
                           {format(eventDate, 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
                         </p>
 
                         {/* Location */}
-                        <p className="text-xs text-gray-600 line-clamp-2 mt-auto dark:text-gray-400">
+                        <p className="text-xs text-gray-600 line-clamp-2 mt-auto">
                           {event.venueLocation || event.location || 'Trực tuyến'}
                         </p>
 
                         {/* View Details Button Spacer */}
-                        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                          <p className="text-orange-600 dark:text-orange-400 text-xs font-semibold">Xem chi tiết →</p>
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <p className="text-orange-600 text-xs font-semibold">Xem chi tiết →</p>
                         </div>
                       </div>
                     </button>
@@ -740,8 +740,13 @@ export default function Dashboard() {
                       {/* Content */}
                       <div className="p-4 flex-1 flex flex-col">
                         {/* Status Badge - Display based on event.status field */}
-                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded mb-2 w-fit">
-                          {getStatusBadge()}
+                        <span className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 w-fit ${event.status === 'CLOSED'
+                            ? 'bg-gray-100 text-gray-700'
+                            : activeTab === 'upcoming'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                          {getStatusBadge(event.status, activeTab)}
                         </span>
 
                         <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">

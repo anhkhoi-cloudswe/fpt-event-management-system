@@ -741,8 +741,7 @@ export default function Payment() {
                     Ngừng bán vé
                   </h3>
                   <div className="mt-2 text-sm text-red-700">
-                    <p>Sự kiện đã bắt đầu hoặc kến thúc lúc {eventStartTime ? formatVietnamDateTime(eventStartTime, 'dd/MM/yyyy HH:mm') : 'thời điểm xác định'}.  </p>
-                    <p className="mt-1">Không thể tiếp tục đặt vé cho sự kiện này.</p>
+                    <p>Cổng bán vé đã đóng vì sự kiện đã bắt đầu hoặc đã kết thúc (vào lúc {eventStartTime ? formatVietnamDateTime(eventStartTime, 'dd/MM/yyyy HH:mm') : 'thời điểm xác định'}). Vui lòng chọn sự kiện khác.</p>
                   </div>
                 </div>
               </div>
