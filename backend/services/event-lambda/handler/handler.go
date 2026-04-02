@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -540,6 +541,9 @@ func (h *EventHandler) HandleProcessEventRequest(ctx context.Context, request ev
 	err := h.useCase.ProcessEventRequest(ctx, userID, &req)
 	if err != nil {
 		log.Error("ProcessEventRequest failed RequestID=%d: %v", req.RequestID, err)
+		if errors.Is(err, repository.ErrRequestCancelled) || errors.Is(err, repository.ErrRequestNotPending) {
+			return createMessageResponse(http.StatusConflict, err.Error())
+		}
 		return createMessageResponse(http.StatusInternalServerError, fmt.Sprintf("Error processing event request: %v", err))
 	}
 
