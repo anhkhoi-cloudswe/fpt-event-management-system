@@ -84,27 +84,25 @@ func (r *EventRepository) GetEventsByStatusV1(
 	// Add status condition
 	switch status {
 	case "open", "today":
-		// Today's events: DATE(start_time) = CURDATE() AND status != 'CLOSED'
-		// Excludes closed events that happen to be today
-		whereConditions = append(whereConditions, "DATE(e.start_time) = CURDATE() AND e.status != ?")
-		queryArgs = append(queryArgs, "CLOSED")
+		// Today's events: DATE(start_time) = CURDATE() AND status NOT IN ('CLOSED', 'CANCELLED')
+		whereConditions = append(whereConditions, "DATE(e.start_time) = CURDATE() AND e.status NOT IN (?, ?)")
+		queryArgs = append(queryArgs, "CLOSED", "CANCELLED")
 
 	case "upcoming":
-		// Upcoming events: status = 'OPEN' AND start_time > NOW()
-		whereConditions = append(whereConditions, "e.status = ? AND e.start_time > NOW()")
-		queryArgs = append(queryArgs, "OPEN")
+		// Upcoming events: status = 'OPEN' AND start_time > NOW() AND status != 'CANCELLED'
+		whereConditions = append(whereConditions, "e.status = ? AND e.start_time > NOW() AND e.status != ?")
+		queryArgs = append(queryArgs, "OPEN", "CANCELLED")
 
 	case "past", "closed":
-		// Closed events: status = 'CLOSED' ONLY
-		// Do NOT filter by end_time < NOW() - rely on explicit status field
-		whereConditions = append(whereConditions, "e.status = ?")
-		queryArgs = append(queryArgs, "CLOSED")
+		// Closed events: status = 'CLOSED' AND status != 'CANCELLED'
+		whereConditions = append(whereConditions, "e.status = ? AND e.status != ?")
+		queryArgs = append(queryArgs, "CLOSED", "CANCELLED")
 
 	default:
 		// Invalid status - default to today's events
 		status = "open"
-		whereConditions = append(whereConditions, "DATE(e.start_time) = CURDATE() AND e.status != ?")
-		queryArgs = append(queryArgs, "CLOSED")
+		whereConditions = append(whereConditions, "DATE(e.start_time) = CURDATE() AND e.status NOT IN (?, ?)")
+		queryArgs = append(queryArgs, "CLOSED", "CANCELLED")
 	}
 
 	// Add search condition
@@ -317,23 +315,23 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 	// Add status condition
 	switch status {
 	case "open", "today":
-		// Today's events: status = 'OPEN' AND start_time is TODAY
-		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE()")
-		queryArgs = append(queryArgs, "OPEN")
+		// Today's events: status = 'OPEN' AND start_time is TODAY AND status != 'CANCELLED'
+		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE() AND e.status != ?")
+		queryArgs = append(queryArgs, "OPEN", "CANCELLED")
 
 	case "upcoming":
-		whereConditions = append(whereConditions, "e.status = ? AND e.start_time > NOW()")
-		queryArgs = append(queryArgs, "OPEN")
+		whereConditions = append(whereConditions, "e.status = ? AND e.start_time > NOW() AND e.status != ?")
+		queryArgs = append(queryArgs, "OPEN", "CANCELLED")
 
 	case "past", "closed":
-		whereConditions = append(whereConditions, "(e.status = ? OR (e.status = ? AND e.start_time < NOW()))")
-		queryArgs = append(queryArgs, "CLOSED", "OPEN")
+		whereConditions = append(whereConditions, "(e.status = ? OR (e.status = ? AND e.start_time < NOW())) AND e.status != ?")
+		queryArgs = append(queryArgs, "CLOSED", "OPEN", "CANCELLED")
 
 	default:
 		// Invalid status - default to today's OPEN events with date filter
 		status = "open"
-		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE()")
-		queryArgs = append(queryArgs, "OPEN")
+		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE() AND e.status != ?")
+		queryArgs = append(queryArgs, "OPEN", "CANCELLED")
 	}
 
 	// Add search condition

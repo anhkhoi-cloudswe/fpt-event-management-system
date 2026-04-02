@@ -484,8 +484,9 @@ export default function CheckIn() {
       // XỬ LÝ RESPONSE THẤT BẠI (HTTP status không phải 2xx)
       // =====================================================================
       if (!res.ok) {
-        // Lấy message lỗi từ response, ưu tiên error > message > mặc định
+        // Lấy message lỗi từ response, ưu tiên error trong results[0] > error > message > mặc định
         const msg =
+          (data && data.results && data.results.length > 0 && data.results[0].error) ||
           (data && (data.error || data.message)) ||
           `${activeTab === 'checkin' ? 'Check-in' : 'Check-out'} thất bại (HTTP ${res.status
           })`
@@ -496,10 +497,19 @@ export default function CheckIn() {
           rawData: data
         })
 
+        // Khai thác thông tin ticket nếu có
+        const ticketInfo = data && data.results && data.results.length > 0 ? data.results[0] : null
+
         setResult({
           success: false,
           message: msg,
-          errorCode: res.status === 403 ? 'UnauthorizedOrganizer' : undefined,
+          errorCode: (ticketInfo && ticketInfo.errorCode) || (res.status === 403 ? 'UnauthorizedOrganizer' : data.errorCode),
+          registration: ticketInfo ? {
+            ticketId: ticketInfo.ticketId || data.ticketId,
+            eventName: ticketInfo.eventName || data.eventName,
+            customerName: ticketInfo.customerName || data.customerName,
+            previousTime: ticketInfo.previousTime || data.previousTime,
+          } : undefined
         })
         setIsProcessing(false)  // ✅ NEW: Disable flag
         return
@@ -918,6 +928,12 @@ export default function CheckIn() {
                       <p className="text-lg font-bold text-gray-900 whitespace-pre-line">
                         {errCfg.title}
                       </p>
+                      {/* In chuỗi error từ backend ra */}
+                      {result.message && (
+                        <div className="mt-2 text-sm text-red-600 font-medium italic whitespace-pre-line">
+                          {result.message}
+                        </div>
+                      )}
                     </div>
                   )
                 })()
