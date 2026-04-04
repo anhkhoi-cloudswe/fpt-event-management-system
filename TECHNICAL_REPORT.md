@@ -154,7 +154,7 @@ BOTTOM LINE: **End-to-end success flow ready for demo** ✅
 | Concurrent seat booking collision | INSERT IGNORE + Row-level lock | ✅ 100% safe, tested |
 | Long API latency in monolith | Direct Lambda Invoke + API composition | ✅ 2–5ms internal calls |
 | Feature toggle overhead | 10-dimensional flags + compile-time assist | ✅ Zero-overhead design |
-| Tight deployment window | AWS SAM `--parallel` · Feature flags | ✅ < 30s deploy |
+| Tight deployment window | Terraform IaC · Feature flags | ✅ < 30s deploy |
 
 ### 📞 What's Next (If signed off NOW)
 
@@ -217,7 +217,7 @@ Tổng thời gian target: **< 3 phút** từ bấm "Mua vé" đến nhận QR t
 | Frontend | React 18 + TypeScript 5.2 + Vite 5 + Tailwind CSS | Vercel (CDN global) |
 | Backend | Go 1.24 — `github.com/fpt-event-services` | AWS Lambda arm64 (Container Image) |
 | Containerization | Docker + Docker Compose · Multi-stage Build | Local dev: Alpine ~25 MB · Lambda: ECR image |
-| IaC / Deploy | AWS SAM CLI + AWS CloudFormation | S3 artifact bucket |
+| IaC / Deploy | Terraform | AWS resources provisioning |
 | Database | MySQL 8.0 (`go-sql-driver/mysql v1.9.3`) | AWS RDS db.t3.micro (Free Tier) |
 | Auth | JWT HS256 (`golang-jwt/jwt v5.2.0`) + bcrypt | In-Lambda (Phase 1) |
 | Tracing | AWS X-Ray SDK Go (`v1.8.5`) | AWS X-Ray Console |
@@ -232,7 +232,7 @@ Tổng thời gian target: **< 3 phút** từ bấm "Mua vé" đến nhận QR t
 
 | Role | Code | Focus |
 |------|------|-------|
-| Backend Lead | BE-L | Architecture, Saga Engine, SAM infra, AWS, X-Ray, Code Review |
+| Backend Lead | BE-L | Architecture, Saga Engine, Infrastructure (Terraform), AWS, X-Ray, Code Review |
 | Backend Dev 2 | BE-2 | Event/Venue module, Data seeding, Collection curation |
 | Backend Dev 3 | BE-3 | Auth/Ticket module, Saga implementation, VNPay integration |
 | Frontend Dev | FE | Entire React UI — all pages, hooks, API client |
@@ -242,7 +242,7 @@ Tổng thời gian target: **< 3 phút** từ bấm "Mua vé" đến nhận QR t
 
 | Phase | Thời gian | Mục tiêu |
 |-------|-----------|----------|
-| Phase 0 | Tháng 11/2025 | Foundation: Architecture design · DB schema · SAM setup |
+| Phase 0 | Tháng 11/2025 | Foundation: Architecture design · DB schema · Terraform IaC setup |
 | Phase 1 | Tháng 12/2025–1/2026 | Core: 6 Lambda services · InternalClient · Feature Flags |
 | Phase 2 | Tháng 2/2026 | Advanced: Saga Pattern · API Composition · X-Ray tracing |
 | Phase 3 | Tháng 3/2026 | Polish: DB optimization (0.84 MB) · 0 compile errors · Demo |
@@ -1705,7 +1705,7 @@ PendingTicketCleanup scheduler:
 
 | Week | Focus | Tasks |
 |------|-------|-------|
-| 1 | Foundation | Repo setup · Go module · SAM template · AWS infra (VPC, RDS, S3) · CI/CD GitHub Actions · `docker-compose.yml` local · DB schema v1 |
+| 1 | Foundation | Repo setup · Go module · Terraform IaC · AWS infra (VPC, RDS, S3) · CI/CD GitHub Actions · `docker-compose.yml` local · DB schema v1 |
 | 2 | Common Package | `InternalClient` · `feature_flags.go` · `logger` · `xray/tracer` · `jwt` · `hash` · `validator` · `response` |
 | 3 | Auth Lambda | Register · Login · OTP · JWT issue · bcrypt · reCAPTCHA · Lambda Authorizer |
 | 4 | Venue Lambda | Venue CRUD · Area management · Seat seeder (10×10) · Availability check · VenueRelease scheduler |
@@ -1773,7 +1773,7 @@ KHÔNG ĐƯỢC CẮT:
 | Lambda cold start quá chậm → UX kém | Low | Medium | arm64 Go binary ~15ms cold start · Provisioned Concurrency nếu cần |
 | Seat double-booking khi concurrent | Low | High | INSERT IGNORE + transaction · Load test 50 concurrent users |
 | DB connection pool exhausted | Medium | High | `SERVICE_SPECIFIC_DB` flag · connection pool tuning (max 10/service) |
-| JWT secret leak | Low | Critical | SSM Parameter Store · `NoEcho: true` trong SAM · Rotate nếu compromise |
+| JWT secret leak | Low | Critical | SSM Parameter Store · `aws secretsmanager` versioning enabled · Rotate nếu compromise |
 | VNPay HMAC bypass | Low | Critical | Verify signature trên MỌI callback · Log IP nguồn |
 | Feature Flag production accident | Medium | Medium | Rollback: `aws lambda update-function-configuration` < 10s · Default = false |
 | InternalClient timeout → cascade failure | Medium | High | Retry 3× exponential · Circuit breaker (Post-MVP) · 5s timeout per hop |
@@ -1883,7 +1883,7 @@ CODE (TypeScript):
 SECURITY:
   Không hardcode secrets trong code hay config file
   Tất cả secrets qua SSM Parameter Store hoặc environment variable
-  JWT secret NoEcho: true trong SAM parameters
+  JWT secret stored in SSM Parameter Store with SecureString type
   SQL: parameterized queries bắt buộc, không string concatenation
   Input validation trên tất cả public endpoints (common/validator)
 
@@ -1976,33 +1976,59 @@ curl http://localhost:8080/api/events
 # X-Ray daemon must run: `xray -o -n 127.0.0.1`
 ```
 
-### 12.3 Infrastructure as Code (SAM Template)
+### 12.3 Infrastructure as Code (Terraform)
 
-Files: `infrastructure/*.tf` — define all AWS resources using Terraform:
+Files: `infrastructure/*.tf` (20+ files) — define all AWS resources using Terraform HCL:
 
-```yaml
-AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
+**Key Terraform Modules:**
 
-Parameters:
-  Environment:
-    Type: String
-    Default: staging
-    AllowedValues: [staging, production]
+- `providers.tf` — AWS provider config, region (ap-southeast-1)
+- `network.tf` — VPC (10.0.0.0/16), private/public subnets, security groups
+- `database.tf` — RDS MySQL 8.0 db.t3.micro, password rotation
+- `ecs.tf` — ECS task definitions for Lambda container images, execution role
+- `apigateway.tf` — REST API, routes, authorizer, CORS, stage env vars
+- `iam.tf` — IAM roles, policies, Lambda execution role with X-Ray write access
+- `secrets.tf` — SSM Parameter Store for JWT secret, DB credentials, API keys
+- `s3.tf` — Buckets for assets, frontend CDN, versioning enabled
+- `cloudfront.tf` — CDN distribution for static assets
+- `waf.tf` — WAF rules for API GW/CloudFront protection
 
-Globals:
-  Function:
-    Timeout: 30
-    MemorySize: 256
-    Runtime: provided.al2023
-    Tracing: Active
-    VpcConfig:
-      SecurityGroupIds: [!Ref LambdaSecurityGroup]
-      SubnetIds: [!Ref PrivateSubnet1, !Ref PrivateSubnet2]
-    Environment:
-      Variables:
-        JWT_SECRET: !Sub '{{resolve:secretsmanager:fpt-events/${Environment}/jwt-secret:SecretString:secret}}'
-        DB_HOST: !GetAtt Database.Endpoint.Address
+**Example: Lambda Function in Terraform**
+
+```hcl
+resource "aws_lambda_function" "ticket_service" {
+  filename         = data.archive_file.lambda_zip.output_path
+  function_name    = "fpt-events-ticket-${var.environment}"
+  role            = aws_iam_role.lambda_exec.arn
+  handler         = "bootstrap"
+  runtime         = "provided.al2023"
+  timeout         = 30
+  memory_size     = 256
+  architectures   = ["arm64"]
+  tracing_config {
+    mode = "Active"
+  }
+  vpc_config {
+    subnet_ids         = aws_subnet.private[*].id
+    security_group_ids = [aws_security_group.lambda.id]
+  }
+  environment {
+    variables = {
+      JWT_SECRET    = aws_ssm_parameter.jwt_secret.value
+      DB_HOST       = aws_db_instance.mysql.address
+      DB_NAME       = aws_db_instance.mysql.name
+      FEATURE_FLAGS = jsonencode(local.feature_flags)
+    }
+  }
+}
+```
+
+**Environment Variable Injection:**
+
+- All secrets stored in **SSM Parameter Store** with `SecureString` type
+- Lambda environment variables injected at deploy time via Terraform
+- No secrets hardcoded in code or `docker-compose.yml`
+- Rotation policy: Manual rotation via AWS Secrets Manager integration (Phase 2+)
         DB_USER: !Ref DBUsername
         DB_PASSWORD: !Sub '{{resolve:secretsmanager:fpt-events/${Environment}/db-password:SecretString:password}}'
         ENVIRONMENT: !Ref Environment
