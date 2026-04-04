@@ -28,23 +28,23 @@ Status snapshot:
 ## 🎯 Demo Flow (5 minutes) — What Works TODAY
 
 ```
-1️⃣ User Registration         → OTP verify → JWT issued            ✅
-2️⃣ Create Event (Organizer)  → Fill form → Submit request         ✅ 95%
-3️⃣ Approve Event (Admin)     → Review → Approve → OPEN            ✅ 95%
-4️⃣ Purchase Ticket (User)    → Select seat → Wallet Saga → CONFIRM ✅ 95%
-5️⃣ Receive QR Ticket         → PDF + email + QR                   ✅ 95%
-6️⃣ Check-in (Staff)          → Scan QR → verify → mark USED       ✅ 95%
-7️⃣ View Reports (Admin)      → Attendance + Revenue               ✅ 95%
+1️⃣ User Registration                 → OTP verify → JWT issued                   ✅
+2️⃣ Create Event (Organizer)          → Fill form → Submit request                ✅
+3️⃣ Approve Event (Staff)             → Review → Approve → OPEN                   ✅
+4️⃣ Purchase Ticket (Student)         → Select seat → Wallet Saga → CONFIRM       ✅
+5️⃣ Receive QR Ticket (Student)       → PDF + email + QR                          ✅
+6️⃣ Check-in (Organizer)              → Scan QR → verify → mark USED              ✅
+7️⃣ View Reports (Staff)              → Attendance + Revenue                      ✅
 
 Timeline: ~3 minutes end-to-end ⏱️
 ```
 
 ## 1) Why this project exists
 1. Organizer submits event request and books venue area.
-2. Admin approves request and opens ticket sales.
+2. Staff approves request and opens ticket sales.
 3. Student purchases ticket via Wallet or VNPay.
 4. System issues PDF + QR ticket and sends email notification.
-5. Staff scans QR at check-in and updates attendance/reports.
+5. Organizer scans QR at check-in and updates attendance/reports.
 
 Design targets:
 - High data integrity for payment/ticket flows
@@ -210,7 +210,7 @@ Public API groups (via gateway):
 - Event + Event Request workflows
 - Tickets/Registrations/Bills/Wallet
 - Venue/Seat operations
-- Staff check-in and reports
+- Organizer check-in via QR (check-in/check-out) · Staff reports + Student refund requests
 
 Internal endpoints:
 - `/internal/*` routes are for service-to-service calls only.
