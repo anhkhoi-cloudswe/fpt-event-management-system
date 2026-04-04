@@ -72,7 +72,7 @@ Gateway and communication:
 Data and infrastructure:
 - MySQL 8.0
 - AWS S3 for media upload
-- AWS SAM template for Lambda deployment
+- Terraform IaC for Lambda deployment
 - Structured logging + optional X-Ray integration in AWS runtime
 
 ## 3) Important technical patterns
@@ -230,7 +230,7 @@ Recommended reading order:
 
 ```bash
 # Prerequisites:
-# AWS CLI v2 configured · SAM CLI installed · Docker running
+# AWS CLI v2 configured · Terraform installed · Docker running
 
 # 1. Build Lambda functions (parallel)
 cd backend
