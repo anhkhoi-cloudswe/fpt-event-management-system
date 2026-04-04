@@ -207,7 +207,7 @@ sequenceDiagram
 |-------|-----------|---------|---------------|
 | **Runtime** | Go | 1.24.0 | Statically compiled; ~15 ms cold starts on Lambda |
 | **Compute** | AWS Lambda | `provided.al2023` | Target: arm64 (Graviton2) — 20% cost saving vs x86 |
-| **IaC / Deploy** | AWS SAM CLI | Latest | Native Lambda packaging with `sam build --parallel` |
+| **IaC / Deploy** | Terraform | Latest | Infrastructure as Code · cloud-agnostic · plan/apply workflow |
 | **Database** | MySQL | 8.0 | Row-level locking; ACID transactions for wallet |
 | **Tracing** | AWS X-Ray SDK | v1.8.5 | Cross-Lambda service map |
 | **Logging** | Custom Structured Logger | — | JSON output to CloudWatch; zerolog-compatible API |
@@ -543,41 +543,42 @@ mysql -u root -p fpt_event_management < Database/FPTEventManagement_v5.sql
 
 ```bash
 cd backend
-sam build --parallel
+docker compose build
 # Builds 6 Go binaries for provided.al2023 / arm64
-# Output: .aws-sam/build/
+# Output: Container images ready for ECR
 ```
 
-**Step 2 — Deploy to Production:**
+**Step 2 — Deploy Infrastructure & Application using Terraform:**
 
 ```bash
-sam deploy \
-  --parameter-overrides \
-    DBPassword=<secure-password> \
-    JWTSecret=<secure-secret> \
-    VNPayHashSecret=<vnpay-secret> \
-    SMTPPassword=<smtp-password> \
-    RecaptchaSecret=<recaptcha-secret> \
-    FrontendDomain=your-app.vercel.app
-# Reads stack name, region, S3 bucket from samconfig.toml
+cd ../infrastructure
+terraform init
+terraform plan
+terraform apply \
+  -var="db_password=<secure-password>" \
+  -var="jwt_secret=<secure-secret>" \
+  -var="vnpay_secret=<vnpay-secret>" \
+  -var="smtp_password=<smtp-password>" \
+  -var="recaptcha_secret=<recaptcha-secret>" \
+  -var="frontend_domain=your-app.vercel.app"
+
 # Region: ap-southeast-1 (Singapore)
 ```
 
-**Step 3 — Deploy to Dev environment:**
+**Step 3 — Deploy Dev Environment:**
 
 ```bash
-sam deploy --config-env dev \
-  --parameter-overrides DBPassword=<dev-password> JWTSecret=<dev-secret>
+terraform apply -var-file="dev.tfvars"
 ```
 
 **Post-deploy verification:**
 
 ```bash
-# Validate SAM template before deploy
-sam validate --lint
+# Validate Terraform configuration
+terraform validate
 
 # Tail Lambda logs in real time
-sam logs --name AuthFunction --tail --filter ERROR
+aws logs tail /aws/lambda/fpt-events-auth-prod --follow --filter-pattern ERROR
 
 # Test a specific Lambda locally with a mock event
 sam local invoke AuthFunction --event test/auth-event.json
@@ -731,7 +732,7 @@ Feature flags enable **zero-downtime migration** from Monolith to Microservices.
 | `SERVICE_SPECIFIC_SCHEDULER` | Per-service schedulers (vs. shared common scheduler) |
 | `SERVICE_SPECIFIC_DB` | Per-service DB connection pool initialization |
 
-**Current production state (`template.yaml`):** All 10 flags are set to `"true"` — full Microservices mode enabled.
+**Current production state (deployed via Terraform):** All 10 flags are set to `"true"` — full Microservices mode enabled.
 
 **Rollback procedure (any flag):**
 
