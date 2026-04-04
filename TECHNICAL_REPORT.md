@@ -5,7 +5,7 @@
 > **Kiến trúc:** 6 Microservices trên AWS Lambda arm64  
 > **Trạng thái:** ✅ 95% hoàn thiện · 0 Compile Errors · DB: 0.84 MB  
 > **Ngày cập nhật:** 2026-03-22  
-> **Repository:** [AK17-LeonSatoru/FPT_EVENT_MANAGEMENT_Microservices](https://github.com/FPT-EVENT-MANAGEMENT-OJT/FPT_EVENT_MANAGEMENT_Microservices.git)
+> **Repository:** [anhkhoi-cloudswe/FPT_EVENT_MANAGEMENT_Microservices](https://github.com/FPT-EVENT-MANAGEMENT-OJT/FPT_EVENT_MANAGEMENT_Microservices.git)
 
 > **Trạng thái tài liệu:** Đây là tài liệu kỹ thuật hợp nhất duy nhất (Single Source of Truth).  
 
@@ -100,7 +100,7 @@ DEMO FLOW (5 minutes)
 2️⃣ Create Event (Organizer)
    Choose venue area → Set price tier (VIP/STD) → Submit request [✅ 95% done]
 
-3️⃣ Approve Event (Admin)
+3️⃣ Approve Event (Staff)
    Review → Click approve → Event status = OPEN [✅ 95% done]
 
 4️⃣ Purchase Ticket (User)
@@ -113,11 +113,11 @@ DEMO FLOW (5 minutes)
 5️⃣ Get QR Ticket + Email
    Notification Lambda → gofpdf render → go-qrcode generate → SMTP send [✅ 95%]
 
-6️⃣ Check-in via QR Scan (Staff)
+6️⃣ Check-in via QR Scan (Organizer)
    Scan → HMAC verify → Mark USED → Real-time counter [✅ 95%]
 
-7️⃣ View Reports (Admin)
-   Attendance · Revenue · Refund reports [✅ 95%]
+7️⃣ View Reports (Staff)
+   Attendance · Revenue + Student Refund Requests [✅ 95%]
 
 BOTTOM LINE: **End-to-end success flow ready for demo** ✅
 ```
@@ -193,7 +193,7 @@ Nền tảng quản lý sự kiện tập trung cho FPT University, hỗ trợ t
 ```
 Organizer tạo Event Request (chọn Venue Area + khung giờ + trần giá vé)
 ↓
-Admin duyệt → Event APPROVED → Mở bán vé
+Staff duyệt → Event APPROVED → Mở bán vé
 ↓
 User đăng ký vé (chọn Category: VIP / STANDARD)
 ↓
@@ -203,7 +203,7 @@ Wallet Saga: RESERVE tiền → CREATE Ticket → CONFIRM hoặc RELEASE (compen
 ↓
 Notification Lambda gửi Email + PDF vé + QR Code
 ↓
-Ngày sự kiện: Staff quét QR → Check-in xác thực
+Ngày sự kiện: Organizer quét QR → Check-in xác thực
 ↓
 Kết thúc: Auto-close · Reports · Hoàn tiền (nếu có) · Venue AVAILABLE
 ```
@@ -679,7 +679,7 @@ Latency: ~5–15 ms (local)
 4. Chọn **Price Tier** cho ticket categories: `VIP` (row A–C) và `STANDARD` (row D–J)
 5. System validate venue availability (không overlap với event khác)
 6. Submit → Event_Request status = `PENDING`
-7. Admin nhận notification → Review → `APPROVE` hoặc `REJECT`
+7. Staff nhận notification → Review → `APPROVE` hoặc `REJECT`
 8. Nếu APPROVED → Event status = `OPEN` → open bán vé
 
 #### Update Deadline Rule — 24h
@@ -703,6 +703,7 @@ Nếu Organizer không complete trước deadline:
 - **KHÔNG** hủy được khi đã trong vòng 24h của APPROVED event
 - Session expire sau 30 phút nếu không có participant nào join
 - Host (Admin) có thể override bất kỳ status nào
+- **Staff** duyệt và phê duyệt event requests từ Organizer
 
 ---
 
@@ -800,19 +801,21 @@ Payment confirmed → Notification Lambda:
 
 #### Flow
 
-1. Staff đăng nhập bằng account Staff role
+1. Organizer đăng nhập bằng account Organizer role
 2. Mở Check-in screen → Chọn Event
 3. Scan QR code từ tickets của attendee (camera hoặc QR scanner hardware)
 4. System verify: ticket hợp lệ + chưa check-in + đúng event
 5. UPDATE ticket SET status = `USED`, checked_in_at = NOW()
 6. Real-time counter: "127/200 đã điểm danh"
-7. Sau event: Admin xem Attendance Report, Revenue Report, Refund Report
+7. Sau event: Staff xem Attendance Report, Revenue Report, Refund Report từ Student
 
 #### Business Rules
 
 - QR encode: `ticketId + HMAC(ticketId, secret)` → chống làm giả
 - Mỗi QR chỉ dùng được 1 lần (`UNIQUE` check trên checked_in_at)
-- Staff chỉ check-in được event thuộc venue area của mình
+- Organizer chỉ check-in được event do mình tạo
+- Student có thể gửi report nếu ghế bị hỏng hoặc không đúng → request hoàn tiền
+- Staff view các reports này → xử lý refund nếu hợp lệ
 - VenueRelease scheduler tự động release venue area sau khi event kết thúc
 
 ---
@@ -1422,7 +1425,7 @@ Log output: "[AUTO_CANCEL] Event {id} closed - 24h deadline exceeded"
 [SMTP email → User]
          │
          ▼
-[Ngày sự kiện: Staff check-in]
+[Ngày sự kiện: Organizer quét QR → Check-in/Check-out]
 [QR scan → verify HMAC → mark USED]
          │
          ▼
@@ -1480,9 +1483,9 @@ POST   /wallet/vnpay-callback   VNPay IPN callback [Public, HMAC verify]
 NOTIFICATIONS
 GET    /notifications           Virtual notifications [Auth: User]
 
-CHECKIN (Staff)
-POST   /staff/checkin           Check-in bằng QR scan [Auth: Staff]
-GET    /staff/events/{id}/attendees   Danh sách điểm danh [Auth: Staff]
+CHECKIN (Organizer)
+POST   /organizer/checkin           Check-in bằng QR scan [Auth: Organizer]
+GET    /organizer/events/{id}/attendees   Danh sách điểm danh [Auth: Organizer]
 
 REPORTS
 GET    /reports/events/{id}     Báo cáo sự kiện [Auth: Staff/Admin]
@@ -1493,8 +1496,10 @@ GET    /reports/export/{id}     Export CSV [Auth: Staff/Admin]
 ADMIN
 GET    /admin/users             Quản lý users [Auth: Admin]
 PUT    /admin/events/{id}/status   Override event status [Auth: Admin]
-GET    /admin/submissions       Crowdsource review queue [Auth: Admin]
-POST   /admin/submissions/{id}/review   Approve/Reject venue [Auth: Admin]
+
+STAFF (Event Approval)
+GET    /staff/submissions       Event approval review queue [Auth: Staff]
+POST   /staff/submissions/{id}/review   Approve/Reject event [Auth: Staff]
 
 INTERNAL (VPC-private only — Direct Lambda Invoke)
 GET    /internal/user/{id}                  Auth Lambda: user info lookup
@@ -1608,7 +1613,7 @@ POST   /internal/tickets/{id}/checkin       Ticket Lambda: mark USED
 }
 ```
 
-**POST /staff/checkin** — Check-in bằng QR
+**POST /organizer/checkin** — Check-in bằng QR
 
 ```json
 // Request [Auth: Staff JWT]
@@ -1642,12 +1647,12 @@ POST   /internal/tickets/{id}/checkin       Ticket Lambda: mark USED
 Organizer creates request
         │
         ▼
-    PENDING          Admin reviewing Event_Request
+    PENDING          Staff reviewing Event_Request
         │
    ┌────┴────┐
    │         │
    ▼         ▼
-APPROVED   REJECTED   Admin quyết định
+APPROVED   REJECTED   Staff quyết định
    │
    ▼
   OPEN              Bán vé, participants đăng ký
@@ -2222,7 +2227,7 @@ Outputs:
 | GET /api/events | 45ms | 120ms | 180ms | 1000 req/s |
 | POST /auth/login | 250ms | 400ms | 550ms | bcrypt + JWT |
 | POST /tickets/purchase (Wallet) | 800ms | 1200ms | 1500ms | Saga: 3 internal calls |
-| POST /staff/checkin | 120ms | 200ms | 300ms | QR verify + DB update |
+| POST /organizer/checkin | 120ms | 200ms | 300ms | QR verify + DB update |
 | Lambda cold start (Go arm64) | 15ms | 22ms | 30ms | After deploy |
 | RDS query (SELECT 1) | 2ms | 5ms | 10ms | Direct connection |
 | Internal Lambda Invoke | 3ms | 7ms | 12ms | Direct invoke, no HTTP |
@@ -2608,9 +2613,10 @@ TIME    SECTION              ACTOR        ACTION
                                          → Ticket → "USED"
                                          → Counter: "1/200" ✅
 
-09:00   Reports              Admin        Go to /reports/events/{id}
+09:00   Reports              Staff        Go to /reports/events/{id}
                                          → Show Attendance (1 checked in)
                                          → Revenue: 400,000 VND collected
+                                         → Refund requests from Students
                                          → Refund rate: 0 ✅
 
 10:00   Feature Flags Demo   Developer    Show backend/common/config/feature_flags.go
