@@ -102,12 +102,12 @@ backend/
     scheduler/         # shared scheduler jobs
     utils/             # internal client, internal auth token checks
   services/
-    auth-service/
-    event-service/
-    ticket-service/
-    venue-service/
-    staff-service/
-    notification-service/
+    auth-lambda/
+    event-lambda/
+    ticket-lambda/
+    venue-lambda/
+    staff-lambda/
+    notification-lambda/
 
 frontend/
   src/
@@ -222,7 +222,7 @@ Recommended reading order:
 1. `docker-compose.yml` for local topology and dependencies.
 2. `backend/cmd/gateway/main.go` for route mapping and gateway behavior.
 3. `backend/common/utils/internal_client.go` and `backend/common/utils/internal_auth.go` for internal call security.
-4. `backend/services/ticket-service` for wallet/payment and ticket lifecycle logic.
+4. `backend/services/ticket-lambda` for wallet/payment and ticket lifecycle logic.
 5. `PENETRATION_TEST_REPORT_PHASE_1.md` and `PENETRATION_TEST_REPORT_PHASE_2.md` for Security Audit details.
 
 ## 10) Deployment to AWS (Staging/Production)
