@@ -5,23 +5,23 @@
 Production-oriented event management platform for FPT University.
 
 Status snapshot:
-- **Architecture:** Go microservices (6 Lambda functions) + React frontend
-- **Runtime modes:** Local Docker Compose, AWS Lambda
+- **Architecture:** Go microservices (6 containerized services) + React frontend
+- **Orchestration:** Amazon ECS (Fargate)
+- **Runtime modes:** Local Docker Compose, AWS ECS Fargate
 - **Core capabilities:** Event approval, wallet + VNPay payment, QR check-in, reporting, S3 media
-- **Database:** MySQL 8.0 · 0.84 MB · Optimized
-- **Security:** JWT + bcrypt + HMAC-SHA512 + reCAPTCHA v3
+- **Database:** Amazon RDS MySQL 8.0 (Multi-AZ)
+- **Security:** JWT + bcrypt (Cost 12) + HMAC-SHA512 + reCAPTCHA v2 + AWS WAF
 
 ## 📊 Quick Stats
 
 | Metric | Value |
 |--------|-------|
-| Completion | 95% |
-| Compile Errors | 0 |
-| Lambda Functions | 6/6 deployed |
-| Database Size | 0.84 MB |
-| Cost (MVP) | ~$0 (Free Tier) |
+| Completion | 100% (Core Features) |
+| Architecture | ECS Fargate (Serverless Containers) |
+| ECS Tasks | 6/6 services running |
+| Cost (Estimate) | ~$109/month |
 | API Latency p95 | < 500ms |
-| Concurrent Users | 50+ (tested) |
+| Security Audit | Passed (Phase 1 & Phase 2) |
 
 
 
@@ -226,56 +226,37 @@ Recommended reading order:
 5. `backend/common/utils/internal_client.go` and `backend/common/utils/internal_auth.go` for internal call security.
 6. `backend/services/ticket-lambda` for wallet/payment and ticket lifecycle logic.
 
-## 10) Deploy to AWS Staging (< 10 minutes)
+## 10) Deployment to AWS (Staging/Production)
 
-```bash
-# Prerequisites:
-# AWS CLI v2 configured · Terraform installed · Docker running
+Infrastructure is fully managed via **Infrastructure as Code (Terraform)** by our DevOps engineer.
 
-# 1. Build Lambda functions (parallel)
-cd backend
-docker-compose build
+1. **Provision Infrastructure:**
+   ```bash
+   cd terraform/
+   terraform init
+   terraform apply -auto-approve
+   ```
 
-# 2. Deploy infrastructure using Terraform
-cd ../infrastructure
-terraform init
-terraform apply -auto-approve
+2. **Get Service Endpoints:**
+   ```bash
+   # Using terraform output to retrieve the Application Load Balancer DNS terraform output alb_dns_name
+   ```
 
-# 3. Retrieve endpoints
-aws cloudformation describe-stacks \
-  --stack-name fpt-events-staging \
-  --region ap-southeast-1 \
-  --query 'Stacks[0].Outputs' \
-  --output table
-```
+3. **CI/CD Pipeline:**
+Upon pushing code to the `main` branch, GitHub Actions will automatically build the Docker Image, push it to **Amazon ECR**, and execute an **ECS Blue/Green Deployment**.
 
-**Expected outputs:**
-```
-ApiGatewayUrl:   https://xxxxx.execute-api.ap-southeast-1.amazonaws.com/prod
-DatabaseEndpoint: fpt-events-db-staging.cxxxxxxl.ap-southeast-1.rds.amazonaws.com
-AuthLambdaArn:   arn:aws:lambda:ap-southeast-1:123456:function:fpt-events-auth-prod
-... (5 more Lambda ARNs)
-```
+## 11) Production Checklist (Finalized)
 
-Smoke test:
-```bash
-curl https://xxxxx.execute-api.ap-southeast-1.amazonaws.com/prod/api/events
-```
-
-## 11) Production Checklist (before launch)
-
-- [ ] 0 compile errors: `go vet ./...` ✅
-- [ ] Database optimized: 0.84 MB ✅
-- [ ] All 6 Lambda functions deployed ✅
-- [ ] Load tested at 50 concurrent users ✅
-- [ ] Saga transaction tested (no lost funds) ✅
-- [ ] QR code generation working ✅
-- [ ] Email delivery verified (SMTP/SES) ✅
-- [ ] Mobile responsive (SE, Pro, Android) ~95%
-- [ ] Security audit (OWASP Top 10) ~95%
-- [ ] AWS secrets rotated monthly
-- [ ] Monitoring dashboards set up (CloudWatch)
-- [ ] Incident response runbook prepared
+✅ 0 compile errors: `go vet ./...` </br>
+✅ All 6 ECS Services deployed (Fargate Tasks) </br>
+✅ Load tested at 100+ concurrent users (Targeted 500 req/s) </br>
+✅ Saga transaction verified (Atomic ticket booking) </br>
+✅ QR code generation & Scan-to-checkin working </br>
+✅ Email delivery verified via Amazon SES </br>
+✅ **Security audit (OWASP Top 10) 100%** - [See Pentest Reports Phase 1 & 2] </br>
+✅ **Vulnerability Remediation** - [See Remediation Report Phase 1.5] </br>
+- [ ] AWS Secrets Rotation set up in Secrets Manager
+- [ ] Monitoring dashboards finalized (CloudWatch Container Insights)
 
 Full checklist in `TECHNICAL_REPORT.md` → Phần 19
 
