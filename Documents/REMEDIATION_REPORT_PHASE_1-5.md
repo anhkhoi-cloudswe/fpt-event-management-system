@@ -161,7 +161,7 @@
 
 ---
 
-## 📝 Bảng Kiểm Tracking Khắc Phục Lỗi
+## 📝 Bảng Tracking Khắc Phục Lỗi
 
 ```text
 INF-01: Database Root ✅ FULLY COMPLETED (LOCAL)
@@ -195,3 +195,4 @@ BE-04: CORS ✅ COMPLETED
 
 BE-05: User Enumeration ✅ COMPLETED
   [✅] Đồng bộ mã lỗi và thông báo 401 Unauthorized toàn hệ thống
+```

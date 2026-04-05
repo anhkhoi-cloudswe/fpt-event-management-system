@@ -1,6 +1,6 @@
 # FPT Event Management System
 
-**⚡ Status (April 2026):** ✅ 95% complete · 0 compile errors · Ready for demo
+**⚡ Status (April 2026):** ✅ 100% complete · 0 compile errors · Ready for demo
 
 Production-oriented event management platform for FPT University.
 
@@ -21,7 +21,7 @@ Status snapshot:
 | ECS Tasks | 6/6 services running |
 | Cost (Estimate) | ~$109/month |
 | API Latency p95 | < 500ms |
-| Security Audit | Passed (Phase 1 & Phase 2) |
+| Security Audit | Phase 1: Passed ✅ / Phase 2: Pending Fix ⚠️ |
 
 
 
@@ -72,7 +72,7 @@ Gateway and communication:
 Data and infrastructure:
 - MySQL 8.0
 - AWS S3 for media upload
-- Terraform IaC for Lambda deployment
+- Terraform IaC for ECS Fargate deployment
 - Structured logging + optional X-Ray integration in AWS runtime
 
 ## 3) Important technical patterns
@@ -102,12 +102,12 @@ backend/
     scheduler/         # shared scheduler jobs
     utils/             # internal client, internal auth token checks
   services/
-    auth-lambda/
-    event-lambda/
-    ticket-lambda/
-    venue-lambda/
-    staff-lambda/
-    notification-lambda/
+    auth-service/
+    event-service/
+    ticket-service/
+    venue-service/
+    staff-service/
+    notification-service/
 
 frontend/
   src/
@@ -219,12 +219,11 @@ Internal endpoints:
 ## 9) What reviewers can inspect quickly
 
 Recommended reading order:
-1. `TECHNICAL_SUMMARY.md` for architecture and design patterns.
-2. `TECHNICAL_REPORT.md` for full migration and operational details.
-3. `docker-compose.yml` for local topology and dependencies.
-4. `backend/cmd/gateway/main.go` for route mapping and gateway behavior.
-5. `backend/common/utils/internal_client.go` and `backend/common/utils/internal_auth.go` for internal call security.
-6. `backend/services/ticket-lambda` for wallet/payment and ticket lifecycle logic.
+1. `docker-compose.yml` for local topology and dependencies.
+2. `backend/cmd/gateway/main.go` for route mapping and gateway behavior.
+3. `backend/common/utils/internal_client.go` and `backend/common/utils/internal_auth.go` for internal call security.
+4. `backend/services/ticket-service` for wallet/payment and ticket lifecycle logic.
+5. `PENETRATION_TEST_REPORT_PHASE_1.md` and `PENETRATION_TEST_REPORT_PHASE_2.md` for Security Audit details.
 
 ## 10) Deployment to AWS (Staging/Production)
 
@@ -239,7 +238,7 @@ Infrastructure is fully managed via **Infrastructure as Code (Terraform)** by ou
 
 2. **Get Service Endpoints:**
    ```bash
-   # Using terraform output to retrieve the Application Load Balancer DNS terraform output alb_dns_name
+   terraform output alb_dns_name
    ```
 
 3. **CI/CD Pipeline:**
@@ -253,12 +252,10 @@ Upon pushing code to the `main` branch, GitHub Actions will automatically build 
 ✅ Saga transaction verified (Atomic ticket booking) </br>
 ✅ QR code generation & Scan-to-checkin working </br>
 ✅ Email delivery verified via Amazon SES </br>
-✅ **Security audit (OWASP Top 10) 100%** - [See Pentest Reports Phase 1 & 2] </br>
-✅ **Vulnerability Remediation** - [See Remediation Report Phase 1.5] </br>
+⚠️ **Security audit (OWASP Top 10)** - Phase 1 Passed, Phase 2 Pending DevOps Remediation - [See Reports](./PENETRATION_TEST_REPORT_PHASE_1.md) </br>
+✅ **Vulnerability Remediation** - Phase 1.5 Completed - [See Remediation Report](./REMEDIATION_REPORT_PHASE_1-5.md) </br>
 - [ ] AWS Secrets Rotation set up in Secrets Manager
 - [ ] Monitoring dashboards finalized (CloudWatch Container Insights)
-
-Full checklist in `TECHNICAL_REPORT.md` → Phần 19
 
 ## 12) Known Boundaries & Next Steps
 
@@ -275,8 +272,6 @@ Full checklist in `TECHNICAL_REPORT.md` → Phần 19
 3. Month 5-6: Cognito + social login
 4. Month 7-12: Analytics · recommendations · multi-region
 
-See full roadmap: `TECHNICAL_REPORT.md` → Phần 20
-
 ## 13) License and usage
 
 Private project for FPT OJT context.
@@ -286,4 +281,5 @@ Unauthorized redistribution or commercial reuse is not allowed.
 
 **Last updated:** April 2026  
 **Maintainer:** FPT OJT Event Management Team  
-**For questions:** See `TECHNICAL_REPORT.md` (comprehensive) or `README.md` (quick start)
+**For questions:** Please review this `README.md` and the Penetration Test Reports.
+**More Documents:** [More Documents](./Documents/)
