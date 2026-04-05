@@ -252,8 +252,8 @@ Upon pushing code to the `main` branch, GitHub Actions will automatically build 
 ✅ Saga transaction verified (Atomic ticket booking) </br>
 ✅ QR code generation & Scan-to-checkin working </br>
 ✅ Email delivery verified via Amazon SES </br>
-⚠️ **Security audit (OWASP Top 10)** - Phase 1 Passed, Phase 2 Pending DevOps Remediation - [See Reports](./PENETRATION_TEST_REPORT_PHASE_1.md) </br>
-✅ **Vulnerability Remediation** - Phase 1.5 Completed - [See Remediation Report](./REMEDIATION_REPORT_PHASE_1-5.md) </br>
+⚠️ **Security audit (OWASP Top 10)** - Phase 1 Passed, Phase 2 Pending DevOps Remediation - [See Reports](Documents/PENETRATION_TEST_REPORT_PHASE_1.md) </br>
+✅ **Vulnerability Remediation** - Phase 1.5 Completed - [See Remediation Report](Documents/REMEDIATION_REPORT_PHASE_1-5.md) </br>
 - [ ] AWS Secrets Rotation set up in Secrets Manager
 - [ ] Monitoring dashboards finalized (CloudWatch Container Insights)
 
