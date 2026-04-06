@@ -265,7 +265,7 @@ Connection to RDS 10.0.1.136:3306 [tcp/mysql] succeeded!
     - Mỗi IP chỉ gửi **1,500 requests / 5 phút**.
     - Tổng lưu lượng: **1,500,000 requests / 5 phút**.
     - Tốc độ bắn phá: 1,500,000 / 300 = **5,000 req/s**
-    Chi phí ước tính trong 24h tấn công liên tục:
+    Chi phí ước tính trong 24h tấn công liên tục:  
       **A. Chi phí ALB LCU:**
       - Số LCU tiêu thụ: 5,000 / 25 = **200** LCUs
       - Chi phí LCUs trong 1 ngày: 200 * 0.008 USD * 24 = **38.4 USD** mỗi ngày.
