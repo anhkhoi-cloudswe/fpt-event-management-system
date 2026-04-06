@@ -1,7 +1,7 @@
 # PHASE 1.5 - BÁO CÁO NGHIỆM THU VÀ VÁ LỖI (REMEDIATION REPORT)
 **Ngày kiểm tra:** 14/03/2026  
 **Ngày báo cáo:** 20/03/2026  
-**Mục tiêu:** Xác định những thay đổi bảo mật đã được thực hiện sau khi phát hiện lỗ hổng từ Phase 1.
+**Mục tiêu:** Xác định những thay đổi bảo mật đã được thực hiện sau khi phát hiện lỗ hổng từ Phase 1.  
 **Được lập bởi:** Lập trình viên (Dev)
 
 ---
