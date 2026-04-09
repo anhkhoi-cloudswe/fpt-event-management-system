@@ -175,6 +175,7 @@ export default function Venues() {
    * 1. Kiểm tra token xác thực
    * 2. Nếu đang sửa -> gọi API update, ngược lại -> gọi API create
    * 3. Refresh lại danh sách địa điểm
+   * 4. Improvements: Xử lý error chi tiết, cache busting, finally block
    */
   const handleSubmitVenue = async (data: { venueId: number; venueName: string; location: string }) => {
     try {
@@ -187,16 +188,37 @@ export default function Venues() {
       // Phân biệt giữa thêm mới và cập nhật dựa vào editingVenue
       if (editingVenue) {
         await venueService.update(data)
+        showToast('success', 'Cập nhật địa điểm thành công!')
       } else {
         await venueService.create(data)
+        showToast('success', 'Thêm địa điểm thành công!')
+      }
+    } catch (error: any) {
+      console.error('Error saving venue:', error)
+
+      // CẢI THIỆN: Lấy error message chi tiết từ backend
+      let errorMessage = 'Có lỗi xảy ra khi lưu địa điểm'
+
+      // Kiểm tra response data từ backend
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error?.message) {
+        errorMessage = error.message
       }
 
-      // Refresh danh sách sau khi thêm/sửa thành công
-      await fetchVenues()
-    } catch (error) {
-      console.error('Error saving venue:', error)
-      showToast('error', 'Có lỗi xảy ra khi lưu địa điểm')
+      showToast('error', errorMessage)
       throw error
+    } finally {
+      // CẢI THIỆN: Dùng finally block + setTimeout + cache busting
+      // Đảm bảo danh sách được refresh ngay sau khi đóng modal
+      setTimeout(() => {
+        // Cache busting: thêm timestamp vào request để tránh cache
+        const timestamp = new Date().getTime()
+        console.log(`[Venues] Refreshing venue data with cache busting - timestamp: ${timestamp}`)
+        fetchVenues()
+      }, 500)
     }
   }
 

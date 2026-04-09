@@ -156,12 +156,56 @@ func (r *VenueRepository) CreateVenue(ctx context.Context, req models.CreateVenu
 }
 
 // ============================================================
+// CheckVenueExists - Kiểm tra venue tồn tại
+// ============================================================
+func (r *VenueRepository) CheckVenueExists(ctx context.Context, venueID int) (bool, error) {
+	query := `SELECT COUNT(*) as count FROM Venue WHERE venue_id = ?`
+	var count int
+	err := r.db.QueryRowContext(ctx, query, venueID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to check venue existence: %w", err)
+	}
+	return count > 0, nil
+}
+
+// ============================================================
+// CheckDuplicateVenueName - Kiểm tra tên venue đã tồn tại chưa (exclude venue hiện tại)
+// ============================================================
+func (r *VenueRepository) CheckDuplicateVenueName(ctx context.Context, venueName string, excludeVenueID int) (bool, error) {
+	query := `SELECT COUNT(*) as count FROM Venue WHERE venue_name = ? AND venue_id != ? AND status != 'DELETED'`
+	var count int
+	err := r.db.QueryRowContext(ctx, query, venueName, excludeVenueID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to check duplicate venue name: %w", err)
+	}
+	return count > 0, nil
+}
+
+// ============================================================
 // UpdateVenue - Cập nhật venue
 // ============================================================
 func (r *VenueRepository) UpdateVenue(ctx context.Context, req models.UpdateVenueRequest) error {
-	query := `UPDATE Venue SET venue_name = ?, location = ?, status = ? WHERE venue_id = ?`
+	// BƯỚC 1: Kiểm tra venue tồn tại
+	exists, err := r.CheckVenueExists(ctx, req.VenueID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("VALIDATION_ERROR:Địa điểm không tồn tại")
+	}
 
-	_, err := r.db.ExecContext(ctx, query, req.VenueName, req.Location, req.Status, req.VenueID)
+	// BƯỚC 2: Kiểm tra tên venue đã được sử dụng bởi venue khác hay không
+	isDuplicate, err := r.CheckDuplicateVenueName(ctx, req.VenueName, req.VenueID)
+	if err != nil {
+		return err
+	}
+	if isDuplicate {
+		return fmt.Errorf("VALIDATION_ERROR:Tên địa điểm này đã được sử dụng. Vui lòng chọn tên khác")
+	}
+
+	// BƯỚC 3: Thực hiện update
+	query := `UPDATE Venue SET venue_name = ?, location = ? WHERE venue_id = ?`
+	_, err = r.db.ExecContext(ctx, query, req.VenueName, req.Location, req.VenueID)
 	if err != nil {
 		return fmt.Errorf("failed to update venue: %w", err)
 	}

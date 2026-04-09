@@ -79,15 +79,29 @@ func (h *VenueHandler) HandleUpdateVenue(ctx context.Context, request events.API
 	}
 
 	if req.VenueID == 0 {
-		return createStatusResponse(http.StatusBadRequest, "fail", "Venue ID is required")
+		return createStatusResponse(http.StatusBadRequest, "fail", "Mã địa điểm là bắt buộc")
+	}
+
+	if req.VenueName == "" {
+		return createStatusResponse(http.StatusBadRequest, "fail", "Tên địa điểm là bắt buộc")
 	}
 
 	err := h.useCase.UpdateVenue(ctx, req)
 	if err != nil {
-		return createStatusResponse(http.StatusInternalServerError, "fail", "Error updating venue")
+		errMsg := err.Error()
+
+		// Check if it's a validation error (venue not found, duplicate name, etc)
+		if strings.Contains(errMsg, "VALIDATION_ERROR:") {
+			// Extract the message after the prefix
+			message := strings.TrimPrefix(errMsg, "VALIDATION_ERROR:")
+			return createStatusResponse(http.StatusBadRequest, "fail", message)
+		}
+
+		// Otherwise it's a server error
+		return createStatusResponse(http.StatusInternalServerError, "fail", "Lỗi cập nhật địa điểm: "+errMsg)
 	}
 
-	return createStatusResponse(http.StatusOK, "success", "Venue updated successfully")
+	return createStatusResponse(http.StatusOK, "success", "Địa điểm được cập nhật thành công")
 }
 
 // HandleDeleteVenue - DELETE /api/venues?venueId=
