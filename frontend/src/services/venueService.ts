@@ -32,7 +32,9 @@ const getAuthHeaders = () => {
 // Venue API calls
 export const venueService = {
   async getAll(): Promise<Venue[]> {
-    const response = await axios.get(`${API_URL}/venues`, getAuthHeaders())
+    // Cache busting: thêm timestamp vào query params để tránh browser cache
+    const timestamp = new Date().getTime()
+    const response = await axios.get(`${API_URL}/venues?t=${timestamp}`, getAuthHeaders())
     return response.data.filter((venue: Venue) => venue.status === 'AVAILABLE')
   },
 
@@ -52,7 +54,9 @@ export const venueService = {
 // Area API calls
 export const areaService = {
   async getByVenueId(venueId: number): Promise<Area[]> {
-    const response = await axios.get(`${API_URL}/venues/areas?venueId=${venueId}`, getAuthHeaders())
+    // Cache busting: thêm timestamp vào query params
+    const timestamp = new Date().getTime()
+    const response = await axios.get(`${API_URL}/venues/areas?venueId=${venueId}&t=${timestamp}`, getAuthHeaders())
     return response.data
   },
 

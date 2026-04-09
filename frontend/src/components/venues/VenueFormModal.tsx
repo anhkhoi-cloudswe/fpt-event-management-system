@@ -1,5 +1,6 @@
 import { X } from 'lucide-react'
 import { Venue } from '../../services/venueService'
+import React from 'react'
 
 interface VenueFormModalProps {
   isOpen: boolean
@@ -45,6 +46,8 @@ export default function VenueFormModal({ isOpen, venue, onClose, onSubmit }: Ven
       onClose()
     } catch (error) {
       console.error('Error submitting venue:', error)
+      // Error được xử lý bởi parent component (handleSubmitVenue)
+      // showToast sẽ được gọi từ đó
     } finally {
       setSubmitting(false)
     }
@@ -76,9 +79,10 @@ export default function VenueFormModal({ isOpen, venue, onClose, onSubmit }: Ven
               <input
                 type="text"
                 required
+                disabled={submitting}
                 value={formData.venueName}
                 onChange={(e) => setFormData({ ...formData, venueName: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                 placeholder="Nhập tên địa điểm"
               />
             </div>
@@ -90,9 +94,10 @@ export default function VenueFormModal({ isOpen, venue, onClose, onSubmit }: Ven
               <input
                 type="text"
                 required
+                disabled={submitting}
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                 placeholder="Nhập địa chỉ"
               />
             </div>
@@ -101,7 +106,8 @@ export default function VenueFormModal({ isOpen, venue, onClose, onSubmit }: Ven
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={submitting}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:bg-gray-100"
               >
                 Hủy
               </button>
@@ -119,6 +125,3 @@ export default function VenueFormModal({ isOpen, venue, onClose, onSubmit }: Ven
     </div>
   )
 }
-
-// Add React import
-import React from 'react'
