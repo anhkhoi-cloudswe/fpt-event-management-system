@@ -200,7 +200,7 @@ func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGateway
 		Value:    authResponse.Token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false,
+		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 	}
 
@@ -264,7 +264,7 @@ func (h *AuthHandler) HandleLogout(ctx context.Context, request events.APIGatewa
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false,
+		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   -1,
 	}
