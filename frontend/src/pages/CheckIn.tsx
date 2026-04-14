@@ -365,6 +365,59 @@ export default function CheckIn() {
   }
 
   // ===========================================================================
+  // HÀM PARSE DATE TỪ FORMAT BACKEND
+  // ===========================================================================
+
+  /**
+   * Parse chuỗi date từ format backend: "HH:mm dd/MM/yyyy" hoặc "dd/MM/yyyy HH:mm:ss"
+   * Backend có thể trả dưới các format khác nhau, hàm này xử lý tất cả
+   * 
+   * @param dateStr - Chuỗi date từ backend
+   * @returns Date object hoặc null nếu không parse được
+   */
+  const parseBackendDate = (dateStr: string | undefined): Date | null => {
+    if (!dateStr) return null
+
+    try {
+      // Cố gắng parse dưới các format khác nhau
+      // Format 1: "17:03 14/04/2026" (HH:mm dd/MM/yyyy)
+      const match1 = dateStr.match(/(\d{1,2}):(\d{2})\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+      if (match1) {
+        const [, hour, min, day, month, year] = match1
+        return new Date(
+          parseInt(year),
+          parseInt(month) - 1, // Tháng bắt đầu từ 0
+          parseInt(day),
+          parseInt(hour),
+          parseInt(min),
+          0
+        )
+      }
+
+      // Format 2: "dd/MM/yyyy HH:mm:ss" (dd/MM/yyyy HH:mm:ss)
+      const match2 = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})/)
+      if (match2) {
+        const [, day, month, year, hour, min, sec] = match2
+        return new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hour),
+          parseInt(min),
+          parseInt(sec)
+        )
+      }
+
+      // Nếu không parse được, trả null thay vì hiển thị lỗi
+      console.warn(`Could not parse date: ${dateStr}`)
+      return null
+    } catch (e) {
+      console.error(`Error parsing date: ${dateStr}`, e)
+      return null
+    }
+  }
+
+  // ===========================================================================
   // HÀM XỬ LÝ CHÍNH: GỌI API CHECK-IN/CHECK-OUT
   // ===========================================================================
 
@@ -884,30 +937,42 @@ export default function CheckIn() {
                           <span className="font-bold text-gray-900">#{result.registration.ticketId}</span>
                         </div>
                       )}
-                      {result.registration?.checkedInAt && (
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600">Thời gian Check-in:</span>
-                          <span className="font-medium text-gray-900">
-                            {format(
-                              new Date(result.registration.checkedInAt),
-                              'dd/MM/yyyy HH:mm:ss',
-                              { locale: vi }
-                            )}
-                          </span>
-                        </div>
-                      )}
-                      {result.registration?.checkedOutAt && (
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600">Thời gian Check-out:</span>
-                          <span className="font-medium text-gray-900">
-                            {format(
-                              new Date(result.registration.checkedOutAt),
-                              'dd/MM/yyyy HH:mm:ss',
-                              { locale: vi }
-                            )}
-                          </span>
-                        </div>
-                      )}
+                      {result.registration?.checkedInAt && (() => {
+                        const checkinDate = parseBackendDate(result.registration.checkedInAt)
+                        return checkinDate ? (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Thời gian Check-in:</span>
+                            <span className="font-medium text-gray-900">
+                              {format(checkinDate, 'dd/MM/yyyy HH:mm:ss', { locale: vi })}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Thời gian Check-in:</span>
+                            <span className="font-medium text-gray-900">
+                              {result.registration.checkedInAt}
+                            </span>
+                          </div>
+                        )
+                      })()}
+                      {result.registration?.checkedOutAt && (() => {
+                        const checkoutDate = parseBackendDate(result.registration.checkedOutAt)
+                        return checkoutDate ? (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Thời gian Check-out:</span>
+                            <span className="font-medium text-gray-900">
+                              {format(checkoutDate, 'dd/MM/yyyy HH:mm:ss', { locale: vi })}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Thời gian Check-out:</span>
+                            <span className="font-medium text-gray-900">
+                              {result.registration.checkedOutAt}
+                            </span>
+                          </div>
+                        )
+                      })()}
                       {result.registration?.customerName && (
                         <div className="flex justify-between items-center text-sm border-t pt-2">
                           <span className="text-gray-600">Khách hàng:</span>
