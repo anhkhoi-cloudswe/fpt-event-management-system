@@ -643,7 +643,7 @@ export default function CheckIn() {
           errorCode: !isSuccess ? firstResult.errorCode : undefined,
           registration: {
             ticketId: firstResult.ticketId,
-            checkedOutAt: firstResult.checkoutTime,
+            checkedOutAt: firstResult.checkOutTime,
             eventName: firstResult.eventName,
             customerName: customerName,
           },
@@ -657,8 +657,8 @@ export default function CheckIn() {
             `${activeTab === 'checkin' ? 'Check-in' : 'Check-out'} thành công`,
           registration: {
             ticketId: data.ticketId,
-            checkedInAt: data.checkinTime,
-            checkedOutAt: data.checkoutTime,
+            checkedInAt: data.checkInTime,
+            checkedOutAt: data.checkOutTime,
             eventName: data.eventName,
             customerName: data.customerName, // ✅ NEW: Thêm tên khách hàng
           },
