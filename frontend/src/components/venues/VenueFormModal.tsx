@@ -70,7 +70,7 @@ export default function VenueFormModal({ isOpen, venue, onClose, onSubmit }: Ven
               <X className="w-5 h-5" />
             </button>
           </div>
-          
+
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
