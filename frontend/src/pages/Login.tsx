@@ -47,19 +47,14 @@ interface FormData {
 
 // ===================== RECAPTCHA CONFIG =====================
 
-// reCAPTCHA site key - hướng dẫn lấy key:
-// 1) Vào: https://www.google.com/recaptcha/admin/create
-// 2) chọn reCAPTCHA v2 (checkbox)
-// 3) thêm domain: localhost và domain production
-// 4) copy Site Key dán vào đây
-
-//const RECAPTCHA_SITE_KEY = '...' // ví dụ key cũ
-const RECAPTCHA_SITE_KEY = '6LdvPQIsAAAAAG7glbICpFiBR9o5MhboFU4JvxAJ'
+// Cấu hình trong file .env: VITE_RECAPTCHA_SITE_KEY
+// reCAPTCHA site key được lấy từ environment variable
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 
 // USE_REAL_RECAPTCHA:
 // - false: khi debug nhanh, không cần check token thật -> gửi 'TEST_BYPASS' xuống BE
 // - true: bắt buộc tick checkbox và có token thật trước khi login
-const USE_REAL_RECAPTCHA = false // Đổi thành true khi muốn dùng reCAPTCHA thật trong demo/production
+const USE_REAL_RECAPTCHA = true // Đổi thành true khi muốn dùng reCAPTCHA thật trong demo/production
 
 // ===================== MAIN COMPONENT =====================
 
