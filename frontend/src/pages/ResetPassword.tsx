@@ -9,7 +9,10 @@ import { useToast } from '../contexts/ToastContext'
 import { API_BASE_URL } from '../config/api'
 
 const API_URL = API_BASE_URL
-const RECAPTCHA_SITE_KEY = '6LdvPQIsAAAAAG7glbICpFiBR9o5MhboFU4JvxAJ'
+
+// Cấu hình trong file .env: VITE_RECAPTCHA_SITE_KEY
+// reCAPTCHA site key được lấy từ environment variable
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 
 interface FormData {
   email: string
