@@ -46,9 +46,9 @@ module "rds" {
   allocated_storage     = 20
   max_allocated_storage = 100
 
-  db_name  = "fpteventmanagement"
-  username = "admin"
-  password = "FptEvent2024"
+  db_name  = local.db_name
+  username = local.db_user
+  password = local.db_password
 
   manage_master_user_password = false
 
