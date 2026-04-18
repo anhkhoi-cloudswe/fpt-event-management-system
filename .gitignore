@@ -10,11 +10,24 @@ backend/*.exe~
 backend/bin/
 backend/dist/
 backend/bootstrap
+backend/tests/
+backend/test/
 
 # Frontend
 frontend/node_modules/
 frontend/dist/
 frontend/dist-ssr/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.playwright/
+
+# Test files & Reports (never commit - may contain credentials)
+**/*_test.go
+**/*.test
+**/test-report/
+**/E2E_TEST_REPORT.md
+playwright-report/
+test-results/
 
 # IDE & Editor
 .vscode/*

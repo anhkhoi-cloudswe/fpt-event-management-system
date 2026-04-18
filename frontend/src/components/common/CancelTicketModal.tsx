@@ -71,17 +71,12 @@ export default function CancelTicketModal({
     setIsSubmitting(true)
 
     try {
-      const token = 'cookie-auth'
-      console.log('[DEBUG] Submitting report for ticketId:', ticketId)
-      console.log('[DEBUG] Token exists:', !!token)
-
       const response = await fetch('/api/student/reports', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
-        credentials: 'include', // include cookies for session-based auth
+        credentials: 'include', // HttpOnly cookie sent automatically
         body: JSON.stringify({
           ticketId,
           title: title.trim(),

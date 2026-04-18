@@ -109,7 +109,6 @@ func init() {
 
 	// ── Reload JWT secret ────────────────────────────────────
 	jwt.ReloadSecret()
-	log.Printf("[GATEWAY] 🔑 JWT_SECRET active: %s", jwt.GetSecretPreview())
 
 	// ── Build backends from registry ─────────────────────────
 	backends = registry.AllBackendURLs()
