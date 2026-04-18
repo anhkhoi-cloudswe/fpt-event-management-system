@@ -46,9 +46,6 @@ export function EventConfigModal({
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const token =
-        typeof window !== 'undefined' ? 'cookie-auth' : null
-
     /**
      * useEffect: Load config khi modal mở
      * ✅ CRITICAL: Mỗi lần isOpen = true, bắt buộc fetch lại API
@@ -66,16 +63,15 @@ export function EventConfigModal({
         }
 
         const fetchConfig = async () => {
-            if (!token) return
 
             setLoading(true)
             setError(null)
 
             try {
                 // ✅ FETCH: GET /api/events/config?eventId={eventId}
+                // Note: HttpOnly cookie sent automatically with credentials: 'include'
                 const res = await fetch(`/api/events/config?eventId=${eventId}`, {
                     headers: {
-                        Authorization: `Bearer ${token}`,
                         'ngrok-skip-browser-warning': '1'
                     },
                     credentials: 'include'

@@ -155,14 +155,10 @@ export function ProcessRequestModal({
           return
         }
 
-        const token = 'cookie-auth'
-
         const response = await fetch(
           `/api/events/daily-quota?date=${eventDate}`,
           {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
+            credentials: 'include'
           }
         )
 
