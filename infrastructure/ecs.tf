@@ -31,6 +31,23 @@ module "ecs" {
 
       enable_execute_command = true
 
+      # Auto Scaling
+      autoscaling_min_capacity = 1
+      autoscaling_max_capacity = 5
+      autoscaling_policies = {
+        cpu = {
+          policy_type = "TargetTrackingScaling"
+          target_tracking_scaling_policy_configuration = {
+            predefined_metric_specification = {
+              predefined_metric_type = "ECSServiceAverageCPUUtilization"
+            }
+            target_value       = 70.0
+            scale_in_cooldown  = 300
+            scale_out_cooldown = 60
+          }
+        }
+      }
+
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
 
@@ -119,6 +136,23 @@ module "ecs" {
       memory = 512
 
       enable_execute_command = true
+
+      # Auto Scaling
+      autoscaling_min_capacity = 1
+      autoscaling_max_capacity = 5
+      autoscaling_policies = {
+        cpu = {
+          policy_type = "TargetTrackingScaling"
+          target_tracking_scaling_policy_configuration = {
+            predefined_metric_specification = {
+              predefined_metric_type = "ECSServiceAverageCPUUtilization"
+            }
+            target_value       = 70.0
+            scale_in_cooldown  = 300
+            scale_out_cooldown = 60
+          }
+        }
+      }
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
@@ -212,6 +246,23 @@ module "ecs" {
       memory = 512
 
       enable_execute_command = true
+
+      # Auto Scaling
+      autoscaling_min_capacity = 1
+      autoscaling_max_capacity = 5
+      autoscaling_policies = {
+        cpu = {
+          policy_type = "TargetTrackingScaling"
+          target_tracking_scaling_policy_configuration = {
+            predefined_metric_specification = {
+              predefined_metric_type = "ECSServiceAverageCPUUtilization"
+            }
+            target_value       = 70.0
+            scale_in_cooldown  = 300
+            scale_out_cooldown = 60
+          }
+        }
+      }
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
@@ -307,6 +358,23 @@ module "ecs" {
 
       enable_execute_command = true
 
+      # Auto Scaling
+      autoscaling_min_capacity = 1
+      autoscaling_max_capacity = 5
+      autoscaling_policies = {
+        cpu = {
+          policy_type = "TargetTrackingScaling"
+          target_tracking_scaling_policy_configuration = {
+            predefined_metric_specification = {
+              predefined_metric_type = "ECSServiceAverageCPUUtilization"
+            }
+            target_value       = 70.0
+            scale_in_cooldown  = 300
+            scale_out_cooldown = 60
+          }
+        }
+      }
+
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
 
@@ -396,6 +464,23 @@ module "ecs" {
 
       enable_execute_command = true
 
+      # Auto Scaling
+      autoscaling_min_capacity = 1
+      autoscaling_max_capacity = 5
+      autoscaling_policies = {
+        cpu = {
+          policy_type = "TargetTrackingScaling"
+          target_tracking_scaling_policy_configuration = {
+            predefined_metric_specification = {
+              predefined_metric_type = "ECSServiceAverageCPUUtilization"
+            }
+            target_value       = 70.0
+            scale_in_cooldown  = 300
+            scale_out_cooldown = 60
+          }
+        }
+      }
+
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
 
@@ -484,6 +569,23 @@ module "ecs" {
       memory = 512
 
       enable_execute_command = true
+
+      # Auto Scaling
+      autoscaling_min_capacity = 1
+      autoscaling_max_capacity = 5
+      autoscaling_policies = {
+        cpu = {
+          policy_type = "TargetTrackingScaling"
+          target_tracking_scaling_policy_configuration = {
+            predefined_metric_specification = {
+              predefined_metric_type = "ECSServiceAverageCPUUtilization"
+            }
+            target_value       = 70.0
+            scale_in_cooldown  = 300
+            scale_out_cooldown = 60
+          }
+        }
+      }
 
       subnet_ids            = module.vpc.private_subnets
       create_security_group = true
