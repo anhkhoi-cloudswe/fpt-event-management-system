@@ -178,7 +178,6 @@ export default function EventDetail() {
           event={event}                 // data event lấy từ API
           loading={loading}             // đang tải event -> modal có thể show skeleton/spinner
           error={error}                 // lỗi -> modal hiển thị message lỗi
-          token={null}                  // xác thực hiện tại dùng HttpOnly cookie
           userRole={user?.role}         // render theo role trusted từ AuthContext
           onEdit={isOrganizer ? handleEdit : undefined}
         // nếu organizer/staff -> truyền handleEdit (cho phép nút Edit)

@@ -99,7 +99,7 @@ export function EventConfigModal({
         }
 
         fetchConfig()
-    }, [isOpen, eventId, token]) // ✅ Re-fetch mỗi lần isOpen hoặc eventId thay đổi
+    }, [isOpen, eventId]) // Re-fetch when isOpen or eventId changes
 
     /**
      * handleChange - Xử lý thay đổi input
@@ -125,7 +125,7 @@ export function EventConfigModal({
      * ✅ Sau khi lưu thành công, gọi onClose để modal tự đóng và parent reload
      */
     const handleSave = async () => {
-        if (!token || eventId === 0) return
+        if (eventId === 0) return
 
         // Validate
         if (
@@ -151,7 +151,6 @@ export function EventConfigModal({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
                     'ngrok-skip-browser-warning': '1'
                 },
                 credentials: 'include',

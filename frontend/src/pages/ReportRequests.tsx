@@ -116,11 +116,6 @@ export default function ReportRequests() {
     setError(null)
 
     try {
-
-      if (!token) {
-        throw new Error('Vui lòng đăng nhập lại')
-      }
-
       const statusParam = tab === 'PENDING' ? 'PENDING' : ''
 
       const params = new URLSearchParams()
@@ -133,7 +128,6 @@ export default function ReportRequests() {
         method: 'GET',
         credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': 'true'
         },
@@ -216,17 +210,11 @@ export default function ReportRequests() {
     setError(null)
 
     try {
-
-      if (!token) {
-        throw new Error('Vui lòng đăng nhập lại')
-      }
-
-      // Gọi API detail: /api/staff/reports/{reportId} (path parameter)
+      // Gỏi API detail: /api/staff/reports/{reportId} (path parameter)
       const res = await fetch(`/api/staff/reports/${reportId}`, {
         method: 'GET',
         credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': 'true'
         },
@@ -298,9 +286,6 @@ export default function ReportRequests() {
     setIsProcessing(true)
 
     try {
-
-      if (!token) throw new Error('Vui lòng đăng nhập lại')
-
       const endpoint = action === 'APPROVE' ? '/api/staff/reports/approve' : '/api/staff/reports/reject'
 
       const res = await fetch(endpoint, {

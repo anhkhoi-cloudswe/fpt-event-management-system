@@ -92,8 +92,6 @@ export default function SystemConfig() {
    */
   useEffect(() => {
     const fetchConfig = async () => {
-      // Nếu không có token thì không gọi API
-      if (!token) return
 
       setLoading(true)
       setError(null)
@@ -132,7 +130,7 @@ export default function SystemConfig() {
     }
 
     fetchConfig()
-  }, [token])
+  }, [])
 
   /**
    * fetchEvents:
@@ -140,8 +138,6 @@ export default function SystemConfig() {
    * ✅ NOW WITH PAGINATION SUPPORT
    */
   const fetchEvents = async (page: number = 1) => {
-    if (!token) return
-
     setLoadingEvents(true)
     try {
       // ✅ NEW: Include page and limit in API call
@@ -197,7 +193,7 @@ export default function SystemConfig() {
    * ✅ NOW: Monitors URL page parameter and refetches when it changes
    */
   useEffect(() => {
-    if (!loading && token) {
+    if (!loading) {
       fetchEvents(currentPage)
       // ✅ NEW: Scroll table into view when page changes
       setTimeout(() => {
@@ -207,7 +203,7 @@ export default function SystemConfig() {
         }
       }, 100)
     }
-  }, [loading, token, currentPage])
+  }, [loading, currentPage])
 
   /**
    * handleManageEventConfig:
@@ -300,7 +296,6 @@ export default function SystemConfig() {
    * ✅ Sau khi lưu thành công → tự động reload để đảm bảo data khớp
    */
   const handleSave = async () => {
-    if (!token) return
 
     // Validate lần cuối trước khi gửi lên backend
     if (config.minMinutesAfterStart < 0 || config.minMinutesAfterStart > 600) {
@@ -364,8 +359,6 @@ export default function SystemConfig() {
    * ✅ Updated: Dùng API mới /api/events/config?eventId=-1
    */
   const handleReload = async () => {
-    if (!token) return
-
     setLoading(true)
     setError(null)
 

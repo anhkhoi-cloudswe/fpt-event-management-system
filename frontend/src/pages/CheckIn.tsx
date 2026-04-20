@@ -437,17 +437,6 @@ export default function CheckIn() {
     setResult(null)
     setIsProcessing(true)  // ✅ NEW: Disable button, show loading
 
-    // Kiểm tra đăng nhập - chỉ STAFF/ADMIN mới có token hợp lệ
-    if (!token) {
-      setResult({
-        success: false,
-        message: `Bạn cần đăng nhập STAFF/ADMIN để thực hiện ${activeTab === 'checkin' ? 'check-in' : 'check-out'
-          }.`,
-      })
-      setIsProcessing(false)  // ✅ NEW: Disable flag
-      return
-    }
-
     // Chuẩn hóa nội dung QR tránh việc lỗi do ký tự đặc biệt
     const cleaned = normalizeQrText(qrCode)
 

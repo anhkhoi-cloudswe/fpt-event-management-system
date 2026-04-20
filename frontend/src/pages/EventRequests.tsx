@@ -523,9 +523,9 @@ export default function EventRequests() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
           'X-User-Id': userIdStr || '',
         },
+        credentials: 'include',
         body: JSON.stringify(payload),
       })
 

@@ -651,7 +651,6 @@ export default function Events() {
         event={selectedEvent}
         loading={loadingDetail}
         error={null}
-        token={null}
         userRole={user?.role}        // truyền role để ẩn chọn ghế cho ORGANIZER/STAFF/ADMIN
       />
 
