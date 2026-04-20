@@ -84,24 +84,27 @@ func (r *EventRepository) GetEventsByStatusV1(
 	// Add status condition
 	switch status {
 	case "open", "today":
-		// Today's events: DATE(start_time) = CURDATE() AND status NOT IN ('CLOSED', 'CANCELLED')
-		whereConditions = append(whereConditions, "DATE(e.start_time) = CURDATE() AND e.status NOT IN (?, ?)")
+		// ✅ FIXED: Today's events - currently running events (started AND not ended yet)
+		// Event is "today" if: start_time <= NOW() AND end_time >= NOW()
+		whereConditions = append(whereConditions, "e.start_time <= NOW() AND e.end_time >= NOW() AND e.status NOT IN (?, ?)")
 		queryArgs = append(queryArgs, "CLOSED", "CANCELLED")
 
 	case "upcoming":
-		// Upcoming events: status = 'OPEN' AND start_time > NOW() AND status != 'CANCELLED'
-		whereConditions = append(whereConditions, "e.status = ? AND e.start_time > NOW() AND e.status != ?")
-		queryArgs = append(queryArgs, "OPEN", "CANCELLED")
+		// ✅ FIXED: Upcoming events - not yet started
+		// Event is "upcoming" if: start_time > NOW()
+		whereConditions = append(whereConditions, "e.start_time > NOW() AND e.status NOT IN (?, ?)")
+		queryArgs = append(queryArgs, "CLOSED", "CANCELLED")
 
 	case "past", "closed":
-		// Closed events: status = 'CLOSED' AND status != 'CANCELLED'
-		whereConditions = append(whereConditions, "e.status = ? AND e.status != ?")
+		// ✅ FIXED: Finished/Past events - already ended
+		// Event is "finished" if: end_time < NOW()
+		whereConditions = append(whereConditions, "e.end_time < NOW() AND e.status NOT IN (?, ?)")
 		queryArgs = append(queryArgs, "CLOSED", "CANCELLED")
 
 	default:
 		// Invalid status - default to today's events
 		status = "open"
-		whereConditions = append(whereConditions, "DATE(e.start_time) = CURDATE() AND e.status NOT IN (?, ?)")
+		whereConditions = append(whereConditions, "e.start_time <= NOW() AND e.end_time >= NOW() AND e.status NOT IN (?, ?)")
 		queryArgs = append(queryArgs, "CLOSED", "CANCELLED")
 	}
 
@@ -245,8 +248,9 @@ func (r *EventRepository) GetEventsByStatusV1(
 			EventID:       eventID,
 			Title:         title,
 			Description:   nullStringToPointer(description),
-			StartTime:     utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(startTime)).Format(time.RFC3339),
-			EndTime:       utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(endTime)).Format(time.RFC3339),
+		// ✅ FIXED: Use FormatTimeToWallClockRFC3339 - formats wall-clock time directly without conversion
+		StartTime:     utils.FormatTimeToWallClockRFC3339(startTime),
+		EndTime:       utils.FormatTimeToWallClockRFC3339(endTime),
 			MaxSeats:      maxSeats,
 			Status:        status,
 			BannerURL:     nullStringToPointer(bannerURL),
@@ -315,23 +319,26 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 	// Add status condition
 	switch status {
 	case "open", "today":
-		// Today's events: status = 'OPEN' AND start_time is TODAY AND status != 'CANCELLED'
-		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE() AND e.status != ?")
-		queryArgs = append(queryArgs, "OPEN", "CANCELLED")
+		// ✅ FIXED: Today's events - currently running events (started AND not ended yet)
+		// Event is "today" if: start_time <= NOW() AND end_time >= NOW()
+		whereConditions = append(whereConditions, "e.start_time <= NOW() AND e.end_time >= NOW() AND e.status NOT IN (?, ?)")
+		queryArgs = append(queryArgs, "CLOSED", "CANCELLED")
 
 	case "upcoming":
-		whereConditions = append(whereConditions, "e.status = ? AND e.start_time > NOW() AND e.status != ?")
-		queryArgs = append(queryArgs, "OPEN", "CANCELLED")
+		// ✅ FIXED: Upcoming events - not yet started
+		whereConditions = append(whereConditions, "e.start_time > NOW() AND e.status NOT IN (?, ?)")
+		queryArgs = append(queryArgs, "CLOSED", "CANCELLED")
 
 	case "past", "closed":
-		whereConditions = append(whereConditions, "(e.status = ? OR (e.status = ? AND e.start_time < NOW())) AND e.status != ?")
-		queryArgs = append(queryArgs, "CLOSED", "OPEN", "CANCELLED")
+		// ✅ FIXED: Finished/Past events - already ended
+		whereConditions = append(whereConditions, "e.end_time < NOW() AND e.status NOT IN (?, ?)")
+		queryArgs = append(queryArgs, "CLOSED", "CANCELLED")
 
 	default:
-		// Invalid status - default to today's OPEN events with date filter
+		// Invalid status - default to today's events
 		status = "open"
-		whereConditions = append(whereConditions, "e.status = ? AND DATE(e.start_time) = CURDATE() AND e.status != ?")
-		queryArgs = append(queryArgs, "OPEN", "CANCELLED")
+		whereConditions = append(whereConditions, "e.start_time <= NOW() AND e.end_time >= NOW() AND e.status NOT IN (?, ?)")
+		queryArgs = append(queryArgs, "CLOSED", "CANCELLED")
 	}
 
 	// Add search condition
@@ -481,8 +488,9 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			EventID:       eventID,
 			Title:         title,
 			Description:   nullStringToPointer(description),
-			StartTime:     utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(startTime)).Format(time.RFC3339),
-			EndTime:       utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(endTime)).Format(time.RFC3339),
+			// ✅ FIXED: Use FormatTimeToWallClockRFC3339 - formats wall-clock time directly without conversion
+			StartTime:     utils.FormatTimeToWallClockRFC3339(startTime),
+			EndTime:       utils.FormatTimeToWallClockRFC3339(endTime),
 			MaxSeats:      maxSeats,
 			Status:        status,
 			BannerURL:     nullStringToPointer(bannerURL),

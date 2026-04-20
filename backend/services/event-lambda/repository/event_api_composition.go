@@ -320,8 +320,8 @@ func (r *EventRepository) GetAllEventsSeparatedComposed(ctx context.Context, rol
 			return nil, nil, fmt.Errorf("failed to scan event: %w", err)
 		}
 
-		re.item.StartTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(startTime)).Format(time.RFC3339)
-		re.item.EndTime = utils.DBTimeToVietnamTime(utils.NormalizeDBTimeAsUTC(endTime)).Format(time.RFC3339)
+		re.item.StartTime = utils.FormatTimeToWallClockRFC3339(startTime)
+		re.item.EndTime = utils.FormatTimeToWallClockRFC3339(endTime)
 		re.endTime = endTime
 
 		if description.Valid {

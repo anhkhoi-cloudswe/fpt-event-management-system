@@ -26,6 +26,11 @@ import { format, isSameDay, startOfDay } from 'date-fns'
 // isSameDay: kiểm tra 2 ngày có cùng ngày không
 // startOfDay: đưa Date về đầu ngày (00:00:00) để so sánh ngày chính xác
 
+// ✅ Import timezone-safe date formatter
+import { formatWallClockDateTimeWithDayOfWeek } from '../utils/dateFormat'
+// formatWallClockDateTimeWithDayOfWeek: Extract date/time via pure strings + safe Date usage for day-of-week only
+// Returns: "18/04/2026 • Thứ Năm • 14:00"
+
 // Import locale Việt Nam cho date-fns
 import { vi } from 'date-fns/locale'
 
@@ -545,9 +550,6 @@ export default function Dashboard() {
               {/* Grid Sự kiện (hiển thị events từ API) - đúng 4 cột trên Desktop */}
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
                 {displayedEvents.map((event) => {
-                  // Parse ngày giờ event
-                  const eventDate = new Date(event.startTime)
-
                   // ✅ FIXED: Use event.status field from API instead of calculating isToday
                   // Badge status is determined by the status field, not time-based logic
                   const showTodayBadge = activeTab === 'open' && event.status === 'OPEN'
@@ -699,8 +701,6 @@ export default function Dashboard() {
               {/* Grid Sự kiện (hiển thị events từ API) - đúng 4 cột trên Desktop */}
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
                 {displayedEvents.map((event) => {
-                  const eventDate = new Date(event.startTime)
-
                   return (
                     <button
                       key={event.eventId}
@@ -738,7 +738,8 @@ export default function Dashboard() {
                           {event.title}
                         </h3>
                         <p className="text-xs text-gray-600 mb-2 font-semibold line-clamp-1">
-                          {format(eventDate, 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
+                          {/* ✅ FIXED: Use formatWallClockDateTimeWithDayOfWeek - pure string extraction, no timezone shifting */}
+                          {formatWallClockDateTimeWithDayOfWeek(event.startTime)}
                         </p>
                         <p className="text-xs text-gray-600 line-clamp-2 mt-auto">
                           {event.venueLocation || event.location || 'Trực tuyến'}
@@ -854,7 +855,8 @@ export default function Dashboard() {
                       </h3>
 
                       <p className="text-xs text-gray-600 mb-2 font-semibold line-clamp-1">
-                        {format(new Date(event.startTime), 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
+                        {/* ✅ FIXED: Use formatWallClockDateTimeWithDayOfWeek - pure string extraction, no timezone shifting */}
+                        {formatWallClockDateTimeWithDayOfWeek(event.startTime)}
                       </p>
 
                       <p className="text-xs text-gray-600 line-clamp-2 mt-auto">

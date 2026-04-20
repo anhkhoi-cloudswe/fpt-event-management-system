@@ -109,6 +109,50 @@ export const formatWallClockTimeFromRFC3339 = (rfc3339Str: string): string => {
 }
 
 /**
+ * ✅ formatWallClockDateTimeWithDayOfWeek - Format date + day-of-week + time from RFC3339
+ * Returns: "18/04/2026 • Thứ Năm • 14:00"
+ * 
+ * CRITICAL APPROACH:
+ * 1. Extract date/time via pure string manipulation (NO timezone shifting)
+ * 2. Create Date object ONLY for day-of-week calculation
+ * 3. Use UTC-only date parsing to avoid browser timezone interpretation
+ * 
+ * @param rfc3339Str - String like "2026-04-18T14:00:00+07:00"
+ * @returns Formatted string like "18/04/2026 • Thứ Năm • 14:00"
+ */
+export const formatWallClockDateTimeWithDayOfWeek = (rfc3339Str: string): string => {
+  if (!rfc3339Str) return ''
+
+  try {
+    // Step 1: Extract date components via regex (pure string extraction - NO timezone effects)
+    const match = rfc3339Str.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
+    if (!match) return ''
+
+    const [, year, month, day, hours, minutes] = match
+    const yearNum = parseInt(year, 10)
+    const monthNum = parseInt(month, 10)
+    const dayNum = parseInt(day, 10)
+
+    // Step 2: Create UTC-only Date object for day-of-week calculation
+    // Using UTC constructor ensures no browser timezone interpretation
+    const utcDate = new Date(Date.UTC(yearNum, monthNum - 1, dayNum))
+    
+    // Step 3: Get day of week (0=Sunday, 1=Monday, ..., 6=Saturday)
+    const dayOfWeekIndex = utcDate.getUTCDay()
+    
+    // Step 4: Map to Vietnamese day names
+    const vietnamDayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
+    const dayOfWeekName = vietnamDayNames[dayOfWeekIndex]
+
+    // Step 5: Build final format: "DD/MM/YYYY • Thứ X • HH:mm"
+    return `${day}/${month}/${year} • ${dayOfWeekName} • ${hours}:${minutes}`
+  } catch (error) {
+    console.error(`[formatWallClockDateTimeWithDayOfWeek] Error parsing "${rfc3339Str}":`, error)
+    return ''
+  }
+}
+
+/**
  * ✅ compareTimeStringsForEventStatus - Compare RFC3339 time strings
  * Determines if an event is currently ongoing or has ended
  * Pure string comparison, NO Date objects

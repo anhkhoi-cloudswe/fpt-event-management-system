@@ -71,7 +71,7 @@ export default function EventDetail() {
        * - không thể gọi API detail
        * - return để tránh lỗi
        */
-          if (!id) return
+      if (!id) return
 
       // bật loading + reset error trước khi gọi API
       setLoading(true)
