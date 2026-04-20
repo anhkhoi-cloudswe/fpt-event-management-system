@@ -256,8 +256,6 @@ export default function Reports() {
      * - dùng data cho dropdown
      */
     const fetchEvents = async () => {
-      if (!token) return
-
       setEventsLoading(true)
       setEventsError(null)
 
@@ -323,7 +321,7 @@ export default function Reports() {
 
     fetchEvents()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user?.role])
+  }, [user?.role])
 
   // ===================== 2) FETCH STATS 1 EVENT (/api/events/stats) =====================
   useEffect(() => {
@@ -339,11 +337,6 @@ export default function Reports() {
     const fetchStats = async () => {
       // ✅ Nếu selectedEventId = '0' hoặc không chọn, reset stats
       if (!selectedEventId || selectedEventId === '0') {
-        setSelectedStats(null)
-        return
-      }
-
-      if (!token) {
         setSelectedStats(null)
         return
       }
@@ -461,7 +454,7 @@ export default function Reports() {
         }
 
         // Nếu API stats không trả registrations -> fallback gọi /api/tickets/list
-        if ((!mapped.registrations || mapped.registrations.length === 0) && token) {
+        if ((!mapped.registrations || mapped.registrations.length === 0)) {
           try {
             const ticketsRes = await fetch(
               `/api/tickets/list?eventId=${encodeURIComponent(selectedEventId)}`,
@@ -560,7 +553,7 @@ export default function Reports() {
     }
 
     fetchStats()
-  }, [token, selectedEventId])
+  }, [selectedEventId])
 
   // selectedEvent: lấy object event đang chọn từ list để hiển thị fallback title
   const selectedEvent = events.find((e) => String(e.id) === String(selectedEventId))
@@ -611,8 +604,6 @@ export default function Reports() {
    * - ✅ OLD: Fallback: Nếu có dateRange filter, gọi từng event trong filteredEvents rồi cộng dồn
    */
   const handleFilterAndAggregate = async () => {
-    if (!token) return
-
     // ✅ FIX: Nếu selectedEventId != '0' (chọn event riêng), không gọi API tổng hợp
     // Vì useEffect fetchStats đã tự động load stats của event đó
     if (selectedEventId && selectedEventId !== '0') {
@@ -676,7 +667,7 @@ export default function Reports() {
    * - Used when Backend aggregate endpoint is unavailable or when dateRange filter is applied
    */
   const handleFilterAndAggregateManual = async () => {
-    if (!token || filteredEvents.length === 0) return
+    if (filteredEvents.length === 0) return
 
     try {
       const statsPromises = filteredEvents.map(async (event) => {

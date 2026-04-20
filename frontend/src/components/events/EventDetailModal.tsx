@@ -61,7 +61,6 @@ interface EventDetailModalProps {
   event: EventDetail | null       // dữ liệu event (null nếu chưa load)
   loading: boolean                // trạng thái load event detail
   error: string | null            // lỗi khi load event detail
-  token: string | null            // token auth để gọi API seat
   userRole?: string               // role user (ORGANIZER / STAFF / STUDENT / ...)
   onEdit?: () => void             // callback edit (dành cho organizer)
 }
@@ -73,7 +72,6 @@ export function EventDetailModal({
   event,
   loading,
   error,
-  token,
   userRole,
   onEdit,
 }: EventDetailModalProps) {
