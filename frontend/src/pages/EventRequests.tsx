@@ -210,7 +210,7 @@ export default function EventRequests() {
    */
   const fetchEventRequests = async () => {
     try {
-      const token = 'cookie-auth'
+
 
       // Staff thấy tất cả requests, Organizer chỉ thấy của mình
       const endpoint = isStaff
@@ -220,7 +220,7 @@ export default function EventRequests() {
       // Call API lấy request list
       const response = await fetch(endpoint, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
         },
       })
 
@@ -236,7 +236,7 @@ export default function EventRequests() {
 
         const eventsResponse = await fetch(`/api/events?${queryParams.toString()}`, {
           headers: {
-            Authorization: `Bearer ${token}`,
+            credentials: 'include',
             'ngrok-skip-browser-warning': 'true',
           },
         })
@@ -403,7 +403,7 @@ export default function EventRequests() {
     if (!requestToProcess) return
 
     try {
-      const token = 'cookie-auth'
+
 
       // payload gửi BE xử lý - Backend yêu cầu action phải là "APPROVED" hoặc "REJECTED" (có D)
       const payload = {
@@ -422,7 +422,7 @@ export default function EventRequests() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            credentials: 'include',
           },
           body: JSON.stringify(payload),
         },
@@ -511,7 +511,7 @@ export default function EventRequests() {
     }
 
     try {
-      const token = 'cookie-auth'
+
       const userIdStr = localStorage.getItem('userId')
 
       const payload = {
@@ -980,3 +980,4 @@ export default function EventRequests() {
     </div>
   )
 }
+

@@ -20,12 +20,9 @@ export interface Area {
   status: string
 }
 
-const getAuthHeaders = () => {
-  const token = 'cookie-auth'
+const getAxiosConfig = () => {
   return {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
+    withCredentials: true
   }
 }
 
@@ -34,20 +31,20 @@ export const venueService = {
   async getAll(): Promise<Venue[]> {
     // Cache busting: thêm timestamp vào query params để tránh browser cache
     const timestamp = new Date().getTime()
-    const response = await axios.get(`${API_URL}/venues?t=${timestamp}`, getAuthHeaders())
+    const response = await axios.get(`${API_URL}/venues?t=${timestamp}`, getAxiosConfig())
     return response.data.filter((venue: Venue) => venue.status === 'AVAILABLE')
   },
 
   async create(data: { venueName: string; location: string }): Promise<void> {
-    await axios.post(`${API_URL}/venues`, data, getAuthHeaders())
+    await axios.post(`${API_URL}/venues`, data, getAxiosConfig())
   },
 
   async update(data: { venueId: number; venueName: string; location: string }): Promise<void> {
-    await axios.put(`${API_URL}/venues`, data, getAuthHeaders())
+    await axios.put(`${API_URL}/venues`, data, getAxiosConfig())
   },
 
   async delete(venueId: number): Promise<void> {
-    await axios.delete(`${API_URL}/venues?venueId=${venueId}`, getAuthHeaders())
+    await axios.delete(`${API_URL}/venues?venueId=${venueId}`, getAxiosConfig())
   }
 }
 
@@ -56,7 +53,7 @@ export const areaService = {
   async getByVenueId(venueId: number): Promise<Area[]> {
     // Cache busting: thêm timestamp vào query params
     const timestamp = new Date().getTime()
-    const response = await axios.get(`${API_URL}/venues/areas?venueId=${venueId}&t=${timestamp}`, getAuthHeaders())
+    const response = await axios.get(`${API_URL}/venues/areas?venueId=${venueId}&t=${timestamp}`, getAxiosConfig())
     return response.data
   },
 
@@ -79,7 +76,7 @@ export const areaService = {
     // Add validation logging for debugging
     console.log('Creating area with payload:', createPayload)
 
-    await axios.post(`${API_URL}/venues/areas`, createPayload, getAuthHeaders())
+    await axios.post(`${API_URL}/venues/areas`, createPayload, getAxiosConfig())
   },
 
   async update(data: {
@@ -101,10 +98,10 @@ export const areaService = {
 
     console.log('Updating area with payload:', updatePayload)
 
-    await axios.put(`${API_URL}/venues/areas`, updatePayload, getAuthHeaders())
+    await axios.put(`${API_URL}/venues/areas`, updatePayload, getAxiosConfig())
   },
 
   async delete(areaId: number): Promise<void> {
-    await axios.delete(`${API_URL}/venues/areas?areaId=${areaId}`, getAuthHeaders())
+    await axios.delete(`${API_URL}/venues/areas?areaId=${areaId}`, getAxiosConfig())
   }
 }

@@ -46,15 +46,14 @@ export const useAvailableAreas = (
                     params.append('expectedCapacity', expectedCapacity.toString());
                 }
 
-                const token = 'cookie-auth';
                 const response = await fetch(
                     `/api/events/available-areas?${params.toString()}`,
                     {
                         method: 'GET',
                         headers: {
-                            'Authorization': `Bearer ${token}`,
                             'Content-Type': 'application/json',
                         },
+                        credentials: 'include',
                     }
                 );
 

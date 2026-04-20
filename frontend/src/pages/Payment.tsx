@@ -138,18 +138,18 @@ export default function Payment() {
   useEffect(() => {
     const fetchWalletBalance = async () => {
       try {
-        const savedToken = token ?? 'cookie-auth'
         const userId = (user as any)?.userId ?? (user as any)?.id
 
-        if (!userId || !savedToken) {
+        if (!userId) {
           setLoadingBalance(false)
           return
         }
 
         const response = await fetch(`/api/wallet/balance?userId=${userId}`, {
           headers: {
-            'Authorization': `Bearer ${savedToken}`
-          }
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
         })
 
         if (response.ok) {
@@ -181,8 +181,9 @@ export default function Payment() {
         // Fetch event details from API
         const response = await fetch(`/api/events/${state.eventId}`, {
           headers: {
-            'Authorization': `Bearer ${token || 'cookie-auth'}`
-          }
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
         })
 
         if (!response.ok) {
@@ -415,14 +416,12 @@ export default function Payment() {
     // (4) GỬI REQUEST WALLET PAYMENT QUA FETCH API
     // ======================================================
     try {
-      const savedToken = token ?? 'cookie-auth'
-
       const response = await fetch('/api/wallet/pay-ticket', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(savedToken && { 'Authorization': `Bearer ${savedToken}` })
         },
+        credentials: 'include',
         body: JSON.stringify(payload),
         redirect: 'manual' // Don't auto-follow redirects, handle manually
       })

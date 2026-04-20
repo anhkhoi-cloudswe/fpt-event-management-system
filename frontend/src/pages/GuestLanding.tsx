@@ -159,16 +159,9 @@ export default function GuestLanding() {
       try {
         setLoadingEvents(true)
 
-        // Get token from localStorage
-        const token =
-          typeof window !== 'undefined' ? 'cookie-auth' : null
-
-        // Gọi API với Authorization header (nếu có token)
+        // Gọi API với credentials (HttpOnly cookie tự động gửi)
         const headers: Record<string, string> = {
           'ngrok-skip-browser-warning': '1',
-        }
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`
         }
 
         const queryParams = new URLSearchParams({
@@ -793,3 +786,4 @@ export default function GuestLanding() {
     </div>
   )
 }
+

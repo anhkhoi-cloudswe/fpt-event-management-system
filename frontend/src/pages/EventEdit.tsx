@@ -152,14 +152,12 @@ export default function EventEdit() {
   useEffect(() => {
     const fetchEventRequest = async () => {
       try {
-        // lấy token để gọi API
-        const token = 'cookie-auth'
-
         // gọi API lấy danh sách event requests của user hiện tại
         const response = await fetch('/api/event-requests/my', {
           headers: {
-            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
           },
+          credentials: 'include',
         })
 
         if (response.ok) {
@@ -230,12 +228,11 @@ export default function EventEdit() {
    */
   const fetchEventDetails = async () => {
     try {
-      const token = 'cookie-auth'
-
       const response = await fetch(`/api/events/detail?id=${id}`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
+        credentials: 'include',
       })
 
       if (response.ok) {
@@ -709,9 +706,6 @@ export default function EventEdit() {
         }
       }
 
-      // lấy token từ localStorage để gọi API update
-      const token = 'cookie-auth'
-
       /**
        * requestBody:
        * - eventId
@@ -752,8 +746,8 @@ export default function EventEdit() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify(requestBody),
       })
 

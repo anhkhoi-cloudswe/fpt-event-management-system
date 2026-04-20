@@ -43,17 +43,9 @@ export function useWallet() {
             setLoading(true)
             setError(null)
 
-            const token = 'cookie-auth'
-            if (!token) {
-                setBalance(0)
-                setLoading(false)
-                return
-            }
-
             const response = await fetch('/api/wallet/balance', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
                 credentials: 'include',

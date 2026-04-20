@@ -133,8 +133,6 @@ export default function Events() {
    */
   const fetchEvents = async () => {
     try {
-      const token = 'cookie-auth'
-
       const queryParams = new URLSearchParams({
         page: '1',
         limit: '100'
@@ -142,8 +140,9 @@ export default function Events() {
 
       const response = await fetch(`/api/events?${queryParams.toString()}`, {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       })
 
       if (response.ok) {
@@ -175,14 +174,13 @@ export default function Events() {
   const fetchEventDetail = async (eventId: number) => {
     setLoadingDetail(true)
     try {
-      const token = 'cookie-auth'
-
       const response = await fetch(
         `/api/events/detail?id=${eventId}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`
-          }
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
         }
       )
 
@@ -223,14 +221,12 @@ export default function Events() {
       // Thêm eventId vào list disabling để UI disable nút
       setDisablingIds(prev => [...prev, eventId])
 
-      const token = 'cookie-auth'
-
       const res = await fetch('/api/event/disable', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ eventId: Number(eventId) })
       })
 

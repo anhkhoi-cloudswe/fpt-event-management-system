@@ -77,15 +77,6 @@ export default function Venues() {
   const fetchVenues = async () => {
     try {
       setLoading(true)
-      // Lấy token xác thực từ localStorage
-      const token = 'cookie-auth'
-
-      // Nếu không có token -> không thực hiện request
-      if (!token) {
-        console.error('No authentication token found')
-        setVenues([])
-        return
-      }
 
       // Gọi API lấy tất cả địa điểm
       const venues = await venueService.getAll()
@@ -179,12 +170,6 @@ export default function Venues() {
    */
   const handleSubmitVenue = async (data: { venueId: number; venueName: string; location: string }) => {
     try {
-      const token = 'cookie-auth'
-      if (!token) {
-        showToast('error', 'Bạn cần đăng nhập để thực hiện thao tác này')
-        return
-      }
-
       // Phân biệt giữa thêm mới và cập nhật dựa vào editingVenue
       if (editingVenue) {
         await venueService.update(data)
@@ -232,12 +217,6 @@ export default function Venues() {
    */
   const performDeleteVenue = async (venueId: number) => {
     try {
-      const token = 'cookie-auth'
-      if (!token) {
-        showToast('error', 'Bạn cần đăng nhập để thực hiện thao tác này')
-        return
-      }
-
       await venueService.delete(venueId)
       await fetchVenues()
       showToast('success', 'Xóa địa điểm thành công!')
@@ -303,12 +282,6 @@ export default function Venues() {
     status: string
   }) => {
     try {
-      const token = 'cookie-auth'
-      if (!token) {
-        showToast('error', 'Bạn cần đăng nhập để thực hiện thao tác này')
-        return
-      }
-
       // Phân biệt giữa thêm mới và cập nhật dựa vào editingArea
       if (editingArea) {
         await areaService.update(data)
@@ -344,12 +317,6 @@ export default function Venues() {
    */
   const performDeleteArea = async (areaId: number) => {
     try {
-      const token = 'cookie-auth'
-      if (!token) {
-        showToast('error', 'Bạn cần đăng nhập để thực hiện thao tác này')
-        return
-      }
-
       await areaService.delete(areaId)
       showToast('success', 'Xóa phòng thành công!')
 

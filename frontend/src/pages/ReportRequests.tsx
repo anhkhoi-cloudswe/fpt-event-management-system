@@ -116,7 +116,7 @@ export default function ReportRequests() {
     setError(null)
 
     try {
-      const token = 'cookie-auth'
+
       if (!token) {
         throw new Error('Vui lòng đăng nhập lại')
       }
@@ -216,7 +216,7 @@ export default function ReportRequests() {
     setError(null)
 
     try {
-      const token = 'cookie-auth'
+
       if (!token) {
         throw new Error('Vui lòng đăng nhập lại')
       }
@@ -298,7 +298,7 @@ export default function ReportRequests() {
     setIsProcessing(true)
 
     try {
-      const token = 'cookie-auth'
+
       if (!token) throw new Error('Vui lòng đăng nhập lại')
 
       const endpoint = action === 'APPROVE' ? '/api/staff/reports/approve' : '/api/staff/reports/reject'
@@ -308,7 +308,7 @@ export default function ReportRequests() {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
         },
         // Body gửi lên backend: reportId + staffNote
         body: JSON.stringify({ reportId, staffNote }),
@@ -872,3 +872,4 @@ export default function ReportRequests() {
     </div>
   )
 }
+
