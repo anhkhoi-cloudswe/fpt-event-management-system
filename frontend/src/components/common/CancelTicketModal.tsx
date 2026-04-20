@@ -40,7 +40,7 @@ export default function CancelTicketModal({
 
     try {
       // Upload lên AWS S3 via backend
-	  const url = await uploadEventBanner(file)
+      const url = await uploadEventBanner(file)
       setImageUrl(url)
       showToast('success', 'Upload ảnh thành công')
     } catch (error) {
