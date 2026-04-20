@@ -15,9 +15,8 @@
  * @returns URL công khai của ảnh trên S3
  */
 export async function uploadEventBanner(file: File): Promise<string> {
-  const token = 'cookie-auth'
-  if (!token) {
-    throw new Error('Failed to upload image: Not authenticated. Please log in again.')
+  if (!file) {
+    throw new Error('Failed to upload image: No file provided.')
   }
 
   const formData = new FormData()
@@ -27,9 +26,7 @@ export async function uploadEventBanner(file: File): Promise<string> {
 
   const response = await fetch('/api/upload/image', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    credentials: 'include',
     body: formData,
   })
 

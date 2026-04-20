@@ -84,8 +84,6 @@ export default function SystemConfig() {
    * Lấy token từ localStorage
    * typeof window !== 'undefined' để tránh lỗi khi render phía server (SSR)
    */
-  const token =
-    typeof window !== 'undefined' ? 'cookie-auth' : null
 
   /**
    * useEffect: chạy khi component mount hoặc khi token thay đổi
@@ -104,7 +102,7 @@ export default function SystemConfig() {
         // ✅ NEW API: GET /api/events/config?eventId=-1 (global config)
         const res = await fetch('/api/events/config?eventId=-1', {
           headers: {
-            Authorization: `Bearer ${token}`,
+            credentials: 'include',
             'ngrok-skip-browser-warning': '1'
           },
           credentials: 'include'
@@ -150,7 +148,7 @@ export default function SystemConfig() {
       const url = `/api/events?page=${page}&limit=${pageSize}`
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
           'ngrok-skip-browser-warning': '1'
         },
         credentials: 'include'
@@ -326,7 +324,7 @@ export default function SystemConfig() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
           'ngrok-skip-browser-warning': '1'
         },
         credentials: 'include',
@@ -374,7 +372,7 @@ export default function SystemConfig() {
     try {
       const res = await fetch('/api/events/config?eventId=-1', {
         headers: {
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
           'ngrok-skip-browser-warning': '1'
         },
         credentials: 'include'
@@ -815,3 +813,4 @@ export default function SystemConfig() {
     </div>
   )
 }
+

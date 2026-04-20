@@ -63,7 +63,7 @@ export default function MyBills() {
             setError(null)
 
             // Lấy JWT token (đã login) từ localStorage
-            const token = 'cookie-auth'
+
 
             // Build query params
             const params = new URLSearchParams({
@@ -87,7 +87,7 @@ export default function MyBills() {
             const res = await fetch(`/api/payment/my-bills?${params.toString()}`, {
                 headers: {
                     // Gửi token lên backend để xác thực user
-                    Authorization: `Bearer ${token}`,
+                    credentials: 'include',
 
                     // Header này thường dùng khi chạy qua ngrok để bỏ warning (không bắt buộc)
                     'ngrok-skip-browser-warning': '1'
@@ -421,3 +421,4 @@ export default function MyBills() {
         </div>
     )
 }
+

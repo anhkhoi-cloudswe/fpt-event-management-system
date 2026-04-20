@@ -42,10 +42,6 @@ export default function Dashboard() {
   // Lấy user từ AuthContext (hiện tại user chưa dùng trong UI)
   const { user } = useAuth()
 
-  // Lấy token từ localStorage để gọi API có Authorization
-  // (comment trong code: "Get token from localStorage instead of user object")
-  const token = 'cookie-auth'
-
   // ===================== URL PARAMS MANAGEMENT =====================
   // Lấy search params từ URL
   const [searchParams, setSearchParams] = useSearchParams()
@@ -143,13 +139,6 @@ export default function Dashboard() {
   useEffect(() => {
     // fetchEvents: hàm async gọi /api/events để lấy danh sách sự kiện
     const fetchEvents = async () => {
-      // Nếu không có token -> user chưa đăng nhập -> báo lỗi và dừng
-      if (!token) {
-        setError('Chưa đăng nhập')
-        setLoading(false)
-        return
-      }
-
       try {
         // Bật loading và reset error trước khi gọi API
         setLoading(true)
@@ -177,9 +166,8 @@ export default function Dashboard() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            // Gửi Bearer token để BE xác thực
-            Authorization: `Bearer ${token}`,
           },
+          credentials: 'include',
         })
 
         // Nếu HTTP status không ok -> xử lý theo status code
@@ -250,9 +238,9 @@ export default function Dashboard() {
       }
     }
 
-    // Gọi fetchEvents khi component mount hoặc khi token, activeTab, currentPage, searchQuery đổi
+    // Gọi fetchEvents кси component mount hoặc khi activeTab, currentPage, searchQuery đổi
     fetchEvents()
-  }, [token, activeTab, currentPage, searchQuery])
+  }, [activeTab, currentPage, searchQuery])
 
   // ===================== MỞ MODAL CHI TIẾT + GỌI API DETAIL =====================
   /**
@@ -261,9 +249,6 @@ export default function Dashboard() {
    * - Đồng thời gọi API /api/events/detail?id=... để lấy chi tiết event
    */
   const openEventDetail = async (eventId: number) => {
-    // Nếu không có token thì không call API
-    if (!token) return
-
     // Mở modal trước để UI phản hồi nhanh
     setIsDetailOpen(true)
 
@@ -288,8 +273,8 @@ export default function Dashboard() {
         cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
       })
 
       if (refreshToken) {

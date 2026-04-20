@@ -223,7 +223,6 @@ func jwtMiddleware(next http.Handler) http.Handler {
 			claims, err := jwt.ValidateToken(token)
 			if err != nil {
 				log.Printf("[GATEWAY] [JWT] ❌ Token validation failed: %v", err)
-				log.Printf("[GATEWAY] [JWT] 🔑 Gateway secret: %s", jwt.GetSecretPreview())
 				// Security: Don't log token content/prefix - only size info
 				if len(token) > 20 {
 					log.Printf("[GATEWAY] [JWT] 📝 Token size: %d bytes (valid JWT structure: header.payload.sig)", len(token))

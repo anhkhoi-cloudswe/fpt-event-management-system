@@ -314,7 +314,7 @@ export default function OrganizerEventRequests() {
   const fetchActiveRequests = async (page: number) => {
     try {
       setActiveLoading(true)
-      const token = 'cookie-auth'
+
       const offset = (page - 1) * ITEMS_PER_PAGE
 
       let url = `/api/event-requests/my/active?limit=${ITEMS_PER_PAGE}&offset=${offset}`
@@ -324,7 +324,7 @@ export default function OrganizerEventRequests() {
 
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
         },
       })
 
@@ -357,7 +357,7 @@ export default function OrganizerEventRequests() {
   const fetchArchivedRequests = async (page: number) => {
     try {
       setArchivedLoading(true)
-      const token = 'cookie-auth'
+
       const offset = (page - 1) * ITEMS_PER_PAGE
 
       let url = `/api/event-requests/my/archived?limit=${ITEMS_PER_PAGE}&offset=${offset}`
@@ -367,7 +367,7 @@ export default function OrganizerEventRequests() {
 
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
         },
       })
 
@@ -400,11 +400,11 @@ export default function OrganizerEventRequests() {
   const fetchEventRequestDetail = async (requestId: number) => {
     try {
       setIsDetailLoading(true)
-      const token = 'cookie-auth'
+
 
       const response = await fetch(`/api/event-requests/${requestId}`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
         },
       })
 
@@ -491,7 +491,7 @@ export default function OrganizerEventRequests() {
     }
 
     try {
-      const token = 'cookie-auth'
+
       const userIdStr = localStorage.getItem('userId')
 
       // ✅ FIX: Gửi đúng eventId/requestId dựa trên createdEventId
@@ -504,7 +504,7 @@ export default function OrganizerEventRequests() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
           'X-User-Id': userIdStr || '',
         },
         body: JSON.stringify(payload),
@@ -1042,3 +1042,4 @@ export default function OrganizerEventRequests() {
     </div>
   )
 }
+

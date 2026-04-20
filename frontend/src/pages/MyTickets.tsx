@@ -145,16 +145,6 @@ export default function MyTickets() {
    * fetchTickets: Gọi API lấy danh sách vé với pagination và filter
    */
   const fetchTickets = useCallback(async (page: number, search: string, status: string) => {
-    // Lấy JWT token từ localStorage
-    const jwt = 'cookie-auth'
-
-    // Nếu không có token => user chưa đăng nhập
-    if (!jwt) {
-      setError('Bạn cần đăng nhập để xem vé của mình.')
-      setLoading(false)
-      return
-    }
-
     // Bắt đầu fetch: bật loading và reset error
     setLoading(true)
     setError(null)
@@ -178,10 +168,7 @@ export default function MyTickets() {
       const res = await fetch(`/api/registrations/my-tickets?${params.toString()}`, {
         headers: {
           'Content-Type': 'application/json',
-          // Đính kèm JWT vào Authorization để BE xác thực user
-          Authorization: `Bearer ${jwt}`,
         },
-        // credentials: 'include' để gửi cookie (nếu BE dùng cookie session kèm theo)
         credentials: 'include',
       })
 
@@ -250,16 +237,12 @@ export default function MyTickets() {
   // This endpoint now returns tickets with PENDING, APPROVED, REJECTED reports
   useEffect(() => {
     const fetchReportTicketIds = async () => {
-      const jwt = 'cookie-auth'
-      if (!jwt) return
-
       try {
         const res = await fetch('/api/student/reports/pending-ticket-ids', {
           method: 'GET',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${jwt}`,
           },
         })
 

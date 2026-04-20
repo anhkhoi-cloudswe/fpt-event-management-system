@@ -182,13 +182,13 @@ export default function EventRequestEdit() {
      */
     const fetchEventRequestData = async () => {
         try {
-            const token = 'cookie-auth'
+
 
             // ✅ NEW: Gọi API chi tiết request (thay vì dùng list và tìm)
             // Endpoint này trả về dữ liệu đầy đủ với datetime fields được JOIN từ Event
             const detailResponse = await fetch(`/api/event-requests/${id}`, {
                 headers: {
-                    Authorization: `Bearer ${token}`,
+                    credentials: 'include',
                 },
             })
 
@@ -273,7 +273,7 @@ export default function EventRequestEdit() {
 
                     const eventResponse = await fetch(`/api/events/detail?id=${matchingRequest.createdEventId}`, {
                         headers: {
-                            Authorization: `Bearer ${token}`,
+                            credentials: 'include',
                         },
                     })
 
@@ -314,7 +314,7 @@ export default function EventRequestEdit() {
                 try {
                     const eventResponse = await fetch(`/api/events/detail?id=${matchingRequest.createdEventId}`, {
                         headers: {
-                            Authorization: `Bearer ${token}`,
+                            credentials: 'include',
                         },
                     })
 
@@ -764,7 +764,6 @@ export default function EventRequestEdit() {
                 }
             }
 
-            const token = 'cookie-auth'
 
             // ===== STEP 1: DRY RUN - Validate without committing =====
             console.log('[STEP 1] Validating form data...')
@@ -799,7 +798,7 @@ export default function EventRequestEdit() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
+                    credentials: 'include',
                 },
                 body: JSON.stringify(dryRunRequest),
             })
@@ -879,7 +878,7 @@ export default function EventRequestEdit() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
+                    credentials: 'include',
                 },
                 body: JSON.stringify(commitRequest),
             })
@@ -1253,3 +1252,4 @@ export default function EventRequestEdit() {
         </div>
     )
 }
+

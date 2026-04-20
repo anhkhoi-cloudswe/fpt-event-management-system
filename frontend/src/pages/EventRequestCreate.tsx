@@ -351,9 +351,6 @@ export default function EventRequestCreate() {
     setIsSubmitting(true)
 
     try {
-      // Lấy token để gọi API có auth
-      const token = 'cookie-auth'
-
       /**
        * formatDateTimeLocal:
        * - input datetime-local trả về dạng: "YYYY-MM-DDTHH:mm"
@@ -393,8 +390,8 @@ export default function EventRequestCreate() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify(requestBody),
       })
 
@@ -638,3 +635,4 @@ export default function EventRequestCreate() {
     </div>
   )
 }
+

@@ -90,8 +90,6 @@ export default function Reports() {
   const { user } = useAuth()
 
   // JWT token để gọi API (lấy từ localStorage; check window để tránh lỗi SSR)
-  const token =
-    typeof window !== 'undefined' ? 'cookie-auth' : null
 
   // ===================== UI STATE =====================
 
@@ -271,7 +269,7 @@ export default function Reports() {
 
         const res = await fetch(`/api/events?${queryParams.toString()}`, {
           headers: {
-            Authorization: `Bearer ${token}`,
+            credentials: 'include',
             'ngrok-skip-browser-warning': '1',
           },
           credentials: 'include',
@@ -358,7 +356,7 @@ export default function Reports() {
 
         const res = await fetch(url, {
           headers: {
-            Authorization: `Bearer ${token}`,
+            credentials: 'include',
             'ngrok-skip-browser-warning': '1',
           },
           credentials: 'include',
@@ -469,7 +467,7 @@ export default function Reports() {
               `/api/tickets/list?eventId=${encodeURIComponent(selectedEventId)}`,
               {
                 headers: {
-                  Authorization: `Bearer ${token}`,
+                  credentials: 'include',
                   'ngrok-skip-browser-warning': '1',
                 },
                 credentials: 'include',
@@ -630,7 +628,7 @@ export default function Reports() {
       // ✅ OPTIMIZED: Call Backend aggregate endpoint directly (eventId=0)
       const res = await fetch('/api/events/stats?eventId=0', {
         headers: {
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
           'ngrok-skip-browser-warning': '1',
         },
         credentials: 'include',
@@ -684,7 +682,7 @@ export default function Reports() {
       const statsPromises = filteredEvents.map(async (event) => {
         const res = await fetch(`/api/events/stats?eventId=${event.id}`, {
           headers: {
-            Authorization: `Bearer ${token}`,
+            credentials: 'include',
             'ngrok-skip-browser-warning': '1',
           },
           credentials: 'include',
@@ -1374,3 +1372,4 @@ export default function Reports() {
     </div>
   )
 }
+

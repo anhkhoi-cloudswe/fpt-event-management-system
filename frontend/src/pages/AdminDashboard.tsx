@@ -68,14 +68,13 @@ export default function AdminDashboard() {
   const fetchUsers = async () => {
     // Fetch list of users (ADMIN-managed) from backend
     // GET http://localhost:3000/api/admin/users
-    // Uses stored `token` for Authorization header (Bearer)
+    // Uses cookie authentication
     try {
-      const token = 'cookie-auth'
-
       const response = await fetch('/api/users/staff-organizer', {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       })
 
       if (response.ok) {
@@ -129,14 +128,12 @@ export default function AdminDashboard() {
     // POST http://localhost:3000/api/admin/create-account
     // Expects body: { fullName, phone, email, password, role }
     try {
-      const token = 'cookie-auth'
-
       const response = await fetch('/api/admin/create-account', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(data)
       })
 
@@ -163,7 +160,6 @@ export default function AdminDashboard() {
     // PUT http://localhost:3000/api/admin/create-account
     // Body: { id, fullName, phone, role, status, password }
     try {
-      const token = 'cookie-auth'
       // Build payload matching the backend requirement
       const payload: any = {
         id: data.userId,
@@ -178,9 +174,9 @@ export default function AdminDashboard() {
       const response = await fetch('/api/admin/create-account', {
         method: 'PUT',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(payload)
       })
 
@@ -206,14 +202,14 @@ export default function AdminDashboard() {
     // Body: { id }
     // On success refetches the user list
     try {
-      const token = 'cookie-auth'
       // Use query param for DELETE: /api/admin/create-account?id=1
       const url = `/api/admin/create-account?id=${encodeURIComponent(userId)}`
       const response = await fetch(url, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       })
 
       // Some backends may return a message or error

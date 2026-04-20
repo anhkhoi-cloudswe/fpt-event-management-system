@@ -173,11 +173,11 @@ export default function StaffEventRequests() {
    */
   const fetchEventRequests = async () => {
     try {
-      const token = 'cookie-auth'
+
 
       const response = await fetch('/api/staff/event-requests', {
         headers: {
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
         },
       })
 
@@ -330,7 +330,7 @@ export default function StaffEventRequests() {
     if (!requestToProcess) return
 
     try {
-      const token = 'cookie-auth'
+
 
       const payload = {
         requestId: requestToProcess.requestId,
@@ -344,7 +344,7 @@ export default function StaffEventRequests() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          credentials: 'include',
         },
         body: JSON.stringify(payload),
       })
@@ -658,3 +658,4 @@ export default function StaffEventRequests() {
     </div>
   )
 }
+
