@@ -445,8 +445,8 @@ export default function ReportRequests() {
                     setSearchParams(new URLSearchParams({ page: '1' }))
                   }}
                   className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'PENDING'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                 >
                   Chờ xử lý
@@ -465,8 +465,8 @@ export default function ReportRequests() {
                     setSearchParams(new URLSearchParams({ page: '1' }))
                   }}
                   className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'PROCESSED'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                 >
                   Đã xử lý
@@ -578,8 +578,8 @@ export default function ReportRequests() {
                       <td className="px-6 py-4 text-sm text-gray-900">{r.category_ticket_name ?? '-'}</td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${r.report_status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                            r.report_status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                              'bg-red-100 text-red-800'
+                          r.report_status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
                           }`}>
                           {r.report_status}
                         </span>
@@ -645,8 +645,8 @@ export default function ReportRequests() {
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
                       className={`px-3 py-2 border rounded-lg text-sm ${currentPage === pageNum
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'border-gray-300 hover:bg-gray-50'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-300 hover:bg-gray-50'
                         }`}
                     >
                       {pageNum}
@@ -726,8 +726,8 @@ export default function ReportRequests() {
                   <p className="text-sm text-gray-500">Trạng thái báo cáo</p>
                   <p className="font-medium">
                     <span className={`px-2 py-1 rounded text-xs font-semibold ${selected.report_status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                        selected.report_status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                          'bg-red-100 text-red-800'
+                      selected.report_status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                        'bg-red-100 text-red-800'
                       }`}>
                       {selected.report_status}
                     </span>

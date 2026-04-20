@@ -640,8 +640,8 @@ export function EventDetailModal({
                                 })
                               }
                               className={`flex items-center justify-between gap-4 py-2 px-3 rounded-lg border cursor-pointer transition ${isSelectedTicket
-                                  ? 'border-blue-600 bg-blue-50'
-                                  : 'border-transparent hover:bg-gray-50'
+                                ? 'border-blue-600 bg-blue-50'
+                                : 'border-transparent hover:bg-gray-50'
                                 }`}
                             >
                               <div className="flex-1 min-w-0">
