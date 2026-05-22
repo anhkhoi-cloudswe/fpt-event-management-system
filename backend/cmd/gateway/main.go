@@ -252,7 +252,7 @@ func jwtMiddleware(next http.Handler) http.Handler {
 
 // corsMiddleware adds CORS headers and handles preflight
 func corsMiddleware(next http.Handler) http.Handler {
-	allowedOrigins := parseAllowedOrigins(getEnv("CORS_ALLOWED_ORIGINS", "https://fpt-event.online"))
+	allowedOrigins := parseAllowedOrigins(getEnv("CORS_ALLOWED_ORIGINS", "https://fpt-event.online,https://fpt-event.vercel.app"))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
