@@ -14,18 +14,6 @@ const API_URL = API_BASE_URL
 // reCAPTCHA site key được lấy từ environment variable
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 
-// Validate reCAPTCHA site key
-if (!RECAPTCHA_SITE_KEY || RECAPTCHA_SITE_KEY.includes('placeholder')) {
-  console.error(
-    '❌ reCAPTCHA Site Key is missing or invalid!\n' +
-    'This will cause "Invalid domain for site key" error.\n' +
-    '\nTo fix:\n' +
-    '1. For LOCAL dev: Create .env.local with: VITE_RECAPTCHA_SITE_KEY=your_key\n' +
-    '2. For VERCEL: Set Environment Variable in Project Settings > Environment Variables\n' +
-    '3. Get key from: https://www.google.com/recaptcha/admin'
-  )
-}
-
 interface FormData {
   email: string
   otp: string
@@ -249,24 +237,10 @@ export default function ResetPassword() {
 
         {step === 'email' ? (
           <form onSubmit={handleSendOtp} className="space-y-6">
-            {(!RECAPTCHA_SITE_KEY || RECAPTCHA_SITE_KEY.includes('placeholder')) && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded">
-                <p className="text-red-700 font-semibold text-sm">
-                  ⚠️ reCAPTCHA configuration error
-                </p>
-                <p className="text-red-600 text-xs mt-1">
-                  {!RECAPTCHA_SITE_KEY 
-                    ? 'Site key is not set. Check your .env file or Vercel Environment Variables.'
-                    : 'Site key has placeholder value. Set a real key in Vercel Environment Variables.'
-                  }
-                </p>
-              </div>
-            )}
-            
             <div>
               <ReCAPTCHA
                 ref={recaptchaRef}
-                sitekey={RECAPTCHA_SITE_KEY || 'placeholder-missing-key'}
+                sitekey={RECAPTCHA_SITE_KEY}
                 onChange={(token) => {
                   setRecaptchaToken(token)
                   if (token) {
