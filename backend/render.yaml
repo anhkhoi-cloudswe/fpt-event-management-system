@@ -95,11 +95,6 @@ services:
           property: password
       - key: DB_NAME
         value: fpteventmanagement
-      - key: DB_URL
-        # Render không hỗ trợ string interpolation trong YAML, 
-        # nên code Go (common/config/system_config.go) sẽ xây dựng DB_URL từ các biến riên
-        # Hoặc dùng connectionString từ Render nếu khả dụng
-        sync: false
       # ── Redis (tự động lấy từ Render Redis) ───────────────────────────────
       - key: REDIS_HOST
         fromService:
@@ -161,49 +156,49 @@ services:
       # ── Secrets — phải điền thủ công trong Render Dashboard ───────────────
       # Truy cập: Dashboard → fpt-event-gateway → Environment → Add Env Var
       - key: JWT_SECRET
-        sync: false   # Render sẽ prompt bạn điền khi deploy
+        value: ""
       - key: INTERNAL_AUTH_TOKEN
-        sync: false
+        value: ""
       - key: CORS_ALLOWED_ORIGINS
-        sync: false   # Ví dụ: https://your-app.vercel.app
+        value: ""
       - key: FRONTEND_BASE_URL
-        sync: false   # Ví dụ: https://your-app.vercel.app
+        value: ""
       # ── VNPay ─────────────────────────────────────────────────────────────
       - key: VNPAY_TMN_CODE
-        sync: false
+        value: ""
       - key: VNPAY_HASH_SECRET
-        sync: false
+        value: ""
       - key: VNPAY_URL
         value: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
       - key: VNPAY_RETURN_URL
-        sync: false
+        value: ""
       # ── SMTP (AWS SES hoặc Gmail SMTP) ────────────────────────────────────
       - key: SMTP_HOST
-        sync: false
+        value: ""
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USERNAME
-        sync: false
+        value: ""
       - key: SMTP_PASSWORD
-        sync: false
+        value: ""
       - key: SMTP_FROM
-        sync: false
+        value: ""
       - key: SMTP_FROM_NAME
         value: FPT Event Management
       # ── AWS S3 (vẫn dùng để lưu ảnh banner) ──────────────────────────────
       - key: AWS_REGION
         value: ap-southeast-1
       - key: AWS_ACCESS_KEY_ID
-        sync: false
+        value: ""
       - key: AWS_SECRET_ACCESS_KEY
-        sync: false
+        value: ""
       - key: AWS_S3_BUCKET
-        sync: false
+        value: ""
       # ── reCAPTCHA v2 ─────────────────────────────────────────────────────
       - key: RECAPTCHA_SECRET
-        sync: false
+        value: ""
       - key: VITE_RECAPTCHA_SITE_KEY
-        sync: false
+        value: ""
       # ── Time Machine (để trống = dùng giờ thực) ───────────────────────────
       - key: SYSTEM_TIME_OVERRIDE
         value: ""
