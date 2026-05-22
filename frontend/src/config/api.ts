@@ -30,62 +30,45 @@ api.interceptors.request.use((config) => {
 	return config
 })
 
-// 🌐 Patch window.fetch to automatically rewrite relative /api calls to use API_BASE_URL
+// 🌐 Patch window.fetch to automatically prepend VITE_API_BASE_URL on production
 const originalFetch = window.fetch
 ;(window as any).fetch = function (this: any, input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  if (typeof input === 'string') {
-    if (input.startsWith('http://') || input.startsWith('https://')) {
-      return originalFetch.call(this, input, init)
-    }
+  const envApiBase = (
+    (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
+    (import.meta.env.VITE_API_URL as string | undefined)
+  )?.trim()?.replace(/\/$/, '')
 
-    if (API_BASE_URL.startsWith('http')) {
-      // For absolute API_BASE_URL (production)
-      const stripped = input.startsWith('/api') ? input.replace(/^\/api/, '') : input
-      const newUrl = `${API_BASE_URL}${stripped.startsWith('/') ? '' : '/'}${stripped}`
-      return originalFetch.call(this, newUrl, init)
-    } else {
-      // For relative API_BASE_URL (local dev proxy)
-      if (input.startsWith(API_BASE_URL)) {
-        return originalFetch.call(this, input, init)
-      }
-      const newUrl = `${API_BASE_URL}${input.startsWith('/') ? '' : '/'}${input}`
-      return originalFetch.call(this, newUrl, init)
-    }
-  } else if (input instanceof URL) {
-    const urlString = input.toString()
-    if (urlString.startsWith(window.location.origin)) {
-      const relativePath = urlString.substring(window.location.origin.length)
-      if (API_BASE_URL.startsWith('http')) {
-        const stripped = relativePath.startsWith('/api') ? relativePath.replace(/^\/api/, '') : relativePath
-        const newUrl = `${API_BASE_URL}${stripped.startsWith('/') ? '' : '/'}${stripped}`
+  if (envApiBase && envApiBase.startsWith('http')) {
+    if (typeof input === 'string') {
+      if (input.startsWith('/api')) {
+        const newUrl = `${envApiBase}${input}`
         return originalFetch.call(this, newUrl, init)
-      } else {
-        if (!relativePath.startsWith(API_BASE_URL)) {
-          const newUrl = `${API_BASE_URL}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`
+      }
+    } else if (input instanceof URL) {
+      const urlString = input.toString()
+      if (urlString.startsWith(window.location.origin)) {
+        const relativePath = urlString.substring(window.location.origin.length)
+        if (relativePath.startsWith('/api')) {
+          const newUrl = `${envApiBase}${relativePath}`
           return originalFetch.call(this, newUrl, init)
         }
       }
-    }
-  } else if (input instanceof Request) {
-    const urlString = input.url
-    if (!urlString.startsWith('http://') && !urlString.startsWith('https://') || urlString.startsWith(window.location.origin)) {
-      const relativePath = urlString.startsWith(window.location.origin) 
-        ? urlString.substring(window.location.origin.length) 
-        : urlString
-      
-      let newUrl = urlString
-      if (API_BASE_URL.startsWith('http')) {
-        const stripped = relativePath.startsWith('/api') ? relativePath.replace(/^\/api/, '') : relativePath
-        newUrl = `${API_BASE_URL}${stripped.startsWith('/') ? '' : '/'}${stripped}`
-      } else {
-        if (!relativePath.startsWith(API_BASE_URL)) {
-          newUrl = `${API_BASE_URL}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`
+    } else if (input instanceof Request) {
+      const urlString = input.url
+      if (!urlString.startsWith('http://') && !urlString.startsWith('https://') || urlString.startsWith(window.location.origin)) {
+        const relativePath = urlString.startsWith(window.location.origin) 
+          ? urlString.substring(window.location.origin.length) 
+          : urlString
+        
+        if (relativePath.startsWith('/api')) {
+          const newUrl = `${envApiBase}${relativePath}`
+          const newRequest = new Request(newUrl, input)
+          return originalFetch.call(this, newRequest, init)
         }
       }
-      const newRequest = new Request(newUrl, input)
-      return originalFetch.call(this, newRequest, init)
     }
   }
+
   return originalFetch.call(this, input, init)
 }
 
