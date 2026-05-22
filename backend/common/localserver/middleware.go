@@ -18,7 +18,7 @@ func WithJWTAuth(next LambdaHandler) LambdaHandler {
 		path := request.Path
 		
 		// Bypass authentication for public routes (e.g., login, register, local auth check)
-		if path == "/api/v1/auth/me" || path == "/api/auth/me" || strings.HasPrefix(path, "/api/login") || strings.HasPrefix(path, "/api/register") || path == "/health" {
+		if path == "/api/v1/auth/me" || path == "/api/auth/me" || strings.HasPrefix(path, "/api/login") || strings.HasPrefix(path, "/api/v1/auth/login") || strings.HasPrefix(path, "/api/register") || path == "/health" {
 			return next(ctx, request)
 		}
 
