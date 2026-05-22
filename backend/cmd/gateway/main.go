@@ -35,6 +35,7 @@ type Route struct {
 var routes = []Route{
 	// ========== Auth Service (8081) ==========
 	{"/api/v1/auth/login", "Auth"},
+	{"/api/login", "Auth"},
 	{"/api/logout", "Auth"},
 	{"/api/v1/auth/me", "Auth"},
 	{"/api/auth/me", "Auth"},
@@ -285,7 +286,8 @@ func main() {
 	loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
 	time.Local = loc
 
-	port := getEnv("GATEWAY_PORT", "8080")
+	// Render sets PORT automatically. GATEWAY_PORT is for local dev override.
+	port := getEnv("GATEWAY_PORT", getEnv("PORT", "8080"))
 
 	// Pre-create proxies for each backend
 	proxies := make(map[string]*httputil.ReverseProxy)
