@@ -134,9 +134,9 @@ export default function Login() {
     )
 
     try {
-      // Gọi API POST /v1/auth/login
+      // Gọi API POST /login
       // Body gồm: email, password, recaptchaToken
-      const response = await axios.post(`${API_URL}/v1/auth/login`, {
+      const response = await axios.post(`${API_URL}/login`, {
         email: formData.email,
         password: formData.password,
         recaptchaToken: tokenToSend
