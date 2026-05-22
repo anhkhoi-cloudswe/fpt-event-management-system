@@ -36,7 +36,7 @@ func applyConnectionPool(sqlDB *sql.DB) {
 // Config holds database configuration
 type Config struct {
 	Server   string
-	Port     int
+	Port     string
 	Database string
 	User     string
 	Password string
@@ -51,8 +51,8 @@ func InitDB() error {
 	}
 
 	config := Config{
-		Server:   getEnv("DB_SERVER", "127.0.0.1"),
-		Port:     5432,
+		Server:   getEnv("DB_HOST", getEnv("DB_SERVER", "127.0.0.1")),
+		Port:     getEnv("DB_PORT", "5432"),
 		Database: getEnv("DB_NAME", "FPTEventManagement"),
 		User:     getEnv("DB_USER", "fpt_app"),
 		Password: getEnv("DB_PASSWORD", "FPTEventAppPassword2026"),
@@ -88,7 +88,7 @@ func initDBWithDSN(dsn string) error {
 func InitDBWithConfig(config Config) error {
 	// postgres://user:password@host:port/database?sslmode=disable
 	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=disable",
+		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		config.User,
 		config.Password,
 		config.Server,
@@ -142,14 +142,14 @@ func InitServiceDB(serviceName string) (*sql.DB, error) {
 		dsn = envDSN
 	} else {
 		config := Config{
-			Server:   getEnv("DB_SERVER", "127.0.0.1"),
-			Port:     5432,
+			Server:   getEnv("DB_HOST", getEnv("DB_SERVER", "127.0.0.1")),
+			Port:     getEnv("DB_PORT", "5432"),
 			Database: getEnv("DB_NAME", "FPTEventManagement"),
 			User:     getEnv("DB_USER", "fpt_app"),
 			Password: getEnv("DB_PASSWORD", "FPTEventAppPassword2026"),
 		}
 		dsn = fmt.Sprintf(
-			"postgres://%s:%s@%s:%d/%s?sslmode=disable",
+			"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 			config.User,
 			config.Password,
 			config.Server,
