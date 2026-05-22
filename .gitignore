@@ -12,6 +12,23 @@ backend/dist/
 backend/bootstrap
 backend/tests/
 backend/test/
+backend/gateway*
+backend/auth-lambda*
+backend/event-lambda*
+backend/ticket-lambda*
+backend/venue-lambda*
+backend/staff-lambda*
+backend/notification-lambda*
+backend/authorizer-lambda*
+backend/auth-service*
+backend/event-service*
+backend/ticket-service*
+backend/venue-service*
+backend/staff-service*
+backend/notification-service*
+backend/fpt-backend*
+backend/app
+backend/main
 
 # Frontend
 frontend/node_modules/

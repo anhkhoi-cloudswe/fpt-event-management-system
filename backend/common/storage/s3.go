@@ -1,7 +1,7 @@
 // Package storage cung cấp tiện ích upload file lên AWS S3.
 //
 // Thiết kế hỗ trợ chuyển sang IAM Role mà không cần sửa logic:
-//   - Dev: dùng AWS_ACCESS_KEY_ID + ***REMOVED*** trong .env
+//   - Dev: dùng AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY trong .env
 //   - Prod (IAM Role): xóa biến tĩnh khỏi env, SDK tự dùng instance metadata
 package storage
 
@@ -59,7 +59,7 @@ type S3Client struct {
 // NewS3Client khởi tạo S3Client từ biến môi trường.
 //
 // Thứ tự ưu tiên credential (do AWS SDK tự xử lý):
-//  1. Biến môi trường AWS_ACCESS_KEY_ID + ***REMOVED***  (dev / CI)
+//  1. Biến môi trường AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY  (dev / CI)
 //  2. AWS credentials file (~/.aws/credentials)
 //  3. IAM Role gắn với EC2 / ECS Task / Lambda  (prod – không cần sửa code)
 func NewS3Client(ctx context.Context) (*S3Client, error) {

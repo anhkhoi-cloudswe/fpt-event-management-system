@@ -3,8 +3,8 @@
 # =============================================================================
 #
 # Build args:
-#   SERVICE    — human label (e.g. gateway, auth-lambda). Used only for metadata.
-#   BUILD_PATH — Go package to build (e.g. ./cmd/gateway, ./services/auth-lambda)
+#   SERVICE    — human label (e.g. gateway, auth-service). Used only for metadata.
+#   BUILD_PATH — Go package to build (e.g. ./cmd/gateway, ./services/auth-service)
 #   GOARCH     — amd64 (default, local x86 dev) | arm64 (Lambda Graviton2 / ECR)
 #
 # Targets:
@@ -14,12 +14,12 @@
 # Examples:
 #   # Local dev (built automatically by docker-compose):
 #   docker build --target local \
-#     --build-arg BUILD_PATH=./services/auth-lambda \
+#     --build-arg BUILD_PATH=./services/auth-service \
 #     -t fpt-auth:local .
 #
 #   # ECR / Lambda (arm64 Graviton2):
 #   docker build --target lambda \
-#     --build-arg BUILD_PATH=./services/auth-lambda \
+#     --build-arg BUILD_PATH=./services/auth-service \
 #     --build-arg GOARCH=arm64 \
 #     -t <account>.dkr.ecr.ap-southeast-1.amazonaws.com/fpt-auth:latest .
 # =============================================================================

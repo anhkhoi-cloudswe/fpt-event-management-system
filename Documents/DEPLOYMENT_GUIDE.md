@@ -77,6 +77,6 @@ Cuối cùng, đẩy Code và cập nhật các ECS Containers thông qua Script
 cd scripts/
 
 # Chạy shell script để build image, push lên ECR và force deployment cho ECS
-./deloy-ecr.sh
+./deploy-ecr.sh
 ```
-*(Lưu ý: Bạn có thể cần chạy lệnh `chmod +x deloy-ecr.sh` lần đầu tiên để cấp quyền cho phép chạy shell script này).*
+*(Lưu ý: Bạn có thể cần chạy lệnh `chmod +x deploy-ecr.sh` lần đầu tiên để cấp quyền cho phép chạy shell script này).*

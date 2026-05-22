@@ -1,0 +1,76 @@
+name: Keep Render Backend Alive (Anti-Sleep Ping)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mục đích: Gửi HTTP GET ping đến Render backend mỗi 10 phút để ngăn service
+#           bị "sleep" do không có request (Render Free Tier policy: sleep sau
+#           15 phút idle).
+#
+# Cách thiết lập:
+#   1. Thay RENDER_BACKEND_URL bên dưới bằng URL thực của Render service bạn.
+#      Ví dụ: https://fpt-event-gateway.onrender.com
+#   2. Commit file này vào repo (đã nằm ở .github/workflows/keep-alive.yml).
+#   3. GitHub Actions sẽ tự động chạy cron mỗi 10 phút, 24/7, miễn phí!
+#
+# Lưu ý: GitHub Actions Free Tier cho phép 2,000 phút/tháng cho private repo
+#         và không giới hạn cho public repo — cron 10 phút sẽ tốn ~4,464 phút/
+#         tháng với private repo (vượt free tier). Khuyến nghị:
+#           - Dùng public repo → miễn phí hoàn toàn.
+#           - Hoặc dùng cron 14 phút (*/14) thay vì 10 phút.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    # Chạy mỗi 14 phút (an toàn hơn 10 phút, vẫn ngăn sleep sau 15 phút)
+    # Cron syntax: phút giờ ngày tháng thứ
+    - cron: '*/14 * * * *'
+  workflow_dispatch:  # Cho phép chạy thủ công từ GitHub UI
+
+jobs:
+  ping:
+    name: Ping Render Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Ping Gateway Health Check
+        env:
+          # ⚠️  THAY URL NÀY bằng URL thực của Render service sau khi deploy!
+          # Vào Render Dashboard → fpt-event-gateway → Settings → URL
+          RENDER_BACKEND_URL: ${{ secrets.RENDER_BACKEND_URL }}
+        run: |
+          # Dùng secrets.RENDER_BACKEND_URL để giữ URL không public trong code
+          # Nếu chưa set secret, fallback về placeholder (sẽ fail nhưng không crash workflow)
+          TARGET_URL="${RENDER_BACKEND_URL:-https://your-service-name.onrender.com}"
+          HEALTH_URL="${TARGET_URL}/health"
+
+          echo "🏓 Pinging: ${HEALTH_URL}"
+
+          # Gửi request với timeout 30s, retry 3 lần nếu thất bại
+          RESPONSE=$(curl \
+            --silent \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 5 \
+            --write-out "\nHTTP_STATUS:%{http_code}" \
+            "${HEALTH_URL}" 2>&1) || true
+
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | grep -v "HTTP_STATUS:")
+
+          echo "📡 Response body: ${BODY}"
+          echo "📊 HTTP Status: ${HTTP_STATUS}"
+
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ Backend is AWAKE and healthy!"
+          elif [ "$HTTP_STATUS" = "000" ]; then
+            echo "⚠️  Connection failed (backend might be waking up from cold start - this is normal)"
+            exit 0  # Không fail workflow, cold start là bình thường
+          else
+            echo "⚠️  Unexpected status ${HTTP_STATUS} - backend responded but may have issues"
+            exit 0  # Không fail, chỉ log cảnh báo
+          fi
+
+      - name: Log ping time
+        run: |
+          echo "🕐 Ping completed at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "🌏 Vietnam time: $(TZ='Asia/Ho_Chi_Minh' date '+%Y-%m-%d %H:%M:%S %Z')"

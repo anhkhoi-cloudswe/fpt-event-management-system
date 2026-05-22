@@ -612,7 +612,7 @@ export default function Dashboard() {
                         {/* Date & Time */}
                         <p className={`text-xs mb-2 font-semibold line-clamp-1 ${showTodayBadge ? 'text-red-600' : 'text-gray-600'
                           }`}>
-                          {format(eventDate, 'dd/MM/yyyy • EEEE • h:mm a', { locale: vi })}
+                          {formatWallClockDateTimeWithDayOfWeek(event.startTime)}
                         </p>
 
                         {/* Location */}

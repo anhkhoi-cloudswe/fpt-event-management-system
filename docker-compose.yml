@@ -116,8 +116,8 @@ services:
     build:
       <<: *build-defaults
       args:
-        SERVICE: auth-lambda
-        BUILD_PATH: ./services/auth-lambda
+        SERVICE: auth-service
+        BUILD_PATH: ./services/auth-service
     container_name: fpt-auth
     <<: *service-defaults
     environment:
@@ -128,7 +128,7 @@ services:
       INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN}
       AWS_REGION: ${AWS_REGION}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      ***REMOVED***: ${***REMOVED***}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
       SQS_QUEUE_URL: ${SQS_QUEUE_URL}
       REDIS_HOST: ${REDIS_HOST}
@@ -152,8 +152,8 @@ services:
     build:
       <<: *build-defaults
       args:
-        SERVICE: event-lambda
-        BUILD_PATH: ./services/event-lambda
+        SERVICE: event-service
+        BUILD_PATH: ./services/event-service
     container_name: fpt-event
     <<: *service-defaults
     environment:
@@ -181,8 +181,8 @@ services:
     build:
       <<: *build-defaults
       args:
-        SERVICE: ticket-lambda
-        BUILD_PATH: ./services/ticket-lambda
+        SERVICE: ticket-service
+        BUILD_PATH: ./services/ticket-service
     container_name: fpt-ticket
     <<: *service-defaults
     environment:
@@ -200,7 +200,7 @@ services:
 
       AWS_REGION: ${AWS_REGION}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      ***REMOVED***: ${***REMOVED***}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
       SQS_QUEUE_URL: ${SQS_QUEUE_URL}
       # ⏰ Time Machine Environment (read from .env for synchronized testing)
@@ -220,8 +220,8 @@ services:
     build:
       <<: *build-defaults
       args:
-        SERVICE: venue-lambda
-        BUILD_PATH: ./services/venue-lambda
+        SERVICE: venue-service
+        BUILD_PATH: ./services/venue-service
     container_name: fpt-venue
     <<: *service-defaults
     environment:
@@ -245,8 +245,8 @@ services:
     build:
       <<: *build-defaults
       args:
-        SERVICE: staff-lambda
-        BUILD_PATH: ./services/staff-lambda
+        SERVICE: staff-service
+        BUILD_PATH: ./services/staff-service
     container_name: fpt-staff
     <<: *service-defaults
     environment:
@@ -270,8 +270,8 @@ services:
     build:
       <<: *build-defaults
       args:
-        SERVICE: notification-lambda
-        BUILD_PATH: ./services/notification-lambda
+        SERVICE: notification-service
+        BUILD_PATH: ./services/notification-service
     container_name: fpt-notification
     <<: *service-defaults
     environment:
@@ -290,7 +290,7 @@ services:
       ENABLE_SQS_WORKER: ${ENABLE_SQS_WORKER}
       AWS_REGION: ${AWS_REGION}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      ***REMOVED***: ${***REMOVED***}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
       SQS_QUEUE_URL: ${SQS_QUEUE_URL}
       # ⏰ Time Machine Environment (read from .env for synchronized testing)

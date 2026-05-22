@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-xray-sdk-go v1.8.5
 	github.com/aws/smithy-go v1.24.2
 	github.com/gin-gonic/gin v1.10.1
-	github.com/go-sql-driver/mysql v1.9.3
+	github.com/lib/pq v1.10.9
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
 	github.com/jung-kurt/gofpdf v1.16.2
@@ -20,12 +20,10 @@ require (
 	golang.org/x/crypto v0.49.0
 	golang.org/x/text v0.35.0
 	golang.org/x/time v0.6.0
-	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.25.11
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/aws/aws-sdk-go v1.47.9 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.6 // indirect

@@ -24,7 +24,7 @@ type Config struct {
 // DefaultConfig returns reCAPTCHA config from environment variables
 func DefaultConfig() *Config {
 	return &Config{
-		SecretKey:  getEnv("***REMOVED***", ""),
+		SecretKey:  getEnv("RECAPTCHA_SECRET", ""),
 		SiteKey:    getEnv("RECAPTCHA_SITE_KEY", ""),
 		VerifyURL:  "https://www.google.com/recaptcha/api/siteverify",
 		MinScore:   0.5, // Default threshold for v3

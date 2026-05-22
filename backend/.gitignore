@@ -4,7 +4,24 @@
 *.dll
 *.so
 *.dylib
-local-api*
+/local-api*
+/gateway*
+/auth-lambda*
+/event-lambda*
+/ticket-lambda*
+/venue-lambda*
+/staff-lambda*
+/notification-lambda*
+/authorizer-lambda*
+/auth-service*
+/event-service*
+/ticket-service*
+/venue-service*
+/staff-service*
+/notification-service*
+/fpt-backend*
+/app
+/main
 
 # Test binary
 *.test
