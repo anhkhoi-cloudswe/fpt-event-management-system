@@ -31,46 +31,31 @@ api.interceptors.request.use((config) => {
 })
 
 // 🌐 Patch window.fetch to automatically prepend VITE_API_BASE_URL on production
-const originalFetch = window.fetch
-;(window as any).fetch = function (this: any, input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const envApiBase = (
-    (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
-    (import.meta.env.VITE_API_URL as string | undefined)
-  )?.trim()?.replace(/\/$/, '')
+const originalFetch = window.fetch;
 
-  if (envApiBase && envApiBase.startsWith('http')) {
-    if (typeof input === 'string') {
-      if (input.startsWith('/api')) {
-        const newUrl = `${envApiBase}${input}`
-        return originalFetch.call(this, newUrl, init)
-      }
-    } else if (input instanceof URL) {
-      const urlString = input.toString()
-      if (urlString.startsWith(window.location.origin)) {
-        const relativePath = urlString.substring(window.location.origin.length)
-        if (relativePath.startsWith('/api')) {
-          const newUrl = `${envApiBase}${relativePath}`
-          return originalFetch.call(this, newUrl, init)
-        }
-      }
-    } else if (input instanceof Request) {
-      const urlString = input.url
-      if (!urlString.startsWith('http://') && !urlString.startsWith('https://') || urlString.startsWith(window.location.origin)) {
-        const relativePath = urlString.startsWith(window.location.origin) 
-          ? urlString.substring(window.location.origin.length) 
-          : urlString
-        
-        if (relativePath.startsWith('/api')) {
-          const newUrl = `${envApiBase}${relativePath}`
-          const newRequest = new Request(newUrl, input)
-          return originalFetch.call(this, newRequest, init)
-        }
-      }
-    }
+window.fetch = async (input, init) => {
+  let url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+  // Lấy API Base URL từ Vercel (https://fpt-event-gateway.onrender.com)
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+  // NẾU URL truyền vào là đường dẫn tương đối bắt đầu bằng /api/
+  if (url.startsWith('/api/')) {
+    // Chỉ đơn giản là nối Base URL vào phía trước, GIỮ NGUYÊN TOÀN BỘ CÁC CHỮ PHÍA SAU
+    // Không dùng regex, không dùng replace để tránh nuốt mất /v1/auth
+    url = `${baseUrl.replace(/\/$/, '')}${url}`;
   }
 
-  return originalFetch.call(this, input, init)
-}
+  if (typeof input === 'string') {
+    input = url;
+  } else if (input instanceof URL) {
+    input = new URL(url);
+  } else {
+    input = new Request(url, input);
+  }
+
+  return originalFetch(input, init);
+};
 
 console.log('🚀 Ferrari BaseURL:', api.defaults.baseURL)
 
