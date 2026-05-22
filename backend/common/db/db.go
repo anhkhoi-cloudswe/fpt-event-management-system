@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -43,10 +44,13 @@ type Config struct {
 }
 
 // InitDB initializes database connection pool.
-// Reads DB_URL first (full postgres:// DSN), otherwise falls back to individual env vars.
+// Reads DB_URL or DATABASE_URL first (full postgres:// DSN), otherwise falls back to individual env vars.
 func InitDB() error {
-	// Check for DB_URL first (full DSN string, e.g. postgres://user:pass@host:5432/db?sslmode=require)
-	if dsn := os.Getenv("DB_URL"); dsn != "" {
+	dsn := os.Getenv("DB_URL")
+	if dsn == "" {
+		dsn = os.Getenv("DATABASE_URL")
+	}
+	if dsn != "" {
 		return initDBWithDSN(dsn)
 	}
 
@@ -61,39 +65,75 @@ func InitDB() error {
 	return InitDBWithConfig(config)
 }
 
-// initDBWithDSN initializes global DB using a full DSN string (from DB_URL).
+// pingWithRetry pings the database with a retry mechanism.
+func pingWithRetry(db *sql.DB, safeHost string) error {
+	var err error
+	maxRetries := 5
+	for i := 1; i <= maxRetries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err = db.PingContext(ctx)
+		cancel()
+
+		if err == nil {
+			return nil
+		}
+
+		logger.Warn("[DB] Failed to ping database, retrying...",
+			"host", safeHost,
+			"attempt", i,
+			"max_attempts", maxRetries,
+			"error", err.Error(),
+		)
+
+		if i < maxRetries {
+			time.Sleep(2 * time.Second)
+		}
+	}
+	return fmt.Errorf("ping failed after %d attempts: %w", maxRetries, err)
+}
+
+// initDBWithDSN initializes global DB using a full DSN string.
 // Expected format: postgres://username:password@host:port/dbname?sslmode=require
 func initDBWithDSN(dsn string) error {
 	var err error
+	
+	// Safely parse DSN for logging
+	safeHost := "unknown"
+	safeDB := "unknown"
+	if u, parseErr := url.Parse(dsn); parseErr == nil {
+		safeHost = u.Host
+		safeDB = u.Path
+	}
+	
+	logger.Info("[DB] Attempting database connection via DSN", "host", safeHost, "database", safeDB)
+
 	db, err = sql.Open("postgres", dsn)
 	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+		return fmt.Errorf("failed to open database at %s: %w", safeHost, err)
 	}
 
 	applyConnectionPool(db)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := db.PingContext(ctx); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+	if err := pingWithRetry(db, safeHost); err != nil {
+		return err
 	}
 
-	logger.Info("[DB] Connected successfully (via DB_URL)")
+	logger.Info("[DB] Connected successfully (via DSN)", "host", safeHost, "database", safeDB)
 	return nil
 }
 
 // InitDBWithConfig initializes database with custom config.
 // Builds a postgres:// DSN from individual fields.
 func InitDBWithConfig(config Config) error {
-	// postgres://user:password@host:port/database?sslmode=disable
+	sslmode := getEnv("DB_SSLMODE", "disable")
 	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		config.User,
 		config.Password,
 		config.Server,
 		config.Port,
 		config.Database,
+		sslmode,
 	)
 
 	var err error
@@ -105,15 +145,11 @@ func InitDBWithConfig(config Config) error {
 	// Configure connection pool
 	applyConnectionPool(db)
 
-	// Test connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := db.PingContext(ctx); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+	if err := pingWithRetry(db, config.Server); err != nil {
+		return err
 	}
 
-	logger.Info("[DB] Connected successfully", "server", config.Server, "port", config.Port, "database", config.Database)
+	logger.Info("[DB] Connected successfully", "server", config.Server, "port", config.Port, "database", config.Database, "sslmode", sslmode)
 
 	return nil
 }
@@ -136,9 +172,11 @@ func CloseDB() error {
 // instead of sharing the global singleton.
 // Returns *sql.DB that the service should pass through DI to its handlers/repos.
 func InitServiceDB(serviceName string) (*sql.DB, error) {
-	// Check for DB_URL first (full DSN string)
+	// Check for DB_URL or DATABASE_URL first (full DSN string)
 	var dsn string
 	if envDSN := os.Getenv("DB_URL"); envDSN != "" {
+		dsn = envDSN
+	} else if envDSN := os.Getenv("DATABASE_URL"); envDSN != "" {
 		dsn = envDSN
 	} else {
 		config := Config{
@@ -148,36 +186,44 @@ func InitServiceDB(serviceName string) (*sql.DB, error) {
 			User:     getEnv("DB_USER", "fpt_app"),
 			Password: getEnv("DB_PASSWORD", "FPTEventAppPassword2026"),
 		}
+		sslmode := getEnv("DB_SSLMODE", "disable")
 		dsn = fmt.Sprintf(
-			"postgres://%s:%s@%s:%s/%s?sslmode=disable",
+			"postgres://%s:%s@%s:%s/%s?sslmode=%s",
 			config.User,
 			config.Password,
 			config.Server,
 			config.Port,
 			config.Database,
+			sslmode,
 		)
 	}
 
+	// Safely parse DSN for logging
+	safeHost := "unknown"
+	safeDB := "unknown"
+	if u, parseErr := url.Parse(dsn); parseErr == nil {
+		safeHost = u.Host
+		safeDB = u.Path
+	}
+
+	logger.Info("Service database pool attempting connection", "service", serviceName, "host", safeHost, "database", safeDB)
+
 	serviceDB, err := sql.Open("postgres", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("[%s] failed to open database: %w", serviceName, err)
+		return nil, fmt.Errorf("[%s] failed to open database at %s: %w", serviceName, safeHost, err)
 	}
 
 	// Configure service-specific connection pool
 	applyConnectionPool(serviceDB)
 
-	// Test connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := serviceDB.PingContext(ctx); err != nil {
-		return nil, fmt.Errorf("[%s] failed to ping database: %w", serviceName, err)
+	if err := pingWithRetry(serviceDB, safeHost); err != nil {
+		return nil, err
 	}
 
 	if isLocal() {
-		logger.Info("Service-specific DB pool initialized", "service", serviceName, "max_open", 25, "max_idle", 5)
+		logger.Info("Service-specific DB pool initialized", "service", serviceName, "host", safeHost, "max_open", 25, "max_idle", 5)
 	} else {
-		logger.Info("Service-specific DB pool initialized", "service", serviceName, "max_open", 3, "max_idle", 1, "mode", "render")
+		logger.Info("Service-specific DB pool initialized", "service", serviceName, "host", safeHost, "max_open", 3, "max_idle", 1, "mode", "render")
 	}
 
 	return serviceDB, nil
