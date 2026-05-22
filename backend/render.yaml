@@ -1,0 +1,214 @@
+# =============================================================================
+# render.yaml — Render Blueprint Spec
+# FPT Event Management System — Backend Deployment
+# =============================================================================
+#
+# ⚠️  CHIẾN LƯỢC TRIỂN KHAI (đọc kỹ trước khi deploy):
+#
+#   Render Free Tier chỉ cho phép 1 Web Service miễn phí.
+#   Vì vậy, thay vì chạy 7 microservices riêng lẻ (quá tốn tài nguyên),
+#   chúng ta sẽ triển khai theo mô hình:
+#
+#     [Render Web Service: fpt-gateway] ← điểm vào duy nhất (port 8080)
+#       └── gọi nội bộ sang các service chạy cùng process thông qua
+#           goroutine + embedded HTTP mux (xem services/gateway/main.go)
+#
+#   Render cung cấp sẵn:
+#     - 1 MySQL (hoặc PostgreSQL) free   → dùng cho database chính
+#     - 1 Redis free                     → dùng cho OTP + cache
+#
+#   ❌ SQS (LocalStack): Render không hỗ trợ. Thay bằng:
+#       ENABLE_SQS_WORKER=false → notification service gửi email trực tiếp.
+#
+#   ℹ️  DB_URL GENERATION:
+#       Code Go sẽ tự ghép DB_URL từ các thành phần riên (DB_USER, DB_PASSWORD, 
+#       DB_HOST, DB_PORT, DB_NAME) theo format chuẩn. Các biến này đã được định nghĩa
+#       từ fpt-event-db database resources của Render.
+#
+# =============================================================================
+
+databases:
+  # ────────────────────────────────────────────────────────────────────────────
+  # MySQL 8.0
+  # Render cung cấp MySQL free (512 MB RAM, 1 GB storage, expire sau 90 ngày)
+  # ────────────────────────────────────────────────────────────────────────────
+  - name: fpt-event-db
+    databaseName: fpteventmanagement
+    user: fpt_app
+    # plan: free   ← mặc định, Render tự nhận diện
+    # region: singapore  ← chọn nếu muốn gần Việt Nam hơn
+
+services:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Redis (dùng cho OTP + Event cache)
+  # ────────────────────────────────────────────────────────────────────────────
+  - type: redis
+    name: fpt-event-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []   # chỉ cho phép kết nối từ nội bộ Render
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Backend — API Gateway (điểm vào duy nhất)
+  #
+  # ĐÂY LÀ CHIẾN LƯỢC TỐI ƯU NHẤT cho gói Free:
+  #   - Chỉ deploy 1 Web Service duy nhất: fpt-gateway (port 8080)
+  #   - Gateway đã có sẵn cơ chế API Composition, routing request đến đúng
+  #     service handler tương ứng qua biến môi trường SERVICE_URL
+  #   - Các microservices khác (auth, event, ticket, ...) cũng được deploy
+  #     riêng nếu bạn nâng lên plan trả phí, hoặc gộp logic vào gateway.
+  #
+  # Với Free Tier: Deploy gateway là đủ để demo toàn bộ tính năng.
+  # ────────────────────────────────────────────────────────────────────────────
+  - type: web
+    name: fpt-event-gateway
+    runtime: docker
+    # Render sẽ build Docker image từ thư mục backend/
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Build args cho multi-stage Dockerfile
+    dockerBuildArgs:
+      SERVICE: gateway
+      BUILD_PATH: ./cmd/gateway
+      GOARCH: amd64
+    plan: free
+    # Biến môi trường — điền giá trị thực từ Render Dashboard hoặc dùng fromDatabase
+    envVars:
+      # ── Database (tự động lấy từ Render Database) ──────────────────────────
+      # Format DB_URL: ${DB_USER}:${DB_PASSWORD}@tcp(${DB_HOST}:${DB_PORT})/${DB_NAME}?charset=utf8mb4&parseTime=true&loc=Local&collation=utf8mb4_unicode_ci
+      # Code Go sẽ tự ghép DB_URL từ các thành phần riên dưới đây
+      - key: DB_HOST
+        fromDatabase:
+          name: fpt-event-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: fpt-event-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: fpt-event-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: fpt-event-db
+          property: password
+      - key: DB_NAME
+        value: fpteventmanagement
+      - key: DB_URL
+        # Render không hỗ trợ string interpolation trong YAML, 
+        # nên code Go (common/config/system_config.go) sẽ xây dựng DB_URL từ các biến riên
+        # Hoặc dùng connectionString từ Render nếu khả dụng
+        sync: false
+      # ── Redis (tự động lấy từ Render Redis) ───────────────────────────────
+      - key: REDIS_HOST
+        fromService:
+          name: fpt-event-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: fpt-event-redis
+          type: redis
+          property: port
+      # ── Service URLs nội bộ (gateway tự gọi chính nó qua localhost) ────────
+      - key: AUTH_SERVICE_URL
+        value: http://localhost:8081
+      - key: EVENT_SERVICE_URL
+        value: http://localhost:8082
+      - key: TICKET_SERVICE_URL
+        value: http://localhost:8083
+      - key: VENUE_SERVICE_URL
+        value: http://localhost:8084
+      - key: STAFF_SERVICE_URL
+        value: http://localhost:8085
+      - key: NOTIFICATION_SERVICE_URL
+        value: http://localhost:8086
+      # ── Cổng gateway ──────────────────────────────────────────────────────
+      - key: LOCAL_PORT
+        value: "8080"
+      - key: PORT
+        value: "8080"
+      # ── SQS: Tắt worker vì không có SQS trên Render ───────────────────────
+      - key: ENABLE_SQS_WORKER
+        value: "false"
+      - key: AWS_ENDPOINT_URL
+        value: ""
+      # ── Timezone ──────────────────────────────────────────────────────────
+      - key: TZ
+        value: Asia/Ho_Chi_Minh
+      # ── Feature Flags (Microservices Architecture) ────────────────────────
+      - key: USE_API_COMPOSITION
+        value: "true"
+      - key: VENUE_API_ENABLED
+        value: "true"
+      - key: AUTH_API_ENABLED
+        value: "true"
+      - key: TICKET_API_ENABLED
+        value: "true"
+      - key: EVENT_API_ENABLED
+        value: "true"
+      - key: WALLET_SERVICE_ENABLED
+        value: "true"
+      - key: SAGA_ENABLED
+        value: "true"
+      - key: NOTIFICATION_API_ENABLED
+        value: "true"
+      - key: SERVICE_SPECIFIC_DB
+        value: "true"
+      - key: SERVICE_SPECIFIC_SCHEDULER
+        value: "true"
+      # ── Secrets — phải điền thủ công trong Render Dashboard ───────────────
+      # Truy cập: Dashboard → fpt-event-gateway → Environment → Add Env Var
+      - key: JWT_SECRET
+        sync: false   # Render sẽ prompt bạn điền khi deploy
+      - key: INTERNAL_AUTH_TOKEN
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false   # Ví dụ: https://your-app.vercel.app
+      - key: FRONTEND_BASE_URL
+        sync: false   # Ví dụ: https://your-app.vercel.app
+      # ── VNPay ─────────────────────────────────────────────────────────────
+      - key: VNPAY_TMN_CODE
+        sync: false
+      - key: VNPAY_HASH_SECRET
+        sync: false
+      - key: VNPAY_URL
+        value: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+      - key: VNPAY_RETURN_URL
+        sync: false
+      # ── SMTP (AWS SES hoặc Gmail SMTP) ────────────────────────────────────
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: SMTP_FROM_NAME
+        value: FPT Event Management
+      # ── AWS S3 (vẫn dùng để lưu ảnh banner) ──────────────────────────────
+      - key: AWS_REGION
+        value: ap-southeast-1
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_S3_BUCKET
+        sync: false
+      # ── reCAPTCHA v2 ─────────────────────────────────────────────────────
+      - key: RECAPTCHA_SECRET
+        sync: false
+      - key: VITE_RECAPTCHA_SITE_KEY
+        sync: false
+      # ── Time Machine (để trống = dùng giờ thực) ───────────────────────────
+      - key: SYSTEM_TIME_OVERRIDE
+        value: ""
+      # ── MySQL root password (cho init script) ─────────────────────────────
+      - key: MYSQL_ROOT_PASSWORD
+        fromDatabase:
+          name: fpt-event-db
+          property: password
