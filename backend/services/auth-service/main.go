@@ -88,7 +88,7 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	// ========== Public Routes ==========
 	switch {
-	case path == "/api/login" && method == "POST":
+	case path == "/api/v1/auth/login" && method == "POST":
 		return authHandler.HandleLogin(ctx, request)
 	case path == "/api/logout" && method == "POST":
 		return authHandler.HandleLogout(ctx, request)

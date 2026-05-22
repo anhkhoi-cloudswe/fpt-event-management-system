@@ -34,7 +34,7 @@ type Route struct {
 // Để tránh xung đột giữa /api/staff/event-requests (Event) và /api/staff/* (Staff)
 var routes = []Route{
 	// ========== Auth Service (8081) ==========
-	{"/api/login", "Auth"},
+	{"/api/v1/auth/login", "Auth"},
 	{"/api/logout", "Auth"},
 	{"/api/v1/auth/me", "Auth"},
 	{"/api/auth/me", "Auth"},
