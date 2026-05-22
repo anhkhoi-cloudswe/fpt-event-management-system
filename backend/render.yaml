@@ -15,7 +15,11 @@
 #
 #   Render cung cấp sẵn:
 #     - 1 MySQL (hoặc PostgreSQL) free   → dùng cho database chính
-#     - 1 Redis free                     → dùng cho OTP + cache
+#
+#   ❌ Redis Add-on: Bypass credit card validation bằng cách sử dụng Local In-Memory Cache:
+#       - OTP Manager: in-memory map[email]OTPRecord (sync.RWMutex)
+#       - Event cache: tạm thời lưu trên process memory
+#       - Không cần Redis external → không cần thẻ tín dụng
 #
 #   ❌ SQS (LocalStack): Render không hỗ trợ. Thay bằng:
 #       ENABLE_SQS_WORKER=false → notification service gửi email trực tiếp.
@@ -40,25 +44,19 @@ databases:
 
 services:
   # ────────────────────────────────────────────────────────────────────────────
-  # Redis (dùng cho OTP + Event cache)
-  # ────────────────────────────────────────────────────────────────────────────
-  - type: redis
-    name: fpt-event-redis
-    plan: free
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList: []   # chỉ cho phép kết nối từ nội bộ Render
-
-  # ────────────────────────────────────────────────────────────────────────────
   # Backend — API Gateway (điểm vào duy nhất)
   #
-  # ĐÂY LÀ CHIẾN LƯỢC TỐI ƯU NHẤT cho gói Free:
-  #   - Chỉ deploy 1 Web Service duy nhất: fpt-gateway (port 8080)
-  #   - Gateway đã có sẵn cơ chế API Composition, routing request đến đúng
-  #     service handler tương ứng qua biến môi trường SERVICE_URL
-  #   - Các microservices khác (auth, event, ticket, ...) cũng được deploy
-  #     riêng nếu bạn nâng lên plan trả phí, hoặc gộp logic vào gateway.
+  # CHIẾN LƯỢC FREE TIER (Bypass Credit Card Validation):
+  #   - 1 Web Service: fpt-gateway (port 8080)
+  #   - 1 MySQL: fpt-event-db (free, 512 MB RAM)
+  #   - KHÔNG có Redis (dùng Local In-Memory Cache thay thế)
+  #   - KHÔNG có SQS (gửi email trực tiếp)
   #
-  # Với Free Tier: Deploy gateway là đủ để demo toàn bộ tính năng.
+  # ĐÂY LÀ GIẢI PHÁP TRIỆT ĐỂ:
+  #   - Không cần xác thực thẻ ngân hàng
+  #   - OTP được lưu trong memory map (sync.RWMutex)
+  #   - Tất cả dữ liệu cache tạm đều trên process memory
+  #   - Khi app restart, cache sẽ bị clear (nhưng OTP mới sẽ được tạo)
   # ────────────────────────────────────────────────────────────────────────────
   - type: web
     name: fpt-event-gateway
@@ -90,17 +88,6 @@ services:
           property: password
       - key: DB_NAME
         value: fpteventmanagement
-      # ── Redis (tự động lấy từ Render Redis) ───────────────────────────────
-      - key: REDIS_HOST
-        fromService:
-          name: fpt-event-redis
-          type: redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          name: fpt-event-redis
-          type: redis
-          property: port
       # ── Service URLs nội bộ (gateway tự gọi chính nó qua localhost) ────────
       - key: AUTH_SERVICE_URL
         value: http://localhost:8081
