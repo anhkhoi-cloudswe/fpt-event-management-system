@@ -8,6 +8,7 @@ const apiTarget = process.env.VITE_API_TARGET ?? 'http://localhost:8080'
 
 export default defineConfig({
   plugins: [react()],
+  envDir: '../',
   server: {
     port: 3000,
     // open:true cannot work inside a Docker container — disable it there.
