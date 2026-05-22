@@ -24,6 +24,9 @@ var (
 )
 
 func init() {
+	// Load .env and sync JWT secret FIRST before database/config variables rely on them
+	localserver.LoadEnvAndSyncJWT("Ticket")
+
 	tracer.Configure("ticket-service")
 
 	// Log feature flags on startup
@@ -195,10 +198,6 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 func main() {
 	loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
 	time.Local = loc
-
-	// Load .env and sync JWT secret FIRST — in main() so it's guaranteed
-	// to run after all package-level vars and init() functions are done.
-	localserver.LoadEnvAndSyncJWT("Ticket")
 
 	handlerWithAuth := localserver.WithJWTAuth(Handler)
 

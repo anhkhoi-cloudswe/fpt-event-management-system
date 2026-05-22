@@ -29,6 +29,9 @@ var (
 )
 
 func init() {
+	// Load .env and sync JWT secret FIRST before database/config variables rely on them
+	localserver.LoadEnvAndSyncJWT("Event")
+
 	tracer.Configure("event-service")
 
 	// Log feature flags on startup
@@ -241,10 +244,6 @@ func handleUploadImage(ctx context.Context, request events.APIGatewayProxyReques
 func main() {
 	loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
 	time.Local = loc
-
-	// Load .env and sync JWT secret FIRST — in main() so it's guaranteed
-	// to run after all package-level vars and init() functions are done.
-	localserver.LoadEnvAndSyncJWT("Event")
 
 	handlerWithAuth := localserver.WithJWTAuth(Handler)
 
