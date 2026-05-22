@@ -36,6 +36,19 @@ interface FormData {
 // Cấu hình trong file .env: VITE_RECAPTCHA_SITE_KEY
 // Đăng ký tại: https://www.google.com/recaptcha/admin/create
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
+
+// Validate reCAPTCHA site key
+if (!RECAPTCHA_SITE_KEY || RECAPTCHA_SITE_KEY.includes('placeholder')) {
+  console.error(
+    '❌ reCAPTCHA Site Key is missing or invalid!\n' +
+    'This will cause "Invalid domain for site key" error.\n' +
+    '\nTo fix:\n' +
+    '1. For LOCAL dev: Create .env.local with: VITE_RECAPTCHA_SITE_KEY=your_key\n' +
+    '2. For VERCEL: Set Environment Variable in Project Settings > Environment Variables\n' +
+    '3. Get key from: https://www.google.com/recaptcha/admin'
+  )
+}
+
 // Cờ bật/tắt chế độ kiểm tra Captcha thật (True = Bắt buộc tích Captcha)
 const USE_REAL_RECAPTCHA = true
 
@@ -480,10 +493,24 @@ export default function Register() {
           </div>
 
           {/* Widget Captcha */}
+          {(!RECAPTCHA_SITE_KEY || RECAPTCHA_SITE_KEY.includes('placeholder')) && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded">
+              <p className="text-red-700 font-semibold text-sm">
+                ⚠️ reCAPTCHA configuration error
+              </p>
+              <p className="text-red-600 text-xs mt-1">
+                {!RECAPTCHA_SITE_KEY 
+                  ? 'Site key is not set. Check your .env file or Vercel Environment Variables.'
+                  : 'Site key has placeholder value. Set a real key in Vercel Environment Variables.'
+                }
+              </p>
+            </div>
+          )}
+          
           <div className="flex justify-center">
             <ReCAPTCHA
               ref={recaptchaRef}
-              sitekey={RECAPTCHA_SITE_KEY}
+              sitekey={RECAPTCHA_SITE_KEY || 'placeholder-missing-key'}
               onChange={(token) => {
                 setRecaptchaToken(token)
                 setError('')

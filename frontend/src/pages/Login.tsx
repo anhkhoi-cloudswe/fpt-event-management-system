@@ -51,6 +51,18 @@ interface FormData {
 // reCAPTCHA site key được lấy từ environment variable
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 
+// Validate reCAPTCHA site key
+if (!RECAPTCHA_SITE_KEY || RECAPTCHA_SITE_KEY.includes('placeholder')) {
+  console.error(
+    '❌ reCAPTCHA Site Key is missing or invalid!\n' +
+    'This will cause "Invalid domain for site key" error.\n' +
+    '\nTo fix:\n' +
+    '1. For LOCAL dev: Create .env.local with: VITE_RECAPTCHA_SITE_KEY=your_key\n' +
+    '2. For VERCEL: Set Environment Variable in Project Settings > Environment Variables\n' +
+    '3. Get key from: https://www.google.com/recaptcha/admin'
+  )
+}
+
 // USE_REAL_RECAPTCHA:
 // - false: khi debug nhanh, không cần check token thật -> gửi 'TEST_BYPASS' xuống BE
 // - true: bắt buộc tick checkbox và có token thật trước khi login
@@ -351,11 +363,26 @@ export default function Login() {
             </div>
           </div>
 
+          {/* Warning if reCAPTCHA site key is invalid */}
+          {(!RECAPTCHA_SITE_KEY || RECAPTCHA_SITE_KEY.includes('placeholder')) && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded">
+              <p className="text-red-700 font-semibold text-sm">
+                ⚠️ reCAPTCHA configuration error
+              </p>
+              <p className="text-red-600 text-xs mt-1">
+                {!RECAPTCHA_SITE_KEY 
+                  ? 'Site key is not set. Check your .env file or Vercel Environment Variables.'
+                  : 'Site key has placeholder value. Set a real key in Vercel Environment Variables.'
+                }
+              </p>
+            </div>
+          )}
+
           {/* reCAPTCHA checkbox */}
           <div className="flex justify-center">
             <ReCAPTCHA
               ref={recaptchaRef}
-              sitekey={RECAPTCHA_SITE_KEY}
+              sitekey={RECAPTCHA_SITE_KEY || 'placeholder-missing-key'}
 
               // onChange: khi user tick -> google trả về token
               onChange={(token) => {
