@@ -85,6 +85,7 @@ func init() {
 	exeDir := filepath.Dir(exe)
 
 	candidates := []string{
+		"/etc/secrets/.env",
 		filepath.Join(exeDir, "..", "..", ".env"),
 		filepath.Join("backend", ".env"),
 		filepath.Join(exeDir, ".env"),

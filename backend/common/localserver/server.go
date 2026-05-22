@@ -33,6 +33,7 @@ func LoadEnvAndSyncJWT(serviceName string) {
 	exeDir := filepath.Dir(exe)
 
 	candidates := []string{
+		"/etc/secrets/.env",
 		// When binary is in services/<name>/ → ../../.env = backend/.env
 		filepath.Join(exeDir, "..", "..", ".env"),
 		// When CWD = project root

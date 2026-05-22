@@ -2,7 +2,9 @@
 
 # Load environment variables from .env file if it exists (e.g. Render Secret File)
 ENV_PATH=""
-if [ -f "/app/.env" ]; then
+if [ -f "/etc/secrets/.env" ]; then
+  ENV_PATH="/etc/secrets/.env"
+elif [ -f "/app/.env" ]; then
   ENV_PATH="/app/.env"
 elif [ -f ".env" ]; then
   ENV_PATH=".env"
