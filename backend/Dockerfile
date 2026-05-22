@@ -29,8 +29,8 @@
 # -----------------------------------------------------------------------------
 FROM golang:1.25-alpine AS builder
 
-ARG SERVICE=gateway
-ARG BUILD_PATH=./cmd/gateway
+ARG SERVICE=all
+ARG BUILD_PATH=all
 ARG GOARCH=amd64
 
 # git is required for `go mod download` on modules hosted on VCS
@@ -49,41 +49,23 @@ COPY . .
 #   CGO_ENABLED=0   → no C runtime dependency, works in scratch/alpine/al2023
 #   -ldflags="-s -w" → strip debug symbols → smaller binary
 #   -tags lambda.norpc → disable Lambda RPC transport (same as build.sh)
-RUN CGO_ENABLED=0 \
-    GOOS=linux \
-    GOARCH=${GOARCH} \
-    go build \
-    -ldflags="-s -w" \
-    -tags lambda.norpc \
-    -o /app/service \
-    ${BUILD_PATH}
+RUN if [ "$BUILD_PATH" = "all" ]; then \
+      CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} go build -ldflags="-s -w" -tags lambda.norpc -o /app/gateway ./cmd/gateway && \
+      CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} go build -ldflags="-s -w" -tags lambda.norpc -o /app/auth-service ./services/auth-service && \
+      CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} go build -ldflags="-s -w" -tags lambda.norpc -o /app/event-service ./services/event-service && \
+      CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} go build -ldflags="-s -w" -tags lambda.norpc -o /app/ticket-service ./services/ticket-service && \
+      CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} go build -ldflags="-s -w" -tags lambda.norpc -o /app/venue-service ./services/venue-service && \
+      CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} go build -ldflags="-s -w" -tags lambda.norpc -o /app/staff-service ./services/staff-service && \
+      CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} go build -ldflags="-s -w" -tags lambda.norpc -o /app/notification-service ./services/notification-service; \
+    else \
+      CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} go build -ldflags="-s -w" -tags lambda.norpc -o /app/service ${BUILD_PATH}; \
+    fi
 
 # Label the image with the service name for observability
 LABEL service=${SERVICE}
 
 # =============================================================================
-# Stage 2a: LOCAL DEV — Alpine, ~20-30 MB final image
-# =============================================================================
-FROM alpine:3.21 AS local
-
-# ca-certificates → HTTPS calls to AWS SDK, SMTP, VNPay, reCAPTCHA
-# tzdata          → Asia/Ho_Chi_Minh timezone support for schedulers
-RUN apk --no-cache add ca-certificates tzdata
-
-WORKDIR /app
-
-COPY --from=builder /app/service ./service
-
-# Default port — overridden per-service by LOCAL_PORT env var in docker-compose
-EXPOSE 8080
-
-# The binary auto-detects local mode:
-#   IsLocal() = (AWS_LAMBDA_FUNCTION_NAME == "") → starts HTTP server
-#   Otherwise                                    → starts lambda.Start()
-ENTRYPOINT ["./service"]
-
-# =============================================================================
-# Stage 2b: AWS LAMBDA CONTAINER IMAGE
+# Stage 2a: AWS LAMBDA CONTAINER IMAGE
 # Uses the official Lambda provided runtime base (al2023, arm64-compatible).
 # Binary is placed at /var/task/bootstrap — Lambda naming convention.
 # Push to ECR, then set Lambda image URI in template.yaml / console.
@@ -95,3 +77,27 @@ COPY --from=builder /app/service /var/task/bootstrap
 # Lambda sets AWS_LAMBDA_FUNCTION_NAME automatically at runtime,
 # so the binary's IsLocal() returns false → lambda.Start(Handler) runs.
 CMD ["bootstrap"]
+
+# =============================================================================
+# Stage 2b: LOCAL DEV & RENDER — Alpine, ~20-30 MB final image
+# (This must be the LAST stage so Render builds it by default)
+# =============================================================================
+FROM alpine:3.21 AS local
+
+# ca-certificates → HTTPS calls to AWS SDK, SMTP, VNPay, reCAPTCHA
+# tzdata          → Asia/Ho_Chi_Minh timezone support for schedulers
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+
+COPY --from=builder /app/ /app/
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Default port — overridden per-service by LOCAL_PORT env var in docker-compose
+EXPOSE 8080
+
+# The binary auto-detects local mode:
+#   IsLocal() = (AWS_LAMBDA_FUNCTION_NAME == "") → starts HTTP server
+#   Otherwise                                    → starts lambda.Start()
+ENTRYPOINT ["/app/start.sh"]
