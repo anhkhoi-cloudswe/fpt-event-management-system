@@ -3,7 +3,7 @@
   "info": {
     "title": "FPT Event Management API",
     "version": "1.0.0",
-    "description": "API for FPT Event Management System - Go Lambda"
+    "description": "API for FPT Event Management System - Go Microservices"
   },
   "servers": [
     {

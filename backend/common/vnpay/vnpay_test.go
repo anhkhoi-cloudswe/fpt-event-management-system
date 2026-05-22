@@ -275,7 +275,7 @@ func TestSignatureChecklist(t *testing.T) {
 		}
 	})
 
-	t.Run("3. Test amount for VND currency (NO multiply by 100)", func(t *testing.T) {
+	t.Run("3. Test amount for VND currency (MUST multiply by 100)", func(t *testing.T) {
 		req := PaymentRequest{
 			OrderInfo: "Test order",
 			Amount:    150000, // 150,000 VND
@@ -288,15 +288,10 @@ func TestSignatureChecklist(t *testing.T) {
 			t.Fatalf("CreatePaymentURL error: %v", err)
 		}
 
-		// ⭐ CRITICAL FIX: VND không nhân 100! VND chỉ có đơn vị đồng, không có cent
-		// Amount sau khi format: 150000 (không nhân 100)
-		if !strings.Contains(url, "vnp_Amount=150000") {
-			t.Errorf("Amount should NOT be multiplied by 100 for VND (URL: %s)", url)
-		}
-		
-		// Kiểm tra KHÔNG có giá trị nhân 100
-		if strings.Contains(url, "vnp_Amount=15000000") {
-			t.Error("❌ WRONG: Amount is multiplied by 100! This causes 100x price bug!")
+		// ⭐ CRITICAL FIX: VND phải nhân 100! VNPay yêu cầu định dạng này cho mọi loại tiền tệ
+		// Amount sau khi format: 15000000 (nhân 100)
+		if !strings.Contains(url, "vnp_Amount=15000000") {
+			t.Errorf("Amount should be multiplied by 100 for VND (URL: %s)", url)
 		}
 	})
 

@@ -6,13 +6,11 @@ import (
 	"io"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestFormatEventTimeRange_UsesInputTimeWithoutReconversion(t *testing.T) {
-	vnLoc := time.FixedZone("+07", 7*60*60)
-	start := time.Date(2026, 3, 31, 9, 0, 0, 0, vnLoc)
-	end := time.Date(2026, 3, 31, 16, 0, 0, 0, vnLoc)
+	start := "2026-03-31T09:00:00+07:00"
+	end := "2026-03-31T16:00:00+07:00"
 
 	got := formatEventTimeRange(start, end)
 	want := "09:00 - 16:00"
@@ -23,22 +21,21 @@ func TestFormatEventTimeRange_UsesInputTimeWithoutReconversion(t *testing.T) {
 }
 
 func TestGenerateTicketPDF_ContainsProvidedEventTime(t *testing.T) {
-	vnLoc := time.FixedZone("+07", 7*60*60)
-
 	data := TicketPDFData{
-		TicketCode:   "TKT_123",
-		EventName:    "Timezone Test Event",
-		EventDate:    time.Date(2026, 3, 31, 9, 0, 0, 0, vnLoc),
-		EndTime:      time.Date(2026, 3, 31, 16, 0, 0, 0, vnLoc),
-		VenueName:    "FPT Hall",
-		AreaName:     "A",
-		Address:      "Hoa Lac",
-		SeatRow:      "A",
-		SeatNumber:   "1",
-		CategoryName: "VIP",
-		Price:        "500.000 VND",
-		UserName:     "Test User",
-		UserEmail:    "test@example.com",
+		TicketCode:     "TKT_123",
+		EventName:      "Timezone Test Event",
+		EventDate:      "2026-03-31T09:00:00+07:00",
+		EventStartTime: "2026-03-31T09:00:00+07:00",
+		EventEndTime:   "2026-03-31T16:00:00+07:00",
+		VenueName:      "FPT Hall",
+		AreaName:       "A",
+		Address:        "Hoa Lac",
+		SeatRow:        "A",
+		SeatNumber:     "1",
+		CategoryName:   "VIP",
+		Price:          "500.000 VND",
+		UserName:       "Test User",
+		UserEmail:      "test@example.com",
 	}
 
 	pdfBytes, err := GenerateTicketPDF(data)

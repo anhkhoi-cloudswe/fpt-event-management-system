@@ -4,13 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/fpt-event-services/common/logger"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 var db *sql.DB
@@ -22,16 +20,13 @@ func isLocal() bool {
 
 // applyConnectionPool sets connection pool limits appropriate for the runtime.
 // Local: generous limits for concurrent local services.
-// AWS Lambda: conservative limits to protect RDS t3.micro from connection storms.
-// With 6 Lambda functions each holding up to 3 connections, the worst-case is
-// 6 × N_concurrent_executions × 3 connections. Keeping N small is crucial.
+// Render Free Tier / AWS Lambda: conservative limits to protect shared DB from connection storms.
 func applyConnectionPool(sqlDB *sql.DB) {
 	if isLocal() {
 		sqlDB.SetMaxOpenConns(25)
 		sqlDB.SetMaxIdleConns(5)
 	} else {
-		// AWS Lambda: each function instance holds at most 3 open connections.
-		// 6 functions × 3 = 18 connections (well within t3.micro ~80 max).
+		// Render Free Tier / Lambda: keep connections low to stay within shared DB limits.
 		sqlDB.SetMaxOpenConns(3)
 		sqlDB.SetMaxIdleConns(1)
 	}
@@ -47,16 +42,17 @@ type Config struct {
 	Password string
 }
 
-// InitDB initializes database connection pool
+// InitDB initializes database connection pool.
+// Reads DB_URL first (full postgres:// DSN), otherwise falls back to individual env vars.
 func InitDB() error {
-	// Check for DB_URL first (full DSN string, used by both AWS SAM and .env)
+	// Check for DB_URL first (full DSN string, e.g. postgres://user:pass@host:5432/db?sslmode=require)
 	if dsn := os.Getenv("DB_URL"); dsn != "" {
-		return initDBWithDSN(ensureTimezoneDSN(dsn))
+		return initDBWithDSN(dsn)
 	}
 
 	config := Config{
 		Server:   getEnv("DB_SERVER", "127.0.0.1"),
-		Port:     3306,
+		Port:     5432,
 		Database: getEnv("DB_NAME", "FPTEventManagement"),
 		User:     getEnv("DB_USER", "fpt_app"),
 		Password: getEnv("DB_PASSWORD", "FPTEventAppPassword2026"),
@@ -65,10 +61,11 @@ func InitDB() error {
 	return InitDBWithConfig(config)
 }
 
-// initDBWithDSN initializes global DB using a full DSN string (from DB_URL)
+// initDBWithDSN initializes global DB using a full DSN string (from DB_URL).
+// Expected format: postgres://username:password@host:port/dbname?sslmode=require
 func initDBWithDSN(dsn string) error {
 	var err error
-	db, err = sql.Open("mysql", ensureTimezoneDSN(dsn))
+	db, err = sql.Open("postgres", dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
@@ -82,29 +79,16 @@ func initDBWithDSN(dsn string) error {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// ✅ CRITICAL: Set MySQL session timezone to +07:00 (Vietnam)
-	// This ensures all DATETIME reads are in Vietnam timezone, preventing "fake UTC" misinterpretation
-	// With loc=Local in DSN, MySQL will treat all timestamps as +07:00
-	if _, err := db.ExecContext(ctx, "SET time_zone = '+07:00'"); err != nil {
-		logger.Warn("[DB] Failed to set time_zone session variable: %v", err)
-		// Log warning but don't fail - connection still works, but timezone may be off
-	} else {
-		logger.Info("[DB] MySQL session timezone set to +07:00 (Vietnam)")
-	}
-
 	logger.Info("[DB] Connected successfully (via DB_URL)")
 	return nil
 }
 
-// InitDBWithConfig initializes database with custom config
+// InitDBWithConfig initializes database with custom config.
+// Builds a postgres:// DSN from individual fields.
 func InitDBWithConfig(config Config) error {
-	// Build MySQL DSN: user:password@tcp(host:port)/database?charset=utf8mb4&...
-	// charset=utf8mb4: Vietnamese characters & emoji support
-	// collation=utf8mb4_unicode_ci: Proper Vietnamese character sorting
-	// parseTime=true: Go tự động parse TIME/DATETIME thành time.Time
-	// loc=Asia/Ho_Chi_Minh: Đảm bảo tất cả thời gian luôn theo múi giờ Việt Nam (UTC+7)
+	// postgres://user:password@host:port/database?sslmode=disable
 	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=true&loc=Asia%%2FHo_Chi_Minh&collation=utf8mb4_unicode_ci",
+		"postgres://%s:%s@%s:%d/%s?sslmode=disable",
 		config.User,
 		config.Password,
 		config.Server,
@@ -113,7 +97,7 @@ func InitDBWithConfig(config Config) error {
 	)
 
 	var err error
-	db, err = sql.Open("mysql", dsn)
+	db, err = sql.Open("postgres", dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
@@ -129,17 +113,7 @@ func InitDBWithConfig(config Config) error {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// ✅ CRITICAL: Set MySQL session timezone to +07:00 (Vietnam)
-	// This ensures all DATETIME reads are in Vietnam timezone, preventing "fake UTC" misinterpretation
-	if _, err := db.ExecContext(ctx, "SET time_zone = '+07:00'"); err != nil {
-		logger.Warn("[DB] Failed to set time_zone session variable: %v", err)
-		// Log warning but don't fail - connection still works, but timezone may be off
-	} else {
-		logger.Info("[DB] MySQL session timezone set to +07:00 (Vietnam)")
-	}
-
-	// ✅ Log successful connection with timezone confirmation
-	logger.Info("[DB] Connected successfully with timezone: Asia/Ho_Chi_Minh (UTC+7)", "server", config.Server, "port", config.Port, "database", config.Database)
+	logger.Info("[DB] Connected successfully", "server", config.Server, "port", config.Port, "database", config.Database)
 
 	return nil
 }
@@ -158,24 +132,24 @@ func CloseDB() error {
 }
 
 // InitServiceDB creates an independent database connection pool for a specific service.
-// When SERVICE_SPECIFIC_DB=true, each Lambda service manages its own connection pool
+// When SERVICE_SPECIFIC_DB=true, each service manages its own connection pool
 // instead of sharing the global singleton.
 // Returns *sql.DB that the service should pass through DI to its handlers/repos.
 func InitServiceDB(serviceName string) (*sql.DB, error) {
-	// Check for DB_URL first (full DSN string, used by both AWS SAM and .env)
+	// Check for DB_URL first (full DSN string)
 	var dsn string
 	if envDSN := os.Getenv("DB_URL"); envDSN != "" {
-		dsn = ensureTimezoneDSN(envDSN)
+		dsn = envDSN
 	} else {
 		config := Config{
 			Server:   getEnv("DB_SERVER", "127.0.0.1"),
-			Port:     3306,
+			Port:     5432,
 			Database: getEnv("DB_NAME", "FPTEventManagement"),
 			User:     getEnv("DB_USER", "fpt_app"),
 			Password: getEnv("DB_PASSWORD", "FPTEventAppPassword2026"),
 		}
 		dsn = fmt.Sprintf(
-			"%s:%s@tcp(%s:%d)/%s?parseTime=true&loc=Asia%%2FHo_Chi_Minh",
+			"postgres://%s:%s@%s:%d/%s?sslmode=disable",
 			config.User,
 			config.Password,
 			config.Server,
@@ -184,12 +158,12 @@ func InitServiceDB(serviceName string) (*sql.DB, error) {
 		)
 	}
 
-	serviceDB, err := sql.Open("mysql", dsn)
+	serviceDB, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("[%s] failed to open database: %w", serviceName, err)
 	}
 
-	// Configure service-specific connection pool (tuned per Lambda)
+	// Configure service-specific connection pool
 	applyConnectionPool(serviceDB)
 
 	// Test connection
@@ -203,50 +177,10 @@ func InitServiceDB(serviceName string) (*sql.DB, error) {
 	if isLocal() {
 		logger.Info("Service-specific DB pool initialized", "service", serviceName, "max_open", 25, "max_idle", 5)
 	} else {
-		logger.Info("Service-specific DB pool initialized", "service", serviceName, "max_open", 3, "max_idle", 1, "mode", "lambda")
+		logger.Info("Service-specific DB pool initialized", "service", serviceName, "max_open", 3, "max_idle", 1, "mode", "render")
 	}
 
 	return serviceDB, nil
-}
-
-func ensureTimezoneDSN(dsn string) string {
-	trimmed := strings.TrimSpace(dsn)
-	if trimmed == "" {
-		return trimmed
-	}
-
-	parts := strings.SplitN(trimmed, "?", 2)
-	base := parts[0]
-
-	params := url.Values{}
-	if len(parts) == 2 && parts[1] != "" {
-		if parsed, err := url.ParseQuery(parts[1]); err == nil {
-			params = parsed
-		}
-	}
-
-	// ✅ CRITICAL FIX: Set parseTime=true but DO NOT set loc parameter
-	// Setting loc causes MySQL driver to apply timezone conversions,
-	// resulting in double +7h shifting (09:00 -> 16:00 -> 23:00)
-	// Instead, we let MySQL use its own timezone context (SET time_zone= '+07:00')
-	// and read times as raw UTC-style values without Go-side interpretation
-	if params.Get("parseTime") == "" {
-		params.Set("parseTime", "true")
-	}
-	// REMOVED: params.Set("loc", "Asia/Ho_Chi_Minh")
-	// This was causing the double conversion issue
-
-	encoded := params.Encode()
-	if encoded == "" {
-		return base
-	}
-
-	return base + "?" + encoded
-}
-
-// EnsureTimezoneDSN ensures parseTime=true and loc=Asia/Ho_Chi_Minh in MySQL DSN.
-func EnsureTimezoneDSN(dsn string) string {
-	return ensureTimezoneDSN(dsn)
 }
 
 // getEnv gets environment variable with fallback
