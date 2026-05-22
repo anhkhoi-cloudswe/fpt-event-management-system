@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/login",
+      "destination": "https://fpt-event-management-system.onrender.com/api/v1/auth/login"
+    },
+    {
+      "source": "/api/v1/auth/me",
+      "destination": "https://fpt-event-management-system.onrender.com/api/v1/auth/me"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://fpt-event-management-system.onrender.com/api/:path*"
     },
