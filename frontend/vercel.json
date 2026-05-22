@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://fpt-event-gateway.onrender.com/api/:path*"
+      "destination": "https://fpt-event-management-system.onrender.com/api/:path*"
     },
     {
       "source": "/((?!api).*)",
