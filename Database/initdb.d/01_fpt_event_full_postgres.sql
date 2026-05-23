@@ -10,8 +10,8 @@
 -- ============================================================
 CREATE TYPE payment_status_enum AS ENUM ('PENDING','PAID','FAILED','REFUNDED');
 CREATE TYPE category_ticket_status_enum AS ENUM ('AVAILABLE','UNAVAILABLE','DELETED','ACTIVE','INACTIVE');
-CREATE TYPE event_status_enum AS ENUM ('OPEN','CLOSED','CANCELLED','UPDATING');
-CREATE TYPE event_request_status_enum AS ENUM ('PENDING','APPROVED','REJECTED','UPDATING','CANCELLED','EXPIRED');
+CREATE TYPE event_status_enum AS ENUM ('OPEN','CLOSED','CANCELLED','UPDATING','FINISHED');
+CREATE TYPE event_request_status_enum AS ENUM ('PENDING','APPROVED','REJECTED','UPDATING','CANCELLED','EXPIRED','FINISHED');
 CREATE TYPE seat_type_enum AS ENUM ('STANDARD','VIP');
 CREATE TYPE seat_layout_status_enum AS ENUM ('AVAILABLE','HOLD','BOOKED','INAVAILABLE');
 CREATE TYPE report_status_enum AS ENUM ('PENDING','APPROVED','REJECTED','CANCELLED');
@@ -20,7 +20,7 @@ CREATE TYPE ticket_status_enum AS ENUM ('PENDING','BOOKED','CHECKED_IN','CHECKED
 CREATE TYPE user_role_enum AS ENUM ('ADMIN','STAFF','ORGANIZER','STUDENT');
 CREATE TYPE user_status_enum AS ENUM ('ACTIVE','INACTIVE','BLOCKED');
 CREATE TYPE venue_status_enum AS ENUM ('AVAILABLE','UNAVAILABLE','DELETED');
-CREATE TYPE venue_area_status_enum AS ENUM ('AVAILABLE','UNAVAILABLE');
+CREATE TYPE venue_area_status_enum AS ENUM ('AVAILABLE','UNAVAILABLE','DELETED');
 CREATE TYPE wallet_status_enum AS ENUM ('ACTIVE','FROZEN','CLOSED');
 CREATE TYPE wallet_transaction_type_enum AS ENUM ('CREDIT','DEBIT');
 
