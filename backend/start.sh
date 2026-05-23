@@ -36,12 +36,26 @@ if [ -f /app/service ]; then
   exec /app/service
 else
   echo "Starting all microservices for Render monolith..."
-  LOCAL_PORT=8081 /app/auth-service &
-  LOCAL_PORT=8082 /app/event-service &
-  LOCAL_PORT=8083 /app/ticket-service &
-  LOCAL_PORT=8084 /app/venue-service &
-  LOCAL_PORT=8085 /app/staff-service &
-  LOCAL_PORT=8086 /app/notification-service &
+  
+  # Supervisor helper function to keep microservices running
+  run_service() {
+    name=$1
+    port=$2
+    bin=$3
+    while true; do
+      echo "[SUPERVISOR] Starting $name on port $port..."
+      LOCAL_PORT=$port $bin
+      echo "[SUPERVISOR] ⚠️  $name exited with code $?. Restarting in 2 seconds..."
+      sleep 2
+    done
+  }
+
+  run_service "auth-service" 8081 /app/auth-service &
+  run_service "event-service" 8082 /app/event-service &
+  run_service "ticket-service" 8083 /app/ticket-service &
+  run_service "venue-service" 8084 /app/venue-service &
+  run_service "staff-service" 8085 /app/staff-service &
+  run_service "notification-service" 8086 /app/notification-service &
   
   # Gateway defaults to 8080 or process PORT
   exec /app/gateway

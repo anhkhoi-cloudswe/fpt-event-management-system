@@ -155,12 +155,10 @@ func forceIPv4InDSN(dsn string) string {
 		return dsn
 	}
 
-	// Add hostaddr to query params
+	// Add or overwrite hostaddr to query params
 	q := u.Query()
-	if q.Get("hostaddr") == "" {
-		q.Set("hostaddr", ipv4)
-		u.RawQuery = q.Encode()
-	}
+	q.Set("hostaddr", ipv4)
+	u.RawQuery = q.Encode()
 
 	return u.String()
 }
