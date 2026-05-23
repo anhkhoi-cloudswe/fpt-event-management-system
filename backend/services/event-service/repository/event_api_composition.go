@@ -1350,17 +1350,31 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		// FOR UPDATE khóa các rows phù hợp lại, buộc các transaction đồng thời phải xếp hàng chờ nhau.
 		// Nhờ đó, nếu 2 staff duyệt cùng lúc cho cùng ngày, chỉ 1 transaction thành công,
 		// transaction còn lại sẽ thấy count = 2 và bị rollback với lỗi vượt giới hạn.
-		var dailyCount int
-		checkQuotaQuery := `
-			SELECT COUNT(*)
-			FROM Event
-			WHERE start_time::date = $1::date
-			AND status != 'CANCELLED'
-			FOR UPDATE`
-		err = tx.QueryRowContext(ctx, checkQuotaQuery, startTimeWallClock).Scan(&dailyCount)
+		// We query the matching events with FOR UPDATE to lock the existing rows for that date.
+		// Then we count them in Go.
+		rows, err := tx.QueryContext(ctx, `
+			SELECT event_id 
+			FROM Event 
+			WHERE start_time::date = $1::date 
+			AND status != 'CANCELLED' 
+			FOR UPDATE`, startTimeWallClock)
 		if err != nil {
 			return fmt.Errorf("failed to check daily quota: %w", err)
 		}
+		defer rows.Close()
+
+		dailyCount := 0
+		for rows.Next() {
+			var eid int
+			if err := rows.Scan(&eid); err != nil {
+				return fmt.Errorf("failed to scan daily quota event: %w", err)
+			}
+			dailyCount++
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("failed to check daily quota rows: %w", err)
+		}
+
 		if dailyCount >= 2 {
 			fmt.Printf("[QUOTA_LOCK] ❌ Daily limit reached for date %s: currentCount=%d/2. Rolling back.\n", startTimeWallClock[:10], dailyCount)
 			return fmt.Errorf("Ngày này đã đạt giới hạn 2 sự kiện. Không thể duyệt thêm")
