@@ -173,6 +173,14 @@ def test_full_lifecycle():
     print("\n[7] Querying Event Details (Student)...")
     details_resp = requests.get(f"{BASE_URL}/api/events?page=1&limit=12", headers=student_headers, timeout=10)
     assert details_resp.status_code == 200, f"Failed to list events: {details_resp.text}"
+
+    # 8. Query Event Detail by ID (Student)
+    print("\n[8] Querying Event Detail by ID (Student)...")
+    detail_resp = requests.get(f"{BASE_URL}/api/events/detail?id={created_event_id}", headers=student_headers, timeout=10)
+    assert detail_resp.status_code == 200, f"Failed to query event detail for ID {created_event_id}: {detail_resp.text}"
+    detail_data = detail_resp.json()
+    assert detail_data.get("eventId") == created_event_id, f"Mismatched event ID: {detail_data}"
+    print(f"Successfully retrieved details for event ID: {created_event_id}")
     
     print("\n--- Integration Test Completed Successfully ---")
 

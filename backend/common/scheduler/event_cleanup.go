@@ -114,7 +114,7 @@ func (s *EventCleanupScheduler) cleanupEndedEvents() {
 					SELECT 1
 					FROM Event e_active
 					WHERE e_active.area_id = Venue_Area.area_id
-					  AND e_active.status IN ('OPEN', 'UPDATING', 'PENDING')
+					  AND e_active.status IN ('OPEN', 'UPDATING')
 				  )
 			`
 			result, err := s.db.ExecContext(ctx, updateAreaQuery, areaID.Int64)
