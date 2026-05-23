@@ -214,6 +214,53 @@ func pingWithRetry(db *sql.DB, safeHost string) error {
 	return fmt.Errorf("ping failed after %d attempts: %w", maxRetries, err)
 }
 
+// openAndPingDB opens database connection pool and pings it.
+// If the connection pooler returns "tenant/user not found" on aws-0, it swaps the host to aws-1 and retries.
+func openAndPingDB(dsn string, safeHost string, serviceName string) (*sql.DB, error) {
+	dbConn, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+	applyConnectionPool(dbConn)
+
+	err = pingWithRetry(dbConn, safeHost)
+	if err != nil {
+		dbConn.Close()
+		// Check if it's the specific "tenant/user ... not found" pooler error on aws-0.
+		// If so, swap to aws-1-ap-southeast-1.pooler.supabase.com and retry.
+		if (strings.Contains(err.Error(), "tenant/user") && strings.Contains(err.Error(), "not found")) || 
+			strings.Contains(err.Error(), "ENOTFOUND") {
+			if strings.Contains(dsn, "aws-0-ap-southeast-1") {
+				nextDSN := strings.Replace(dsn, "aws-0-ap-southeast-1", "aws-1-ap-southeast-1", 1)
+				// Re-run forceIPv4InDSN to resolve the new aws-1 host
+				nextDSN = forceIPv4InDSN(nextDSN)
+				
+				prefix := "[DB]"
+				if serviceName != "" {
+					prefix = fmt.Sprintf("[%s] [DB]", serviceName)
+				}
+				logger.Info(prefix + " Pooler tenant not found on aws-0. Retrying fallback to aws-1 pooler...")
+				
+				nextDBConn, nextErr := sql.Open("postgres", nextDSN)
+				if nextErr != nil {
+					return nil, nextErr
+				}
+				applyConnectionPool(nextDBConn)
+				
+				pingErr := pingWithRetry(nextDBConn, "aws-1-ap-southeast-1.pooler.supabase.com:6543")
+				if pingErr == nil {
+					logger.Info(prefix + " Connected successfully to fallback aws-1 pooler")
+					return nextDBConn, nil
+				}
+				nextDBConn.Close()
+				return nil, pingErr
+			}
+		}
+		return nil, err
+	}
+	return dbConn, nil
+}
+
 // initDBWithDSN initializes global DB using a full DSN string.
 // Expected format: postgres://username:password@host:port/dbname?sslmode=require
 func initDBWithDSN(dsn string) error {
@@ -232,14 +279,8 @@ func initDBWithDSN(dsn string) error {
 	
 	logger.Info("[DB] Attempting database connection via DSN", "host", safeHost, "database", safeDB)
 
-	db, err = sql.Open("postgres", dsn)
+	db, err = openAndPingDB(dsn, safeHost, "")
 	if err != nil {
-		return fmt.Errorf("failed to open database at %s: %w", safeHost, err)
-	}
-
-	applyConnectionPool(db)
-
-	if err := pingWithRetry(db, safeHost); err != nil {
 		return err
 	}
 
@@ -265,16 +306,9 @@ func InitDBWithConfig(config Config) error {
 	dsn = forceIPv4InDSN(dsn)
 
 	var err error
-	db, err = sql.Open("postgres", dsn)
+	db, err = openAndPingDB(dsn, config.Server, "")
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
-	}
-
-	// Configure connection pool
-	applyConnectionPool(db)
-
-	if err := pingWithRetry(db, config.Server); err != nil {
-		return err
 	}
 
 	logger.Info("[DB] Connected successfully", "server", config.Server, "port", config.Port, "database", config.Database, "sslmode", sslmode)
@@ -339,16 +373,9 @@ func InitServiceDB(serviceName string) (*sql.DB, error) {
 
 	logger.Info("Service database pool attempting connection", "service", serviceName, "host", safeHost, "database", safeDB)
 
-	serviceDB, err := sql.Open("postgres", dsn)
+	serviceDB, err := openAndPingDB(dsn, safeHost, serviceName)
 	if err != nil {
 		return nil, fmt.Errorf("[%s] failed to open database at %s: %w", serviceName, safeHost, err)
-	}
-
-	// Configure service-specific connection pool
-	applyConnectionPool(serviceDB)
-
-	if err := pingWithRetry(serviceDB, safeHost); err != nil {
-		return nil, err
 	}
 
 	if isLocal() {
