@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fpt-event-services/common/logger"
@@ -41,6 +43,82 @@ type Config struct {
 	Database string
 	User     string
 	Password string
+}
+
+// forceIPv4InDSN modifies the DSN to add a hostaddr parameter containing the resolved IPv4 address.
+// This forces Go/lib/pq to connect via IPv4, bypassing unreachable IPv6 addresses on Render
+// while preserving the original host name for SSL certificate verification.
+func forceIPv4InDSN(dsn string) string {
+	if dsn == "" {
+		return dsn
+	}
+
+	// Try to parse as URL
+	u, err := url.Parse(dsn)
+	if err != nil {
+		// If it's not a URL, it might be a key-value connection string.
+		// For key-value strings: "host=foo port=bar sslmode=require"
+		// We can check if "hostaddr=" is already present
+		if strings.Contains(dsn, "hostaddr=") {
+			return dsn
+		}
+		
+		// Parse key-value pair to find host
+		parts := strings.Fields(dsn)
+		var host string
+		for _, part := range parts {
+			if strings.HasPrefix(part, "host=") {
+				host = strings.TrimPrefix(part, "host=")
+				break
+			}
+		}
+		if host != "" {
+			ips, err := net.LookupIP(host)
+			if err == nil {
+				for _, ip := range ips {
+					if ip.To4() != nil {
+						return dsn + " hostaddr=" + ip.String()
+					}
+				}
+			}
+		}
+		return dsn
+	}
+
+	// For URL DSN: postgres://user:pass@host:port/database
+	host := u.Hostname()
+	if host == "" || host == "localhost" || host == "127.0.0.1" {
+		return dsn
+	}
+
+	// Resolve the host to its IPv4 address
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		logger.Warn("[DB] Failed to resolve host for IPv4 mapping", "host", host, "error", err.Error())
+		return dsn
+	}
+
+	var ipv4 string
+	for _, ip := range ips {
+		if ip.To4() != nil {
+			ipv4 = ip.String()
+			break
+		}
+	}
+
+	if ipv4 == "" {
+		logger.Warn("[DB] No IPv4 addresses found for host", "host", host)
+		return dsn
+	}
+
+	// Add hostaddr to query params
+	q := u.Query()
+	if q.Get("hostaddr") == "" {
+		q.Set("hostaddr", ipv4)
+		u.RawQuery = q.Encode()
+	}
+
+	return u.String()
 }
 
 // InitDB initializes database connection pool.
@@ -97,6 +175,9 @@ func pingWithRetry(db *sql.DB, safeHost string) error {
 func initDBWithDSN(dsn string) error {
 	var err error
 	
+	// Force IPv4 to avoid unreachable IPv6 on Render
+	dsn = forceIPv4InDSN(dsn)
+
 	// Safely parse DSN for logging
 	safeHost := "unknown"
 	safeDB := "unknown"
@@ -135,6 +216,9 @@ func InitDBWithConfig(config Config) error {
 		config.Database,
 		sslmode,
 	)
+
+	// Force IPv4 to avoid unreachable IPv6 on Render
+	dsn = forceIPv4InDSN(dsn)
 
 	var err error
 	db, err = sql.Open("postgres", dsn)
@@ -197,6 +281,9 @@ func InitServiceDB(serviceName string) (*sql.DB, error) {
 			sslmode,
 		)
 	}
+
+	// Force IPv4 to avoid unreachable IPv6 on Render
+	dsn = forceIPv4InDSN(dsn)
 
 	// Safely parse DSN for logging
 	safeHost := "unknown"
