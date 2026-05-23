@@ -20,6 +20,29 @@ func normalizeInternalALBURL(raw string) string {
 	return "http://" + albURL
 }
 
+// getLocalhostOverride redirects service discovery requests to localhost (127.0.0.1)
+// when running inside a Render monolithic container where all services are co-located.
+func getLocalhostOverride(rawURL string) string {
+	if rawURL == "" {
+		return ""
+	}
+	if os.Getenv("RENDER") == "true" || os.Getenv("RENDER_MONOLITH") == "true" {
+		for _, serviceHost := range []string{
+			"auth-service",
+			"event-service",
+			"ticket-service",
+			"venue-service",
+			"staff-service",
+			"notification-service",
+		} {
+			if strings.Contains(rawURL, serviceHost) {
+				return strings.Replace(rawURL, serviceHost, "127.0.0.1", 1)
+			}
+		}
+	}
+	return rawURL
+}
+
 // GetServiceURL resolves service base URL for both Local and AWS environments.
 // Priority:
 // 1) INTERNAL_ALB_URL -> http://<alb-url> (for internal service-to-service on AWS)
@@ -31,7 +54,7 @@ func GetServiceURL(localEnvKey string) string {
 		return normalizeInternalALBURL(albURL)
 	}
 
-	return strings.TrimSpace(os.Getenv(localEnvKey))
+	return getLocalhostOverride(strings.TrimSpace(os.Getenv(localEnvKey)))
 }
 
 // IsAWSMode returns true if the application is running on AWS Lambda/ECS with INTERNAL_ALB_URL
@@ -53,7 +76,7 @@ func MustGetServiceURLWithFallback(serviceName string, localEnvKey string, fallb
 
 	// Try service-specific env var (Local mode or AWS with explicit URL)
 	if url := strings.TrimSpace(os.Getenv(localEnvKey)); url != "" {
-		return url
+		return getLocalhostOverride(url)
 	}
 
 	// Last resort fallback (Local development)
