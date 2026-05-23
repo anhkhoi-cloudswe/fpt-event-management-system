@@ -3,15 +3,16 @@ package email
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"html/template"
-	"net/smtp"
+	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
 
 	"github.com/fpt-event-services/common/logger"
-	"github.com/fpt-event-services/common/timeutil"
 )
 
 // ============================================================
@@ -19,26 +20,28 @@ import (
 // ============================================================
 
 type Config struct {
-	Host       string
-	Port       string
-	Username   string
-	Password   string
-	From       string
-	FromName   string
-	UseTLS     bool
-	SkipVerify bool
+	Host         string
+	Port         string
+	Username     string
+	Password     string
+	From         string
+	FromName     string
+	UseTLS       bool
+	SkipVerify   bool
+	ResendAPIKey string
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		Host:       getEnv("SMTP_HOST", "smtp.gmail.com"),
-		Port:       getEnv("SMTP_PORT", "587"),
-		Username:   getEnv("SMTP_USERNAME", ""),
-		Password:   getEnv("SMTP_PASSWORD", ""),
-		From:       getEnv("SMTP_FROM", "noreply@fpt.edu.vn"),
-		FromName:   getEnv("SMTP_FROM_NAME", "FPT Event System"),
-		UseTLS:     getEnv("SMTP_USE_TLS", "true") == "true",
-		SkipVerify: getEnv("SMTP_SKIP_VERIFY", "false") == "true",
+		Host:         getEnv("SMTP_HOST", "smtp.gmail.com"),
+		Port:         getEnv("SMTP_PORT", "587"),
+		Username:     getEnv("SMTP_USERNAME", ""),
+		Password:     getEnv("SMTP_PASSWORD", ""),
+		From:         getEnv("SMTP_FROM", "onboarding@resend.dev"),
+		FromName:     getEnv("SMTP_FROM_NAME", "FPT Event System"),
+		UseTLS:       getEnv("SMTP_USE_TLS", "true") == "true",
+		SkipVerify:   getEnv("SMTP_SKIP_VERIFY", "false") == "true",
+		ResendAPIKey: getEnv("RESEND_API_KEY", ""),
 	}
 }
 
@@ -52,9 +55,9 @@ func NewEmailService(config *Config) *EmailService {
 	if config == nil {
 		config = DefaultConfig()
 	}
-	devMode := config.Username == "" || config.Password == ""
+	devMode := config.ResendAPIKey == ""
 	if devMode {
-		logger.Default().Warn("[EMAIL] ⚠️ DEV MODE ENABLED - Emails will NOT be sent. Configure SMTP_USERNAME and SMTP_PASSWORD.")
+		logger.Default().Warn("[EMAIL] ⚠️ DEV MODE ENABLED - Emails will NOT be sent. Configure RESEND_API_KEY.")
 	}
 	return &EmailService{
 		config:    config,
@@ -233,34 +236,88 @@ func stripHTML(html string) string { return strings.ReplaceAll(html, "<br>", "\n
 // SENDING ENGINE
 // ============================================================
 
+type ResendAttachment struct {
+	Filename    string `json:"filename"`
+	Content     string `json:"content"`
+	ContentType string `json:"contentType,omitempty"`
+}
+
+type ResendEmailPayload struct {
+	From        string             `json:"from"`
+	To          []string           `json:"to"`
+	Subject     string             `json:"subject"`
+	HTML        string             `json:"html"`
+	Attachments []ResendAttachment `json:"attachments,omitempty"`
+}
+
 func (s *EmailService) Send(msg EmailMessage) error {
 	log := logger.Default()
 	if s.devMode {
-		log.Info("[EMAIL] 📧 DEV MODE - Skipping actual send to %v (Subject: %s)", msg.To, msg.Subject)
-		log.Warn("[SES_ERROR] dev mode enabled, SES/SMTP provider was not called")
+		log.Info("[EMAIL] 📧 DEV MODE - Skipping actual Resend to %v (Subject: %s)", msg.To, msg.Subject)
+		log.Warn("[SES_ERROR] dev mode enabled, Resend provider was not called")
 		return nil
 	}
-	addr := fmt.Sprintf("%s:%s", s.config.Host, s.config.Port)
 	recipients := strings.Join(msg.To, ", ")
-	log.Info("[EMAIL] 🚀 Attempting to send email to %s via %s (Host: %s, Port: %s)", recipients, msg.Subject, s.config.Host, s.config.Port)
-	log.Info("[SES_DEBUG] Starting to send email via SES... to=%s subject=%s from=%s host=%s", recipients, msg.Subject, s.config.From, s.config.Host)
-	auth := smtp.PlainAuth("", s.config.Username, s.config.Password, s.config.Host)
-	var body bytes.Buffer
-	boundary := fmt.Sprintf("boundary_%d", timeutil.GetNow().UnixNano())
-	body.WriteString(fmt.Sprintf("From: %s <%s>\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=%s\r\n\r\n", s.config.FromName, s.config.From, strings.Join(msg.To, ", "), msg.Subject, boundary))
-	body.WriteString(fmt.Sprintf("--%s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s\r\n", boundary, msg.HTMLBody))
-	for _, att := range msg.Attachments {
-		body.WriteString(fmt.Sprintf("--%s\r\nContent-Type: %s; name=\"%s\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"%s\"\r\n\r\n%s\r\n", boundary, att.MimeType, att.Filename, att.Filename, base64.StdEncoding.EncodeToString(att.Data)))
+	log.Info("[EMAIL] 🚀 Attempting to send email to %s (Subject: %s) via Resend API", recipients, msg.Subject)
+	log.Info("[SES_DEBUG] Starting to send email via Resend... to=%s subject=%s from=%s", recipients, msg.Subject, s.config.From)
+
+	from := s.config.From
+	if s.config.FromName != "" {
+		from = fmt.Sprintf("%s <%s>", s.config.FromName, s.config.From)
 	}
-	body.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
-	err := smtp.SendMail(addr, auth, s.config.From, msg.To, body.Bytes())
+
+	var attachments []ResendAttachment
+	for _, att := range msg.Attachments {
+		attachments = append(attachments, ResendAttachment{
+			Filename:    att.Filename,
+			Content:     base64.StdEncoding.EncodeToString(att.Data),
+			ContentType: att.MimeType,
+		})
+	}
+
+	payload := ResendEmailPayload{
+		From:        from,
+		To:          msg.To,
+		Subject:     msg.Subject,
+		HTML:        msg.HTMLBody,
+		Attachments: attachments,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		log.Warn("[EMAIL] ❌ Failed to send email to %s: %v", recipients, err)
+		log.Warn("[EMAIL] ❌ Failed to marshal Resend payload: %v", err)
 		log.Warn("[SES_ERROR] %v", err)
 		return err
 	}
-	log.Info("[EMAIL] ✅ Email sent successfully to %s!", recipients)
-	log.Info("[SES_RESULT] Success: to=%s subject=%s", recipients, msg.Subject)
+
+	req, err := http.NewRequest("POST", "https://api.resend.com/emails", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		log.Warn("[EMAIL] ❌ Failed to create Resend HTTP request: %v", err)
+		log.Warn("[SES_ERROR] %v", err)
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.config.ResendAPIKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Warn("[EMAIL] ❌ Failed to execute Resend API request: %v", err)
+		log.Warn("[SES_ERROR] %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Warn("[EMAIL] ❌ Resend API returned error status %d: %s", resp.StatusCode, string(respBody))
+		log.Warn("[SES_ERROR] status %d: %s", resp.StatusCode, string(respBody))
+		return fmt.Errorf("resend api error status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	log.Info("[EMAIL] ✅ Email sent successfully to %s via Resend!", recipients)
+	log.Info("[SES_RESULT] Success: to=%s subject=%s response=%s", recipients, msg.Subject, string(respBody))
 	return nil
 }
 
