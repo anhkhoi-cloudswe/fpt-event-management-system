@@ -2873,7 +2873,7 @@ func (r *EventRepository) GetAvailableAreas(ctx context.Context, startTime, endT
 		WHERE COALESCE(va.capacity, 0) >= $2
 		  AND va.status = 'AVAILABLE'
 		GROUP BY va.area_id, va.area_name, v.venue_name, va.floor, va.capacity, va.status
-		HAVING event_count_on_date < 2
+		HAVING COUNT(e.event_id) < 2
 		ORDER BY COALESCE(va.capacity, 0) ASC
 	`
 
