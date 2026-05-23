@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -67,7 +68,7 @@ func (h *AuthInternalHandler) HandleGetUserProfile(ctx context.Context, request 
 	}
 
 	var profile UserProfileDTO
-	query := `SELECT user_id, full_name, email, phone, role FROM Users WHERE user_id = ?`
+	query := `SELECT user_id, full_name, email, phone, role FROM Users WHERE user_id = $1`
 	err = h.db.QueryRowContext(ctx, query, userID).Scan(
 		&profile.UserID, &profile.FullName, &profile.Email, &profile.Phone, &profile.Role,
 	)
@@ -120,7 +121,7 @@ func (h *AuthInternalHandler) HandleGetUserProfiles(ctx context.Context, request
 		if i > 0 {
 			placeholders += ","
 		}
-		placeholders += "?"
+		placeholders += fmt.Sprintf("$%d", i+1)
 		args[i] = id
 	}
 

@@ -66,7 +66,7 @@ func (s *PendingTicketCleanupScheduler) cleanupExpiredPendingTickets() {
 		SELECT ticket_id, user_id, event_id, seat_id, created_at
 		FROM Ticket 
 		WHERE status = 'PENDING' 
-		  AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)
+		  AND created_at < NOW() - ($1 * INTERVAL '1 MINUTE')
 	`
 
 	rows, err := s.db.QueryContext(ctx, query, s.timeoutMinute)
@@ -111,7 +111,7 @@ func (s *PendingTicketCleanupScheduler) cleanupExpiredPendingTickets() {
 
 	// Delete PENDING tickets
 	for _, ticketID := range ticketIDs {
-		deleteQuery := `DELETE FROM Ticket WHERE ticket_id = ? AND status = 'PENDING'`
+		deleteQuery := `DELETE FROM Ticket WHERE ticket_id = $1 AND status = 'PENDING'`
 		result, err := tx.ExecContext(ctx, deleteQuery, ticketID)
 		if err != nil {
 			logger.Default().Error("[SCHEDULER] Error deleting ticket #%d: %v", ticketID, err)

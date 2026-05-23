@@ -10,7 +10,7 @@ backend/*.exe~
 backend/bin/
 backend/dist/
 backend/bootstrap
-backend/tests/
+backend/tests/logs/
 backend/test/
 backend/gateway*
 backend/auth-lambda*

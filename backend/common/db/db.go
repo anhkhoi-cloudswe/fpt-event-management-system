@@ -112,7 +112,7 @@ func forceIPv4InDSN(dsn string) string {
 			parts := strings.Split(host, ".")
 			if len(parts) >= 2 && parts[0] == "db" {
 				projectRef := parts[1]
-				poolerHost := "aws-0-ap-southeast-1.pooler.supabase.com"
+				poolerHost := "aws-1-ap-southeast-1.pooler.supabase.com"
 				
 				logger.Info("[DB] Direct Supabase host is IPv6-only. Attempting fallback to pooler...", "host", host, "pooler", poolerHost)
 				poolerIPs, err := net.LookupIP(poolerHost)

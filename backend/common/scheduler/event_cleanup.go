@@ -90,7 +90,7 @@ func (s *EventCleanupScheduler) cleanupEndedEvents() {
 		}
 
 		// Update event status to CLOSED
-		updateEventQuery := `UPDATE Event SET status = 'CLOSED' WHERE event_id = ?`
+		updateEventQuery := `UPDATE Event SET status = 'CLOSED' WHERE event_id = $1`
 		_, err := s.db.ExecContext(ctx, updateEventQuery, eventID)
 		if err != nil {
 			log.Error("[SCHEDULER] Error closing event #%d: %v", eventID, err)
@@ -102,7 +102,7 @@ func (s *EventCleanupScheduler) cleanupEndedEvents() {
 			updateAreaQuery := `
 				UPDATE Venue_Area
 				SET status = 'AVAILABLE'
-				WHERE area_id = ?
+				WHERE area_id = $1
 				  AND status = 'UNAVAILABLE'
 				  AND EXISTS (
 					SELECT 1
