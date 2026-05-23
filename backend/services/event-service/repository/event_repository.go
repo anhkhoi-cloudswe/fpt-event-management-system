@@ -707,7 +707,7 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 	if role == "ORGANIZER" {
 		// Organizer should see events they created including active and historical ones.
 		// Include common statuses and also any event that already ended (end_time < NOW()).
-		query = baseQuery + ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','APPROVED','UPDATING') OR e.end_time < NOW())
+		query = baseQuery + ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','UPDATING','FINISHED') OR e.end_time < NOW())
 			ORDER BY e.start_time DESC`
 		args = append(args, userID)
 	} else if role == "STAFF" {
@@ -833,7 +833,7 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 
 	if role == "ORGANIZER" {
 		// Organizer should see events they created including active, historical, and cancelled ones.
-		whereClause = ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','CANCELLED','APPROVED','UPDATING') OR e.end_time < NOW())`
+		whereClause = ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','CANCELLED','UPDATING','FINISHED') OR e.end_time < NOW())`
 		args = append(args, userID)
 	} else if role == "STAFF" {
 		// Staff sees OPEN, CLOSED, and CANCELLED events
@@ -977,7 +977,7 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 	var args []interface{}
 
 	if role == "ORGANIZER" {
-		whereClause = ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','CANCELLED','APPROVED','UPDATING') OR e.end_time < NOW())`
+		whereClause = ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','CANCELLED','UPDATING','FINISHED') OR e.end_time < NOW())`
 		args = append(args, userID)
 	} else if role == "STAFF" {
 		whereClause = ` WHERE (e.status IN ('OPEN', 'CLOSED', 'CANCELLED') OR e.end_time < NOW())`
@@ -2869,7 +2869,7 @@ func (r *EventRepository) GetAvailableAreas(ctx context.Context, startTime, endT
 		INNER JOIN Venue v ON va.venue_id = v.venue_id
 		LEFT JOIN Event e ON va.area_id = e.area_id 
 			AND DATE(e.start_time) = $1
-			AND e.status IN ('OPEN', 'APPROVED')
+			AND e.status IN ('OPEN', 'UPDATING')
 		WHERE COALESCE(va.capacity, 0) >= $2
 		  AND va.status = 'AVAILABLE'
 		GROUP BY va.area_id, va.area_name, v.venue_name, va.floor, va.capacity, va.status
@@ -3370,7 +3370,7 @@ func (r *EventRepository) CheckDailyQuota(ctx context.Context, eventDate string)
 		SELECT COUNT(*) as event_count
 		FROM Event
 		WHERE DATE(start_time) = $1
-		AND status NOT IN ('CANCELLED', 'REJECTED')
+		AND status != 'CANCELLED'
 	`
 
 	var currentCount int

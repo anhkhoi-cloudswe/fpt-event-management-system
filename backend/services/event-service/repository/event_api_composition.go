@@ -278,7 +278,7 @@ func (r *EventRepository) GetAllEventsSeparatedComposed(ctx context.Context, rol
 	var args []interface{}
 
 	if role == "ORGANIZER" {
-		query = baseQuery + ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','APPROVED','UPDATING') OR e.end_time < NOW())
+		query = baseQuery + ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','UPDATING','FINISHED') OR e.end_time < NOW())
 			ORDER BY e.start_time DESC`
 		args = append(args, userID)
 	} else if role == "STAFF" {
@@ -1355,7 +1355,7 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 			SELECT COUNT(*)
 			FROM Event
 			WHERE DATE(start_time) = DATE($1)
-			AND status NOT IN ('CANCELLED', 'REJECTED')
+			AND status != 'CANCELLED'
 			FOR UPDATE`
 		err = tx.QueryRowContext(ctx, checkQuotaQuery, startTimeWallClock).Scan(&dailyCount)
 		if err != nil {
