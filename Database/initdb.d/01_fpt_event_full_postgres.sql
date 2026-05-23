@@ -284,7 +284,10 @@ INSERT INTO users (user_id, full_name, email, phone, password_hash, role, status
 (5, 'Quản trị hệ thống', 'admin.event@fpt.edu.vn', '0905000500', '$2a$12$BCzdHEEw7XeOUB076GKA3eIl4vsSTjPCPUoMA0Yx2S3yTGl3MkJWu', 'ADMIN', 'ACTIVE', '2025-12-01 09:16:32.789573+07:00', 0.00),
 (7, 'Nguyen Vo Minh Chau', 'nguyenvominhchau165@gmail.com', '0901000123', '99e5fee36796021ffed4198e0ba9a98c1e5dd44fbb597bf1a9a1b93141e31697', 'STUDENT', 'ACTIVE', '2025-12-01 12:26:17.798470+07:00', 200000.00),
 (11, 'Anh Khoi', 'ahkhoinguyen169@gmail.com', '0331234567', '$2a$12$gDVGpOTsjqHspLOEjTxLFuEr3QjOhiW5Sod73kB0or0i57F8uJ9ly', 'STUDENT', 'ACTIVE', '2026-01-28 15:29:20.974209+07:00', 50000.00),
-(18, 'Twi Trần', 'therealtwillight@gmail.com', '0987456321', '$2a$12$EbJKiKQ170balgaXV0inOeWuNWQXQFVGaxWinOnkwqtrPSOukPv52', 'ORGANIZER', 'ACTIVE', '2026-01-30 23:10:38.294863+07:00', 0.00);
+(18, 'Twi Trần', 'therealtwillight@gmail.com', '0987456321', '$2a$12$EbJKiKQ170balgaXV0inOeWuNWQXQFVGaxWinOnkwqtrPSOukPv52', 'ORGANIZER', 'ACTIVE', '2026-01-30 23:10:38.294863+07:00', 0.00),
+(9, 'User Nine (Stub)', 'user9.stub@fpt.edu.vn', '0909000900', '$2a$12$FzWlsG8ipFhBBtMeXl5XUOCZ6NlwL9I4h1bwXPrSk1QxLFBGSl9te', 'STUDENT', 'ACTIVE', '2025-12-01 09:16:32.789573+07:00', 0.00),
+(10, 'User Ten (Stub)', 'user10.stub@fpt.edu.vn', '0910001000', '$2a$12$FzWlsG8ipFhBBtMeXl5XUOCZ6NlwL9I4h1bwXPrSk1QxLFBGSl9te', 'STUDENT', 'ACTIVE', '2025-12-01 09:16:32.789573+07:00', 0.00),
+(22, 'User TwentyTwo (Stub)', 'user22.stub@fpt.edu.vn', '0922002200', '$2a$12$FzWlsG8ipFhBBtMeXl5XUOCZ6NlwL9I4h1bwXPrSk1QxLFBGSl9te', 'STUDENT', 'ACTIVE', '2025-12-01 09:16:32.789573+07:00', 0.00);
 
 -- Insert Venue
 INSERT INTO venue (venue_id, venue_name, location, status) VALUES
@@ -312,7 +315,100 @@ INSERT INTO wallet (wallet_id, user_id, balance, currency, status, created_at, u
 (5, 5, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00'),
 (6, 7, 200000.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00'),
 (9, 11, 450000.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-03-06 08:47:29+07:00'),
-(10, 18, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00');
+(10, 18, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00'),
+(7, 9, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00'),
+(8, 10, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00'),
+(11, 22, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00');
+
+-- ============================================================
+
+-- ============================================================
+-- SEED DATA PORTED FROM MYSQL
+-- ============================================================
+
+-- Insert Bill
+INSERT INTO bill (bill_id, user_id, total_amount, currency, payment_method, payment_status, created_at, paid_at) VALUES
+(34,7,100000.00,'VND','VNPAY','PAID','2025-12-11 09:02:10.976000',NULL),(38,7,20000.00,'VND','VNPAY','PAID','2025-12-11 09:27:07.739000',NULL),(39,1,10000.00,'VND','VNPAY','PAID','2025-12-11 10:08:16.918000',NULL),(40,7,20000.00,'VND','VNPAY','PAID','2025-12-11 12:41:44.271000',NULL),(41,7,10000.00,'VND','VNPAY','PAID','2025-12-11 12:50:43.930000',NULL),(42,7,30000.00,'VND','VNPAY','PAID','2025-12-11 23:07:46.716000',NULL),(43,7,30000.00,'VND','VNPAY','PAID','2025-12-12 08:25:45.317000',NULL),(44,7,20000.00,'VND','VNPAY','PAID','2025-12-12 10:09:36.933000',NULL),(45,7,200000.00,'VND','VNPAY','PAID','2025-12-12 13:25:19.605000',NULL),(46,7,200000.00,'VND','VNPAY','PAID','2025-12-13 20:47:03.436000',NULL),(47,7,30000.00,'VND','VNPAY','PAID','2025-12-15 10:11:31.182000',NULL),(48,7,30000.00,'VND','VNPAY','PAID','2025-12-16 09:45:22.811000',NULL),(49,7,200000.00,'VND','VNPAY','PAID','2025-12-16 09:49:56.420000',NULL),(50,7,100000.00,'VND','VNPAY','PAID','2025-12-17 08:23:11.427000',NULL),(51,7,20000.00,'VND','VNPAY','PAID','2025-12-18 21:34:26.345000',NULL),(52,7,35000.00,'VND','VNPAY','PAID','2025-12-20 19:13:33.865000',NULL),(53,7,50000.00,'VND','VNPAY','PAID','2025-12-20 19:24:22.924000',NULL),(54,7,55000.00,'VND','VNPAY','PAID','2025-12-20 20:12:59.209000',NULL),(55,7,190000.00,'VND','VNPAY','PAID','2025-12-21 21:07:10.872000',NULL),(56,7,110000.00,'VND','VNPAY','PAID','2026-01-01 13:19:29.917000',NULL),(61,10,140000.00,'VND','VNPAY','PAID','2025-12-22 00:06:10.585000',NULL),(62,10,340000.00,'VND','VNPAY','PAID','2025-12-22 00:07:26.140000',NULL),(63,7,340000.00,'VND','VNPAY','PAID','2025-12-22 07:07:55.200000',NULL),(64,7,140000.00,'VND','VNPAY','PAID','2025-12-22 07:13:07.698000',NULL),(65,7,140000.00,'VND','VNPAY','PAID','2025-12-22 07:18:41.574000',NULL),(66,7,200000.00,'VND','VNPAY','PAID','2025-12-22 08:35:46.616000',NULL),(67,7,6000000.00,'VND','VNPAY','PAID','2025-12-22 09:37:35.037000',NULL),(68,7,6000000.00,'VND','VNPAY','PAID','2025-12-22 09:38:38.734000',NULL),(74,11,250000.00,'VND','VNPAY','PAID','2026-01-31 16:46:28.000000',NULL),(77,1,50000000.00,'VND','VNPAY','PAID','2026-02-01 01:21:52.000000',NULL),(79,11,25000000.00,'VND','VNPAY','PAID','2026-02-04 11:21:34.000000',NULL),(80,11,25000000.00,'VND','VNPAY','PAID','2026-02-04 11:41:18.000000',NULL),(81,11,25000000.00,'VND','VNPAY','PAID','2026-02-04 13:10:09.000000',NULL),(82,11,25000000.00,'VND','VNPAY','PAID','2026-02-04 14:20:20.000000',NULL),(83,11,15000000.00,'VND','VNPAY','PAID','2026-02-04 15:07:22.000000',NULL),(84,11,15000000.00,'VND','VNPAY','PAID','2026-02-04 15:34:40.000000',NULL),(85,11,15000000.00,'VND','VNPAY','PAID','2026-02-04 15:50:28.000000',NULL),(86,11,15000000.00,'VND','VNPAY','PAID','2026-02-04 15:58:58.000000',NULL),(87,11,15000000.00,'VND','VNPAY','PAID','2026-02-04 16:05:11.000000',NULL),(88,22,15000000.00,'VND','VNPAY','PAID','2026-02-04 16:21:24.000000',NULL),(89,22,15000000.00,'VND','VNPAY','PAID','2026-02-04 16:32:29.000000',NULL),(90,22,15000000.00,'VND','VNPAY','PAID','2026-02-04 16:38:55.000000',NULL),(91,22,15000000.00,'VND','VNPAY','PAID','2026-02-04 16:50:29.000000',NULL),(92,22,15000000.00,'VND','VNPAY','PAID','2026-02-04 16:52:13.000000',NULL),(93,22,25000000.00,'VND','VNPAY','PAID','2026-02-04 21:51:58.000000',NULL),(94,22,25000000.00,'VND','VNPAY','PAID','2026-02-04 21:55:02.000000',NULL),(95,22,25000000.00,'VND','VNPAY','PAID','2026-02-04 22:28:45.000000',NULL),(96,22,25000000.00,'VND','VNPAY','PAID','2026-02-05 08:53:04.000000',NULL),(97,22,25000000.00,'VND','VNPAY','PAID','2026-02-05 09:00:30.000000',NULL),(98,22,25000000.00,'VND','VNPAY','PAID','2026-02-05 09:05:01.000000',NULL),(99,22,25000000.00,'VND','VNPAY','PAID','2026-02-05 09:09:27.000000',NULL),(100,22,25000000.00,'VND','VNPAY','PAID','2026-02-05 09:18:29.000000',NULL),(101,22,25000000.00,'VND','VNPAY','PAID','2026-02-05 09:31:40.000000',NULL),(102,22,25000000.00,'VND','VNPAY','PAID','2026-02-05 09:42:06.000000',NULL),(103,22,25000000.00,'VND','VNPAY','PAID','2026-02-05 09:46:29.000000',NULL),(104,22,25000000.00,'VND','VNPAY','PAID','2026-02-05 09:53:43.000000',NULL),(105,22,15000000.00,'VND','VNPAY','PAID','2026-02-05 09:55:06.000000',NULL),(106,22,60000000.00,'VND','VNPAY','PAID','2026-02-05 10:12:40.000000',NULL),(107,22,50000000.00,'VND','VNPAY','PAID','2026-02-05 10:17:34.000000',NULL),(108,22,75000000.00,'VND','VNPAY','PAID','2026-02-05 10:23:54.000000',NULL),(109,22,25000000.00,'VND','VNPAY','PAID','2026-02-05 10:25:00.000000',NULL),(110,22,25000000.00,'VND','VNPAY','PAID','2026-02-05 10:42:47.000000',NULL),(111,11,15000000.00,'VND','VNPAY','PAID','2026-02-05 11:38:36.000000',NULL),(112,11,15000000.00,'VND','VNPAY','PAID','2026-02-05 11:53:01.000000',NULL),(113,11,15000000.00,'VND','VNPAY','PAID','2026-02-05 13:16:24.000000',NULL),(114,11,15000000.00,'VND','VNPAY','PAID','2026-02-05 13:47:19.000000',NULL),(115,11,25000000.00,'VND','VNPAY','PAID','2026-02-05 14:14:56.000000',NULL),(116,11,15000000.00,'VND','VNPAY','PAID','2026-02-05 16:08:21.000000',NULL),(117,11,15000000.00,'VND','VNPAY','PAID','2026-02-05 16:46:18.000000',NULL),(118,11,15000000.00,'VND','VNPAY','PAID','2026-02-05 16:52:58.000000',NULL),(119,11,15000000.00,'VND','VNPAY','PAID','2026-02-06 10:52:30.000000',NULL),(120,11,15000000.00,'VND','VNPAY','PAID','2026-02-06 10:58:23.000000',NULL),(121,11,15000000.00,'VND','VNPAY','PAID','2026-02-06 11:11:27.000000',NULL),(122,11,15000000.00,'VND','VNPAY','PAID','2026-02-06 12:50:52.000000',NULL),(123,11,15000000.00,'VND','VNPAY','PAID','2026-02-12 17:10:45.000000',NULL),(124,11,15000000.00,'VND','VNPAY','PAID','2026-02-12 17:22:29.000000',NULL),(125,11,150000.00,'VND','VNPAY','PAID','2026-02-12 17:47:14.000000',NULL),(126,11,800000.00,'VND','VNPAY','PAID','2026-02-25 17:26:13.000000',NULL),(127,11,50000.00,'VND','Wallet','PAID','2026-02-26 11:16:45.000000','2026-02-26 11:16:45'),(128,11,50000.00,'VND','VNPAY','PAID','2026-02-26 11:18:44.000000','2026-02-26 11:18:44'),(129,11,50000.00,'VND','Wallet','PAID','2026-02-26 12:11:55.000000','2026-02-26 12:11:55'),(130,11,0.00,'VND','FREE','PAID','2026-03-04 10:08:52.000000','2026-03-04 10:08:52'),(131,11,400000.00,'VND','VNPAY','PAID','2026-03-04 10:16:03.000000','2026-03-04 10:16:03'),(132,11,0.00,'VND','FREE','PAID','2026-03-04 10:33:10.000000','2026-03-04 10:33:10'),(133,11,350000.00,'VND','Wallet','PAID','2026-03-04 14:10:17.000000','2026-03-04 14:10:17'),(134,11,350000.00,'VND','VNPAY','PAID','2026-03-04 14:19:20.000000','2026-03-04 14:19:20'),(135,11,150000.00,'VND','VNPAY','PAID','2026-03-04 14:21:20.000000','2026-03-04 14:21:20'),(136,11,350000.00,'VND','VNPAY','PAID','2026-03-04 14:48:45.000000','2026-03-04 14:48:45'),(137,11,350000.00,'VND','VNPAY','PAID','2026-03-04 15:03:12.000000','2026-03-04 15:03:12'),(138,11,350000.00,'VND','VNPAY','PAID','2026-03-04 15:14:35.000000','2026-03-04 15:14:35'),(139,11,0.00,'VND','Wallet','PAID','2026-03-04 16:30:30.000000','2026-03-04 16:30:30'),(140,11,0.00,'VND','Wallet','PAID','2026-03-05 23:51:51.000000','2026-03-05 23:51:51'),(141,11,0.00,'VND','FREE','PAID','2026-03-06 00:21:16.000000','2026-03-06 00:21:16'),(142,11,0.00,'VND','FREE','PAID','2026-03-06 00:43:54.000000','2026-03-06 00:43:54'),(143,11,0.00,'VND','FREE','PAID','2026-03-06 00:44:52.000000','2026-03-06 00:44:52');
+
+-- Insert Category Ticket
+INSERT INTO category_ticket (category_ticket_id, event_id, name, description, price, max_quantity, status) VALUES
+(13,7,'VIP','VIP',100000.00,5,'ACTIVE'),(14,7,'STANDARD','Standard ',50000.00,45,'ACTIVE'),(15,8,'VIP','VIP',20000.00,30,'ACTIVE'),(16,8,'STANDARD','Standard ',10000.00,20,'ACTIVE'),(21,17,'VIP','Vé VIP bao gồm quyền ngồi hàng ghế đầu, tài liệu chuyên sâu nâng cao về xây dựng chatbot AI, voucher giảm 30% khóa học AI nâng cao, giấy chứng nhận VIP và cơ hội networking riêng với diễn giả sau sự kiện.',200000.00,30,'INACTIVE'),(22,17,'STANDARD','Tham dự workshop, nhận tài liệu cơ bản, tham gia thực hành xây dựng chatbot và nhận chứng nhận tham dự.',120000.00,30,'INACTIVE'),(23,16,'VIP','Bao gồm chỗ ngồi ưu tiên, tài liệu nâng cao về Python + AI (file PDF), 1 giờ mentoring online sau workshop, giấy chứng nhận VIP, và bộ notebook code mẫu độc quyền.',95000.00,10,'ACTIVE'),(24,16,'STANDARD','Tham dự workshop, nhận tài liệu cơ bản, tham gia thực hành viết Python và mô hình ML đơn giản, nhận chứng nhận tham dự.',50000.00,30,'ACTIVE'),(25,15,'VIP','Bao gồm quyền tham gia khu vực networking riêng với chuyên gia HR & Tech Recruiter, gói phân tích CV chi tiết, mock interview 1:1 miễn phí sau sự kiện, tài liệu hướng nghiệp nâng cao.',125000.00,10,'INACTIVE'),(26,15,'STANDARD','Tham dự hội thảo, được nghe chia sẻ từ các chuyên gia tuyển dụng, tham gia các phiên hỏi đáp, nhận bộ tài liệu "IT Career Handbook 2026".',100000.00,40,'INACTIVE'),(27,14,'VIP','Bao gồm chỗ ngồi ưu tiên, tài liệu Masterbook chuyên sâu, video khóa học "Art of Presentation", 1 buổi coaching cá nhân 30 phút sau workshop, chứng nhận VIP.',30000.00,20,'INACTIVE'),(1021,1014,'VIP','Ngồi hàng đầu dễ dàng xem tranh, giao lưu với host',35000.00,40,'ACTIVE'),(1022,1014,'STANDARD','Ngồi ở vị trí xa khó quan sát được tranh',20000.00,40,'ACTIVE'),(1061,1028,'VIP','Ghế ngồi hàng đầu\nTài liệu workshop đầy đủ (PDF + source code)\nĐược hỏi đáp trực tiếp với diễn giả\nChứng nhận tham gia (Certificate)',200000.00,20,'ACTIVE'),(1062,1028,'STANDARD','Tham gia toàn bộ workshop\nTài liệu học tập cơ bản\nHỏi đáp chung cuối chương trình',140000.00,40,'ACTIVE'),(1063,1029,'VIP','Vé VIP bao gồm quyền ngồi hàng ghế đầu, tài liệu chuyên sâu nâng cao về các công nghệ mới như machine learning, và cơ hội networking riêng với diễn giả sau sự kiện.\n',1500000.00,20,'ACTIVE'),(1064,1029,'STANDARD','\nTham dự workshop, nhận tài liệu cơ bản.',100000.00,30,'ACTIVE'),(1065,1032,'VIP','Giá vé VIP\n',250000.00,30,'ACTIVE'),(1066,1032,'STANDARD','Giá vé STANDARD',150000.00,70,'ACTIVE'),(1073,1039,'STANDARD','Giá vé STANDARD',50000.00,60,'ACTIVE'),(1074,1039,'VIP','Giá vé VIP',150000.00,30,'ACTIVE'),(1111,1047,'STANDARD','Giá vé STANDARD',50000.00,100,'ACTIVE'),(1112,1047,'VIP','Giá vé VIP',200000.00,50,'ACTIVE'),(1121,1049,'STANDARD','Giá vé STANDARD',0.00,200,'ACTIVE'),(1122,1048,'STANDARD','Giá vé STANDARD',100000.00,200,'ACTIVE'),(1123,1048,'VIP','Giá vé VIP',400000.00,50,'ACTIVE'),(1126,1050,'VIP','Giá vé VIP',350000.00,50,'ACTIVE'),(1127,1050,'STANDARD','Giá vé STANDARD',150000.00,200,'ACTIVE'),(1129,1051,'STANDARD','Giá vé STANDARD',0.00,50,'ACTIVE');
+
+-- Insert Wallet Transaction
+INSERT INTO wallet_transaction (transaction_id, wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description, created_at) VALUES
+(1,9,11,'CREDIT',0.00,50000.00,50000.00,'TICKET','297','Hoàn tiền 100% vé #297 - sự kiện bị hủy','2026-03-04 06:32:12'),(2,9,11,'CREDIT',0.00,50000.00,50000.00,'TICKET','299','Hoàn tiền 100% vé #299 - sự kiện bị hủy','2026-03-04 06:32:12'),(3,9,11,'CREDIT',400000.00,50000.00,450000.00,'TICKET','298','Hoàn tiền 100% vé #298 - sự kiện bị hủy','2026-03-04 06:36:12'),(4,9,11,'DEBIT',350000.00,450000.00,100000.00,'TICKET_PURCHASE','confirmed:2da64e76-9638-41c4-a09d-6d7f9320399d|tickets:tickets:300','RESERVE:2da64e76-9638-41c4-a09d-6d7f9320399d|expires:2026-03-04T14:15:17+07:00|Mua vé event 1050, 1 ghế | CONFIRMED at 2026-03-04 14:10:17','2026-03-04 07:10:17'),(5,9,11,'CREDIT',350000.00,100000.00,450000.00,'REFUND','report:6','Hoàn tiền report #6, ticket #300','2026-03-06 08:47:29');
+
+-- Insert Notification
+INSERT INTO notification (notification_id, user_id, message, is_read, created_at) VALUES
+(1,18,'❓ Thông báo: Yêu cầu ''Career Move'' đã được rút lại thành công.',TRUE,'2026-02-09 19:34:01.000000'),
+(2,18,'❓ Thông báo: Yêu cầu ''Career Move'' đã được rút lại thành công.',TRUE,'2026-02-10 15:13:31.000000'),
+(3,18,'❓ Thông báo: Yêu cầu '''' đã được rút lại thành công.',TRUE,'2026-02-10 16:47:42.000000'),
+(4,18,'❓ Thông báo: Yêu cầu '''' đã được hủy.',TRUE,'2026-02-10 17:37:40.000000');
+
+-- Insert Event
+INSERT INTO event (event_id, title, description, start_time, end_time, speaker_id, max_seats, status, created_by, created_at, area_id, banner_url, checkin_offset, checkout_offset) VALUES
+(7,'Sự kiện mừng xuân - 2026','Mừng xuân đón tết','2026-01-01 10:00:00.000000','2026-01-01 17:00:00.000000',NULL,50,'CLOSED',4,'2025-12-08 00:55:02.095264',1,'https://img.freepik.com/premium-vector/talk-show-banner-template_791789-63.jpg?w=2000',60,30),(8,'Buổi dạy Thư Pháp Ngày Xuân 2026','Đánh bài tiến lên','2026-01-01 18:00:00.000000','2026-01-01 22:00:00.000000',NULL,50,'CLOSED',4,'2025-12-08 01:18:54.179751',1,'https://img.freepik.com/premium-vector/talk-show-banner-template_791789-63.jpg?w=2000',60,30);
+
+-- ============================================================
+-- SUPABASE ROW LEVEL SECURITY (RLS) & POLICIES
+-- ============================================================
+
+-- Enable RLS on all tables
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE speaker ENABLE ROW LEVEL SECURITY;
+ALTER TABLE venue ENABLE ROW LEVEL SECURITY;
+ALTER TABLE venue_area ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event ENABLE ROW LEVEL SECURITY;
+ALTER TABLE category_ticket ENABLE ROW LEVEL SECURITY;
+ALTER TABLE seat ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_seat_layout ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ticket ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_request ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification ENABLE ROW LEVEL SECURITY;
+ALTER TABLE report ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bill ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet_transaction ENABLE ROW LEVEL SECURITY;
+
+-- Create full-access policies for service_role and postgres
+CREATE POLICY "Allow full access to service_role and postgres on users" ON users FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on speaker" ON speaker FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on venue" ON venue FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on venue_area" ON venue_area FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on event" ON event FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on category_ticket" ON category_ticket FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on seat" ON seat FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on event_seat_layout" ON event_seat_layout FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on ticket" ON ticket FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on event_request" ON event_request FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on notification" ON notification FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on report" ON report FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on bill" ON bill FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on wallet" ON wallet FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on wallet_transaction" ON wallet_transaction FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+
+-- Create public read-only policies for anon and authenticated
+CREATE POLICY "Allow read-only public access on event" ON event FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow read-only public access on venue" ON venue FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow read-only public access on category_ticket" ON category_ticket FOR SELECT TO anon, authenticated USING (true);
+
+-- ============================================================
+-- RESET SEQUENCES FOR SERIAL COLUMNS
+-- ============================================================
+SELECT setval(pg_get_serial_sequence('users', 'user_id'), COALESCE(MAX(user_id), 1)) FROM users;
+SELECT setval(pg_get_serial_sequence('speaker', 'speaker_id'), COALESCE(MAX(speaker_id), 1)) FROM speaker;
+SELECT setval(pg_get_serial_sequence('venue', 'venue_id'), COALESCE(MAX(venue_id), 1)) FROM venue;
+SELECT setval(pg_get_serial_sequence('venue_area', 'area_id'), COALESCE(MAX(area_id), 1)) FROM venue_area;
+SELECT setval(pg_get_serial_sequence('event', 'event_id'), COALESCE(MAX(event_id), 1)) FROM event;
+SELECT setval(pg_get_serial_sequence('bill', 'bill_id'), COALESCE(MAX(bill_id), 1)) FROM bill;
+SELECT setval(pg_get_serial_sequence('category_ticket', 'category_ticket_id'), COALESCE(MAX(category_ticket_id), 1)) FROM category_ticket;
+SELECT setval(pg_get_serial_sequence('seat', 'seat_id'), COALESCE(MAX(seat_id), 1)) FROM seat;
+SELECT setval(pg_get_serial_sequence('ticket', 'ticket_id'), COALESCE(MAX(ticket_id), 1)) FROM ticket;
+SELECT setval(pg_get_serial_sequence('event_request', 'request_id'), COALESCE(MAX(request_id), 1)) FROM event_request;
+SELECT setval(pg_get_serial_sequence('notification', 'notification_id'), COALESCE(MAX(notification_id), 1)) FROM notification;
+SELECT setval(pg_get_serial_sequence('report', 'report_id'), COALESCE(MAX(report_id), 1)) FROM report;
+SELECT setval(pg_get_serial_sequence('wallet', 'wallet_id'), COALESCE(MAX(wallet_id), 1)) FROM wallet;
+SELECT setval(pg_get_serial_sequence('wallet_transaction', 'transaction_id'), COALESCE(MAX(transaction_id), 1)) FROM wallet_transaction;
 
 -- ============================================================
 -- MIGRATION NOTES FOR SUPABASE
