@@ -91,19 +91,19 @@ func (s *VenueReleaseScheduler) releaseVenues() {
 	// Logic: NOT EXISTS (any event with status != CLOSED, CANCELLED)
 	// Equivalent: NOT EXISTS (any event with status IN OPEN, UPDATING, PENDING)
 	query := `
-		UPDATE Venue_Area va
-		SET va.status = 'AVAILABLE'
-		WHERE va.status = 'UNAVAILABLE'
+		UPDATE Venue_Area
+		SET status = 'AVAILABLE'
+		WHERE status = 'UNAVAILABLE'
 		  AND NOT EXISTS (
 			SELECT 1
 			FROM Event e
-			WHERE e.area_id = va.area_id
-			  AND e.status IN ('OPEN', 'UPDATING', 'PENDING')
+			WHERE e.area_id = Venue_Area.area_id
+			  AND e.status IN ('OPEN', 'UPDATING')
 		  )
 		  AND EXISTS (
 			SELECT 1
 			FROM Event e_done
-			WHERE e_done.area_id = va.area_id
+			WHERE e_done.area_id = Venue_Area.area_id
 			  AND e_done.status IN ('CLOSED', 'CANCELLED')
 		  )
 	`

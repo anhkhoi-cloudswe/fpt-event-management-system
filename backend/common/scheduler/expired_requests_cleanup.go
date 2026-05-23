@@ -134,7 +134,7 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 					SELECT 1
 					FROM Event e_active
 					WHERE e_active.area_id = Venue_Area.area_id
-					  AND e_active.status IN ('OPEN', 'UPDATING', 'PENDING')
+					  AND e_active.status IN ('OPEN', 'UPDATING')
 				  )
 			`
 			result, err := tx.ExecContext(ctx, updateAreaQuery, areaID.Int64)

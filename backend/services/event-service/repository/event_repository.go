@@ -1246,7 +1246,7 @@ func (r *EventRepository) GetSeatsByAreaID(ctx context.Context, areaID int, even
 			s.seat_code,
 			s.row_no,
 			s.col_no,
-			COALESCE(ts.effective_status, s.status) AS status,
+			COALESCE(ts.effective_status, s.status::text) AS status,
 			s.area_id,
 			s.category_ticket_id,
 			ct.name
@@ -1268,7 +1268,7 @@ func (r *EventRepository) GetSeatsByAreaID(ctx context.Context, areaID int, even
 			GROUP BY t.seat_id
 		) ts ON ts.seat_id = s.seat_id
 		WHERE s.area_id = $3
-		ORDER BY s.row_no ASC, CAST(s.col_no AS UNSIGNED) ASC, s.seat_code ASC
+		ORDER BY s.row_no ASC, CAST(s.col_no AS INTEGER) ASC, s.seat_code ASC
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, eventID, eventID, areaID)
@@ -3238,7 +3238,7 @@ func (r *EventRepository) CancelEvent(ctx context.Context, userID, eventID int) 
 				SELECT 1
 				FROM Event e_active
 				WHERE e_active.area_id = Venue_Area.area_id
-				  AND e_active.status IN ('OPEN', 'UPDATING', 'PENDING')
+				  AND e_active.status IN ('OPEN', 'UPDATING')
 			  )
 		`
 		result3, err := tx.ExecContext(ctx, releaseQuery, areaID.Int64)
@@ -3332,20 +3332,20 @@ func (r *EventRepository) AutoReleaseVenues(ctx context.Context) error {
 	// Chỉ giải phóng khi area có event CLOSED/CANCELLED và KHÔNG còn event OPEN/UPDATING.
 	// Điều này ngăn release nhầm khi vẫn còn event active gắn với area.
 	updateQuery := `
-		UPDATE Venue_Area va
-		SET va.status = 'AVAILABLE'
-		WHERE va.status = 'UNAVAILABLE'
+		UPDATE Venue_Area
+		SET status = 'AVAILABLE'
+		WHERE status = 'UNAVAILABLE'
 		  AND EXISTS (
 			SELECT 1
 			FROM Event e_done
-			WHERE e_done.area_id = va.area_id
+			WHERE e_done.area_id = Venue_Area.area_id
 			  AND e_done.status IN ('CLOSED', 'CANCELLED')
 		  )
 		  AND NOT EXISTS (
 			SELECT 1
 			FROM Event e_active
-			WHERE e_active.area_id = va.area_id
-			  AND e_active.status IN ('OPEN', 'UPDATING', 'PENDING')
+			WHERE e_active.area_id = Venue_Area.area_id
+			  AND e_active.status IN ('OPEN', 'UPDATING')
 		  )
 	`
 
