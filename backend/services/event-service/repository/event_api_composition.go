@@ -1354,7 +1354,7 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		checkQuotaQuery := `
 			SELECT COUNT(*)
 			FROM Event
-			WHERE DATE(start_time) = DATE($1)
+			WHERE start_time::date = $1::date
 			AND status != 'CANCELLED'
 			FOR UPDATE`
 		err = tx.QueryRowContext(ctx, checkQuotaQuery, startTimeWallClock).Scan(&dailyCount)

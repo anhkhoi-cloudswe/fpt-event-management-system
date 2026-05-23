@@ -2868,7 +2868,7 @@ func (r *EventRepository) GetAvailableAreas(ctx context.Context, startTime, endT
 		FROM Venue_Area va
 		INNER JOIN Venue v ON va.venue_id = v.venue_id
 		LEFT JOIN Event e ON va.area_id = e.area_id 
-			AND DATE(e.start_time) = $1
+			AND e.start_time::date = $1::date
 			AND e.status IN ('OPEN', 'UPDATING')
 		WHERE COALESCE(va.capacity, 0) >= $2
 		  AND va.status = 'AVAILABLE'
@@ -3369,7 +3369,7 @@ func (r *EventRepository) CheckDailyQuota(ctx context.Context, eventDate string)
 	query := `
 		SELECT COUNT(*) as event_count
 		FROM Event
-		WHERE DATE(start_time) = $1
+		WHERE start_time::date = $1::date
 		AND status != 'CANCELLED'
 	`
 
