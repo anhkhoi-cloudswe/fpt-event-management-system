@@ -68,8 +68,10 @@ def test_full_lifecycle():
 
     # 3. Create Event Request (Organizer)
     print("\n[3] Creating Event Request (Organizer)...")
-    # Generate future times (3 days in the future to satisfy 24h advance scheduling rule)
-    tomorrow = datetime.now() + timedelta(days=3)
+    # Generate future times (randomized future days to satisfy 24h rule and daily quota checks)
+    import random
+    random_days = 3 + random.randint(1, 300)
+    tomorrow = datetime.now() + timedelta(days=random_days)
     start_time = tomorrow.replace(hour=14, minute=0, second=0).isoformat() + "+07:00"
     end_time = tomorrow.replace(hour=18, minute=0, second=0).isoformat() + "+07:00"
     
