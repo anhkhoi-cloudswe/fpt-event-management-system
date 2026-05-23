@@ -78,7 +78,7 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 	query := `
 		SELECT event_id, area_id, title, start_time
 		FROM Event 
-		WHERE status IN ('APPROVED', 'UPDATING')
+		WHERE status = 'UPDATING'
 		  AND start_time < NOW() + INTERVAL '24 hours'
 		  AND start_time > NOW()
 	`
