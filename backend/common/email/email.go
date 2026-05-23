@@ -37,7 +37,7 @@ func DefaultConfig() *Config {
 		Port:         getEnv("SMTP_PORT", "587"),
 		Username:     getEnv("SMTP_USERNAME", ""),
 		Password:     getEnv("SMTP_PASSWORD", ""),
-		From:         getEnv("SMTP_FROM", "onboarding@resend.dev"),
+		From:         getEnv("EMAIL_FROM", getEnv("SMTP_FROM", "onboarding@resend.dev")),
 		FromName:     getEnv("SMTP_FROM_NAME", "FPT Event System"),
 		UseTLS:       getEnv("SMTP_USE_TLS", "true") == "true",
 		SkipVerify:   getEnv("SMTP_SKIP_VERIFY", "false") == "true",
