@@ -107,6 +107,50 @@ func forceIPv4InDSN(dsn string) string {
 	}
 
 	if ipv4 == "" {
+		// If no IPv4 address was found, and the host is a Supabase direct host (ends with .supabase.co)
+		if strings.HasSuffix(host, ".supabase.co") {
+			parts := strings.Split(host, ".")
+			if len(parts) >= 2 && parts[0] == "db" {
+				projectRef := parts[1]
+				poolerHost := "aws-0-ap-southeast-1.pooler.supabase.com"
+				
+				logger.Info("[DB] Direct Supabase host is IPv6-only. Attempting fallback to pooler...", "host", host, "pooler", poolerHost)
+				poolerIPs, err := net.LookupIP(poolerHost)
+				if err == nil {
+					for _, ip := range poolerIPs {
+						if ip.To4() != nil {
+							ipv4 = ip.String()
+							break
+						}
+					}
+				}
+				
+				if ipv4 != "" {
+					logger.Info("[DB] Successfully resolved pooler IPv4. Rewriting connection string to use pooler.", "ipv4", ipv4)
+					// Rewrite the URL host & port to pooler (using transaction mode 6543)
+					u.Host = net.JoinHostPort(poolerHost, "6543")
+					
+					// Update username to include projectRef if not already present
+					user := u.User.Username()
+					if user != "" && !strings.Contains(user, ".") {
+						password, hasPassword := u.User.Password()
+						if hasPassword {
+							u.User = url.UserPassword(user+"."+projectRef, password)
+						} else {
+							u.User = url.User(user + "." + projectRef)
+						}
+					}
+					
+					// Force hostaddr query param
+					q := u.Query()
+					q.Set("hostaddr", ipv4)
+					u.RawQuery = q.Encode()
+					
+					return u.String()
+				}
+			}
+		}
+
 		logger.Warn("[DB] No IPv4 addresses found for host", "host", host)
 		return dsn
 	}
