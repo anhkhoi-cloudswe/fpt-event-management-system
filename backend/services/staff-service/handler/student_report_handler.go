@@ -102,7 +102,7 @@ func (h *StudentReportHandler) HandleSubmitReport(ctx context.Context, request e
 	// 6) Verify ticket ownership and check status
 	var ticketStatus string
 	var ticketUserID int
-	checkQuery := `SELECT t.status, t.user_id FROM Ticket t WHERE t.ticket_id = ?`
+	checkQuery := `SELECT t.status, t.user_id FROM Ticket t WHERE t.ticket_id = $1`
 	err := dbConn.QueryRowContext(ctx, checkQuery, reportBody.TicketId).Scan(&ticketStatus, &ticketUserID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -129,7 +129,7 @@ func (h *StudentReportHandler) HandleSubmitReport(ctx context.Context, request e
 	// 9) Check for duplicate report (One Ticket - One Report vĩnh viễn)
 	// Không cho phép tạo report mới nếu ticket này đã có report ở bất kỳ trạng thái nào (PENDING, APPROVED, REJECTED)
 	var existingCount int
-	dupQuery := `SELECT COUNT(*) FROM report WHERE ticket_id = ? AND status IN ('PENDING', 'APPROVED', 'REJECTED')`
+	dupQuery := `SELECT COUNT(*) FROM report WHERE ticket_id = $1 AND status IN ('PENDING', 'APPROVED', 'REJECTED')`
 	dbConn.QueryRowContext(ctx, dupQuery, reportBody.TicketId).Scan(&existingCount)
 	if existingCount > 0 {
 		return createStudentReportResponse(http.StatusConflict,

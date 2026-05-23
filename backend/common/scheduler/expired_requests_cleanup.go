@@ -66,7 +66,7 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 		SELECT event_id, area_id, title, start_time
 		FROM Event 
 		WHERE status IN ('APPROVED', 'UPDATING')
-		  AND start_time < DATE_ADD(NOW(), INTERVAL 24 HOUR)
+		  AND start_time < NOW() + INTERVAL '24 HOUR'
 		  AND start_time > NOW()
 	`
 
@@ -99,7 +99,7 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 		}
 
 		// Update event status to CLOSED
-		updateEventQuery := `UPDATE Event SET status = 'CLOSED' WHERE event_id = ?`
+		updateEventQuery := `UPDATE Event SET status = 'CLOSED' WHERE event_id = $1`
 		_, err = tx.ExecContext(ctx, updateEventQuery, eventID)
 		if err != nil {
 			logger.Default().Error("[SCHEDULER] Error closing event #%d: %v", eventID, err)
@@ -109,7 +109,7 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 
 		// Update corresponding Event_Request status to CANCELLED (matches manual cancellation)
 		// Note: Event_Request uses CANCELLED status, not CLOSED
-		updateRequestQuery := `UPDATE Event_Request SET status = 'CANCELLED' WHERE created_event_id = ?`
+		updateRequestQuery := `UPDATE Event_Request SET status = 'CANCELLED' WHERE created_event_id = $1`
 		_, err = tx.ExecContext(ctx, updateRequestQuery, eventID)
 		if err != nil {
 			logger.Default().Error("[SCHEDULER] Error updating event request status for event #%d: %v", eventID, err)
@@ -122,7 +122,7 @@ func (s *ExpiredRequestsCleanupScheduler) autoCloseExpiredRequests() {
 			updateAreaQuery := `
 				UPDATE Venue_Area
 				SET status = 'AVAILABLE'
-				WHERE area_id = ?
+				WHERE area_id = $1
 				  AND status = 'UNAVAILABLE'
 				  AND EXISTS (
 					SELECT 1

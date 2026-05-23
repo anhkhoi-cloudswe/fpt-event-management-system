@@ -33,16 +33,16 @@ foreach ($svc in $services) {
     Write-Host "Building $($svc.Name)..." -ForegroundColor DarkGray
     go build -o $($svc.Binary) $($svc.Path)
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Failed to build $($svc.Name)" -ForegroundColor Red
+        Write-Host "[-] Failed to build $($svc.Name)" -ForegroundColor Red
         $buildFailed = $true
     }
 }
 
 if ($buildFailed) {
-    Write-Host "❌ Build failed. Aborting startup." -ForegroundColor Red
+    Write-Host "[-] Build failed. Aborting startup." -ForegroundColor Red
     exit 1
 }
-Write-Host "✅ All services built successfully!" -ForegroundColor Green
+Write-Host "[+] All services built successfully!" -ForegroundColor Green
 
 # Step 3: Run services
 Write-Host ""
@@ -56,7 +56,7 @@ foreach ($svc in $services) {
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
-Write-Host "  🚀 All services are running! Gateway: http://localhost:8080" -ForegroundColor Green
+Write-Host "  [+] All services are running! Gateway: http://localhost:8080" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host "  Ports mapping:" -ForegroundColor Gray
 Write-Host "  - Gateway: 8080" -ForegroundColor Gray
@@ -83,7 +83,7 @@ finally {
             Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
         }
     }
-    Write-Host "🧹 Cleaning temporary binaries..." -ForegroundColor DarkGray
+    Write-Host "[info] Cleaning temporary binaries..." -ForegroundColor DarkGray
     Remove-Item -Path "bin" -Recurse -Force -ErrorAction SilentlyContinue
-    Write-Host "✅ All services stopped." -ForegroundColor Green
+    Write-Host "[+] All services stopped." -ForegroundColor Green
 }

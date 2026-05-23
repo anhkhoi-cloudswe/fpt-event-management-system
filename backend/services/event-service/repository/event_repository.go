@@ -460,18 +460,20 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 					rowsNeeded := (areaCapacity + seatsPerRow - 1) / seatsPerRow
 
 					// Generate rows until we reach exactly areaCapacity seats
+					paramIndex := 1
 					for row := 0; created < areaCapacity && row < rowsNeeded; row++ {
 						rowLetter := rowNameFromIndex(row)
 						for col := 1; col <= seatsPerRow && created < areaCapacity; col++ {
 							seatCode := rowLetter + strconv.Itoa(col)
-							values = append(values, "(?, ?, ?, ?, 'ACTIVE')")
+							values = append(values, fmt.Sprintf("($%d, $%d, $%d, $%d, 'ACTIVE')", paramIndex, paramIndex+1, paramIndex+2, paramIndex+3))
 							params = append(params, areaID, seatCode, rowLetter, col)
+							paramIndex += 4
 							created++
 						}
 					}
 
 					if len(values) > 0 {
-						insertSeatsQuery += strings.Join(values, ", ")
+						insertSeatsQuery += strings.Join(values, ", ") + " ON CONFLICT (area_id, seat_code) DO NOTHING"
 						result, err := tx.ExecContext(ctx, insertSeatsQuery, params...)
 						if err != nil {
 							return fmt.Errorf("failed to initialize seats: %w", err)
@@ -507,16 +509,18 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 					var values []string
 					var params []interface{}
 
+					paramIndex := 1
 					for row := 0; row < 10; row++ {
 						rowLetter := string(rune('A' + row))
 						for col := 1; col <= 10; col++ {
 							seatCode := rowLetter + strconv.Itoa(col)
-							values = append(values, "(?, ?, ?, ?, 'ACTIVE')")
+							values = append(values, fmt.Sprintf("($%d, $%d, $%d, $%d, 'ACTIVE')", paramIndex, paramIndex+1, paramIndex+2, paramIndex+3))
 							params = append(params, areaID, seatCode, rowLetter, col)
+							paramIndex += 4
 						}
 					}
 
-					insertSeatsQuery += strings.Join(values, ", ")
+					insertSeatsQuery += strings.Join(values, ", ") + " ON CONFLICT (area_id, seat_code) DO NOTHING"
 					result, err := tx.ExecContext(ctx, insertSeatsQuery, params...)
 					if err != nil {
 						return fmt.Errorf("failed to initialize seats: %w", err)

@@ -211,8 +211,8 @@ func (r *TicketRepository) GetTicketsByUserIDPaginated(ctx context.Context, user
 		LEFT JOIN Users u ON t.user_id = u.user_id
 		WHERE %s
 		ORDER BY t.ticket_id DESC
-		LIMIT ? OFFSET ?
-	`, whereClause)
+		LIMIT $%d OFFSET $%d
+	`, whereClause, len(args)+1, len(args)+2)
 
 	args = append(args, limit, offset)
 	rows, err := r.db.QueryContext(ctx, query, args...)

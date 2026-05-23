@@ -398,7 +398,7 @@ func (h *VenueInternalHandler) HandleUpdateAreaStatus(ctx context.Context, reque
 		activeEventQuery := `
 			SELECT COUNT(1)
 			FROM Event
-			WHERE area_id = ?
+			WHERE area_id = $1
 			  AND status IN ('OPEN', 'UPDATING', 'PENDING')
 		`
 		if err := h.db.QueryRowContext(ctx, activeEventQuery, body.AreaID).Scan(&activeEventCount); err != nil {
@@ -415,7 +415,7 @@ func (h *VenueInternalHandler) HandleUpdateAreaStatus(ctx context.Context, reque
 		doneEventQuery := `
 			SELECT COUNT(1)
 			FROM Event
-			WHERE area_id = ?
+			WHERE area_id = $1
 			  AND status IN ('CLOSED', 'CANCELLED')
 		`
 		if err := h.db.QueryRowContext(ctx, doneEventQuery, body.AreaID).Scan(&doneEventCount); err != nil {

@@ -80,5 +80,5 @@ func MustGetServiceURLWithFallback(serviceName string, localEnvKey string, fallb
 	}
 
 	// Last resort fallback (Local development)
-	return fmt.Sprintf("http://localhost:%d", fallbackLocalPort)
+	return fmt.Sprintf("http://127.0.0.1:%d", fallbackLocalPort)
 }

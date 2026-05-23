@@ -53,7 +53,7 @@ func GetBackendURL(name string) string {
 		if v := config.GetServiceURL(info.EnvKey); v != "" {
 			return v
 		}
-		return fmt.Sprintf("http://localhost:%d", info.Port)
+		return fmt.Sprintf("http://127.0.0.1:%d", info.Port)
 	}
 	return ""
 }

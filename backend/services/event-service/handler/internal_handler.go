@@ -65,7 +65,7 @@ func (h *EventInternalHandler) HandleActiveByVenue(ctx context.Context, request 
 		SELECT COUNT(*) as count 
 		FROM Event e
 		INNER JOIN Venue_Area va ON e.area_id = va.area_id
-		WHERE va.venue_id = ? 
+		WHERE va.venue_id = $1 
 		AND e.status IN ('OPEN', 'DRAFT')
 	`
 
@@ -117,8 +117,8 @@ func (h *EventInternalHandler) HandleBusyAreas(ctx context.Context, request even
 		FROM Event e
 		WHERE e.status IN ('OPEN', 'CLOSED', 'DRAFT')
 		AND e.area_id IS NOT NULL
-		AND e.start_time < ?
-		AND e.end_time > ?
+		AND e.start_time < $1
+		AND e.end_time > $2
 	`
 
 	rows, err := h.db.QueryContext(ctx, query, endBuffer, startBuffer)
@@ -167,7 +167,7 @@ func (h *EventInternalHandler) HandleGetEventArea(ctx context.Context, request e
 	}
 
 	var areaID int
-	query := `SELECT area_id FROM Event WHERE event_id = ?`
+	query := `SELECT area_id FROM Event WHERE event_id = $1`
 	err = h.db.QueryRowContext(ctx, query, eventID).Scan(&areaID)
 	if err != nil {
 		if err == sql.ErrNoRows {
