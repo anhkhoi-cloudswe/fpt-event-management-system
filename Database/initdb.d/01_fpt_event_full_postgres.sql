@@ -343,6 +343,50 @@ INSERT INTO notification (notification_id, user_id, message, is_read, created_at
 INSERT INTO event (event_id, title, description, start_time, end_time, speaker_id, max_seats, status, created_by, created_at, area_id, banner_url, checkin_offset, checkout_offset) VALUES
 (7,'Sự kiện mừng xuân - 2026','Mừng xuân đón tết','2026-01-01 10:00:00.000000','2026-01-01 17:00:00.000000',NULL,50,'CLOSED',4,'2025-12-08 00:55:02.095264',1,'https://img.freepik.com/premium-vector/talk-show-banner-template_791789-63.jpg?w=2000',60,30),(8,'Buổi dạy Thư Pháp Ngày Xuân 2026','Đánh bài tiến lên','2026-01-01 18:00:00.000000','2026-01-01 22:00:00.000000',NULL,50,'CLOSED',4,'2025-12-08 01:18:54.179751',1,'https://img.freepik.com/premium-vector/talk-show-banner-template_791789-63.jpg?w=2000',60,30);
 
+-- ============================================================
+-- SUPABASE ROW LEVEL SECURITY (RLS) & POLICIES
+-- ============================================================
+
+-- Enable RLS on all tables
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE speaker ENABLE ROW LEVEL SECURITY;
+ALTER TABLE venue ENABLE ROW LEVEL SECURITY;
+ALTER TABLE venue_area ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event ENABLE ROW LEVEL SECURITY;
+ALTER TABLE category_ticket ENABLE ROW LEVEL SECURITY;
+ALTER TABLE seat ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_seat_layout ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ticket ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_request ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification ENABLE ROW LEVEL SECURITY;
+ALTER TABLE report ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bill ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet_transaction ENABLE ROW LEVEL SECURITY;
+
+-- Create full-access policies for service_role and postgres
+CREATE POLICY "Allow full access to service_role and postgres on users" ON users FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on speaker" ON speaker FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on venue" ON venue FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on venue_area" ON venue_area FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on event" ON event FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on category_ticket" ON category_ticket FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on seat" ON seat FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on event_seat_layout" ON event_seat_layout FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on ticket" ON ticket FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on event_request" ON event_request FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on notification" ON notification FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on report" ON report FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on bill" ON bill FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on wallet" ON wallet FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to service_role and postgres on wallet_transaction" ON wallet_transaction FOR ALL TO service_role, postgres USING (true) WITH CHECK (true);
+
+-- Create public read-only policies for anon and authenticated
+CREATE POLICY "Allow read-only public access on event" ON event FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow read-only public access on venue" ON venue FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow read-only public access on category_ticket" ON category_ticket FOR SELECT TO anon, authenticated USING (true);
+
+-- ============================================================
 -- MIGRATION NOTES FOR SUPABASE
 -- ============================================================
 -- 1. All timestamps now use TIMESTAMP(6) WITH TIME ZONE
