@@ -284,7 +284,10 @@ INSERT INTO users (user_id, full_name, email, phone, password_hash, role, status
 (5, 'Quản trị hệ thống', 'admin.event@fpt.edu.vn', '0905000500', '$2a$12$BCzdHEEw7XeOUB076GKA3eIl4vsSTjPCPUoMA0Yx2S3yTGl3MkJWu', 'ADMIN', 'ACTIVE', '2025-12-01 09:16:32.789573+07:00', 0.00),
 (7, 'Nguyen Vo Minh Chau', 'nguyenvominhchau165@gmail.com', '0901000123', '99e5fee36796021ffed4198e0ba9a98c1e5dd44fbb597bf1a9a1b93141e31697', 'STUDENT', 'ACTIVE', '2025-12-01 12:26:17.798470+07:00', 200000.00),
 (11, 'Anh Khoi', 'ahkhoinguyen169@gmail.com', '0331234567', '$2a$12$gDVGpOTsjqHspLOEjTxLFuEr3QjOhiW5Sod73kB0or0i57F8uJ9ly', 'STUDENT', 'ACTIVE', '2026-01-28 15:29:20.974209+07:00', 50000.00),
-(18, 'Twi Trần', 'therealtwillight@gmail.com', '0987456321', '$2a$12$EbJKiKQ170balgaXV0inOeWuNWQXQFVGaxWinOnkwqtrPSOukPv52', 'ORGANIZER', 'ACTIVE', '2026-01-30 23:10:38.294863+07:00', 0.00);
+(18, 'Twi Trần', 'therealtwillight@gmail.com', '0987456321', '$2a$12$EbJKiKQ170balgaXV0inOeWuNWQXQFVGaxWinOnkwqtrPSOukPv52', 'ORGANIZER', 'ACTIVE', '2026-01-30 23:10:38.294863+07:00', 0.00),
+(9, 'User Nine (Stub)', 'user9.stub@fpt.edu.vn', '0909000900', '$2a$12$FzWlsG8ipFhBBtMeXl5XUOCZ6NlwL9I4h1bwXPrSk1QxLFBGSl9te', 'STUDENT', 'ACTIVE', '2025-12-01 09:16:32.789573+07:00', 0.00),
+(10, 'User Ten (Stub)', 'user10.stub@fpt.edu.vn', '0910001000', '$2a$12$FzWlsG8ipFhBBtMeXl5XUOCZ6NlwL9I4h1bwXPrSk1QxLFBGSl9te', 'STUDENT', 'ACTIVE', '2025-12-01 09:16:32.789573+07:00', 0.00),
+(22, 'User TwentyTwo (Stub)', 'user22.stub@fpt.edu.vn', '0922002200', '$2a$12$FzWlsG8ipFhBBtMeXl5XUOCZ6NlwL9I4h1bwXPrSk1QxLFBGSl9te', 'STUDENT', 'ACTIVE', '2025-12-01 09:16:32.789573+07:00', 0.00);
 
 -- Insert Venue
 INSERT INTO venue (venue_id, venue_name, location, status) VALUES
@@ -312,7 +315,10 @@ INSERT INTO wallet (wallet_id, user_id, balance, currency, status, created_at, u
 (5, 5, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00'),
 (6, 7, 200000.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00'),
 (9, 11, 450000.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-03-06 08:47:29+07:00'),
-(10, 18, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00');
+(10, 18, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00'),
+(7, 9, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00'),
+(8, 10, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00'),
+(11, 22, 0.00, 'VND', 'ACTIVE', '2026-02-28 17:20:11+07:00', '2026-02-28 17:20:11+07:00');
 
 -- ============================================================
 
@@ -385,6 +391,24 @@ CREATE POLICY "Allow full access to service_role and postgres on wallet_transact
 CREATE POLICY "Allow read-only public access on event" ON event FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "Allow read-only public access on venue" ON venue FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "Allow read-only public access on category_ticket" ON category_ticket FOR SELECT TO anon, authenticated USING (true);
+
+-- ============================================================
+-- RESET SEQUENCES FOR SERIAL COLUMNS
+-- ============================================================
+SELECT setval(pg_get_serial_sequence('users', 'user_id'), COALESCE(MAX(user_id), 1)) FROM users;
+SELECT setval(pg_get_serial_sequence('speaker', 'speaker_id'), COALESCE(MAX(speaker_id), 1)) FROM speaker;
+SELECT setval(pg_get_serial_sequence('venue', 'venue_id'), COALESCE(MAX(venue_id), 1)) FROM venue;
+SELECT setval(pg_get_serial_sequence('venue_area', 'area_id'), COALESCE(MAX(area_id), 1)) FROM venue_area;
+SELECT setval(pg_get_serial_sequence('event', 'event_id'), COALESCE(MAX(event_id), 1)) FROM event;
+SELECT setval(pg_get_serial_sequence('bill', 'bill_id'), COALESCE(MAX(bill_id), 1)) FROM bill;
+SELECT setval(pg_get_serial_sequence('category_ticket', 'category_ticket_id'), COALESCE(MAX(category_ticket_id), 1)) FROM category_ticket;
+SELECT setval(pg_get_serial_sequence('seat', 'seat_id'), COALESCE(MAX(seat_id), 1)) FROM seat;
+SELECT setval(pg_get_serial_sequence('ticket', 'ticket_id'), COALESCE(MAX(ticket_id), 1)) FROM ticket;
+SELECT setval(pg_get_serial_sequence('event_request', 'request_id'), COALESCE(MAX(request_id), 1)) FROM event_request;
+SELECT setval(pg_get_serial_sequence('notification', 'notification_id'), COALESCE(MAX(notification_id), 1)) FROM notification;
+SELECT setval(pg_get_serial_sequence('report', 'report_id'), COALESCE(MAX(report_id), 1)) FROM report;
+SELECT setval(pg_get_serial_sequence('wallet', 'wallet_id'), COALESCE(MAX(wallet_id), 1)) FROM wallet;
+SELECT setval(pg_get_serial_sequence('wallet_transaction', 'transaction_id'), COALESCE(MAX(transaction_id), 1)) FROM wallet_transaction;
 
 -- ============================================================
 -- MIGRATION NOTES FOR SUPABASE
