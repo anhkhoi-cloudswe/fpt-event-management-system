@@ -6,7 +6,7 @@ import { useState, useRef } from 'react'
 
 // useNavigate: điều hướng trang bằng code
 // Link: chuyển trang bằng router (không reload)
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 
 // Icon Eye để toggle hiển thị mật khẩu
 import { Eye, EyeOff } from 'lucide-react'
@@ -87,6 +87,8 @@ export default function Login() {
 
   // navigate: chuyển trang sang dashboard sau khi login
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const redirectUrl = searchParams.get('redirect')
 
   // Google OAuth Login handler
   const googleLogin = useGoogleLogin({
@@ -114,7 +116,7 @@ export default function Login() {
           }
 
           await refreshUser()
-          navigate('/dashboard')
+          navigate(redirectUrl || '/dashboard')
         } else {
           setError(response.data?.message || 'Đăng nhập Google thất bại')
         }
@@ -209,7 +211,7 @@ export default function Login() {
         } catch (_) { }
 
         // Điều hướng qua dashboard
-        navigate('/dashboard')
+        navigate(redirectUrl || '/dashboard')
         return
 
         // Nếu BE trả status = fail -> show message từ BE
