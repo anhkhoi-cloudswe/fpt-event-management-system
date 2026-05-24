@@ -347,7 +347,7 @@ export default function Login() {
         </div>
 
         {/* Form login: submit sẽ gọi handleSubmit */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Nếu có lỗi -> hiển thị box đỏ */}
           {error && (
             <div className="bg-red-50 border-2 border-red-300 text-red-700 px-4 py-3 rounded-xl text-sm font-medium">
@@ -450,15 +450,13 @@ export default function Login() {
             )}
           </button>
 
-          {/* Khoảng cách đệm nhỏ giữa 2 nút */}
-          <div className="h-1"></div>
 
           {/* Nút đăng nhập Google */}
           <button
             type="button"
             onClick={() => googleLogin()}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:border-gray-300 hover:shadow-md active:scale-[0.98]"
+            className="!mt-2 w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:border-gray-300 hover:shadow-md active:scale-[0.98]"
           >
             <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
               <path
