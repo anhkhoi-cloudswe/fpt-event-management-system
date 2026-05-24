@@ -108,7 +108,7 @@ export default function Login() {
           const { user, is_new_user } = response.data
           setUser(user)
           setToken(null)
-          
+
           if (is_new_user) {
             sessionStorage.setItem('is_new_user', 'true')
           } else {
@@ -343,7 +343,7 @@ export default function Login() {
               className="h-20 w-auto"
             />
           </div>
-          <p className="text-gray-600 mt-2">Chào mừng bạn đến với FPT Event 👋</p>
+          <p className="text-gray-600 mt-2">Chào mừng bạn đến với FPT Event</p>
         </div>
 
         {/* Form login: submit sẽ gọi handleSubmit */}
@@ -446,16 +446,12 @@ export default function Login() {
                 Đang xử lý...
               </span>
             ) : (
-              'Tiếp tục / Đăng nhập'
+              'Đăng nhập'
             )}
           </button>
 
-          {/* Đường kẻ ngăn cách "Hoặc" */}
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-gray-200"></div>
-            <span className="flex-shrink mx-4 text-gray-400 text-xs font-semibold uppercase tracking-wider">Hoặc</span>
-            <div className="flex-grow border-t border-gray-200"></div>
-          </div>
+          {/* Khoảng cách đệm nhỏ giữa 2 nút */}
+          <div className="h-1"></div>
 
           {/* Nút đăng nhập Google */}
           <button
@@ -487,12 +483,9 @@ export default function Login() {
 
           {/* Chỉ giữ link reset password */}
           <div className="text-center">
-            <p className="text-sm text-gray-500">
-              Nhập email + mật khẩu để đăng nhập, hoặc{' '}
-              <Link to="/reset-password" className="text-orange-600 hover:text-orange-700 font-semibold">
-                quên mật khẩu?
-              </Link>
-            </p>
+            <Link to="/reset-password" className="text-orange-600 hover:text-orange-700 font-semibold">
+              Quên mật khẩu?
+            </Link>
           </div>
         </form>
       </div>
