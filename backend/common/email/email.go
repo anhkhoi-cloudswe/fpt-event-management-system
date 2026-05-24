@@ -447,7 +447,7 @@ func (s *EmailService) SendOTPEmail(to, otp, purpose string) error {
 	} else {
 		pagePath = "/register"
 	}
-	copyURL := fmt.Sprintf("%s%s?otp=%s", frontendURL, pagePath, otp)
+	copyURL := fmt.Sprintf("%s%s?otp=%s&email=%s", frontendURL, pagePath, otp, url.QueryEscape(to))
 
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
