@@ -50,36 +50,6 @@ export default function ResetPassword() {
     return () => clearTimeout(timer)
   }, [otpCountdown])
 
-  // Xử lý tự động điền OTP và Email từ URL query parameter (ví dụ: ?otp=123456&email=user@fpt.edu.vn)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const urlOtp = params.get('otp')
-    const urlEmail = params.get('email')
-    
-    if (urlEmail) {
-      setFormData(prev => ({ ...prev, email: urlEmail }))
-    }
-
-    if (urlOtp && /^\d{6}$/.test(urlOtp)) {
-      setFormData(prev => ({ ...prev, otp: urlOtp }))
-      setStep('otp') // Chuyển sang bước nhập OTP và mật khẩu
-      
-      // Tự động copy vào clipboard
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(urlOtp)
-          .then(() => {
-            showToast('success', 'Đã tự động điền và sao chép mã OTP: ' + urlOtp)
-          })
-          .catch((err) => {
-            console.error('Failed to copy OTP to clipboard:', err)
-            showToast('success', 'Đã tự động điền mã OTP: ' + urlOtp)
-          })
-      } else {
-        showToast('success', 'Đã tự động điền mã OTP: ' + urlOtp)
-      }
-    }
-  }, [])
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
