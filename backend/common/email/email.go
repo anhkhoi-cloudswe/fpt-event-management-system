@@ -438,9 +438,65 @@ func (s *EmailService) SendOTPEmail(to, otp, purpose string) error {
 	default:
 		subject, title = "FPT Event - Verification Code", "VERIFICATION CODE"
 	}
-	html := fmt.Sprintf(`<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial;background-color:#f5f5f5;"><table width="100%%" border="0" cellspacing="0" cellpadding="0" bgcolor="#f5f5f5"><tr><td align="center" style="padding:40px 0;"><table width="600" border="0" cellspacing="0" cellpadding="0" bgcolor="#ffffff" style="border-radius:16px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.1);">
-    <tr><td height="8" bgcolor="#F27124" style="line-height:8px;font-size:8px;">&nbsp;</td></tr>
-    <tr><td align="left" style="padding:35px 40px;"><h1 style="margin:0;color:#F27124;font-size:24px;font-weight:bold;">FPT EVENT SYSTEM</h1></td></tr>
-    <tr><td style="padding:10px 40px 40px 40px;"><h2 style="color:#000000;margin:0 0 10px 0;">%s</h2><p>Your OTP code is below. It expires in 5 minutes:</p><table width="100%%" bgcolor="#fafafa" style="border:2px dashed #F27124;border-radius:8px;"><tr><td align="center" style="padding:25px;"><p style="font-size:42px;font-weight:bold;color:#F27124;letter-spacing:10px;margin:0;">%s</p></td></tr></table><p style="margin-top:25px;color:#999999;font-size:13px;">If you did not request this, please ignore this email.</p></td></tr><tr><td align="center" bgcolor="#2c2c2c" style="padding:20px;color:#999999;font-size:12px;">© 2026 FPT Event Management</td></tr></table></td></tr></table></body></html>`, title, otp)
+
+	// Dynamic frontend url configuration
+	frontendURL := getEnv("FRONTEND_URL", "http://localhost:3000")
+	var pagePath string
+	if purpose == "forgot_password" {
+		pagePath = "/reset-password"
+	} else {
+		pagePath = "/register"
+	}
+	copyURL := fmt.Sprintf("%s%s?otp=%s", frontendURL, pagePath, otp)
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f5f5f5;">
+  <table width="100%%" border="0" cellspacing="0" cellpadding="0" bgcolor="#f5f5f5">
+    <tr>
+      <td align="center" style="padding:40px 0;">
+        <table width="600" border="0" cellspacing="0" cellpadding="0" bgcolor="#ffffff" style="border-radius:16px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.1);">
+          <tr><td height="8" bgcolor="#F27124" style="line-height:8px;font-size:8px;">&nbsp;</td></tr>
+          <tr>
+            <td align="left" style="padding:35px 40px;">
+              <h1 style="margin:0;color:#F27124;font-size:24px;font-weight:bold;">FPT EVENT SYSTEM</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 40px 40px 40px;">
+              <h2 style="color:#000000;margin:0 0 10px 0;">%s</h2>
+              <p style="font-size:15px;color:#4b5563;margin-bottom:20px;">Mã xác thực OTP của bạn ở bên dưới (Hiệu lực trong vòng 5 phút). Nhấp đôi chuột hoặc chạm giữ để sao chép mã số:</p>
+              
+              <!-- Redesigned OTP Area with user-select for easy copying -->
+              <table width="100%%" bgcolor="#fafafa" style="border:2px dashed #F27124;border-radius:12px;margin-bottom:20px;">
+                <tr>
+                  <td align="center" style="padding:20px 25px;">
+                    <div style="font-size:42px;font-weight:bold;color:#F27124;letter-spacing:10px;margin:0;-webkit-user-select:all;-moz-user-select:all;-ms-user-select:all;user-select:all;">%s</div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Prominent Copy OTP Button -->
+              <div style="text-align:center;margin:25px 0;">
+                <a href="%s" target="_blank" style="display:inline-block;padding:12px 30px;background-color:#F27124;color:#ffffff;font-size:16px;font-weight:bold;text-decoration:none;border-radius:8px;box-shadow:0 4px 6px rgba(242,113,36,0.2);transition:all 0.2s ease;">
+                  Copy Mã OTP
+                </a>
+              </div>
+
+              <p style="margin-top:25px;color:#9ca3af;font-size:13px;text-align:center;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" bgcolor="#2c2c2c" style="padding:20px;color:#999999;font-size:12px;">
+              © 2026 FPT Event Management
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`, title, otp, copyURL)
+
 	return s.Send(EmailMessage{To: []string{to}, Subject: subject, HTMLBody: html})
 }
