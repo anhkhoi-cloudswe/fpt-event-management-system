@@ -14,6 +14,8 @@ import {
 } from '../utils/validation'
 import { useToast, ToastContainer } from '../components/Toast'
 import { API_BASE_URL } from '../config/api'
+import { useGoogleLogin } from '@react-oauth/google'
+import { useAuth } from '../contexts/AuthContext'
 
 // Use proxy to avoid CORS issues in development
 // Cấu hình proxy API để tránh lỗi Cross-Origin khi chạy localhost
@@ -64,6 +66,52 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false) // Toggle hiển thị mật khẩu
   const [showConfirmPassword, setShowConfirmPassword] = useState(false) // Toggle hiển thị xác nhận mật khẩu
   const navigate = useNavigate()
+
+  const { setUser, setToken, refreshUser } = useAuth()
+
+  // Google OAuth Register/Login handler
+  const googleLogin = useGoogleLogin({
+    flow: 'auth-code',
+    onSuccess: async (codeResponse) => {
+      setLoading(true)
+      setError('')
+      try {
+        console.log('Google Auth Code received (Register):', codeResponse.code)
+        const response = await axios.post(`${API_URL}/auth/google/callback`, {
+          code: codeResponse.code
+        }, {
+          withCredentials: true
+        })
+
+        if (response.data && response.data.status === 'success') {
+          const { user, is_new_user } = response.data
+          setUser(user)
+          setToken(null)
+          
+          if (is_new_user) {
+            sessionStorage.setItem('is_new_user', 'true')
+          } else {
+            sessionStorage.removeItem('is_new_user')
+          }
+
+          await refreshUser()
+          navigate('/dashboard')
+        } else {
+          setError(response.data?.message || 'Đăng ký Google thất bại')
+        }
+      } catch (err: any) {
+        console.error('Google registration callback error:', err)
+        const srvMsg = err.response?.data?.message || err.response?.data?.error
+        setError(srvMsg || 'Không thể xác thực tài khoản Google với hệ thống. Vui lòng thử lại.')
+      } finally {
+        setLoading(false)
+      }
+    },
+    onError: (errorResponse) => {
+      console.error('Google Sign-In Error:', errorResponse)
+      setError('Đăng ký Google không thành công. Vui lòng thử lại.')
+    }
+  })
 
   // Countdown timer for resend OTP
   // LOGIC ĐẾM NGƯỢC: Chạy mỗi khi otpCountdown thay đổi
@@ -332,6 +380,43 @@ export default function Register() {
             </div>
           )}
 
+          {/* NÚT ĐĂNG KÝ GOOGLE (Đặt trên cùng theo Split Layout) */}
+          <button
+            type="button"
+            onClick={() => googleLogin()}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 text-gray-700 py-3.5 px-4 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:border-gray-300 hover:shadow-md active:scale-[0.98] hover:-translate-y-0.5"
+          >
+            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-.1.84-2.45 2.4l3.8 2.94c2.22-2.05 3.7-5.07 3.7-9.19z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.8-2.94c-1.08.72-2.45 1.16-4.13 1.16-3.18 0-5.87-2.15-6.83-5.05L1.24 17.3c2.01 4 6.16 6.7 10.76 6.7z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.17 14.26A7.12 7.12 0 0 1 4.8 12c0-.79.13-1.56.37-2.28L1.24 6.64A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.24 5.36l3.93-3.1z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.4 0 3.25 2.7 1.24 6.64l3.93 3.08c.96-2.9 3.65-5.05 6.83-5.05z"
+              />
+            </svg>
+            <span className="text-gray-800">Đăng ký tài khoản nhanh bằng Google</span>
+          </button>
+
+          {/* Đường kẻ phân tách chuẩn doanh nghiệp */}
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-gray-200"></div>
+            <span className="flex-shrink mx-4 text-gray-400 text-xs font-semibold uppercase tracking-wider text-center leading-normal">
+              Hoặc đăng ký bằng tài khoản truyền thống
+            </span>
+            <div className="flex-grow border-t border-gray-200"></div>
+          </div>
+
           {/* Input Họ tên */}
           <div>
             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
@@ -445,10 +530,10 @@ export default function Register() {
             {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
           </div>
 
-          {/* KHU VỰC NHẬP OTP (6 ô nhập số rời biệt lập) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 text-center">
-              Mã xác thực OTP
+          {/* KHU VỰC NHẬP OTP (6 ô nhập số rời biệt lập) - Locked until OTP is sent */}
+          <div className={`p-4 rounded-2xl bg-gray-50 border border-gray-100 transition-all duration-300 ${!isOtpSent ? 'opacity-70' : 'ring-2 ring-blue-500/10'}`}>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 text-center">
+              Mã xác thực OTP {!isOtpSent && '🔑 (Cần hoàn tất Captcha & Gửi OTP)'}
             </label>
             
             <OtpInput
@@ -465,12 +550,12 @@ export default function Register() {
                 type="button"
                 onClick={handleSendOtp}
                 disabled={!canSendOtp || loading}
-                className="w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium transition-all"
+                className="w-full mt-4 py-3 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl hover:shadow-lg hover:shadow-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold transition-all duration-200 hover:-translate-y-0.5"
               >
                 {loading ? 'Đang gửi...' : 'Gửi mã xác thực OTP qua Email'}
               </button>
             ) : (
-              <div className="flex items-center justify-between mt-1 px-1">
+              <div className="flex items-center justify-between mt-3 px-1">
                 <button
                   type="button"
                   onClick={async () => {
@@ -520,7 +605,7 @@ export default function Register() {
               </div>
             )}
             {isOtpSent && (
-              <p className="text-xs text-green-600 mt-2 text-center">
+              <p className="text-xs text-green-600 mt-2 text-center font-semibold">
                 Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư.
               </p>
             )}

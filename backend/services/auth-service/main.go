@@ -119,6 +119,10 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return authHandler.HandleAdminDeleteUser(ctx, request)
 	case path == "/api/users/staff-organizer" && method == "GET":
 		return authHandler.HandleGetStaffOrganizer(ctx, request)
+	case path == "/api/auth/google/callback" && method == "POST":
+		return authHandler.HandleGoogleCallback(ctx, request)
+	case path == "/api/auth/update-password" && method == "POST":
+		return authHandler.HandleUpdatePassword(ctx, request)
 	}
 
 	return events.APIGatewayProxyResponse{

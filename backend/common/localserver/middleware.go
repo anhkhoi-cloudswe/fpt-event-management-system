@@ -17,8 +17,8 @@ func WithJWTAuth(next LambdaHandler) LambdaHandler {
 	return func(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 		path := request.Path
 		
-		// Bypass authentication for public routes (e.g., login, register, local auth check)
-		if path == "/api/v1/auth/me" || path == "/api/auth/me" || strings.HasPrefix(path, "/api/login") || strings.HasPrefix(path, "/api/v1/auth/login") || strings.HasPrefix(path, "/api/register") || path == "/health" {
+		// Bypass authentication for public routes (e.g., login, register, local auth check, google callback)
+		if path == "/api/v1/auth/me" || path == "/api/auth/me" || strings.HasPrefix(path, "/api/login") || strings.HasPrefix(path, "/api/v1/auth/login") || strings.HasPrefix(path, "/api/register") || path == "/api/auth/google/callback" || path == "/health" {
 			return next(ctx, request)
 		}
 

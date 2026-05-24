@@ -2,7 +2,9 @@ package usecase
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -403,4 +405,86 @@ func (uc *AuthUseCase) GetStaffAndOrganizers(ctx context.Context) (*models.Staff
 func hashPassword(password string) string {
 	// Import from common/hash package
 	return password // Will be hashed in repository
+}
+
+// LoginOrRegisterGoogle handles Google sign-in auth response
+func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name string) (*models.AuthResponse, error) {
+	// Find user by email
+	user, err := uc.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query database: %w", err)
+	}
+
+	isNewUser := false
+	var userID int
+
+	if user == nil {
+		// Create new user (password is secure cryptographically generated to satisfy database constraints)
+		b := make([]byte, 16)
+		_, _ = rand.Read(b)
+		randomPass := "GOOGLE_OAUTH_" + hex.EncodeToString(b)
+		
+		newUser := &models.User{
+			FullName:     name,
+			Email:        email,
+			Phone:        "",
+			PasswordHash: randomPass, // Repository will hash it properly
+			Role:         "STUDENT",
+			Status:       "ACTIVE",
+		}
+
+		userID, err = uc.userRepo.CreateUser(ctx, newUser)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Google user: %w", err)
+		}
+
+		// Retrieve created user to fill user fields properly
+		user, err = uc.userRepo.FindByEmail(ctx, email)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve created user: %w", err)
+		}
+		isNewUser = true
+	} else {
+		// Check blocked
+		if user.Status == "BLOCKED" {
+			return nil, errors.New("user is blocked")
+		}
+		userID = user.ID
+	}
+
+	// Generate JWT
+	token, err := jwt.GenerateToken(userID, user.Email, user.FullName, user.Role)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	return &models.AuthResponse{
+		Token:     token,
+		User:      *user,
+		IsNewUser: isNewUser,
+	}, nil
+}
+
+// DirectUpdatePassword handles direct password update for authenticated users without OTP verification
+func (uc *AuthUseCase) DirectUpdatePassword(ctx context.Context, email, newPassword string) error {
+	if len(newPassword) < 6 {
+		return errors.New("mật khẩu phải có ít nhất 6 ký tự")
+	}
+
+	// Verify user exists
+	user, err := uc.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return errors.New("lỗi khi kiểm tra email")
+	}
+	if user == nil {
+		return errors.New("email không tồn tại trong hệ thống")
+	}
+
+	// Update password in database
+	err = uc.userRepo.UpdatePasswordByEmail(ctx, email, newPassword)
+	if err != nil {
+		return errors.New("không thể cập nhật mật khẩu")
+	}
+
+	return nil
 }

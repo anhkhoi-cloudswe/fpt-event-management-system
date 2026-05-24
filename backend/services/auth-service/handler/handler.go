@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -206,8 +208,9 @@ func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGateway
 
 	// Return success payload without exposing JWT in JSON body
 	resp := map[string]interface{}{
-		"status": "success",
-		"user":   authResponse.User,
+		"status":      "success",
+		"user":        authResponse.User,
+		"is_new_user": authResponse.IsNewUser,
 	}
 	body, _ := json.Marshal(resp)
 
@@ -819,4 +822,155 @@ func sendOTPEmail(ctx context.Context, recipient, otp, purpose string) error {
 
 	// Legacy path: use local email service directly
 	return emailService.SendOTPEmail(recipient, otp, purpose)
+}
+
+// HandleGoogleCallback handles Google OAuth callback and signs in/registers the user
+func (h *AuthHandler) HandleGoogleCallback(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var req models.GoogleCallbackRequest
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createErrorResponse(http.StatusBadRequest, "Invalid request body")
+	}
+
+	if req.Code == "" {
+		return createErrorResponse(http.StatusBadRequest, "Code is required")
+	}
+
+	// 1. Google OAuth Token Exchange
+	clientID := os.Getenv("GOOGLE_CLIENT_ID")
+	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	redirectURI := req.RedirectURI
+	if redirectURI == "" {
+		redirectURI = "postmessage" // default for react-oauth/google popup flow
+	}
+
+	tokenURL := "https://oauth2.googleapis.com/token"
+	data := url.Values{}
+	data.Set("code", req.Code)
+	data.Set("client_id", clientID)
+	data.Set("client_secret", clientSecret)
+	data.Set("redirect_uri", redirectURI)
+	data.Set("grant_type", "authorization_code")
+
+	resp, err := http.PostForm(tokenURL, data)
+	if err != nil {
+		log.Error("Failed to request token from Google: %v", err)
+		return createErrorResponse(http.StatusBadGateway, "Failed to exchange code with Google")
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return createErrorResponse(http.StatusInternalServerError, "Failed to read Google token response")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		log.Error("Google token exchange returned status %d: %s", resp.StatusCode, string(respBody))
+		return createErrorResponse(http.StatusUnauthorized, "Invalid Google authorization code")
+	}
+
+	var tokenResp struct {
+		AccessToken string `json:"access_token"`
+		IDToken     string `json:"id_token"`
+	}
+	if err := json.Unmarshal(respBody, &tokenResp); err != nil {
+		return createErrorResponse(http.StatusInternalServerError, "Failed to parse token response")
+	}
+
+	// 2. Fetch Google User Profile
+	userInfoURL := "https://www.googleapis.com/oauth2/v3/userinfo"
+	reqProfile, err := http.NewRequest("GET", userInfoURL, nil)
+	if err != nil {
+		return createErrorResponse(http.StatusInternalServerError, "Failed to create profile request")
+	}
+	reqProfile.Header.Set("Authorization", "Bearer "+tokenResp.AccessToken)
+
+	client := &http.Client{}
+	respProfile, err := client.Do(reqProfile)
+	if err != nil {
+		log.Error("Failed to fetch profile from Google: %v", err)
+		return createErrorResponse(http.StatusBadGateway, "Failed to fetch user profile from Google")
+	}
+	defer respProfile.Body.Close()
+
+	profileBody, err := io.ReadAll(respProfile.Body)
+	if err != nil {
+		return createErrorResponse(http.StatusInternalServerError, "Failed to read Google profile response")
+	}
+
+	if respProfile.StatusCode != http.StatusOK {
+		log.Error("Google profile request returned status %d: %s", respProfile.StatusCode, string(profileBody))
+		return createErrorResponse(http.StatusUnauthorized, "Failed to fetch user info from Google")
+	}
+
+	var googleUser struct {
+		Email string `json:"email"`
+		Name  string `json:"name"`
+	}
+	if err := json.Unmarshal(profileBody, &googleUser); err != nil {
+		return createErrorResponse(http.StatusInternalServerError, "Failed to parse Google user info")
+	}
+
+	if googleUser.Email == "" {
+		return createErrorResponse(http.StatusBadRequest, "Google profile does not contain email")
+	}
+
+	// 3. Process Login/Registration
+	authResponse, err := h.useCase.LoginOrRegisterGoogle(ctx, googleUser.Email, googleUser.Name)
+	if err != nil {
+		return createErrorResponse(http.StatusBadRequest, err.Error())
+	}
+
+	// 4. Set HttpOnly Cookie & Return Payload
+	tokenCookie := http.Cookie{
+		Name:     "token",
+		Value:    authResponse.Token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	}
+
+	respPayload := map[string]interface{}{
+		"status":      "success",
+		"user":        authResponse.User,
+		"is_new_user": authResponse.IsNewUser,
+		"token":       authResponse.Token, // Include token in body for standard client local storage fallbacks
+	}
+	body, _ := json.Marshal(respPayload)
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                "application/json",
+			"Access-Control-Allow-Origin": "*",
+			"Set-Cookie":                  tokenCookie.String(),
+		},
+		Body: string(body),
+	}, nil
+}
+
+// HandleUpdatePassword handles POST /api/auth/update-password for authenticated users
+func (h *AuthHandler) HandleUpdatePassword(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Extract the trusted email from headers injected by JWT middleware
+	email := request.Headers["X-User-Email"]
+	if email == "" {
+		return createErrorResponse(http.StatusUnauthorized, "User is not authenticated")
+	}
+
+	var req models.UpdatePasswordRequest
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createStatusResponse(http.StatusBadRequest, "fail", "Invalid request body")
+	}
+
+	if req.Password == "" {
+		return createStatusResponse(http.StatusBadRequest, "fail", "Mật khẩu không được để trống")
+	}
+
+	// Call use case to update password directly without OTP
+	err := h.useCase.DirectUpdatePassword(ctx, email, req.Password)
+	if err != nil {
+		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
+	}
+
+	return createStatusResponse(http.StatusOK, "success", "Cập nhật mật khẩu thành công")
 }
