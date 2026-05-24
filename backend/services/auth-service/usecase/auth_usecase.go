@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/fpt-event-services/common/jwt"
 	"github.com/fpt-event-services/common/validator"
@@ -28,7 +29,7 @@ func NewAuthUseCaseWithDB(dbConn *sql.DB) *AuthUseCase {
 	}
 }
 
-// Login handles user login
+// Login handles user login with automatic fast registration for new emails
 func (uc *AuthUseCase) Login(ctx context.Context, req models.LoginRequest) (*models.AuthResponse, error) {
 	// Validate input - only check email format, no password format validation for login
 	if err := validator.GetEmailError(req.Email); err != "" {
@@ -39,7 +40,58 @@ func (uc *AuthUseCase) Login(ctx context.Context, req models.LoginRequest) (*mod
 		return nil, errors.New("Mật khẩu không được để trống")
 	}
 
-	// Check login credentials
+	// Check if email already exists
+	exists, err := uc.userRepo.ExistsByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check email: %w", err)
+	}
+
+	// If email does not exist in DB -> Auto fast registration (STUDENT role)
+	if !exists {
+		log.Printf("[Auth] Email %s not found. Executing Fast Registration...", req.Email)
+
+		// Extract a clean Full Name from email prefix
+		prefix := req.Email
+		if idx := strings.Index(req.Email, "@"); idx != -1 {
+			prefix = req.Email[:idx]
+		}
+		fullName := prefix
+		if len(prefix) > 0 {
+			fullName = strings.ToUpper(string(prefix[0])) + prefix[1:]
+		}
+
+		newUser := models.User{
+			FullName:     fullName,
+			Phone:        "",
+			Email:        req.Email,
+			PasswordHash: req.Password, // will be hashed by repository's CreateUser
+			Role:         "STUDENT",
+			Status:       "ACTIVE",
+		}
+
+		userID, err := uc.userRepo.CreateUser(ctx, &newUser)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create user during fast registration: %w", err)
+		}
+
+		createdUser, err := uc.userRepo.FindByEmail(ctx, req.Email)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve newly registered user: %w", err)
+		}
+
+		token, err := jwt.GenerateToken(userID, createdUser.Email, createdUser.FullName, createdUser.Role)
+		if err != nil {
+			return nil, errors.New("failed to generate token")
+		}
+
+		return &models.AuthResponse{
+			Token:     token,
+			User:      *createdUser,
+			IsNewUser: true, // triggers welcome popup
+		}, nil
+	}
+
+	// Else email exists -> Proceed with traditional login
 	user, err := uc.userRepo.CheckLogin(ctx, req.Email, req.Password)
 	if err != nil {
 		return nil, err

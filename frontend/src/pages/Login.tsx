@@ -343,7 +343,7 @@ export default function Login() {
               className="h-20 w-auto"
             />
           </div>
-          <p className="text-gray-600 mt-2">Đăng nhập vào hệ thống</p>
+          <p className="text-gray-600 mt-2">Chào mừng bạn đến với FPT Event 👋</p>
         </div>
 
         {/* Form login: submit sẽ gọi handleSubmit */}
@@ -446,7 +446,7 @@ export default function Login() {
                 Đang xử lý...
               </span>
             ) : (
-              'Đăng nhập'
+              'Tiếp tục / Đăng nhập'
             )}
           </button>
 
@@ -485,17 +485,12 @@ export default function Login() {
             <span>Đăng nhập bằng Google</span>
           </button>
 
-          {/* Link chuyển trang register + reset password */}
-          <div className="text-center space-y-3">
-            <p className="text-sm text-gray-600">
-              Chưa có tài khoản?{' '}
-              <Link to="/register" className="text-orange-600 hover:text-orange-700 font-semibold">
-                Đăng ký ngay
-              </Link>
-            </p>
-            <p className="text-sm text-gray-600">
+          {/* Chỉ giữ link reset password */}
+          <div className="text-center">
+            <p className="text-sm text-gray-500">
+              Nhập email + mật khẩu để đăng nhập, hoặc{' '}
               <Link to="/reset-password" className="text-orange-600 hover:text-orange-700 font-semibold">
-                Quên mật khẩu?
+                quên mật khẩu?
               </Link>
             </p>
           </div>
