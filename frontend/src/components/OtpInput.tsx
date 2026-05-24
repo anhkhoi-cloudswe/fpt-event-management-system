@@ -92,6 +92,16 @@ export default function OtpInput({ value, onChange, disabled = false }: OtpInput
       className="flex justify-center gap-3 my-4 cursor-text"
       onClick={handleContainerClick}
     >
+      <style dangerouslySetInnerHTML={{__html: `
+        input.otp-field-input:-webkit-autofill,
+        input.otp-field-input:-webkit-autofill:hover, 
+        input.otp-field-input:-webkit-autofill:focus, 
+        input.otp-field-input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 1000px white inset !important;
+          -webkit-text-fill-color: #111827 !important;
+          transition: background-color 5000s ease-in-out 0s;
+        }
+      `}} />
       {Array.from({ length }).map((_, index) => (
         <input
           key={index}
@@ -102,12 +112,13 @@ export default function OtpInput({ value, onChange, disabled = false }: OtpInput
           inputMode="numeric"
           pattern="[0-9]*"
           maxLength={1}
+          autoComplete="one-time-code"
           value={otpArray[index]}
           onChange={(e) => handleChange(index, e)}
           onKeyDown={(e) => handleKeyDown(index, e)}
           onPaste={handlePaste}
           disabled={disabled}
-          className="w-12 h-12 text-center text-xl font-bold border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="w-12 h-12 text-center text-xl font-bold border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all bg-white text-gray-900 shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed otp-field-input"
         />
       ))}
     </div>

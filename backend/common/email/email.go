@@ -440,7 +440,7 @@ func (s *EmailService) SendOTPEmail(to, otp, purpose string) error {
 	}
 
 	// Dynamic frontend url configuration
-	frontendURL := getEnv("FRONTEND_URL", "http://localhost:3000")
+	frontendURL := getEnv("FRONTEND_URL", "https://fpt-event.vercel.app")
 	var pagePath string
 	if purpose == "forgot_password" {
 		pagePath = "/reset-password"
