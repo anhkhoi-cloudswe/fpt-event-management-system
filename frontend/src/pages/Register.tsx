@@ -78,36 +78,6 @@ export default function Register() {
     return () => clearTimeout(timer) // Dọn dẹp timer khi component unmount
   }, [otpCountdown])
 
-  // Xử lý tự động điền OTP và Email từ URL query parameter (ví dụ: ?otp=123456&email=user@fpt.edu.vn)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const urlOtp = params.get('otp')
-    const urlEmail = params.get('email')
-
-    if (urlEmail) {
-      setFormData(prev => ({ ...prev, email: urlEmail }))
-    }
-
-    if (urlOtp && /^\d{6}$/.test(urlOtp)) {
-      setFormData(prev => ({ ...prev, otp: urlOtp }))
-      setIsOtpSent(true) // Cho phép submit form vì đã có OTP
-      
-      // Tự động copy vào clipboard
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(urlOtp)
-          .then(() => {
-            success('Đã tự động điền và sao chép mã OTP: ' + urlOtp)
-          })
-          .catch((err) => {
-            console.error('Failed to copy OTP to clipboard:', err)
-            success('Đã tự động điền mã OTP: ' + urlOtp)
-          })
-      } else {
-        success('Đã tự động điền mã OTP: ' + urlOtp)
-      }
-    }
-  }, [])
-
   // Cập nhật state khi nhập liệu
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -321,6 +291,10 @@ export default function Register() {
     }
   }
 
+  const isEmailValid = !!formData.email && !getEmailError(formData.email)
+  const isRecaptchaValid = !USE_REAL_RECAPTCHA || !!recaptchaToken
+  const canSendOtp = isEmailValid && isRecaptchaValid
+
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 relative"
@@ -490,7 +464,7 @@ export default function Register() {
               <button
                 type="button"
                 onClick={handleSendOtp}
-                disabled={!formData.email || loading}
+                disabled={!canSendOtp || loading}
                 className="w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium transition-all"
               >
                 {loading ? 'Đang gửi...' : 'Gửi mã xác thực OTP qua Email'}
