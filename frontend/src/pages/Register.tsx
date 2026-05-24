@@ -78,10 +78,16 @@ export default function Register() {
     return () => clearTimeout(timer) // Dọn dẹp timer khi component unmount
   }, [otpCountdown])
 
-  // Xử lý tự động điền OTP từ URL query parameter (ví dụ: ?otp=123456)
+  // Xử lý tự động điền OTP và Email từ URL query parameter (ví dụ: ?otp=123456&email=user@fpt.edu.vn)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const urlOtp = params.get('otp')
+    const urlEmail = params.get('email')
+
+    if (urlEmail) {
+      setFormData(prev => ({ ...prev, email: urlEmail }))
+    }
+
     if (urlOtp && /^\d{6}$/.test(urlOtp)) {
       setFormData(prev => ({ ...prev, otp: urlOtp }))
       setIsOtpSent(true) // Cho phép submit form vì đã có OTP
