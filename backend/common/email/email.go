@@ -439,16 +439,6 @@ func (s *EmailService) SendOTPEmail(to, otp, purpose string) error {
 		subject, title = "FPT Event - Verification Code", "VERIFICATION CODE"
 	}
 
-	// Dynamic frontend url configuration
-	frontendURL := getEnv("FRONTEND_URL", "https://fpt-event.vercel.app")
-	var pagePath string
-	if purpose == "forgot_password" {
-		pagePath = "/reset-password"
-	} else {
-		pagePath = "/register"
-	}
-	copyURL := fmt.Sprintf("%s%s", frontendURL, pagePath)
-
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f5f5f5;">
@@ -465,22 +455,14 @@ func (s *EmailService) SendOTPEmail(to, otp, purpose string) error {
           <tr>
             <td style="padding:10px 40px 40px 40px;">
               <h2 style="color:#000000;margin:0 0 10px 0;">%s</h2>
-              <p style="font-size:15px;color:#4b5563;margin-bottom:20px;">Mã xác thực OTP của bạn ở bên dưới (Hiệu lực trong vòng 5 phút). Nhấp đôi chuột hoặc chạm giữ để sao chép mã số:</p>
+              <p style="font-size:15px;color:#4b5563;margin-bottom:20px;text-align:center;">Mã xác thực OTP của bạn ở bên dưới (Hiệu lực trong vòng 5 phút). Nhấp đôi chuột hoặc chạm nhanh vào khối màu cam để sao chép mã số:</p>
               
-              <!-- Redesigned OTP Area with user-select for easy copying -->
-              <table width="100%%" bgcolor="#fafafa" style="border:2px dashed #F27124;border-radius:12px;margin-bottom:20px;">
-                <tr>
-                  <td align="center" style="padding:20px 25px;">
-                    <div style="font-size:42px;font-weight:bold;color:#F27124;letter-spacing:10px;margin:0;-webkit-user-select:all;-moz-user-select:all;-ms-user-select:all;user-select:all;">%s</div>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Prominent Copy OTP Button -->
-              <div style="text-align:center;margin:25px 0;">
-                <a href="%s" target="_blank" style="display:inline-block;padding:12px 30px;background-color:#F27124;color:#ffffff;font-size:16px;font-weight:bold;text-decoration:none;border-radius:8px;box-shadow:0 4px 6px rgba(242,113,36,0.2);transition:all 0.2s ease;">
-                  Copy Mã OTP
-                </a>
+              <!-- Beautiful Click-to-Copy Button block featuring user-select -->
+              <div style="text-align:center;margin:30px 0;">
+                <div style="display:inline-block;padding:15px 40px;background-color:#F27124;color:#ffffff;font-size:36px;font-weight:bold;border-radius:12px;box-shadow:0 4px 10px rgba(242,113,36,0.3);letter-spacing:8px;cursor:pointer;-webkit-user-select:all;-moz-user-select:all;-ms-user-select:all;user-select:all;">
+                  %s
+                </div>
+                <p style="margin-top:10px;color:#9ca3af;font-size:12px;">(Nhấp đúp hoặc chạm giữ nút màu cam để chọn tất cả và Sao chép nhanh)</p>
               </div>
 
               <p style="margin-top:25px;color:#9ca3af;font-size:13px;text-align:center;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.</p>
@@ -496,7 +478,7 @@ func (s *EmailService) SendOTPEmail(to, otp, purpose string) error {
     </tr>
   </table>
 </body>
-</html>`, title, otp, copyURL)
+</html>`, title, otp)
 
 	return s.Send(EmailMessage{To: []string{to}, Subject: subject, HTMLBody: html})
 }
