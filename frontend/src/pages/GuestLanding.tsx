@@ -622,7 +622,7 @@ export default function GuestLanding() {
                     key={event.eventId}
                     onMouseEnter={() => setHoveredEventId(event.eventId)} // set hover
                     onMouseLeave={() => setHoveredEventId(null)}
-                    onClick={handleLoginClick} // guest click event -> ép login
+                    onClick={() => navigate(`/events/${event.eventId}`)} // guest click event -> navigate to public event detail page
                     className="relative flex-shrink-0 w-[380px] overflow-hidden rounded-3xl border-2 border-white bg-white/80 backdrop-blur-sm transition-all duration-500 hover:border-orange-500 cursor-pointer"
                     style={{
                       transform: hoveredEventId === event.eventId ? 'scale(1.05)' : 'scale(1)'

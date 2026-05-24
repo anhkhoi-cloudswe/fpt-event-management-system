@@ -72,6 +72,7 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/events/:id" element={<EventDetail />} />
       <Route
         path="/dashboard"
         element={

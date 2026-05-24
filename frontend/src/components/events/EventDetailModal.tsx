@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 
 // Điều hướng sang trang khác (payment)
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
 
 // Format ngày giờ
 import { Calendar, Users, Clock, MapPin, X } from 'lucide-react'
@@ -77,6 +78,7 @@ export function EventDetailModal({
 }: EventDetailModalProps) {
   // Dùng để chuyển sang /dashboard/payment
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   // Nếu user là Organizer/Staff/Admin (cố gắng nhận diện các biến thể như
   // 'STAFF ADMIN', 'ORGENIZER'...) -> chỉ chặn đặt ghế, vẫn cho xem sơ đồ
@@ -239,6 +241,12 @@ export function EventDetailModal({
   // ===================== CONFIRM: TÍNH TIỀN + NAVIGATE SANG PAYMENT =====================
   const confirmSeats = () => {
     if (!event || selectedSeats.length === 0) return
+
+    if (!user) {
+      // Not logged in -> redirect to /login with redirect query parameter
+      navigate(`/login?redirect=/events/${event.eventId}`)
+      return
+    }
 
     /**
      * Tính tiền dựa theo seatType:

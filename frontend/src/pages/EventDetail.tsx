@@ -150,13 +150,12 @@ export default function EventDetail() {
     navigate(`/dashboard/events/${id}/edit`)
   }
 
-  /**
-   * handleModalClose:
-   * - Khi user đóng modal (click X hoặc click overlay tùy modal)
-   * - Điều hướng về danh sách event (/dashboard/events)
-   */
   const handleModalClose = () => {
-    navigate('/dashboard/events')
+    if (user) {
+      navigate('/dashboard/events')
+    } else {
+      navigate('/guest')
+    }
   }
 
   /**
