@@ -80,6 +80,20 @@ export function EventDetailModal({
   const navigate = useNavigate()
   const { user } = useAuth()
 
+  // Lock body scroll when modal is open (Preserve Scroll Position & Scroll Locking)
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+
+    // Cleanup: always revert body overflow when modal unmounts
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isOpen])
+
   // Nếu user là Organizer/Staff/Admin (cố gắng nhận diện các biến thể như
   // 'STAFF ADMIN', 'ORGENIZER'...) -> chỉ chặn đặt ghế, vẫn cho xem sơ đồ
   const isManager = !!(
@@ -418,6 +432,7 @@ export function EventDetailModal({
 
               {/* Nút đóng */}
               <button
+                type="button"
                 onClick={handleClose}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
@@ -738,6 +753,7 @@ export function EventDetailModal({
 
                         {/* Đóng modal */}
                         <button
+                          type="button"
                           onClick={handleClose}
                           className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                         >
