@@ -43,8 +43,20 @@ type AdminCreateAccountRequest struct {
 
 // AuthResponse represents authentication response
 type AuthResponse struct {
-	Token string `json:"token"`
-	User  User   `json:"user"`
+	Token     string `json:"token"`
+	User      User   `json:"user"`
+	IsNewUser bool   `json:"is_new_user"`
+}
+
+// GoogleCallbackRequest represents the payload from frontend Google sign-in
+type GoogleCallbackRequest struct {
+	Code        string `json:"code"`
+	RedirectURI string `json:"redirectUri,omitempty"`
+}
+
+// UpdatePasswordRequest represents direct password update payload
+type UpdatePasswordRequest struct {
+	Password string `json:"password"`
 }
 
 // VerifyOtpRequest represents OTP verification request

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 import Login from './pages/Login.tsx'
 import Register from './pages/Register.tsx'
 import ResetPassword from './pages/ResetPassword.tsx'
@@ -134,14 +135,18 @@ function AppRoutes() {
 }
 
 function App() {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '331189456885-v814j259l9p4nd0p6qmo2v8e744j5s1s.apps.googleusercontent.com'
+
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
-      </ToastProvider>
-    </AuthProvider>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <AuthProvider>
+        <ToastProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </ToastProvider>
+      </AuthProvider>
+    </GoogleOAuthProvider>
   )
 }
 

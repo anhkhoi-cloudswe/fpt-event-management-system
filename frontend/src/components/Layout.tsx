@@ -6,6 +6,7 @@ import { useWallet } from '../hooks/useWallet'
 import { RealtimeClock } from './RealtimeClock'
 import fptLogo from '../assets/fpt-logo.png'
 import fptLogoLoading from '../assets/fpt-logo-loading.png'
+import WelcomePasswordModal from './WelcomePasswordModal'
 
 export default function Layout() {
   const { user, logout } = useAuth()
@@ -14,6 +15,13 @@ export default function Layout() {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showLoading, setShowLoading] = useState(false)
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+
+  useEffect(() => {
+    if (sessionStorage.getItem('is_new_user') === 'true') {
+      setShowWelcomeModal(true)
+    }
+  }, [])
 
   // Show loading overlay when location changes
   useEffect(() => {
@@ -437,6 +445,9 @@ export default function Layout() {
           </div>
         </div>
       )}
+
+      {/* Welcome popup for first-time Google Sign-In users */}
+      <WelcomePasswordModal isOpen={showWelcomeModal} onClose={() => setShowWelcomeModal(false)} />
     </div>
   )
 }
