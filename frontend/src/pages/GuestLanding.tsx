@@ -20,6 +20,10 @@ import { useState, useEffect, useRef } from 'react'
 // Import RealtimeClock component
 import { RealtimeClock } from '../components/RealtimeClock'
 
+// Import EventDetailModal and EventDetail types
+import { EventDetailModal } from '../components/events/EventDetailModal'
+import type { EventDetail } from '../types/event'
+
 // Import helper để format thời gian theo Vietnam timezone
 import { formatVietnamDateTime } from '../utils/dateFormat'
 
@@ -113,6 +117,50 @@ export default function GuestLanding() {
 
   // showLoading: bật/tắt overlay loading khi bấm đăng nhập
   const [showLoading, setShowLoading] = useState(false)
+
+  // States for Event Detail Modal in Guest Mode (Preserve Scroll Position)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<EventDetail | null>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
+
+  /**
+   * openEventDetail:
+   * - Fetch event detail from API and open modal in-place without routing
+   */
+  const openEventDetail = async (eventId: number) => {
+    setIsDetailOpen(true)
+    setSelectedEvent(null)
+    setLoadingDetail(true)
+    setDetailError(null)
+
+    try {
+      const response = await fetch(`/api/events/detail?id=${eventId}`, {
+        headers: {
+          'ngrok-skip-browser-warning': '1',
+        },
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch event details')
+      }
+
+      const data = await response.json()
+      setSelectedEvent(data)
+    } catch (err: any) {
+      console.error('Error fetching event details:', err)
+      setDetailError(err.message || 'Không thể tải thông tin chi tiết sự kiện')
+    } finally {
+      setLoadingDetail(false)
+    }
+  }
+
+  const closeModal = () => {
+    setIsDetailOpen(false)
+    setSelectedEvent(null)
+    setDetailError(null)
+  }
 
   // highlightedEvents: danh sách event nổi bật (mảng lấy từ API)
   const [highlightedEvents, setHighlightedEvents] = useState<any[]>([])
@@ -622,7 +670,7 @@ export default function GuestLanding() {
                     key={event.eventId}
                     onMouseEnter={() => setHoveredEventId(event.eventId)} // set hover
                     onMouseLeave={() => setHoveredEventId(null)}
-                    onClick={() => navigate(`/events/${event.eventId}`)} // guest click event -> navigate to public event detail page
+                    onClick={() => openEventDetail(event.eventId)} // guest click event -> open details in-place
                     className="relative flex-shrink-0 w-[380px] overflow-hidden rounded-3xl border-2 border-white bg-white/80 backdrop-blur-sm transition-all duration-500 hover:border-orange-500 cursor-pointer"
                     style={{
                       transform: hoveredEventId === event.eventId ? 'scale(1.05)' : 'scale(1)'
@@ -783,6 +831,16 @@ export default function GuestLanding() {
           </div>
         </div>
       )}
+
+      {/* ===================== EVENT DETAIL MODAL (In-place viewing) ===================== */}
+      <EventDetailModal
+        isOpen={isDetailOpen}
+        onClose={closeModal}
+        event={selectedEvent}
+        loading={loadingDetail}
+        error={detailError}
+        userRole={undefined} // Guest has no role
+      />
     </div>
   )
 }
