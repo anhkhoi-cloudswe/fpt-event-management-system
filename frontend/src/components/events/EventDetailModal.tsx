@@ -416,16 +416,16 @@ export function EventDetailModal({
   return (
     <>
       {/* ⭐ ABSOLUTE CENTERING: Fixed overlay + centered container */}
-      <div className="fixed inset-0 bg-black/50 z-40 overflow-y-auto">
+      <div className="fixed inset-0 bg-black/50 z-[100] overflow-y-auto">
         {/* Centering wrapper */}
         <div className="flex items-center justify-center min-h-screen p-4">
           {/* Modal Card: responsive width + scrollable */}
           <div
-            className="bg-white rounded-lg shadow-xl max-w-[90vw] w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-lg shadow-xl max-w-[90vw] w-full max-h-[85vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()} // chặn click lan ra overlay (để không đóng khi click trong modal)
           >
             {/* ===== HEADER ===== */}
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
               <h2 className="text-2xl font-bold text-gray-900">
                 {event?.title ?? 'Chi tiết sự kiện'}
               </h2>
@@ -441,7 +441,7 @@ export function EventDetailModal({
             </div>
 
             {/* ===== CONTENT ===== */}
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1">
               {/* Khi đang load event detail */}
               {loading && (
                 <p className="text-gray-500 text-center py-4">Đang tải chi tiết...</p>

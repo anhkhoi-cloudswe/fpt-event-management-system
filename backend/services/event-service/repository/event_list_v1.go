@@ -84,18 +84,18 @@ func (r *EventRepository) GetEventsByStatusV1(
 	// Add status condition
 	switch status {
 	case "open", "today":
-		whereConditions = append(whereConditions, "e.start_time <= NOW() AND e.end_time >= NOW() AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
 
 	case "upcoming":
-		whereConditions = append(whereConditions, "e.start_time > NOW() AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time > timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
 
 	case "past", "closed":
-		whereConditions = append(whereConditions, "(e.end_time < NOW() OR e.status = 'CLOSED') AND e.status != 'CANCELLED'")
+		whereConditions = append(whereConditions, "(e.end_time < timezone('Asia/Ho_Chi_Minh', NOW()) OR e.status = 'CLOSED') AND e.status != 'CANCELLED'")
 
 	default:
 		// Invalid status - default to today's events
 		status = "open"
-		whereConditions = append(whereConditions, "e.start_time <= NOW() AND e.end_time >= NOW() AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
 	}
 
 	// Add search condition
@@ -309,18 +309,18 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 	// Add status condition
 	switch status {
 	case "open", "today":
-		whereConditions = append(whereConditions, "e.start_time <= NOW() AND e.end_time >= NOW() AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
 
 	case "upcoming":
-		whereConditions = append(whereConditions, "e.start_time > NOW() AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time > timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
 
 	case "past", "closed":
-		whereConditions = append(whereConditions, "(e.end_time < NOW() OR e.status = 'CLOSED') AND e.status != 'CANCELLED'")
+		whereConditions = append(whereConditions, "(e.end_time < timezone('Asia/Ho_Chi_Minh', NOW()) OR e.status = 'CLOSED') AND e.status != 'CANCELLED'")
 
 	default:
 		// Invalid status - default to today's events
 		status = "open"
-		whereConditions = append(whereConditions, "e.start_time <= NOW() AND e.end_time >= NOW() AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
 	}
 
 	// Add search condition
