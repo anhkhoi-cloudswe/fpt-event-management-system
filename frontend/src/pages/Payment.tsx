@@ -740,7 +740,7 @@ export default function Payment() {
               navigate(
                 `/dashboard/payment/success?status=success&method=bank_transfer&billId=${data.order_id}&ticketIds=${state.seatIds?.join(',')}`
               )
-            } else if (statusData.status === 'CANCELED' || statusData.status === 'EXPIRED') {
+            } else if (statusData.status === 'CANCELED' || statusData.status === 'EXPIRED' || statusData.status === 'FAILED') {
               window.clearInterval(intervalId)
               setShowBankTransferModal(false)
               setPollingIntervalId(null)

@@ -426,6 +426,16 @@ func (h *TicketHandler) HandlePaymentTicket(ctx context.Context, request events.
 	// Generate VNPay URL for multiple seats
 	paymentURL, err := h.useCase.CreatePaymentURL(ctx, userID, eventID, categoryTicketID, seatIDs, dynamicReturnURL)
 	if err != nil {
+		if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "ticket_event_id_seat_id_key") || strings.Contains(err.Error(), "trạng thái xử lý thanh toán") {
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusBadRequest,
+				Headers: map[string]string{
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Access-Control-Allow-Origin": "*",
+				},
+				Body: `{"error":"duplicate_seat","message":"Ghế đặt hiện đang nằm trong trạng thái xử lý thanh toán. Vui lòng thử lại sau ít phút hoặc chọn ghế khác!"}`,
+			}, nil
+		}
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
 
