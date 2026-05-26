@@ -759,4 +759,158 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 	}, nil
 }
 
+// HandleCreateBankTransferOrder - POST /api/payment/create-order
+func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Extract userId from header (set by auth middleware)
+	userIDStr := request.Headers["X-User-Id"]
+	if userIDStr == "" {
+		userIDStr = request.Headers["x-user-id"]
+	}
+	if userIDStr == "" {
+		return createMessageResponse(http.StatusUnauthorized, "User ID not found")
+	}
+
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid user ID format")
+	}
+
+	type CreateOrderRequest struct {
+		EventID          int   `json:"eventId"`
+		CategoryTicketID int   `json:"categoryTicketId"`
+		SeatIDs          []int `json:"seatIds"`
+	}
+
+	var req CreateOrderRequest
+	if request.Body != "" {
+		err := json.Unmarshal([]byte(request.Body), &req)
+		if err != nil {
+			return createMessageResponse(http.StatusBadRequest, "Invalid request body: "+err.Error())
+		}
+	} else {
+		// Fallback to query parameters
+		eventIDStr := request.QueryStringParameters["eventId"]
+		categoryTicketIDStr := request.QueryStringParameters["categoryTicketId"]
+		seatIDStr := request.QueryStringParameters["seatIds"]
+
+		if eventIDStr == "" || categoryTicketIDStr == "" || seatIDStr == "" {
+			return createMessageResponse(http.StatusBadRequest, "Missing parameters: eventId, categoryTicketId, seatIds")
+		}
+
+		eventID, _ := strconv.Atoi(eventIDStr)
+		categoryTicketID, _ := strconv.Atoi(categoryTicketIDStr)
+
+		seatIDs := []int{}
+		for _, part := range strings.Split(seatIDStr, ",") {
+			id, err := strconv.Atoi(strings.TrimSpace(part))
+			if err == nil {
+				seatIDs = append(seatIDs, id)
+			}
+		}
+
+		req.EventID = eventID
+		req.CategoryTicketID = categoryTicketID
+		req.SeatIDs = seatIDs
+	}
+
+	if req.EventID == 0 || len(req.SeatIDs) == 0 {
+		return createMessageResponse(http.StatusBadRequest, "Missing required parameters")
+	}
+
+	// Call usecase to create the pending order
+	orderID, amount, err := h.useCase.CreateBankTransferOrder(ctx, userID, req.EventID, req.CategoryTicketID, req.SeatIDs)
+	if err != nil {
+		return createMessageResponse(http.StatusBadRequest, err.Error())
+	}
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"order_id": orderID,
+		"amount":   amount,
+	})
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Access-Control-Allow-Origin": "*",
+		},
+		Body: string(body),
+	}, nil
+}
+
+// HandleSePayWebhook - POST /api/payment/sepay-webhook
+func (h *TicketHandler) HandleSePayWebhook(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	type SePayWebhookPayload struct {
+		Gateway    string  `json:"gateway"`
+		Amount     float64 `json:"amount"`
+		Content    string  `json:"content"`
+		TransferAt string  `json:"transfer_at"`
+	}
+
+	var payload SePayWebhookPayload
+	err := json.Unmarshal([]byte(request.Body), &payload)
+	if err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid JSON body: "+err.Error())
+	}
+
+	// Call usecase to process the webhook
+	result, err := h.useCase.ProcessSePayWebhook(ctx, payload.Gateway, payload.Amount, payload.Content, payload.TransferAt)
+	if err != nil {
+		return createMessageResponse(http.StatusBadRequest, err.Error())
+	}
+
+	body, _ := json.Marshal(map[string]string{
+		"status": "success",
+		"result": result,
+	})
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Access-Control-Allow-Origin": "*",
+		},
+		Body: string(body),
+	}, nil
+}
+
+// HandleCheckPaymentStatus - GET /api/payment/check-status/:order_id
+func (h *TicketHandler) HandleCheckPaymentStatus(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	path := request.Path
+	orderIDStr := strings.TrimPrefix(path, "/api/payment/check-status/")
+	
+	// Fallback to query parameter if not in path
+	if orderIDStr == "" || orderIDStr == path {
+		orderIDStr = request.QueryStringParameters["order_id"]
+	}
+
+	if orderIDStr == "" {
+		return createMessageResponse(http.StatusBadRequest, "Missing order_id")
+	}
+
+	orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
+	if err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid order_id format")
+	}
+
+	status, err := h.useCase.GetPaymentStatus(ctx, orderID)
+	if err != nil {
+		return createMessageResponse(http.StatusInternalServerError, err.Error())
+	}
+
+	body, _ := json.Marshal(map[string]string{
+		"status": status,
+	})
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Access-Control-Allow-Origin": "*",
+		},
+		Body: string(body),
+	}, nil
+}
+
+
 // ============================================================

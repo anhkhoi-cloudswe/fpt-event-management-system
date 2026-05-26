@@ -180,6 +180,12 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return ticketHandler.HandleGetMyBills(ctx, request)
 	case path == "/api/payment-ticket" && method == "GET":
 		return ticketHandler.HandlePaymentTicket(ctx, request)
+	case path == "/api/payment/create-order" && method == "POST":
+		return ticketHandler.HandleCreateBankTransferOrder(ctx, request)
+	case path == "/api/payment/sepay-webhook" && method == "POST":
+		return ticketHandler.HandleSePayWebhook(ctx, request)
+	case strings.HasPrefix(path, "/api/payment/check-status/") && method == "GET":
+		return ticketHandler.HandleCheckPaymentStatus(ctx, request)
 	case path == "/api/buyTicket" && method == "GET":
 		return ticketHandler.HandleBuyTicket(ctx, request)
 	case path == "/api/wallet/balance" && method == "GET":

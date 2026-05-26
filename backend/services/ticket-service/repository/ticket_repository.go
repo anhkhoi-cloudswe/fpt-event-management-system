@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1197,6 +1199,347 @@ func (r *TicketRepository) ProcessVNPayCallback(ctx context.Context, amount, res
 	log.Info("[VNPAY CALLBACK COMPLETE] PaymentSuccess - ticketIds=%s billId=%d result=%s", ticketIDsResult, billID, result)
 	return result, nil
 }
+
+// CreateBankTransferOrder - Tạo đơn hàng thanh toán chuyển khoản ngân hàng (SePay)
+// Trả về order_id (bill_id) và amount
+func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int) (int64, float64, error) {
+	log := logger.Default().WithContext(ctx)
+	fmt.Printf("[CreateBankTransferOrder] Called - userID=%d, eventID=%d, categoryTicketID=%d, seatIDs=%v\n", userID, eventID, categoryTicketID, seatIDs)
+
+	// Validate số lượng ghế (max 4)
+	if len(seatIDs) == 0 {
+		return 0, 0, apperrors.BusinessError("Vui lòng chọn ít nhất 1 ghế")
+	}
+	if len(seatIDs) > 4 {
+		return 0, 0, apperrors.BusinessError("Chỉ được mua tối đa 4 ghế mỗi lần")
+	}
+
+	// Kiểm tra event có tồn tại và đang active không
+	var eventTitle string
+	var status string
+	var startTime time.Time
+	err := r.db.QueryRowContext(ctx, "SELECT title, status, start_time FROM Event WHERE event_id = $1", eventID).Scan(&eventTitle, &status, &startTime)
+	if err != nil {
+		log.Error("Event not found", "event_id", eventID, "error", err)
+		return 0, 0, apperrors.NotFound("Sự kiện")
+	}
+	if status != "OPEN" {
+		log.Warn("Event not open", "event_id", eventID, "status", status)
+		return 0, 0, apperrors.BusinessError(fmt.Sprintf("Sự kiện không mở bán vé (trạng thái: %s)", status))
+	}
+
+	// Kiểm tra xem event đã bắt đầu chưa
+	now := time.Now()
+	if now.After(startTime) || now.Equal(startTime) {
+		log.Warn("[BOOKING_SECURITY] User blocked from buying ticket for event that has started",
+			"user_id", userID, "event_id", eventID, "event_start_time", startTime, "current_time", now)
+		return 0, 0, apperrors.BusinessError("Sự kiện đã bắt đầu hoặc kết thúc, không thể đặt vé")
+	}
+
+	// Bắt đầu database transaction để tạo Bill và Tickets đồng thời
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, 0, apperrors.DatabaseError(err)
+	}
+	defer tx.Rollback()
+
+	var totalAmount float64
+	type categoryInfo struct {
+		Name      string
+		Price     float64
+		MaxQty    int
+		SoldCount int
+		Requested int
+	}
+	categoryMap := make(map[int]*categoryInfo)
+	resolvedCategoryTicketID := categoryTicketID
+
+	for _, seatID := range seatIDs {
+		var seatStatus string
+		var seatCategoryTicketID sql.NullInt64
+		var catName sql.NullString
+		var catStatus sql.NullString
+		var pricePerSeat sql.NullFloat64
+		var maxQty sql.NullInt64
+
+		err = tx.QueryRowContext(ctx, `
+			SELECT
+				s.status,
+				s.category_ticket_id,
+				ct.name,
+				ct.status,
+				ct.price,
+				ct.max_quantity
+			FROM Seat s
+			LEFT JOIN Category_Ticket ct
+				ON s.category_ticket_id = ct.category_ticket_id
+				AND ct.event_id = $1
+			WHERE s.seat_id = $2
+		`, eventID, seatID).Scan(&seatStatus, &seatCategoryTicketID, &catName, &catStatus, &pricePerSeat, &maxQty)
+		if err != nil {
+			log.Error("Seat not found", "seat_id", seatID, "error", err)
+			return 0, 0, apperrors.NotFound(fmt.Sprintf("Ghế ID %d", seatID))
+		}
+		if seatStatus != "ACTIVE" {
+			return 0, 0, apperrors.BusinessError(fmt.Sprintf("Ghế ID %d không khả dụng", seatID))
+		}
+		if !seatCategoryTicketID.Valid {
+			return 0, 0, apperrors.BusinessError(fmt.Sprintf("Ghế ID %d chưa được gán loại vé", seatID))
+		}
+
+		currentCategoryTicketID := int(seatCategoryTicketID.Int64)
+		if resolvedCategoryTicketID == 0 {
+			resolvedCategoryTicketID = currentCategoryTicketID
+		}
+
+		meta, ok := categoryMap[currentCategoryTicketID]
+		if !ok {
+			if !catStatus.Valid || catStatus.String != "ACTIVE" {
+				return 0, 0, apperrors.BusinessError(fmt.Sprintf("Loại vé của ghế ID %d không khả dụng", seatID))
+			}
+
+			var soldCount int
+			if queryErr := tx.QueryRowContext(ctx,
+				"SELECT COUNT(*) FROM Ticket WHERE category_ticket_id = $1 AND status IN ('PENDING', 'BOOKED', 'CHECKED_IN')",
+				currentCategoryTicketID,
+			).Scan(&soldCount); queryErr != nil {
+				soldCount = 0
+			}
+
+			meta = &categoryInfo{
+				Name:      catName.String,
+				Price:     pricePerSeat.Float64,
+				MaxQty:    int(maxQty.Int64),
+				SoldCount: soldCount,
+				Requested: 0,
+			}
+			categoryMap[currentCategoryTicketID] = meta
+		}
+
+		meta.Requested++
+		remaining := meta.MaxQty - meta.SoldCount
+		if remaining <= 0 {
+			return 0, 0, apperrors.BusinessError(fmt.Sprintf("Ticket Sold Out - Loại vé '%s' đã hết. Còn lại: 0/%d", meta.Name, meta.MaxQty))
+		}
+		if meta.SoldCount+meta.Requested > meta.MaxQty {
+			return 0, 0, apperrors.BusinessError(fmt.Sprintf("Không đủ vé cho loại '%s'. Còn lại: %d, Yêu cầu: %d", meta.Name, remaining, meta.Requested))
+		}
+
+		// RACE CONDITION CHECK: Kiểm tra ghế đã bị giữ/đặt chưa
+		var existingTicketCount int
+		err = tx.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM Ticket 
+			 WHERE event_id = $1 AND seat_id = $2 AND status IN ('PENDING', 'BOOKED', 'CHECKED_IN')`,
+			eventID, seatID,
+		).Scan(&existingTicketCount)
+		if err != nil {
+			log.Error("Error checking existing tickets", "error", err)
+			return 0, 0, apperrors.DatabaseError(err)
+		}
+		if existingTicketCount > 0 {
+			log.Warn("Seat already reserved/booked", "event_id", eventID, "seat_id", seatID)
+			return 0, 0, apperrors.BusinessError(fmt.Sprintf("Ghế ID %d đã được người khác giữ/đặt", seatID))
+		}
+
+		totalAmount += meta.Price
+	}
+
+	// 1. Tạo Bill ở trạng thái PENDING
+	var billID int64
+	err = tx.QueryRowContext(ctx,
+		`INSERT INTO Bill (user_id, total_amount, currency, payment_method, payment_status, created_at)
+		 VALUES ($1, $2, 'VND', 'BANK_TRANSFER', 'PENDING', NOW()) RETURNING bill_id`,
+		userID, totalAmount,
+	).Scan(&billID)
+	if err != nil {
+		log.Error("Failed to create pending bill", "error", err)
+		return 0, 0, apperrors.DatabaseError(err)
+	}
+
+	// 2. Tạo Tickets ở trạng thái PENDING linked với bill_id
+	for _, seatID := range seatIDs {
+		var seatCategoryTicketID int64
+		err = tx.QueryRowContext(ctx, "SELECT category_ticket_id FROM Seat WHERE seat_id = $1", seatID).Scan(&seatCategoryTicketID)
+		if err != nil {
+			return 0, 0, apperrors.DatabaseError(err)
+		}
+
+		var pendingTicketID int64
+		err = tx.QueryRowContext(ctx,
+			`INSERT INTO Ticket (user_id, event_id, category_ticket_id, bill_id, seat_id, qr_code_value, status, created_at) 
+			 VALUES ($1, $2, $3, $4, $5, 'PENDING_QR', 'PENDING', NOW()) RETURNING ticket_id`,
+			userID, eventID, seatCategoryTicketID, billID, seatID,
+		).Scan(&pendingTicketID)
+		if err != nil {
+			log.Error("Failed to create pending ticket", "error", err)
+			return 0, 0, apperrors.DatabaseError(err)
+		}
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return 0, 0, apperrors.DatabaseError(err)
+	}
+
+	log.Info("[BANK_TRANSFER] Order created successfully", "bill_id", billID, "total_amount", totalAmount)
+	return billID, totalAmount, nil
+}
+
+// ProcessSePayWebhook - Xử lý webhook từ SePay gửi về
+func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway string, amount float64, content string, transferAt string) (string, error) {
+	log := logger.Default().WithContext(ctx)
+	log.Info("SePay Webhook received", "gateway", gateway, "amount", amount, "content", content, "transfer_at", transferAt)
+
+	// 1. Phân tách chuỗi content để tìm order_id (bill_id)
+	// regex matches: FPTEVENT followed by optional space, then digits
+	re := regexp.MustCompile(`FPTEVENT\s*(\d+)`)
+	matches := re.FindStringSubmatch(strings.ToUpper(content))
+	if len(matches) < 2 {
+		log.Warn("SePay Webhook: Invalid content format (missing FPTEVENT{order_id})", "content", content)
+		return "", fmt.Errorf("invalid transaction content: %s", content)
+	}
+
+	orderIDStr := matches[1]
+	orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
+	if err != nil {
+		log.Error("SePay Webhook: Failed to parse order ID", "order_id_str", orderIDStr, "error", err)
+		return "", fmt.Errorf("invalid order id: %s", orderIDStr)
+	}
+
+	log.Info("SePay Webhook: Parsed transaction", "order_id", orderID, "amount", amount)
+
+	// Bắt đầu database transaction
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback()
+
+	// 2. Query Bill bằng FOR UPDATE để tránh race condition
+	var userID int
+	var billAmount float64
+	var paymentStatus string
+	err = tx.QueryRowContext(ctx,
+		"SELECT user_id, total_amount, payment_status FROM Bill WHERE bill_id = $1 FOR UPDATE",
+		orderID,
+	).Scan(&userID, &billAmount, &paymentStatus)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Warn("SePay Webhook: Order not found", "order_id", orderID)
+			return "", fmt.Errorf("order not found: %d", orderID)
+		}
+		return "", err
+	}
+
+	// Nếu đã PAID thì trả về thành công trực tiếp (idempotency)
+	if paymentStatus == "PAID" {
+		log.Info("SePay Webhook: Order already processed (PAID)", "order_id", orderID)
+		return "already_processed", nil
+	}
+
+	// 3. Kiểm tra số tiền chuyển khoản
+	// Do số tiền trong ví dụ là VNĐ nên ta so sánh chính xác phần số nguyên
+	if math.Abs(billAmount - amount) >= 1.0 {
+		log.Warn("SePay Webhook: Amount mismatch", "order_id", orderID, "db_amount", billAmount, "webhook_amount", amount)
+		return "", fmt.Errorf("amount mismatch: expected %.2f, got %.2f", billAmount, amount)
+	}
+
+	// 4. Cập nhật trạng thái Bill thành PAID và paid_at = NOW()
+	_, err = tx.ExecContext(ctx,
+		"UPDATE Bill SET payment_status = 'PAID', paid_at = NOW() WHERE bill_id = $1",
+		orderID,
+	)
+	if err != nil {
+		log.Error("SePay Webhook: Failed to update bill to PAID", "order_id", orderID, "error", err)
+		return "", err
+	}
+
+	// 5. Cập nhật các PENDING tickets của Bill này thành BOOKED kèm QR Code
+	rows, err := tx.QueryContext(ctx,
+		"SELECT ticket_id, event_id, category_ticket_id FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'",
+		orderID,
+	)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	type ticketMeta struct {
+		ticketID         int
+		eventID          int
+		categoryTicketID int
+	}
+	var tickets []ticketMeta
+
+	for rows.Next() {
+		var t ticketMeta
+		if err := rows.Scan(&t.ticketID, &t.eventID, &t.categoryTicketID); err != nil {
+			return "", err
+		}
+		tickets = append(tickets, t)
+	}
+
+	if len(tickets) == 0 {
+		log.Warn("SePay Webhook: No pending tickets found for bill", "bill_id", orderID)
+	}
+
+	bookedTicketIDs := []int{}
+	var eventID int
+	var categoryTicketID int
+
+	for _, t := range tickets {
+		eventID = t.eventID
+		categoryTicketID = t.categoryTicketID
+
+		// Tạo QR Code
+		qrBase64, err := qrcode.GenerateTicketQRBase64(t.ticketID, 300)
+		if err != nil {
+			log.Error("SePay Webhook: Failed to generate QR code", "ticket_id", t.ticketID, "error", err)
+			qrBase64 = fmt.Sprintf("SEPAY_QR_%d", t.ticketID)
+		}
+
+		// Update ticket
+		_, err = tx.ExecContext(ctx,
+			"UPDATE Ticket SET status = 'BOOKED', qr_code_value = $1 WHERE ticket_id = $2 AND status = 'PENDING'",
+			qrBase64, t.ticketID,
+		)
+		if err != nil {
+			log.Error("SePay Webhook: Failed to update ticket to BOOKED", "ticket_id", t.ticketID, "error", err)
+			return "", err
+		}
+		bookedTicketIDs = append(bookedTicketIDs, t.ticketID)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return "", err
+	}
+
+	// 6. Gửi Email vé điện tử cho người dùng (async)
+	if len(bookedTicketIDs) > 0 {
+		realAmount := fmt.Sprintf("%.0f", billAmount)
+		go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedTicketIDs, realAmount, categoryTicketID, int(orderID))
+		log.Info("SePay Webhook: Successfully processed payment and triggered email sending", "order_id", orderID, "tickets_count", len(bookedTicketIDs))
+	} else {
+		log.Info("SePay Webhook: Successfully processed payment but no tickets were updated", "order_id", orderID)
+	}
+
+	return "success", nil
+}
+
+// GetPaymentStatus - Lấy trạng thái thanh toán của Bill (SePay)
+func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) (string, error) {
+	var status string
+	err := r.db.QueryRowContext(ctx, "SELECT payment_status FROM Bill WHERE bill_id = $1", orderID).Scan(&status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "NOT_FOUND", nil
+		}
+		return "", err
+	}
+	return status, nil
+}
+
 
 // sendTicketEmailAsync gửi email vé điện tử trong goroutine (không block payment response)
 // KHỚP VỚI Java BuyTicketController gọi EmailUtils.sendEmail()

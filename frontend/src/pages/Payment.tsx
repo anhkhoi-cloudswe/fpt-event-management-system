@@ -114,8 +114,14 @@ export default function Payment() {
    */
   const state = (location.state || {}) as PaymentState
 
-  // payment method: 'vnpay' or 'wallet'
-  const [paymentMethod, setPaymentMethod] = useState<'vnpay' | 'wallet'>('vnpay')
+  // payment method: 'vnpay' or 'wallet' or 'bank_transfer'
+  const [paymentMethod, setPaymentMethod] = useState<'vnpay' | 'wallet' | 'bank_transfer'>('vnpay')
+
+  // State for Bank Transfer modal and polling
+  const [showBankTransferModal, setShowBankTransferModal] = useState(false)
+  const [bankTransferOrder, setBankTransferOrder] = useState<{ order_id: number; amount: number } | null>(null)
+  const [pollingIntervalId, setPollingIntervalId] = useState<number | null>(null)
+  const [creatingOrder, setCreatingOrder] = useState(false)
 
   // ⭐ NEW: Event time validation state
   const [isEventExpired, setIsEventExpired] = useState(false)
@@ -567,6 +573,98 @@ export default function Payment() {
     }
   }
 
+  const handleBankTransferPay = async () => {
+    if (isEventExpired) {
+      alert('Sự kiện đã bắt đầu hoặc kết thúc. Không thể tiếp tục đặt vé.')
+      return
+    }
+
+    if (
+      !state.eventId ||
+      !state.categoryTicketId ||
+      !state.seatIds ||
+      state.seatIds.length === 0
+    ) {
+      alert('Thiếu thông tin vé, vui lòng chọn lại vé từ Dashboard.')
+      navigate('/dashboard')
+      return
+    }
+
+    const userId = (user as any)?.userId ?? (user as any)?.id
+    if (!userId) {
+      alert('Bạn cần đăng nhập trước khi thanh toán.')
+      navigate('/login')
+      return
+    }
+
+    setCreatingOrder(true)
+
+    try {
+      const payload = {
+        eventId: Number(state.eventId),
+        categoryTicketId: Number(state.categoryTicketId),
+        seatIds: state.seatIds.map(id => Number(id))
+      }
+
+      const response = await fetch('/api/payment/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const errorMsg = await response.text()
+        throw new Error(errorMsg || 'Không thể tạo đơn hàng chuyển khoản')
+      }
+
+      const data = await response.json()
+      setBankTransferOrder(data)
+      setShowBankTransferModal(true)
+
+      // Bắt đầu polling mỗi 3 giây
+      const intervalId = window.setInterval(async () => {
+        try {
+          const statusRes = await fetch(`/api/payment/check-status/${data.order_id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          if (statusRes.ok) {
+            const statusData = await statusRes.json()
+            if (statusData.status === 'PAID') {
+              window.clearInterval(intervalId)
+              setShowBankTransferModal(false)
+              navigate(
+                `/dashboard/payment/success?status=success&method=bank_transfer&billId=${data.order_id}&ticketIds=${state.seatIds?.join(',')}`
+              )
+            }
+          }
+        } catch (pollErr) {
+          console.error('Lỗi khi gọi API check payment status:', pollErr)
+        }
+      }, 3000)
+
+      setPollingIntervalId(intervalId)
+
+    } catch (error: any) {
+      console.error('Bank transfer order creation failed:', error)
+      alert(error.message || 'Không thể tạo đơn hàng chuyển khoản. Vui lòng thử lại.')
+    } finally {
+      setCreatingOrder(false)
+    }
+  }
+
+  const handleCancelBankTransfer = () => {
+    if (pollingIntervalId) {
+      window.clearInterval(pollingIntervalId)
+      setPollingIntervalId(null)
+    }
+    setShowBankTransferModal(false)
+  }
+
 
   // ======================== RENDER UI ========================
 
@@ -723,6 +821,7 @@ export default function Payment() {
             >
               <option value="vnpay">VNPay (Internet Banking / Thẻ)</option>
               <option value="wallet">Wallet (Ví nội bộ)</option>
+              <option value="bank_transfer">Chuyển khoản Ngân hàng (VietQR / SePay)</option>
             </select>
           </div>
 
@@ -780,9 +879,23 @@ export default function Payment() {
           */}
           <button
             type="button"
-            onClick={paymentMethod === 'vnpay' ? handlePay : handleWalletPay}
-            disabled={(paymentMethod === 'wallet' && isWalletDisabled) || isEventExpired || checkingEventTime}
-            className={`w-full inline-flex items-center justify-center px-4 py-3 rounded-lg font-semibold ${(paymentMethod === 'wallet' && isWalletDisabled) || isEventExpired || checkingEventTime
+            onClick={
+              paymentMethod === 'vnpay'
+                ? handlePay
+                : paymentMethod === 'wallet'
+                ? handleWalletPay
+                : handleBankTransferPay
+            }
+            disabled={
+              (paymentMethod === 'wallet' && isWalletDisabled) ||
+              isEventExpired ||
+              checkingEventTime ||
+              creatingOrder
+            }
+            className={`w-full inline-flex items-center justify-center px-4 py-3 rounded-lg font-semibold ${(paymentMethod === 'wallet' && isWalletDisabled) ||
+              isEventExpired ||
+              checkingEventTime ||
+              creatingOrder
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
@@ -790,9 +903,15 @@ export default function Payment() {
             <CreditCard className="w-5 h-5 mr-2" />
             {checkingEventTime
               ? 'Đang kiểm tra...'
+              : creatingOrder
+              ? 'Đang xử lý...'
               : isEventExpired
-                ? 'Ngừng bán vé'
-                : paymentMethod === 'vnpay' ? 'Thanh toán qua VNPay' : 'Thanh toán bằng Wallet'}
+              ? 'Ngừng bán vé'
+              : paymentMethod === 'vnpay'
+              ? 'Thanh toán qua VNPay'
+              : paymentMethod === 'wallet'
+              ? 'Thanh toán bằng Wallet'
+              : 'Thanh toán chuyển khoản'}
           </button>
 
           {/* ----- Ghi chú ----- */}
@@ -804,12 +923,69 @@ export default function Payment() {
               <>Đang kiểm tra trạng thái sự kiện...</>
             ) : paymentMethod === 'vnpay' ? (
               <>Khi bấm "Thanh toán qua VNPay", bạn sẽ được chuyển sang cổng thanh toán VNPay để hoàn tất giao dịch.</>
-            ) : (
+            ) : paymentMethod === 'wallet' ? (
               <>Khi bấm "Thanh toán bằng Wallet", hệ thống sẽ trừ tiền trong ví và chuyển bạn tới trang xác nhận.</>
+            ) : (
+              <>Khi bấm "Thanh toán chuyển khoản", một mã VietQR sẽ hiển thị để bạn quét mã thanh toán.</>
             )}
           </p>
         </div>
       </div>
+
+      {/* SePay Bank Transfer Modal */}
+      {showBankTransferModal && bankTransferOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 flex flex-col items-center p-6 text-center animate-fade-in">
+            {/* Header */}
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Thanh toán chuyển khoản</h3>
+            <p className="text-sm text-gray-500 mb-6">Quét mã VietQR bằng app ngân hàng của bạn để hoàn tất đặt vé</p>
+
+            {/* QR Code Container */}
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 relative">
+              <img
+                src={`https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '1234567890'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${bankTransferOrder.amount}&des=FPTEVENT${bankTransferOrder.order_id}`}
+                alt="VietQR"
+                className="w-64 h-64 object-contain mx-auto"
+              />
+            </div>
+
+            {/* Transfer Details */}
+            <div className="w-full bg-blue-50 bg-opacity-50 p-4 rounded-xl border border-blue-100 text-left text-sm space-y-2 mb-6">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Ngân hàng:</span>
+                <span className="font-semibold text-gray-800">{import.meta.env.VITE_BANK_NAME || 'MBBank'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Số tài khoản:</span>
+                <span className="font-semibold text-gray-800">{import.meta.env.VITE_BANK_ACC || '1234567890'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Số tiền:</span>
+                <span className="font-semibold text-blue-600">{bankTransferOrder.amount.toLocaleString('vi-VN')} đ</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Nội dung chuyển khoản:</span>
+                <span className="font-mono font-bold text-red-600">FPTEVENT{bankTransferOrder.order_id}</span>
+              </div>
+            </div>
+
+            {/* Status & Spinner */}
+            <div className="flex items-center justify-center space-x-3 mb-6">
+              <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-sm font-medium text-gray-700">Đang chờ bạn chuyển khoản chuyển trạng thái...</span>
+            </div>
+
+            {/* Actions */}
+            <button
+              type="button"
+              onClick={handleCancelBankTransfer}
+              className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
+            >
+              Hủy giao dịch
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Payment Error Modal */}
       <PaymentErrorModal
