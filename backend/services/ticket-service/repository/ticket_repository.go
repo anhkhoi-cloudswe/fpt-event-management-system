@@ -1530,13 +1530,51 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 // GetPaymentStatus - Lấy trạng thái thanh toán của Bill (SePay)
 func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) (string, error) {
 	var status string
-	err := r.db.QueryRowContext(ctx, "SELECT payment_status FROM Bill WHERE bill_id = $1", orderID).Scan(&status)
+	var createdAt time.Time
+	var isExpired bool
+	err := r.db.QueryRowContext(ctx, 
+		"SELECT payment_status, created_at, (NOW() > created_at + INTERVAL '15 minutes') FROM Bill WHERE bill_id = $1", 
+		orderID,
+	).Scan(&status, &createdAt, &isExpired)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "NOT_FOUND", nil
 		}
 		return "", err
 	}
+
+	// Nếu trạng thái là PENDING và đã quá 15 phút từ lúc tạo đơn
+	if status == "PENDING" && isExpired {
+		log := logger.Default().WithContext(ctx)
+		log.Info("⏳ SePay Order has expired (15m timeout). Canceling bill and updating tickets.", "bill_id", orderID, "created_at", createdAt)
+
+		// Bắt đầu transaction để cancel Bill và Ticket liên quan
+		tx, err := r.db.BeginTx(ctx, nil)
+		if err != nil {
+			return "", err
+		}
+		defer tx.Rollback()
+
+		// 1. Cập nhật trạng thái Bill thành CANCELED
+		_, err = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'CANCELED' WHERE bill_id = $1 AND payment_status = 'PENDING'", orderID)
+		if err != nil {
+			return "", err
+		}
+
+		// 2. Cập nhật trạng thái Tickets thành EXPIRED
+		_, err = tx.ExecContext(ctx, "UPDATE Ticket SET status = 'EXPIRED' WHERE bill_id = $1 AND status = 'PENDING'", orderID)
+		if err != nil {
+			return "", err
+		}
+
+		if err := tx.Commit(); err != nil {
+			return "", err
+		}
+
+		// Trả về CANCELED để thông báo cho client
+		return "CANCELED", nil
+	}
+
 	return status, nil
 }
 

@@ -36,9 +36,10 @@ import { formatVietnamDateTime } from '../utils/dateFormat'
 // useEffect: Hook để fetch wallet balance khi component mount
 
 // Import icon để trang đẹp hơn
-import { CreditCard, ArrowLeft } from 'lucide-react'
+import { CreditCard, ArrowLeft, Clock } from 'lucide-react'
 // CreditCard: icon thẻ/ thanh toán
 // ArrowLeft: icon mũi tên quay lại
+// Clock: icon đồng hồ đếm ngược
 
 // Import Link để tạo link chuyển trang không reload
 import { Link } from 'react-router-dom'
@@ -145,6 +146,41 @@ export default function Payment() {
   // Dynamic transfer description for SePay VietQR
   const cleanTitle = cleanEventTitleForTransfer(state.eventTitle || 'Sự kiện demo (mock)')
   const transferDescription = bankTransferOrder ? `${cleanTitle} HD${bankTransferOrder.order_id}` : ''
+
+  // ⏳ SePay Bank Transfer Countdown (15 minutes = 900 seconds)
+  const [timeLeft, setTimeLeft] = useState<number>(900)
+
+  useEffect(() => {
+    if (!showBankTransferModal || !bankTransferOrder) {
+      setTimeLeft(900)
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(timer)
+          // Handle timeout
+          if (pollingIntervalId) {
+            window.clearInterval(pollingIntervalId)
+            setPollingIntervalId(null)
+          }
+          setShowBankTransferModal(false)
+          alert('Thời gian thanh toán chuyển khoản đã hết hạn (15 phút). Ghế giữ chỗ của bạn đã được giải phóng.')
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [showBankTransferModal, bankTransferOrder, pollingIntervalId])
+
+  const formatTimeLeft = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
 
   // ⭐ NEW: Event time validation state
   const [isEventExpired, setIsEventExpired] = useState(false)
@@ -663,6 +699,11 @@ export default function Payment() {
               navigate(
                 `/dashboard/payment/success?status=success&method=bank_transfer&billId=${data.order_id}&ticketIds=${state.seatIds?.join(',')}`
               )
+            } else if (statusData.status === 'CANCELED' || statusData.status === 'EXPIRED') {
+              window.clearInterval(intervalId)
+              setShowBankTransferModal(false)
+              setPollingIntervalId(null)
+              alert('Giao dịch chuyển khoản đã hết hạn giữ chỗ (15 phút) và bị hủy trên hệ thống.')
             }
           }
         } catch (pollErr) {
@@ -906,8 +947,8 @@ export default function Payment() {
               paymentMethod === 'vnpay'
                 ? handlePay
                 : paymentMethod === 'wallet'
-                ? handleWalletPay
-                : handleBankTransferPay
+                  ? handleWalletPay
+                  : handleBankTransferPay
             }
             disabled={
               (paymentMethod === 'wallet' && isWalletDisabled) ||
@@ -927,14 +968,14 @@ export default function Payment() {
             {checkingEventTime
               ? 'Đang kiểm tra...'
               : creatingOrder
-              ? 'Đang xử lý...'
-              : isEventExpired
-              ? 'Ngừng bán vé'
-              : paymentMethod === 'vnpay'
-              ? 'Thanh toán qua VNPay'
-              : paymentMethod === 'wallet'
-              ? 'Thanh toán bằng Wallet'
-              : 'Thanh toán chuyển khoản'}
+                ? 'Đang xử lý...'
+                : isEventExpired
+                  ? 'Ngừng bán vé'
+                  : paymentMethod === 'vnpay'
+                    ? 'Thanh toán qua VNPay'
+                    : paymentMethod === 'wallet'
+                      ? 'Thanh toán bằng Wallet'
+                      : 'Thanh toán chuyển khoản'}
           </button>
 
           {/* ----- Ghi chú ----- */}
@@ -960,8 +1001,14 @@ export default function Payment() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 flex flex-col items-center p-6 text-center animate-fade-in">
             {/* Header */}
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Thanh toán chuyển khoản</h3>
-            <p className="text-sm text-gray-500 mb-6">Quét mã VietQR bằng app ngân hàng của bạn để hoàn tất đặt vé</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-1">Thanh toán chuyển khoản</h3>
+            <p className="text-sm text-gray-500 mb-3">Quét mã VietQR để hoàn tất đặt vé</p>
+
+            {/* Countdown Timer */}
+            <div className="flex items-center space-x-1.5 text-red-600 bg-red-50 px-3 py-1.5 rounded-full text-xs font-semibold mb-6 animate-pulse">
+              <Clock className="w-3.5 h-3.5" />
+              <span>Thời gian giữ vé còn lại: {formatTimeLeft(timeLeft)}</span>
+            </div>
 
             {/* QR Code Container */}
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 relative">
