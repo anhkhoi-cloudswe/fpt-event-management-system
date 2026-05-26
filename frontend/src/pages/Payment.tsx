@@ -147,30 +147,39 @@ export default function Payment() {
   const cleanTitle = cleanEventTitleForTransfer(state.eventTitle || 'Sự kiện demo (mock)')
   const transferDescription = bankTransferOrder ? `${cleanTitle} HD${bankTransferOrder.order_id}` : ''
 
-  // ⏳ SePay Bank Transfer Countdown (5 minutes = 300 seconds)
+  // ⏳ SePay Bank Transfer Countdown (Dynamic from Server expire_at)
   const [timeLeft, setTimeLeft] = useState<number>(300)
 
   useEffect(() => {
-    if (!showBankTransferModal || !bankTransferOrder) {
+    if (!showBankTransferModal || !bankTransferOrder || !(bankTransferOrder as any).expire_at) {
       setTimeLeft(300)
       return
     }
 
+    const expireTime = new Date((bankTransferOrder as any).expire_at).getTime()
+
+    const calculateTimeLeft = () => {
+      const difference = expireTime - Date.now()
+      return Math.max(0, Math.floor(difference / 1000))
+    }
+
+    // Set initial
+    setTimeLeft(calculateTimeLeft())
+
     const timer = window.setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          window.clearInterval(timer)
-          // Handle timeout
-          if (pollingIntervalId) {
-            window.clearInterval(pollingIntervalId)
-            setPollingIntervalId(null)
-          }
-          setShowBankTransferModal(false)
-          alert('Thời gian thanh toán chuyển khoản đã hết hạn (5 phút). Ghế giữ chỗ của bạn đã được giải phóng.')
-          return 0
+      const remaining = calculateTimeLeft()
+      setTimeLeft(remaining)
+
+      if (remaining <= 0) {
+        window.clearInterval(timer)
+        // Handle timeout
+        if (pollingIntervalId) {
+          window.clearInterval(pollingIntervalId)
+          setPollingIntervalId(null)
         }
-        return prev - 1
-      })
+        setShowBankTransferModal(false)
+        alert('Thời gian thanh toán chuyển khoản đã hết hạn (5 phút). Ghế giữ chỗ của bạn đã được giải phóng.')
+      }
     }, 1000)
 
     return () => window.clearInterval(timer)

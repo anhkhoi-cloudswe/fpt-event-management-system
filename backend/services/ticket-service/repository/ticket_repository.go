@@ -2135,6 +2135,9 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 		err = tx.QueryRowContext(ctx, insertTicketQuery, userID, eventID, currentCategoryTicketID, seatID).Scan(&ticketID)
 		if err != nil {
 			fmt.Printf("[SQL_FIX] ❌ Error creating ticket: %v\n", err)
+			if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "ticket_event_id_seat_id_key") {
+				return "", apperrors.BusinessError("Ghế đặt hiện đang nằm trong trạng thái xử lý thanh toán. Vui lòng thử lại sau ít phút hoặc chọn ghế khác!")
+			}
 			return "", fmt.Errorf("error creating ticket: %w", err)
 		}
 
