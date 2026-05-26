@@ -117,7 +117,7 @@ export default function PaymentErrorModal({
                     {errorType === 'duplicate_entry' && (
                         <div className="mb-4">
                             <p className="text-gray-700 text-sm leading-relaxed mb-3">
-                                Rất tiếc! Ghế này vừa có người khác đặt thành công trước bạn một vài giây. Vui lòng chọn ghế khác.
+                                {errorMessage || 'Rất tiếc! Ghế này vừa có người khác đặt thành công trước bạn một vài giây. Vui lòng chọn ghế khác.'}
                             </p>
 
                             {/* Help Icon */}

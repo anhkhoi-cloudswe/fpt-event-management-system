@@ -866,6 +866,9 @@ func (r *TicketRepository) CreateVNPayURL(ctx context.Context, userID, eventID, 
 			for _, tid := range pendingTicketIDs {
 				r.db.ExecContext(ctx, "DELETE FROM Ticket WHERE ticket_id = $1", tid)
 			}
+			if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "ticket_event_id_seat_id_key") {
+				return "", apperrors.BusinessError("Ghế đặt hiện đang nằm trong trạng thái xử lý thanh toán. Vui lòng thử lại sau ít phút hoặc chọn ghế khác!")
+			}
 			return "", apperrors.BusinessError(fmt.Sprintf("Không thể giữ ghế ID %d", seatID))
 		}
 
@@ -1372,6 +1375,9 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 		).Scan(&pendingTicketID)
 		if err != nil {
 			log.Error("Failed to create pending ticket", "error", err)
+			if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "ticket_event_id_seat_id_key") {
+				return 0, 0, apperrors.BusinessError("Ghế đặt hiện đang nằm trong trạng thái xử lý thanh toán. Vui lòng thử lại sau ít phút hoặc chọn ghế khác!")
+			}
 			return 0, 0, apperrors.DatabaseError(err)
 		}
 	}
@@ -1533,7 +1539,7 @@ func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) 
 	var createdAt time.Time
 	var isExpired bool
 	err := r.db.QueryRowContext(ctx, 
-		"SELECT payment_status, created_at, (NOW() > created_at + INTERVAL '15 minutes') FROM Bill WHERE bill_id = $1", 
+		"SELECT payment_status, created_at, (NOW() > created_at + INTERVAL '5 minutes') FROM Bill WHERE bill_id = $1", 
 		orderID,
 	).Scan(&status, &createdAt, &isExpired)
 	if err != nil {
@@ -1543,10 +1549,10 @@ func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) 
 		return "", err
 	}
 
-	// Nếu trạng thái là PENDING và đã quá 15 phút từ lúc tạo đơn
+	// Nếu trạng thái là PENDING và đã quá 5 phút từ lúc tạo đơn
 	if status == "PENDING" && isExpired {
 		log := logger.Default().WithContext(ctx)
-		log.Info("⏳ SePay Order has expired (15m timeout). Canceling bill and updating tickets.", "bill_id", orderID, "created_at", createdAt)
+		log.Info("⏳ SePay Order has expired (5m timeout). Canceling bill and updating tickets.", "bill_id", orderID, "created_at", createdAt)
 
 		// Bắt đầu transaction để cancel Bill và Ticket liên quan
 		tx, err := r.db.BeginTx(ctx, nil)
@@ -1576,6 +1582,32 @@ func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) 
 	}
 
 	return status, nil
+}
+
+// CancelBankTransferOrder - Hủy đơn hàng và giải phóng vé lập tức
+func (r *TicketRepository) CancelBankTransferOrder(ctx context.Context, orderID int64) error {
+	log := logger.Default().WithContext(ctx)
+	log.Info("Canceling order actively", "bill_id", orderID)
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Cập nhật Bill thành CANCELED
+	_, err = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'CANCELED' WHERE bill_id = $1 AND payment_status = 'PENDING'", orderID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Xóa toàn bộ các bản ghi vé đang ở trạng thái PENDING thuộc đơn hàng này
+	_, err = tx.ExecContext(ctx, "DELETE FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'", orderID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 

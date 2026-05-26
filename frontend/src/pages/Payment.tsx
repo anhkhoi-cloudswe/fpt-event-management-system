@@ -147,12 +147,12 @@ export default function Payment() {
   const cleanTitle = cleanEventTitleForTransfer(state.eventTitle || 'Sự kiện demo (mock)')
   const transferDescription = bankTransferOrder ? `${cleanTitle} HD${bankTransferOrder.order_id}` : ''
 
-  // ⏳ SePay Bank Transfer Countdown (15 minutes = 900 seconds)
-  const [timeLeft, setTimeLeft] = useState<number>(900)
+  // ⏳ SePay Bank Transfer Countdown (5 minutes = 300 seconds)
+  const [timeLeft, setTimeLeft] = useState<number>(300)
 
   useEffect(() => {
     if (!showBankTransferModal || !bankTransferOrder) {
-      setTimeLeft(900)
+      setTimeLeft(300)
       return
     }
 
@@ -166,7 +166,7 @@ export default function Payment() {
             setPollingIntervalId(null)
           }
           setShowBankTransferModal(false)
-          alert('Thời gian thanh toán chuyển khoản đã hết hạn (15 phút). Ghế giữ chỗ của bạn đã được giải phóng.')
+          alert('Thời gian thanh toán chuyển khoản đã hết hạn (5 phút). Ghế giữ chỗ của bạn đã được giải phóng.')
           return 0
         }
         return prev - 1
@@ -547,19 +547,31 @@ export default function Payment() {
       // ======================================================
       if (!response.ok) {
         const errorText = await response.text()
+        let cleanMsg = errorText
+        try {
+          const jsonErr = JSON.parse(errorText)
+          cleanMsg = jsonErr.message || jsonErr.error || errorText
+        } catch {}
 
         // Check for duplicate entry (seat already taken)
-        if (errorText.includes('Duplicate entry') || errorText.includes('1062')) {
-          console.log('🪑 [DUPLICATE_SEAT] Seat already taken')
+        if (
+          cleanMsg.includes('Duplicate entry') || 
+          cleanMsg.includes('1062') || 
+          cleanMsg.includes('trạng thái xử lý thanh toán') || 
+          cleanMsg.includes('violates unique constraint') ||
+          cleanMsg.includes('Ghế đặt hiện đang nằm')
+        ) {
+          console.log('🪑 [DUPLICATE_SEAT] Seat already taken or processing')
           setErrorData({
             errorType: 'duplicate_entry',
+            errorMessage: cleanMsg
           })
           setShowErrorModal(true)
           return
         }
 
         // Check for specific error messages from backend
-        if (errorText.includes('wallet_not_enough') || errorText.includes('insufficient_balance')) {
+        if (cleanMsg.includes('wallet_not_enough') || cleanMsg.includes('insufficient_balance')) {
           // Parse shortage if available
           try {
             const errorJson = JSON.parse(errorText)
@@ -568,6 +580,7 @@ export default function Payment() {
               shortage: errorJson.shortage || 0,
               currentBalance: errorJson.current || walletBalance || 0,
               totalAmount: errorJson.required || totalAmount,
+              errorMessage: cleanMsg
             })
           } catch {
             setErrorData({
@@ -575,6 +588,7 @@ export default function Payment() {
               shortage: 0,
               currentBalance: walletBalance || 0,
               totalAmount: totalAmount,
+              errorMessage: cleanMsg
             })
           }
           setShowErrorModal(true)
@@ -582,10 +596,10 @@ export default function Payment() {
         }
 
         // For other errors, show general error
-        console.error('❌ [PAYMENT_ERROR]', errorText)
+        console.error('❌ [PAYMENT_ERROR]', cleanMsg)
         setErrorData({
           errorType: 'general',
-          errorMessage: errorText || 'Đã có lỗi xảy ra trong quá trình xử lý, vui lòng thử lại sau.',
+          errorMessage: cleanMsg || 'Đã có lỗi xảy ra trong quá trình xử lý, vui lòng thử lại sau.',
         })
         setShowErrorModal(true)
         return
@@ -614,10 +628,22 @@ export default function Payment() {
 
       // Check if error is a duplicate entry error
       const errorMsg = error.message || error.toString()
+      let cleanMsg = errorMsg
+      try {
+        const jsonErr = JSON.parse(errorMsg)
+        cleanMsg = jsonErr.message || jsonErr.error || errorMsg
+      } catch {}
 
-      if (errorMsg.includes('Duplicate entry') || errorMsg.includes('1062')) {
+      if (
+        cleanMsg.includes('Duplicate entry') || 
+        cleanMsg.includes('1062') || 
+        cleanMsg.includes('trạng thái xử lý thanh toán') || 
+        cleanMsg.includes('violates unique constraint') ||
+        cleanMsg.includes('Ghế đặt hiện đang nằm')
+      ) {
         setErrorData({
           errorType: 'duplicate_entry',
+          errorMessage: cleanMsg
         })
         setShowErrorModal(true)
         return
@@ -625,8 +651,9 @@ export default function Payment() {
 
       // Show general error modal
       setErrorData({
+        // For processing seats, trigger duplicate entry, otherwise general error
         errorType: 'general',
-        errorMessage: errorMsg || 'Đã có lỗi xảy ra trong quá trình xử lý, vui lòng thử lại sau.',
+        errorMessage: cleanMsg || 'Đã có lỗi xảy ra trong quá trình xử lý, vui lòng thử lại sau.',
       })
       setShowErrorModal(true)
     }
@@ -675,8 +702,13 @@ export default function Payment() {
       })
 
       if (!response.ok) {
-        const errorMsg = await response.text()
-        throw new Error(errorMsg || 'Không thể tạo đơn hàng chuyển khoản')
+        const errorMsgRaw = await response.text()
+        let cleanMsg = errorMsgRaw
+        try {
+          const jsonErr = JSON.parse(errorMsgRaw)
+          cleanMsg = jsonErr.message || jsonErr.error || errorMsgRaw
+        } catch {}
+        throw new Error(cleanMsg || 'Không thể tạo đơn hàng chuyển khoản')
       }
 
       const data = await response.json()
@@ -703,7 +735,7 @@ export default function Payment() {
               window.clearInterval(intervalId)
               setShowBankTransferModal(false)
               setPollingIntervalId(null)
-              alert('Giao dịch chuyển khoản đã hết hạn giữ chỗ (15 phút) và bị hủy trên hệ thống.')
+              alert('Giao dịch chuyển khoản đã hết hạn giữ chỗ (5 phút) và bị hủy trên hệ thống.')
             }
           }
         } catch (pollErr) {
@@ -721,11 +753,24 @@ export default function Payment() {
     }
   }
 
-  const handleCancelBankTransfer = () => {
+  const handleCancelBankTransfer = async () => {
     if (pollingIntervalId) {
       window.clearInterval(pollingIntervalId)
       setPollingIntervalId(null)
     }
+
+    // Chủ động gửi yêu cầu hủy đơn hàng lên backend để giải phóng ghế ngay lập tức
+    if (bankTransferOrder?.order_id) {
+      fetch('/api/payment/cancel-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ order_id: bankTransferOrder.order_id })
+      }).catch((err) => console.error('Error during active order cancellation:', err))
+    }
+
     setShowBankTransferModal(false)
   }
 

@@ -136,3 +136,8 @@ func (uc *TicketUseCase) GetPaymentStatus(ctx context.Context, orderID int64) (s
 	return uc.ticketRepo.GetPaymentStatus(ctx, orderID)
 }
 
+// CancelOrder - Chủ động hủy đơn hàng và giải phóng ghế lập tức
+func (uc *TicketUseCase) CancelOrder(ctx context.Context, orderID int64) error {
+	return uc.ticketRepo.CancelBankTransferOrder(ctx, orderID)
+}
+
