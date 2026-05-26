@@ -120,3 +120,19 @@ func (uc *TicketUseCase) ProcessWalletPayment(ctx context.Context, userID, event
 // WALLET TOPUP METHODS
 // Get topup payment URL, process topup callback
 // ============================================================
+
+// CreateBankTransferOrder - Tạo đơn hàng thanh toán chuyển khoản ngân hàng (SePay)
+func (uc *TicketUseCase) CreateBankTransferOrder(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int) (int64, float64, error) {
+	return uc.ticketRepo.CreateBankTransferOrder(ctx, userID, eventID, categoryTicketID, seatIDs)
+}
+
+// ProcessSePayWebhook - Xử lý webhook thanh toán từ SePay
+func (uc *TicketUseCase) ProcessSePayWebhook(ctx context.Context, gateway string, amount float64, content string, transferAt string) (string, error) {
+	return uc.ticketRepo.ProcessSePayWebhook(ctx, gateway, amount, content, transferAt)
+}
+
+// GetPaymentStatus - Lấy trạng thái thanh toán của Bill (SePay)
+func (uc *TicketUseCase) GetPaymentStatus(ctx context.Context, orderID int64) (string, error) {
+	return uc.ticketRepo.GetPaymentStatus(ctx, orderID)
+}
+
