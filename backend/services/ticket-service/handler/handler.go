@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
@@ -746,6 +747,18 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 			}, nil
 		}
 
+		// Check for duplicate key / unique constraint error (e.g. seat 208 duplicate)
+		if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "ticket_event_id_seat_id_key") || strings.Contains(err.Error(), "trạng thái xử lý thanh toán") {
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusBadRequest, // 400
+				Headers: map[string]string{
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Access-Control-Allow-Origin": "*",
+				},
+				Body: `{"error":"duplicate_seat","message":"Ghế đặt hiện đang nằm trong trạng thái xử lý thanh toán. Vui lòng thử lại sau ít phút hoặc chọn ghế khác!"}`,
+			}, nil
+		}
+
 		// For other errors, log and return 500
 		fmt.Printf("[ERROR] ProcessWalletPayment failed: %v\n", err)
 		return createMessageResponse(http.StatusInternalServerError, "Payment processing failed: "+err.Error())
@@ -826,9 +839,11 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
 
+	expireTime := time.Now().Add(5 * time.Minute)
 	body, _ := json.Marshal(map[string]interface{}{
-		"order_id": orderID,
-		"amount":   amount,
+		"order_id":  orderID,
+		"amount":    amount,
+		"expire_at": expireTime.Format(time.RFC3339),
 	})
 
 	return events.APIGatewayProxyResponse{
@@ -947,10 +962,16 @@ func (h *TicketHandler) HandleCancelOrder(ctx context.Context, request events.AP
 	}
 
 	var req CancelOrderRequest
-	err := json.Unmarshal([]byte(request.Body), &req)
-	if err != nil || req.OrderID == 0 {
-		// Fallback: check query parameter
+	if request.Body != "" {
+		_ = json.Unmarshal([]byte(request.Body), &req)
+	}
+
+	// Fallback: check query parameters for both order_id and bill_id
+	if req.OrderID == 0 {
 		orderIDStr := request.QueryStringParameters["order_id"]
+		if orderIDStr == "" {
+			orderIDStr = request.QueryStringParameters["bill_id"]
+		}
 		if orderIDStr != "" {
 			if parsedID, parseErr := strconv.ParseInt(orderIDStr, 10, 64); parseErr == nil {
 				req.OrderID = parsedID
@@ -962,7 +983,7 @@ func (h *TicketHandler) HandleCancelOrder(ctx context.Context, request events.AP
 		return createMessageResponse(http.StatusBadRequest, "Missing or invalid order_id")
 	}
 
-	err = h.useCase.CancelOrder(ctx, req.OrderID)
+	err := h.useCase.CancelOrder(ctx, req.OrderID)
 	if err != nil {
 		return createMessageResponse(http.StatusInternalServerError, err.Error())
 	}
