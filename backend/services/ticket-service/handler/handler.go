@@ -2,7 +2,10 @@ package handler
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -840,6 +843,31 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 
 // HandleSePayWebhook - POST /api/payment/sepay-webhook
 func (h *TicketHandler) HandleSePayWebhook(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// 1. Get SePay Webhook secret
+	secret := os.Getenv("SEPAY_WEBHOOK_SECRET")
+	if secret == "" {
+		log.Error("SEPAY_WEBHOOK_SECRET is not configured in environment")
+		return createMessageResponse(http.StatusInternalServerError, "Internal Server Error")
+	}
+
+	// 2. Extract x-sepay-signature header
+	signatureHex := getHeaderIgnoreCase(request.Headers, "x-sepay-signature")
+	if signatureHex == "" {
+		log.Warn("Missing x-sepay-signature header in SePay Webhook request")
+		return createMessageResponse(http.StatusForbidden, "Forbidden")
+	}
+
+	// 3. Compute HMAC-SHA256 of request body
+	hMac := hmac.New(sha256.New, []byte(secret))
+	hMac.Write([]byte(request.Body))
+	computedSignature := hex.EncodeToString(hMac.Sum(nil))
+
+	// 4. Compare using constant-time comparison
+	if !hmac.Equal([]byte(computedSignature), []byte(signatureHex)) {
+		log.Warn("Invalid SePay signature. Expected: %s, Got: %s", computedSignature, signatureHex)
+		return createMessageResponse(http.StatusForbidden, "Forbidden")
+	}
+
 	type SePayWebhookPayload struct {
 		Gateway    string  `json:"gateway"`
 		Amount     float64 `json:"amount"`
