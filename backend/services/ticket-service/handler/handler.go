@@ -940,5 +940,44 @@ func (h *TicketHandler) HandleCheckPaymentStatus(ctx context.Context, request ev
 	}, nil
 }
 
+// HandleCancelOrder - POST /api/payment/cancel-order
+func (h *TicketHandler) HandleCancelOrder(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	type CancelOrderRequest struct {
+		OrderID int64 `json:"order_id"`
+	}
 
-// ============================================================
+	var req CancelOrderRequest
+	err := json.Unmarshal([]byte(request.Body), &req)
+	if err != nil || req.OrderID == 0 {
+		// Fallback: check query parameter
+		orderIDStr := request.QueryStringParameters["order_id"]
+		if orderIDStr != "" {
+			if parsedID, parseErr := strconv.ParseInt(orderIDStr, 10, 64); parseErr == nil {
+				req.OrderID = parsedID
+			}
+		}
+	}
+
+	if req.OrderID == 0 {
+		return createMessageResponse(http.StatusBadRequest, "Missing or invalid order_id")
+	}
+
+	err = h.useCase.CancelOrder(ctx, req.OrderID)
+	if err != nil {
+		return createMessageResponse(http.StatusInternalServerError, err.Error())
+	}
+
+	body, _ := json.Marshal(map[string]string{
+		"status":  "success",
+		"message": "Order canceled successfully, tickets deleted and seats released",
+	})
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Access-Control-Allow-Origin": "*",
+		},
+		Body: string(body),
+	}, nil
+}
