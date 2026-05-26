@@ -86,6 +86,25 @@ type PaymentState = {
   totalAmount?: number // tổng tiền (để hiển thị)
 }
 
+// ======================== HELPERS ========================
+
+function cleanEventTitleForTransfer(title: string): string {
+  let cleaned = title.toUpperCase();
+  // Normalize and remove Vietnamese accents/diacritics
+  cleaned = cleaned.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // Replace specialized Vietnamese characters (Đ -> D)
+  cleaned = cleaned.replace(/Đ/g, "D");
+  // Keep only alphanumeric characters and spaces
+  cleaned = cleaned.replace(/[^A-Z0-9 ]/g, "");
+  // Replace multiple spaces with a single space
+  cleaned = cleaned.replace(/\s+/g, " ").trim();
+  // Limit length to 18 characters
+  if (cleaned.length > 18) {
+    cleaned = cleaned.slice(0, 18).trim();
+  }
+  return cleaned || "EVENT";
+}
+
 // ======================== MAIN COMPONENT ========================
 
 export default function Payment() {
@@ -122,6 +141,10 @@ export default function Payment() {
   const [bankTransferOrder, setBankTransferOrder] = useState<{ order_id: number; amount: number } | null>(null)
   const [pollingIntervalId, setPollingIntervalId] = useState<number | null>(null)
   const [creatingOrder, setCreatingOrder] = useState(false)
+
+  // Dynamic transfer description for SePay VietQR
+  const cleanTitle = cleanEventTitleForTransfer(state.eventTitle || 'Sự kiện demo (mock)')
+  const transferDescription = bankTransferOrder ? `${cleanTitle} HD${bankTransferOrder.order_id}` : ''
 
   // ⭐ NEW: Event time validation state
   const [isEventExpired, setIsEventExpired] = useState(false)
@@ -943,7 +966,7 @@ export default function Payment() {
             {/* QR Code Container */}
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 relative">
               <img
-                src={`https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '1234567890'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${bankTransferOrder.amount}&des=FPTEVENT${bankTransferOrder.order_id}`}
+                src={`https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '2911121319'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${bankTransferOrder.amount}&des=${encodeURIComponent(transferDescription)}`}
                 alt="VietQR"
                 className="w-64 h-64 object-contain mx-auto"
               />
@@ -957,7 +980,7 @@ export default function Payment() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Số tài khoản:</span>
-                <span className="font-semibold text-gray-800">{import.meta.env.VITE_BANK_ACC || '1234567890'}</span>
+                <span className="font-semibold text-gray-800">{import.meta.env.VITE_BANK_ACC || '2911121319'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Số tiền:</span>
@@ -965,7 +988,7 @@ export default function Payment() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Nội dung chuyển khoản:</span>
-                <span className="font-mono font-bold text-red-600">FPTEVENT{bankTransferOrder.order_id}</span>
+                <span className="font-mono font-bold text-red-600">{transferDescription}</span>
               </div>
             </div>
 

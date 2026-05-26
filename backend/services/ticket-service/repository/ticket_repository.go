@@ -1391,11 +1391,11 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 	log.Info("SePay Webhook received", "gateway", gateway, "amount", amount, "content", content, "transfer_at", transferAt)
 
 	// 1. Phân tách chuỗi content để tìm order_id (bill_id)
-	// regex matches: FPTEVENT followed by optional space, then digits
-	re := regexp.MustCompile(`FPTEVENT\s*(\d+)`)
+	// Quét tìm từ khóa HD nằm sát các chữ số cuối cùng của chuỗi nội dung
+	re := regexp.MustCompile(`HD\s*(\d+)`)
 	matches := re.FindStringSubmatch(strings.ToUpper(content))
 	if len(matches) < 2 {
-		log.Warn("SePay Webhook: Invalid content format (missing FPTEVENT{order_id})", "content", content)
+		log.Warn("SePay Webhook: Invalid content format (missing HD{order_id})", "content", content)
 		return "", fmt.Errorf("invalid transaction content: %s", content)
 	}
 
