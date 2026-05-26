@@ -1561,8 +1561,8 @@ func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) 
 		}
 		defer tx.Rollback()
 
-		// 1. Cập nhật trạng thái Bill thành CANCELED
-		_, err = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'CANCELED' WHERE bill_id = $1 AND payment_status = 'PENDING'", orderID)
+		// 1. Cập nhật trạng thái Bill thành FAILED
+		_, err = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'FAILED' WHERE bill_id = $1 AND payment_status = 'PENDING'", orderID)
 		if err != nil {
 			return "", err
 		}
@@ -1577,8 +1577,8 @@ func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) 
 			return "", err
 		}
 
-		// Trả về CANCELED để thông báo cho client
-		return "CANCELED", nil
+		// Trả về FAILED để thông báo cho client
+		return "FAILED", nil
 	}
 
 	return status, nil
@@ -1595,8 +1595,8 @@ func (r *TicketRepository) CancelBankTransferOrder(ctx context.Context, orderID 
 	}
 	defer tx.Rollback()
 
-	// 1. Cập nhật Bill thành CANCELED
-	_, err = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'CANCELED' WHERE bill_id = $1 AND payment_status = 'PENDING'", orderID)
+	// 1. Cập nhật Bill thành FAILED
+	_, err = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'FAILED' WHERE bill_id = $1 AND payment_status = 'PENDING'", orderID)
 	if err != nil {
 		return err
 	}
