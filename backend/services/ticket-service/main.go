@@ -178,8 +178,10 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return ticketHandler.HandleGetMyBills(ctx, request)
 	case path == "/api/payment/my-bills" && method == "GET":
 		return ticketHandler.HandleGetMyBills(ctx, request)
-	case path == "/api/payment-ticket" && method == "GET":
-		return ticketHandler.HandlePaymentTicket(ctx, request)
+	case (path == "/api/payment/momo-init" || path == "/api/payment-ticket") && (method == "POST" || method == "GET"):
+		return ticketHandler.HandleMoMoInit(ctx, request)
+	case path == "/api/payment/momo-webhook" && method == "POST":
+		return ticketHandler.HandleMoMoWebhook(ctx, request)
 	case path == "/api/payment/create-order" && method == "POST":
 		return ticketHandler.HandleCreateBankTransferOrder(ctx, request)
 	case path == "/api/payment/cancel-order" && method == "POST":
@@ -188,8 +190,6 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return ticketHandler.HandleSePayWebhook(ctx, request)
 	case strings.HasPrefix(path, "/api/payment/check-status/") && method == "GET":
 		return ticketHandler.HandleCheckPaymentStatus(ctx, request)
-	case path == "/api/buyTicket" && method == "GET":
-		return ticketHandler.HandleBuyTicket(ctx, request)
 	case path == "/api/wallet/balance" && method == "GET":
 		return ticketHandler.HandleGetWalletBalance(ctx, request)
 	case path == "/api/wallet/pay-ticket" && method == "POST":

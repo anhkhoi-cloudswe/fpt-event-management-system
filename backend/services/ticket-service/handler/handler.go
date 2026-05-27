@@ -18,7 +18,6 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
 	"github.com/fpt-event-services/common/utils"
-	"github.com/fpt-event-services/common/vnpay"
 	"github.com/fpt-event-services/services/ticket-service/usecase"
 )
 
@@ -307,91 +306,98 @@ func isLocalHost(host string) bool {
 	return hostOnly == "localhost" || hostOnly == "127.0.0.1"
 }
 
-func buildDynamicReturnURL(request events.APIGatewayProxyRequest) string {
-	// ⭐ TEMPORARILY DISABLED automatic Host/Scheme resolution due to Vercel Rewrites Proxy header mismatch.
-	// We read VNPAY_RETURN_URL directly from the environment to ensure a single, consistent Return URL.
-	returnURL := strings.TrimSpace(os.Getenv("VNPAY_RETURN_URL"))
-	fmt.Printf("[buildDynamicReturnURL] Using hardcoded VNPAY_RETURN_URL from env: '%s'\n", returnURL)
-	return returnURL
-}
-
 // ============================================================
-// HandlePaymentTicket - GET /api/payment-ticket
-// Tạo URL thanh toán VNPay cho vé sự kiện
-// KHỚP VỚI Java PaymentJwtController
+// MOMO PAYMENT METHODS
 // ============================================================
-func (h *TicketHandler) HandlePaymentTicket(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Get query params
-	userIDStr := request.QueryStringParameters["userId"]
-	eventIDStr := request.QueryStringParameters["eventId"]
-	categoryTicketIDStr := request.QueryStringParameters["categoryTicketId"]
 
-	// Hỗ trợ cả seatId (số ít) và seatIds (số nhiều) để tương thích với frontend
-	seatIDStr := request.QueryStringParameters["seatId"]
-	if seatIDStr == "" {
-		seatIDStr = request.QueryStringParameters["seatIds"]
+// HandleMoMoInit - POST/GET /api/payment/momo-init
+// Tạo URL thanh toán MoMo Sandbox cho vé sự kiện
+// ============================================================
+func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Extract userId from auth header, fallback to query parameter
+	userIDStr := request.Headers["X-User-Id"]
+	if userIDStr == "" {
+		userIDStr = request.Headers["x-user-id"]
+	}
+	if userIDStr == "" {
+		userIDStr = request.QueryStringParameters["userId"]
 	}
 
-	// Validate required params
-	if userIDStr == "" || eventIDStr == "" || seatIDStr == "" {
-		return createMessageResponse(http.StatusBadRequest, "Missing required parameters: userId, eventId, seatId")
+	if userIDStr == "" {
+		return createMessageResponse(http.StatusUnauthorized, "Unauthorized: Missing user credentials")
 	}
 
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
-		return createMessageResponse(http.StatusBadRequest, "Invalid userId")
+		return createMessageResponse(http.StatusBadRequest, "Invalid userId format")
 	}
 
-	eventID, err := strconv.Atoi(eventIDStr)
-	if err != nil {
-		return createMessageResponse(http.StatusBadRequest, "Invalid eventId")
+	type MoMoInitRequest struct {
+		EventID          int   `json:"eventId"`
+		CategoryTicketID int   `json:"categoryTicketId"`
+		SeatIDs          []int `json:"seatIds"`
 	}
 
-	categoryTicketID := 0
-	if categoryTicketIDStr != "" {
-		parsedCategoryTicketID, parseErr := strconv.Atoi(categoryTicketIDStr)
-		if parseErr != nil {
-			return createMessageResponse(http.StatusBadRequest, "Invalid categoryTicketId")
+	var initReq MoMoInitRequest
+	if request.Body != "" && strings.Contains(request.Headers["Content-Type"], "application/json") {
+		err := json.Unmarshal([]byte(request.Body), &initReq)
+		if err != nil {
+			return createMessageResponse(http.StatusBadRequest, "Invalid JSON body: "+err.Error())
 		}
-		categoryTicketID = parsedCategoryTicketID
-	}
+	} else {
+		// Fallback to query parameters
+		eventIDStr := request.QueryStringParameters["eventId"]
+		categoryTicketIDStr := request.QueryStringParameters["categoryTicketId"]
+		
+		seatIDStr := request.QueryStringParameters["seatId"]
+		if seatIDStr == "" {
+			seatIDStr = request.QueryStringParameters["seatIds"]
+		}
 
-	// Parse multiple seatIds (comma-separated: "1,2,3,4")
-	seatIDStrs := []string{}
-	if seatIDStr != "" {
+		if eventIDStr == "" || seatIDStr == "" {
+			return createMessageResponse(http.StatusBadRequest, "Missing required parameters: eventId, seatId")
+		}
+
+		eventID, err := strconv.Atoi(eventIDStr)
+		if err != nil {
+			return createMessageResponse(http.StatusBadRequest, "Invalid eventId")
+		}
+		initReq.EventID = eventID
+
+		if categoryTicketIDStr != "" {
+			catID, _ := strconv.Atoi(categoryTicketIDStr)
+			initReq.CategoryTicketID = catID
+		}
+
+		seatIDs := []int{}
 		for _, part := range strings.Split(seatIDStr, ",") {
 			trimmed := strings.TrimSpace(part)
 			if trimmed != "" {
-				seatIDStrs = append(seatIDStrs, trimmed)
+				id, err := strconv.Atoi(trimmed)
+				if err == nil {
+					seatIDs = append(seatIDs, id)
+				}
 			}
 		}
+		initReq.SeatIDs = seatIDs
 	}
 
-	if len(seatIDStrs) == 0 {
-		return createMessageResponse(http.StatusBadRequest, "No valid seatIds provided")
+	if initReq.EventID == 0 || len(initReq.SeatIDs) == 0 {
+		return createMessageResponse(http.StatusBadRequest, "Missing required fields: eventId, seatIds")
 	}
 
-	// Convert to []int
-	seatIDs := []int{}
-	for _, idStr := range seatIDStrs {
-		seatID, err := strconv.Atoi(idStr)
-		if err != nil {
-			return createMessageResponse(http.StatusBadRequest, "Invalid seatId: "+idStr)
-		}
-		seatIDs = append(seatIDs, seatID)
-	}
-
-	// Limit to 4 seats maximum (business rule)
-	if len(seatIDs) > 4 {
+	if len(initReq.SeatIDs) > 4 {
 		return createMessageResponse(http.StatusBadRequest, "Maximum 4 seats per purchase")
 	}
 
-	// Build dynamic return URL from current request host/protocol.
-	// If host is unavailable, repository/service will fallback to configured VNPAY_RETURN_URL.
-	dynamicReturnURL := buildDynamicReturnURL(request)
+	// Generate redirect URL
+	redirectURL := os.Getenv("MOMO_REDIRECT_URL")
+	if redirectURL == "" {
+		frontendBaseURL := buildFrontendBaseURLFromRequest(request)
+		redirectURL = buildFrontendRedirectURL(frontendBaseURL, "/payment-success")
+	}
 
-	// Generate VNPay URL for multiple seats
-	paymentURL, err := h.useCase.CreatePaymentURL(ctx, userID, eventID, categoryTicketID, seatIDs, dynamicReturnURL)
+	payURL, err := h.useCase.CreateMoMoPaymentURL(ctx, userID, initReq.EventID, initReq.CategoryTicketID, initReq.SeatIDs, redirectURL)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "ticket_event_id_seat_id_key") || strings.Contains(err.Error(), "trạng thái xử lý thanh toán") {
 			return events.APIGatewayProxyResponse{
@@ -406,9 +412,9 @@ func (h *TicketHandler) HandlePaymentTicket(ctx context.Context, request events.
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
 
-	// ✅ 0đ BYPASS: Vé miễn phí – không cần VNPay, trả về thông tin thành công trực tiếp
-	if strings.HasPrefix(paymentURL, "FREE:") {
-		ticketIDs := strings.TrimPrefix(paymentURL, "FREE:")
+	// 0đ Bypass: Free ticket returns success details immediately
+	if strings.HasPrefix(payURL, "FREE:") {
+		ticketIDs := strings.TrimPrefix(payURL, "FREE:")
 		frontendBaseURL := buildFrontendBaseURLFromRequest(request)
 		successURL := buildFrontendRedirectURL(frontendBaseURL, fmt.Sprintf("/payment-success?status=success&method=free&ticketIds=%s", url.QueryEscape(ticketIDs)))
 		log.Info("Free ticket bypass - successUrl: %s", successURL)
@@ -427,168 +433,40 @@ func (h *TicketHandler) HandlePaymentTicket(ctx context.Context, request events.
 		}, nil
 	}
 
-	// Return redirect or URL
+	body, _ := json.Marshal(map[string]string{
+		"paymentUrl": payURL,
+	})
+
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
 			"Content-Type":                "application/json;charset=UTF-8",
 			"Access-Control-Allow-Origin": "*",
 		},
-		Body: `{"paymentUrl":"` + paymentURL + `"}`,
+		Body: string(body),
 	}, nil
 }
 
+// HandleMoMoWebhook - POST /api/payment/momo-webhook
+// Nhận Webhook thông báo kết quả giao dịch tự động từ MoMo Server
 // ============================================================
-// HandleBuyTicket - GET /api/buyTicket
-// VNPay return URL - xác nhận thanh toán và tạo vé
-// KHỚP VỚI Java BuyTicketJwtController
-// ============================================================
-func (h *TicketHandler) HandleBuyTicket(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Get VNPay params
-	vnpAmount := request.QueryStringParameters["vnp_Amount"]
-	vnpResponseCode := request.QueryStringParameters["vnp_ResponseCode"]
-	vnpOrderInfo := request.QueryStringParameters["vnp_OrderInfo"]
-	vnpTxnRef := request.QueryStringParameters["vnp_TxnRef"]
-	vnpSecureHash := request.QueryStringParameters["vnp_SecureHash"]
+func (h *TicketHandler) HandleMoMoWebhook(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	log.Info("MoMo Webhook received: headers=%v, body=%s", request.Headers, request.Body)
 
-	log.Info("VNPay callback received - Amount=%s ResponseCode=%s TxnRef=%s", vnpAmount, vnpResponseCode, vnpTxnRef)
-
-	isIPN := isIPNRequest(request)
-	log.Info("Processing VNPay callback - isIPN=%v, queryParams=%v", isIPN, request.QueryStringParameters)
-
-	// Build query values from request parameters for signature verification
-	queryParams := url.Values{}
-	for k, v := range request.QueryStringParameters {
-		queryParams.Set(k, v)
-	}
-
-	// Verify signature using VNPayService (HMAC-SHA512)
-	vnpService := vnpay.NewVNPayService(nil)
-	_, err := vnpService.VerifyCallback(queryParams)
+	var payload map[string]interface{}
+	err := json.Unmarshal([]byte(request.Body), &payload)
 	if err != nil {
-		log.Error("VNPay callback signature verification failed: %v", err)
-		if isIPN {
-			body, _ := json.Marshal(map[string]string{
-				"RspCode": "97",
-				"Message": "Invalid Signature",
-			})
-			return events.APIGatewayProxyResponse{
-				StatusCode: http.StatusOK,
-				Headers:    defaultHeaders(),
-				Body:       string(body),
-			}, nil
-		}
-		// Browser Redirect flow: redirect to payment failed page
-		frontendBaseURL := buildFrontendBaseURLFromRequest(request)
-		frontendURL := buildFrontendRedirectURL(frontendBaseURL, "/payment-failed?status=failed&method=vnpay&reason="+url.QueryEscape("Chữ ký số không hợp lệ"))
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusFound,
-			Headers: map[string]string{
-				"Location":                    frontendURL,
-				"Access-Control-Allow-Origin": "*",
-			},
-		}, nil
+		return createMessageResponse(http.StatusBadRequest, "Invalid JSON body: "+err.Error())
 	}
 
-	// Process payment callback
-	result, err := h.useCase.ProcessPaymentCallback(ctx, vnpAmount, vnpResponseCode, vnpOrderInfo, vnpTxnRef, vnpSecureHash)
-	frontendBaseURL := buildFrontendBaseURLFromRequest(request)
-
+	result, err := h.useCase.ProcessMoMoWebhook(ctx, payload)
 	if err != nil {
-		// 1. If it's a failed payment notification (responseCode != "00"), and we successfully cleaned it up:
-		if vnpResponseCode != "00" && isIPN {
-			// Even though ProcessPaymentCallback returns an error for failed payments, 
-			// the IPN was successfully received and handled (tickets deleted).
-			// So we must return "Confirm Success" (RspCode 00) to VNPay.
-			body, _ := json.Marshal(map[string]string{
-				"RspCode": "00",
-				"Message": "Confirm Success",
-			})
-			log.Info("[BUYTICKET IPN] Failed payment notification handled successfully - returning RspCode 00")
-			return events.APIGatewayProxyResponse{
-				StatusCode: http.StatusOK,
-				Headers:    defaultHeaders(),
-				Body:       string(body),
-			}, nil
-		}
-
-		// 2. If it's already confirmed, and it's a browser redirect, we should STILL redirect to success!
-		if err != nil && strings.Contains(err.Error(), "vnpay_err:already_confirmed") && !isIPN {
-			ticketIds := ""
-			billId := ""
-			if parts := strings.Split(result, "|"); len(parts) > 1 {
-				ticketIds = parts[0]
-				billId = parts[1]
-			}
-			if billId == "" {
-				billId = vnpTxnRef
-			}
-
-			query := url.Values{}
-			query.Set("billId", billId)
-			query.Set("status", "success")
-			if ticketIds != "" {
-				query.Set("ticketIds", ticketIds)
-			}
-			query.Set("method", "vnpay")
-
-			frontendURL := buildFrontendRedirectURL(frontendBaseURL, fmt.Sprintf("/payment-success?%s", query.Encode()))
-			log.Info("[BUYTICKET] Already confirmed redirect - Success URL: %s", frontendURL)
-			return events.APIGatewayProxyResponse{
-				StatusCode: http.StatusFound,
-				Headers: map[string]string{
-					"Location":                    frontendURL,
-					"Access-Control-Allow-Origin": "*",
-				},
-			}, nil
-		}
-
-		// 3. If it's an IPN request, return the specific JSON response
-		if isIPN {
-			rspCode := "99"
-			message := "Input Required"
-			if strings.Contains(err.Error(), "vnpay_err:order_not_found") {
-				rspCode = "01"
-				message = "Order not found"
-			} else if strings.Contains(err.Error(), "vnpay_err:already_confirmed") {
-				rspCode = "02"
-				message = "Order already confirmed"
-			} else if strings.Contains(err.Error(), "vnpay_err:invalid_amount") {
-				rspCode = "04"
-				message = "Invalid Amount"
-			}
-
-			body, _ := json.Marshal(map[string]string{
-				"RspCode": rspCode,
-				"Message": message,
-			})
-			log.Info("[BUYTICKET IPN] Error response - RspCode=%s Message=%s", rspCode, message)
-			return events.APIGatewayProxyResponse{
-				StatusCode: http.StatusOK,
-				Headers:    defaultHeaders(),
-				Body:       string(body),
-			}, nil
-		}
-
-		// Browser Redirect flow: redirect to payment failed page
-		frontendURL := buildFrontendRedirectURL(frontendBaseURL, "/payment-failed?status=failed&method=vnpay&reason="+url.QueryEscape(err.Error()))
-		log.Warn("[BUYTICKET] Payment failed - redirecting to: %s", frontendURL)
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusFound,
-			Headers: map[string]string{
-				"Location":                    frontendURL,
-				"Access-Control-Allow-Origin": "*",
-			},
-		}, nil
-	}
-
-	// 4. IPN Payment Success Response
-	if isIPN {
-		body, _ := json.Marshal(map[string]string{
-			"RspCode": "00",
-			"Message": "Confirm Success",
+		log.Error("Failed to process MoMo Webhook: %v", err)
+		// Return HTTP 200 with failed status to prevent MoMo from retrying repeatedly during demo
+		body, _ := json.Marshal(map[string]interface{}{
+			"resultCode": 99,
+			"message":    err.Error(),
 		})
-		log.Info("[BUYTICKET IPN] Success response - RspCode=00 Message=Confirm Success")
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusOK,
 			Headers:    defaultHeaders(),
@@ -596,71 +474,20 @@ func (h *TicketHandler) HandleBuyTicket(ctx context.Context, request events.APIG
 		}, nil
 	}
 
-	// 5. Browser Redirect Payment Success Response
-	// Parse result: format is "ticketIds|billId" (e.g., "320,321,322,323|145")
-	ticketIds := result
-	billId := ""
-	if parts := strings.Split(result, "|"); len(parts) > 1 {
-		ticketIds = parts[0]
-		billId = parts[1]
-		log.Info("[BUYTICKET] Parsed result - ticketIds=%s billId=%s", ticketIds, billId)
-	}
+	body, _ := json.Marshal(map[string]interface{}{
+		"resultCode": 0,
+		"message":    "Success",
+		"result":     result,
+	})
 
-	// Try to enrich redirect with eventId for forced refresh on frontend.
-	eventIDParam := ""
-	txnParts := strings.Split(vnpTxnRef, "_")
-	if len(txnParts) >= 2 {
-		if _, parseErr := strconv.Atoi(txnParts[1]); parseErr == nil {
-			eventIDParam = "&eventId=" + url.QueryEscape(txnParts[1])
-		}
-	}
-
-	if billId == "" {
-		billId = vnpTxnRef
-	}
-
-	query := url.Values{}
-	query.Set("billId", billId)
-	query.Set("status", "success")
-	if ticketIds != "" {
-		query.Set("ticketIds", ticketIds)
-	}
-	if eventIDParam != "" {
-		query.Set("eventId", strings.TrimPrefix(eventIDParam, "&eventId="))
-	}
-	query.Set("method", "vnpay")
-
-	frontendURL := buildFrontendRedirectURL(frontendBaseURL, fmt.Sprintf("/payment-success?%s", query.Encode()))
-
-	log.Info("[BUYTICKET] Payment success - redirecting to: %s", frontendURL)
 	return events.APIGatewayProxyResponse{
-		StatusCode: http.StatusFound,
+		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Location":                    frontendURL,
+			"Content-Type":                "application/json;charset=UTF-8",
 			"Access-Control-Allow-Origin": "*",
 		},
+		Body: string(body),
 	}, nil
-}
-
-func isIPNRequest(request events.APIGatewayProxyRequest) bool {
-	// If Accept header contains text/html, it is a browser redirect request
-	accept := getHeaderIgnoreCase(request.Headers, "Accept")
-	if strings.Contains(strings.ToLower(accept), "text/html") {
-		return false
-	}
-
-	// Browser navigation headers
-	secFetchDest := getHeaderIgnoreCase(request.Headers, "Sec-Fetch-Dest")
-	if strings.ToLower(secFetchDest) == "document" {
-		return false
-	}
-
-	secFetchMode := getHeaderIgnoreCase(request.Headers, "Sec-Fetch-Mode")
-	if strings.ToLower(secFetchMode) == "navigate" {
-		return false
-	}
-
-	return true
 }
 
 // ============================================================

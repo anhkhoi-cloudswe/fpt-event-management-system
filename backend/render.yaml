@@ -145,14 +145,12 @@ services:
         value: ""
       - key: FRONTEND_BASE_URL
         value: ""
-      # ── VNPay ─────────────────────────────────────────────────────────────
-      - key: VNPAY_TMN_CODE
+      # ── MoMo ──────────────────────────────────────────────────────────────
+      - key: MOMO_PARTNER_CODE
         value: ""
-      - key: VNPAY_HASH_SECRET
+      - key: MOMO_ACCESS_KEY
         value: ""
-      - key: VNPAY_URL
-        value: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-      - key: VNPAY_RETURN_URL
+      - key: MOMO_SECRET_KEY
         value: ""
       # ── SMTP (AWS SES hoặc Gmail SMTP) ────────────────────────────────────
       - key: SMTP_HOST
