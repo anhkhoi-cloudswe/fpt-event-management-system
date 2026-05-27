@@ -68,18 +68,17 @@ func (uc *TicketUseCase) GetMyBillsPaginated(ctx context.Context, userID, page, 
 }
 
 // ============================================================
-// VNPAY PAYMENT METHODS
-// KHỚP VỚI Java PaymentService & BuyTicketService
+// MOMO PAYMENT METHODS
 // ============================================================
 
-// CreatePaymentURL - Tạo URL thanh toán VNPay cho nhiều ghế
-func (uc *TicketUseCase) CreatePaymentURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, returnURL string) (string, error) {
-	return uc.ticketRepo.CreateVNPayURL(ctx, userID, eventID, categoryTicketID, seatIDs, returnURL)
+// CreateMoMoPaymentURL - Tạo URL thanh toán MoMo cho nhiều ghế
+func (uc *TicketUseCase) CreateMoMoPaymentURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, redirectURL string) (string, error) {
+	return uc.ticketRepo.CreateMoMoPaymentURL(ctx, userID, eventID, categoryTicketID, seatIDs, redirectURL)
 }
 
-// ProcessPaymentCallback - Xử lý callback từ VNPay
-func (uc *TicketUseCase) ProcessPaymentCallback(ctx context.Context, amount, responseCode, orderInfo, txnRef, secureHash string) (string, error) {
-	return uc.ticketRepo.ProcessVNPayCallback(ctx, amount, responseCode, orderInfo, txnRef, secureHash)
+// ProcessMoMoWebhook - Xử lý webhook từ MoMo
+func (uc *TicketUseCase) ProcessMoMoWebhook(ctx context.Context, payload map[string]interface{}) (string, error) {
+	return uc.ticketRepo.ProcessMoMoWebhook(ctx, payload)
 }
 
 // ============================================================

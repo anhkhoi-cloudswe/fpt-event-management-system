@@ -49,6 +49,7 @@ const (
 	// External service errors (5xxx)
 	ErrCodeExternalService ErrorCode = "E5001"
 	ErrCodeVNPayError      ErrorCode = "E5002"
+	ErrCodeMoMoError       ErrorCode = "E5005"
 	ErrCodeEmailError      ErrorCode = "E5003"
 	ErrCodeRecaptchaError  ErrorCode = "E5004"
 
@@ -260,6 +261,10 @@ func VNPayError(message string) *AppError {
 	return New(ErrCodeVNPayError, message)
 }
 
+func MoMoError(message string) *AppError {
+	return New(ErrCodeMoMoError, message)
+}
+
 func EmailError(message string) *AppError {
 	return New(ErrCodeEmailError, message)
 }
@@ -302,7 +307,7 @@ func getHTTPStatus(code ErrorCode) int {
 	case ErrCodeBusinessRule, ErrCodeInvalidState, ErrCodeEventNotActive,
 		ErrCodeTicketSoldOut, ErrCodeSeatNotAvailable, ErrCodePaymentFailed:
 		return http.StatusUnprocessableEntity
-	case ErrCodeExternalService, ErrCodeVNPayError, ErrCodeEmailError, ErrCodeRecaptchaError:
+	case ErrCodeExternalService, ErrCodeVNPayError, ErrCodeMoMoError, ErrCodeEmailError, ErrCodeRecaptchaError:
 		return http.StatusBadGateway
 	case ErrCodeTimeout:
 		return http.StatusGatewayTimeout
