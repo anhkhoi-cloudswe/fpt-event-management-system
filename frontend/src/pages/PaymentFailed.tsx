@@ -20,7 +20,7 @@ export default function PaymentFailed() {
    * - location.search có dạng: "?vnp_ResponseCode=01&message=..."
    */
   const params = new URLSearchParams(location.search)
-  const paymentMethod = params.get('method') || 'vnpay'
+  const paymentMethod = params.get('method') || 'momo'
 
   /**
    * Lấy mã phản hồi từ VNPay
@@ -137,10 +137,8 @@ export default function PaymentFailed() {
               </>
             ) : (
               <>
-                <svg className="w-4 h-4 text-red-600" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 10h18M7 15h0m4 0h0m-7 4h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span className="text-sm font-semibold text-red-600">VNPay</span>
+                <span className="w-4 h-4 rounded bg-pink-600 flex items-center justify-center text-[10px] font-bold text-white mr-1">M</span>
+                <span className="text-sm font-semibold text-pink-600">Ví MoMo</span>
               </>
             )}
           </div>
@@ -149,12 +147,14 @@ export default function PaymentFailed() {
         {/* Wallet-specific error message with friendly UI */}
         {paymentMethod === 'wallet' && getWalletErrorMessage()}
 
-        {/* VNPay error code */}
-        {paymentMethod !== 'wallet' && vnpResponseCode && (
+        {/* Payment error details */}
+        {paymentMethod !== 'wallet' && (vnpResponseCode || vnpMessage) && (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-gray-600 text-center">
-              Mã lỗi VNPay: <span className="font-mono font-bold text-red-600">{vnpResponseCode}</span>
-            </p>
+            {vnpResponseCode && (
+              <p className="text-sm text-gray-600 text-center">
+                Mã phản hồi: <span className="font-mono font-bold text-red-600">{vnpResponseCode}</span>
+              </p>
+            )}
             {vnpMessage && (
               <p className="text-sm text-gray-700 text-center mt-2">
                 {vnpMessage}

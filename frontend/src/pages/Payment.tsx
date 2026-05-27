@@ -134,8 +134,8 @@ export default function Payment() {
    */
   const state = (location.state || {}) as PaymentState
 
-  // payment method: 'vnpay' or 'wallet' or 'bank_transfer'
-  const [paymentMethod, setPaymentMethod] = useState<'vnpay' | 'wallet' | 'bank_transfer'>('vnpay')
+  // payment method: 'momo' or 'wallet' or 'bank_transfer'
+  const [paymentMethod, setPaymentMethod] = useState<'momo' | 'wallet' | 'bank_transfer'>('momo')
 
   // State for Bank Transfer modal and polling
   const [showBankTransferModal, setShowBankTransferModal] = useState(false)
@@ -301,7 +301,7 @@ export default function Payment() {
    * 3) Gọi API backend để lấy VNPay URL
    * 4) Redirect sang VNPay để thanh toán
    */
-  const handlePay = async () => {
+  const handleMoMoPay = async () => {
     // ===== BƯỚC 0: CHECK EVENT STATUS =====
     if (isEventExpired) {
       alert('Sự kiện đã bắt đầu hoặc kết thúc. Không thể tiếp tục đặt vé.')
@@ -309,87 +309,50 @@ export default function Payment() {
     }
 
     // ===== BƯỚC 1: VALIDATE DỮ LIỆU VÉ =====
-
-    // Nếu thiếu eventId/categoryTicketId hoặc không có seatIds → báo lỗi + về dashboard
-    // (tùy nghiệp vụ: nếu vé không có ghế thì seatIds có thể không bắt buộc, nhưng code hiện tại đang bắt buộc)
     if (
       !state.eventId ||
       !state.categoryTicketId ||
       !state.seatIds ||
       state.seatIds.length === 0
     ) {
-      // alert: popup thông báo nhanh cho user
       alert('Thiếu thông tin vé, vui lòng chọn lại vé từ Dashboard.')
-
-      // chuyển về /dashboard để user chọn lại vé
       navigate('/dashboard')
-      return // dừng hàm tại đây
+      return
     }
 
     // ===== BƯỚC 2: KIỂM TRA ĐĂNG NHẬP =====
-
-    /**
-     * Lấy userId từ object user:
-     * - Một số backend trả user.userId
-     * - Một số backend trả user.id
-     * -> dùng ?? để fallback nếu userId undefined/null thì lấy id
-     */
     const userId = (user as any)?.userId ?? (user as any)?.id
-
-    // Nếu không có userId → user chưa login hoặc context chưa có user
     if (!userId) {
       alert('Bạn cần đăng nhập trước khi thanh toán.')
-
-      // điều hướng sang trang login
       navigate('/login')
       return
     }
 
-    // ===== BƯỚC 3: TẠO URL VỚI QUERY PARAMS =====
-
-    /**
-     * URLSearchParams:
-     * - Tạo query string chuẩn: key=value&key2=value2...
-     * - Tự encode các ký tự đặc biệt (space, &, =,...)
-     *
-     * Mục tiêu: gửi dữ liệu cần thiết cho backend tạo đơn thanh toán VNPay
-     */
-    const params = new URLSearchParams({
-      userId: String(userId), // ép về string để URLSearchParams nhận
-      eventId: String(state.eventId),
-      categoryTicketId: String(state.categoryTicketId),
-
-      // seatIds: mảng id ghế → join thành chuỗi "1,2,3"
-      seatIds: state.seatIds.join(','),
-    })
-
-    /**
-     * paymentUrl:
-     * - Gọi vào endpoint backend (thông qua proxy /api)
-     * - Vite proxy sẽ chuyển /api/payment-ticket sang backend thật
-     * - Tránh CORS khi dev
-     */
-    const apiUrl = `/api/payment-ticket?${params.toString()}`
-
-    // ===== BƯỚC 4: GỌI API VÀ REDIRECT SANG VNPAY =====
+    // ===== BƯỚC 3: GỬI REQUEST MO-MO THANH TOÁN =====
+    const payload = {
+      eventId: Number(state.eventId),
+      categoryTicketId: Number(state.categoryTicketId),
+      seatIds: state.seatIds.map(id => Number(id)),
+    }
 
     try {
-      const response = await fetch(apiUrl, {
-        method: 'GET',
+      const response = await fetch('/api/payment/momo-init', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Không thể tạo link thanh toán')
+        throw new Error(errorData.message || 'Không thể tạo link thanh toán MoMo')
       }
 
       const data = await response.json()
 
-      // ✅ 0đ BYPASS: Vé miễn phí - backend đã tạo BOOKED trực tiếp, chuyển thẳng sang trang thành công
+      // 0đ BYPASS
       if (data.free === true) {
         console.log('🎉 [FREE_TICKET] Vé miễn phí! TicketIds:', data.ticketIds)
         navigate(
@@ -402,11 +365,12 @@ export default function Payment() {
         throw new Error('Backend không trả về payment URL')
       }
 
+      // Redirect sang cổng thanh toán MoMo Sandbox
       window.location.replace(data.paymentUrl)
 
     } catch (error: any) {
-      console.error('Payment error:', error)
-      alert(error.message || 'Có lỗi xảy ra khi tạo thanh toán. Vui lòng thử lại.')
+      console.error('MoMo payment error:', error)
+      alert(error.message || 'Có lỗi xảy ra khi tạo thanh toán MoMo. Vui lòng thử lại.')
     }
   }
 
@@ -937,7 +901,7 @@ export default function Payment() {
               disabled={isEventExpired || checkingEventTime}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
             >
-              <option value="vnpay">VNPay (Internet Banking / Thẻ)</option>
+              <option value="momo">Ví điện tử MoMo</option>
               <option value="wallet">Wallet (Ví nội bộ)</option>
               <option value="bank_transfer">Chuyển khoản Ngân hàng (VietQR / SePay)</option>
             </select>
@@ -983,7 +947,7 @@ export default function Payment() {
                     <p className="mt-1">Thiếu: <span className="font-bold text-amber-900">{insufficientAmount.toLocaleString('vi-VN')} đ</span></p>
                   </div>
                   <p className="mt-3 text-sm text-amber-700">
-                    💡 Vui lòng sử dụng <span className="font-semibold">VNPay</span> để thanh toán
+                    💡 Vui lòng sử dụng <span className="font-semibold">Ví điện tử MoMo</span> để thanh toán
                   </p>
                 </div>
               </div>
@@ -998,8 +962,8 @@ export default function Payment() {
           <button
             type="button"
             onClick={
-              paymentMethod === 'vnpay'
-                ? handlePay
+              paymentMethod === 'momo'
+                ? handleMoMoPay
                 : paymentMethod === 'wallet'
                   ? handleWalletPay
                   : handleBankTransferPay
@@ -1025,8 +989,8 @@ export default function Payment() {
                 ? 'Đang xử lý...'
                 : isEventExpired
                   ? 'Ngừng bán vé'
-                  : paymentMethod === 'vnpay'
-                    ? 'Thanh toán qua VNPay'
+                  : paymentMethod === 'momo'
+                    ? 'Thanh toán qua ví MoMo'
                     : paymentMethod === 'wallet'
                       ? 'Thanh toán bằng Wallet'
                       : 'Thanh toán chuyển khoản'}
@@ -1039,8 +1003,8 @@ export default function Payment() {
               <>Sự kiện đã bắt đầu. Vui lòng quay lại trang chủ để xem các sự kiện khác.</>
             ) : checkingEventTime ? (
               <>Đang kiểm tra trạng thái sự kiện...</>
-            ) : paymentMethod === 'vnpay' ? (
-              <>Khi bấm "Thanh toán qua VNPay", bạn sẽ được chuyển sang cổng thanh toán VNPay để hoàn tất giao dịch.</>
+            ) : paymentMethod === 'momo' ? (
+              <>Khi bấm "Thanh toán qua ví MoMo", bạn sẽ được chuyển sang cổng thanh toán MoMo để hoàn tất giao dịch.</>
             ) : paymentMethod === 'wallet' ? (
               <>Khi bấm "Thanh toán bằng Wallet", hệ thống sẽ trừ tiền trong ví và chuyển bạn tới trang xác nhận.</>
             ) : (
@@ -1122,8 +1086,8 @@ export default function Payment() {
         onClose={() => setShowErrorModal(false)}
         onRetryWithVNPay={() => {
           setShowErrorModal(false)
-          setPaymentMethod('vnpay')
-          setTimeout(() => handlePay(), 100)
+          setPaymentMethod('momo')
+          setTimeout(() => handleMoMoPay(), 100)
         }}
         onReturnToSeats={() => {
           setShowErrorModal(false)
