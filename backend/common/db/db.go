@@ -16,18 +16,26 @@ import (
 
 var db *sql.DB
 
-// isLocal returns true when running outside AWS Lambda (local development)
+// isLocal returns true when running outside AWS Lambda and outside Render (local development)
 func isLocal() bool {
-	return os.Getenv("AWS_LAMBDA_FUNCTION_NAME") == ""
+	return os.Getenv("AWS_LAMBDA_FUNCTION_NAME") == "" && os.Getenv("RENDER") != "true"
 }
 
 // applyConnectionPool sets connection pool limits appropriate for the runtime.
 // Local: generous limits for concurrent local services.
 // Render Free Tier / AWS Lambda: conservative limits to protect shared DB from connection storms.
 func applyConnectionPool(sqlDB *sql.DB) {
-	// Increased pool limits to prevent connection pool exhaustion/starvation during concurrent API compositions
-	sqlDB.SetMaxOpenConns(25)
-	sqlDB.SetMaxIdleConns(10)
+	if isLocal() {
+		sqlDB.SetMaxOpenConns(25)
+		sqlDB.SetMaxIdleConns(10)
+	} else {
+		// Render / AWS Lambda: Limit each microservice to at most 4 concurrent open connections.
+		// Since there are 6 microservices running in the same Docker container, this keeps the total
+		// concurrent connections under 24, preventing connection exhaustion ("too many clients")
+		// on free-tier PostgreSQL databases (which typically limit connections to 60 or less).
+		sqlDB.SetMaxOpenConns(4)
+		sqlDB.SetMaxIdleConns(2)
+	}
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 }
 
