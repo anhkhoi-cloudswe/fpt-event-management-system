@@ -1637,6 +1637,10 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 		requests = append(requests, req)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating event requests: %w", err)
+	}
+
 	log.Printf("[GetMyEventRequests] Returned %d requests for requesterID=%d", len(requests), requesterID)
 	return requests, rows.Err()
 }
@@ -1736,6 +1740,10 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error iterating active event requests: %w", err)
 	}
 
 	// Get total count
@@ -1853,6 +1861,10 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 		requests = append(requests, req)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error iterating archived event requests: %w", err)
+	}
+
 	// Get total count
 	countQuery := `
 		SELECT COUNT(*) 
@@ -1960,6 +1972,10 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating pending event requests: %w", err)
 	}
 
 	return requests, rows.Err()
@@ -2547,7 +2563,9 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 			if err != nil && err != sql.ErrNoRows {
 				log.Printf("[UpdateEventDetails] Warning: failed to fetch old tickets: %v", err)
 			}
-			defer oldTicketRows.Close()
+			if oldTicketRows != nil {
+				defer oldTicketRows.Close()
+			}
 
 			// Build map of old prices
 			oldPrices := make(map[string]float64)
