@@ -725,8 +725,8 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 	fmt.Printf("[CreateMoMoPaymentURL] Called - userID=%d, eventID=%d, seatIDs=%v\n", userID, eventID, seatIDs)
 
 	partnerCode := os.Getenv("MOMO_PARTNER_CODE")
-	if partnerCode == "" || partnerCode == "MOMO" {
-		partnerCode = "MOMOBKUN20180810"
+	if partnerCode == "" {
+		partnerCode = "MOMO"
 	}
 	accessKey := os.Getenv("MOMO_ACCESS_KEY")
 	if accessKey == "" {
