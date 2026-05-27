@@ -703,6 +703,7 @@ func computeMoMoSignature(secretKey, accessKey string, amount int64, extraData, 
 		"accessKey=%s&amount=%d&extraData=%s&ipnUrl=%s&orderId=%s&orderInfo=%s&partnerCode=%s&redirectUrl=%s&requestId=%s&requestType=%s",
 		accessKey, amount, extraData, ipnUrl, orderId, orderInfo, partnerCode, redirectUrl, requestId, requestType,
 	)
+	fmt.Printf("[MoMo Signature] Raw String: %s\n", rawSignature)
 	h := hmac.New(sha256.New, []byte(secretKey))
 	h.Write([]byte(rawSignature))
 	return hex.EncodeToString(h.Sum(nil))
@@ -974,6 +975,7 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 		r.cleanupMoMoPendingOrder(billID)
 		return "", err
 	}
+	fmt.Printf("[MoMo API Request] Body: %s\n", string(reqBody))
 
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 	resp, err := httpClient.Post("https://test-payment.momo.vn/v2/gateway/api/create", "application/json", bytes.NewBuffer(reqBody))
