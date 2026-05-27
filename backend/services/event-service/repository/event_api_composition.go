@@ -923,7 +923,7 @@ func (r *EventRepository) GetMyEventRequestsComposed(ctx context.Context, reques
 	}
 
 	log.Printf("[API_COMPOSITION] ✅ GetMyEventRequests: count=%d", len(requests))
-	return requests, rows.Err()
+	return requests, nil
 }
 
 // GetMyActiveEventRequestsComposed - Active requests với API enrichment
@@ -1017,7 +1017,7 @@ func (r *EventRepository) GetMyActiveEventRequestsComposed(ctx context.Context, 
 		return nil, 0, fmt.Errorf("failed to get active request count: %w", err)
 	}
 
-	return requests, total, rows.Err()
+	return requests, total, nil
 }
 
 // GetMyArchivedEventRequestsComposed - Archived requests với API enrichment
@@ -1113,7 +1113,7 @@ func (r *EventRepository) GetMyArchivedEventRequestsComposed(ctx context.Context
 		return nil, 0, fmt.Errorf("failed to get archived request count: %w", err)
 	}
 
-	return requests, total, rows.Err()
+	return requests, total, nil
 }
 
 // GetPendingEventRequestsComposed - Staff view requests với API enrichment
@@ -1187,7 +1187,7 @@ func (r *EventRepository) GetPendingEventRequestsComposed(ctx context.Context) (
 	}
 
 	log.Printf("[API_COMPOSITION] ✅ GetPendingEventRequests: count=%d", len(requests))
-	return requests, rows.Err()
+	return requests, nil
 }
 
 // GetEventRequestByIDComposed - Single request với API enrichment
