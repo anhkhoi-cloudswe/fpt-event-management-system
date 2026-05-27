@@ -915,6 +915,7 @@ func (r *EventRepository) GetMyEventRequestsComposed(ctx context.Context, reques
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating event requests: %w", err)
 	}
+	rows.Close() // Close rows early to release DB connection back to pool before internal API calls
 
 	// Enrich with API calls
 	if err := r.enrichEventRequestsWithAPI(ctx, requests); err != nil {
@@ -995,6 +996,7 @@ func (r *EventRepository) GetMyActiveEventRequestsComposed(ctx context.Context, 
 	if err = rows.Err(); err != nil {
 		return nil, 0, fmt.Errorf("error iterating active event requests: %w", err)
 	}
+	rows.Close() // Close rows early to release DB connection back to pool before internal API calls
 
 	// Enrich with API calls (Users + Venue)
 	if err := r.enrichEventRequestsWithAPI(ctx, requests); err != nil {
@@ -1089,6 +1091,7 @@ func (r *EventRepository) GetMyArchivedEventRequestsComposed(ctx context.Context
 	if err = rows.Err(); err != nil {
 		return nil, 0, fmt.Errorf("error iterating archived event requests: %w", err)
 	}
+	rows.Close() // Close rows early to release DB connection back to pool before internal API calls
 
 	// Enrich with API calls
 	if err := r.enrichEventRequestsWithAPI(ctx, requests); err != nil {
@@ -1176,6 +1179,7 @@ func (r *EventRepository) GetPendingEventRequestsComposed(ctx context.Context) (
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating pending event requests: %w", err)
 	}
+	rows.Close() // Close rows early to release DB connection back to pool before internal API calls
 
 	// Enrich with API calls
 	if err := r.enrichEventRequestsWithAPI(ctx, requests); err != nil {
