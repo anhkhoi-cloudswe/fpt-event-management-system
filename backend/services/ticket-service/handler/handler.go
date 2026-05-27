@@ -397,7 +397,13 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 		redirectURL = buildFrontendRedirectURL(frontendBaseURL, "/payment-success")
 	}
 
-	payURL, err := h.useCase.CreateMoMoPaymentURL(ctx, userID, initReq.EventID, initReq.CategoryTicketID, initReq.SeatIDs, redirectURL)
+	ipnURL := os.Getenv("MOMO_IPN_URL")
+	if ipnURL == "" {
+		backendBaseURL := buildFrontendBaseURLFromRequest(request)
+		ipnURL = strings.TrimRight(backendBaseURL, "/") + "/api/payment/momo-webhook"
+	}
+
+	payURL, err := h.useCase.CreateMoMoPaymentURL(ctx, userID, initReq.EventID, initReq.CategoryTicketID, initReq.SeatIDs, redirectURL, ipnURL)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "ticket_event_id_seat_id_key") || strings.Contains(err.Error(), "trạng thái xử lý thanh toán") {
 			return events.APIGatewayProxyResponse{

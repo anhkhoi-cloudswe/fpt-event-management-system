@@ -719,14 +719,17 @@ func computeMoMoIPNSignature(secretKey, accessKey string, amount int64, extraDat
 }
 
 // CreateMoMoPaymentURL - Tạo URL thanh toán MoMo cho nhiều ghế
-func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, redirectURL string) (string, error) {
+func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, redirectURL, ipnURL string) (string, error) {
 	log := logger.Default().WithContext(ctx)
 	fmt.Printf("[CreateMoMoPaymentURL] Called - userID=%d, eventID=%d, seatIDs=%v\n", userID, eventID, seatIDs)
 
 	partnerCode := os.Getenv("MOMO_PARTNER_CODE")
 	accessKey := os.Getenv("MOMO_ACCESS_KEY")
 	secretKey := os.Getenv("MOMO_SECRET_KEY")
-	ipnURL := os.Getenv("MOMO_IPN_URL")
+
+	if ipnURL == "" {
+		ipnURL = os.Getenv("MOMO_IPN_URL")
+	}
 
 	if partnerCode == "" || accessKey == "" || secretKey == "" {
 		return "", apperrors.BusinessError("MoMo Sandbox integration is not fully configured (missing env vars)")

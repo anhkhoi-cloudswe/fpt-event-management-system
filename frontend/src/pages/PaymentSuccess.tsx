@@ -77,12 +77,27 @@ export default function PaymentSuccess() {
      * - ticketId=12 (1 vé)
      */
     const ticketsParam = params.get('ticketIds') ?? params.get('ticketId')
-    const method = params.get('method') ?? 'vnpay'
+    const method = params.get('method') ?? 'momo'
     const emailFailedParam = params.get('emailFailed')
 
-    // Cập nhật state để UI hiển thị "Mã vé: ..."
-    setTicketIds(ticketsParam)
-    setPaymentMethod(method)
+    // Detect MoMo Redirect Query Parameters
+    const resultCode = params.get('resultCode')
+    const momoOrderId = params.get('orderId')
+
+    if (resultCode !== null) {
+      if (resultCode === '0') {
+        setPaymentMethod('momo')
+        setTicketIds(momoOrderId ? `MOMO_${momoOrderId}` : 'MOMO')
+      } else {
+        const errorMsg = params.get('message') || 'Thanh toán MoMo thất bại'
+        navigate(`/dashboard/payment/failed?status=failed&method=momo&reason=${encodeURIComponent(errorMsg)}`, { replace: true })
+        return
+      }
+    } else {
+      setTicketIds(ticketsParam)
+      setPaymentMethod(method)
+    }
+
     if (emailFailedParam === '1') {
       setEmailFailed(true)
     }
@@ -173,12 +188,17 @@ export default function PaymentSuccess() {
                 <Wallet className="w-4 h-4 text-purple-600" />
                 <span className="text-sm font-semibold text-purple-600">Thanh toán bằng Ví</span>
               </>
+            ) : paymentMethod === 'bank_transfer' ? (
+              <>
+                <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                </svg>
+                <span className="text-sm font-semibold text-blue-600">Chuyển khoản Ngân hàng</span>
+              </>
             ) : (
               <>
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 10h18M7 15h0m4 0h0m-7 4h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span className="text-sm font-semibold text-blue-600">VNPay</span>
+                <span className="w-4 h-4 rounded bg-pink-600 flex items-center justify-center text-[10px] font-bold text-white mr-1">M</span>
+                <span className="text-sm font-semibold text-pink-600">Ví điện tử MoMo</span>
               </>
             )}
           </div>
