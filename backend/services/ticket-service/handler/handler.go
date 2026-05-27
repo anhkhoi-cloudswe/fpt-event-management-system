@@ -1025,10 +1025,10 @@ func (h *TicketHandler) HandleSePayWebhook(ctx context.Context, request events.A
 	}
 
 	type SePayWebhookPayload struct {
-		Gateway    string  `json:"gateway"`
-		Amount     float64 `json:"amount"`
-		Content    string  `json:"content"`
-		TransferAt string  `json:"transfer_at"`
+		Gateway        string  `json:"gateway"`
+		TransferAmount float64 `json:"transferAmount"`
+		Content        string  `json:"content"`
+		TransferAt     string  `json:"transfer_at"`
 	}
 
 	var payload SePayWebhookPayload
@@ -1037,8 +1037,8 @@ func (h *TicketHandler) HandleSePayWebhook(ctx context.Context, request events.A
 		return createMessageResponse(http.StatusBadRequest, "Invalid JSON body: "+err.Error())
 	}
 
-	// Call usecase to process the webhook
-	result, err := h.useCase.ProcessSePayWebhook(ctx, payload.Gateway, payload.Amount, payload.Content, payload.TransferAt)
+	// Call usecase to process the webhook with parsed TransferAmount
+	result, err := h.useCase.ProcessSePayWebhook(ctx, payload.Gateway, payload.TransferAmount, payload.Content, payload.TransferAt)
 	if err != nil {
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
