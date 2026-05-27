@@ -1601,8 +1601,8 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 			&venueName, &areaName, &floor, &areaCapacity,
 		)
 		if err != nil {
-			log.Printf("[GetMyEventRequests] Scan error: %v", err)
-			return nil, fmt.Errorf("failed to scan event request: %w", err)
+			log.Printf("Skip corrupted row due to scan error: %v", err)
+			continue
 		}
 
 		// Convert sql.Null to pointers
@@ -1704,7 +1704,8 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 			&venueName, &areaName, &floor, &areaCapacity,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("failed to scan event request: %w", err)
+			log.Printf("Skip corrupted row due to scan error: %v", err)
+			continue
 		}
 
 		// Convert sql.Null to pointers
@@ -1823,7 +1824,8 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 			&venueName, &areaName, &floor, &areaCapacity,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("failed to scan event request: %w", err)
+			log.Printf("Skip corrupted row due to scan error: %v", err)
+			continue
 		}
 
 		// Convert sql.Null to pointers
@@ -1939,7 +1941,8 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 			&venueName, &areaName, &floor, &areaCapacity,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan event request: %w", err)
+			log.Printf("Skip corrupted row due to scan error: %v", err)
+			continue
 		}
 
 		// Convert sql.Null to pointers
