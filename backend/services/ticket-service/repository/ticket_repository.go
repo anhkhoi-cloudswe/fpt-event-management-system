@@ -941,7 +941,7 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 
 	orderID := strconv.FormatInt(billID, 10)
 	requestId := orderID + "_" + strconv.FormatInt(time.Now().UnixMilli(), 10)
-	orderInfo := fmt.Sprintf("Thanh toan ve su kien %s - %d ghe", eventTitle, len(seatIDs))
+	orderInfo := "FPTEventTicketPayment"
 	requestType := "captureWallet"
 	extraData := ""
 
