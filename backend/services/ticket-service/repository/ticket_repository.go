@@ -725,15 +725,20 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 	fmt.Printf("[CreateMoMoPaymentURL] Called - userID=%d, eventID=%d, seatIDs=%v\n", userID, eventID, seatIDs)
 
 	partnerCode := os.Getenv("MOMO_PARTNER_CODE")
+	if partnerCode == "" || partnerCode == "MOMO" {
+		partnerCode = "MOMOBKUN20180810"
+	}
 	accessKey := os.Getenv("MOMO_ACCESS_KEY")
+	if accessKey == "" {
+		accessKey = "F8B64A7481568"
+	}
 	secretKey := os.Getenv("MOMO_SECRET_KEY")
+	if secretKey == "" {
+		secretKey = "g2wHU7HzgDwCDNd61STW0vrlbbCgXf6S"
+	}
 
 	if ipnURL == "" {
 		ipnURL = os.Getenv("MOMO_IPN_URL")
-	}
-
-	if partnerCode == "" || accessKey == "" || secretKey == "" {
-		return "", apperrors.BusinessError("MoMo Sandbox integration is not fully configured (missing env vars)")
 	}
 
 	if len(seatIDs) == 0 {
@@ -1110,7 +1115,13 @@ func (r *TicketRepository) ProcessMoMoWebhook(ctx context.Context, payload map[s
 	}
 
 	accessKey := os.Getenv("MOMO_ACCESS_KEY")
+	if accessKey == "" {
+		accessKey = "F8B64A7481568"
+	}
 	secretKey := os.Getenv("MOMO_SECRET_KEY")
+	if secretKey == "" {
+		secretKey = "g2wHU7HzgDwCDNd61STW0vrlbbCgXf6S"
+	}
 
 	if signature != "" && secretKey != "" && accessKey != "" {
 		expectedSig := computeMoMoIPNSignature(
