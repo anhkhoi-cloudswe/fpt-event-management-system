@@ -25,14 +25,9 @@ func isLocal() bool {
 // Local: generous limits for concurrent local services.
 // Render Free Tier / AWS Lambda: conservative limits to protect shared DB from connection storms.
 func applyConnectionPool(sqlDB *sql.DB) {
-	if isLocal() {
-		sqlDB.SetMaxOpenConns(25)
-		sqlDB.SetMaxIdleConns(5)
-	} else {
-		// Render Free Tier / Lambda: keep connections low to stay within shared DB limits.
-		sqlDB.SetMaxOpenConns(3)
-		sqlDB.SetMaxIdleConns(1)
-	}
+	// Increased pool limits to prevent connection pool exhaustion/starvation during concurrent API compositions
+	sqlDB.SetMaxOpenConns(25)
+	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 }
 
@@ -377,9 +372,9 @@ func InitServiceDB(serviceName string) (*sql.DB, error) {
 	}
 
 	if isLocal() {
-		logger.Info("Service-specific DB pool initialized", "service", serviceName, "host", safeHost, "max_open", 25, "max_idle", 5)
+		logger.Info("Service-specific DB pool initialized", "service", serviceName, "host", safeHost, "max_open", 25, "max_idle", 10)
 	} else {
-		logger.Info("Service-specific DB pool initialized", "service", serviceName, "host", safeHost, "max_open", 3, "max_idle", 1, "mode", "render")
+		logger.Info("Service-specific DB pool initialized", "service", serviceName, "host", safeHost, "max_open", 25, "max_idle", 10, "mode", "render")
 	}
 
 	return serviceDB, nil
