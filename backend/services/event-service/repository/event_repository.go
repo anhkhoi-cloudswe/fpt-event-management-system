@@ -82,8 +82,8 @@ func formatNullTimeToVNRFC3339(value sql.NullTime) *string {
 }
 
 func setEventRequestTimeFields(req *models.EventRequest, preferredStart, preferredEnd, createdAt, processedAt sql.NullTime) {
-	req.PreferredStartTime = formatNullTimeToVNRFC3339(preferredStart)
-	req.PreferredEndTime = formatNullTimeToVNRFC3339(preferredEnd)
+	req.PreferredStartTime = formatNullTimeToWallClockRFC3339(preferredStart)
+	req.PreferredEndTime = formatNullTimeToWallClockRFC3339(preferredEnd)
 	req.CreatedAt = formatNullTimeToVNRFC3339(createdAt)
 	req.ProcessedAt = formatNullTimeToVNRFC3339(processedAt)
 }
