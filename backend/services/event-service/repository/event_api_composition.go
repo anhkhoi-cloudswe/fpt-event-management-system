@@ -895,7 +895,8 @@ func (r *EventRepository) GetMyEventRequestsComposed(ctx context.Context, reques
 			&createdEventID,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan event request: %w", err)
+			log.Printf("Skip corrupted row due to scan error: %v", err)
+			continue
 		}
 
 		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
@@ -971,7 +972,8 @@ func (r *EventRepository) GetMyActiveEventRequestsComposed(ctx context.Context, 
 			&createdEventID, &eventStatus,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("failed to scan event request: %w", err)
+			log.Printf("Skip corrupted row due to scan error: %v", err)
+			continue
 		}
 
 		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
@@ -1064,7 +1066,8 @@ func (r *EventRepository) GetMyArchivedEventRequestsComposed(ctx context.Context
 			&createdEventID, &eventStatus,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("failed to scan event request: %w", err)
+			log.Printf("Skip corrupted row due to scan error: %v", err)
+			continue
 		}
 
 		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
@@ -1153,7 +1156,8 @@ func (r *EventRepository) GetPendingEventRequestsComposed(ctx context.Context) (
 			&createdEventID,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan event request: %w", err)
+			log.Printf("Skip corrupted row due to scan error: %v", err)
+			continue
 		}
 
 		setEventRequestTimeFields(&req, preferredStartTime, preferredEndTime, createdAt, processedAt)
