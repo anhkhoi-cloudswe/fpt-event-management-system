@@ -911,6 +911,10 @@ func (r *EventRepository) GetMyEventRequestsComposed(ctx context.Context, reques
 		requests = append(requests, req)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating event requests: %w", err)
+	}
+
 	// Enrich with API calls
 	if err := r.enrichEventRequestsWithAPI(ctx, requests); err != nil {
 		log.Printf("[API_COMPOSITION] ⚠️ enrichEventRequestsWithAPI failed: %v", err)
@@ -984,6 +988,10 @@ func (r *EventRepository) GetMyActiveEventRequestsComposed(ctx context.Context, 
 		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error iterating active event requests: %w", err)
 	}
 
 	// Enrich with API calls (Users + Venue)
@@ -1075,6 +1083,10 @@ func (r *EventRepository) GetMyArchivedEventRequestsComposed(ctx context.Context
 		requests = append(requests, req)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error iterating archived event requests: %w", err)
+	}
+
 	// Enrich with API calls
 	if err := r.enrichEventRequestsWithAPI(ctx, requests); err != nil {
 		log.Printf("[API_COMPOSITION] ⚠️ enrichEventRequestsWithAPI failed: %v", err)
@@ -1155,6 +1167,10 @@ func (r *EventRepository) GetPendingEventRequestsComposed(ctx context.Context) (
 		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating pending event requests: %w", err)
 	}
 
 	// Enrich with API calls
