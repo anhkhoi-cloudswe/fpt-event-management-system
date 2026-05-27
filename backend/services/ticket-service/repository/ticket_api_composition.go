@@ -105,217 +105,8 @@ func (r *TicketRepository) GetTicketsByUserIDComposed(ctx context.Context, userI
 		return []models.MyTicketResponse{}, nil
 	}
 
-	// Thu thập tất cả ID cần look up
-	eventIDs := map[int]bool{}
-	categoryIDs := map[int]bool{}
-	seatIDs := map[int]bool{}
-	userIDs := map[int]bool{}
-
-	for _, t := range ticketRows {
-		eventIDs[t.EventID] = true
-		categoryIDs[t.CategoryTicketID] = true
-		if t.SeatID != nil {
-			seatIDs[*t.SeatID] = true
-		}
-		userIDs[t.UserID] = true
-	}
-
-	// ─── BƯỚC 2: Gọi API song song ───
-	var (
-		eventMap    = map[int]*eventDetailResponse{}
-		categoryMap = map[int]*categoryTicketInfo{}
-		seatMap     = map[int]*seatInfo{}
-		userMap     = map[int]*userInfo{}
-
-		wg      sync.WaitGroup
-		mu      sync.Mutex
-		errChan = make(chan error, 4)
-	)
-
-	// 2a. Gọi event-lambda: lấy thông tin sự kiện + venue (đã có sẵn trong event detail)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for eventID := range eventIDs {
-			var detail eventDetailResponse
-			baseURL := utils.GetEventServiceURL() + "/api/events/detail"
-			params := map[string]string{"id": strconv.Itoa(eventID)}
-
-			statusCode, err := client.GetJSON(ctx, baseURL, params, &detail)
-			if err != nil {
-				log.Warn("Failed to fetch event %d: %v", eventID, err)
-				continue
-			}
-			if statusCode == 200 {
-				mu.Lock()
-				detail.EventID = eventID
-				eventMap[eventID] = &detail
-				mu.Unlock()
-			}
-		}
-	}()
-
-	// 2b. Gọi event-lambda: lấy thông tin category tickets (theo từng event)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		// Lấy category tickets theo event
-		for eventID := range eventIDs {
-			var categories []categoryTicketInfo
-			baseURL := utils.GetTicketServiceURL() + "/api/category-tickets"
-			params := map[string]string{"eventId": strconv.Itoa(eventID)}
-
-			statusCode, err := client.GetJSON(ctx, baseURL, params, &categories)
-			if err != nil {
-				log.Warn("Failed to fetch categories for event %d: %v", eventID, err)
-				continue
-			}
-			if statusCode == 200 {
-				mu.Lock()
-				for i := range categories {
-					cat := categories[i]
-					categoryMap[cat.CategoryTicketID] = &cat
-				}
-				mu.Unlock()
-			}
-		}
-	}()
-
-	// 2c. Gọi venue-lambda: lấy thông tin seats
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if len(seatIDs) == 0 {
-			return
-		}
-		// Lấy seats theo event
-		for eventID := range eventIDs {
-			var response struct {
-				Seats []seatInfo `json:"seats"`
-			}
-			baseURL := utils.GetVenueServiceURL() + "/api/seats"
-			params := map[string]string{"eventId": strconv.Itoa(eventID)}
-
-			statusCode, err := client.GetJSON(ctx, baseURL, params, &response)
-			if err != nil {
-				log.Warn("Failed to fetch seats for event %d: %v", eventID, err)
-				continue
-			}
-			if statusCode == 200 {
-				mu.Lock()
-				for i := range response.Seats {
-					s := response.Seats[i]
-					seatMap[s.SeatID] = &s
-				}
-				mu.Unlock()
-			}
-		}
-	}()
-
-	// 2d. Lấy thông tin user (buyer name)
-	// API /api/users/staff-organizer trả về object {staffList:[{id,fullName}...], organizerList:[...]}
-	// KHÔNG phải flat array — phải unmarshal đúng kiểu.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		// Gọi API 1 lần cho tất cả uid (API trả toàn bộ danh sách)
-		var staffOrgResp struct {
-			StaffList []struct {
-				ID       int    `json:"id"`
-				FullName string `json:"fullName"`
-			} `json:"staffList"`
-			OrganizerList []struct {
-				ID       int    `json:"id"`
-				FullName string `json:"fullName"`
-			} `json:"organizerList"`
-		}
-		baseURL := utils.GetAuthServiceURL() + "/api/users/staff-organizer"
-		statusCode, err := client.GetJSON(ctx, baseURL, nil, &staffOrgResp)
-		if err != nil || statusCode != 200 {
-			log.Warn("Failed to fetch staff-organizer list (status=%d): %v — falling back to DB", statusCode, err)
-			// Fallback per-uid: query DB trực tiếp
-			for uid := range userIDs {
-				name, dbErr := r.getUserNameByID(ctx, uid)
-				if dbErr == nil && name != "" {
-					mu.Lock()
-					userMap[uid] = &userInfo{UserID: uid, FullName: name}
-					mu.Unlock()
-				}
-			}
-		} else {
-			mu.Lock()
-			for _, u := range staffOrgResp.StaffList {
-				userMap[u.ID] = &userInfo{UserID: u.ID, FullName: u.FullName}
-			}
-			for _, u := range staffOrgResp.OrganizerList {
-				userMap[u.ID] = &userInfo{UserID: u.ID, FullName: u.FullName}
-			}
-			mu.Unlock()
-		}
-	}()
-
-	wg.Wait()
-	close(errChan)
-
-	// ─── BƯỚC 3: Data Mapping → MyTicketResponse ───
-	tickets := make([]models.MyTicketResponse, 0, len(ticketRows))
-
-	for _, row := range ticketRows {
-		ticket := models.MyTicketResponse{
-			TicketID: row.TicketID,
-			Status:   row.Status,
-		}
-
-		// QR Code
-		if row.QRCodeValue != nil {
-			ticket.TicketCode = row.QRCodeValue
-		}
-
-		// Check-in/out times
-		if row.CheckinTime != nil && row.CheckinTime.Valid {
-			ticket.CheckInTime = &row.CheckinTime.Time
-		}
-		if row.CheckOutTime != nil && row.CheckOutTime.Valid {
-			ticket.CheckOutTime = &row.CheckOutTime.Time
-		}
-
-		// Event info (từ event-lambda)
-		if evt, ok := eventMap[row.EventID]; ok {
-			ticket.EventName = &evt.Title
-			if evt.StartTime != "" {
-				if parsed, err := parseTime(evt.StartTime); err == nil {
-					ticket.StartTime = &parsed
-					ticket.PurchaseDate = &parsed // giữ nguyên behavior cũ: purchase_date = start_time
-				}
-			}
-			// Venue name đã có sẵn trong event detail response
-			if evt.Venue != nil {
-				ticket.VenueName = evt.Venue
-			}
-		}
-
-		// Category ticket info (tên hạng vé + giá)
-		if cat, ok := categoryMap[row.CategoryTicketID]; ok {
-			ticket.Category = &cat.Name
-			ticket.CategoryPrice = &cat.Price
-		}
-
-		// Seat info
-		if row.SeatID != nil {
-			if seat, ok := seatMap[*row.SeatID]; ok {
-				ticket.SeatCode = &seat.SeatCode
-			}
-		}
-
-		// Buyer name
-		if user, ok := userMap[row.UserID]; ok {
-			ticket.BuyerName = &user.FullName
-		}
-
-		tickets = append(tickets, ticket)
-	}
-
-	return tickets, nil
+	// ─── BƯỚC 2: Gọi API song song (reuse enrichTicketRows) ───
+	return r.enrichTicketRows(ctx, client, log, ticketRows)
 }
 
 // ============================================================
@@ -769,24 +560,38 @@ func (r *TicketRepository) enrichTicketRows(ctx context.Context, client *utils.I
 		}
 	}()
 
-	// Users — API trả về object {staffList:[{id,...}], organizerList:[...]} không phải flat array
+	// Users — Gọi /internal/user/profiles?userIds=1,2,3 (batch lookup) để lấy tên của học sinh/khách hàng mua vé
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var staffOrgResp struct {
-			StaffList []struct {
-				ID       int    `json:"id"`
-				FullName string `json:"fullName"`
-			} `json:"staffList"`
-			OrganizerList []struct {
-				ID       int    `json:"id"`
-				FullName string `json:"fullName"`
-			} `json:"organizerList"`
+		if len(userIDs) == 0 {
+			return
 		}
-		baseURL := utils.GetAuthServiceURL() + "/api/users/staff-organizer"
-		statusCode, err := client.GetJSON(ctx, baseURL, nil, &staffOrgResp)
+		// Thu thập các user ID duy nhất
+		seen := make(map[int]bool)
+		var uniqueIDs []string
+		for uid := range userIDs {
+			if uid > 0 && !seen[uid] {
+				seen[uid] = true
+				uniqueIDs = append(uniqueIDs, strconv.Itoa(uid))
+			}
+		}
+		if len(uniqueIDs) == 0 {
+			return
+		}
+
+		idsStr := strings.Join(uniqueIDs, ",")
+		var profiles []struct {
+			UserID   int    `json:"userId"`
+			FullName string `json:"fullName"`
+		}
+		baseURL := utils.GetAuthServiceURL() + "/internal/user/profiles"
+		statusCode, err := client.GetJSON(ctx, baseURL, map[string]string{
+			"userIds": idsStr,
+		}, &profiles)
+
 		if err != nil || statusCode != 200 {
-			log.Warn("Failed to fetch staff-organizer list (status=%d): %v — falling back to DB", statusCode, err)
+			log.Warn("Failed to fetch user profiles (status=%d): %v — falling back to DB", statusCode, err)
 			for uid := range userIDs {
 				name, dbErr := r.getUserNameByID(ctx, uid)
 				if dbErr == nil && name != "" {
@@ -797,11 +602,8 @@ func (r *TicketRepository) enrichTicketRows(ctx context.Context, client *utils.I
 			}
 		} else {
 			mu.Lock()
-			for _, u := range staffOrgResp.StaffList {
-				userMap[u.ID] = &userInfo{UserID: u.ID, FullName: u.FullName}
-			}
-			for _, u := range staffOrgResp.OrganizerList {
-				userMap[u.ID] = &userInfo{UserID: u.ID, FullName: u.FullName}
+			for _, u := range profiles {
+				userMap[u.UserID] = &userInfo{UserID: u.UserID, FullName: u.FullName}
 			}
 			mu.Unlock()
 		}

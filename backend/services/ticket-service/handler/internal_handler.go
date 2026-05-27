@@ -273,9 +273,9 @@ func (h *TicketInternalHandler) HandleGetTicketStats(ctx context.Context, reques
 				COUNT(DISTINCT t.ticket_id) as total_tickets,
 				COUNT(DISTINCT CASE WHEN t.checkin_time IS NOT NULL THEN t.ticket_id END) as checked_in,
 				COUNT(DISTINCT CASE WHEN t.check_out_time IS NOT NULL THEN t.ticket_id END) as checked_out,
-				COUNT(DISTINCT CASE WHEN t.status = 'BOOKED' THEN t.ticket_id END) as booked,
-				COUNT(DISTINCT CASE WHEN t.status = 'CANCELLED' THEN t.ticket_id END) as cancelled,
-				COUNT(DISTINCT CASE WHEN t.status = 'REFUNDED' THEN t.ticket_id END) as refunded,
+				COUNT(DISTINCT CASE WHEN t.status::text = 'BOOKED' THEN t.ticket_id END) as booked,
+				COUNT(DISTINCT CASE WHEN t.status::text = 'CANCELLED' THEN t.ticket_id END) as cancelled,
+				COUNT(DISTINCT CASE WHEN t.status::text = 'REFUNDED' THEN t.ticket_id END) as refunded,
 				COALESCE(SUM(ct.price), 0) as total_revenue
 			FROM Category_Ticket ct
 			LEFT JOIN Ticket t ON ct.category_ticket_id = t.category_ticket_id 
@@ -322,9 +322,9 @@ func (h *TicketInternalHandler) HandleGetTicketStats(ctx context.Context, reques
 				COUNT(DISTINCT t.ticket_id) as total_tickets,
 				COUNT(DISTINCT CASE WHEN t.checkin_time IS NOT NULL THEN t.ticket_id END) as checked_in,
 				COUNT(DISTINCT CASE WHEN t.check_out_time IS NOT NULL THEN t.ticket_id END) as checked_out,
-				COUNT(DISTINCT CASE WHEN t.status = 'BOOKED' THEN t.ticket_id END) as booked,
-				COUNT(DISTINCT CASE WHEN t.status = 'CANCELLED' THEN t.ticket_id END) as cancelled,
-				COUNT(DISTINCT CASE WHEN t.status = 'REFUNDED' THEN t.ticket_id END) as refunded,
+				COUNT(DISTINCT CASE WHEN t.status::text = 'BOOKED' THEN t.ticket_id END) as booked,
+				COUNT(DISTINCT CASE WHEN t.status::text = 'CANCELLED' THEN t.ticket_id END) as cancelled,
+				COUNT(DISTINCT CASE WHEN t.status::text = 'REFUNDED' THEN t.ticket_id END) as refunded,
 				COALESCE(SUM(ct.price), 0) as total_revenue
 			FROM Ticket t
 			INNER JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
@@ -339,9 +339,9 @@ func (h *TicketInternalHandler) HandleGetTicketStats(ctx context.Context, reques
 				COUNT(DISTINCT t.ticket_id) as total_tickets,
 				COUNT(DISTINCT CASE WHEN t.checkin_time IS NOT NULL THEN t.ticket_id END) as checked_in,
 				COUNT(DISTINCT CASE WHEN t.check_out_time IS NOT NULL THEN t.ticket_id END) as checked_out,
-				COUNT(DISTINCT CASE WHEN t.status = 'BOOKED' THEN t.ticket_id END) as booked,
-				COUNT(DISTINCT CASE WHEN t.status = 'CANCELLED' THEN t.ticket_id END) as cancelled,
-				COUNT(DISTINCT CASE WHEN t.status = 'REFUNDED' THEN t.ticket_id END) as refunded,
+				COUNT(DISTINCT CASE WHEN t.status::text = 'BOOKED' THEN t.ticket_id END) as booked,
+				COUNT(DISTINCT CASE WHEN t.status::text = 'CANCELLED' THEN t.ticket_id END) as cancelled,
+				COUNT(DISTINCT CASE WHEN t.status::text = 'REFUNDED' THEN t.ticket_id END) as refunded,
 				COALESCE(SUM(ct.price), 0) as total_revenue
 			FROM Ticket t
 			INNER JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
