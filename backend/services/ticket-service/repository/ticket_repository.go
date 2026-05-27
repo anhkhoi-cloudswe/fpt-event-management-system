@@ -1044,6 +1044,76 @@ func (r *TicketRepository) ProcessVNPayCallback(ctx context.Context, amount, res
 
 	log.Info("Parsed txnRef", "user_id", userID, "event_id", eventID, "ticket_ids", pendingTicketIDs)
 
+	// ----------------------------------------------------
+	// VNPay IPN DB Verification Checks (Order, Status, Amount)
+	// ----------------------------------------------------
+	var expectedAmount float64
+	var alreadyConfirmed bool = true // Assume already confirmed unless we find PENDING tickets
+	var anyTicketFound bool = false
+
+	for _, ticketID := range pendingTicketIDs {
+		var status string
+		var price float64
+		var dbUserID int
+		var dbEventID int
+		err = r.db.QueryRowContext(ctx, `
+			SELECT t.status, COALESCE(ct.price, 0), t.user_id, t.event_id 
+			FROM Ticket t
+			JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
+			WHERE t.ticket_id = $1
+		`, ticketID).Scan(&status, &price, &dbUserID, &dbEventID)
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				log.Warn("Ticket ID from txnRef not found in DB", "ticket_id", ticketID)
+				continue
+			}
+			return "Database error checking ticket status", err
+		}
+
+		anyTicketFound = true
+		
+		// Verify if the user/event matches the transaction reference to prevent spoofing/tampering
+		if dbUserID != userID || dbEventID != eventID {
+			log.Warn("Ticket user/event mismatch in txnRef", "ticket_id", ticketID, "db_user", dbUserID, "ref_user", userID)
+			return "Data tampering detected", fmt.Errorf("vnpay_err:order_not_found")
+		}
+
+		expectedAmount += price
+
+		if status == "PENDING" {
+			alreadyConfirmed = false
+		}
+	}
+
+	// 1. Check Order Existence
+	if !anyTicketFound {
+		log.Warn("Order not found (no matching tickets found in DB)", "txn_ref", txnRef)
+		return "Order not found", fmt.Errorf("vnpay_err:order_not_found")
+	}
+
+	// 2. Check Order Already Confirmed
+	if alreadyConfirmed {
+		log.Info("Order already confirmed (all tickets are already BOOKED or CHECKED_IN)", "txn_ref", txnRef)
+		// Fetch bill_id from one of the tickets so we can return it to support browser redirect fallback
+		var billID int64
+		_ = r.db.QueryRowContext(ctx, "SELECT COALESCE(bill_id, 0) FROM Ticket WHERE ticket_id = $1", pendingTicketIDs[0]).Scan(&billID)
+		return fmt.Sprintf("%s|%d", ticketIDsStr, billID), fmt.Errorf("vnpay_err:already_confirmed")
+	}
+
+	// 3. Check Amount Validity
+	amountFromVNPay, err := strconv.ParseFloat(amount, 64)
+	if err != nil {
+		return "Invalid amount format", err
+	}
+	actualAmountPaid := amountFromVNPay / 100
+
+	// Allow small rounding differences up to 1.0 VND
+	if math.Abs(actualAmountPaid - expectedAmount) >= 1.0 {
+		log.Warn("Amount mismatch", "expected", expectedAmount, "paid", actualAmountPaid)
+		return "Amount mismatch", fmt.Errorf("vnpay_err:invalid_amount")
+	}
+
 	// Check response code
 	if responseCode != "00" {
 		log.Warn("Payment failed/cancelled", "txn_ref", txnRef, "response_code", responseCode)
@@ -1094,7 +1164,7 @@ func (r *TicketRepository) ProcessVNPayCallback(ctx context.Context, amount, res
 	// ⭐ CRITICAL FIX: amount từ VNPay callback là vnp_Amount (đã nhân 100)
 	// PHẢI chia 100 trước khi lưu vào Database
 	var billAmount float64
-	amountFromVNPay, err := strconv.ParseFloat(amount, 64)
+	amountFromVNPay, err = strconv.ParseFloat(amount, 64)
 	if err != nil {
 		log.Error("[CURRENCY ERROR] Failed to parse amount from VNPay", "amount", amount, "error", err)
 		return "Invalid amount format", err

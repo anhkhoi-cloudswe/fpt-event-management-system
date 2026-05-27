@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/logger"
 	"github.com/fpt-event-services/common/utils"
+	"github.com/fpt-event-services/common/vnpay"
 	"github.com/fpt-event-services/services/ticket-service/usecase"
 )
 
@@ -307,44 +308,10 @@ func isLocalHost(host string) bool {
 }
 
 func buildDynamicReturnURL(request events.APIGatewayProxyRequest) string {
-	// ⭐ CRITICAL: Tạo dynamic return URL cho VNPay callback
-	// This allows Docker deployment ở bất kỳ đâu (localhost, LAN, AWS) mà ko cần edit .env
-
-	host := getHeaderIgnoreCase(request.Headers, "Host")
-	fmt.Printf("[buildDynamicReturnURL] Request Headers - Host: '%s'\n", host)
-
-	if host == "" {
-		// Fallback if Host header missing (should not happen with proper proxy setup)
-		fmt.Printf("[buildDynamicReturnURL] ⚠️  Host header is EMPTY - will use config fallback for ReturnURL\n")
-		return ""
-	}
-
-	// Xác định scheme (http vs https) từ X-Forwarded-Proto header
-	// X-Forwarded-Proto được set bởi API Gateway hoặc reverse proxy
-	scheme := getHeaderIgnoreCase(request.Headers, "X-Forwarded-Proto")
-	fmt.Printf("[buildDynamicReturnURL] X-Forwarded-Proto header: '%s'\n", scheme)
-
-	if scheme != "" {
-		// Parse X-Forwarded-Proto (có thể là "http,https" nếu qua nhiều proxy)
-		if commaIdx := strings.Index(scheme, ","); commaIdx >= 0 {
-			scheme = scheme[:commaIdx]
-		}
-		scheme = strings.ToLower(strings.TrimSpace(scheme))
-	}
-
-	// Fallback nếu X-Forwarded-Proto không có hoặc invalid
-	if scheme == "" || (scheme != "http" && scheme != "https") {
-		if isLocalHost(host) {
-			scheme = "http"
-			log.Debug("[buildDynamicReturnURL] No valid X-Forwarded-Proto, defaulting to http (Local Dev Mode)")
-		} else {
-			scheme = "https"
-			log.Debug("[buildDynamicReturnURL] No valid X-Forwarded-Proto, defaulting to https (Production Mode)")
-		}
-	}
-
-	returnURL := fmt.Sprintf("%s://%s/api/buyTicket", scheme, host)
-	fmt.Printf("[buildDynamicReturnURL] ✅ Dynamic VNPay Return URL built: %s (Scheme=%s, Host=%s)\n", returnURL, scheme, host)
+	// ⭐ TEMPORARILY DISABLED automatic Host/Scheme resolution due to Vercel Rewrites Proxy header mismatch.
+	// We read VNPAY_RETURN_URL directly from the environment to ensure a single, consistent Return URL.
+	returnURL := strings.TrimSpace(os.Getenv("VNPAY_RETURN_URL"))
+	fmt.Printf("[buildDynamicReturnURL] Using hardcoded VNPAY_RETURN_URL from env: '%s'\n", returnURL)
 	return returnURL
 }
 
@@ -486,11 +453,124 @@ func (h *TicketHandler) HandleBuyTicket(ctx context.Context, request events.APIG
 
 	log.Info("VNPay callback received - Amount=%s ResponseCode=%s TxnRef=%s", vnpAmount, vnpResponseCode, vnpTxnRef)
 
+	isIPN := isIPNRequest(request)
+	log.Info("Processing VNPay callback - isIPN=%v, queryParams=%v", isIPN, request.QueryStringParameters)
+
+	// Build query values from request parameters for signature verification
+	queryParams := url.Values{}
+	for k, v := range request.QueryStringParameters {
+		queryParams.Set(k, v)
+	}
+
+	// Verify signature using VNPayService (HMAC-SHA512)
+	vnpService := vnpay.NewVNPayService(nil)
+	_, err := vnpService.VerifyCallback(queryParams)
+	if err != nil {
+		log.Error("VNPay callback signature verification failed: %v", err)
+		if isIPN {
+			body, _ := json.Marshal(map[string]string{
+				"RspCode": "97",
+				"Message": "Invalid Signature",
+			})
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusOK,
+				Headers:    defaultHeaders(),
+				Body:       string(body),
+			}, nil
+		}
+		// Browser Redirect flow: redirect to payment failed page
+		frontendBaseURL := buildFrontendBaseURLFromRequest(request)
+		frontendURL := buildFrontendRedirectURL(frontendBaseURL, "/payment-failed?status=failed&method=vnpay&reason="+url.QueryEscape("Chữ ký số không hợp lệ"))
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusFound,
+			Headers: map[string]string{
+				"Location":                    frontendURL,
+				"Access-Control-Allow-Origin": "*",
+			},
+		}, nil
+	}
+
 	// Process payment callback
 	result, err := h.useCase.ProcessPaymentCallback(ctx, vnpAmount, vnpResponseCode, vnpOrderInfo, vnpTxnRef, vnpSecureHash)
 	frontendBaseURL := buildFrontendBaseURLFromRequest(request)
+
 	if err != nil {
-		// Redirect to payment failed page
+		// 1. If it's a failed payment notification (responseCode != "00"), and we successfully cleaned it up:
+		if vnpResponseCode != "00" && isIPN {
+			// Even though ProcessPaymentCallback returns an error for failed payments, 
+			// the IPN was successfully received and handled (tickets deleted).
+			// So we must return "Confirm Success" (RspCode 00) to VNPay.
+			body, _ := json.Marshal(map[string]string{
+				"RspCode": "00",
+				"Message": "Confirm Success",
+			})
+			log.Info("[BUYTICKET IPN] Failed payment notification handled successfully - returning RspCode 00")
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusOK,
+				Headers:    defaultHeaders(),
+				Body:       string(body),
+			}, nil
+		}
+
+		// 2. If it's already confirmed, and it's a browser redirect, we should STILL redirect to success!
+		if err != nil && strings.Contains(err.Error(), "vnpay_err:already_confirmed") && !isIPN {
+			ticketIds := ""
+			billId := ""
+			if parts := strings.Split(result, "|"); len(parts) > 1 {
+				ticketIds = parts[0]
+				billId = parts[1]
+			}
+			if billId == "" {
+				billId = vnpTxnRef
+			}
+
+			query := url.Values{}
+			query.Set("billId", billId)
+			query.Set("status", "success")
+			if ticketIds != "" {
+				query.Set("ticketIds", ticketIds)
+			}
+			query.Set("method", "vnpay")
+
+			frontendURL := buildFrontendRedirectURL(frontendBaseURL, fmt.Sprintf("/payment-success?%s", query.Encode()))
+			log.Info("[BUYTICKET] Already confirmed redirect - Success URL: %s", frontendURL)
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusFound,
+				Headers: map[string]string{
+					"Location":                    frontendURL,
+					"Access-Control-Allow-Origin": "*",
+				},
+			}, nil
+		}
+
+		// 3. If it's an IPN request, return the specific JSON response
+		if isIPN {
+			rspCode := "99"
+			message := "Input Required"
+			if strings.Contains(err.Error(), "vnpay_err:order_not_found") {
+				rspCode = "01"
+				message = "Order not found"
+			} else if strings.Contains(err.Error(), "vnpay_err:already_confirmed") {
+				rspCode = "02"
+				message = "Order already confirmed"
+			} else if strings.Contains(err.Error(), "vnpay_err:invalid_amount") {
+				rspCode = "04"
+				message = "Invalid Amount"
+			}
+
+			body, _ := json.Marshal(map[string]string{
+				"RspCode": rspCode,
+				"Message": message,
+			})
+			log.Info("[BUYTICKET IPN] Error response - RspCode=%s Message=%s", rspCode, message)
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusOK,
+				Headers:    defaultHeaders(),
+				Body:       string(body),
+			}, nil
+		}
+
+		// Browser Redirect flow: redirect to payment failed page
 		frontendURL := buildFrontendRedirectURL(frontendBaseURL, "/payment-failed?status=failed&method=vnpay&reason="+url.QueryEscape(err.Error()))
 		log.Warn("[BUYTICKET] Payment failed - redirecting to: %s", frontendURL)
 		return events.APIGatewayProxyResponse{
@@ -502,6 +582,21 @@ func (h *TicketHandler) HandleBuyTicket(ctx context.Context, request events.APIG
 		}, nil
 	}
 
+	// 4. IPN Payment Success Response
+	if isIPN {
+		body, _ := json.Marshal(map[string]string{
+			"RspCode": "00",
+			"Message": "Confirm Success",
+		})
+		log.Info("[BUYTICKET IPN] Success response - RspCode=00 Message=Confirm Success")
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusOK,
+			Headers:    defaultHeaders(),
+			Body:       string(body),
+		}, nil
+	}
+
+	// 5. Browser Redirect Payment Success Response
 	// Parse result: format is "ticketIds|billId" (e.g., "320,321,322,323|145")
 	ticketIds := result
 	billId := ""
@@ -545,6 +640,27 @@ func (h *TicketHandler) HandleBuyTicket(ctx context.Context, request events.APIG
 			"Access-Control-Allow-Origin": "*",
 		},
 	}, nil
+}
+
+func isIPNRequest(request events.APIGatewayProxyRequest) bool {
+	// If Accept header contains text/html, it is a browser redirect request
+	accept := getHeaderIgnoreCase(request.Headers, "Accept")
+	if strings.Contains(strings.ToLower(accept), "text/html") {
+		return false
+	}
+
+	// Browser navigation headers
+	secFetchDest := getHeaderIgnoreCase(request.Headers, "Sec-Fetch-Dest")
+	if strings.ToLower(secFetchDest) == "document" {
+		return false
+	}
+
+	secFetchMode := getHeaderIgnoreCase(request.Headers, "Sec-Fetch-Mode")
+	if strings.ToLower(secFetchMode) == "navigate" {
+		return false
+	}
+
+	return true
 }
 
 // ============================================================
