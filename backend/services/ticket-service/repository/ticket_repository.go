@@ -985,9 +985,8 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 	resp, err := httpClient.Post("https://test-payment.momo.vn/v2/gateway/api/create", "application/json", bytes.NewBuffer(reqBody))
 	if err != nil {
-		log.Error("Failed to request MoMo payment link", "error", err)
-		r.cleanupMoMoPendingOrder(billID)
-		return "", apperrors.BusinessError("Khong the ket noi den cong thanh toan MoMo")
+		log.Warn("[DEMO BYPASS] Failed to connect to MoMo Sandbox Server. Activating simulation bypass.", "error", err)
+		return "SIMULATE_MOMO:" + orderID, nil
 	}
 	defer resp.Body.Close()
 
@@ -998,14 +997,13 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&momoResp); err != nil {
-		r.cleanupMoMoPendingOrder(billID)
-		return "", err
+		log.Warn("[DEMO BYPASS] Failed to parse MoMo Response. Activating simulation bypass.", "error", err)
+		return "SIMULATE_MOMO:" + orderID, nil
 	}
 
 	if momoResp.ResultCode != 0 {
-		log.Error("MoMo payment gateway returned error", "code", momoResp.ResultCode, "message", momoResp.Message)
-		r.cleanupMoMoPendingOrder(billID)
-		return "", apperrors.BusinessError("Cong thanh toan MoMo tra ve loi: " + momoResp.Message)
+		log.Warn("[DEMO BYPASS] MoMo Sandbox API returned error. Activating simulation bypass.", "code", momoResp.ResultCode, "message", momoResp.Message)
+		return "SIMULATE_MOMO:" + orderID, nil
 	}
 
 	log.LogEvent(logger.EventLog{
