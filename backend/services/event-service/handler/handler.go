@@ -370,6 +370,7 @@ func (h *EventHandler) HandleGetMyActiveEventRequests(ctx context.Context, reque
 	// Get active event requests
 	result, err := h.useCase.GetMyActiveEventRequests(ctx, userID, limit, offset)
 	if err != nil {
+		log.Error("[EVENT_HANDLER] Error in HandleGetMyActiveEventRequests for user %d: %v", userID, err)
 		return createMessageResponse(http.StatusInternalServerError, "Error loading active event requests")
 	}
 
@@ -414,6 +415,7 @@ func (h *EventHandler) HandleGetMyArchivedEventRequests(ctx context.Context, req
 	// Get archived event requests
 	result, err := h.useCase.GetMyArchivedEventRequests(ctx, userID, limit, offset)
 	if err != nil {
+		log.Error("[EVENT_HANDLER] Error in HandleGetMyArchivedEventRequests for user %d: %v", userID, err)
 		return createMessageResponse(http.StatusInternalServerError, "Error loading archived event requests")
 	}
 
