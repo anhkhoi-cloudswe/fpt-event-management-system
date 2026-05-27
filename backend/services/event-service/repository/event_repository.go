@@ -27,6 +27,21 @@ func pointer[T any](v T) *T {
 	return &v
 }
 
+func stringPointer(ns sql.NullString) *string {
+	if !ns.Valid {
+		return nil
+	}
+	return &ns.String
+}
+
+func intPointer(ni sql.NullInt64) *int {
+	if !ni.Valid {
+		return nil
+	}
+	val := int(ni.Int64)
+	return &val
+}
+
 // formatTimeToWallClockRFC3339 returns wall-clock time in RFC3339 format without Go timezone interpretation
 // ✅ CRITICAL: Without loc=Asia/Ho_Chi_Minh in DSN, Go reads DATETIME as UTC
 // We read the wall-clock values and just append +07:00 offset
@@ -54,11 +69,8 @@ func formatTimeToVNRFC3339(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
-	// Step 1: Reinterpret DB-scanned time back to UTC (undo DSN loc reinterpretation)
-	// Step 2: Convert from UTC to Vietnam timezone with +07:00 offset
-	normalized := utils.NormalizeDBTimeAsUTC(t)
-	result := utils.DBTimeToVietnamTime(normalized).Format(time.RFC3339)
-	return result
+	ictZone := time.FixedZone("ICT", 7*60*60)
+	return t.In(ictZone).Format(time.RFC3339)
 }
 
 func formatNullTimeToVNRFC3339(value sql.NullTime) *string {
@@ -1575,15 +1587,17 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 		var processedAt, createdAt sql.NullTime
 		var venueName, areaName, floor sql.NullString
 		var areaCapacity sql.NullInt64
+		var description, organizerNote, rejectReason sql.NullString
+		var expectedCapacity, createdEventID sql.NullInt64
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
-			&req.Title, &req.Description,
+			&req.Title, &description,
 			&preferredStartTime, &preferredEndTime,
-			&req.ExpectedCapacity, &req.Status,
+			&expectedCapacity, &req.Status,
 			&createdAt, &processedBy, &processedByName,
-			&processedAt, &req.OrganizerNote, &req.RejectReason,
-			&req.CreatedEventID,
+			&processedAt, &organizerNote, &rejectReason,
+			&createdEventID,
 			&venueName, &areaName, &floor, &areaCapacity,
 		)
 		if err != nil {
@@ -1614,6 +1628,11 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 		if areaCapacity.Valid {
 			req.AreaCapacity = pointer(int(areaCapacity.Int64))
 		}
+		req.Description = stringPointer(description)
+		req.ExpectedCapacity = intPointer(expectedCapacity)
+		req.OrganizerNote = stringPointer(organizerNote)
+		req.RejectReason = stringPointer(rejectReason)
+		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
 	}
@@ -1667,15 +1686,17 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 		var eventStatus sql.NullString
 		var venueName, areaName, floor sql.NullString
 		var areaCapacity sql.NullInt64
+		var description, organizerNote, rejectReason sql.NullString
+		var expectedCapacity, createdEventID sql.NullInt64
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
-			&req.Title, &req.Description,
+			&req.Title, &description,
 			&preferredStartTime, &preferredEndTime,
-			&req.ExpectedCapacity, &req.Status,
+			&expectedCapacity, &req.Status,
 			&createdAt, &processedBy, &processedByName,
-			&processedAt, &req.OrganizerNote, &req.RejectReason,
-			&req.CreatedEventID, &eventStatus,
+			&processedAt, &organizerNote, &rejectReason,
+			&createdEventID, &eventStatus,
 			&venueName, &areaName, &floor, &areaCapacity,
 		)
 		if err != nil {
@@ -1708,6 +1729,11 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 		if areaCapacity.Valid {
 			req.AreaCapacity = pointer(int(areaCapacity.Int64))
 		}
+		req.Description = stringPointer(description)
+		req.ExpectedCapacity = intPointer(expectedCapacity)
+		req.OrganizerNote = stringPointer(organizerNote)
+		req.RejectReason = stringPointer(rejectReason)
+		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
 	}
@@ -1775,15 +1801,17 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 		var eventStatus sql.NullString
 		var venueName, areaName, floor sql.NullString
 		var areaCapacity sql.NullInt64
+		var description, organizerNote, rejectReason sql.NullString
+		var expectedCapacity, createdEventID sql.NullInt64
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
-			&req.Title, &req.Description,
+			&req.Title, &description,
 			&preferredStartTime, &preferredEndTime,
-			&req.ExpectedCapacity, &req.Status,
+			&expectedCapacity, &req.Status,
 			&createdAt, &processedBy, &processedByName,
-			&processedAt, &req.OrganizerNote, &req.RejectReason,
-			&req.CreatedEventID, &eventStatus,
+			&processedAt, &organizerNote, &rejectReason,
+			&createdEventID, &eventStatus,
 			&venueName, &areaName, &floor, &areaCapacity,
 		)
 		if err != nil {
@@ -1816,6 +1844,11 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 		if areaCapacity.Valid {
 			req.AreaCapacity = pointer(int(areaCapacity.Int64))
 		}
+		req.Description = stringPointer(description)
+		req.ExpectedCapacity = intPointer(expectedCapacity)
+		req.OrganizerNote = stringPointer(organizerNote)
+		req.RejectReason = stringPointer(rejectReason)
+		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
 	}
@@ -1880,15 +1913,17 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 		var processedAt, createdAt sql.NullTime
 		var venueName, areaName, floor sql.NullString
 		var areaCapacity sql.NullInt64
+		var description, organizerNote, rejectReason sql.NullString
+		var expectedCapacity, createdEventID sql.NullInt64
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
-			&req.Title, &req.Description,
+			&req.Title, &description,
 			&preferredStartTime, &preferredEndTime,
-			&req.ExpectedCapacity, &req.Status,
+			&expectedCapacity, &req.Status,
 			&createdAt, &processedBy, &processedByName,
-			&processedAt, &req.OrganizerNote, &req.RejectReason,
-			&req.CreatedEventID,
+			&processedAt, &organizerNote, &rejectReason,
+			&createdEventID,
 			&venueName, &areaName, &floor, &areaCapacity,
 		)
 		if err != nil {
@@ -1918,6 +1953,11 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 		if areaCapacity.Valid {
 			req.AreaCapacity = pointer(int(areaCapacity.Int64))
 		}
+		req.Description = stringPointer(description)
+		req.ExpectedCapacity = intPointer(expectedCapacity)
+		req.OrganizerNote = stringPointer(organizerNote)
+		req.RejectReason = stringPointer(rejectReason)
+		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
 	}
@@ -1958,15 +1998,17 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 	var processedAt, createdAt sql.NullTime
 	var venueName, areaName, floor sql.NullString
 	var areaCapacity sql.NullInt64
+	var description, organizerNote, rejectReason sql.NullString
+	var expectedCapacity, createdEventID sql.NullInt64
 
 	err := r.db.QueryRowContext(ctx, query, requestID).Scan(
 		&req.RequestID, &req.RequesterID, &requesterName,
-		&req.Title, &req.Description,
+		&req.Title, &description,
 		&preferredStartTime, &preferredEndTime,
-		&req.ExpectedCapacity, &req.Status,
+		&expectedCapacity, &req.Status,
 		&createdAt, &processedBy, &processedByName,
-		&processedAt, &req.OrganizerNote, &req.RejectReason,
-		&req.CreatedEventID,
+		&processedAt, &organizerNote, &rejectReason,
+		&createdEventID,
 		&venueName, &areaName, &floor, &areaCapacity,
 	)
 
@@ -2000,6 +2042,11 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 	if areaCapacity.Valid {
 		req.AreaCapacity = pointer(int(areaCapacity.Int64))
 	}
+	req.Description = stringPointer(description)
+	req.ExpectedCapacity = intPointer(expectedCapacity)
+	req.OrganizerNote = stringPointer(organizerNote)
+	req.RejectReason = stringPointer(rejectReason)
+	req.CreatedEventID = intPointer(createdEventID)
 
 	// If there is a created event, fetch event detail (banner, speaker, tickets)
 	if req.CreatedEventID != nil {
@@ -2141,7 +2188,8 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		}
 
 		// Get request details to create event
-		var requestTitle, requestDesc string
+		var requestTitle string
+		var requestDesc sql.NullString
 		var requestStartTime, requestEndTime sql.NullTime
 		var requestCapacity int
 		var requesterID int

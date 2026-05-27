@@ -882,15 +882,17 @@ func (r *EventRepository) GetMyEventRequestsComposed(ctx context.Context, reques
 		var processedBy sql.NullInt64
 		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
+		var description, organizerNote, rejectReason sql.NullString
+		var expectedCapacity, createdEventID sql.NullInt64
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID,
-			&req.Title, &req.Description,
+			&req.Title, &description,
 			&preferredStartTime, &preferredEndTime,
-			&req.ExpectedCapacity, &req.Status,
+			&expectedCapacity, &req.Status,
 			&createdAt, &processedBy,
-			&processedAt, &req.OrganizerNote, &req.RejectReason,
-			&req.CreatedEventID,
+			&processedAt, &organizerNote, &rejectReason,
+			&createdEventID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan event request: %w", err)
@@ -900,6 +902,11 @@ func (r *EventRepository) GetMyEventRequestsComposed(ctx context.Context, reques
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
 		}
+		req.Description = stringPointer(description)
+		req.ExpectedCapacity = intPointer(expectedCapacity)
+		req.OrganizerNote = stringPointer(organizerNote)
+		req.RejectReason = stringPointer(rejectReason)
+		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
 	}
@@ -947,15 +954,17 @@ func (r *EventRepository) GetMyActiveEventRequestsComposed(ctx context.Context, 
 		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
 		var eventStatus sql.NullString
+		var description, organizerNote, rejectReason sql.NullString
+		var expectedCapacity, createdEventID sql.NullInt64
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID,
-			&req.Title, &req.Description,
+			&req.Title, &description,
 			&preferredStartTime, &preferredEndTime,
-			&req.ExpectedCapacity, &req.Status,
+			&expectedCapacity, &req.Status,
 			&createdAt, &processedBy,
-			&processedAt, &req.OrganizerNote, &req.RejectReason,
-			&req.CreatedEventID, &eventStatus,
+			&processedAt, &organizerNote, &rejectReason,
+			&createdEventID, &eventStatus,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan event request: %w", err)
@@ -968,6 +977,11 @@ func (r *EventRepository) GetMyActiveEventRequestsComposed(ctx context.Context, 
 		if eventStatus.Valid {
 			req.EventStatus = &eventStatus.String
 		}
+		req.Description = stringPointer(description)
+		req.ExpectedCapacity = intPointer(expectedCapacity)
+		req.OrganizerNote = stringPointer(organizerNote)
+		req.RejectReason = stringPointer(rejectReason)
+		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
 	}
@@ -1029,15 +1043,17 @@ func (r *EventRepository) GetMyArchivedEventRequestsComposed(ctx context.Context
 		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
 		var eventStatus sql.NullString
+		var description, organizerNote, rejectReason sql.NullString
+		var expectedCapacity, createdEventID sql.NullInt64
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID,
-			&req.Title, &req.Description,
+			&req.Title, &description,
 			&preferredStartTime, &preferredEndTime,
-			&req.ExpectedCapacity, &req.Status,
+			&expectedCapacity, &req.Status,
 			&createdAt, &processedBy,
-			&processedAt, &req.OrganizerNote, &req.RejectReason,
-			&req.CreatedEventID, &eventStatus,
+			&processedAt, &organizerNote, &rejectReason,
+			&createdEventID, &eventStatus,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan event request: %w", err)
@@ -1050,6 +1066,11 @@ func (r *EventRepository) GetMyArchivedEventRequestsComposed(ctx context.Context
 		if eventStatus.Valid {
 			req.EventStatus = &eventStatus.String
 		}
+		req.Description = stringPointer(description)
+		req.ExpectedCapacity = intPointer(expectedCapacity)
+		req.OrganizerNote = stringPointer(organizerNote)
+		req.RejectReason = stringPointer(rejectReason)
+		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
 	}
@@ -1107,15 +1128,17 @@ func (r *EventRepository) GetPendingEventRequestsComposed(ctx context.Context) (
 		var processedBy sql.NullInt64
 		var preferredStartTime, preferredEndTime sql.NullTime
 		var processedAt, createdAt sql.NullTime
+		var description, organizerNote, rejectReason sql.NullString
+		var expectedCapacity, createdEventID sql.NullInt64
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID,
-			&req.Title, &req.Description,
+			&req.Title, &description,
 			&preferredStartTime, &preferredEndTime,
-			&req.ExpectedCapacity, &req.Status,
+			&expectedCapacity, &req.Status,
 			&createdAt, &processedBy,
-			&processedAt, &req.OrganizerNote, &req.RejectReason,
-			&req.CreatedEventID,
+			&processedAt, &organizerNote, &rejectReason,
+			&createdEventID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan event request: %w", err)
@@ -1125,6 +1148,11 @@ func (r *EventRepository) GetPendingEventRequestsComposed(ctx context.Context) (
 		if processedBy.Valid {
 			req.ProcessedBy = pointer(int(processedBy.Int64))
 		}
+		req.Description = stringPointer(description)
+		req.ExpectedCapacity = intPointer(expectedCapacity)
+		req.OrganizerNote = stringPointer(organizerNote)
+		req.RejectReason = stringPointer(rejectReason)
+		req.CreatedEventID = intPointer(createdEventID)
 
 		requests = append(requests, req)
 	}
@@ -1160,15 +1188,17 @@ func (r *EventRepository) GetEventRequestByIDComposed(ctx context.Context, reque
 	var processedBy sql.NullInt64
 	var preferredStartTime, preferredEndTime sql.NullTime
 	var processedAt, createdAt sql.NullTime
+	var description, organizerNote, rejectReason sql.NullString
+	var expectedCapacity, createdEventID sql.NullInt64
 
 	err := r.db.QueryRowContext(ctx, query, requestID).Scan(
 		&req.RequestID, &req.RequesterID,
-		&req.Title, &req.Description,
+		&req.Title, &description,
 		&preferredStartTime, &preferredEndTime,
-		&req.ExpectedCapacity, &req.Status,
+		&expectedCapacity, &req.Status,
 		&createdAt, &processedBy,
-		&processedAt, &req.OrganizerNote, &req.RejectReason,
-		&req.CreatedEventID,
+		&processedAt, &organizerNote, &rejectReason,
+		&createdEventID,
 	)
 
 	if err != nil {
@@ -1182,6 +1212,11 @@ func (r *EventRepository) GetEventRequestByIDComposed(ctx context.Context, reque
 	if processedBy.Valid {
 		req.ProcessedBy = pointer(int(processedBy.Int64))
 	}
+	req.Description = stringPointer(description)
+	req.ExpectedCapacity = intPointer(expectedCapacity)
+	req.OrganizerNote = stringPointer(organizerNote)
+	req.RejectReason = stringPointer(rejectReason)
+	req.CreatedEventID = intPointer(createdEventID)
 
 	// Enrich with API calls (single request)
 	requests := []models.EventRequest{req}
