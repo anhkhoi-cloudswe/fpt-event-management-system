@@ -126,6 +126,11 @@ export default function Reports() {
   // Loading trạng thái tổng hợp (gọi nhiều request /api/events/stats)
   const [aggregateLoading, setAggregateLoading] = useState(false)
 
+  // ===================== PAGINATION STATE =====================
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [totalCount, setTotalCount] = useState<number>(0)
+  const limit = 10
+
   // ===================== SEARCHABLE COMBOBOX STATE =====================
 
   // Giá trị tìm kiếm trong ô input
@@ -210,17 +215,7 @@ export default function Reports() {
    */
   const mapStatus = (s: any) => {
     if (s === undefined || s === null) return null
-    const v = String(s).toUpperCase()
-    switch (v) {
-      case 'CHECKED_IN':
-        return 'CHECKED_IN'
-      case 'CHECKED_OUT':
-        return 'CHECKED_OUT'
-      case 'REFUNDED':
-        return 'Đã Hoàn Tiền'
-      default:
-        return String(s)
-    }
+    return String(s).toUpperCase()
   }
 
   /**
@@ -232,18 +227,20 @@ export default function Reports() {
     const v = String(s).toUpperCase()
     switch (v) {
       case 'CHECKED_IN':
-        return 'inline-block px-2 py-1 rounded text-xs bg-green-100 text-green-800'
+        return 'inline-block px-2 py-1 rounded text-xs bg-green-100 text-green-800 font-medium'
       case 'CHECKED_OUT':
-        return 'inline-block px-2 py-1 rounded text-xs bg-purple-100 text-purple-800'
+        return 'inline-block px-2 py-1 rounded text-xs bg-purple-100 text-purple-800 font-medium'
       case 'REFUNDED':
-        return 'inline-block px-2 py-1 rounded text-xs bg-red-100 text-red-800'
+        return 'inline-block px-2 py-1 rounded text-xs bg-red-100 text-red-800 font-medium'
       case 'PURCHASED':
       case 'BOOKED':
-        return 'inline-block px-2 py-1 rounded text-xs bg-blue-100 text-blue-800'
+        return 'inline-block px-2 py-1 rounded text-xs bg-blue-100 text-blue-800 font-medium'
       case 'CANCELLED':
-        return 'inline-block px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800'
+        return 'inline-block px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800 font-medium'
+      case 'EXPIRED':
+        return 'inline-block px-2 py-1 rounded text-xs bg-gray-100 text-gray-500 font-medium'
       default:
-        return 'inline-block px-2 py-1 rounded text-xs bg-gray-100 text-gray-800'
+        return 'inline-block px-2 py-1 rounded text-xs bg-gray-100 text-gray-800 font-medium'
     }
   }
 
@@ -364,6 +361,7 @@ export default function Reports() {
         // totalReg: chuẩn hóa field tổng đăng ký từ BE (tùy BE đặt tên)
         const totalReg =
           data.totalRegistered ?? data.totalRegistrations ?? data.totalTickets ?? 0
+        setTotalCount(totalReg)
 
         // mapped: object stats FE dùng thống nhất
         const mapped: EventStats = {
@@ -456,8 +454,9 @@ export default function Reports() {
         // Nếu API stats không trả registrations -> fallback gọi /api/tickets/list
         if ((!mapped.registrations || mapped.registrations.length === 0)) {
           try {
+            const offset = (currentPage - 1) * limit
             const ticketsRes = await fetch(
-              `/api/tickets/list?eventId=${encodeURIComponent(selectedEventId)}`,
+              `/api/tickets/list?eventId=${encodeURIComponent(selectedEventId)}&limit=${limit}&offset=${offset}`,
               {
                 headers: {
                   credentials: 'include',
@@ -475,6 +474,9 @@ export default function Reports() {
                 ticketsData.data ??
                 ticketsData.items ??
                 ticketsData
+
+              const fetchedTotalCount = ticketsData.totalCount ?? totalReg
+              setTotalCount(fetchedTotalCount)
 
               if (Array.isArray(rawTickets)) {
                 mapped.registrations = rawTickets.map((t: any) => {
@@ -553,7 +555,7 @@ export default function Reports() {
     }
 
     fetchStats()
-  }, [selectedEventId])
+  }, [selectedEventId, currentPage])
 
   // selectedEvent: lấy object event đang chọn từ list để hiển thị fallback title
   const selectedEvent = events.find((e) => String(e.id) === String(selectedEventId))
@@ -782,6 +784,40 @@ export default function Reports() {
     } catch (e) {
       return String(s)
     }
+  }
+
+  const formatLogTime = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return ''
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+      const date = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
+      return `${time} ${date}`
+    } catch (e) {
+      return ''
+    }
+  }
+
+  const renderAccessLog = (checkIn: any, checkOut: any) => {
+    const inStr = checkIn ? formatLogTime(checkIn) : ''
+    const outStr = checkOut ? formatLogTime(checkOut) : ''
+
+    if (inStr && outStr) {
+      return (
+        <div className="text-xs text-gray-500 space-y-0.5">
+          <div>Vào: {inStr}</div>
+          <div>Ra: {outStr}</div>
+        </div>
+      )
+    } else if (inStr) {
+      return (
+        <div className="text-xs text-gray-500">
+          Vào: {inStr}
+        </div>
+      )
+    }
+    return '-'
   }
 
   const refundedRate = formatPercent(selectedStats?.refundedRate, refundedCount, totalRegistrations)
@@ -1047,6 +1083,8 @@ export default function Reports() {
                           key={event.id}
                           onClick={() => {
                             setSelectedEventId(String(event.id))
+                            setCurrentPage(1)
+                            setTotalCount(0)
                             setSearchInput('')
                             setIsDropdownOpen(false)
                             // ✅ FIX: Reset aggregatedStats khi chọn event mới để tránh kẹt dữ liệu
@@ -1186,6 +1224,7 @@ export default function Reports() {
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Seat</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Loại vé</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Ngày mua</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nhật ký Ra/Vào</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Trạng thái</th>
                 </tr>
               </thead>
@@ -1193,7 +1232,7 @@ export default function Reports() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {registrations.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
+                    <td colSpan={8} className="px-4 py-6 text-center text-sm text-gray-500">
                       Không có vé / đăng ký nào
                     </td>
                   </tr>
@@ -1225,24 +1264,19 @@ export default function Reports() {
                     const statusLabel = mapStatus(statusRaw)
                     const statusBadgeClass = getStatusClass(statusRaw)
 
+                    const itemIndex = (currentPage - 1) * limit + idx + 1
+
                     return (
                       <tr key={r.id ?? idx}>
-                        <td className="px-4 py-3 text-sm text-gray-700">{idx + 1}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{itemIndex}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{ticketId}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{r.userName ?? '-'}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{seat}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{seatType}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{formatDateTime((r as any).purchaseDate ?? r.purchaseDate ?? null)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{renderAccessLog(checkInTime, checkOutTime)}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">
-                          <div className="flex flex-col">
-                            {statusLabel ? <span className={statusBadgeClass}>{statusLabel}</span> : null}
-                            <span className="text-xs text-gray-500">
-                              Check-in: {checkInTime ? new Date(checkInTime).toLocaleString() : '-'}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              Check-out: {checkOutTime ? new Date(checkOutTime).toLocaleString() : '-'}
-                            </span>
-                          </div>
+                          {statusLabel ? <span className={statusBadgeClass}>{statusLabel}</span> : null}
                         </td>
                       </tr>
                     )
@@ -1251,6 +1285,34 @@ export default function Reports() {
               </tbody>
             </table>
           </div>
+
+          {/* Phân trang (Pagination Component) */}
+          {totalCount > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200">
+              <span className="text-sm text-gray-600 font-medium">
+                Hiển thị {Math.min(totalCount, (currentPage - 1) * limit + 1)}-{Math.min(totalCount, currentPage * limit)} trong số {totalCount} vé
+              </span>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+                >
+                  Trang trước
+                </button>
+                <span className="text-sm text-gray-700 font-semibold px-3 py-1 bg-gray-50 border border-gray-200 rounded-md">
+                  Trang {currentPage} / {Math.ceil(totalCount / limit) || 1}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(totalCount / limit)))}
+                  disabled={currentPage >= Math.ceil(totalCount / limit)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+                >
+                  Trang sau
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -357,13 +357,43 @@ func (r *TicketRepository) GetTicketsByUserIDPaginatedComposed(ctx context.Conte
 //   Default: xem vé của chính mình
 // ============================================================
 
-func (r *TicketRepository) GetTicketsByRoleComposed(ctx context.Context, role string, userID int, eventID *int) ([]models.MyTicketResponse, error) {
+func (r *TicketRepository) GetTicketsByRoleComposed(ctx context.Context, role string, userID int, eventID *int, limit, offset int) ([]models.MyTicketResponse, int, error) {
 	log := logger.Default()
 	client := utils.NewInternalClient()
 
 	// ─── BƯỚC 1: Query Ticket domain only (role-based) ───
 	var query string
 	var queryArgs []interface{}
+
+	var countQuery string
+	var countArgs []interface{}
+
+	switch role {
+	case "ADMIN", "STAFF":
+		if eventID != nil {
+			countQuery = "SELECT COUNT(*) FROM Ticket t WHERE t.event_id = $1"
+			countArgs = append(countArgs, *eventID)
+		} else {
+			countQuery = "SELECT COUNT(*) FROM Ticket t"
+		}
+	case "ORGANIZER":
+		if eventID != nil {
+			countQuery = "SELECT COUNT(*) FROM Ticket t JOIN Event e ON t.event_id = e.event_id WHERE e.created_by = $1 AND t.event_id = $2"
+			countArgs = append(countArgs, userID, *eventID)
+		} else {
+			countQuery = "SELECT COUNT(*) FROM Ticket t JOIN Event e ON t.event_id = e.event_id WHERE e.created_by = $1"
+			countArgs = append(countArgs, userID)
+		}
+	default:
+		countQuery = "SELECT COUNT(*) FROM Ticket t WHERE t.user_id = $1"
+		countArgs = append(countArgs, userID)
+	}
+
+	var totalCount int
+	err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count tickets by role: %w", err)
+	}
 
 	// ORGANIZER cần JOIN Event để check created_by
 	// Các role khác query thuần Ticket table
@@ -402,9 +432,14 @@ func (r *TicketRepository) GetTicketsByRoleComposed(ctx context.Context, role st
 		queryArgs = append(queryArgs, userID)
 	}
 
+	if limit >= 0 && offset >= 0 {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(queryArgs)+1, len(queryArgs)+2)
+		queryArgs = append(queryArgs, limit, offset)
+	}
+
 	rows, err := r.db.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query tickets by role: %w", err)
+		return nil, 0, fmt.Errorf("failed to query tickets by role: %w", err)
 	}
 	defer rows.Close()
 
@@ -424,7 +459,7 @@ func (r *TicketRepository) GetTicketsByRoleComposed(ctx context.Context, role st
 			&t.Status, &qrCode, &checkinTime, &checkOut, &createdAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan ticket row: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan ticket row: %w", err)
 		}
 
 		if seatID.Valid {
@@ -442,11 +477,15 @@ func (r *TicketRepository) GetTicketsByRoleComposed(ctx context.Context, role st
 	}
 
 	if len(ticketRows) == 0 {
-		return []models.MyTicketResponse{}, nil
+		return []models.MyTicketResponse{}, totalCount, nil
 	}
 
 	// ─── BƯỚC 2: Gọi API song song (reuse enrichTicketRows) ───
-	return r.enrichTicketRows(ctx, client, log, ticketRows)
+	enriched, err := r.enrichTicketRows(ctx, client, log, ticketRows)
+	if err != nil {
+		return nil, 0, err
+	}
+	return enriched, totalCount, nil
 }
 
 // ============================================================
