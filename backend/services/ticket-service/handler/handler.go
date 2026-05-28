@@ -824,6 +824,8 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 		"order_id":  orderID,
 		"amount":    amount,
 		"expire_at": expireTime.Format(time.RFC3339),
+		"expiresAt": expireTime.Format(time.RFC3339),
+		"createdAt": time.Now().Format(time.RFC3339),
 	})
 
 	return events.APIGatewayProxyResponse{
