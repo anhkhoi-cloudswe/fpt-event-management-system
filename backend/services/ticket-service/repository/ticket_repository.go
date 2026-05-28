@@ -721,6 +721,9 @@ func computeMoMoIPNSignature(secretKey, accessKey string, amount int64, extraDat
 
 // CreateMoMoPaymentURL - Tạo URL thanh toán MoMo cho nhiều ghế
 func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, redirectURL, ipnURL string) (string, error) {
+	// Auto release expired bills first (Lazy Expiry Evaluation)
+	r.AutoReleaseExpiredPendingBills(ctx)
+
 	log := logger.Default().WithContext(ctx)
 	fmt.Printf("[CreateMoMoPaymentURL] Called - userID=%d, eventID=%d, seatIDs=%v\n", userID, eventID, seatIDs)
 
@@ -1218,6 +1221,9 @@ func (r *TicketRepository) ProcessMoMoWebhook(ctx context.Context, payload map[s
 // CreateBankTransferOrder - Tạo đơn hàng thanh toán chuyển khoản ngân hàng (SePay)
 // Trả về order_id (bill_id) và amount
 func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int) (int64, float64, error) {
+	// Auto release expired bills first (Lazy Expiry Evaluation)
+	r.AutoReleaseExpiredPendingBills(ctx)
+
 	log := logger.Default().WithContext(ctx)
 	fmt.Printf("[CreateBankTransferOrder] Called - userID=%d, eventID=%d, categoryTicketID=%d, seatIDs=%v\n", userID, eventID, categoryTicketID, seatIDs)
 
@@ -1620,6 +1626,70 @@ func (r *TicketRepository) CancelBankTransferOrder(ctx context.Context, orderID 
 	}
 
 	return tx.Commit()
+}
+
+// AutoReleaseExpiredPendingBills - Tự động giải phóng các hóa đơn PENDING quá 5 phút
+func (r *TicketRepository) AutoReleaseExpiredPendingBills(ctx context.Context) {
+	log := logger.Default().WithContext(ctx)
+	
+	// 1. Tìm các Bill có trạng thái PENDING quá 5 phút
+	query := `
+		SELECT bill_id 
+		FROM Bill 
+		WHERE payment_status = 'PENDING' 
+		  AND created_at < NOW() - INTERVAL '5 minutes'
+	`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		log.Error("AutoReleaseExpiredPendingBills - failed to query expired bills: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	var expiredBillIDs []int64
+	for rows.Next() {
+		var billID int64
+		if err := rows.Scan(&billID); err == nil {
+			expiredBillIDs = append(expiredBillIDs, billID)
+		}
+	}
+
+	if len(expiredBillIDs) == 0 {
+		return
+	}
+
+	log.Info("AutoReleaseExpiredPendingBills - found %d expired bills: %v", len(expiredBillIDs), expiredBillIDs)
+
+	// Giải phóng từng hóa đơn
+	for _, billID := range expiredBillIDs {
+		tx, err := r.db.BeginTx(ctx, nil)
+		if err != nil {
+			log.Error("AutoReleaseExpiredPendingBills - failed to start tx for bill %d: %v", billID, err)
+			continue
+		}
+
+		// Update Bill status to FAILED
+		_, err = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'FAILED' WHERE bill_id = $1 AND payment_status = 'PENDING'", billID)
+		if err != nil {
+			tx.Rollback()
+			log.Error("AutoReleaseExpiredPendingBills - failed to update bill %d: %v", billID, err)
+			continue
+		}
+
+		// Delete pending tickets linked to this bill
+		_, err = tx.ExecContext(ctx, "DELETE FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'", billID)
+		if err != nil {
+			tx.Rollback()
+			log.Error("AutoReleaseExpiredPendingBills - failed to delete tickets for bill %d: %v", billID, err)
+			continue
+		}
+
+		if err := tx.Commit(); err != nil {
+			log.Error("AutoReleaseExpiredPendingBills - failed to commit tx for bill %d: %v", billID, err)
+		} else {
+			log.Info("AutoReleaseExpiredPendingBills - successfully released bill %d", billID)
+		}
+	}
 }
 
 
@@ -2031,6 +2101,9 @@ func (r *TicketRepository) CalculateSeatsTotal(ctx context.Context, eventID int,
 // 5. Commit (releases lock)
 // 6. Send email notifications
 func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, amount int) (string, error) {
+	// Auto release expired bills first (Lazy Expiry Evaluation)
+	r.AutoReleaseExpiredPendingBills(ctx)
+
 	// ===== VALIDATION: CHECK EVENT STATUS BEFORE TRANSACTION =====
 	// Prevent booking on closed/cancelled events
 	var eventStatus string

@@ -179,6 +179,7 @@ export default function Payment() {
         }
         setShowBankTransferModal(false)
         alert('Thời gian thanh toán chuyển khoản đã hết hạn (5 phút). Ghế giữ chỗ của bạn đã được giải phóng.')
+        navigate('/dashboard')
       }
     }, 1000)
 
@@ -709,6 +710,7 @@ export default function Payment() {
               setShowBankTransferModal(false)
               setPollingIntervalId(null)
               alert('Giao dịch chuyển khoản đã hết hạn giữ chỗ (5 phút) và bị hủy trên hệ thống.')
+              navigate('/dashboard')
             }
           }
         } catch (pollErr) {
