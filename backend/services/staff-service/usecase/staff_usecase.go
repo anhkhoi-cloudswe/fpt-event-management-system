@@ -213,17 +213,11 @@ func (uc *StaffUseCase) processCheckin(ctx context.Context, userID int, ticketID
 	}
 	nowLocal := time.Now().In(loc)
 
-	startTimeLocal := ticket.EventStartTime.In(loc)
-	endTimeLocal := ticket.EventEndTime.In(loc)
-
-	// If the server runs in UTC (like Render), DB datetime values were scanned as UTC
-	// and then converted to Vietnam time by adding 7 hours (e.g. 09:00 -> 16:00).
-	// We shift it back by 7 hours to get the correct Vietnam time.
-	_, localOffset := time.Now().Zone()
-	if localOffset == 0 {
-		startTimeLocal = startTimeLocal.Add(-7 * time.Hour)
-		endTimeLocal = endTimeLocal.Add(-7 * time.Hour)
-	}
+	// Since DB stores event times in UTC without timezone offset (e.g. "09:00:00" -> "09:00:00 UTC"),
+	// it results in a systemic +7 hour shift when read and converted to Vietnam time.
+	// We shift it back by 7 hours to get the correct Vietnam wall-clock time in all environments.
+	startTimeLocal := ticket.EventStartTime.In(loc).Add(-7 * time.Hour)
+	endTimeLocal := ticket.EventEndTime.In(loc).Add(-7 * time.Hour)
 
 	// Kiểm tra thời gian (cho phép check-in trước X phút)
 	// ✅ Sử dụng per-event config nếu có, fallback to global
@@ -422,15 +416,10 @@ func (uc *StaffUseCase) processCheckout(ctx context.Context, userID int, ticketI
 	}
 	nowLocal := time.Now().In(loc)
 
-	endTimeLocal := ticket.EventEndTime.In(loc)
-
-	// If the server runs in UTC (like Render), DB datetime values were scanned as UTC
-	// and then converted to Vietnam time by adding 7 hours (e.g. 18:00 -> 01:00 next day).
-	// We shift it back by 7 hours to get the correct Vietnam time.
-	_, localOffset := time.Now().Zone()
-	if localOffset == 0 {
-		endTimeLocal = endTimeLocal.Add(-7 * time.Hour)
-	}
+	// Since DB stores event times in UTC without timezone offset (e.g. "09:00:00" -> "09:00:00 UTC"),
+	// it results in a systemic +7 hour shift when read and converted to Vietnam time.
+	// We shift it back by 7 hours to get the correct Vietnam wall-clock time in all environments.
+	endTimeLocal := ticket.EventEndTime.In(loc).Add(-7 * time.Hour)
 
 	// Kiểm tra thời gian (phải trước end_time - minMinutes)
 	// ✅ Sử dụng per-event config nếu có, fallback to global
