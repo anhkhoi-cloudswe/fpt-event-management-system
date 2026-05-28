@@ -41,6 +41,9 @@ import (
 // ============================================================
 
 func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, amount int) (string, error) {
+	// Auto release expired bills first (Lazy Expiry Evaluation)
+	r.AutoReleaseExpiredPendingBills(ctx)
+
 	log := logger.Default()
 	client := utils.NewInternalClient()
 
