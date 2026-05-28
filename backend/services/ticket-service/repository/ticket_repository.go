@@ -362,6 +362,7 @@ func (r *TicketRepository) GetTicketsByRole(ctx context.Context, role string, us
 			ct.price AS category_price,
 			s.seat_code,
 			u.full_name AS buyer_name,
+			u.email AS buyer_email,
 			e.start_time AS purchase_date
 		FROM Ticket t
 		LEFT JOIN Event e ON t.event_id = e.event_id
@@ -421,6 +422,7 @@ func (r *TicketRepository) GetTicketsByRole(ctx context.Context, role string, us
 			categoryPrice sql.NullFloat64
 			seatCode      sql.NullString
 			buyerName     sql.NullString
+			buyerEmail    sql.NullString
 			purchaseDate  sql.NullTime
 		)
 
@@ -437,6 +439,7 @@ func (r *TicketRepository) GetTicketsByRole(ctx context.Context, role string, us
 			&categoryPrice,
 			&seatCode,
 			&buyerName,
+			&buyerEmail,
 			&purchaseDate,
 		)
 		if err != nil {
@@ -472,6 +475,9 @@ func (r *TicketRepository) GetTicketsByRole(ctx context.Context, role string, us
 		}
 		if buyerName.Valid {
 			ticket.BuyerName = &buyerName.String
+		}
+		if buyerEmail.Valid {
+			ticket.BuyerEmail = &buyerEmail.String
 		}
 		if purchaseDate.Valid {
 			ticket.PurchaseDate = &purchaseDate.Time

@@ -21,6 +21,7 @@ type MyTicketResponse struct {
 	CategoryPrice *float64   `json:"categoryPrice"`
 	SeatCode      *string    `json:"seatCode"`
 	BuyerName     *string    `json:"buyerName"`
+	BuyerEmail    *string    `json:"buyerEmail"`
 	PurchaseDate  *time.Time `json:"purchaseDate"`
 }
 
