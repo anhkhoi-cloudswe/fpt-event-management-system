@@ -363,7 +363,7 @@ func (r *TicketRepository) GetTicketsByRole(ctx context.Context, role string, us
 			s.seat_code,
 			u.full_name AS buyer_name,
 			u.email AS buyer_email,
-			e.start_time AS purchase_date
+			t.created_at AS purchase_date
 		FROM Ticket t
 		LEFT JOIN Event e ON t.event_id = e.event_id
 		LEFT JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
