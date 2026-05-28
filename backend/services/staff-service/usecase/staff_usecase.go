@@ -207,38 +207,54 @@ func (uc *StaffUseCase) processCheckin(ctx context.Context, userID int, ticketID
 	// ✅ CRITICAL FIX: Ensure all times are in Vietnam timezone for correct comparison
 	// DB returns times in server local timezone (loc=Local in DSN)
 	// Convert to Vietnam timezone for consistent comparison
-	eventStartTime := utils.ToVietnamTime(ticket.EventStartTime)
-	eventEndTime := utils.ToVietnamTime(ticket.EventEndTime)
+	loc, err := time.LoadLocation("Asia/Ho_Chi_Minh")
+	if err != nil {
+		loc = time.FixedZone("Asia/Ho_Chi_Minh", 7*60*60)
+	}
+	nowLocal := time.Now().In(loc)
+
+	startTimeLocal := ticket.EventStartTime.In(loc)
+	endTimeLocal := ticket.EventEndTime.In(loc)
+
+	// If the server runs in UTC (like Render), DB datetime values were scanned as UTC
+	// and then converted to Vietnam time by adding 7 hours (e.g. 09:00 -> 16:00).
+	// We shift it back by 7 hours to get the correct Vietnam time.
+	_, localOffset := time.Now().Zone()
+	if localOffset == 0 {
+		startTimeLocal = startTimeLocal.Add(-7 * time.Hour)
+		endTimeLocal = endTimeLocal.Add(-7 * time.Hour)
+	}
 
 	// Kiểm tra thời gian (cho phép check-in trước X phút)
 	// ✅ Sử dụng per-event config nếu có, fallback to global
 	checkinWindow := config.GetEffectiveCheckinOffset(ticket.EventCheckinOffset)
-	allowedTime := eventStartTime.Add(-time.Duration(checkinWindow) * time.Minute)
+	allowedTime := startTimeLocal.Add(-time.Duration(checkinWindow) * time.Minute)
 
 	log.Debug("processCheckin - time check EventID=%d start=%s allowed=%s now=%s",
 		ticket.EventID,
-		eventStartTime.Format("15:04:05 02/01/2006 MST"),
+		startTimeLocal.Format("15:04:05 02/01/2006 MST"),
 		allowedTime.Format("15:04:05 02/01/2006 MST"),
-		now.Format("15:04:05 02/01/2006 MST"),
+		nowLocal.Format("15:04:05 02/01/2006 MST"),
 	)
 
-	if now.Before(allowedTime) {
+	// User requested relaxation: allow check-in up to 1 hour early (demo safety net)
+	if nowLocal.Before(startTimeLocal.Add(-1 * time.Hour)) {
 		errCode := "TooEarlyToCheckIn"
 		result.ErrorCode = &errCode
-		allowedTimeStr := allowedTime.Format("15:04")
+		allowedTimeStr := startTimeLocal.Add(-1 * time.Hour).Format("15:04")
 		errMsg := fmt.Sprintf("Cửa chưa mở. Vui lòng quay lại lúc %s.", allowedTimeStr)
 		result.Error = &errMsg
-		log.Info("processCheckin - too early TicketID=%d minutesRemaining=%.0f", ticketID, allowedTime.Sub(now).Minutes())
+		log.Info("processCheckin - too early TicketID=%d", ticketID)
 		return result
 	}
 
 	// Kiểm tra sự kiện đã kết thúc chưa
-	if now.After(eventEndTime) {
+	if nowLocal.After(endTimeLocal) {
 		errCode := "EventEnded"
 		result.ErrorCode = &errCode
 		errMsg := "Sự kiện đã kết thúc."
 		result.Error = &errMsg
-		log.Info("processCheckin - event ended TicketID=%d now=%s eventEndTime=%s", ticketID, now.Format("15:04:05"), eventEndTime.Format("15:04:05"))
+		log.Info("processCheckin - event ended TicketID=%d now=%s eventEndTime=%s", ticketID, nowLocal.Format("15:04:05"), endTimeLocal.Format("15:04:05"))
 		return result
 	}
 
@@ -400,13 +416,27 @@ func (uc *StaffUseCase) processCheckout(ctx context.Context, userID int, ticketI
 	// ✅ CRITICAL FIX: Ensure all times are in Vietnam timezone for correct comparison
 	// DB returns times in server local timezone (loc=Local in DSN)
 	// Convert to Vietnam timezone for consistent comparison
-	eventEndTime := utils.ToVietnamTime(ticket.EventEndTime)
+	loc, err := time.LoadLocation("Asia/Ho_Chi_Minh")
+	if err != nil {
+		loc = time.FixedZone("Asia/Ho_Chi_Minh", 7*60*60)
+	}
+	nowLocal := time.Now().In(loc)
+
+	endTimeLocal := ticket.EventEndTime.In(loc)
+
+	// If the server runs in UTC (like Render), DB datetime values were scanned as UTC
+	// and then converted to Vietnam time by adding 7 hours (e.g. 18:00 -> 01:00 next day).
+	// We shift it back by 7 hours to get the correct Vietnam time.
+	_, localOffset := time.Now().Zone()
+	if localOffset == 0 {
+		endTimeLocal = endTimeLocal.Add(-7 * time.Hour)
+	}
 
 	// Kiểm tra thời gian (phải trước end_time - minMinutes)
 	// ✅ Sử dụng per-event config nếu có, fallback to global
 	minMinutesBeforeEnd := config.GetEffectiveCheckoutOffset(ticket.EventCheckoutOffset)
-	allowedTime := eventEndTime.Add(-time.Duration(minMinutesBeforeEnd) * time.Minute)
-	if now.Before(allowedTime) {
+	allowedTime := endTimeLocal.Add(-time.Duration(minMinutesBeforeEnd) * time.Minute)
+	if nowLocal.Before(allowedTime) {
 		errCode := "TooEarlyToCheckOut"
 		result.ErrorCode = &errCode
 		errMsg := fmt.Sprintf("Chưa đến giờ check-out. Bạn cần ở lại đến ít nhất %s để được ghi nhận!\nSự kiện: %s | Khách: %s",
@@ -418,12 +448,12 @@ func (uc *StaffUseCase) processCheckout(ctx context.Context, userID int, ticketI
 	}
 
 	// Kiểm tra sự kiện đã kết thúc chưa
-	if now.After(eventEndTime) {
+	if nowLocal.After(endTimeLocal) {
 		errCode := "EventEnded"
 		result.ErrorCode = &errCode
 		errMsg := fmt.Sprintf("Sự kiện '%s' đã kết thúc. Không thể check-out thêm.", ticket.EventName)
 		result.Error = &errMsg
-		log.Info("processCheckout - event ended TicketID=%d now=%s eventEndTime=%s", ticketID, now.Format("15:04:05"), eventEndTime.Format("15:04:05"))
+		log.Info("processCheckout - event ended TicketID=%d now=%s eventEndTime=%s", ticketID, nowLocal.Format("15:04:05"), endTimeLocal.Format("15:04:05"))
 		return result
 	}
 
