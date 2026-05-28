@@ -439,48 +439,6 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 		}, nil
 	}
 
-	// MoMo Simulation Bypass: automatically completes payment and redirects to success screen
-	if strings.HasPrefix(payURL, "SIMULATE_MOMO:") {
-		orderID := strings.TrimPrefix(payURL, "SIMULATE_MOMO:")
-		
-		// Auto-trigger internal webhook processor to confirm database booking states
-		mockPayload := map[string]interface{}{
-			"partnerCode":  "MOMO",
-			"orderId":      orderID,
-			"requestId":    orderID + "_simulated",
-			"amount":       0,
-			"orderInfo":    "Simulated payment",
-			"transId":      "SIM_" + strconv.FormatInt(time.Now().UnixMilli(), 10),
-			"resultCode":   0,
-			"message":      "Success",
-			"responseTime": time.Now().UnixMilli(),
-			"extraData":    "",
-			"signature":    "",
-		}
-		
-		_, webhookErr := h.useCase.ProcessMoMoWebhook(ctx, mockPayload)
-		if webhookErr != nil {
-			log.Error("[SIMULATION ERROR] Failed to auto-confirm simulated order: %v", webhookErr)
-		}
-		
-		frontendBaseURL := buildFrontendBaseURLFromRequest(request)
-		successURL := buildFrontendRedirectURL(frontendBaseURL, fmt.Sprintf("/payment-success?status=success&method=momo&orderId=%s&resultCode=0", url.QueryEscape(orderID)))
-		log.Info("[DEMO BYPASS] Simulated MoMo redirect URL: %s", successURL)
-		
-		body, _ := json.Marshal(map[string]interface{}{
-			"simulation": true,
-			"paymentUrl": successURL,
-		})
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusOK,
-			Headers: map[string]string{
-				"Content-Type":                "application/json;charset=UTF-8",
-				"Access-Control-Allow-Origin": "*",
-			},
-			Body: string(body),
-		}, nil
-	}
-
 	body, _ := json.Marshal(map[string]string{
 		"paymentUrl": payURL,
 	})
