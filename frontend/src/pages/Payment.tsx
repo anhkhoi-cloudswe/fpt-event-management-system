@@ -653,12 +653,14 @@ export default function Payment() {
         const ids = successData?.ticketIds ?? ''
         // emailFailed=1 nếu backend báo gửi mail thất bại (field emailFailed)
         const emailFailedFlag = successData?.emailFailed ? '&emailFailed=1' : ''
+        localStorage.removeItem('bankTransferOrder')
         emitWalletRefresh()
         navigate(
           `/dashboard/payment/success?status=success&method=wallet${ids ? `&ticketIds=${encodeURIComponent(ids)}` : ''}${emailFailedFlag}`
         )
       } catch {
         // Nếu parse JSON thất bại, dùng fallback không có ticketIds
+        localStorage.removeItem('bankTransferOrder')
         emitWalletRefresh()
         navigate('/dashboard/payment/success?status=success&method=wallet')
       }
@@ -721,6 +723,68 @@ export default function Payment() {
       alert('Bạn cần đăng nhập trước khi thanh toán.')
       navigate('/login')
       return
+    }
+
+    // Check if there is an active valid order for the exact same seats in localStorage to prevent resetting
+    const savedOrder = localStorage.getItem('bankTransferOrder')
+    if (savedOrder) {
+      try {
+        const parsed = JSON.parse(savedOrder)
+        const isSameSeats = parsed.seatIds &&
+          parsed.seatIds.length === state.seatIds?.length &&
+          parsed.seatIds.every((id: any) => state.seatIds?.map(Number).includes(Number(id)))
+
+        const expireTime = new Date(parsed.expiresAt || parsed.expire_at).getTime()
+        if (isSameSeats && expireTime > Date.now()) {
+          setBankTransferOrder(parsed)
+          
+          // Pre-calculate initial timeLeft to prevent visual flash
+          const difference = expireTime - Date.now()
+          setTimeLeft(Math.max(0, Math.floor(difference / 1000)))
+          
+          setShowBankTransferModal(true)
+
+          // Restart polling
+          if (pollingIntervalId) {
+            window.clearInterval(pollingIntervalId)
+          }
+
+          const intervalId = window.setInterval(async () => {
+            try {
+              const statusRes = await fetch(`/api/payment/check-status/${parsed.order_id}`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              })
+              if (statusRes.ok) {
+                const statusData = await statusRes.json()
+                if (statusData.status === 'PAID') {
+                  window.clearInterval(intervalId)
+                  localStorage.removeItem('bankTransferOrder')
+                  setShowBankTransferModal(false)
+                  const seatIdsParam = parsed.seatIds?.join(',') || state.seatIds?.join(',') || ''
+                  navigate(
+                    `/dashboard/payment/success?status=success&method=bank_transfer&billId=${parsed.order_id}&ticketIds=${seatIdsParam}`
+                  )
+                } else if (statusData.status === 'CANCELED' || statusData.status === 'EXPIRED' || statusData.status === 'FAILED') {
+                  window.clearInterval(intervalId)
+                  localStorage.removeItem('bankTransferOrder')
+                  setShowBankTransferModal(false)
+                  setPollingIntervalId(null)
+                  alert('Giao dịch chuyển khoản đã hết hạn giữ chỗ (5 phút) và bị hủy trên hệ thống.')
+                  navigate('/dashboard')
+                }
+              }
+            } catch (pollErr) {
+              console.error('Lỗi check status:', pollErr)
+            }
+          }, 3000)
+          setPollingIntervalId(intervalId)
+          return
+        }
+      } catch (e) {
+        console.error('Error restoring active order from localStorage:', e)
+      }
     }
 
     setCreatingOrder(true)
@@ -823,6 +887,14 @@ export default function Payment() {
     }
 
     localStorage.removeItem('bankTransferOrder')
+    setShowBankTransferModal(false)
+  }
+
+  const handleCloseBankTransferModal = () => {
+    if (pollingIntervalId) {
+      window.clearInterval(pollingIntervalId)
+      setPollingIntervalId(null)
+    }
     setShowBankTransferModal(false)
   }
 
@@ -1143,13 +1215,22 @@ export default function Payment() {
             </div>
 
             {/* Actions */}
-            <button
-              type="button"
-              onClick={handleCancelBankTransfer}
-              className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
-            >
-              Hủy giao dịch
-            </button>
+            <div className="w-full space-y-2">
+              <button
+                type="button"
+                onClick={handleCloseBankTransferModal}
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+              >
+                Quay lại chọn phương thức khác
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelBankTransfer}
+                className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
+              >
+                Hủy giao dịch & Giải phóng ghế
+              </button>
+            </div>
           </div>
         </div>
       )}
