@@ -120,12 +120,33 @@ func (h *TicketHandler) HandleGetTicketList(ctx context.Context, request events.
 		}
 	}
 
-	tickets, err := h.useCase.GetTicketsByRole(ctx, role, userID, eventID)
+	// Optional limit & offset for pagination
+	limit := -1
+	offset := -1
+	if limitStr := request.QueryStringParameters["limit"]; limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l >= 0 {
+			limit = l
+		}
+	}
+	if offsetStr := request.QueryStringParameters["offset"]; offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+
+	tickets, totalCount, err := h.useCase.GetTicketsByRole(ctx, role, userID, eventID, limit, offset)
 	if err != nil {
 		return createMessageResponse(http.StatusInternalServerError, "Error loading tickets")
 	}
 
-	return createJSONResponse(http.StatusOK, tickets)
+	if limit < 0 {
+		return createJSONResponse(http.StatusOK, tickets)
+	}
+
+	return createJSONResponse(http.StatusOK, map[string]interface{}{
+		"tickets":    tickets,
+		"totalCount": totalCount,
+	})
 }
 
 // HandleGetCategoryTickets - GET /api/category-tickets?eventId=

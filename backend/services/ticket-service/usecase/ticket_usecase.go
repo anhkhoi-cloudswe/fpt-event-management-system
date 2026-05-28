@@ -42,14 +42,11 @@ func (uc *TicketUseCase) GetMyTicketsPaginated(ctx context.Context, userID, page
 	return uc.ticketRepo.GetTicketsByUserIDPaginated(ctx, userID, page, limit, search, status)
 }
 
-// GetTicketsByRole - Lấy danh sách vé theo role
-// Phase 4: Sử dụng API Composition khi TICKET_API_ENABLED=true
-// Fallback: SQL JOIN cũ (Monolith) khi biến môi trường chưa bật
-func (uc *TicketUseCase) GetTicketsByRole(ctx context.Context, role string, userID int, eventID *int) ([]models.MyTicketResponse, error) {
+func (uc *TicketUseCase) GetTicketsByRole(ctx context.Context, role string, userID int, eventID *int, limit, offset int) ([]models.MyTicketResponse, int, error) {
 	if config.IsFeatureEnabled(config.FlagTicketAPIEnabled) {
-		return uc.ticketRepo.GetTicketsByRoleComposed(ctx, role, userID, eventID)
+		return uc.ticketRepo.GetTicketsByRoleComposed(ctx, role, userID, eventID, limit, offset)
 	}
-	return uc.ticketRepo.GetTicketsByRole(ctx, role, userID, eventID)
+	return uc.ticketRepo.GetTicketsByRole(ctx, role, userID, eventID, limit, offset)
 }
 
 // GetCategoryTickets - Lấy các loại vé của event

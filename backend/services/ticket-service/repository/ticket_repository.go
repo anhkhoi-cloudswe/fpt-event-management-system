@@ -314,9 +314,39 @@ func (r *TicketRepository) GetTicketsByUserIDPaginated(ctx context.Context, user
 // GetTicketsByRole - Lấy danh sách vé theo role (ADMIN/STAFF/ORGANIZER)
 // KHỚP VỚI Java: TicketDAO.getTicketsByRole()
 // ============================================================
-func (r *TicketRepository) GetTicketsByRole(ctx context.Context, role string, userID int, eventID *int) ([]models.MyTicketResponse, error) {
+func (r *TicketRepository) GetTicketsByRole(ctx context.Context, role string, userID int, eventID *int, limit, offset int) ([]models.MyTicketResponse, int, error) {
 	var query string
 	var args []interface{}
+
+	var countQuery string
+	var countArgs []interface{}
+
+	switch role {
+	case "ADMIN", "STAFF":
+		if eventID != nil {
+			countQuery = "SELECT COUNT(*) FROM Ticket t WHERE t.event_id = $1"
+			countArgs = append(countArgs, *eventID)
+		} else {
+			countQuery = "SELECT COUNT(*) FROM Ticket t"
+		}
+	case "ORGANIZER":
+		if eventID != nil {
+			countQuery = "SELECT COUNT(*) FROM Ticket t JOIN Event e ON t.event_id = e.event_id WHERE e.created_by = $1 AND t.event_id = $2"
+			countArgs = append(countArgs, userID, *eventID)
+		} else {
+			countQuery = "SELECT COUNT(*) FROM Ticket t JOIN Event e ON t.event_id = e.event_id WHERE e.created_by = $1"
+			countArgs = append(countArgs, userID)
+		}
+	default:
+		countQuery = "SELECT COUNT(*) FROM Ticket t WHERE t.user_id = $1"
+		countArgs = append(countArgs, userID)
+	}
+
+	var totalCount int
+	err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count tickets: %w", err)
+	}
 
 	baseQuery := `
 		SELECT 
@@ -366,9 +396,14 @@ func (r *TicketRepository) GetTicketsByRole(ctx context.Context, role string, us
 		args = append(args, userID)
 	}
 
+	if limit >= 0 && offset >= 0 {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(args)+1, len(args)+2)
+		args = append(args, limit, offset)
+	}
+
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query tickets by role: %w", err)
+		return nil, 0, fmt.Errorf("failed to query tickets by role: %w", err)
 	}
 	defer rows.Close()
 
@@ -405,7 +440,7 @@ func (r *TicketRepository) GetTicketsByRole(ctx context.Context, role string, us
 			&purchaseDate,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan ticket: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan ticket: %w", err)
 		}
 
 		if ticketCode.Valid {
@@ -445,7 +480,7 @@ func (r *TicketRepository) GetTicketsByRole(ctx context.Context, role string, us
 		tickets = append(tickets, ticket)
 	}
 
-	return tickets, nil
+	return tickets, totalCount, nil
 }
 
 // ============================================================
