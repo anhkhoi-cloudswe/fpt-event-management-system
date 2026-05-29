@@ -1660,7 +1660,30 @@ func (r *TicketRepository) CancelBankTransferOrder(ctx context.Context, orderID 
 		return err
 	}
 
-	// 2. Xóa toàn bộ các bản ghi vé đang ở trạng thái PENDING thuộc đơn hàng này
+	// 2. Query seat IDs associated with the pending tickets of this bill
+	rows, err := tx.QueryContext(ctx, "SELECT seat_id FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'", orderID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var seatIDs []int64
+	for rows.Next() {
+		var seatID int64
+		if err := rows.Scan(&seatID); err == nil {
+			seatIDs = append(seatIDs, seatID)
+		}
+	}
+
+	// 3. Update each seat's status to AVAILABLE in Supabase
+	for _, seatID := range seatIDs {
+		_, err = tx.ExecContext(ctx, "UPDATE seats SET status = 'AVAILABLE' WHERE id = $1", seatID)
+		if err != nil {
+			log.Warn("CancelBankTransferOrder - failed to update seat %d status: %v", seatID, err)
+		}
+	}
+
+	// 4. Xóa toàn bộ các bản ghi vé đang ở trạng thái PENDING thuộc đơn hàng này
 	_, err = tx.ExecContext(ctx, "DELETE FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'", orderID)
 	if err != nil {
 		return err
@@ -1715,6 +1738,31 @@ func (r *TicketRepository) AutoReleaseExpiredPendingBills(ctx context.Context) {
 			tx.Rollback()
 			log.Error("AutoReleaseExpiredPendingBills - failed to update bill %d: %v", billID, err)
 			continue
+		}
+
+		// Query seat IDs associated with the pending tickets of this bill
+		seatRows, err := tx.QueryContext(ctx, "SELECT seat_id FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'", billID)
+		if err != nil {
+			tx.Rollback()
+			log.Error("AutoReleaseExpiredPendingBills - failed to query seat IDs for bill %d: %v", billID, err)
+			continue
+		}
+		
+		var seatIDs []int64
+		for seatRows.Next() {
+			var seatID int64
+			if err := seatRows.Scan(&seatID); err == nil {
+				seatIDs = append(seatIDs, seatID)
+			}
+		}
+		seatRows.Close()
+
+		// Update each seat's status to AVAILABLE in Supabase
+		for _, seatID := range seatIDs {
+			_, err = tx.ExecContext(ctx, "UPDATE seats SET status = 'AVAILABLE' WHERE id = $1", seatID)
+			if err != nil {
+				log.Warn("AutoReleaseExpiredPendingBills - failed to update seat %d status: %v", seatID, err)
+			}
 		}
 
 		// Delete pending tickets linked to this bill
