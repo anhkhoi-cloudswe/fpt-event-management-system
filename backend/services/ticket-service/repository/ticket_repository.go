@@ -810,13 +810,46 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 	}
 	penaltyMutex.RUnlock()
 
-	// Rule 1 check: Limiting user to max 1 active PENDING bill
-	var pendingBillCount int
-	if checkErr := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM Bill WHERE user_id = $1 AND payment_status = 'PENDING'", userID).Scan(&pendingBillCount); checkErr != nil {
-		return "", apperrors.DatabaseError(checkErr)
-	}
-	if pendingBillCount >= 1 {
-		return "", apperrors.BusinessError("[E4002] Bạn đang có một giao dịch chưa hoàn tất. Vui lòng xử lý hoặc bấm nút 'Hủy giao dịch' cũ trước khi mở luồng đặt ghế mới.")
+	// Rule 1 check: Limiting user to max 1 active PENDING bill with Smart Resume Flow
+	var pendingBillID int64
+	var createdAt time.Time
+	pendingErr := r.db.QueryRowContext(ctx, "SELECT bill_id, created_at FROM Bill WHERE user_id = $1 AND payment_status = 'PENDING'", userID).Scan(&pendingBillID, &createdAt)
+	if pendingErr == nil {
+		remainingSeconds := 300 - int(time.Now().Sub(createdAt).Seconds())
+		if remainingSeconds < 0 {
+			remainingSeconds = 0
+		}
+
+		rows, seatErr := r.db.QueryContext(ctx, `
+			SELECT t.event_id, t.category_ticket_id, t.seat_id, s.seat_code 
+			FROM Ticket t
+			JOIN Seat s ON t.seat_id = s.seat_id
+			WHERE t.bill_id = $1 AND t.status = 'PENDING'
+		`, pendingBillID)
+
+		var evID int
+		var catID int
+		var seatIDsList []string
+		var seatCodes []string
+
+		if seatErr == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var eID, cID, seatID int
+				var code string
+				if scanErr := rows.Scan(&eID, &cID, &seatID, &code); scanErr == nil {
+					evID = eID
+					catID = cID
+					seatIDsList = append(seatIDsList, strconv.Itoa(seatID))
+					seatCodes = append(seatCodes, code)
+				}
+			}
+		}
+
+		seatsStr := strings.Join(seatCodes, ",")
+		seatIDsStr := strings.Join(seatIDsList, ",")
+
+		return "", apperrors.BusinessError(fmt.Sprintf("[E4002]|%d|%s|%s|%d|%d|%d", pendingBillID, seatsStr, seatIDsStr, evID, catID, remainingSeconds))
 	}
 
 	log := logger.Default().WithContext(ctx)
@@ -1329,13 +1362,46 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 	}
 	penaltyMutex.RUnlock()
 
-	// Rule 1 check: Limiting user to max 1 active PENDING bill
-	var pendingBillCount int
-	if checkErr := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM Bill WHERE user_id = $1 AND payment_status = 'PENDING'", userID).Scan(&pendingBillCount); checkErr != nil {
-		return 0, 0, apperrors.DatabaseError(checkErr)
-	}
-	if pendingBillCount >= 1 {
-		return 0, 0, apperrors.BusinessError("[E4002] Bạn đang có một giao dịch chưa hoàn tất. Vui lòng xử lý hoặc bấm nút 'Hủy giao dịch' cũ trước khi mở luồng đặt ghế mới.")
+	// Rule 1 check: Limiting user to max 1 active PENDING bill with Smart Resume Flow
+	var pendingBillID int64
+	var createdAt time.Time
+	pendingErr := r.db.QueryRowContext(ctx, "SELECT bill_id, created_at FROM Bill WHERE user_id = $1 AND payment_status = 'PENDING'", userID).Scan(&pendingBillID, &createdAt)
+	if pendingErr == nil {
+		remainingSeconds := 300 - int(time.Now().Sub(createdAt).Seconds())
+		if remainingSeconds < 0 {
+			remainingSeconds = 0
+		}
+
+		rows, seatErr := r.db.QueryContext(ctx, `
+			SELECT t.event_id, t.category_ticket_id, t.seat_id, s.seat_code 
+			FROM Ticket t
+			JOIN Seat s ON t.seat_id = s.seat_id
+			WHERE t.bill_id = $1 AND t.status = 'PENDING'
+		`, pendingBillID)
+
+		var evID int
+		var catID int
+		var seatIDsList []string
+		var seatCodes []string
+
+		if seatErr == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var eID, cID, seatID int
+				var code string
+				if scanErr := rows.Scan(&eID, &cID, &seatID, &code); scanErr == nil {
+					evID = eID
+					catID = cID
+					seatIDsList = append(seatIDsList, strconv.Itoa(seatID))
+					seatCodes = append(seatCodes, code)
+				}
+			}
+		}
+
+		seatsStr := strings.Join(seatCodes, ",")
+		seatIDsStr := strings.Join(seatIDsList, ",")
+
+		return 0, 0, apperrors.BusinessError(fmt.Sprintf("[E4002]|%d|%s|%s|%d|%d|%d", pendingBillID, seatsStr, seatIDsStr, evID, catID, remainingSeconds))
 	}
 
 	log := logger.Default().WithContext(ctx)
@@ -2254,6 +2320,48 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 		return "", apperrors.BusinessError(fmt.Sprintf("[E4003]|%d", remainingSeconds))
 	}
 	penaltyMutex.RUnlock()
+
+	// Rule 1 check: Limiting user to max 1 active PENDING bill with Smart Resume Flow
+	var pendingBillID int64
+	var createdAt time.Time
+	pendingErr := r.db.QueryRowContext(ctx, "SELECT bill_id, created_at FROM Bill WHERE user_id = $1 AND payment_status = 'PENDING'", userID).Scan(&pendingBillID, &createdAt)
+	if pendingErr == nil {
+		remainingSeconds := 300 - int(time.Now().Sub(createdAt).Seconds())
+		if remainingSeconds < 0 {
+			remainingSeconds = 0
+		}
+
+		rows, seatErr := r.db.QueryContext(ctx, `
+			SELECT t.event_id, t.category_ticket_id, t.seat_id, s.seat_code 
+			FROM Ticket t
+			JOIN Seat s ON t.seat_id = s.seat_id
+			WHERE t.bill_id = $1 AND t.status = 'PENDING'
+		`, pendingBillID)
+
+		var evID int
+		var catID int
+		var seatIDsList []string
+		var seatCodes []string
+
+		if seatErr == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var eID, cID, seatID int
+				var code string
+				if scanErr := rows.Scan(&eID, &cID, &seatID, &code); scanErr == nil {
+					evID = eID
+					catID = cID
+					seatIDsList = append(seatIDsList, strconv.Itoa(seatID))
+					seatCodes = append(seatCodes, code)
+				}
+			}
+		}
+
+		seatsStr := strings.Join(seatCodes, ",")
+		seatIDsStr := strings.Join(seatIDsList, ",")
+
+		return "", apperrors.BusinessError(fmt.Sprintf("[E4002]|%d|%s|%s|%d|%d|%d", pendingBillID, seatsStr, seatIDsStr, evID, catID, remainingSeconds))
+	}
 
 	// ===== VALIDATION: CHECK EVENT STATUS BEFORE TRANSACTION =====
 	// Prevent booking on closed/cancelled events

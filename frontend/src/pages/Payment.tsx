@@ -36,7 +36,7 @@ import { formatVietnamDateTime } from '../utils/dateFormat'
 // useEffect: Hook để fetch wallet balance khi component mount
 
 // Import icon để trang đẹp hơn
-import { CreditCard, ArrowLeft, Clock } from 'lucide-react'
+import { CreditCard, ArrowLeft, Clock, X } from 'lucide-react'
 // CreditCard: icon thẻ/ thanh toán
 // ArrowLeft: icon mũi tên quay lại
 // Clock: icon đồng hồ đếm ngược
@@ -145,6 +145,17 @@ export default function Payment() {
   const [bankTransferOrder, setBankTransferOrder] = useState<{ order_id: number; amount: number } | null>(null)
   const [pollingIntervalId, setPollingIntervalId] = useState<number | null>(null)
   const [creatingOrder, setCreatingOrder] = useState(false)
+  
+  // ⚡ Smart Resume states
+  const [showResumeModal, setShowResumeModal] = useState(false)
+  const [resumeData, setResumeData] = useState<{
+    pendingBillId: number
+    seats: string[]
+    seatIds: number[]
+    eventId: number
+    categoryTicketId: number
+    remainingSeconds: number
+  } | null>(null)
 
   // Dynamic transfer description for SePay VietQR
   const cleanTitle = cleanEventTitleForTransfer(state.eventTitle || 'Sự kiện demo (mock)')
@@ -298,6 +309,66 @@ export default function Payment() {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Dynamic countdown for the resume modal (E4002)
+  useEffect(() => {
+    if (!showResumeModal || !resumeData || resumeData.remainingSeconds <= 0) {
+      return
+    }
+
+    const timer = setInterval(() => {
+      setResumeData((prev) => {
+        if (!prev) return null
+        const newSecs = prev.remainingSeconds - 1
+        if (newSecs <= 0) {
+          clearInterval(timer)
+          setShowResumeModal(false)
+          alert('Đơn hàng giữ chỗ cũ đã hết hạn và tự động giải phóng.')
+          return null
+        }
+        return {
+          ...prev,
+          remainingSeconds: newSecs
+        }
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [showResumeModal])
+
+  const handleCancelAndReorder = async () => {
+    if (!resumeData) return
+
+    setShowResumeModal(false)
+
+    try {
+      const response = await fetch('/api/payment/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ order_id: resumeData.pendingBillId })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(errorText || 'Không thể hủy đơn hàng cũ')
+      }
+
+      // Successfully canceled old bill, now trigger creation of new bill
+      if (paymentMethod === 'momo') {
+        await handleMoMoPay()
+      } else if (paymentMethod === 'wallet') {
+        await handleWalletPay()
+      } else if (paymentMethod === 'bank_transfer') {
+        await handleBankTransferPay()
+      }
+    } catch (err: any) {
+      console.error('Error during cancel and reorder:', err)
+      alert('Có lỗi xảy ra khi hủy đơn hàng cũ: ' + (err.message || 'Vui lòng thử lại.'))
+    }
   }
 
   // ⭐ NEW: Event time validation state
@@ -459,12 +530,36 @@ export default function Payment() {
         let cleanMsg = 'Không thể tạo link thanh toán MoMo'
         let errCode = ''
         let remSecs = 0
+        let pendingBillId = 0
+        let seats: string[] = []
+        let seatIds: number[] = []
+        let eventId = 0
+        let categoryTicketId = 0
+
         try {
           const jsonErr = JSON.parse(errorMsgRaw)
           cleanMsg = jsonErr.message || jsonErr.error || 'Không thể tạo link thanh toán MoMo'
           errCode = jsonErr.errorCode || ''
           remSecs = jsonErr.remainingSeconds || 0
+          pendingBillId = Number(jsonErr.pendingBillId) || 0
+          seats = jsonErr.seats || []
+          seatIds = jsonErr.seatIds || []
+          eventId = jsonErr.eventId || 0
+          categoryTicketId = jsonErr.categoryTicketId || 0
         } catch {}
+
+        if (errCode === 'E4002') {
+          setResumeData({
+            pendingBillId,
+            seats,
+            seatIds,
+            eventId,
+            categoryTicketId,
+            remainingSeconds: remSecs
+          })
+          setShowResumeModal(true)
+          return
+        }
 
         if (errCode === 'E4003' || cleanMsg.includes('E4003')) {
           const minutes = Math.floor(remSecs / 60)
@@ -649,12 +744,36 @@ export default function Payment() {
         let cleanMsg = errorText
         let errCode = ''
         let remSecs = 0
+        let pendingBillId = 0
+        let seats: string[] = []
+        let seatIds: number[] = []
+        let eventId = 0
+        let categoryTicketId = 0
+
         try {
           const jsonErr = JSON.parse(errorText)
           cleanMsg = jsonErr.message || jsonErr.error || errorText
           errCode = jsonErr.errorCode || ''
           remSecs = jsonErr.remainingSeconds || 0
+          pendingBillId = Number(jsonErr.pendingBillId) || 0
+          seats = jsonErr.seats || []
+          seatIds = jsonErr.seatIds || []
+          eventId = jsonErr.eventId || 0
+          categoryTicketId = jsonErr.categoryTicketId || 0
         } catch {}
+
+        if (errCode === 'E4002') {
+          setResumeData({
+            pendingBillId,
+            seats,
+            seatIds,
+            eventId,
+            categoryTicketId,
+            remainingSeconds: remSecs
+          })
+          setShowResumeModal(true)
+          return
+        }
 
         if (errCode === 'E4003' || cleanMsg.includes('E4003')) {
           const minutes = Math.floor(remSecs / 60)
@@ -820,7 +939,7 @@ export default function Payment() {
             if (statusData.status === 'PAID') {
               window.clearInterval(intervalId)
               setShowBankTransferModal(false)
-              const seatIdsParam = bankTransferOrder.seatIds?.join(',') || state.seatIds?.join(',') || ''
+              const seatIdsParam = (bankTransferOrder as any).seatIds?.join(',') || state.seatIds?.join(',') || ''
               navigate(
                 `/dashboard/payment/success?status=success&method=bank_transfer&billId=${bankTransferOrder.order_id}&ticketIds=${seatIdsParam}`
               )
@@ -863,12 +982,36 @@ export default function Payment() {
         let cleanMsg = errorMsgRaw
         let errCode = ''
         let remSecs = 0
+        let pendingBillId = 0
+        let seats: string[] = []
+        let seatIds: number[] = []
+        let eventId = 0
+        let categoryTicketId = 0
+
         try {
           const jsonErr = JSON.parse(errorMsgRaw)
           cleanMsg = jsonErr.message || jsonErr.error || errorMsgRaw
           errCode = jsonErr.errorCode || ''
           remSecs = jsonErr.remainingSeconds || 0
+          pendingBillId = Number(jsonErr.pendingBillId) || 0
+          seats = jsonErr.seats || []
+          seatIds = jsonErr.seatIds || []
+          eventId = jsonErr.eventId || 0
+          categoryTicketId = jsonErr.categoryTicketId || 0
         } catch {}
+
+        if (errCode === 'E4002') {
+          setResumeData({
+            pendingBillId,
+            seats,
+            seatIds,
+            eventId,
+            categoryTicketId,
+            remainingSeconds: remSecs
+          })
+          setShowResumeModal(true)
+          return
+        }
 
         if (errCode === 'E4003' || cleanMsg.includes('E4003')) {
           const minutes = Math.floor(remSecs / 60)
@@ -1292,6 +1435,90 @@ export default function Payment() {
           navigate('/dashboard')
         }}
       />
+
+      {/* ⚡ Smart Resume Modal (E4002) */}
+      {showResumeModal && resumeData && (
+        <div className="fixed inset-0 bg-black/60 z-50 overflow-y-auto backdrop-blur-sm transition-all duration-300 flex items-center justify-center">
+          {/* Centering wrapper */}
+          <div className="flex items-center justify-center min-h-screen p-4 w-full">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 transform scale-100 transition-all duration-300">
+              {/* Header with cool blue gradient */}
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-6 text-white text-center relative">
+                <div className="mx-auto w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-3 animate-pulse">
+                  <Clock className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-xl font-bold">Khôi phục thanh toán?</h3>
+                <p className="text-blue-100 text-xs mt-1 font-medium">Hệ thống phát hiện giao dịch đang dở dang</p>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 py-6 space-y-4">
+                <p className="text-gray-700 text-sm leading-relaxed text-center">
+                  Bạn đang có một đơn hàng giữ chỗ chưa hoàn tất cho ghế{' '}
+                  <span className="font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+                    [{resumeData.seats.join(', ')}]
+                  </span>{' '}
+                  (Còn lại <span className="font-semibold text-red-600 font-mono bg-red-50 px-1.5 py-0.5 rounded text-sm">{formatTimeLeft(resumeData.remainingSeconds)}</span>).
+                  <br />
+                  Bạn muốn làm gì tiếp theo?
+                </p>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 space-y-1">
+                  <p className="font-semibold">⚠️ Lưu ý an toàn:</p>
+                  <p>• Nhấn <strong>Hủy bỏ đơn cũ & Đặt ghế mới</strong> sẽ giải phóng ghế cũ của bạn và cộng 1 điểm phạt failed checkout count.</p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="px-6 pb-6 pt-2 space-y-2.5">
+                {/* Button 1: Resume */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowResumeModal(false)
+                    navigate('/dashboard/payment', {
+                      state: {
+                        eventId: resumeData.eventId,
+                        categoryTicketId: resumeData.categoryTicketId,
+                        seatIds: resumeData.seatIds,
+                        seatCodes: resumeData.seats,
+                        eventTitle: state.eventTitle || 'Sự kiện',
+                        ticketName: state.ticketName,
+                        pricePerTicket: state.pricePerTicket,
+                        quantity: resumeData.seats.length,
+                        totalAmount: state.pricePerTicket ? state.pricePerTicket * resumeData.seats.length : state.totalAmount
+                      }
+                    })
+                  }}
+                  className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center text-sm"
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Tiếp tục thanh toán đơn cũ
+                </button>
+
+                {/* Button 2: Cancel & Reorder */}
+                <button
+                  type="button"
+                  onClick={handleCancelAndReorder}
+                  className="w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-semibold rounded-xl border border-red-200 transition-all duration-200 flex items-center justify-center text-sm"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Hủy bỏ đơn cũ & Đặt ghế mới
+                </button>
+
+                {/* Close/Skip option */}
+                <button
+                  type="button"
+                  onClick={() => setShowResumeModal(false)}
+                  className="w-full py-1 text-xs text-gray-400 hover:text-gray-600 transition"
+                >
+                  Đóng hộp thoại
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
