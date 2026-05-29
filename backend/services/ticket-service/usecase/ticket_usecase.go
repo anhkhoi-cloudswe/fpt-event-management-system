@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"time"
 
 	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/services/ticket-service/models"
@@ -140,5 +141,10 @@ func (uc *TicketUseCase) CancelOrder(ctx context.Context, orderID int64) error {
 // GetActiveOrderForSeats - Lấy thông tin đơn hàng pending đang hoạt động cho danh sách ghế
 func (uc *TicketUseCase) GetActiveOrderForSeats(ctx context.Context, seatIDs []int) (map[string]interface{}, error) {
 	return uc.ticketRepo.GetActiveOrderForSeats(ctx, seatIDs)
+}
+
+// GetBillCreatedAt - Lấy thời gian tạo hóa đơn từ database
+func (uc *TicketUseCase) GetBillCreatedAt(ctx context.Context, billID int) (time.Time, error) {
+	return uc.ticketRepo.GetBillCreatedAt(ctx, billID)
 }
 
