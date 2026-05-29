@@ -3269,3 +3269,9 @@ func (r *TicketRepository) ProcessWalletPaymentForExistingBill(ctx context.Conte
 
 	return strings.Join(ticketIds, ","), nil
 }
+
+func (r *TicketRepository) GetBillCreatedAt(ctx context.Context, billID int) (time.Time, error) {
+	var createdAt time.Time
+	err := r.db.QueryRowContext(ctx, "SELECT created_at FROM Bill WHERE bill_id = $1", billID).Scan(&createdAt)
+	return createdAt, err
+}

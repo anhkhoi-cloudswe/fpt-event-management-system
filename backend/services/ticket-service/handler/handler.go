@@ -1047,13 +1047,20 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
 
-	expireTime := time.Now().Add(5 * time.Minute)
+	createdAt, dbErr := h.useCase.GetBillCreatedAt(ctx, int(orderID))
+	var expireTime time.Time
+	if dbErr == nil {
+		expireTime = createdAt.Add(5 * time.Minute)
+	} else {
+		expireTime = time.Now().Add(5 * time.Minute)
+		createdAt = time.Now()
+	}
 	body, _ := json.Marshal(map[string]interface{}{
 		"order_id":  orderID,
 		"amount":    amount,
 		"expire_at": expireTime.Format(time.RFC3339),
 		"expiresAt": expireTime.Format(time.RFC3339),
-		"createdAt": time.Now().Format(time.RFC3339),
+		"createdAt": createdAt.Format(time.RFC3339),
 	})
 
 	return events.APIGatewayProxyResponse{
