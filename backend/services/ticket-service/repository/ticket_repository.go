@@ -1626,8 +1626,31 @@ func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) 
 			return "", err
 		}
 
-		// 2. Cập nhật trạng thái Tickets thành EXPIRED
-		_, err = tx.ExecContext(ctx, "UPDATE Ticket SET status = 'EXPIRED' WHERE bill_id = $1 AND status = 'PENDING'", orderID)
+		// 2. Lấy danh sách seat_id liên quan để giải phóng
+		rows, err := tx.QueryContext(ctx, "SELECT seat_id FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'", orderID)
+		if err != nil {
+			return "", err
+		}
+		
+		var seatIDs []int64
+		for rows.Next() {
+			var seatID int64
+			if err := rows.Scan(&seatID); err == nil {
+				seatIDs = append(seatIDs, seatID)
+			}
+		}
+		rows.Close()
+
+		// 3. Cập nhật trạng thái ghế về AVAILABLE dưới Supabase
+		for _, seatID := range seatIDs {
+			_, err = tx.ExecContext(ctx, "UPDATE seats SET status = 'AVAILABLE' WHERE id = $1", seatID)
+			if err != nil {
+				log.Warn("GetPaymentStatus - failed to update seat status to AVAILABLE", "seat_id", seatID, "error", err)
+			}
+		}
+
+		// 4. Xóa các vé đang ở trạng thái PENDING để tránh Ghost Seat unique constraint
+		_, err = tx.ExecContext(ctx, "DELETE FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'", orderID)
 		if err != nil {
 			return "", err
 		}
@@ -1695,6 +1718,11 @@ func (r *TicketRepository) CancelBankTransferOrder(ctx context.Context, orderID 
 // AutoReleaseExpiredPendingBills - Tự động giải phóng các hóa đơn PENDING quá 5 phút
 func (r *TicketRepository) AutoReleaseExpiredPendingBills(ctx context.Context) {
 	log := logger.Default().WithContext(ctx)
+
+	// Dọn sạch các vé trạng thái EXPIRED để giải phóng hoàn toàn các "ghế ma" lịch sử
+	if _, err := r.db.ExecContext(ctx, "DELETE FROM Ticket WHERE status = 'EXPIRED'"); err != nil {
+		log.Warn("AutoReleaseExpiredPendingBills - failed to purge legacy EXPIRED tickets: %v", err)
+	}
 	
 	// 1. Tìm các Bill có trạng thái PENDING quá 5 phút
 	query := `
