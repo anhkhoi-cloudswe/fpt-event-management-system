@@ -1096,6 +1096,16 @@ export default function Payment() {
       }
 
       const data = await response.json()
+      
+      // 0đ BYPASS
+      if (data.free === true) {
+        console.log('🎉 [FREE_TICKET] Vé miễn phí! TicketIds:', data.ticketIds)
+        navigate(
+          `/dashboard/payment/success?status=success&method=free&ticketIds=${encodeURIComponent(data.ticketIds || '')}`
+        )
+        return
+      }
+
       const orderWithState = { ...data, seatIds: state.seatIds }
       setBankTransferOrder(orderWithState)
 
