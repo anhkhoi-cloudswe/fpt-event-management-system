@@ -870,11 +870,8 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 	accessKey := os.Getenv("MOMO_ACCESS_KEY")
 	secretKey := os.Getenv("MOMO_SECRET_KEY")
 
-	// Fool-proof override: Use Sandbox V2 credentials if legacy credentials or empty is detected
-	if partnerCode == "MOMOBKUN20180810" || partnerCode == "" {
-		partnerCode = "MOMO5RGW20210218"
-		accessKey = "E863Ux7H0v9y696m"
-		secretKey = "Ch96f3As9Y8x9Y6o8wNghbSn3Z4v6nt7"
+	if partnerCode == "" || accessKey == "" || secretKey == "" {
+		return "", apperrors.BusinessError("Chưa cấu hình thông tin tích hợp MoMo (MOMO_PARTNER_CODE, MOMO_ACCESS_KEY, MOMO_SECRET_KEY) trong môi trường hệ thống")
 	}
 
 	if ipnURL == "" {
@@ -3049,11 +3046,8 @@ func (r *TicketRepository) generateMoMoURLDirect(ctx context.Context, billID int
 	accessKey := os.Getenv("MOMO_ACCESS_KEY")
 	secretKey := os.Getenv("MOMO_SECRET_KEY")
 
-	// Fool-proof override: Use Sandbox V2 credentials if legacy credentials or empty is detected
-	if partnerCode == "MOMOBKUN20180810" || partnerCode == "" {
-		partnerCode = "MOMO5RGW20210218"
-		accessKey = "E863Ux7H0v9y696m"
-		secretKey = "Ch96f3As9Y8x9Y6o8wNghbSn3Z4v6nt7"
+	if partnerCode == "" || accessKey == "" || secretKey == "" {
+		return "", apperrors.BusinessError("Chưa cấu hình thông tin tích hợp MoMo (MOMO_PARTNER_CODE, MOMO_ACCESS_KEY, MOMO_SECRET_KEY) trong môi trường hệ thống")
 	}
 
 	if ipnURL == "" {
