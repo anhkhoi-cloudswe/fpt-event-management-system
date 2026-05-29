@@ -804,8 +804,9 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 	penaltyMutex.RLock()
 	penalty, exists := userPenalties[userID]
 	if exists && !penalty.LockedUntil.IsZero() && time.Now().Before(penalty.LockedUntil) {
+		remainingSeconds := int(penalty.LockedUntil.Sub(time.Now()).Seconds())
 		penaltyMutex.RUnlock()
-		return "", apperrors.BusinessError("[E4003] Tài khoản của bạn đã bị tạm khóa tính năng đặt vé 15 phút do có hành vi giữ chỗ rác liên tục.")
+		return "", apperrors.BusinessError(fmt.Sprintf("[E4003]|%d", remainingSeconds))
 	}
 	penaltyMutex.RUnlock()
 
@@ -1322,8 +1323,9 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 	penaltyMutex.RLock()
 	penalty, exists := userPenalties[userID]
 	if exists && !penalty.LockedUntil.IsZero() && time.Now().Before(penalty.LockedUntil) {
+		remainingSeconds := int(penalty.LockedUntil.Sub(time.Now()).Seconds())
 		penaltyMutex.RUnlock()
-		return 0, 0, apperrors.BusinessError("[E4003] Tài khoản của bạn đã bị tạm khóa tính năng đặt vé 15 phút do có hành vi giữ chỗ rác liên tục.")
+		return 0, 0, apperrors.BusinessError(fmt.Sprintf("[E4003]|%d", remainingSeconds))
 	}
 	penaltyMutex.RUnlock()
 
@@ -2242,6 +2244,16 @@ func (r *TicketRepository) CalculateSeatsTotal(ctx context.Context, eventID int,
 func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, amount int) (string, error) {
 	// Auto release expired bills first (Lazy Expiry Evaluation)
 	r.AutoReleaseExpiredPendingBills(ctx)
+
+	// Rule 2 check: Check if user is locked out due to seat hoarding
+	penaltyMutex.RLock()
+	penalty, exists := userPenalties[userID]
+	if exists && !penalty.LockedUntil.IsZero() && time.Now().Before(penalty.LockedUntil) {
+		remainingSeconds := int(penalty.LockedUntil.Sub(time.Now()).Seconds())
+		penaltyMutex.RUnlock()
+		return "", apperrors.BusinessError(fmt.Sprintf("[E4003]|%d", remainingSeconds))
+	}
+	penaltyMutex.RUnlock()
 
 	// ===== VALIDATION: CHECK EVENT STATUS BEFORE TRANSACTION =====
 	// Prevent booking on closed/cancelled events
