@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { GoogleOAuthProvider } from '@react-oauth/google'
@@ -62,6 +62,14 @@ function AppRoutes() {
     }
   }
 
+  const PaymentWrapper = () => {
+    const location = useLocation()
+    const state = location.state || {}
+    const seatIds = state.seatIds || []
+    const key = seatIds.map(Number).sort().join('-')
+    return <Payment key={key} />
+  }
+
   return (
     <Routes>
       <Route path="/guest" element={<GuestLanding />} />
@@ -93,7 +101,7 @@ function AppRoutes() {
         <Route path="event-requests/:id/edit" element={<EventRequestEdit />} />
         <Route path="check-in" element={<CheckIn />} />
         <Route path="seats/:eventId" element={<SeatManagement />} />
-        <Route path="payment" element={<Payment />} />
+        <Route path="payment" element={<PaymentWrapper />} />
         <Route path="payment/success" element={<PaymentSuccess />} />
         <Route path="payment/failed" element={<PaymentFailed />} />
         <Route path="speakers" element={<Speakers />} />
