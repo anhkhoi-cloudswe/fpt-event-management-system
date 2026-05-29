@@ -202,12 +202,48 @@ export default function Payment() {
     return () => window.clearInterval(timer)
   }, [bankTransferOrder, pollingIntervalId, token, navigate])
 
+  const serializedSeatIds = state.seatIds ? state.seatIds.map(Number).sort().join(',') : ''
+
+  // 1. Reset all payment and countdown states when the active seat selection changes
+  useEffect(() => {
+    // If the saved order's seatIds do not match the current seat selection, clear it!
+    const savedOrder = localStorage.getItem('bankTransferOrder')
+    if (savedOrder) {
+      try {
+        const parsed = JSON.parse(savedOrder)
+        const parsedSeatIds = parsed.seatIds ? parsed.seatIds.map(Number).sort().join(',') : ''
+        if (parsedSeatIds !== serializedSeatIds) {
+          localStorage.removeItem('bankTransferOrder')
+        }
+      } catch (e) {
+        localStorage.removeItem('bankTransferOrder')
+      }
+    }
+
+    // Reset all frontend states
+    setShowBankTransferModal(false)
+    setBankTransferOrder(null)
+    setTimeLeft(0)
+
+    if (pollingIntervalId) {
+      window.clearInterval(pollingIntervalId)
+      setPollingIntervalId(null)
+    }
+  }, [serializedSeatIds, state.eventId])
+
   // Load saved bankTransferOrder from localStorage on mount (for persistent countdown across reloads)
   useEffect(() => {
     const savedOrder = localStorage.getItem('bankTransferOrder')
     if (savedOrder) {
       try {
         const parsed = JSON.parse(savedOrder)
+        
+        // Safety: only load if it matches the current seat selection
+        const parsedSeatIds = parsed.seatIds ? parsed.seatIds.map(Number).sort().join(',') : ''
+        if (parsedSeatIds !== serializedSeatIds) {
+          return
+        }
+
         const expireTime = new Date(parsed.expiresAt || parsed.expire_at).getTime()
         if (expireTime > Date.now()) {
           setBankTransferOrder(parsed)
@@ -257,7 +293,7 @@ export default function Payment() {
         localStorage.removeItem('bankTransferOrder')
       }
     }
-  }, [token])
+  }, [token, navigate, serializedSeatIds])
 
   // Automatically clear active bank transfer polling interval on unmount
   useEffect(() => {
