@@ -1567,6 +1567,53 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 		totalAmount += meta.Price
 	}
 
+	if totalAmount == 0 {
+		var freeBillID int64
+		billErr := tx.QueryRowContext(ctx,
+			`INSERT INTO Bill (user_id, total_amount, currency, payment_method, payment_status, created_at, paid_at)
+			 VALUES ($1, 0, 'VND', 'FREE', 'PAID', NOW(), NOW()) RETURNING bill_id`,
+			userID,
+		).Scan(&freeBillID)
+		if billErr != nil {
+			return 0, 0, apperrors.DatabaseError(billErr)
+		}
+
+		bookedIDsFree := make([]int, 0)
+		for _, seatID := range seatIDs {
+			var seatCategoryTicketID int64
+			tx.QueryRowContext(ctx, "SELECT category_ticket_id FROM Seat WHERE seat_id = $1", seatID).Scan(&seatCategoryTicketID)
+
+			var tid int64
+			err = tx.QueryRowContext(ctx,
+				`INSERT INTO Ticket (user_id, event_id, category_ticket_id, bill_id, seat_id, qr_code_value, status, created_at)
+				 VALUES ($1, $2, $3, $4, $5, 'PENDING_QR', 'BOOKED', NOW()) RETURNING ticket_id`,
+				userID, eventID, seatCategoryTicketID, freeBillID, seatID,
+			).Scan(&tid)
+			if err != nil {
+				return 0, 0, apperrors.DatabaseError(err)
+			}
+
+			qrBase64, qrErr := qrcode.GenerateTicketQRBase64(int(tid), 300)
+			if qrErr == nil {
+				tx.ExecContext(ctx, "UPDATE Ticket SET qr_code_value = $1 WHERE ticket_id = $2", qrBase64, tid)
+			}
+			bookedIDsFree = append(bookedIDsFree, int(tid))
+		}
+
+		// Update seats to BOOKED status
+		for _, seatID := range seatIDs {
+			tx.ExecContext(ctx, "UPDATE Seat SET status = 'BOOKED' WHERE seat_id = $1", seatID)
+		}
+
+		if err = tx.Commit(); err != nil {
+			return 0, 0, apperrors.DatabaseError(err)
+		}
+
+		go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedIDsFree, "0", resolvedCategoryTicketID, int(freeBillID))
+
+		return freeBillID, 0, nil
+	}
+
 	// 1. Tạo Bill ở trạng thái PENDING
 	var billID int64
 	err = tx.QueryRowContext(ctx,
@@ -3274,4 +3321,21 @@ func (r *TicketRepository) GetBillCreatedAt(ctx context.Context, billID int) (ti
 	var createdAt time.Time
 	err := r.db.QueryRowContext(ctx, "SELECT created_at FROM Bill WHERE bill_id = $1", billID).Scan(&createdAt)
 	return createdAt, err
+}
+
+func (r *TicketRepository) GetTicketIDsByBillID(ctx context.Context, billID int64) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, "SELECT ticket_id FROM Ticket WHERE bill_id = $1", billID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err == nil {
+			ids = append(ids, strconv.FormatInt(id, 10))
+		}
+	}
+	return ids, nil
 }

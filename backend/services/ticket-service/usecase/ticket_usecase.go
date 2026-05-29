@@ -148,3 +148,8 @@ func (uc *TicketUseCase) GetBillCreatedAt(ctx context.Context, billID int) (time
 	return uc.ticketRepo.GetBillCreatedAt(ctx, billID)
 }
 
+// GetTicketIDsByBillID - Lấy danh sách ticket ID thuộc về Bill
+func (uc *TicketUseCase) GetTicketIDsByBillID(ctx context.Context, billID int64) ([]string, error) {
+	return uc.ticketRepo.GetTicketIDsByBillID(ctx, billID)
+}
+

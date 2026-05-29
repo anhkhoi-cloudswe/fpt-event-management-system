@@ -1055,12 +1055,22 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 		expireTime = time.Now().Add(5 * time.Minute)
 		createdAt = time.Now()
 	}
+
+	var ticketIDsStr string
+	if amount == 0 {
+		tids, _ := h.useCase.GetTicketIDsByBillID(ctx, orderID)
+		ticketIDsStr = strings.Join(tids, ",")
+	}
+
 	body, _ := json.Marshal(map[string]interface{}{
-		"order_id":  orderID,
-		"amount":    amount,
-		"expire_at": expireTime.Format(time.RFC3339),
-		"expiresAt": expireTime.Format(time.RFC3339),
-		"createdAt": createdAt.Format(time.RFC3339),
+		"order_id":   orderID,
+		"amount":     amount,
+		"expire_at":  expireTime.Format(time.RFC3339),
+		"expiresAt":  expireTime.Format(time.RFC3339),
+		"createdAt":  createdAt.Format(time.RFC3339),
+		"free":       amount == 0,
+		"ticketIds":  ticketIDsStr,
+		"successUrl": fmt.Sprintf("/dashboard/payment/success?status=success&method=free&ticketIds=%s", url.QueryEscape(ticketIDsStr)),
 	})
 
 	return events.APIGatewayProxyResponse{
