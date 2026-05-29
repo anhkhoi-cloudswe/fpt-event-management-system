@@ -831,6 +831,7 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 		var catID int
 		var seatIDsList []string
 		var seatCodes []string
+		var pendingSeatIDs []int
 
 		if seatErr == nil {
 			defer rows.Close()
@@ -842,7 +843,17 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 					catID = cID
 					seatIDsList = append(seatIDsList, strconv.Itoa(seatID))
 					seatCodes = append(seatCodes, code)
+					pendingSeatIDs = append(pendingSeatIDs, seatID)
 				}
+			}
+		}
+
+		// Check if request seatIDs match the pending bill's seatIDs exactly
+		if equalIntSlices(pendingSeatIDs, seatIDs) {
+			var totalAmount float64
+			err := r.db.QueryRowContext(ctx, "SELECT total_amount FROM Bill WHERE bill_id = $1", pendingBillID).Scan(&totalAmount)
+			if err == nil {
+				return r.generateMoMoURLDirect(ctx, pendingBillID, totalAmount, redirectURL, ipnURL)
 			}
 		}
 
@@ -1383,6 +1394,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 		var catID int
 		var seatIDsList []string
 		var seatCodes []string
+		var pendingSeatIDs []int
 
 		if seatErr == nil {
 			defer rows.Close()
@@ -1394,7 +1406,17 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 					catID = cID
 					seatIDsList = append(seatIDsList, strconv.Itoa(seatID))
 					seatCodes = append(seatCodes, code)
+					pendingSeatIDs = append(pendingSeatIDs, seatID)
 				}
+			}
+		}
+
+		// Check if request seatIDs match the pending bill's seatIDs exactly
+		if equalIntSlices(pendingSeatIDs, seatIDs) {
+			var totalAmount float64
+			err := r.db.QueryRowContext(ctx, "SELECT total_amount FROM Bill WHERE bill_id = $1", pendingBillID).Scan(&totalAmount)
+			if err == nil {
+				return pendingBillID, totalAmount, nil
 			}
 		}
 
@@ -2342,6 +2364,7 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 		var catID int
 		var seatIDsList []string
 		var seatCodes []string
+		var pendingSeatIDs []int
 
 		if seatErr == nil {
 			defer rows.Close()
@@ -2353,8 +2376,14 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 					catID = cID
 					seatIDsList = append(seatIDsList, strconv.Itoa(seatID))
 					seatCodes = append(seatCodes, code)
+					pendingSeatIDs = append(pendingSeatIDs, seatID)
 				}
 			}
+		}
+
+		// Check if request seatIDs match the pending bill's seatIDs exactly
+		if equalIntSlices(pendingSeatIDs, seatIDs) {
+			return r.ProcessWalletPaymentForExistingBill(ctx, userID, pendingBillID, amount)
 		}
 
 		seatsStr := strings.Join(seatCodes, ",")
@@ -2951,4 +2980,292 @@ func (r *TicketRepository) GetActiveOrderForSeats(ctx context.Context, seatIDs [
 		"expiresAt":  expiresAt.Format(time.RFC3339),
 		"seatIds":    seatIDs,
 	}, nil
+}
+
+func equalIntSlices(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	m := make(map[int]int)
+	for _, v := range a {
+		m[v]++
+	}
+	for _, v := range b {
+		if m[v] == 0 {
+			return false
+		}
+		m[v]--
+	}
+	return true
+}
+
+func (r *TicketRepository) generateMoMoURLDirect(ctx context.Context, billID int64, totalAmount float64, redirectURL, ipnURL string) (string, error) {
+	partnerCode := os.Getenv("MOMO_PARTNER_CODE")
+	if partnerCode == "" {
+		partnerCode = "MOMO"
+	}
+	accessKey := os.Getenv("MOMO_ACCESS_KEY")
+	if accessKey == "" {
+		accessKey = "F8B64A7481568"
+	}
+	secretKey := os.Getenv("MOMO_SECRET_KEY")
+	if secretKey == "" {
+		secretKey = "g2wHU7HzgDwCDNd61STW0vrlbbCgXf6S"
+	}
+
+	if ipnURL == "" {
+		ipnURL = os.Getenv("MOMO_IPN_URL")
+	}
+
+	orderID := strconv.FormatInt(billID, 10)
+	requestId := orderID + "_" + strconv.FormatInt(time.Now().UnixMilli(), 10)
+	orderInfo := "FPTEventTicketPayment"
+	requestType := "captureWallet"
+	extraData := ""
+
+	if redirectURL == "" {
+		redirectURL = os.Getenv("MOMO_REDIRECT_URL")
+	}
+	if redirectURL == "" {
+		redirectURL = "https://your-frontend.com/payment-success"
+	}
+
+	signature := computeMoMoSignature(
+		secretKey, accessKey, int64(totalAmount), extraData, ipnURL, orderID, orderInfo, partnerCode, redirectURL, requestId, requestType,
+	)
+
+	momoReq := map[string]interface{}{
+		"partnerCode": partnerCode,
+		"requestId":   requestId,
+		"amount":       int64(totalAmount),
+		"orderId":     orderID,
+		"orderInfo":   orderInfo,
+		"redirectUrl": redirectURL,
+		"ipnUrl":      ipnURL,
+		"requestType": requestType,
+		"extraData":   extraData,
+		"signature":   signature,
+		"lang":        "vi",
+	}
+
+	reqBody, _ := json.Marshal(momoReq)
+	momoEndpoint := os.Getenv("MOMO_ENDPOINT")
+	if momoEndpoint == "" {
+		momoEndpoint = "https://test-payment.momo.vn/v2/gateway/api/create"
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", momoEndpoint, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return "", apperrors.DatabaseError(err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return "", apperrors.DatabaseError(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", apperrors.BusinessError("Không thể kết nối với MoMo")
+	}
+
+	var momoResp map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&momoResp); err != nil {
+		return "", apperrors.DatabaseError(err)
+	}
+
+	payUrlVal, ok := momoResp["payUrl"]
+	if !ok {
+		if msg, hasMsg := momoResp["message"]; hasMsg {
+			return "", apperrors.BusinessError(fmt.Sprintf("Lỗi MoMo: %v", msg))
+		}
+		return "", apperrors.BusinessError("Lỗi kết nối MoMo")
+	}
+
+	return payUrlVal.(string), nil
+}
+
+func (r *TicketRepository) ProcessWalletPaymentForExistingBill(ctx context.Context, userID int, pendingBillID int64, amount int) (string, error) {
+	opts := &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  false,
+	}
+	tx, err := r.db.BeginTx(ctx, opts)
+	if err != nil {
+		return "", fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var currentBalance float64
+	var walletID int
+	lockQuery := `SELECT wallet_id, balance FROM Wallet WHERE user_id = $1 FOR UPDATE`
+	err = tx.QueryRowContext(ctx, lockQuery, userID).Scan(&walletID, &currentBalance)
+	if err != nil {
+		return "", fmt.Errorf("error locking wallet balance: %w", err)
+	}
+
+	if currentBalance < float64(amount) {
+		insufficientAmount := float64(amount) - currentBalance
+		return "", fmt.Errorf("insufficient_balance|%d|%.0f", int(insufficientAmount), currentBalance)
+	}
+
+	rows, err := tx.QueryContext(ctx, `
+		SELECT ticket_id, seat_id FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'
+	`, pendingBillID)
+	if err != nil {
+		return "", fmt.Errorf("error fetching pending tickets: %w", err)
+	}
+
+	type ticketInfo struct {
+		ticketID int64
+		seatID   int
+	}
+	var tickets []ticketInfo
+	for rows.Next() {
+		var tid int64
+		var sid int
+		if err := rows.Scan(&tid, &sid); err == nil {
+			tickets = append(tickets, ticketInfo{ticketID: tid, seatID: sid})
+		}
+	}
+	rows.Close()
+
+	if len(tickets) == 0 {
+		return "", fmt.Errorf("no pending tickets found for bill %d", pendingBillID)
+	}
+
+	ticketIds := []string{}
+	qrValues := []string{}
+	ticketTypes := []string{}
+	seatCodes := []string{}
+	categoryNames := []string{}
+	prices := []float64{}
+	areaNames := []string{}
+	var eventTitle, venueName, venueAddress, userEmail, userName, seatCode string
+	var totalPrice float64
+	var startTime, endTime time.Time
+	var eventID int
+
+	for _, t := range tickets {
+		qrBase64, err := qrcode.GenerateTicketQRBase64(int(t.ticketID), 300)
+		if err != nil {
+			qrBase64 = fmt.Sprintf("PENDING_QR_%d", t.ticketID)
+		}
+
+		_, err = tx.ExecContext(ctx, `
+			UPDATE Ticket SET qr_code_value = $1, status = 'BOOKED' WHERE ticket_id = $2
+		`, qrBase64, t.ticketID)
+		if err != nil {
+			return "", fmt.Errorf("error updating ticket status: %w", err)
+		}
+
+		ticketIds = append(ticketIds, fmt.Sprintf("%d", t.ticketID))
+		qrValues = append(qrValues, qrBase64)
+
+		selectQuery := `
+			SELECT 
+				t.event_id,
+				e.title,
+				e.start_time,
+				e.end_time,
+				v.location,
+				v.venue_name,
+				va.area_name,
+				s.seat_code,
+				ct.name as category_name,
+				ct.price,
+				u.email,
+				u.full_name
+			FROM Ticket t
+			JOIN Event e ON t.event_id = e.event_id
+			JOIN Venue_Area va ON e.area_id = va.area_id
+			JOIN Venue v ON va.venue_id = v.venue_id
+			JOIN Seat s ON t.seat_id = s.seat_id
+			JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
+			JOIN users u ON t.user_id = u.user_id
+			WHERE t.ticket_id = $1
+		`
+		var categoryName, areaName string
+		var price float64
+		err = tx.QueryRowContext(ctx, selectQuery, t.ticketID).Scan(
+			&eventID,
+			&eventTitle,
+			&startTime,
+			&endTime,
+			&venueAddress,
+			&venueName,
+			&areaName,
+			&seatCode,
+			&categoryName,
+			&price,
+			&userEmail,
+			&userName,
+		)
+		if err == nil {
+			ticketTypes = append(ticketTypes, categoryName)
+			seatCodes = append(seatCodes, seatCode)
+			categoryNames = append(categoryNames, categoryName)
+			prices = append(prices, price)
+			areaNames = append(areaNames, areaName)
+			totalPrice += price
+		}
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		UPDATE Bill SET payment_status = 'PAID', paid_at = NOW(), payment_method = 'Wallet' WHERE bill_id = $1
+	`, pendingBillID)
+	if err != nil {
+		return "", fmt.Errorf("error updating bill to PAID: %w", err)
+	}
+
+	for _, t := range tickets {
+		_, err = tx.ExecContext(ctx, "UPDATE Seat SET status = 'BOOKED' WHERE seat_id = $1", t.seatID)
+		if err != nil {
+			return "", fmt.Errorf("error updating seat status: %w", err)
+		}
+	}
+
+	newBalance := currentBalance - float64(amount)
+	_, err = tx.ExecContext(ctx, "UPDATE Wallet SET balance = $1 WHERE wallet_id = $2", newBalance, walletID)
+	if err != nil {
+		return "", fmt.Errorf("error deducting wallet balance: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return "", fmt.Errorf("error committing wallet transaction: %w", err)
+	}
+
+	emailTickets := make([]map[string]interface{}, len(ticketIds))
+	for i := range ticketIds {
+		emailTickets[i] = map[string]interface{}{
+			"ticketId":      ticketIds[i],
+			"ticketType":    ticketTypes[i],
+			"seatCode":      seatCodes[i],
+			"qrCodeValue":   qrValues[i],
+			"categoryName":  categoryNames[i],
+			"price":         prices[i],
+			"areaName":      areaNames[i],
+		}
+	}
+
+	go func() {
+		emailPayload := map[string]interface{}{
+			"userEmail":    userEmail,
+			"userName":     userName,
+			"eventTitle":   eventTitle,
+			"eventTime":    startTime.Format("02-01-2006 15:04"),
+			"venueName":    venueName,
+			"venueAddress": venueAddress,
+			"totalPrice":   totalPrice,
+			"tickets":      emailTickets,
+		}
+		client := utils.NewInternalClient()
+		emailURL := utils.GetTicketServiceURL() + "/internal/email/send-ticket"
+		var response struct{}
+		client.PostJSON(context.Background(), emailURL, emailPayload, &response)
+	}()
+
+	return strings.Join(ticketIds, ","), nil
 }
