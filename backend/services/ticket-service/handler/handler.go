@@ -426,21 +426,23 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 
 	payURL, err := h.useCase.CreateMoMoPaymentURL(ctx, userID, initReq.EventID, initReq.CategoryTicketID, initReq.SeatIDs, redirectURL, ipnURL)
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "[E4002]|") {
-			parts := strings.Split(err.Error(), "|")
+		if strings.Contains(err.Error(), "[E4002]|") {
+			splitErr := strings.Split(err.Error(), "[E4002]|")
+			dataParts := strings.Split(splitErr[1], "|")
+			
 			billID := ""
 			seatsStr := ""
 			seatIDsStr := ""
 			eventIDStr := ""
 			catIDStr := ""
 			remSecsStr := ""
-			if len(parts) >= 7 {
-				billID = parts[1]
-				seatsStr = parts[2]
-				seatIDsStr = parts[3]
-				eventIDStr = parts[4]
-				catIDStr = parts[5]
-				remSecsStr = parts[6]
+			if len(dataParts) >= 6 {
+				billID = dataParts[0]
+				seatsStr = dataParts[1]
+				seatIDsStr = dataParts[2]
+				eventIDStr = dataParts[3]
+				catIDStr = dataParts[4]
+				remSecsStr = dataParts[5]
 			}
 			
 			seats := []string{}
