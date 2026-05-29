@@ -54,6 +54,48 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 	}
 	penaltyMutex.RUnlock()
 
+	// Rule 1 check: Limiting user to max 1 active PENDING bill with Smart Resume Flow
+	var pendingBillID int64
+	var createdAt time.Time
+	pendingErr := r.db.QueryRowContext(ctx, "SELECT bill_id, created_at FROM Bill WHERE user_id = $1 AND payment_status = 'PENDING'", userID).Scan(&pendingBillID, &createdAt)
+	if pendingErr == nil {
+		remainingSeconds := 300 - int(time.Now().Sub(createdAt).Seconds())
+		if remainingSeconds < 0 {
+			remainingSeconds = 0
+		}
+
+		rows, seatErr := r.db.QueryContext(ctx, `
+			SELECT t.event_id, t.category_ticket_id, t.seat_id, s.seat_code 
+			FROM Ticket t
+			JOIN Seat s ON t.seat_id = s.seat_id
+			WHERE t.bill_id = $1 AND t.status = 'PENDING'
+		`, pendingBillID)
+
+		var evID int
+		var catID int
+		var seatIDsList []string
+		var seatCodes []string
+
+		if seatErr == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var eID, cID, seatID int
+				var code string
+				if scanErr := rows.Scan(&eID, &cID, &seatID, &code); scanErr == nil {
+					evID = eID
+					catID = cID
+					seatIDsList = append(seatIDsList, strconv.Itoa(seatID))
+					seatCodes = append(seatCodes, code)
+				}
+			}
+		}
+
+		seatsStr := strings.Join(seatCodes, ",")
+		seatIDsStr := strings.Join(seatIDsList, ",")
+
+		return "", fmt.Errorf("[E4002]|%d|%s|%s|%d|%d|%d", pendingBillID, seatsStr, seatIDsStr, evID, catID, remainingSeconds)
+	}
+
 	log := logger.Default()
 	client := utils.NewInternalClient()
 

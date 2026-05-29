@@ -426,6 +426,59 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 
 	payURL, err := h.useCase.CreateMoMoPaymentURL(ctx, userID, initReq.EventID, initReq.CategoryTicketID, initReq.SeatIDs, redirectURL, ipnURL)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "[E4002]|") {
+			parts := strings.Split(err.Error(), "|")
+			billID := ""
+			seatsStr := ""
+			seatIDsStr := ""
+			eventIDStr := ""
+			catIDStr := ""
+			remSecsStr := ""
+			if len(parts) >= 7 {
+				billID = parts[1]
+				seatsStr = parts[2]
+				seatIDsStr = parts[3]
+				eventIDStr = parts[4]
+				catIDStr = parts[5]
+				remSecsStr = parts[6]
+			}
+			
+			seats := []string{}
+			if seatsStr != "" {
+				seats = strings.Split(seatsStr, ",")
+			}
+			
+			seatIDs := []int{}
+			if seatIDsStr != "" {
+				for _, s := range strings.Split(seatIDsStr, ",") {
+					id, _ := strconv.Atoi(s)
+					seatIDs = append(seatIDs, id)
+				}
+			}
+			
+			evID, _ := strconv.Atoi(eventIDStr)
+			catID, _ := strconv.Atoi(catIDStr)
+			remSecs, _ := strconv.Atoi(remSecsStr)
+			
+			body, _ := json.Marshal(map[string]interface{}{
+				"errorCode":        "E4002",
+				"pendingBillId":    billID,
+				"seats":            seats,
+				"seatIds":          seatIDs,
+				"eventId":          evID,
+				"categoryTicketId": catID,
+				"remainingSeconds": remSecs,
+				"message":          fmt.Sprintf("Bạn đang có một đơn hàng giữ chỗ chưa hoàn tất cho ghế [%s]. Vui lòng xử lý đơn hàng này trước.", seatsStr),
+			})
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusBadRequest,
+				Headers: map[string]string{
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Access-Control-Allow-Origin": "*",
+				},
+				Body: string(body),
+			}, nil
+		}
 		if strings.HasPrefix(err.Error(), "[E4003]|") {
 			parts := strings.Split(err.Error(), "|")
 			seconds := 0
@@ -715,6 +768,59 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 	// Process wallet payment
 	ticketIds, err := h.useCase.ProcessWalletPayment(ctx, userID, paymentReq.EventID, paymentReq.CategoryTicketID, paymentReq.SeatIDs, totalAmount)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "[E4002]|") {
+			parts := strings.Split(err.Error(), "|")
+			billID := ""
+			seatsStr := ""
+			seatIDsStr := ""
+			eventIDStr := ""
+			catIDStr := ""
+			remSecsStr := ""
+			if len(parts) >= 7 {
+				billID = parts[1]
+				seatsStr = parts[2]
+				seatIDsStr = parts[3]
+				eventIDStr = parts[4]
+				catIDStr = parts[5]
+				remSecsStr = parts[6]
+			}
+			
+			seats := []string{}
+			if seatsStr != "" {
+				seats = strings.Split(seatsStr, ",")
+			}
+			
+			seatIDs := []int{}
+			if seatIDsStr != "" {
+				for _, s := range strings.Split(seatIDsStr, ",") {
+					id, _ := strconv.Atoi(s)
+					seatIDs = append(seatIDs, id)
+				}
+			}
+			
+			evID, _ := strconv.Atoi(eventIDStr)
+			catID, _ := strconv.Atoi(catIDStr)
+			remSecs, _ := strconv.Atoi(remSecsStr)
+			
+			body, _ := json.Marshal(map[string]interface{}{
+				"errorCode":        "E4002",
+				"pendingBillId":    billID,
+				"seats":            seats,
+				"seatIds":          seatIDs,
+				"eventId":          evID,
+				"categoryTicketId": catID,
+				"remainingSeconds": remSecs,
+				"message":          fmt.Sprintf("Bạn đang có một đơn hàng giữ chỗ chưa hoàn tất cho ghế [%s]. Vui lòng xử lý đơn hàng này trước.", seatsStr),
+			})
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusBadRequest,
+				Headers: map[string]string{
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Access-Control-Allow-Origin": "*",
+				},
+				Body: string(body),
+			}, nil
+		}
 		if strings.HasPrefix(err.Error(), "[E4003]|") {
 			parts := strings.Split(err.Error(), "|")
 			seconds := 0
@@ -856,6 +962,59 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 	// Call usecase to create the pending order
 	orderID, amount, err := h.useCase.CreateBankTransferOrder(ctx, userID, req.EventID, req.CategoryTicketID, req.SeatIDs)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "[E4002]|") {
+			parts := strings.Split(err.Error(), "|")
+			billID := ""
+			seatsStr := ""
+			seatIDsStr := ""
+			eventIDStr := ""
+			catIDStr := ""
+			remSecsStr := ""
+			if len(parts) >= 7 {
+				billID = parts[1]
+				seatsStr = parts[2]
+				seatIDsStr = parts[3]
+				eventIDStr = parts[4]
+				catIDStr = parts[5]
+				remSecsStr = parts[6]
+			}
+			
+			seats := []string{}
+			if seatsStr != "" {
+				seats = strings.Split(seatsStr, ",")
+			}
+			
+			seatIDs := []int{}
+			if seatIDsStr != "" {
+				for _, s := range strings.Split(seatIDsStr, ",") {
+					id, _ := strconv.Atoi(s)
+					seatIDs = append(seatIDs, id)
+				}
+			}
+			
+			evID, _ := strconv.Atoi(eventIDStr)
+			catID, _ := strconv.Atoi(catIDStr)
+			remSecs, _ := strconv.Atoi(remSecsStr)
+			
+			body, _ := json.Marshal(map[string]interface{}{
+				"errorCode":        "E4002",
+				"pendingBillId":    billID,
+				"seats":            seats,
+				"seatIds":          seatIDs,
+				"eventId":          evID,
+				"categoryTicketId": catID,
+				"remainingSeconds": remSecs,
+				"message":          fmt.Sprintf("Bạn đang có một đơn hàng giữ chỗ chưa hoàn tất cho ghế [%s]. Vui lòng xử lý đơn hàng này trước.", seatsStr),
+			})
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusBadRequest,
+				Headers: map[string]string{
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Access-Control-Allow-Origin": "*",
+				},
+				Body: string(body),
+			}, nil
+		}
 		if strings.HasPrefix(err.Error(), "[E4003]|") {
 			parts := strings.Split(err.Error(), "|")
 			seconds := 0
