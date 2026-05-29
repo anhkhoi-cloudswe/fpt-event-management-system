@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fpt-event-services/common/config"
@@ -25,6 +26,40 @@ import (
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/ticket-service/models"
 )
+
+type UserPenalty struct {
+	FailedCheckoutCount int
+	LockedUntil         time.Time
+}
+
+var (
+	userPenalties = make(map[int]*UserPenalty)
+	penaltyMutex  sync.RWMutex
+)
+
+func incrementUserPenalty(userID int) {
+	penaltyMutex.Lock()
+	defer penaltyMutex.Unlock()
+
+	p, ok := userPenalties[userID]
+	if !ok {
+		p = &UserPenalty{}
+		userPenalties[userID] = p
+	}
+
+	// Reset expired lock first
+	if !p.LockedUntil.IsZero() && time.Now().After(p.LockedUntil) {
+		p.FailedCheckoutCount = 0
+		p.LockedUntil = time.Time{}
+	}
+
+	p.FailedCheckoutCount++
+	if p.FailedCheckoutCount >= 3 {
+		p.LockedUntil = time.Now().Add(15 * time.Minute)
+		p.FailedCheckoutCount = 0
+		logger.Default().Info("[SECURITY] 🔒 User locked out for 15 minutes due to seat hoarding", "user_id", userID)
+	}
+}
 
 type TicketRepository struct {
 	db *sql.DB
@@ -765,6 +800,24 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 	// Auto release expired bills first (Lazy Expiry Evaluation)
 	r.AutoReleaseExpiredPendingBills(ctx)
 
+	// Rule 2 check: Check if user is locked out due to seat hoarding
+	penaltyMutex.RLock()
+	penalty, exists := userPenalties[userID]
+	if exists && !penalty.LockedUntil.IsZero() && time.Now().Before(penalty.LockedUntil) {
+		penaltyMutex.RUnlock()
+		return "", apperrors.BusinessError("[E4003] Tài khoản của bạn đã bị tạm khóa tính năng đặt vé 15 phút do có hành vi giữ chỗ rác liên tục.")
+	}
+	penaltyMutex.RUnlock()
+
+	// Rule 1 check: Limiting user to max 1 active PENDING bill
+	var pendingBillCount int
+	if checkErr := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM Bill WHERE user_id = $1 AND payment_status = 'PENDING'", userID).Scan(&pendingBillCount); checkErr != nil {
+		return "", apperrors.DatabaseError(checkErr)
+	}
+	if pendingBillCount >= 1 {
+		return "", apperrors.BusinessError("[E4002] Bạn đang có một giao dịch chưa hoàn tất. Vui lòng xử lý hoặc bấm nút 'Hủy giao dịch' cũ trước khi mở luồng đặt ghế mới.")
+	}
+
 	log := logger.Default().WithContext(ctx)
 	fmt.Printf("[CreateMoMoPaymentURL] Called - userID=%d, eventID=%d, seatIDs=%v\n", userID, eventID, seatIDs)
 
@@ -1265,6 +1318,24 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 	// Auto release expired bills first (Lazy Expiry Evaluation)
 	r.AutoReleaseExpiredPendingBills(ctx)
 
+	// Rule 2 check: Check if user is locked out due to seat hoarding
+	penaltyMutex.RLock()
+	penalty, exists := userPenalties[userID]
+	if exists && !penalty.LockedUntil.IsZero() && time.Now().Before(penalty.LockedUntil) {
+		penaltyMutex.RUnlock()
+		return 0, 0, apperrors.BusinessError("[E4003] Tài khoản của bạn đã bị tạm khóa tính năng đặt vé 15 phút do có hành vi giữ chỗ rác liên tục.")
+	}
+	penaltyMutex.RUnlock()
+
+	// Rule 1 check: Limiting user to max 1 active PENDING bill
+	var pendingBillCount int
+	if checkErr := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM Bill WHERE user_id = $1 AND payment_status = 'PENDING'", userID).Scan(&pendingBillCount); checkErr != nil {
+		return 0, 0, apperrors.DatabaseError(checkErr)
+	}
+	if pendingBillCount >= 1 {
+		return 0, 0, apperrors.BusinessError("[E4002] Bạn đang có một giao dịch chưa hoàn tất. Vui lòng xử lý hoặc bấm nút 'Hủy giao dịch' cũ trước khi mở luồng đặt ghế mới.")
+	}
+
 	log := logger.Default().WithContext(ctx)
 	fmt.Printf("[CreateBankTransferOrder] Called - userID=%d, eventID=%d, categoryTicketID=%d, seatIDs=%v\n", userID, eventID, categoryTicketID, seatIDs)
 
@@ -1655,6 +1726,10 @@ func (r *TicketRepository) CancelBankTransferOrder(ctx context.Context, orderID 
 	}
 	defer tx.Rollback()
 
+	// Fetch user ID associated with this bill to track behavior penalty
+	var userID int
+	_ = tx.QueryRowContext(ctx, "SELECT user_id FROM Bill WHERE bill_id = $1", orderID).Scan(&userID)
+
 	// 1. Cập nhật Bill thành FAILED
 	_, err = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'FAILED' WHERE bill_id = $1 AND payment_status = 'PENDING'", orderID)
 	if err != nil {
@@ -1668,7 +1743,16 @@ func (r *TicketRepository) CancelBankTransferOrder(ctx context.Context, orderID 
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	// Strike Penalty Increment on active manual cancellation
+	if userID > 0 {
+		incrementUserPenalty(userID)
+	}
+
+	return nil
 }
 
 // AutoReleaseExpiredPendingBills - Tự động giải phóng các hóa đơn PENDING quá 5 phút
@@ -1680,9 +1764,9 @@ func (r *TicketRepository) AutoReleaseExpiredPendingBills(ctx context.Context) {
 		log.Warn("AutoReleaseExpiredPendingBills - failed to purge legacy EXPIRED tickets: %v", err)
 	}
 	
-	// 1. Tìm các Bill có trạng thái PENDING quá 5 phút
+	// 1. Tìm các Bill có trạng thái PENDING quá 5 phút kèm user_id để phạt
 	query := `
-		SELECT bill_id 
+		SELECT bill_id, user_id 
 		FROM Bill 
 		WHERE payment_status = 'PENDING' 
 		  AND created_at < NOW() - INTERVAL '5 minutes'
@@ -1694,48 +1778,55 @@ func (r *TicketRepository) AutoReleaseExpiredPendingBills(ctx context.Context) {
 	}
 	defer rows.Close()
 
-	var expiredBillIDs []int64
+	type expiredBill struct {
+		billID int64
+		userID int
+	}
+	var expiredBills []expiredBill
 	for rows.Next() {
 		var billID int64
-		if err := rows.Scan(&billID); err == nil {
-			expiredBillIDs = append(expiredBillIDs, billID)
+		var userID int
+		if err := rows.Scan(&billID, &userID); err == nil {
+			expiredBills = append(expiredBills, expiredBill{billID: billID, userID: userID})
 		}
 	}
 
-	if len(expiredBillIDs) == 0 {
+	if len(expiredBills) == 0 {
 		return
 	}
 
-	log.Info("AutoReleaseExpiredPendingBills - found %d expired bills: %v", len(expiredBillIDs), expiredBillIDs)
+	log.Info("AutoReleaseExpiredPendingBills - found %d expired bills", len(expiredBills))
 
 	// Giải phóng từng hóa đơn
-	for _, billID := range expiredBillIDs {
+	for _, item := range expiredBills {
 		tx, err := r.db.BeginTx(ctx, nil)
 		if err != nil {
-			log.Error("AutoReleaseExpiredPendingBills - failed to start tx for bill %d: %v", billID, err)
+			log.Error("AutoReleaseExpiredPendingBills - failed to start tx for bill %d: %v", item.billID, err)
 			continue
 		}
 
 		// Update Bill status to FAILED
-		_, err = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'FAILED' WHERE bill_id = $1 AND payment_status = 'PENDING'", billID)
+		_, err = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'FAILED' WHERE bill_id = $1 AND payment_status = 'PENDING'", item.billID)
 		if err != nil {
 			tx.Rollback()
-			log.Error("AutoReleaseExpiredPendingBills - failed to update bill %d: %v", billID, err)
+			log.Error("AutoReleaseExpiredPendingBills - failed to update bill %d: %v", item.billID, err)
 			continue
 		}
 
 		// Delete pending tickets linked to this bill to release seats immediately
-		_, err = tx.ExecContext(ctx, "DELETE FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'", billID)
+		_, err = tx.ExecContext(ctx, "DELETE FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'", item.billID)
 		if err != nil {
 			tx.Rollback()
-			log.Error("AutoReleaseExpiredPendingBills - failed to delete tickets for bill %d: %v", billID, err)
+			log.Error("AutoReleaseExpiredPendingBills - failed to delete tickets for bill %d: %v", item.billID, err)
 			continue
 		}
 
 		if err := tx.Commit(); err != nil {
-			log.Error("AutoReleaseExpiredPendingBills - failed to commit tx for bill %d: %v", billID, err)
+			log.Error("AutoReleaseExpiredPendingBills - failed to commit tx for bill %d: %v", item.billID, err)
 		} else {
-			log.Info("AutoReleaseExpiredPendingBills - successfully released bill %d", billID)
+			log.Info("AutoReleaseExpiredPendingBills - successfully released bill %d", item.billID)
+			// Increment penalty count on successful expiration cleanup
+			incrementUserPenalty(item.userID)
 		}
 	}
 }
