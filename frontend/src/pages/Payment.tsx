@@ -151,7 +151,7 @@ export default function Payment() {
   const [timeLeft, setTimeLeft] = useState<number>(300)
 
   useEffect(() => {
-    if (!showBankTransferModal || !bankTransferOrder || !(bankTransferOrder as any).expire_at) {
+    if (!bankTransferOrder || !(bankTransferOrder as any).expire_at) {
       return
     }
 
@@ -176,15 +176,28 @@ export default function Payment() {
           window.clearInterval(pollingIntervalId)
           setPollingIntervalId(null)
         }
+
+        // Active cancellation call on timeout
+        if (bankTransferOrder?.order_id) {
+          fetch('/api/payment/cancel', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ order_id: bankTransferOrder.order_id })
+          }).catch((err) => console.error('Error during automatic timeout cancellation:', err))
+        }
+
         localStorage.removeItem('bankTransferOrder')
         setShowBankTransferModal(false)
-        alert('Thời gian thanh toán chuyển khoản đã hết hạn (5 phút). Ghế giữ chỗ của bạn đã được giải phóng.')
+        alert('Thời gian giữ chỗ thanh toán đã hết hạn (5 phút). Ghế giữ chỗ của bạn đã được giải phóng.')
         navigate('/dashboard')
       }
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [showBankTransferModal, bankTransferOrder, pollingIntervalId])
+  }, [bankTransferOrder, pollingIntervalId, token, navigate])
 
   // Load saved bankTransferOrder from localStorage on mount (for persistent countdown across reloads)
   useEffect(() => {
@@ -876,18 +889,34 @@ export default function Payment() {
 
     // Chủ động gửi yêu cầu hủy đơn hàng lên backend để giải phóng ghế ngay lập tức
     if (bankTransferOrder?.order_id) {
-      fetch('/api/payment/cancel-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ order_id: bankTransferOrder.order_id })
-      }).catch((err) => console.error('Error during active order cancellation:', err))
-    }
+      try {
+        const response = await fetch('/api/payment/cancel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ order_id: bankTransferOrder.order_id })
+        })
 
-    localStorage.removeItem('bankTransferOrder')
-    setShowBankTransferModal(false)
+        if (!response.ok) {
+          const errorMsg = await response.text()
+          throw new Error(errorMsg || 'Không thể hủy giao dịch')
+        }
+
+        // Hủy thành công dưới Database
+        localStorage.removeItem('bankTransferOrder')
+        setShowBankTransferModal(false)
+        navigate('/dashboard')
+      } catch (err: any) {
+        console.error('Error during active order cancellation:', err)
+        alert('Có lỗi xảy ra khi hủy giao dịch: ' + (err.message || 'Vui lòng thử lại.'))
+      }
+    } else {
+      localStorage.removeItem('bankTransferOrder')
+      setShowBankTransferModal(false)
+      navigate('/dashboard')
+    }
   }
 
   const handleCloseBankTransferModal = () => {
@@ -934,6 +963,28 @@ export default function Payment() {
             </p>
           </div>
         </div>
+
+        {/* ⏳ Page-Level Countdown Timer & Active Cancel Button */}
+        {bankTransferOrder && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center space-x-3 text-red-700 w-full sm:w-auto">
+              <Clock className="w-5 h-5 flex-shrink-0 text-red-600 animate-pulse" />
+              <div>
+                <p className="text-sm font-bold">Giao dịch đang được xử lý (Giữ ghế tạm thời)</p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  Thời gian giữ vé còn lại: <span className="font-mono font-bold text-sm bg-red-100 px-2 py-0.5 rounded text-red-800 ml-1">{formatTimeLeft(timeLeft)}</span>
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleCancelBankTransfer}
+              className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shadow-sm"
+            >
+              Hủy giao dịch & Giải phóng ghế
+            </button>
+          </div>
+        )}
 
         {/* ========== THÔNG TIN VÉ ========== */}
         {/* Box hiển thị thông tin vé để user xác nhận trước khi trả tiền */}
