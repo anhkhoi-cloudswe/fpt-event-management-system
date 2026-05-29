@@ -75,6 +75,7 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 		var catID int
 		var seatIDsList []string
 		var seatCodes []string
+		var pendingSeatIDs []int
 
 		if seatErr == nil {
 			defer rows.Close()
@@ -86,8 +87,14 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 					catID = cID
 					seatIDsList = append(seatIDsList, strconv.Itoa(seatID))
 					seatCodes = append(seatCodes, code)
+					pendingSeatIDs = append(pendingSeatIDs, seatID)
 				}
 			}
+		}
+
+		// Check if request seatIDs match the pending bill's seatIDs exactly
+		if equalIntSlices(pendingSeatIDs, seatIDs) {
+			return r.ProcessWalletPaymentSagaForExistingBill(ctx, userID, pendingBillID, amount)
 		}
 
 		seatsStr := strings.Join(seatCodes, ",")
@@ -567,4 +574,262 @@ func (r *TicketRepository) GetUserWalletBalanceViaAPI(ctx context.Context, userI
 
 	log.Info("[WALLET_API] ✅ Balance for user %d: %.2f %s", userID, balanceResp.Balance, balanceResp.Currency)
 	return balanceResp.Balance, nil
+}
+
+func (r *TicketRepository) ProcessWalletPaymentSagaForExistingBill(ctx context.Context, userID int, pendingBillID int64, amount int) (string, error) {
+	log := logger.Default()
+	client := utils.NewInternalClient()
+
+	log.Info("[SAGA_RESUME] 🚀 Starting Resumed Wallet Payment Saga: user=%d, bill=%d, amount=%d",
+		userID, pendingBillID, amount)
+
+	var eventID int
+	var startTime time.Time
+	err := r.db.QueryRowContext(ctx, `
+		SELECT t.event_id, e.start_time
+		FROM Ticket t
+		JOIN Event e ON t.event_id = e.event_id
+		WHERE t.bill_id = $1 LIMIT 1
+	`, pendingBillID).Scan(&eventID, &startTime)
+	if err != nil {
+		return "", fmt.Errorf("error resolving event details: %w", err)
+	}
+
+	log.Info("[SAGA_STEP_1] 🔒 Reserving wallet: user=%d, amount=%d", userID, amount)
+
+	reserveReq := walletModels.WalletReserveRequest{
+		UserID:        userID,
+		Amount:        float64(amount),
+		ReferenceType: "TICKET_PURCHASE",
+		ReferenceID:   fmt.Sprintf("bill:%d", pendingBillID),
+		Description:   fmt.Sprintf("Thanh toan hoa don giữ chỗ %d", pendingBillID),
+		TTLSeconds:    300,
+	}
+
+	var reserveResp walletModels.WalletReserveResponse
+	reserveURL := utils.GetTicketServiceURL() + "/internal/wallet/reserve"
+	statusCode, err := client.PostJSON(ctx, reserveURL, reserveReq, &reserveResp)
+	if err != nil {
+		log.Warn("[SAGA_STEP_1] ❌ Reserve API call failed: %v", err)
+		return "", fmt.Errorf("error reserving wallet: %w", err)
+	}
+
+	if statusCode != 200 || !reserveResp.Success {
+		log.Info("[SAGA_STEP_1] ❌ Reserve failed: status=%d, message=%s", statusCode, reserveResp.Message)
+		return "", fmt.Errorf("%s", reserveResp.Message)
+	}
+
+	reservationID := reserveResp.ReservationID
+	log.Info("[SAGA_STEP_1] ✅ Reserve success: reservationId=%s, before=%.2f, after=%.2f",
+		reservationID, reserveResp.BalanceBefore, reserveResp.BalanceAfter)
+
+	log.Info("[SAGA_STEP_2] 🎫 Resuming and updating tickets in local DB...")
+
+	ticketIds, ticketData, err := r.resumeTicketsInDB(ctx, userID, pendingBillID)
+	if err != nil {
+		log.Warn("[SAGA_STEP_2] ❌ Ticket update failed: %v. Starting compensation...", err)
+		r.releaseReservation(ctx, client, reservationID, userID, "ticket_update_failed: "+err.Error())
+		return "", fmt.Errorf("error resuming tickets: %w", err)
+	}
+
+	log.Info("[SAGA_STEP_2] ✅ Tickets updated: %s", strings.Join(ticketIds, ","))
+
+	log.Info("[SAGA_STEP_3] ✅ Confirming wallet deduction...")
+
+	confirmReq := walletModels.WalletConfirmRequest{
+		ReservationID: reservationID,
+		UserID:        userID,
+		ReferenceID:   fmt.Sprintf("tickets:%s", strings.Join(ticketIds, ",")),
+	}
+
+	var confirmResp walletModels.WalletConfirmResponse
+	confirmURL := utils.GetTicketServiceURL() + "/internal/wallet/confirm"
+	statusCode, err = client.PostJSON(ctx, confirmURL, confirmReq, &confirmResp)
+	if err != nil || statusCode != 200 || !confirmResp.Success {
+		log.Warn("[SAGA_STEP_3] ❌ Confirm failed: err=%v, status=%d. Starting compensation...", err, statusCode)
+		r.compensateResumedTickets(ctx, ticketIds, pendingBillID)
+		r.releaseReservation(ctx, client, reservationID, userID, "confirm_failed")
+		return "", fmt.Errorf("error confirming wallet payment")
+	}
+
+	log.Info("[SAGA_STEP_3] ✅ Confirm success: reservationId=%s", reservationID)
+
+	_, err = r.db.ExecContext(ctx, `
+		UPDATE Bill SET payment_status = 'PAID', paid_at = NOW(), payment_method = 'Wallet' WHERE bill_id = $1
+	`, pendingBillID)
+	if err != nil {
+		log.Warn("[SAGA] ⚠️ Failed to update bill to PAID (non-critical): %v", err)
+	}
+
+	go r.sendTicketEmailsAsync(ticketData, userID, eventID, startTime)
+
+	log.Info("[SAGA] 🎉 Resumed Wallet Payment Saga COMPLETED: user=%d, tickets=%s, reservationId=%s",
+		userID, strings.Join(ticketIds, ","), reservationID)
+
+	return strings.Join(ticketIds, ","), nil
+}
+
+func (r *TicketRepository) resumeTicketsInDB(ctx context.Context, userID int, pendingBillID int64) ([]string, *sagaTicketData, error) {
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  false,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("error starting ticket creation transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	rows, err := tx.QueryContext(ctx, `
+		SELECT ticket_id, seat_id FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'
+	`, pendingBillID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error querying pending tickets: %w", err)
+	}
+	
+	type ticketInfo struct {
+		ticketID int64
+		seatID   int
+	}
+	var tickets []ticketInfo
+	for rows.Next() {
+		var tid int64
+		var sid int
+		if err := rows.Scan(&tid, &sid); err == nil {
+			tickets = append(tickets, ticketInfo{ticketID: tid, seatID: sid})
+		}
+	}
+	rows.Close()
+
+	if len(tickets) == 0 {
+		return nil, nil, fmt.Errorf("no pending tickets found")
+	}
+
+	ticketIds := []string{}
+	qrValues := []string{}
+	seatCodes := []string{}
+	categoryNames := []string{}
+	prices := []float64{}
+	areaNames := []string{}
+	var eventTitle, venueName, venueAddress, userEmail, userName string
+	var eventStart, eventEnd time.Time
+	var totalPrice float64
+
+	for _, t := range tickets {
+		qrBase64, err := qrcode.GenerateTicketQRBase64(int(t.ticketID), 300)
+		if err != nil {
+			qrBase64 = fmt.Sprintf("PENDING_QR_%d", t.ticketID)
+		}
+
+		_, err = tx.ExecContext(ctx, `
+			UPDATE Ticket SET qr_code_value = $1, status = 'BOOKED' WHERE ticket_id = $2
+		`, qrBase64, t.ticketID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error updating ticket status: %w", err)
+		}
+
+		_, err = tx.ExecContext(ctx, "UPDATE Seat SET status = 'BOOKED' WHERE seat_id = $1", t.seatID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error updating seat status: %w", err)
+		}
+
+		selectQuery := `
+			SELECT 
+				e.title,
+				e.start_time,
+				e.end_time,
+				v.location,
+				v.venue_name,
+				va.area_name,
+				s.seat_code,
+				ct.name as category_name,
+				ct.price,
+				u.email,
+				u.full_name
+			FROM Ticket t
+			JOIN Event e ON t.event_id = e.event_id
+			JOIN Venue_Area va ON e.area_id = va.area_id
+			JOIN Venue v ON va.venue_id = v.venue_id
+			JOIN Seat s ON t.seat_id = s.seat_id
+			JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
+			JOIN users u ON t.user_id = u.user_id
+			WHERE t.ticket_id = $1
+		`
+		var categoryName, areaName, seatCode string
+		var price float64
+		err = tx.QueryRowContext(ctx, selectQuery, t.ticketID).Scan(
+			&eventTitle,
+			&eventStart,
+			&eventEnd,
+			&venueAddress,
+			&venueName,
+			&areaName,
+			&seatCode,
+			&categoryName,
+			&price,
+			&userEmail,
+			&userName,
+		)
+		if err == nil {
+			ticketIds = append(ticketIds, fmt.Sprintf("%d", t.ticketID))
+			qrValues = append(qrValues, qrBase64)
+			seatCodes = append(seatCodes, seatCode)
+			categoryNames = append(categoryNames, categoryName)
+			prices = append(prices, price)
+			areaNames = append(areaNames, areaName)
+			totalPrice += price
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, nil, fmt.Errorf("error committing ticket changes: %w", err)
+	}
+
+	ticketData := &sagaTicketData{
+		TicketIDs:     ticketIds,
+		QRValues:      qrValues,
+		SeatCodes:     seatCodes,
+		CategoryNames: categoryNames,
+		Prices:        prices,
+		AreaNames:     areaNames,
+		EventTitle:    eventTitle,
+		EventStart:    eventStart,
+		EventEnd:      eventEnd,
+		VenueName:     venueName,
+		VenueAddress:  venueAddress,
+		UserEmail:     userEmail,
+		UserName:      userName,
+		TotalPrice:    totalPrice,
+	}
+
+	return ticketIds, ticketData, nil
+}
+
+func (r *TicketRepository) compensateResumedTickets(ctx context.Context, ticketIds []string, pendingBillID int64) {
+	log := logger.Default()
+	log.Info("[COMPENSATION] Reverting resumed tickets back to PENDING status...")
+	for _, tidStr := range ticketIds {
+		tid, err := strconv.Atoi(tidStr)
+		if err != nil {
+			continue
+		}
+		
+		_, err = r.db.ExecContext(ctx, "UPDATE Ticket SET status = 'PENDING', qr_code_value = 'PENDING_QR' WHERE ticket_id = $1", tid)
+		if err != nil {
+			log.Error("[COMPENSATION] Failed to reset ticket %d: %v", tid, err)
+		}
+		
+		var seatID int
+		err = r.db.QueryRowContext(ctx, "SELECT seat_id FROM Ticket WHERE ticket_id = $1", tid).Scan(&seatID)
+		if err == nil {
+			_, err = r.db.ExecContext(ctx, "UPDATE Seat SET status = 'ACTIVE' WHERE seat_id = $1", seatID)
+			if err != nil {
+				log.Error("[COMPENSATION] Failed to reset seat %d status: %v", seatID, err)
+			}
+		}
+	}
+	
+	_, err := r.db.ExecContext(ctx, "UPDATE Bill SET payment_status = 'PENDING' WHERE bill_id = $1", pendingBillID)
+	if err != nil {
+		log.Error("[COMPENSATION] Failed to reset bill %d: %v", pendingBillID, err)
+	}
 }
