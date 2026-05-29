@@ -2697,3 +2697,47 @@ func sendMultipleTicketsViaNotifyAPI(ctx context.Context, data map[string]interf
 	log.Info("[NOTIFY] ✅ Multiple tickets email sent via Notification API", "ticket_count", len(ticketItems), "email", userEmail)
 	return nil
 }
+
+// GetActiveOrderForSeats - Lấy thông tin đơn hàng pending đang hoạt động cho danh sách ghế
+func (r *TicketRepository) GetActiveOrderForSeats(ctx context.Context, seatIDs []int) (map[string]interface{}, error) {
+	if len(seatIDs) == 0 {
+		return nil, fmt.Errorf("no seats provided")
+	}
+
+	// Tìm xem có vé PENDING nào liên kết với hóa đơn PENDING cho ghế này không
+	query := `
+		SELECT t.bill_id, b.total_amount, b.created_at
+		FROM Ticket t
+		JOIN Bill b ON t.bill_id = b.bill_id
+		WHERE t.seat_id = $1 AND t.status = 'PENDING' AND b.payment_status = 'PENDING'
+		LIMIT 1
+	`
+	var billID int64
+	var totalAmount float64
+	var createdAt time.Time
+	err := r.db.QueryRowContext(ctx, query, seatIDs[0]).Scan(&billID, &totalAmount, &createdAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // Không có order hoạt động
+		}
+		return nil, err
+	}
+
+	// Kiểm tra nếu đã quá hạn 5 phút thực tế
+	now := time.Now()
+	if now.Sub(createdAt) > 5*time.Minute {
+		return nil, nil // Đã quá hạn
+	}
+
+	expiresAt := createdAt.Add(5 * time.Minute)
+
+	return map[string]interface{}{
+		"order_id":   billID,
+		"amount":     totalAmount,
+		"created_at": createdAt.Format(time.RFC3339),
+		"createdAt":  createdAt.Format(time.RFC3339),
+		"expire_at":  expiresAt.Format(time.RFC3339),
+		"expiresAt":  expiresAt.Format(time.RFC3339),
+		"seatIds":    seatIDs,
+	}, nil
+}

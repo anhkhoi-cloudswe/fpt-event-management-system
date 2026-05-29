@@ -999,3 +999,57 @@ func (h *TicketHandler) HandleCancelOrder(ctx context.Context, request events.AP
 		Body: string(body),
 	}, nil
 }
+
+// HandleGetActiveOrder - GET /api/payment/active-order?seatIds=1,2,3
+func (h *TicketHandler) HandleGetActiveOrder(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	seatIDsStr := request.QueryStringParameters["seatIds"]
+	if seatIDsStr == "" {
+		seatIDsStr = request.QueryStringParameters["seatId"]
+	}
+	if seatIDsStr == "" {
+		return createMessageResponse(http.StatusBadRequest, "Missing seatIds")
+	}
+
+	seatIDs := []int{}
+	for _, part := range strings.Split(seatIDsStr, ",") {
+		id, err := strconv.Atoi(strings.TrimSpace(part))
+		if err == nil {
+			seatIDs = append(seatIDs, id)
+		}
+	}
+
+	if len(seatIDs) == 0 {
+		return createMessageResponse(http.StatusBadRequest, "No valid seatIds provided")
+	}
+
+	orderData, err := h.useCase.GetActiveOrderForSeats(ctx, seatIDs)
+	if err != nil {
+		return createMessageResponse(http.StatusInternalServerError, err.Error())
+	}
+
+	if orderData == nil {
+		body, _ := json.Marshal(map[string]interface{}{"active": false})
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusOK,
+			Headers: map[string]string{
+				"Content-Type":                "application/json;charset=UTF-8",
+				"Access-Control-Allow-Origin": "*",
+			},
+			Body: string(body),
+		}, nil
+	}
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"active": true,
+		"order":  orderData,
+	})
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Access-Control-Allow-Origin": "*",
+		},
+		Body: string(body),
+	}, nil
+}
