@@ -44,6 +44,16 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 	// Auto release expired bills first (Lazy Expiry Evaluation)
 	r.AutoReleaseExpiredPendingBills(ctx)
 
+	// Rule 2 check: Check if user is locked out due to seat hoarding
+	penaltyMutex.RLock()
+	penalty, exists := userPenalties[userID]
+	if exists && !penalty.LockedUntil.IsZero() && time.Now().Before(penalty.LockedUntil) {
+		remainingSeconds := int(penalty.LockedUntil.Sub(time.Now()).Seconds())
+		penaltyMutex.RUnlock()
+		return "", fmt.Errorf("[E4003]|%d", remainingSeconds)
+	}
+	penaltyMutex.RUnlock()
+
 	log := logger.Default()
 	client := utils.NewInternalClient()
 

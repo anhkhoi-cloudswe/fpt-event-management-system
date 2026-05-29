@@ -455,8 +455,25 @@ export default function Payment() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Không thể tạo link thanh toán MoMo')
+        const errorMsgRaw = await response.text()
+        let cleanMsg = 'Không thể tạo link thanh toán MoMo'
+        let errCode = ''
+        let remSecs = 0
+        try {
+          const jsonErr = JSON.parse(errorMsgRaw)
+          cleanMsg = jsonErr.message || jsonErr.error || 'Không thể tạo link thanh toán MoMo'
+          errCode = jsonErr.errorCode || ''
+          remSecs = jsonErr.remainingSeconds || 0
+        } catch {}
+
+        if (errCode === 'E4003' || cleanMsg.includes('E4003')) {
+          const minutes = Math.floor(remSecs / 60)
+          const seconds = remSecs % 60
+          const formattedMinutes = minutes.toString().padStart(2, '0')
+          const formattedSeconds = seconds.toString().padStart(2, '0')
+          cleanMsg = `Tài khoản của bạn đã bị tạm khóa tính năng đặt vé. Vui lòng thử lại sau: ${formattedMinutes} phút ${formattedSeconds} giây do có hành vi giữ chỗ rác liên tục.`
+        }
+        throw new Error(cleanMsg)
       }
 
       const data = await response.json()
@@ -630,10 +647,28 @@ export default function Payment() {
       if (!response.ok) {
         const errorText = await response.text()
         let cleanMsg = errorText
+        let errCode = ''
+        let remSecs = 0
         try {
           const jsonErr = JSON.parse(errorText)
           cleanMsg = jsonErr.message || jsonErr.error || errorText
+          errCode = jsonErr.errorCode || ''
+          remSecs = jsonErr.remainingSeconds || 0
         } catch {}
+
+        if (errCode === 'E4003' || cleanMsg.includes('E4003')) {
+          const minutes = Math.floor(remSecs / 60)
+          const seconds = remSecs % 60
+          const formattedMinutes = minutes.toString().padStart(2, '0')
+          const formattedSeconds = seconds.toString().padStart(2, '0')
+          cleanMsg = `Tài khoản của bạn đã bị tạm khóa tính năng đặt vé. Vui lòng thử lại sau: ${formattedMinutes} phút ${formattedSeconds} giây do có hành vi giữ chỗ rác liên tục.`
+          setErrorData({
+            errorType: 'general',
+            errorMessage: cleanMsg
+          })
+          setShowErrorModal(true)
+          return
+        }
 
         // Check for duplicate entry (seat already taken)
         if (
@@ -826,10 +861,22 @@ export default function Payment() {
       if (!response.ok) {
         const errorMsgRaw = await response.text()
         let cleanMsg = errorMsgRaw
+        let errCode = ''
+        let remSecs = 0
         try {
           const jsonErr = JSON.parse(errorMsgRaw)
           cleanMsg = jsonErr.message || jsonErr.error || errorMsgRaw
+          errCode = jsonErr.errorCode || ''
+          remSecs = jsonErr.remainingSeconds || 0
         } catch {}
+
+        if (errCode === 'E4003' || cleanMsg.includes('E4003')) {
+          const minutes = Math.floor(remSecs / 60)
+          const seconds = remSecs % 60
+          const formattedMinutes = minutes.toString().padStart(2, '0')
+          const formattedSeconds = seconds.toString().padStart(2, '0')
+          cleanMsg = `Tài khoản của bạn đã bị tạm khóa tính năng đặt vé. Vui lòng thử lại sau: ${formattedMinutes} phút ${formattedSeconds} giây do có hành vi giữ chỗ rác liên tục.`
+        }
         throw new Error(cleanMsg || 'Không thể tạo đơn hàng chuyển khoản')
       }
 

@@ -426,6 +426,26 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 
 	payURL, err := h.useCase.CreateMoMoPaymentURL(ctx, userID, initReq.EventID, initReq.CategoryTicketID, initReq.SeatIDs, redirectURL, ipnURL)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "[E4003]|") {
+			parts := strings.Split(err.Error(), "|")
+			seconds := 0
+			if len(parts) >= 2 {
+				seconds, _ = strconv.Atoi(parts[1])
+			}
+			body, _ := json.Marshal(map[string]interface{}{
+				"errorCode":        "E4003",
+				"remainingSeconds": seconds,
+				"message":          fmt.Sprintf("Tài khoản của bạn đã bị tạm khóa tính năng đặt vé. Vui lòng thử lại sau: %02d phút %02d giây do có hành vi giữ chỗ rác liên tục.", seconds/60, seconds%60),
+			})
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusBadRequest,
+				Headers: map[string]string{
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Access-Control-Allow-Origin": "*",
+				},
+				Body: string(body),
+			}, nil
+		}
 		if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "ticket_event_id_seat_id_key") || strings.Contains(err.Error(), "trạng thái xử lý thanh toán") {
 			return events.APIGatewayProxyResponse{
 				StatusCode: http.StatusBadRequest,
@@ -695,6 +715,26 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 	// Process wallet payment
 	ticketIds, err := h.useCase.ProcessWalletPayment(ctx, userID, paymentReq.EventID, paymentReq.CategoryTicketID, paymentReq.SeatIDs, totalAmount)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "[E4003]|") {
+			parts := strings.Split(err.Error(), "|")
+			seconds := 0
+			if len(parts) >= 2 {
+				seconds, _ = strconv.Atoi(parts[1])
+			}
+			body, _ := json.Marshal(map[string]interface{}{
+				"errorCode":        "E4003",
+				"remainingSeconds": seconds,
+				"message":          fmt.Sprintf("Tài khoản của bạn đã bị tạm khóa tính năng đặt vé. Vui lòng thử lại sau: %02d phút %02d giây do có hành vi giữ chỗ rác liên tục.", seconds/60, seconds%60),
+			})
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusBadRequest,
+				Headers: map[string]string{
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Access-Control-Allow-Origin": "*",
+				},
+				Body: string(body),
+			}, nil
+		}
 		// Check if error is due to closed/invalid event status
 		if strings.Contains(err.Error(), "đã kết thúc") || strings.Contains(err.Error(), "đã đóng") {
 			return createMessageResponse(http.StatusBadRequest, err.Error())
@@ -816,6 +856,26 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 	// Call usecase to create the pending order
 	orderID, amount, err := h.useCase.CreateBankTransferOrder(ctx, userID, req.EventID, req.CategoryTicketID, req.SeatIDs)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "[E4003]|") {
+			parts := strings.Split(err.Error(), "|")
+			seconds := 0
+			if len(parts) >= 2 {
+				seconds, _ = strconv.Atoi(parts[1])
+			}
+			body, _ := json.Marshal(map[string]interface{}{
+				"errorCode":        "E4003",
+				"remainingSeconds": seconds,
+				"message":          fmt.Sprintf("Tài khoản của bạn đã bị tạm khóa tính năng đặt vé. Vui lòng thử lại sau: %02d phút %02d giây do có hành vi giữ chỗ rác liên tục.", seconds/60, seconds%60),
+			})
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusBadRequest,
+				Headers: map[string]string{
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Access-Control-Allow-Origin": "*",
+				},
+				Body: string(body),
+			}, nil
+		}
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
 
