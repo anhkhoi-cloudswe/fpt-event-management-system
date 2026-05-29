@@ -184,7 +184,7 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return ticketHandler.HandleMoMoWebhook(ctx, request)
 	case path == "/api/payment/create-order" && method == "POST":
 		return ticketHandler.HandleCreateBankTransferOrder(ctx, request)
-	case path == "/api/payment/cancel-order" && method == "POST":
+	case (path == "/api/payment/cancel" || path == "/api/payment/cancel-order") && method == "POST":
 		return ticketHandler.HandleCancelOrder(ctx, request)
 	case path == "/api/payment/sepay-webhook" && method == "POST":
 		return ticketHandler.HandleSePayWebhook(ctx, request)
