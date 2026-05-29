@@ -867,16 +867,14 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 	fmt.Printf("[CreateMoMoPaymentURL] Called - userID=%d, eventID=%d, seatIDs=%v\n", userID, eventID, seatIDs)
 
 	partnerCode := os.Getenv("MOMO_PARTNER_CODE")
-	if partnerCode == "" {
-		partnerCode = "MOMO"
-	}
 	accessKey := os.Getenv("MOMO_ACCESS_KEY")
-	if accessKey == "" {
-		accessKey = "F8B64A7481568"
-	}
 	secretKey := os.Getenv("MOMO_SECRET_KEY")
-	if secretKey == "" {
-		secretKey = "g2wHU7HzgDwCDNd61STW0vrlbbCgXf6S"
+
+	// Fool-proof override: Use Sandbox V2 credentials if legacy credentials or empty is detected
+	if partnerCode == "MOMOBKUN20180810" || partnerCode == "" {
+		partnerCode = "MOMO5RGW20210218"
+		accessKey = "E863Ux7H0v9y696m"
+		secretKey = "Ch96f3As9Y8x9Y6o8wNghbSn3Z4v6nt7"
 	}
 
 	if ipnURL == "" {
@@ -3048,16 +3046,14 @@ func equalIntSlices(a, b []int) bool {
 
 func (r *TicketRepository) generateMoMoURLDirect(ctx context.Context, billID int64, totalAmount float64, redirectURL, ipnURL string) (string, error) {
 	partnerCode := os.Getenv("MOMO_PARTNER_CODE")
-	if partnerCode == "" {
-		partnerCode = "MOMO"
-	}
 	accessKey := os.Getenv("MOMO_ACCESS_KEY")
-	if accessKey == "" {
-		accessKey = "F8B64A7481568"
-	}
 	secretKey := os.Getenv("MOMO_SECRET_KEY")
-	if secretKey == "" {
-		secretKey = "g2wHU7HzgDwCDNd61STW0vrlbbCgXf6S"
+
+	// Fool-proof override: Use Sandbox V2 credentials if legacy credentials or empty is detected
+	if partnerCode == "MOMOBKUN20180810" || partnerCode == "" {
+		partnerCode = "MOMO5RGW20210218"
+		accessKey = "E863Ux7H0v9y696m"
+		secretKey = "Ch96f3As9Y8x9Y6o8wNghbSn3Z4v6nt7"
 	}
 
 	if ipnURL == "" {
