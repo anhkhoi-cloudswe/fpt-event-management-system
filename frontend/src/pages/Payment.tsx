@@ -192,7 +192,6 @@ export default function Payment() {
           }).catch((err) => console.error('Error during automatic timeout cancellation:', err))
         }
 
-        localStorage.removeItem('bankTransferOrder')
         setShowBankTransferModal(false)
         alert('Thời gian giữ chỗ thanh toán đã hết hạn (5 phút). Ghế giữ chỗ của bạn đã được giải phóng.')
         navigate('/dashboard')
@@ -204,60 +203,41 @@ export default function Payment() {
 
   const serializedSeatIds = state.seatIds ? state.seatIds.map(Number).sort().join(',') : ''
 
-  // 1. Reset all payment and countdown states when the active seat selection changes
+  // Load active pending order for this seat selection from Backend API on mount
   useEffect(() => {
-    // If the saved order's seatIds do not match the current seat selection, clear it!
-    const savedOrder = localStorage.getItem('bankTransferOrder')
-    if (savedOrder) {
-      try {
-        const parsed = JSON.parse(savedOrder)
-        const parsedSeatIds = parsed.seatIds ? parsed.seatIds.map(Number).sort().join(',') : ''
-        if (parsedSeatIds !== serializedSeatIds) {
-          localStorage.removeItem('bankTransferOrder')
-        }
-      } catch (e) {
-        localStorage.removeItem('bankTransferOrder')
-      }
+    if (!serializedSeatIds || !token) {
+      return
     }
 
-    // Reset all frontend states
-    setShowBankTransferModal(false)
-    setBankTransferOrder(null)
-    setTimeLeft(0)
+    let activePollingIntervalId: number | null = null
 
-    if (pollingIntervalId) {
-      window.clearInterval(pollingIntervalId)
-      setPollingIntervalId(null)
-    }
-  }, [serializedSeatIds, state.eventId])
-
-  // Load saved bankTransferOrder from localStorage on mount (for persistent countdown across reloads)
-  useEffect(() => {
-    const savedOrder = localStorage.getItem('bankTransferOrder')
-    if (savedOrder) {
+    const fetchActiveOrder = async () => {
       try {
-        const parsed = JSON.parse(savedOrder)
-        
-        // Safety: only load if it matches the current seat selection
-        const parsedSeatIds = parsed.seatIds ? parsed.seatIds.map(Number).sort().join(',') : ''
-        if (parsedSeatIds !== serializedSeatIds) {
+        const response = await fetch(`/api/payment/active-order?seatIds=${serializedSeatIds}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        if (!response.ok) {
           return
         }
 
-        const expireTime = new Date(parsed.expiresAt || parsed.expire_at).getTime()
-        if (expireTime > Date.now()) {
-          setBankTransferOrder(parsed)
-          
-          // Pre-calculate time left immediately to prevent visual reset
+        const data = await response.json()
+        if (data.active && data.order) {
+          const order = data.order
+          setBankTransferOrder(order)
+
+          // Pre-calculate initial timeLeft
+          const expireTime = new Date(order.expiresAt || order.expire_at).getTime()
           const difference = expireTime - Date.now()
           setTimeLeft(Math.max(0, Math.floor(difference / 1000)))
-          
+
           setShowBankTransferModal(true)
 
-          // Restart polling
+          // Start checking payment status
           const intervalId = window.setInterval(async () => {
             try {
-              const statusRes = await fetch(`/api/payment/check-status/${parsed.order_id}`, {
+              const statusRes = await fetch(`/api/payment/check-status/${order.order_id}`, {
                 headers: {
                   'Authorization': `Bearer ${token}`
                 }
@@ -266,17 +246,14 @@ export default function Payment() {
                 const statusData = await statusRes.json()
                 if (statusData.status === 'PAID') {
                   window.clearInterval(intervalId)
-                  localStorage.removeItem('bankTransferOrder')
                   setShowBankTransferModal(false)
-                  const seatIdsParam = parsed.seatIds?.join(',') || state.seatIds?.join(',') || ''
+                  const seatIdsParam = order.seatIds?.join(',') || state.seatIds?.join(',') || ''
                   navigate(
-                    `/dashboard/payment/success?status=success&method=bank_transfer&billId=${parsed.order_id}&ticketIds=${seatIdsParam}`
+                    `/dashboard/payment/success?status=success&method=bank_transfer&billId=${order.order_id}&ticketIds=${seatIdsParam}`
                   )
                 } else if (statusData.status === 'CANCELED' || statusData.status === 'EXPIRED' || statusData.status === 'FAILED') {
                   window.clearInterval(intervalId)
-                  localStorage.removeItem('bankTransferOrder')
                   setShowBankTransferModal(false)
-                  setPollingIntervalId(null)
                   alert('Giao dịch chuyển khoản đã hết hạn giữ chỗ (5 phút) và bị hủy trên hệ thống.')
                   navigate('/dashboard')
                 }
@@ -285,12 +262,25 @@ export default function Payment() {
               console.error('Lỗi check status:', pollErr)
             }
           }, 3000)
+
+          activePollingIntervalId = intervalId
           setPollingIntervalId(intervalId)
         } else {
-          localStorage.removeItem('bankTransferOrder')
+          // No active order found on Backend, ensure states are clean
+          setBankTransferOrder(null)
+          setShowBankTransferModal(false)
+          setTimeLeft(0)
         }
-      } catch (e) {
-        localStorage.removeItem('bankTransferOrder')
+      } catch (err) {
+        console.error('Lỗi lấy active order từ Backend:', err)
+      }
+    }
+
+    fetchActiveOrder()
+
+    return () => {
+      if (activePollingIntervalId) {
+        window.clearInterval(activePollingIntervalId)
       }
     }
   }, [token, navigate, serializedSeatIds])
@@ -705,14 +695,12 @@ export default function Payment() {
         const ids = successData?.ticketIds ?? ''
         // emailFailed=1 nếu backend báo gửi mail thất bại (field emailFailed)
         const emailFailedFlag = successData?.emailFailed ? '&emailFailed=1' : ''
-        localStorage.removeItem('bankTransferOrder')
         emitWalletRefresh()
         navigate(
           `/dashboard/payment/success?status=success&method=wallet${ids ? `&ticketIds=${encodeURIComponent(ids)}` : ''}${emailFailedFlag}`
         )
       } catch {
         // Nếu parse JSON thất bại, dùng fallback không có ticketIds
-        localStorage.removeItem('bankTransferOrder')
         emitWalletRefresh()
         navigate('/dashboard/payment/success?status=success&method=wallet')
       }
@@ -777,66 +765,44 @@ export default function Payment() {
       return
     }
 
-    // Check if there is an active valid order for the exact same seats in localStorage to prevent resetting
-    const savedOrder = localStorage.getItem('bankTransferOrder')
-    if (savedOrder) {
-      try {
-        const parsed = JSON.parse(savedOrder)
-        const isSameSeats = parsed.seatIds &&
-          parsed.seatIds.length === state.seatIds?.length &&
-          parsed.seatIds.every((id: any) => state.seatIds?.map(Number).includes(Number(id)))
-
-        const expireTime = new Date(parsed.expiresAt || parsed.expire_at).getTime()
-        if (isSameSeats && expireTime > Date.now()) {
-          setBankTransferOrder(parsed)
-          
-          // Pre-calculate initial timeLeft to prevent visual flash
-          const difference = expireTime - Date.now()
-          setTimeLeft(Math.max(0, Math.floor(difference / 1000)))
-          
-          setShowBankTransferModal(true)
-
-          // Restart polling
-          if (pollingIntervalId) {
-            window.clearInterval(pollingIntervalId)
-          }
-
-          const intervalId = window.setInterval(async () => {
-            try {
-              const statusRes = await fetch(`/api/payment/check-status/${parsed.order_id}`, {
-                headers: {
-                  'Authorization': `Bearer ${token}`
-                }
-              })
-              if (statusRes.ok) {
-                const statusData = await statusRes.json()
-                if (statusData.status === 'PAID') {
-                  window.clearInterval(intervalId)
-                  localStorage.removeItem('bankTransferOrder')
-                  setShowBankTransferModal(false)
-                  const seatIdsParam = parsed.seatIds?.join(',') || state.seatIds?.join(',') || ''
-                  navigate(
-                    `/dashboard/payment/success?status=success&method=bank_transfer&billId=${parsed.order_id}&ticketIds=${seatIdsParam}`
-                  )
-                } else if (statusData.status === 'CANCELED' || statusData.status === 'EXPIRED' || statusData.status === 'FAILED') {
-                  window.clearInterval(intervalId)
-                  localStorage.removeItem('bankTransferOrder')
-                  setShowBankTransferModal(false)
-                  setPollingIntervalId(null)
-                  alert('Giao dịch chuyển khoản đã hết hạn giữ chỗ (5 phút) và bị hủy trên hệ thống.')
-                  navigate('/dashboard')
-                }
-              }
-            } catch (pollErr) {
-              console.error('Lỗi check status:', pollErr)
-            }
-          }, 3000)
-          setPollingIntervalId(intervalId)
-          return
-        }
-      } catch (e) {
-        console.error('Error restoring active order from localStorage:', e)
+    // Nếu đã có order chuyển khoản đang hoạt động cho ghế này trong state (lấy từ backend lúc mount), hiển thị lại modal
+    if (bankTransferOrder) {
+      setShowBankTransferModal(true)
+      
+      if (pollingIntervalId) {
+        window.clearInterval(pollingIntervalId)
       }
+
+      const intervalId = window.setInterval(async () => {
+        try {
+          const statusRes = await fetch(`/api/payment/check-status/${bankTransferOrder.order_id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          if (statusRes.ok) {
+            const statusData = await statusRes.json()
+            if (statusData.status === 'PAID') {
+              window.clearInterval(intervalId)
+              setShowBankTransferModal(false)
+              const seatIdsParam = bankTransferOrder.seatIds?.join(',') || state.seatIds?.join(',') || ''
+              navigate(
+                `/dashboard/payment/success?status=success&method=bank_transfer&billId=${bankTransferOrder.order_id}&ticketIds=${seatIdsParam}`
+              )
+            } else if (statusData.status === 'CANCELED' || statusData.status === 'EXPIRED' || statusData.status === 'FAILED') {
+              window.clearInterval(intervalId)
+              setShowBankTransferModal(false)
+              setPollingIntervalId(null)
+              alert('Giao dịch chuyển khoản đã hết hạn giữ chỗ (5 phút) và bị hủy trên hệ thống.')
+              navigate('/dashboard')
+            }
+          }
+        } catch (pollErr) {
+          console.error('Lỗi check status:', pollErr)
+        }
+      }, 3000)
+      setPollingIntervalId(intervalId)
+      return
     }
 
     setCreatingOrder(true)
@@ -870,7 +836,6 @@ export default function Payment() {
       const data = await response.json()
       const orderWithState = { ...data, seatIds: state.seatIds }
       setBankTransferOrder(orderWithState)
-      localStorage.setItem('bankTransferOrder', JSON.stringify(orderWithState))
 
       // Pre-calculate initial timeLeft to prevent visual flash
       const expireTime = new Date(orderWithState.expiresAt || orderWithState.expire_at).getTime()
@@ -891,14 +856,12 @@ export default function Payment() {
             const statusData = await statusRes.json()
             if (statusData.status === 'PAID') {
               window.clearInterval(intervalId)
-              localStorage.removeItem('bankTransferOrder')
               setShowBankTransferModal(false)
               navigate(
                 `/dashboard/payment/success?status=success&method=bank_transfer&billId=${data.order_id}&ticketIds=${state.seatIds?.join(',')}`
               )
             } else if (statusData.status === 'CANCELED' || statusData.status === 'EXPIRED' || statusData.status === 'FAILED') {
               window.clearInterval(intervalId)
-              localStorage.removeItem('bankTransferOrder')
               setShowBankTransferModal(false)
               setPollingIntervalId(null)
               alert('Giao dịch chuyển khoản đã hết hạn giữ chỗ (5 phút) và bị hủy trên hệ thống.')
@@ -944,7 +907,6 @@ export default function Payment() {
         }
 
         // Hủy thành công dưới Database
-        localStorage.removeItem('bankTransferOrder')
         setShowBankTransferModal(false)
         navigate('/dashboard')
       } catch (err: any) {
@@ -952,7 +914,6 @@ export default function Payment() {
         alert('Có lỗi xảy ra khi hủy giao dịch: ' + (err.message || 'Vui lòng thử lại.'))
       }
     } else {
-      localStorage.removeItem('bankTransferOrder')
       setShowBankTransferModal(false)
       navigate('/dashboard')
     }

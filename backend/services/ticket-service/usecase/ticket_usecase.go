@@ -137,3 +137,8 @@ func (uc *TicketUseCase) CancelOrder(ctx context.Context, orderID int64) error {
 	return uc.ticketRepo.CancelBankTransferOrder(ctx, orderID)
 }
 
+// GetActiveOrderForSeats - Lấy thông tin đơn hàng pending đang hoạt động cho danh sách ghế
+func (uc *TicketUseCase) GetActiveOrderForSeats(ctx context.Context, seatIDs []int) (map[string]interface{}, error) {
+	return uc.ticketRepo.GetActiveOrderForSeats(ctx, seatIDs)
+}
+
