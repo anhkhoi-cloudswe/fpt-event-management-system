@@ -481,11 +481,12 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 				Body: string(body),
 			}, nil
 		}
-		if strings.HasPrefix(err.Error(), "[E4003]|") {
-			parts := strings.Split(err.Error(), "|")
+		if strings.Contains(err.Error(), "[E4003]|") {
+			splitErr := strings.Split(err.Error(), "[E4003]|")
+			dataParts := strings.Split(splitErr[1], "|")
 			seconds := 0
-			if len(parts) >= 2 {
-				seconds, _ = strconv.Atoi(parts[1])
+			if len(dataParts) >= 1 {
+				seconds, _ = strconv.Atoi(dataParts[0])
 			}
 			body, _ := json.Marshal(map[string]interface{}{
 				"errorCode":        "E4003",
@@ -770,21 +771,23 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 	// Process wallet payment
 	ticketIds, err := h.useCase.ProcessWalletPayment(ctx, userID, paymentReq.EventID, paymentReq.CategoryTicketID, paymentReq.SeatIDs, totalAmount)
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "[E4002]|") {
-			parts := strings.Split(err.Error(), "|")
+		if strings.Contains(err.Error(), "[E4002]|") {
+			splitErr := strings.Split(err.Error(), "[E4002]|")
+			dataParts := strings.Split(splitErr[1], "|")
+			
 			billID := ""
 			seatsStr := ""
 			seatIDsStr := ""
 			eventIDStr := ""
 			catIDStr := ""
 			remSecsStr := ""
-			if len(parts) >= 7 {
-				billID = parts[1]
-				seatsStr = parts[2]
-				seatIDsStr = parts[3]
-				eventIDStr = parts[4]
-				catIDStr = parts[5]
-				remSecsStr = parts[6]
+			if len(dataParts) >= 6 {
+				billID = dataParts[0]
+				seatsStr = dataParts[1]
+				seatIDsStr = dataParts[2]
+				eventIDStr = dataParts[3]
+				catIDStr = dataParts[4]
+				remSecsStr = dataParts[5]
 			}
 			
 			seats := []string{}
@@ -823,11 +826,12 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 				Body: string(body),
 			}, nil
 		}
-		if strings.HasPrefix(err.Error(), "[E4003]|") {
-			parts := strings.Split(err.Error(), "|")
+		if strings.Contains(err.Error(), "[E4003]|") {
+			splitErr := strings.Split(err.Error(), "[E4003]|")
+			dataParts := strings.Split(splitErr[1], "|")
 			seconds := 0
-			if len(parts) >= 2 {
-				seconds, _ = strconv.Atoi(parts[1])
+			if len(dataParts) >= 1 {
+				seconds, _ = strconv.Atoi(dataParts[0])
 			}
 			body, _ := json.Marshal(map[string]interface{}{
 				"errorCode":        "E4003",
@@ -964,21 +968,23 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 	// Call usecase to create the pending order
 	orderID, amount, err := h.useCase.CreateBankTransferOrder(ctx, userID, req.EventID, req.CategoryTicketID, req.SeatIDs)
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "[E4002]|") {
-			parts := strings.Split(err.Error(), "|")
+		if strings.Contains(err.Error(), "[E4002]|") {
+			splitErr := strings.Split(err.Error(), "[E4002]|")
+			dataParts := strings.Split(splitErr[1], "|")
+			
 			billID := ""
 			seatsStr := ""
 			seatIDsStr := ""
 			eventIDStr := ""
 			catIDStr := ""
 			remSecsStr := ""
-			if len(parts) >= 7 {
-				billID = parts[1]
-				seatsStr = parts[2]
-				seatIDsStr = parts[3]
-				eventIDStr = parts[4]
-				catIDStr = parts[5]
-				remSecsStr = parts[6]
+			if len(dataParts) >= 6 {
+				billID = dataParts[0]
+				seatsStr = dataParts[1]
+				seatIDsStr = dataParts[2]
+				eventIDStr = dataParts[3]
+				catIDStr = dataParts[4]
+				remSecsStr = dataParts[5]
 			}
 			
 			seats := []string{}
@@ -1017,11 +1023,12 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 				Body: string(body),
 			}, nil
 		}
-		if strings.HasPrefix(err.Error(), "[E4003]|") {
-			parts := strings.Split(err.Error(), "|")
+		if strings.Contains(err.Error(), "[E4003]|") {
+			splitErr := strings.Split(err.Error(), "[E4003]|")
+			dataParts := strings.Split(splitErr[1], "|")
 			seconds := 0
-			if len(parts) >= 2 {
-				seconds, _ = strconv.Atoi(parts[1])
+			if len(dataParts) >= 1 {
+				seconds, _ = strconv.Atoi(dataParts[0])
 			}
 			body, _ := json.Marshal(map[string]interface{}{
 				"errorCode":        "E4003",
