@@ -546,7 +546,31 @@ export default function Payment() {
           seatIds = jsonErr.seatIds || []
           eventId = jsonErr.eventId || 0
           categoryTicketId = jsonErr.categoryTicketId || 0
-        } catch {}
+        } catch {
+          if (errorMsgRaw.includes('E4002')) {
+            const index = errorMsgRaw.indexOf('E4002')
+            const dataStr = errorMsgRaw.substring(index)
+            const rawParts = dataStr.split('|')
+            if (rawParts.length >= 7) {
+              errCode = 'E4002'
+              pendingBillId = Number(rawParts[1]) || 0
+              seats = rawParts[2] ? rawParts[2].split(',') : []
+              seatIds = rawParts[3] ? rawParts[3].split(',').map(Number) : []
+              eventId = Number(rawParts[4]) || 0
+              categoryTicketId = Number(rawParts[5]) || 0
+              remSecs = Number(rawParts[6]) || 0
+              cleanMsg = `Bạn đang có một đơn hàng giữ chỗ chưa hoàn tất cho ghế [${rawParts[2]}]. Vui lòng xử lý đơn hàng này trước.`
+            }
+          } else if (errorMsgRaw.includes('E4003')) {
+            const index = errorMsgRaw.indexOf('E4003')
+            const dataStr = errorMsgRaw.substring(index)
+            const rawParts = dataStr.split('|')
+            if (rawParts.length >= 2) {
+              errCode = 'E4003'
+              remSecs = Number(rawParts[1]) || 0
+            }
+          }
+        }
 
         if (errCode === 'E4002') {
           setResumeData({
@@ -760,7 +784,31 @@ export default function Payment() {
           seatIds = jsonErr.seatIds || []
           eventId = jsonErr.eventId || 0
           categoryTicketId = jsonErr.categoryTicketId || 0
-        } catch {}
+        } catch {
+          if (errorText.includes('E4002')) {
+            const index = errorText.indexOf('E4002')
+            const dataStr = errorText.substring(index)
+            const rawParts = dataStr.split('|')
+            if (rawParts.length >= 7) {
+              errCode = 'E4002'
+              pendingBillId = Number(rawParts[1]) || 0
+              seats = rawParts[2] ? rawParts[2].split(',') : []
+              seatIds = rawParts[3] ? rawParts[3].split(',').map(Number) : []
+              eventId = Number(rawParts[4]) || 0
+              categoryTicketId = Number(rawParts[5]) || 0
+              remSecs = Number(rawParts[6]) || 0
+              cleanMsg = `Bạn đang có một đơn hàng giữ chỗ chưa hoàn tất cho ghế [${rawParts[2]}]. Vui lòng xử lý đơn hàng này trước.`
+            }
+          } else if (errorText.includes('E4003')) {
+            const index = errorText.indexOf('E4003')
+            const dataStr = errorText.substring(index)
+            const rawParts = dataStr.split('|')
+            if (rawParts.length >= 2) {
+              errCode = 'E4003'
+              remSecs = Number(rawParts[1]) || 0
+            }
+          }
+        }
 
         if (errCode === 'E4002') {
           setResumeData({
@@ -998,7 +1046,31 @@ export default function Payment() {
           seatIds = jsonErr.seatIds || []
           eventId = jsonErr.eventId || 0
           categoryTicketId = jsonErr.categoryTicketId || 0
-        } catch {}
+        } catch {
+          if (errorMsgRaw.includes('E4002')) {
+            const index = errorMsgRaw.indexOf('E4002')
+            const dataStr = errorMsgRaw.substring(index)
+            const rawParts = dataStr.split('|')
+            if (rawParts.length >= 7) {
+              errCode = 'E4002'
+              pendingBillId = Number(rawParts[1]) || 0
+              seats = rawParts[2] ? rawParts[2].split(',') : []
+              seatIds = rawParts[3] ? rawParts[3].split(',').map(Number) : []
+              eventId = Number(rawParts[4]) || 0
+              categoryTicketId = Number(rawParts[5]) || 0
+              remSecs = Number(rawParts[6]) || 0
+              cleanMsg = `Bạn đang có một đơn hàng giữ chỗ chưa hoàn tất cho ghế [${rawParts[2]}]. Vui lòng xử lý đơn hàng này trước.`
+            }
+          } else if (errorMsgRaw.includes('E4003')) {
+            const index = errorMsgRaw.indexOf('E4003')
+            const dataStr = errorMsgRaw.substring(index)
+            const rawParts = dataStr.split('|')
+            if (rawParts.length >= 2) {
+              errCode = 'E4003'
+              remSecs = Number(rawParts[1]) || 0
+            }
+          }
+        }
 
         if (errCode === 'E4002') {
           setResumeData({
