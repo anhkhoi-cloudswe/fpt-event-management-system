@@ -1,10 +1,26 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { format } from 'date-fns'
-import { vi } from 'date-fns/locale'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { ExternalLink, ImageIcon, Search, FileClock } from 'lucide-react'
+import { 
+  ExternalLink, 
+  ImageIcon, 
+  Search, 
+  FileClock, 
+  CheckCircle2, 
+  XCircle, 
+  Clock, 
+  MapPin, 
+  User, 
+  Tag, 
+  Calendar, 
+  Wallet, 
+  Filter, 
+  RefreshCw, 
+  X,
+  FileText,
+  AlertCircle
+} from 'lucide-react'
 import { emitWalletRefresh } from '../hooks/useWallet'
 import { formatVietnamDateTime } from '../utils/dateFormat'
 
@@ -12,8 +28,6 @@ import { formatVietnamDateTime } from '../utils/dateFormat'
  * =========================
  * TYPE ĐỊNH NGHĨA DỮ LIỆU
  * =========================
- * ReportSummary: dạng rút gọn để hiển thị ở bảng list
- * ReportDetail: dạng đầy đủ để hiển thị popup chi tiết
  */
 type ReportSummary = {
   report_id: number
@@ -40,7 +54,8 @@ type ReportDetail = {
   category_ticket_id?: number
   category_ticket_name?: string
   price?: number
-  // Seat / Area / Venue details (may be provided by backend)
+
+  // Seat / Area / Venue details
   seat_id?: number
   seat_code?: string
   row_no?: string | number
@@ -54,63 +69,37 @@ type ReportDetail = {
   venue_name?: string
   location?: string
 
-  // Processor info (for processed reports)
+  // Processor info
   processed_by?: string
   processed_at?: string
   staff_note?: string
 }
 
-/**
- * =========================
- * COMPONENT CHÍNH
- * =========================
- * ReportRequests: màn hình staff xử lý yêu cầu hoàn tiền/báo cáo lỗi
- * Chức năng chính:
- * 1) Load danh sách report từ backend với phân trang + lọc + tìm kiếm
- * 2) Lọc theo tab PENDING / PROCESSED
- * 3) Click "Xem chi tiết" để load chi tiết theo reportId
- * 4) Duyệt / từ chối report + update UI
- */
 export default function ReportRequests() {
-  // Lấy thông tin user đang đăng nhập (từ AuthContext)
   const { user } = useAuth()
-
-  // Toast để hiện thông báo nhanh (success/error) cho staff
   const { showToast } = useToast()
-
-  // URL search params để sync pagination với URL
   const [searchParams, setSearchParams] = useSearchParams()
 
-  /**
-   * =========================
-   * STATE QUẢN LÝ UI + DATA
-   * =========================
-   */
-  const [loading, setLoading] = useState(true) // đang tải dữ liệu (list hoặc detail)
-  const [error, setError] = useState<string | null>(null) // lỗi khi gọi API
-  const [reports, setReports] = useState<ReportSummary[]>([]) // danh sách report để hiển thị bảng
-  const [selected, setSelected] = useState<ReportDetail | null>(null) // report đang mở modal chi tiết
-  const [isProcessing, setIsProcessing] = useState(false) // đang xử lý approve/reject (disable nút)
-  const [staffNote, setStaffNote] = useState('') // ghi chú staff nhập vào textarea
-  const [activeTab, setActiveTab] = useState<'PENDING' | 'PROCESSED'>('PENDING') // tab đang chọn
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [reports, setReports] = useState<ReportSummary[]>([])
+  const [selected, setSelected] = useState<ReportDetail | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [staffNote, setStaffNote] = useState('')
+  const [activeTab, setActiveTab] = useState<'PENDING' | 'PROCESSED'>('PENDING')
 
-  // Pagination & Filter state
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const [statusFilter, setStatusFilter] = useState<'PENDING' | 'PROCESSED' | ''>('')
-  const [searchQuery, setSearchQuery] = useState('') // search theo tên người gửi hoặc ticket ID
-  const [timeFilter, setTimeFilter] = useState('') // time filter: '', 'today', 'week', 'month'
+  const [searchQuery, setSearchQuery] = useState('')
+  const [timeFilter, setTimeFilter] = useState('')
 
-  // Status counts from API
   const [counts, setCounts] = useState({ pending: 0, approved: 0, rejected: 0, processed: 0 })
 
-  /**
-   * ===================================================
-   * Fetch reports data - extracted to component level
-   * so it can be called from other functions
-   * ===================================================
-   */
+  // State trigger to allow manual refresh
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
   const fetchReportsData = async (pageNum: number = currentPage, query: string = searchQuery, tab: 'PENDING' | 'PROCESSED' = activeTab) => {
     setLoading(true)
     setError(null)
@@ -134,14 +123,10 @@ export default function ReportRequests() {
       })
 
       const responseText = await res.text()
-      console.log('List response status:', res.status)
-      console.log('List response:', responseText.substring(0, 200))
-
       let data
       try {
         data = JSON.parse(responseText)
       } catch (parseError) {
-        console.error('JSON parse error. Response was:', responseText.substring(0, 500))
         throw new Error('Server trả về định dạng không hợp lệ. Vui lòng kiểm tra URL backend.')
       }
 
@@ -190,27 +175,15 @@ export default function ReportRequests() {
     }
   }
 
-  /**
-   * ===================================================
-   * useEffect: chạy khi component mount hoặc deps thay đổi
-   * ===================================================
-   */
   useEffect(() => {
     fetchReportsData(currentPage, searchQuery, activeTab)
-  }, [currentPage, searchQuery, activeTab])
+  }, [currentPage, searchQuery, activeTab, refreshTrigger])
 
-  /**
-   * ===================================================
-   * openDetail: gọi API lấy chi tiết 1 report theo reportId
-   * => dùng để mở modal chi tiết
-   * ===================================================
-   */
   const openDetail = async (reportId: number) => {
     setLoading(true)
     setError(null)
 
     try {
-      // Gỏi API detail: /api/staff/reports/{reportId} (path parameter)
       const res = await fetch(`/api/staff/reports/${reportId}`, {
         method: 'GET',
         credentials: 'include',
@@ -220,49 +193,19 @@ export default function ReportRequests() {
         },
       })
 
-      // Debug response
       const responseText = await res.text()
-      console.log('Detail Response status:', res.status)
-      console.log('Detail Response text:', responseText)
-
-      // Parse JSON an toàn
       let data
       try {
         data = JSON.parse(responseText)
       } catch (parseError) {
-        console.error('JSON parse error. Response was:', responseText.substring(0, 500))
         throw new Error('Server trả về định dạng không hợp lệ. Vui lòng kiểm tra URL backend.')
       }
 
-      // Nếu backend báo fail hoặc HTTP lỗi
       if (data.status === 'fail' || !res.ok) {
         throw new Error(data.message || 'Không thể tải chi tiết')
       }
 
-      /**
-       * Backend có thể trả dạng:
-       * { status: 'success', data: {...} }
-       * hoặc trả trực tiếp object
-       * => normalize về detail object
-       */
       const detail = data.data ?? data
-
-      // DEBUG: Log the detail object to verify fields are populated
-      console.log('🔍 Detail object extracted:', detail)
-      console.log('🔍 Price field:', detail.price)
-      console.log('🔍 Seat info:', {
-        seat_code: detail.seat_code,
-        row_no: detail.row_no,
-        col_no: detail.col_no,
-      })
-      console.log('🔍 Area info:', {
-        venue_name: detail.venue_name,
-        area_name: detail.area_name,
-        floor: detail.floor,
-        location: detail.location,
-      })
-
-      // Set selected để mở modal
       setSelected(detail)
     } catch (err: any) {
       console.error('Open detail error', err)
@@ -272,16 +215,11 @@ export default function ReportRequests() {
     }
   }
 
-  // Đóng modal: chỉ cần clear selected
-  const closeDetail = () => setSelected(null)
+  const closeDetail = () => {
+    setSelected(null)
+    setStaffNote('')
+  }
 
-  /**
-   * ===================================================
-   * processReport: xử lý report (APPROVE / REJECT)
-   * - gửi reportId, action, staffNote lên backend
-   * - nếu ok: update state selected + list để UI phản ánh ngay
-   * ===================================================
-   */
   const processReport = async (reportId: number, action: 'APPROVE' | 'REJECT') => {
     setIsProcessing(true)
 
@@ -293,67 +231,48 @@ export default function ReportRequests() {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          credentials: 'include',
         },
-        // Body gửi lên backend: reportId + staffNote
         body: JSON.stringify({ reportId, staffNote }),
       })
 
-      // Parse JSON response; nếu parse fail => null
       const data = await res.json().catch(() => null)
 
-      // Nếu HTTP fail hoặc data null
       if (!res.ok || !data) {
         throw new Error(data?.message || 'Xử lý thất bại')
       }
 
-      // Backend trả status fail
       if (data.status === 'fail') {
         throw new Error(data.message || 'Xử lý thất bại')
       }
 
-      // Nếu action APPROVE => status mới APPROVED, ngược lại REJECTED
       const newStatus = action === 'APPROVE' ? 'APPROVED' : 'REJECTED'
       const successMessage = action === 'APPROVE'
         ? 'Đã duyệt báo cáo và hoàn tiền thành công'
         : 'Đã từ chối báo cáo thành công'
 
-      // Update trạng thái trong danh sách (reports) để list đổi ngay mà không cần reload
       setReports((prev) =>
         prev.map(r => r.report_id === reportId ? { ...r, report_status: newStatus } : r)
       )
 
-      // Hiện toast thành công
       showToast('success', successMessage)
 
-      // Nếu APPROVE => gọi emitWalletRefresh() để sinh viên thấy tiền hoàn lại ngay lập tức
       if (action === 'APPROVE') {
         emitWalletRefresh()
       }
 
-      // Gọi fetchReportsData() để cập nhật counts trên tabs
       fetchReportsData(currentPage, searchQuery, activeTab)
-
-      // Đóng modal sau khi xử lý thành công
       setSelected(null)
       setStaffNote('')
 
     } catch (err: any) {
       console.error('Process report error', err)
-      // Hiện toast lỗi
       showToast('error', err.message || 'Có lỗi xảy ra')
     } finally {
       setIsProcessing(false)
     }
   }
 
-  /**
-   * ===================================================
-   * LỌC DANH SÁCH THEO TAB + STATUS + SEARCH + TIME
-   * ===================================================
-   */
   const filteredReports = useMemo(() => {
-    // Bước 1: Lọc theo tab (PENDING vs PROCESSED)
     let list = reports
     if (activeTab === 'PENDING') {
       list = list.filter(r => (r.report_status ?? '').toUpperCase() === 'PENDING')
@@ -364,12 +283,10 @@ export default function ReportRequests() {
       })
     }
 
-    // Bước 2: Lọc theo statusFilter (nếu chọn trong dropdown)
     if (statusFilter) {
       list = list.filter(r => (r.report_status ?? '').toUpperCase() === statusFilter.toUpperCase())
     }
 
-    // Bước 3: Lọc theo searchQuery (tên người gửi hoặc ticket ID)
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase()
       list = list.filter(r =>
@@ -379,17 +296,11 @@ export default function ReportRequests() {
       )
     }
 
-    // Bước 4: Lọc theo timeFilter (tùy chọn - có thể mở rộng sau)
-    // TODO: Implement time filtering based on created_at
-
     return list
   }, [reports, activeTab, statusFilter, searchQuery, timeFilter])
 
   const displayList = filteredReports
 
-  /**
-   * Handle pagination: update URL params khi thay đổi page
-   */
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage)
     const params = new URLSearchParams(searchParams)
@@ -397,464 +308,612 @@ export default function ReportRequests() {
     setSearchParams(params)
   }
 
-  /**
-   * ===================================================
-   * RENDER UI
-   * ===================================================
-   */
+  const forceRefresh = () => {
+    setRefreshTrigger(prev => prev + 1)
+    showToast('info', 'Đã cập nhật danh sách')
+  }
+
   return (
-    <div className="bg-amber-50 min-h-screen p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Quản lý báo cáo & Hoàn tiền</h1>
-        <p className="text-sm text-gray-500 mt-1">Duyệt các phản ánh về ghế ngồi và yêu cầu hoàn tiền từ sinh viên.</p>
+    <div className="bg-slate-50/50 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 pb-5">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Quản lý Báo cáo & Hoàn tiền</h1>
+          <p className="text-sm text-slate-500 mt-1.5 max-w-2xl">
+            Trung tâm kiểm soát và xử lý phản ánh ghế ngồi lỗi từ sinh viên. Hỗ trợ duyệt tự động hoàn tiền vé vào ví.
+          </p>
+        </div>
+        <button
+          onClick={forceRefresh}
+          className="self-start md:self-auto inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-xl text-sm font-semibold shadow-sm hover:shadow transition-all active:scale-95"
+        >
+          <RefreshCw className="w-4 h-4" /> Làm mới danh sách
+        </button>
       </div>
 
-      {/* Nếu đang loading: hiển thị box "Đang tải..." */}
-      {loading && (
-        <div className="bg-white rounded-lg shadow-md p-10 text-center">
-          <p className="text-gray-500">Đang tải...</p>
-        </div>
-      )}
-
-      {/* Nếu có lỗi: hiển thị error */}
-      {error && (
-        <div className="bg-white rounded-lg shadow-md p-10 text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Thử lại
-          </button>
-        </div>
-      )}
-
-      {/* Khi không loading và không error: hiển thị danh sách */}
-      {!loading && !error && (
-        <div>
-          {/* Tabs - Underline Style */}
-          <div className="mb-6">
-            <div className="border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8">
-                {/* Tab Chờ xử lý */}
-                <button
-                  onClick={() => {
-                    setActiveTab('PENDING')
-                    setCurrentPage(1)
-                    setSearchParams(new URLSearchParams({ page: '1' }))
-                  }}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'PENDING'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                >
-                  Chờ xử lý
-                  {counts.pending > 0 && (
-                    <span className="ml-2 py-0.5 px-2 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium">
-                      {counts.pending}
-                    </span>
-                  )}
-                </button>
-
-                {/* Tab Đã xử lý */}
-                <button
-                  onClick={() => {
-                    setActiveTab('PROCESSED')
-                    setCurrentPage(1)
-                    setSearchParams(new URLSearchParams({ page: '1' }))
-                  }}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'PROCESSED'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                >
-                  Đã xử lý
-                  {counts.processed > 0 && (
-                    <span className="ml-2 py-0.5 px-2 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium">
-                      {counts.processed}
-                    </span>
-                  )}
-                </button>
-              </nav>
-            </div>
+      {/* Dashboard Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Pending Card */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-amber-200/50 group">
+          <div className="p-3.5 bg-amber-50 text-amber-600 rounded-xl group-hover:scale-110 transition-transform">
+            <Clock className="w-6 h-6" />
           </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Chờ xử lý</p>
+            <p className="text-2xl font-bold text-slate-900 mt-0.5">{counts.pending}</p>
+          </div>
+        </div>
 
-          {/* Multi-Filter Bar */}
-          <div className="mb-6 bg-white rounded-lg shadow-md p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Search Input */}
-              <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2">
-                <Search className="w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Tiêu đề hoặc người gửi..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    setCurrentPage(1)
-                    setSearchParams(new URLSearchParams({ page: '1' }))
-                  }}
-                  className="flex-1 px-2 py-1 outline-none text-sm"
-                />
-              </div>
+        {/* Approved Card */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-emerald-200/50 group">
+          <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Đã duyệt</p>
+            <p className="text-2xl font-bold text-slate-900 mt-0.5">{counts.approved}</p>
+          </div>
+        </div>
 
-              {/* Status Filter */}
+        {/* Rejected Card */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-rose-200/50 group">
+          <div className="p-3.5 bg-rose-50 text-rose-600 rounded-xl group-hover:scale-110 transition-transform">
+            <XCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Đã từ chối</p>
+            <p className="text-2xl font-bold text-slate-900 mt-0.5">{counts.rejected}</p>
+          </div>
+        </div>
+
+        {/* Total Card */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-blue-200/50 group">
+          <div className="p-3.5 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-110 transition-transform">
+            <FileClock className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tổng cộng</p>
+            <p className="text-2xl font-bold text-slate-900 mt-0.5">{counts.pending + counts.processed}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="space-y-6">
+        {/* Navigation Tabs */}
+        <div className="border-b border-slate-200">
+          <div className="flex gap-6">
+            <button
+              onClick={() => {
+                setActiveTab('PENDING')
+                setCurrentPage(1)
+                setSearchParams({ page: '1' })
+              }}
+              className={`pb-4 px-1 text-sm font-bold tracking-wide transition-all relative inline-flex items-center gap-2 ${
+                activeTab === 'PENDING'
+                  ? 'text-blue-600 font-extrabold'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              Chờ xử lý
+              {counts.pending > 0 && (
+                <span className="px-2.5 py-0.5 text-xs font-bold bg-amber-100 text-amber-800 rounded-full animate-pulse">
+                  {counts.pending}
+                </span>
+              )}
+              {activeTab === 'PENDING' && (
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-full" />
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('PROCESSED')
+                setCurrentPage(1)
+                setSearchParams({ page: '1' })
+              }}
+              className={`pb-4 px-1 text-sm font-bold tracking-wide transition-all relative inline-flex items-center gap-2 ${
+                activeTab === 'PROCESSED'
+                  ? 'text-blue-600 font-extrabold'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              Lịch sử xử lý
+              {counts.processed > 0 && (
+                <span className="px-2.5 py-0.5 text-xs font-bold bg-slate-100 text-slate-600 rounded-full">
+                  {counts.processed}
+                </span>
+              )}
+              {activeTab === 'PROCESSED' && (
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-full" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Filter Bar Card */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Search Input */}
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Tìm tiêu đề, mã vé, người gửi..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setCurrentPage(1)
+                  setSearchParams({ page: '1' })
+                }}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 p-1 hover:bg-slate-200 rounded-full text-slate-400"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Status Select */}
+            <div className="relative">
               <select
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value as 'PENDING' | 'PROCESSED' | '')
                   setCurrentPage(1)
-                  setSearchParams(new URLSearchParams({ page: '1' }))
+                  setSearchParams({ page: '1' })
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-sm text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all appearance-none cursor-pointer"
               >
                 <option value="">Tất cả trạng thái</option>
-                <option value="PENDING">Chờ xử lý</option>
-                <option value="APPROVED">Đã duyệt</option>
-                <option value="REJECTED">Từ chối</option>
+                <option value="PENDING">Chờ xử lý (PENDING)</option>
+                <option value="APPROVED">Đã duyệt (APPROVED)</option>
+                <option value="REJECTED">Từ chối (REJECTED)</option>
               </select>
+              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                <Filter className="w-3.5 h-3.5" />
+              </div>
+            </div>
 
-              {/* Time Filter */}
+            {/* Time Filter Select */}
+            <div className="relative">
               <select
                 value={timeFilter}
                 onChange={(e) => {
                   setTimeFilter(e.target.value)
                   setCurrentPage(1)
-                  setSearchParams(new URLSearchParams({ page: '1' }))
+                  setSearchParams({ page: '1' })
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-sm text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all appearance-none cursor-pointer"
               >
                 <option value="">Tất cả thời gian</option>
                 <option value="today">Hôm nay</option>
                 <option value="week">Tuần này</option>
                 <option value="month">Tháng này</option>
               </select>
+              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                <Calendar className="w-3.5 h-3.5" />
+              </div>
             </div>
           </div>
-
-          {/* Metadata */}
-          {displayList.length > 0 && (
-            <div className="mb-4 text-sm text-gray-600">
-              Hiển thị <span className="font-semibold">{displayList.length}</span> trên{' '}
-              <span className="font-semibold">{totalItems}</span> yêu cầu
-            </div>
-          )}
-
-          {/* Empty State */}
-          {displayList.length === 0 && !loading && !error ? (
-            <div className="bg-white rounded-lg shadow-md p-10 text-center">
-              <FileClock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg font-medium">Không tìm thấy yêu cầu nào</p>
-              <p className="text-sm text-gray-400 mt-2">
-                {activeTab === 'PENDING'
-                  ? 'Không có yêu cầu đang chờ xử lý.'
-                  : 'Không có yêu cầu đã xử lý.'}
-              </p>
-            </div>
-          ) : (
-            // Table
-            <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-              <table className="w-full table-auto divide-y divide-gray-200">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người gửi</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại vé</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày gửi</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-gray-200">
-                  {/* Render từng row từ displayList (đã lọc theo tab) */}
-                  {displayList.map((r) => (
-                    <tr key={r.report_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-blue-600">{r.report_id}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{r.ticket_id}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{r.student_name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{r.category_ticket_name ?? '-'}</td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${r.report_status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                          r.report_status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                          {r.report_status}
-                        </span>
-                      </td>
-
-                      {/* Format createdAt theo dd/MM/yyyy HH:mm, locale tiếng Việt - sử dụng helper để xử lý timezone Vietnam */}
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {formatVietnamDateTime(r.created_at, 'dd/MM/yyyy HH:mm')}
-                      </td>
-
-                      {/* Nút mở modal detail: gọi openDetail */}
-                      <td className="px-6 py-4 text-sm">
-                        <button
-                          onClick={() => openDetail(r.report_id)}
-                          className="text-blue-600 hover:text-blue-900 hover:underline inline-flex items-center gap-1"
-                        >
-                          Xem chi tiết <ExternalLink className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {/* Nếu không có item nào trong tab hiện tại */}
-
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* ======================
-              PAGINATION CONTROLS
-              ====================== */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white rounded-lg shadow-md p-4">
-              <div className="text-sm text-gray-600">
-                Trang <span className="font-semibold">{currentPage}</span> / <span className="font-semibold">{totalPages}</span> ({totalItems} yêu cầu)
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Trước
-                </button>
-
-                {/* Page numbers */}
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum = 1
-                  if (totalPages > 5) {
-                    if (currentPage <= 3) {
-                      pageNum = i + 1
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i
-                    } else {
-                      pageNum = currentPage - 2 + i
-                    }
-                  } else {
-                    pageNum = i + 1
-                  }
-                  return pageNum >= 1 && pageNum <= totalPages ? (
-                    <button
-                      key={pageNum}
-                      onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-2 border rounded-lg text-sm ${currentPage === pageNum
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'border-gray-300 hover:bg-gray-50'
-                        }`}
-                    >
-                      {pageNum}
-                    </button>
-                  ) : null
-                })}
-
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Sau
-                </button>
-              </div>
-            </div>
-          )}
         </div>
-      )}
+
+        {/* Loading Spinner */}
+        {loading && (
+          <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
+            <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-sm font-medium text-slate-500">Đang tải dữ liệu yêu cầu...</p>
+          </div>
+        )}
+
+        {/* Error Block */}
+        {error && (
+          <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center shadow-sm">
+            <div className="p-3 bg-rose-50 text-rose-600 rounded-full w-fit mx-auto mb-4">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">Không thể tải dữ liệu</h3>
+            <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">{error}</p>
+            <button
+              onClick={() => setRefreshTrigger(prev => prev + 1)}
+              className="mt-5 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all shadow-sm"
+            >
+              Thử tải lại
+            </button>
+          </div>
+        )}
+
+        {/* List Data View */}
+        {!loading && !error && (
+          <div>
+            {displayList.length > 0 && (
+              <div className="mb-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Tìm thấy <span className="text-blue-600 font-bold">{displayList.length}</span> trên{' '}
+                <span className="font-bold text-slate-700">{totalItems}</span> báo cáo
+              </div>
+            )}
+
+            {/* Empty State */}
+            {displayList.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
+                <div className="p-4 bg-slate-50 text-slate-300 rounded-full w-fit mx-auto mb-4">
+                  <FileClock className="w-12 h-12" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800">Không tìm thấy yêu cầu</h3>
+                <p className="text-sm text-slate-400 mt-2 max-w-sm mx-auto">
+                  {activeTab === 'PENDING'
+                    ? 'Tuyệt vời! Hiện không có phản ánh báo cáo ghế hỏng nào đang chờ xử lý.'
+                    : 'Chưa có lịch sử xử lý báo cáo nào được ghi nhận.'}
+                </p>
+              </div>
+            ) : (
+              /* Table Layout */
+              <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left">
+                    <thead>
+                      <tr className="bg-slate-50/70 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="px-6 py-4">ID Báo cáo</th>
+                        <th className="px-6 py-4">Mã Vé (Ticket ID)</th>
+                        <th className="px-6 py-4">Sinh viên</th>
+                        <th className="px-6 py-4">Loại vé</th>
+                        <th className="px-6 py-4">Trạng thái</th>
+                        <th className="px-6 py-4">Thời gian gửi</th>
+                        <th className="px-6 py-4 text-right">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
+                      {displayList.map((r) => (
+                        <tr key={r.report_id} className="hover:bg-slate-50/50 transition-colors group">
+                          {/* Report ID */}
+                          <td className="px-6 py-4 font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                            #{r.report_id}
+                          </td>
+                          {/* Ticket ID */}
+                          <td className="px-6 py-4 font-medium text-slate-500">
+                            #{r.ticket_id}
+                          </td>
+                          {/* Student Name */}
+                          <td className="px-6 py-4 font-semibold text-slate-800">
+                            {r.student_name}
+                          </td>
+                          {/* Category Name */}
+                          <td className="px-6 py-4 font-medium text-slate-500">
+                            {r.category_ticket_name ? (
+                              <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded font-medium">
+                                {r.category_ticket_name}
+                              </span>
+                            ) : (
+                              '-'
+                            )}
+                          </td>
+                          {/* Status Badge */}
+                          <td className="px-6 py-4">
+                            {r.report_status === 'PENDING' ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                                Chờ xử lý
+                              </span>
+                            ) : r.report_status === 'APPROVED' ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Đã duyệt
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                                <XCircle className="w-3.5 h-3.5" />
+                                Đã từ chối
+                              </span>
+                            )}
+                          </td>
+                          {/* Created Time */}
+                          <td className="px-6 py-4 text-slate-500">
+                            {formatVietnamDateTime(r.created_at, 'dd/MM/yyyy HH:mm')}
+                          </td>
+                          {/* Actions */}
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => openDetail(r.report_id)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:text-white bg-blue-50 hover:bg-blue-600 border border-blue-100 rounded-xl transition-all shadow-sm active:scale-95"
+                            >
+                              Xem chi tiết
+                              <ExternalLink className="w-3 h-3" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                <div className="text-sm text-slate-500 font-medium">
+                  Trang <span className="font-bold text-slate-800">{currentPage}</span> /{' '}
+                  <span className="font-bold text-slate-800">{totalPages}</span> ({totalItems} yêu cầu)
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-all"
+                  >
+                    Trước
+                  </button>
+
+                  {/* Page numbers */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum = 1
+                    if (totalPages > 5) {
+                      if (currentPage <= 3) {
+                        pageNum = i + 1
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i
+                      } else {
+                        pageNum = currentPage - 2 + i
+                      }
+                    } else {
+                      pageNum = i + 1
+                    }
+                    return pageNum >= 1 && pageNum <= totalPages ? (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-all border ${
+                          currentPage === pageNum
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/20'
+                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    ) : null
+                  })}
+
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-all"
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ======================
-          MODAL DETAIL (chỉ render khi selected != null)
+          HIGH-FIDELITY DETAILS MODAL
           ====================== */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-
-            {/* Header modal */}
-            <div className="px-6 pt-4 pb-3 border-b flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Chi tiết yêu cầu #{selected.report_id}</h2>
-              <button onClick={closeDetail} className="text-gray-500 hover:text-gray-800 text-xl leading-none">
-                ✕
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Chi tiết phản ánh ghế hỏng #{selected.report_id}</h2>
+                <p className="text-xs text-slate-400 font-semibold uppercase mt-0.5 tracking-wider">
+                  Mã giao dịch vé: <span className="text-slate-600 font-bold">#{selected.ticket_id}</span>
+                </p>
+              </div>
+              <button 
+                onClick={closeDetail} 
+                className="p-1.5 hover:bg-slate-200/60 rounded-full text-slate-400 hover:text-slate-700 transition-all"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Nội dung modal */}
-            <div className="p-6 space-y-4">
-
-              {/* Processor Info Box - chỉ hiển thị khi đã xử lý */}
+            {/* Modal Scrollable Body */}
+            <div className="p-6 overflow-y-auto space-y-5 flex-1">
+              
+              {/* Processed Operator Banner */}
               {selected.report_status !== 'PENDING' && (
-                <div style={{ backgroundColor: '#f8fafc', borderRadius: 8, padding: 12 }} className="border border-slate-200">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Thông tin xử lý</p>
-                  <p className="text-sm text-slate-700">
-                    Người xử lý: <span className="font-semibold text-slate-900">{selected.processed_by ?? 'Staff'}</span>
-                  </p>
-                  <p className="text-sm text-slate-700 mt-0.5">
-                    Ngày xử lý: <span className="font-semibold text-slate-900">
-                      {selected.processed_at
-                        ? formatVietnamDateTime(selected.processed_at, 'dd/MM/yyyy HH:mm')
-                        : '---'}
-                    </span>
-                  </p>
+                <div className="bg-slate-50/80 border border-slate-200/60 rounded-xl p-4 flex gap-3.5 items-start">
+                  <div className={`p-2 rounded-lg text-white mt-0.5 ${
+                    selected.report_status === 'APPROVED' ? 'bg-emerald-500' : 'bg-rose-500'
+                  }`}>
+                    {selected.report_status === 'APPROVED' ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lịch sử xử lý</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-4 mt-2 text-xs font-medium text-slate-500">
+                      <p>Nhân viên xử lý: <span className="font-semibold text-slate-800">{selected.processed_by ?? 'Nhân viên hệ thống'}</span></p>
+                      <p>Ngày xử lý: <span className="font-semibold text-slate-800">
+                        {selected.processed_at ? formatVietnamDateTime(selected.processed_at, 'dd/MM/yyyy HH:mm') : '---'}
+                      </span></p>
+                    </div>
+                    {selected.staff_note && (
+                      <div className="mt-2.5 pt-2.5 border-t border-slate-200/50">
+                        <p className="text-xs text-slate-400 font-semibold mb-1">Ghi chú nhân viên:</p>
+                        <p className="text-sm text-slate-700 italic bg-white p-2.5 rounded-lg border border-slate-100">
+                          "{selected.staff_note}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Grid thông tin cơ bản */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-blue-50 p-3 rounded">
-                  <p className="text-sm text-gray-600 font-semibold">Report ID</p>
-                  <p className="font-bold text-lg text-blue-600">{selected.report_id}</p>
+              {/* Grid ticket specs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* User Card */}
+                <div className="bg-slate-50/50 border border-slate-150 rounded-xl p-3.5 flex gap-3 items-center">
+                  <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                    <User className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400">Sinh viên gửi</p>
+                    <p className="text-sm font-bold text-slate-800">{selected.student_name}</p>
+                    <p className="text-[10px] font-semibold text-slate-400">ID: {selected.student_id ?? '-'}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Ticket ID</p>
-                  <p className="font-medium">{selected.ticket_id}</p>
+
+                {/* Seat Code Card */}
+                <div className="bg-slate-50/50 border border-slate-150 rounded-xl p-3.5 flex gap-3 items-center">
+                  <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                    <Tag className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400">Mã ghế phản ánh</p>
+                    <p className="text-sm font-bold text-purple-700 uppercase">
+                      {selected.seat_code ? `Ghế ${selected.seat_code}` : (
+                        selected.row_no != null && selected.col_no != null 
+                          ? `Hàng ${selected.row_no} - Cột ${selected.col_no}` 
+                          : 'Chưa xác định'
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Người gửi</p>
-                  <p className="font-medium">
-                    {selected.student_name} {selected.student_id && `(ID: ${selected.student_id})`}
-                  </p>
+
+                {/* Location / Area Card */}
+                <div className="bg-slate-50/50 border border-slate-150 rounded-xl p-3.5 flex gap-3 items-start sm:col-span-2">
+                  <div className="p-2 bg-orange-100 text-orange-600 rounded-lg mt-0.5">
+                    <MapPin className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400">Địa điểm & Sảnh sự kiện</p>
+                    <p className="text-sm font-bold text-slate-800 mt-0.5">
+                      {selected.venue_name ?? 'Cơ sở FPT'}
+                    </p>
+                    <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                      {selected.area_name && `${selected.area_name}`}
+                      {selected.floor && ` - Lầu ${selected.floor}`}
+                      {selected.location && ` (${selected.location})`}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Loại vé</p>
-                  <p className="font-medium">{selected.category_ticket_name ?? '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Trạng thái báo cáo</p>
-                  <p className="font-medium">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${selected.report_status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                      selected.report_status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                      {selected.report_status}
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Ticket Status</p>
-                  <p className="font-medium">{selected.ticket_status ?? '-'}</p>
-                </div>
-                <div className="bg-green-50 p-3 rounded col-span-2">
-                  <p className="text-sm text-gray-600 font-semibold">Giá Vé</p>
-                  <p className="font-bold text-lg text-green-700">
-                    {selected.price != null
-                      ? selected.price === 0
-                        ? 'Miễn phí (0₫)'
-                        : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', minimumFractionDigits: 0 }).format(selected.price)
-                      : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Ngày tạo</p>
-                  <p className="font-medium text-sm">
-                    {selected.created_at
-                      ? formatVietnamDateTime(selected.created_at, 'dd/MM/yyyy HH:mm')
-                      : '-'}
-                  </p>
-                </div>
-                <div className="bg-purple-50 p-3 rounded">
-                  <p className="text-sm text-gray-600 font-semibold">Số Ghế</p>
-                  <p className="font-bold text-purple-700">
-                    {selected.seat_code
-                      ? selected.seat_code
-                      : selected.row_no != null && selected.col_no != null
-                        ? `Hàng ${selected.row_no} - Cột ${selected.col_no}`
+
+                {/* Refund & Price Card */}
+                <div className="bg-emerald-50/40 border border-emerald-100/60 rounded-xl p-3.5 flex gap-3 items-center sm:col-span-2">
+                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                    <Wallet className="w-4.5 h-4.5" />
+                  </div>
+                  <div className="flex-1 flex justify-between items-center">
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-600">Giá trị hoàn trả dự kiến</p>
+                      <p className="text-xs text-slate-400 font-medium">Hệ thống sẽ hoàn trực tiếp vào ví sau khi duyệt</p>
+                    </div>
+                    <p className="text-xl font-black text-emerald-600">
+                      {selected.price != null
+                        ? selected.price === 0
+                          ? '0₫ (Miễn phí)'
+                          : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', minimumFractionDigits: 0 }).format(selected.price)
                         : '-'}
-                  </p>
-                </div>
-                <div className="bg-orange-50 p-3 rounded col-span-2">
-                  <p className="text-sm text-gray-600 font-semibold">Khu Vực / Sảnh</p>
-                  <p className="font-bold text-orange-700">
-                    {selected.venue_name ? `${selected.venue_name}` : '-'}
-                    {selected.area_name && ` / ${selected.area_name}`}
-                    {selected.floor && ` - Lầu ${selected.floor}`}
-                  </p>
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* Tiêu đề report */}
-              <div>
-                <p className="text-sm text-gray-500">Tiêu đề</p>
-                <p className="font-medium">{selected.title ?? '-'}</p>
-              </div>
-
-              {/* Mô tả report */}
-              <div>
-                <p className="text-sm text-gray-500">Mô tả</p>
-                <p className="whitespace-pre-line">{selected.description ?? '-'}</p>
-              </div>
-
-              {/* Nếu có ảnh minh chứng thì render ảnh */}
-              {selected.image_url && (
+              {/* Report Description Section */}
+              <div className="border-t border-b border-slate-100 py-4 space-y-3.5">
                 <div>
-                  <p className="text-sm text-gray-500">Ảnh minh chứng</p>
-                  <div className="mt-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tiêu đề sự cố</p>
+                  <p className="text-sm font-bold text-slate-900 mt-1">{selected.title ?? 'Chưa nhập tiêu đề'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Chi tiết mô tả lỗi</p>
+                  <div className="bg-slate-50 rounded-xl p-3.5 mt-1 border border-slate-100">
+                    <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+                      {selected.description ?? 'Không có phần mô tả.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Prove Image Section */}
+              {selected.image_url && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                    <ImageIcon className="w-4 h-4" /> Hình ảnh minh chứng ghế hỏng
+                  </p>
+                  <div className="relative group overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50">
                     <img
                       src={selected.image_url}
-                      alt="Ảnh minh chứng"
-                      className="w-full max-h-80 object-contain rounded-lg border"
+                      alt="Ảnh minh chứng ghế hỏng"
+                      className="w-full max-h-80 object-contain mx-auto transition-transform duration-300 group-hover:scale-102"
                     />
                   </div>
                 </div>
               )}
 
-              {/* Ghi chú staff + nút xử lý */}
-              <div>
-                <p className="text-sm text-gray-500">Ghi chú của nhân viên</p>
-                <textarea
-                  value={staffNote}
-                  onChange={(e) => setStaffNote(e.target.value)}
-                  placeholder="Ghi chú xử lý (tùy chọn)"
-                  disabled={isProcessing || selected.report_status !== 'PENDING'}
-                  className="w-full mt-2 border rounded p-2 h-24 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-                />
-
-                {/* Các nút thao tác: Reject/Approve/Close */}
-                <div className="flex justify-end gap-3 mt-3">
-                  {selected.report_status === 'PENDING' && (
-                    <>
-                      <button
-                        onClick={async () => {
-                          if (!selected) return
-                          const ok = window.confirm('Bạn chắc chắn muốn từ chối yêu cầu này?')
-                          if (!ok) return
-                          await processReport(selected.report_id, 'REJECT')
-                        }}
-                        disabled={isProcessing}
-                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Từ Chối
-                      </button>
-
-                      <button
-                        onClick={async () => {
-                          if (!selected) return
-                          const ok = window.confirm('Bạn chắc chắn muốn duyệt yêu cầu này?')
-                          if (!ok) return
-                          await processReport(selected.report_id, 'APPROVE')
-                        }}
-                        disabled={isProcessing}
-                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Duyệt
-                      </button>
-                    </>
-                  )}
-
-                  <button onClick={closeDetail} className="px-4 py-2 border rounded hover:bg-gray-100">
-                    Đóng
-                  </button>
-                </div>
+              {/* Staff Action Textarea & Buttons */}
+              <div className="space-y-4">
+                {selected.report_status === 'PENDING' ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phản hồi của Nhân viên xử lý</p>
+                    <textarea
+                      value={staffNote}
+                      onChange={(e) => setStaffNote(e.target.value)}
+                      placeholder="Nhập lý do duyệt/từ chối hoặc lời nhắn đến sinh viên (tùy chọn)..."
+                      disabled={isProcessing}
+                      className="w-full border border-slate-200 rounded-xl p-3 h-24 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition-all text-sm"
+                    />
+                  </div>
+                ) : null}
               </div>
 
             </div>
+
+            {/* Modal Actions Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end items-center gap-3 bg-slate-50/50">
+              <button 
+                onClick={closeDetail} 
+                disabled={isProcessing}
+                className="px-4.5 py-2.5 border border-slate-200 hover:bg-slate-100 rounded-xl text-sm font-semibold text-slate-600 transition-all hover:text-slate-800 disabled:opacity-50"
+              >
+                Đóng
+              </button>
+
+              {selected.report_status === 'PENDING' && (
+                <>
+                  <button
+                    onClick={async () => {
+                      if (!selected) return
+                      const ok = window.confirm('Bạn có chắc chắn muốn TỪ CHỐI yêu cầu báo cáo này?')
+                      if (!ok) return
+                      await processReport(selected.report_id, 'REJECT')
+                    }}
+                    disabled={isProcessing}
+                    className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow active:scale-95 disabled:opacity-50 inline-flex items-center gap-1.5"
+                  >
+                    <XCircle className="w-4 h-4" /> Từ chối
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      if (!selected) return
+                      const ok = window.confirm('Bạn có chắc chắn muốn DUYỆT yêu cầu và tiến hành HOÀN TIỀN vé?')
+                      if (!ok) return
+                      await processReport(selected.report_id, 'APPROVE')
+                    }}
+                    disabled={isProcessing}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow active:scale-95 disabled:opacity-50 inline-flex items-center gap-1.5"
+                  >
+                    {isProcessing ? (
+                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
+                    Duyệt & Hoàn tiền
+                  </button>
+                </>
+              )}
+            </div>
+
           </div>
         </div>
       )}
     </div>
   )
 }
-
