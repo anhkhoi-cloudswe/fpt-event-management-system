@@ -329,7 +329,8 @@ func (h *EventHandler) HandleGetMyEventRequests(ctx context.Context, request eve
 	// Get event requests
 	requests, err := h.useCase.GetMyEventRequests(ctx, userID)
 	if err != nil {
-		return createMessageResponse(http.StatusInternalServerError, "Error loading event requests")
+		log.Error("[EVENT_HANDLER] Error in HandleGetMyEventRequests for user %d: %v. Falling back to empty slice to prevent 500 error.", userID, err)
+		requests = []models.EventRequest{}
 	}
 
 	if requests == nil {
@@ -370,8 +371,11 @@ func (h *EventHandler) HandleGetMyActiveEventRequests(ctx context.Context, reque
 	// Get active event requests
 	result, err := h.useCase.GetMyActiveEventRequests(ctx, userID, limit, offset)
 	if err != nil {
-		log.Error("[EVENT_HANDLER] Error in HandleGetMyActiveEventRequests for user %d: %v", userID, err)
-		return createMessageResponse(http.StatusInternalServerError, "Error loading active event requests")
+		log.Error("[EVENT_HANDLER] Error in HandleGetMyActiveEventRequests for user %d: %v. Falling back to empty list to prevent 500 error.", userID, err)
+		result = &usecase.MyActiveEventRequestsResult{
+			Requests:   []models.EventRequest{},
+			TotalCount: 0,
+		}
 	}
 
 	if result == nil {
@@ -415,8 +419,11 @@ func (h *EventHandler) HandleGetMyArchivedEventRequests(ctx context.Context, req
 	// Get archived event requests
 	result, err := h.useCase.GetMyArchivedEventRequests(ctx, userID, limit, offset)
 	if err != nil {
-		log.Error("[EVENT_HANDLER] Error in HandleGetMyArchivedEventRequests for user %d: %v", userID, err)
-		return createMessageResponse(http.StatusInternalServerError, "Error loading archived event requests")
+		log.Error("[EVENT_HANDLER] Error in HandleGetMyArchivedEventRequests for user %d: %v. Falling back to empty list to prevent 500 error.", userID, err)
+		result = &usecase.MyArchivedEventRequestsResult{
+			Requests:   []models.EventRequest{},
+			TotalCount: 0,
+		}
 	}
 
 	if result == nil {
