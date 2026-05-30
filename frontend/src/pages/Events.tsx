@@ -294,24 +294,21 @@ export default function Events() {
     setSelectedEvent(null)
   }
 
-  // ===== Filter chỉ lấy event OPEN và phân loại upcoming/past =====
-  const now = new Date()
-  const todayStart = startOfDay(now) // đầu ngày hôm nay 00:00
+  // ===== Filter và phân loại upcoming/past dựa trên endTime thời gian thực =====
+  const nowTime = new Date().getTime()
 
-  // Chỉ hiển thị event có status OPEN
-  const openEvents = events.filter(e => e.status === 'OPEN')
+  // Chỉ hiển thị event chưa kết thúc làm openEvents (để đưa vào Calendar)
+  const openEvents = events.filter(e => e.status !== 'CLOSED' && new Date(e.endTime).getTime() > nowTime)
 
-  // upcomingEvents: event startTime > hôm nay
-  const upcomingEvents = openEvents
-    .filter(e => isAfter(new Date(e.startTime), todayStart))
-    .sort(
-      (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-    )
+  // upcomingEvents: event chưa kết thúc
+  const upcomingEvents = openEvents.sort(
+    (a, b) =>
+      new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+  )
 
-  // pastEvents: event startTime <= hôm nay
-  const pastEvents = openEvents
-    .filter(e => !isAfter(new Date(e.startTime), todayStart))
+  // pastEvents: event đã kết thúc (status CLOSED hoặc endTime đã qua)
+  const pastEvents = events
+    .filter(e => e.status === 'CLOSED' || new Date(e.endTime).getTime() <= nowTime)
     .sort(
       (a, b) =>
         new Date(b.startTime).getTime() - new Date(a.startTime).getTime()

@@ -171,19 +171,19 @@ export const compareTimeStringsForEventStatus = (
     return { eventOngoing: false, eventEnded: false }
   }
 
-  // Extract datetime portion (remove timezone)
-  // "2026-04-01T09:00:00+07:00" => "2026-04-01T09:00:00"
-  const extractDateTime = (str: string) => str.split('+')[0].split('Z')[0]
+  try {
+    const currentMs = new Date(currentTime).getTime()
+    const startMs = new Date(eventStart).getTime()
+    const endMs = new Date(eventEnd).getTime()
 
-  const current = extractDateTime(currentTime)
-  const start = extractDateTime(eventStart)
-  const end = extractDateTime(eventEnd)
+    const eventOngoing = currentMs >= startMs && currentMs < endMs
+    const eventEnded = currentMs >= endMs
 
-  // String comparison works correctly for ISO 8601 format
-  const eventOngoing = current >= start && current < end
-  const eventEnded = current > end
-
-  return { eventOngoing, eventEnded }
+    return { eventOngoing, eventEnded }
+  } catch (error) {
+    console.error('[compareTimeStringsForEventStatus] Error comparing:', error)
+    return { eventOngoing: false, eventEnded: false }
+  }
 }
 
 /**

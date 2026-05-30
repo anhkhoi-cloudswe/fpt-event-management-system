@@ -454,7 +454,7 @@ export function EventDetailModal({
               {!loading && !error && event && (
                 <>
                   {/* ===== BANNER CẢNH BÁO SỰ KIỆN ĐÃ ĐÓNG ===== */}
-                  {eventClosed && (
+                  {(eventClosed || eventEnded) && (
                     <div className="mb-6 p-4 bg-red-50 border border-red-300 rounded-lg flex items-start gap-3">
                       <div className="text-red-600 text-2xl">⚠️</div>
                       <div className="flex-1">
@@ -706,7 +706,7 @@ export function EventDetailModal({
                         maxReached={selectedSeats.length >= 4}
                         // disable if event ended OR event closed; allow viewing for managers but prevent selecting
                         disabled={eventEnded || eventClosed || eventOngoing}
-                        allowSelect={!isManager && !eventClosed && !eventOngoing}
+                        allowSelect={!isManager && !eventClosed && !eventEnded && !eventOngoing}
                       />
                     </div>
                   )}
