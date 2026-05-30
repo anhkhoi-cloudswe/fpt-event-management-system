@@ -445,15 +445,29 @@ export default function Dashboard() {
 
   // ✅ Helper function: Convert event.status to badge label
   // Based on 100% field value, NOT time-based calculation
-  const getStatusBadge = (status?: string, tab?: 'open' | 'upcoming' | 'closed') => {
-    switch (status) {
-      case 'OPEN':
-        return tab === 'upcoming' ? 'Sắp diễn ra' : 'Đang mở'
-      case 'CLOSED':
-        return 'Đã kết thúc'
-      default:
-        return status || 'Không xác định'
+  const isEventClosedOrEnded = (event: EventListItem, tab?: 'open' | 'upcoming' | 'closed') => {
+    const nowMs = new Date().getTime()
+    const endMs = event.endTime ? new Date(event.endTime).getTime() : 0
+    return event.status === 'CLOSED' || (endMs > 0 && nowMs >= endMs) || tab === 'closed'
+  }
+
+  // ✅ Helper function: Convert event.status to badge label
+  // Time-aware and status-aware calculation
+  const getStatusBadge = (event: EventListItem, tab?: 'open' | 'upcoming' | 'closed') => {
+    const nowMs = new Date().getTime()
+    const endMs = event.endTime ? new Date(event.endTime).getTime() : 0
+    const startMs = event.startTime ? new Date(event.startTime).getTime() : 0
+
+    if (event.status === 'CLOSED' || (endMs > 0 && nowMs >= endMs) || tab === 'closed') {
+      return 'Đã kết thúc'
     }
+    if (event.status === 'OPEN') {
+      if (tab === 'upcoming' || (startMs > 0 && nowMs < startMs)) {
+        return 'Sắp diễn ra'
+      }
+      return 'Đang mở'
+    }
+    return event.status || 'Không xác định'
   }
 
   return (
@@ -596,11 +610,11 @@ export default function Dashboard() {
                       {/* Content */}
                       <div className="p-4 flex-1 flex flex-col">
                         {/* Status Badge - Display based on event.status field */}
-                        <span className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 w-fit ${event.status === 'CLOSED'
+                         <span className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 w-fit ${isEventClosedOrEnded(event, activeTab)
                           ? 'bg-gray-100 text-gray-700'
                           : 'bg-red-100 text-red-700'
                           }`}>
-                          {getStatusBadge(event.status, activeTab)}
+                          {getStatusBadge(event, activeTab)}
                         </span>
 
                         {/* Title */}
@@ -725,13 +739,13 @@ export default function Dashboard() {
                       {/* Content */}
                       <div className="p-4 flex-1 flex flex-col">
                         {/* Status Badge - Display based on event.status field */}
-                        <span className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 w-fit ${event.status === 'CLOSED'
+                         <span className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 w-fit ${isEventClosedOrEnded(event, activeTab)
                           ? 'bg-gray-100 text-gray-700'
                           : activeTab === 'upcoming'
                             ? 'bg-blue-100 text-blue-700'
                             : 'bg-red-100 text-red-700'
                           }`}>
-                          {getStatusBadge(event.status, activeTab)}
+                          {getStatusBadge(event, activeTab)}
                         </span>
 
                         <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">
@@ -846,8 +860,8 @@ export default function Dashboard() {
 
                     {/* Content */}
                     <div className="p-4 flex-1 flex flex-col">
-                      <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded mb-4 w-fit">
-                        {getStatusBadge(event.status, activeTab)}
+                       <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded mb-4 w-fit">
+                        {getStatusBadge(event, activeTab)}
                       </span>
 
                       <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">
