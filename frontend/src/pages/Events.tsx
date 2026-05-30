@@ -294,25 +294,22 @@ export default function Events() {
     setSelectedEvent(null)
   }
 
-  // ===== Filter và phân loại upcoming/past dựa trên endTime thời gian thực =====
+  // ===== Filter chỉ lấy các sự kiện đang OPEN và chưa kết thúc =====
   const nowTime = new Date().getTime()
 
-  // Chỉ hiển thị event chưa kết thúc làm openEvents (để đưa vào Calendar)
-  const openEvents = events.filter(e => e.status !== 'CLOSED' && new Date(e.endTime).getTime() > nowTime)
+  // openEvents: Chỉ lấy các sự kiện có status là OPEN và chưa qua endTime
+  const openEvents = events.filter(
+    e => e.status === 'OPEN' && new Date(e.endTime).getTime() > nowTime
+  )
 
-  // upcomingEvents: event chưa kết thúc
-  const upcomingEvents = openEvents.sort(
+  // upcomingEvents: Sắp xếp các sự kiện đang mở theo thời gian bắt đầu
+  const upcomingEvents = [...openEvents].sort(
     (a, b) =>
       new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
   )
 
-  // pastEvents: event đã kết thúc (status CLOSED hoặc endTime đã qua)
-  const pastEvents = events
-    .filter(e => e.status === 'CLOSED' || new Date(e.endTime).getTime() <= nowTime)
-    .sort(
-      (a, b) =>
-        new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
-    ) // giảm dần: mới nhất lên trước
+  // pastEvents: Trống vì không hiển thị sự kiện đã kết thúc/hủy ở đây nữa
+  const pastEvents: EventListItem[] = []
 
   // ======================= RENDER UI =======================
   return (
