@@ -800,7 +800,7 @@ func (r *ReportRepository) processReportSaga(ctx context.Context, reportID, staf
 	if !approve {
 		rejectQuery := `
 			UPDATE Report
-			SET status = 'REJECTED', processed_by = $1, processed_at = UTC_TIMESTAMP(), staff_note = $2
+			SET status = 'REJECTED', processed_by = $1, processed_at = NOW(), staff_note = $2
 			WHERE report_id = $3 AND status = 'PENDING'
 		`
 		res, err := tx.ExecContext(ctx, rejectQuery, staffID, staffNote, reportID)
@@ -937,7 +937,7 @@ func (r *ReportRepository) processReportSaga(ctx context.Context, reportID, staf
 
 	approveQuery := `
 		UPDATE Report
-		SET status = 'APPROVED', processed_by = $1, processed_at = UTC_TIMESTAMP(), refund_amount = $2, staff_note = $3
+		SET status = 'APPROVED', processed_by = $1, processed_at = NOW(), refund_amount = $2, staff_note = $3
 		WHERE report_id = $4 AND status = 'PENDING'
 	`
 	res, err := r.db.ExecContext(ctx, approveQuery, staffID, refund, staffNote, reportID)
@@ -1033,7 +1033,7 @@ func (r *ReportRepository) processReportMonolith(ctx context.Context, reportID, 
 	if !approve {
 		rejectQuery := `
 			UPDATE Report
-			SET status = 'REJECTED', processed_by = $1, processed_at = UTC_TIMESTAMP(), staff_note = $2
+			SET status = 'REJECTED', processed_by = $1, processed_at = NOW(), staff_note = $2
 			WHERE report_id = $3 AND status = 'PENDING'
 		`
 		res, err := tx.ExecContext(ctx, rejectQuery, staffID, staffNote, reportID)
@@ -1140,7 +1140,7 @@ func (r *ReportRepository) processReportMonolith(ctx context.Context, reportID, 
 	// 7) Update Report → APPROVED
 	query = `
 		UPDATE Report
-		SET status = 'APPROVED', processed_by = $1, processed_at = UTC_TIMESTAMP(), refund_amount = $2, staff_note = $3
+		SET status = 'APPROVED', processed_by = $1, processed_at = NOW(), refund_amount = $2, staff_note = $3
 		WHERE report_id = $4 AND status = 'PENDING'
 	`
 	res, err = tx.ExecContext(ctx, query, staffID, refund, staffNote, reportID)
