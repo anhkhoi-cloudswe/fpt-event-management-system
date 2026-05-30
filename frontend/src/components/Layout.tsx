@@ -41,6 +41,7 @@ export default function Layout() {
   const isOrganizer = user?.role === 'ORGANIZER'
   const isStaff = user?.role === 'STAFF'
   const isAdmin = user?.role === 'ADMIN'
+  const showWallet = user?.role !== 'STAFF' && user?.role !== 'ADMIN'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100">
@@ -227,12 +228,14 @@ export default function Layout() {
             {/* User Info */}
             <div className="hidden md:flex items-center space-x-4">
               <RealtimeClock />
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200">
-                <Wallet size={18} className="text-orange-600" />
-                <span className="text-sm font-semibold text-gray-900">
-                  {balanceLoading ? '...' : balance.toLocaleString('vi-VN')} ₫
-                </span>
-              </div>
+              {showWallet && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200">
+                  <Wallet size={18} className="text-orange-600" />
+                  <span className="text-sm font-semibold text-gray-900">
+                    {balanceLoading ? '...' : balance.toLocaleString('vi-VN')} ₫
+                  </span>
+                </div>
+              )}
               <div className="text-right">
                 <p className="text-sm font-semibold text-gray-900">{user?.fullName}</p>
                 <p className="text-xs font-medium text-orange-600">{user?.role}</p>
@@ -401,12 +404,14 @@ export default function Layout() {
                     <div className="flex items-center gap-2 mb-3">
                       <RealtimeClock />
                     </div>
-                    <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200">
-                      <Wallet size={18} className="text-orange-600" />
-                      <span className="text-sm font-semibold text-gray-900">
-                        {balanceLoading ? '...' : balance.toLocaleString('vi-VN')} ₫
-                      </span>
-                    </div>
+                     {showWallet && (
+                      <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200">
+                        <Wallet size={18} className="text-orange-600" />
+                        <span className="text-sm font-semibold text-gray-900">
+                          {balanceLoading ? '...' : balance.toLocaleString('vi-VN')} ₫
+                        </span>
+                      </div>
+                    )}
                     <p className="text-sm font-medium text-gray-900">{user?.fullName}</p>
                     <p className="text-xs text-gray-500">{user?.role}</p>
                     <button
