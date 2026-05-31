@@ -380,33 +380,36 @@ export default function Venues() {
    * 5. Các Modal: VenueFormModal, AreaFormModal, ConfirmModal
    */
   return (
-    <div>
+    <div className="space-y-6 animate-fade-in-up">
       {/* ========== HEADER: TIÊU ĐỀ VÀ NÚT THÊM ĐỊA ĐIỂM ========== */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quản lý địa điểm</h1>
-          <p className="text-sm text-gray-600 mt-1">Quản lý các địa điểm tổ chức sự kiện</p>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
+            <Building2 className="w-6 h-6 text-orange-655" />
+            Quản lý địa điểm
+          </h1>
+          <p className="text-xs text-slate-500 font-semibold mt-1">Quản lý các địa điểm tổ chức sự kiện</p>
         </div>
         {/* Nút thêm địa điểm mới - mở modal với editingVenue = null */}
         <button
           onClick={() => handleOpenVenueModal()}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+          className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 text-white text-sm font-extrabold shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/35 transition-all duration-300 hover:scale-[1.02] active:scale-95"
         >
-          <PlusCircle className="w-5 h-5" />
+          <PlusCircle className="w-4 h-4" />
           Thêm địa điểm
         </button>
       </div>
 
       {/* ========== Ô TÌM KIẾM ĐỊA ĐIỂM ========== */}
       {/* Khi người dùng nhập -> cập nhật state search -> filtered tự động cập nhật */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input
           type="text"
           placeholder="Tìm kiếm địa điểm..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-11 pr-4 py-3 bg-white/70 backdrop-blur-md border border-white/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
         />
       </div>
 
@@ -414,16 +417,16 @@ export default function Venues() {
       {/* Conditional rendering dựa trên trạng thái loading và dữ liệu */}
       {loading ? (
         // Trường hợp 1: Đang tải dữ liệu -> hiển thị loading spinner
-        <div className="bg-white rounded-lg border border-gray-200 p-10 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Đang tải...</p>
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-12 text-center shadow-md animate-fade-in-up">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600 mx-auto mb-4"></div>
+          <p className="text-slate-550 font-extrabold text-sm">Đang tải địa điểm...</p>
         </div>
       ) : filtered.length === 0 ? (
         // Trường hợp 2: Không có dữ liệu -> hiển thị empty state
-        <div className="bg-white rounded-lg border border-gray-200 p-10 text-center">
-          <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">Chưa có địa điểm nào</p>
-          <p className="text-sm text-gray-400 mt-1">Hãy thêm địa điểm đầu tiên để bắt đầu</p>
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-12 text-center shadow-md animate-fade-in-up">
+          <Building2 className="w-12 h-12 text-slate-350 mx-auto mb-3" />
+          <p className="text-slate-500 font-extrabold text-sm">Chưa có địa điểm nào</p>
+          <p className="text-xs text-slate-400 font-bold mt-1">Hãy thêm địa điểm đầu tiên để bắt đầu</p>
         </div>
       ) : (
         // Trường hợp 3: Có dữ liệu -> hiển thị danh sách địa điểm

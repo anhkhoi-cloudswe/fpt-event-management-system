@@ -30,6 +30,7 @@ import CategoryTickets from './pages/CategoryTickets.tsx'
 import AdminDashboard from './pages/AdminDashboard.tsx'
 import Layout from './components/Layout.tsx'
 import GuestLanding from './pages/GuestLanding.tsx'
+import SystemPolicy from './pages/SystemPolicy.tsx'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth()
@@ -73,6 +74,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/guest" element={<GuestLanding />} />
+      <Route path="/policy" element={<SystemPolicy />} />
       {/* Public payment callback routes for VNPay redirects */}
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/payment-failed" element={<PaymentFailed />} />

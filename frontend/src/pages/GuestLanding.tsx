@@ -444,6 +444,12 @@ export default function GuestLanding() {
 
           {/* Nút đăng nhập */}
           <div className="flex items-center gap-4">
+            <Link
+              to="/policy"
+              className="text-xs sm:text-sm font-extrabold text-slate-600 hover:text-orange-600 hover:bg-orange-50/20 px-3.5 py-2.5 rounded-xl border border-slate-100 hover:border-orange-200/50 transition-all duration-300 shadow-sm mr-2 flex items-center gap-1.5"
+            >
+              Quy định & Chính sách
+            </Link>
             <RealtimeClock />
             <button
               onClick={handleLoginClick}
@@ -791,11 +797,20 @@ export default function GuestLanding() {
           </div>
 
           {/* new Date().getFullYear() lấy năm hiện tại */}
-          <div className="text-sm text-gray-500 space-y-2">
-            <p>
+          <div className="text-sm text-gray-500 space-y-3">
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 mb-3.5 font-extrabold">
+              <Link to="/policy" className="text-orange-600 hover:text-orange-700 transition-colors">
+                Điều Khoản & Chính Sách
+              </Link>
+              <span className="text-slate-300 hidden sm:inline">|</span>
+              <a href="mailto:support@fpt.edu.vn" className="text-slate-550 hover:text-orange-600 transition-colors">
+                Hỗ Trợ Kỹ Thuật
+              </a>
+            </div>
+            <p className="font-semibold text-xs text-slate-400">
               Person in charge of OJT project management: Nguyen Hoang Anh Khoi (SE194466)
             </p>
-            <p>
+            <p className="font-semibold text-xs text-slate-400">
               © {new Date().getFullYear()} FPT Education Events Platform. All rights reserved.
             </p>
           </div>

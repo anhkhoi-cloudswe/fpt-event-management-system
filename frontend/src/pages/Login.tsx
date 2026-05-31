@@ -318,8 +318,6 @@ export default function Login() {
   // ===================== UI RENDER =====================
 
   return (
-    // Container full màn hình, căn giữa
-    // Background dùng ảnh campus
     <div
       className="min-h-screen flex items-center justify-center px-4 relative"
       style={{
@@ -329,36 +327,38 @@ export default function Login() {
         backgroundRepeat: 'no-repeat'
       }}
     >
-      {/* Overlay phủ đen để chữ nổi hơn */}
-      <div className="absolute inset-0 bg-black/40"></div>
+      {/* Overlay phủ đen nhẹ */}
+      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]" />
 
       {/* Card login */}
-      <div className="max-w-md w-full bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-8 border-2 border-white/50 relative z-10">
+      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up">
         {/* Header logo + tiêu đề */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-3.5">
             <img
               src={fptLogo}
               alt="FPT Education"
-              className="h-20 w-auto"
+              className="h-16 w-auto"
             />
           </div>
-          <p className="text-gray-600 mt-2">Chào mừng bạn đến với FPT Event</p>
+          <h2 className="text-lg font-black text-slate-800">Đăng Nhập FPT Event</h2>
+          <p className="text-xs font-semibold text-slate-450 mt-1">Chào mừng bạn đến với cổng sự kiện FPT Education</p>
         </div>
 
-        {/* Form login: submit sẽ gọi handleSubmit */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Form login */}
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Nếu có lỗi -> hiển thị box đỏ */}
           {error && (
-            <div className="bg-red-50 border-2 border-red-300 text-red-700 px-4 py-3 rounded-xl text-sm font-medium">
-              {error}
+            <div className="bg-rose-50 border border-rose-250 text-rose-700 px-4.5 py-3 rounded-2xl text-xs font-bold animate-pulse flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-rose-500 rounded-full flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
           {/* Input Email */}
-          <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-              Email
+          <div className="space-y-1.5">
+            <label htmlFor="email" className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">
+              Địa chỉ Email
             </label>
             <input
               id="email"
@@ -368,13 +368,13 @@ export default function Login() {
               onChange={handleInputChange}
               placeholder="email@fpt.edu.vn"
               required
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
+              className="w-full px-4 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
             />
           </div>
 
           {/* Input Password */}
-          <div>
-            <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
+          <div className="space-y-1.5">
+            <label htmlFor="password" className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">
               Mật khẩu
             </label>
             <div className="relative">
@@ -386,77 +386,71 @@ export default function Login() {
                 onChange={handleInputChange}
                 placeholder="Nhập mật khẩu"
                 required
-                className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
+                className="w-full px-4 py-3 pr-10 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors focus:outline-none"
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
 
           {/* reCAPTCHA checkbox */}
-          <div className="flex justify-center">
-            <ReCAPTCHA
-              ref={recaptchaRef}
-              sitekey={RECAPTCHA_SITE_KEY}
-
-              // onChange: khi user tick -> google trả về token
-              onChange={(token) => {
-                console.log('reCAPTCHA onChange token (first 40 chars):', token ? token.slice(0, 40) : null)
-                setRecaptchaToken(token)
-                setError('')
-              }}
-
-              // onExpired: token hết hạn -> set về null
-              onExpired={() => {
-                console.log('reCAPTCHA expired')
-                setRecaptchaToken(null)
-              }}
-            />
-          </div>
+          {RECAPTCHA_SITE_KEY && (
+            <div className="flex justify-center border border-slate-200/40 rounded-2xl p-2.5 bg-white/40">
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey={RECAPTCHA_SITE_KEY}
+                onChange={(token) => {
+                  console.log('reCAPTCHA onChange token (first 40 chars):', token ? token.slice(0, 40) : null)
+                  setRecaptchaToken(token)
+                  setError('')
+                }}
+                onExpired={() => {
+                  console.log('reCAPTCHA expired')
+                  setRecaptchaToken(null)
+                }}
+              />
+            </div>
+          )}
 
           {/* Button submit */}
           <button
             type="submit"
-            // disable nếu đang loading
-            // hoặc nếu dùng captcha thật mà chưa có token
             disabled={loading || (USE_REAL_RECAPTCHA && !recaptchaToken)}
-            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white py-3 px-4 rounded-xl hover:shadow-lg hover:shadow-orange-500/50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5"
+            className="w-full bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 text-white py-3.5 px-4 rounded-2xl hover:shadow-lg hover:shadow-orange-500/25 focus:outline-none font-extrabold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 shadow-md"
           >
-            {/* Nếu loading thì hiện spinner */}
             {loading ? (
-              <span className="flex items-center justify-center">
+              <span className="flex items-center justify-center gap-2">
                 <svg
-                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                  className="animate-spin h-5 w-5 text-white"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                 >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path
                     className="opacity-75"
                     fill="currentColor"
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
+                  />
                 </svg>
-                Đang xử lý...
+                Đang kết nối...
               </span>
             ) : (
               'Đăng nhập'
             )}
           </button>
 
-
           {/* Nút đăng nhập Google */}
           <button
             type="button"
             onClick={() => googleLogin()}
             disabled={loading}
-            className="!mt-2 w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:border-gray-300 hover:shadow-md active:scale-[0.98]"
+            className="!mt-3 w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200/85 hover:border-slate-350 text-slate-700 py-3.5 px-4 rounded-2xl hover:bg-slate-50 font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 hover:shadow"
           >
             <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
               <path
@@ -479,9 +473,9 @@ export default function Login() {
             <span>Đăng nhập bằng Google</span>
           </button>
 
-          {/* Chỉ giữ link reset password */}
-          <div className="text-center">
-            <Link to="/reset-password" className="text-orange-600 hover:text-orange-700 font-semibold">
+          {/* Reset Password */}
+          <div className="text-center pt-2">
+            <Link to="/reset-password" className="text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors">
               Quên mật khẩu?
             </Link>
           </div>

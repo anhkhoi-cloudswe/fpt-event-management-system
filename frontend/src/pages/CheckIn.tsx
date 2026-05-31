@@ -705,388 +705,335 @@ export default function CheckIn() {
   // ===========================================================================
 
   return (
-    <div>
+    <div className="bg-slate-900 rounded-3xl border border-slate-850 p-6 sm:p-8 shadow-2xl text-slate-100 animate-fade-in-up">
       {/* ===== TIÊU ĐỀ TRANG ===== */}
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">
-        Check-in / Check-out sự kiện
-      </h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800/60 pb-5 mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-white uppercase sm:text-3xl">
+            Kiểm Soát Check-In / Check-Out
+          </h1>
+          <p className="text-xs font-semibold text-slate-450 mt-1">
+            Bảng điều khiển quét mã QR và nhập mã vé tham gia hội trường sự kiện FPT.
+          </p>
+        </div>
+      </div>
 
       {/* ===== TAB CHUYỂN ĐỔI CHECK-IN / CHECK-OUT ===== */}
-      {/* Thanh tab cho phép người dùng chuyển đổi giữa 2 chế độ */}
-      <div className="flex bg-gray-100 rounded-lg p-1 mb-6 max-w-md">
+      <div className="flex bg-slate-950/80 rounded-2xl p-1.5 mb-6 max-w-md border border-slate-800/50">
         {/* Nút tab Check-in */}
         <button
           onClick={() => setActiveTab('checkin')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeTab === 'checkin'
-            ? 'bg-white text-blue-600 shadow-sm'  // Style khi tab đang được chọn
-            : 'text-gray-600 hover:text-gray-900' // Style khi tab không được chọn
-            }`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-300 ${
+            activeTab === 'checkin'
+              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20 scale-102'
+              : 'text-slate-450 hover:text-slate-200'
+          }`}
         >
-          <LogIn className="w-5 h-5" />
-          Check-in
+          <LogIn className="w-4 h-4" />
+          Check-in Cổng
         </button>
 
         {/* Nút tab Check-out */}
         <button
           onClick={() => setActiveTab('checkout')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeTab === 'checkout'
-            ? 'bg-white text-purple-600 shadow-sm'
-            : 'text-gray-600 hover:text-gray-900'
-            }`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-300 ${
+            activeTab === 'checkout'
+              ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/20 scale-102'
+              : 'text-slate-450 hover:text-slate-200'
+          }`}
         >
-          <LogOut className="w-5 h-5" />
-          Check-out
+          <LogOut className="w-4 h-4" />
+          Check-out Cổng
         </button>
       </div>
 
       {/* ===== LAYOUT 2 CỘT: QUÉT QR + KẾT QUẢ ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* =====================================================
-            CỘT TRÁI: KHU VỰC QUÉT MÃ QR VÀ NHẬP THỦ CÔNG
-            ===================================================== */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">Quét mã QR - {actionLabel}</h2>
+        {/* CỘT TRÁI: KHU VỰC QUÉT MÃ QR VÀ NHẬP THỦ CÔNG */}
+        <div className="bg-slate-950/60 border border-slate-850/80 rounded-3xl p-6 shadow-md flex flex-col justify-between">
+          <div>
+            <h2 className="text-base font-extrabold text-slate-200 mb-4 flex items-center gap-2">
+              <Scan className="w-4.5 h-4.5 text-orange-500" />
+              Quét mã QR - {actionLabel}
+            </h2>
 
-          {/* Điều kiện render: Khi KHÔNG đang quét - hiển thị nút bắt đầu và form nhập tay */}
-          {!scanning ? (
-            <div className="space-y-4">
-              {/* Nút bắt đầu quét QR */}
-              <button
-                onClick={() => {
-                  resetResult()        // Xóa kết quả cũ
-                  setScanning(true)    // Bật camera quét
-                }}
-                disabled={isProcessing}  // ✅ NEW: Disable khi đang xử lý
-                className={`w-full py-3 rounded-lg transition-colors flex items-center justify-center text-white ${isProcessing
-                  ? 'bg-gray-400 cursor-not-allowed'  // ✅ NEW: Màu xám khi disable
-                  : isCheckIn
-                    ? 'bg-blue-600 hover:bg-blue-700'    // Màu xanh cho check-in
-                    : 'bg-purple-600 hover:bg-purple-700' // Màu tím cho check-out
+            {!scanning ? (
+              <div className="space-y-5">
+                {/* Nút bắt đầu quét QR */}
+                <button
+                  onClick={() => {
+                    resetResult()
+                    setScanning(true)
+                  }}
+                  disabled={isProcessing}
+                  className={`w-full py-4 rounded-2xl transition-all duration-300 font-extrabold text-xs uppercase tracking-widest text-white shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+                    isProcessing
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
+                      : isCheckIn
+                        ? 'bg-gradient-to-r from-orange-600 to-orange-500 hover:shadow-lg hover:shadow-orange-500/10'
+                        : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:shadow-lg hover:shadow-purple-500/10'
                   }`}
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader className="w-5 h-5 mr-2 animate-spin" />✅ NEW: Loading icon
-                    Đang xử lý...
-                  </>
-                ) : (
-                  <>
-                    <Scan className="w-5 h-5 mr-2" />
-                    Bắt đầu quét {actionLabel}
-                  </>
-                )}
-              </button>
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader className="w-4.5 h-4.5 animate-spin" />
+                      Đang xử lý dữ liệu...
+                    </>
+                  ) : (
+                    <>
+                      <Scan className="w-4.5 h-4.5" />
+                      Bắt đầu quét {actionLabel}
+                    </>
+                  )}
+                </button>
 
-              {/* Đường kẻ phân cách với chữ "Hoặc" */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Hoặc</span>
-                </div>
-              </div>
-
-              {/* Form nhập mã thủ công */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nhập mã QR / ID vé thủ công
-                </label>
-                <div className="flex space-x-2">
-                  {/* Input nhập mã */}
-                  <input
-                    type="text"
-                    value={manualCode}
-                    onChange={(e) => setManualCode(e.target.value)}
-                    placeholder="Ví dụ: 123 hoặc TICKETS:123,124"
-                    className={`flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent ${isCheckIn ? 'focus:ring-blue-500' : 'focus:ring-purple-500'
-                      }`}
-                    onKeyDown={(e) => e.key === 'Enter' && handleManualAction()} // Nhấn Enter để submit
-                  />
-                  {/* Nút tìm kiếm/submit */}
-                  <button
-                    onClick={handleManualAction}
-                    disabled={isProcessing}  // ✅ NEW: Disable khi đang xử lý
-                    className={`px-4 py-2 text-white rounded-lg transition-colors flex items-center justify-center ${isProcessing
-                      ? 'bg-gray-400 cursor-not-allowed'  // ✅ NEW: Màu xám khi disable
-                      : 'bg-gray-600 hover:bg-gray-700'
-                      }`}
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader className="w-5 h-5 animate-spin" />
-                        Tìm kiếm...
-                      </>
-                    ) : (
-                      <Search className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* Điều kiện render: Khi ĐANG quét - hiển thị camera và nút dừng */
-            <div className="space-y-4">
-              {/* Container hiển thị video từ camera */}
-              <div className="relative bg-black rounded-xl overflow-hidden">
-                {/* Element để Html5Qrcode render video vào */}
-                <div id="reader" className="w-full h-full" style={{ minHeight: 320 }} />
-
-                {/* Overlay: Khung hướng dẫn quét (không nhận click - pointer-events-none) */}
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  {/* Khung vuông với 4 góc bo tròn để người dùng căn QR vào */}
-                  <div
-                    className={`relative w-64 h-64 rounded-xl border-2 ${isCheckIn ? 'border-green-400/80' : 'border-purple-400/80'
-                      }`}
-                  >
-                    {/* Góc trên trái */}
-                    <div
-                      className={`absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 rounded-tl-xl ${isCheckIn ? 'border-green-400' : 'border-purple-400'
-                        }`}
-                    />
-                    {/* Góc trên phải */}
-                    <div
-                      className={`absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 rounded-tr-xl ${isCheckIn ? 'border-green-400' : 'border-purple-400'
-                        }`}
-                    />
-                    {/* Góc dưới trái */}
-                    <div
-                      className={`absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 rounded-bl-xl ${isCheckIn ? 'border-green-400' : 'border-purple-400'
-                        }`}
-                    />
-                    {/* Góc dưới phải */}
-                    <div
-                      className={`absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 rounded-br-xl ${isCheckIn ? 'border-green-400' : 'border-purple-400'
-                        }`}
-                    />
+                {/* Đường kẻ phân cách */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-800" />
+                  </div>
+                  <div className="relative flex justify-center text-xs font-bold uppercase tracking-wider">
+                    <span className="px-3 bg-slate-950 text-slate-500">Hoặc nhập tay</span>
                   </div>
                 </div>
 
-                {/* Hướng dẫn quét ở dưới màn hình camera */}
-                <div className="absolute bottom-4 inset-x-4 bg-black/60 text-white text-sm text-center rounded-lg px-3 py-2">
-                  Đưa mã QR vào trong khung và giữ máy ổn định để {actionLabel.toLowerCase()}
+                {/* Form nhập mã thủ công */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wide pl-1">
+                    Nhập mã QR / ID vé thủ công
+                  </label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={manualCode}
+                      onChange={(e) => setManualCode(e.target.value)}
+                      placeholder="Ví dụ: 123 hoặc TICKETS:123,124"
+                      className="flex-1 px-4 py-3 bg-slate-900/80 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-slate-100 placeholder-slate-600 font-bold text-sm shadow-sm transition-all duration-300"
+                      onKeyDown={(e) => e.key === 'Enter' && handleManualAction()}
+                    />
+                    <button
+                      onClick={handleManualAction}
+                      disabled={isProcessing}
+                      className="px-5 py-3 text-white rounded-2xl bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-650 transition-all duration-300 active:scale-95 flex items-center justify-center shadow-sm disabled:opacity-40"
+                    >
+                      {isProcessing ? (
+                        <Loader className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Search className="w-5 h-5 text-slate-400" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
+            ) : (
+              /* ĐANG QUÉT QR CAMERA */
+              <div className="space-y-4">
+                <div className="relative bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-inner">
+                  <div id="reader" className="w-full h-full" style={{ minHeight: 320 }} />
 
-              {/* Nút dừng quét */}
-              <button
-                onClick={() => {
-                  stopScanning()  // Tắt camera
-                  resetResult()   // Xóa kết quả
-                }}
-                className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700"
-              >
-                Dừng quét
-              </button>
-            </div>
-          )}
+                  {/* Overlay khung quét HUD */}
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className={`relative w-64 h-64 rounded-2xl border-2 ${isCheckIn ? 'border-orange-500/80' : 'border-purple-500/80'} animate-pulse`}>
+                      {/* 4 Góc bo tròn HUD */}
+                      <div className={`absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 rounded-tl-xl ${isCheckIn ? 'border-orange-500' : 'border-purple-500'}`} />
+                      <div className={`absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 rounded-tr-xl ${isCheckIn ? 'border-orange-500' : 'border-purple-500'}`} />
+                      <div className={`absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 rounded-bl-xl ${isCheckIn ? 'border-orange-500' : 'border-purple-500'}`} />
+                      <div className={`absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 rounded-br-xl ${isCheckIn ? 'border-orange-500' : 'border-purple-500'}`} />
+                    </div>
+                  </div>
+
+                  <div className="absolute bottom-4 inset-x-4 bg-slate-950/85 backdrop-blur-sm text-slate-200 text-xs font-bold text-center rounded-xl px-3.5 py-2.5 border border-slate-800 shadow-sm leading-relaxed">
+                    Giữ ổn định thiết bị và hướng camera về mã QR vé.
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    stopScanning()
+                    resetResult()
+                  }}
+                  className="w-full bg-rose-650 hover:bg-rose-700 text-white font-extrabold text-xs uppercase tracking-wider py-3.5 rounded-2xl transition-all duration-300 shadow active:scale-95"
+                >
+                  Dừng quét camera
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* =====================================================
-            CỘT PHẢI: KẾT QUẢ CHECK-IN/CHECK-OUT
-            ===================================================== */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">Kết quả {actionLabel}</h2>
+        {/* CỘT PHẢI: KẾT QUẢ CHECK-IN/CHECK-OUT */}
+        <div className="bg-slate-950/60 border border-slate-850/80 rounded-3xl p-6 shadow-md flex flex-col justify-between min-h-[350px]">
+          <div>
+            <h2 className="text-base font-extrabold text-slate-200 mb-4 flex items-center gap-2">
+              <CheckCircle className="w-4.5 h-4.5 text-orange-550" />
+              Kết quả quét - {actionLabel}
+            </h2>
 
-          {/* Điều kiện render: Chưa có kết quả - hiển thị placeholder */}
-          {!result ? (
-            <div className="text-center py-12 text-gray-500">
-              <Scan className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <p>Chưa có kết quả {actionLabel.toLowerCase()}</p>
-              <p className="text-sm mt-2">Quét mã QR hoặc nhập mã thủ công để bắt đầu</p>
-            </div>
-          ) : (
-            /* Điều kiện render: Đã có kết quả - hiển thị chi tiết */
-            <div className="space-y-4">
-              {/* Hiển thị icon và thông báo dựa theo thành công/thất bại */}
-              {result.success ? (
-                /* Trường hợp THÀNH CÔNG */
-                <div className="space-y-3">
-                  <div className="text-center py-4">
-                    <CheckCircle
-                      className={`w-16 h-16 mx-auto mb-4 ${isCheckIn ? 'text-green-500' : 'text-purple-500'
-                        }`}
-                    />
-                    <p
-                      className={`text-xl font-semibold ${isCheckIn ? 'text-green-600' : 'text-purple-600'
-                        }`}
-                    >
-                      {result.message}
-                    </p>
-                  </div>
-                  {/* INFO BOX: Ticket ID + Timestamp để Organizer đối soát nhanh */}
-                  {(result.registration?.ticketId || result.registration?.checkedInAt || result.registration?.checkedOutAt) && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-                      {result.registration?.ticketId && (
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600">Ticket ID:</span>
-                          <span className="font-bold text-gray-900">#{result.registration.ticketId}</span>
-                        </div>
-                      )}
-                      {result.registration?.checkedInAt && (() => {
-                        const checkinDate = parseBackendDate(result.registration.checkedInAt)
-                        return checkinDate ? (
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Thời gian Check-in:</span>
-                            <span className="font-medium text-gray-900">
-                              {format(checkinDate, 'dd/MM/yyyy HH:mm:ss', { locale: vi })}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Thời gian Check-in:</span>
-                            <span className="font-medium text-gray-900">
-                              {result.registration.checkedInAt}
-                            </span>
-                          </div>
-                        )
-                      })()}
-                      {result.registration?.checkedOutAt && (() => {
-                        const checkoutDate = parseBackendDate(result.registration.checkedOutAt)
-                        return checkoutDate ? (
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Thời gian Check-out:</span>
-                            <span className="font-medium text-gray-900">
-                              {format(checkoutDate, 'dd/MM/yyyy HH:mm:ss', { locale: vi })}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Thời gian Check-out:</span>
-                            <span className="font-medium text-gray-900">
-                              {result.registration.checkedOutAt}
-                            </span>
-                          </div>
-                        )
-                      })()}
-                      {result.registration?.customerName && (
-                        <div className="flex justify-between items-center text-sm border-t pt-2">
-                          <span className="text-gray-600">Khách hàng:</span>
-                          <span className="font-medium text-gray-900">{result.registration.customerName}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+            {!result ? (
+              <div className="text-center py-16 text-slate-500 flex flex-col items-center justify-center h-full">
+                <div className="p-4 bg-slate-900 border border-slate-800 rounded-full w-fit mb-4 text-slate-600 animate-pulse">
+                  <Scan className="w-12 h-12" />
                 </div>
-              ) : (
-                /* Trường hợp THẤT BẠI - phân loại rõ ràng dựa trên errorCode */
-                (() => {
-                  const errCfg = getErrorConfig(result.errorCode, activeTab, result.registration?.previousTime)
-                  return (
-                    <div className="text-center py-6">
-                      <errCfg.Icon className={`w-16 h-16 mx-auto mb-3 ${errCfg.iconClass}`} />
-                      {/* Tiêu đề lỗi: IN ĐẬM, phân biệt loại lỗi */}
-                      <p className="text-lg font-bold text-gray-900 whitespace-pre-line">
-                        {errCfg.title}
+                <p className="font-extrabold text-sm text-slate-400">Chưa có kết quả quét</p>
+                <p className="text-xs text-slate-500 mt-1.5 max-w-xs mx-auto leading-relaxed">
+                  Nhấn "Bắt đầu quét" hoặc sử dụng khung nhập ID vé thủ công để ghi nhận tham dự.
+                </p>
+              </div>
+            ) : (
+              /* ĐÃ CÓ KẾT QUẢ TỪ API */
+              <div className="space-y-4">
+                {result.success ? (
+                  /* THÀNH CÔNG CARD */
+                  <div className="space-y-4">
+                    <div className="text-center py-4 bg-slate-900/60 border border-slate-850 rounded-2xl p-5 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-emerald-500/5 opacity-40 pointer-events-none" />
+                      <CheckCircle
+                        className={`w-14 h-14 mx-auto mb-3.5 animate-bounce ${isCheckIn ? 'text-emerald-500' : 'text-purple-500'}`}
+                      />
+                      <p className={`text-lg font-black leading-tight ${isCheckIn ? 'text-emerald-500' : 'text-purple-500'}`}>
+                        {result.message}
                       </p>
-                      {/* In chuỗi error từ backend ra */}
-                      {result.message && (
-                        <div className="mt-2 text-sm text-red-600 font-medium italic whitespace-pre-line">
-                          {result.message}
-                        </div>
-                      )}
                     </div>
-                  )
-                })()
-              )}
 
-              {/* Hiển thị thông tin chi tiết về vé/sự kiện cho trường hợp FAILURE hoặc MULTI-TICKET */}
-              {!result.success && result.registration && (
-                <div className="border-t pt-4 space-y-3">
-                  {/* Hiển thị tên khách hàng (failure case) */}
-                  {result.registration.customerName && (
-                    <div className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400">
-                      <p className="text-sm text-gray-600">👤 Khách hàng:</p>
-                      <p className="font-semibold text-gray-900">{result.registration.customerName}</p>
-                    </div>
-                  )}
-
-                  {/* Hiển thị tên sự kiện (failure case) */}
-                  {result.registration.eventName && (
-                    <div className="bg-purple-50 p-3 rounded-lg border-l-4 border-purple-400">
-                      <p className="text-sm text-gray-600">📋 Sự kiện:</p>
-                      <p className="font-semibold text-gray-900">{result.registration.eventName}</p>
-                    </div>
-                  )}
-
-                  {/* Hiển thị Ticket ID (failure case) */}
-                  {result.registration.ticketId && (
-                    <div>
-                      <p className="text-sm text-gray-600">Ticket ID:</p>
-                      <p className="font-medium">{result.registration.ticketId}</p>
-                    </div>
-                  )}
-
-                  {/* Hiển thị danh sách kết quả cho trường hợp nhiều vé (multi-ticket) */}
-                  {result.registration.results && Array.isArray(result.registration.results) && (
-                    <div>
-                      <p className="text-sm text-gray-600 font-semibold mb-2">Danh sách vé:</p>
-                      <div className="text-sm space-y-2">
-                        {/* Map qua từng vé và hiển thị trạng thái với error message */}
-                        {result.registration.results.map((r: any, idx: number) => (
-                          <div key={idx} className="border-l-4 pl-3 py-2 rounded bg-gray-50"
-                            style={{ borderColor: r.success ? '#10b981' : '#ef4444' }}>
-                            <div className="flex justify-between items-start">
-                              <span className="font-medium">Vé #{r.ticketId}</span>
-                              {/* Màu xanh nếu OK, màu đỏ nếu FAIL */}
-                              <span className={r.success ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                                {r.success ? '✓ OK' : '✗ Lỗi'}
+                    {(result.registration?.ticketId || result.registration?.checkedInAt || result.registration?.checkedOutAt) && (
+                      <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 space-y-2.5 text-xs">
+                        {result.registration?.ticketId && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-450 font-bold">Ticket ID:</span>
+                            <span className="font-black text-slate-200">#{result.registration.ticketId}</span>
+                          </div>
+                        )}
+                        {result.registration?.checkedInAt && (() => {
+                          const checkinDate = parseBackendDate(result.registration.checkedInAt)
+                          return (
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-450 font-bold">Thời gian Check-in:</span>
+                              <span className="font-extrabold text-slate-250">
+                                {checkinDate ? format(checkinDate, 'dd/MM/yyyy HH:mm:ss', { locale: vi }) : result.registration.checkedInAt}
                               </span>
                             </div>
-                            {/* Hiển thị error message chi tiết nếu thất bại */}
-                            {!r.success && r.error && (
-                              <p className="text-xs text-red-600 mt-1">{r.error}</p>
-                            )}
-                            {/* Hiển thị success message nếu thành công */}
-                            {r.success && r.message && (
-                              <p className="text-xs text-green-600 mt-1">{r.message}</p>
-                            )}
+                          )
+                        })()}
+                        {result.registration?.checkedOutAt && (() => {
+                          const checkoutDate = parseBackendDate(result.registration.checkedOutAt)
+                          return (
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-450 font-bold">Thời gian Check-out:</span>
+                              <span className="font-extrabold text-slate-250">
+                                {checkoutDate ? format(checkoutDate, 'dd/MM/yyyy HH:mm:ss', { locale: vi }) : result.registration.checkedOutAt}
+                              </span>
+                            </div>
+                          )
+                        })()}
+                        {result.registration?.customerName && (
+                          <div className="flex justify-between items-center border-t border-slate-800/80 pt-2 mt-2">
+                            <span className="text-slate-450 font-bold">Sinh viên:</span>
+                            <span className="font-extrabold text-slate-100">{result.registration.customerName}</span>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                ) : (
+                  /* THẤT BẠI CARD */
+                  (() => {
+                    const errCfg = getErrorConfig(result.errorCode, activeTab, result.registration?.previousTime)
+                    const ErrIcon = errCfg.Icon
+                    return (
+                      <div className="space-y-4">
+                        <div className="text-center py-5 bg-rose-950/20 border border-rose-900/30 rounded-2xl p-5 relative overflow-hidden">
+                          <ErrIcon className={`w-14 h-14 mx-auto mb-3.5 ${errCfg.iconClass} animate-pulse`} />
+                          <p className="text-base font-black text-slate-200 whitespace-pre-line leading-relaxed">
+                            {errCfg.title}
+                          </p>
+                          {result.message && (
+                            <div className="mt-3 text-xs text-rose-400 font-extrabold italic bg-rose-950/50 rounded-xl p-2 border border-rose-900/20">
+                              {result.message}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })()
+                )}
 
-              {/* Nút để tiếp tục check-in/check-out vé tiếp theo */}
-              <button
-                onClick={resetResult}
-                className="w-full mt-4 text-white py-2 rounded-lg bg-gray-600 hover:bg-gray-700"
-              >
-                {actionLabel} tiếp theo
-              </button>
-            </div>
-          )}
+                {/* Info details case of failure multi-ticket */}
+                {!result.success && result.registration && (
+                  <div className="border-t border-slate-800 pt-4 space-y-3">
+                    {result.registration.customerName && (
+                      <div className="bg-slate-900/60 p-3.5 rounded-2xl border-l-4 border-orange-500/80 text-xs">
+                        <p className="text-slate-450 font-bold uppercase tracking-wider mb-0.5">👤 Khách hàng:</p>
+                        <p className="font-extrabold text-slate-100">{result.registration.customerName}</p>
+                      </div>
+                    )}
+
+                    {result.registration.eventName && (
+                      <div className="bg-slate-900/60 p-3.5 rounded-2xl border-l-4 border-purple-500/80 text-xs">
+                        <p className="text-slate-450 font-bold uppercase tracking-wider mb-0.5">📋 Sự kiện:</p>
+                        <p className="font-extrabold text-slate-100">{result.registration.eventName}</p>
+                      </div>
+                    )}
+
+                    {result.registration.results && Array.isArray(result.registration.results) && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-slate-450 font-extrabold uppercase tracking-wider mb-2">Báo cáo kiểm tra lô vé:</p>
+                        <div className="text-xs space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {result.registration.results.map((r: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className="border-l-4 pl-3 py-2.5 rounded-xl bg-slate-900/40 text-xs"
+                              style={{ borderColor: r.success ? '#10b981' : '#ef4444' }}
+                            >
+                              <div className="flex justify-between items-center font-bold">
+                                <span className="text-slate-300">Vé #{r.ticketId}</span>
+                                <span className={r.success ? 'text-emerald-500 font-extrabold' : 'text-rose-500 font-extrabold'}>
+                                  {r.success ? '✓ Hợp lệ' : '✗ Lỗi quét'}
+                                </span>
+                              </div>
+                              {!r.success && r.error && (
+                                <p className="text-[10px] text-rose-450 mt-1 font-semibold italic">{r.error}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Button next checkin */}
+                <button
+                  onClick={resetResult}
+                  className="w-full mt-4 py-3.5 font-extrabold text-xs uppercase tracking-wider text-slate-200 bg-slate-800 hover:bg-slate-750 hover:text-white rounded-2xl transition-all duration-300 shadow-sm active:scale-95"
+                >
+                  Quét vé tiếp theo
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* ===== PHẦN HƯỚNG DẪN SỬ DỤNG ===== */}
-      {/* Hiển thị hướng dẫn khác nhau tùy theo tab đang chọn */}
-      <div
-        className={`mt-6 p-4 rounded-lg border ${isCheckIn ? 'bg-blue-50 border-blue-200' : 'bg-purple-50 border-purple-200'
-          }`}
-      >
-        <h3 className={`font-semibold mb-2 ${isCheckIn ? 'text-blue-800' : 'text-purple-800'}`}>
-          Hướng dẫn {actionLabel}
+      <div className={`mt-6 p-5 rounded-3xl border text-xs leading-relaxed ${
+        isCheckIn ? 'bg-orange-950/25 border-orange-500/35 text-orange-200 shadow-lg shadow-orange-500/5' : 'bg-purple-950/25 border-purple-500/35 text-purple-200 shadow-lg shadow-purple-500/5'
+      }`}>
+        <h3 className={`font-black uppercase tracking-wider mb-2 text-[11px] ${isCheckIn ? 'text-orange-400' : 'text-purple-400'}`}>
+          Hướng dẫn nghiệp vụ {actionLabel}
         </h3>
-        <ul className={`text-sm space-y-1 ${isCheckIn ? 'text-blue-700' : 'text-purple-700'}`}>
+        <ul className="space-y-1.5 font-bold">
           {isCheckIn ? (
-            /* Hướng dẫn cho Check-in */
             <>
-              <li>• Quét mã QR trên vé của người tham dự để check-in</li>
-              <li>• Hỗ trợ QR nhiều vé dạng: TICKETS:123,124</li>
-              <li>• Hoặc nhập ID vé thủ công nếu không quét được</li>
-              <li>• Mỗi vé chỉ có thể check-in một lần</li>
+              <li className="flex items-center gap-1.5">• Sử dụng camera sau để quét mã QR vé đơn hoặc mã kiểm soát lô vé của SV.</li>
+              <li className="flex items-center gap-1.5">• Cho phép quét QR đa vé định dạng <strong className="text-orange-400">TICKETS:id1,id2,id3</strong> để check-in hàng loạt.</li>
+              <li className="flex items-center gap-1.5">• Nhập trực tiếp số ID vé vào ô tìm kiếm thủ công nếu thiết bị không bật được camera hoặc camera mờ.</li>
             </>
           ) : (
-            /* Hướng dẫn cho Check-out */
             <>
-              <li>• Quét mã QR trên vé để check-out khi người tham dự rời sự kiện</li>
-              <li>• Hoặc nhập ID vé thủ công nếu không quét được</li>
-              <li>• Chỉ có thể check-out sau khi đã check-in</li>
-              <li>• Check-out chỉ khả dụng sau thời gian quy định (cấu hình hệ thống)</li>
+              <li className="flex items-center gap-1.5">• Ghi nhận check-out cho sinh viên khi ra về để tính hạn ngạch hoạt động ngoại khóa.</li>
+              <li className="flex items-center gap-1.5">• Chỉ hỗ trợ quét check-out đối với các mã vé đã được ghi nhận check-in trước đó.</li>
+              <li className="flex items-center gap-1.5">• Có thể đối soát vé lỗi bằng cách nhập số ID vé tương ứng tại quầy.</li>
             </>
           )}
         </ul>
