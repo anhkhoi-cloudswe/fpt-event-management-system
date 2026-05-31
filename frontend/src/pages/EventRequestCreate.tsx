@@ -201,11 +201,58 @@ export default function EventRequestCreate() {
     bannerUrl: '',
   })
 
-  // selectedImage: file ảnh banner user chọn (hiện chưa dùng để upload trong submit)
+  // selectedImage: file ảnh banner user chọn
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
 
-  // imagePreview: preview ảnh banner (hiện chưa render UI trong form)
+  // imagePreview: preview ảnh banner
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+
+  // isDragging: trạng thái kéo thả file
+  const [isDragging, setIsDragging] = useState(false)
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0]
+      if (file.type.startsWith('image/')) {
+        setSelectedImage(file)
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setImagePreview(reader.result as string)
+        }
+        reader.readAsDataURL(file)
+      } else {
+        showToast('error', 'Chỉ chấp nhận tệp hình ảnh')
+      }
+    }
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      setSelectedImage(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null)
+    setImagePreview(null)
+  }
 
   // isSubmitting: trạng thái đang submit form -> disable nút
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -421,213 +468,284 @@ export default function EventRequestCreate() {
 
   // ======================= UI RENDER =======================
   return (
-    <div className="flex justify-center">
-      <div className="bg-white rounded-lg shadow-md p-8 max-w-3xl w-full">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">
-          Gửi yêu cầu tổ chức sự kiện
-        </h1>
+    <div className="flex justify-center pb-12">
+      <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-gray-100 shadow-xl p-8 md:p-10 max-w-4xl w-full">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
+            Đề xuất <span className="bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">Yêu cầu Sự kiện</span>
+          </h1>
+          <p className="text-gray-500 mt-2 text-sm font-medium">Vui lòng điền thông tin đề xuất chi tiết để chuyển đến Ban quản lý phê duyệt.</p>
+        </div>
 
-        {/* Form submit gọi handleSubmit */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* ===== Title ===== */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tiêu đề sự kiện đề xuất *
-            </label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              required
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-blue-500 ${fieldErrors.title
-                ? 'border-red-500 focus:ring-red-500'
-                : 'border-gray-300 focus:ring-blue-500'
-                }`}
-            />
-            {/* Nếu title lỗi (rỗng) -> show message */}
-            {fieldErrors.title && (
-              <p className="mt-1 text-sm text-red-600">
-                Vui lòng nhập tiêu đề sự kiện
-              </p>
-            )}
-          </div>
-
-          {/* ===== Description ===== */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mô tả chi tiết *
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              required
-              rows={4}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-blue-500 ${fieldErrors.description
-                ? 'border-red-500 focus:ring-red-500'
-                : 'border-gray-300 focus:ring-blue-500'
-                }`}
-            />
-            {fieldErrors.description && (
-              <p className="mt-1 text-sm text-red-600">
-                Vui lòng nhập mô tả chi tiết
-              </p>
-            )}
-          </div>
-
-          {/* ===== Reason ===== */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Lý do / mục tiêu tổ chức *
-            </label>
-            <textarea
-              name="reason"
-              value={formData.reason}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              required
-              rows={3}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-blue-500 ${fieldErrors.reason
-                ? 'border-red-500 focus:ring-red-500'
-                : 'border-gray-300 focus:ring-blue-500'
-                }`}
-            />
-            {fieldErrors.reason && (
-              <p className="mt-1 text-sm text-red-600">
-                Vui lòng nhập lý do / mục tiêu tổ chức
-              </p>
-            )}
-          </div>
-
-          {/* ===== Preferred time range (optional) ===== */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* preferredStart */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Thời gian bắt đầu mong muốn
-                </label>
-                <input
-                  type="datetime-local"
-                  name="preferredStart"
-                  value={formData.preferredStart}
-                  onChange={handleChange}
-                  onInput={handleDateTimeInput}
-                  max="9999-12-31T23:59"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-blue-500 ${timeValidationErrors.length > 0
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                    }`}
-                />
-                <p className="mt-1 text-xs text-gray-600">
-                  📅 Khung giờ: 07:00 - 21:00 (tối thiểu 60 phút)
-                </p>
-              </div>
-
-              {/* preferredEnd */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Thời gian kết thúc mong muốn
-                </label>
-                <input
-                  type="datetime-local"
-                  name="preferredEnd"
-                  value={formData.preferredEnd}
-                  onChange={handleChange}
-                  onInput={handleDateTimeInput}
-                  max="9999-12-31T23:59"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-blue-500 ${timeValidationErrors.length > 0
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                    }`}
-                />
-                <p className="mt-1 text-xs text-gray-600">
-                  ⏰ Kết thúc trước 21:00
-                </p>
-              </div>
+        {/* Form submit */}
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* SECTION 1: THÔNG TIN CHUNG */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-100 text-orange-600 text-sm font-bold">1</span>
+              <h2 className="text-lg font-bold text-gray-900">Thông tin sự kiện cơ bản</h2>
             </div>
 
-            {/* Time Validation Errors */}
-            {timeValidationErrors.length > 0 && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <h4 className="font-medium text-red-900 mb-2">
-                      Vui lòng điều chỉnh thời gian sự kiện:
-                    </h4>
-                    <ul className="space-y-1">
-                      {timeValidationErrors.map((error, index) => (
-                        <li key={index} className="text-sm text-red-700">
-                          • {error}
-                        </li>
-                      ))}
-                    </ul>
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Tiêu đề sự kiện đề xuất *
+              </label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                required
+                placeholder="Nhập tên sự kiện thu hút người tham gia..."
+                className={`w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${fieldErrors.title
+                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
+                  : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                  }`}
+              />
+              {fieldErrors.title && (
+                <p className="mt-1 text-xs text-red-600 font-medium">
+                  ⚠ Vui lòng nhập tiêu đề sự kiện
+                </p>
+              )}
+            </div>
+
+            {/* Banner Dropzone Area */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Banner quảng bá sự kiện
+              </label>
+              
+              {!imagePreview ? (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById('banner-file-input')?.click()}
+                  className={`w-full border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center min-h-[160px] ${
+                    isDragging
+                      ? 'border-orange-500 bg-orange-50/50 scale-[1.01]'
+                      : 'border-gray-300 bg-gray-50/50 hover:border-orange-400 hover:bg-orange-50/10'
+                  }`}
+                >
+                  <input
+                    type="file"
+                    id="banner-file-input"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                  />
+                  <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-sm font-bold text-gray-700">Kéo và thả ảnh banner vào đây</p>
+                  <p className="text-xs text-gray-500 mt-1">Hoặc click để duyệt tìm tệp hình ảnh từ thiết bị của bạn</p>
+                </div>
+              ) : (
+                <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-md h-48 group">
+                  <img
+                    src={imagePreview}
+                    alt="Banner Preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold shadow-lg hover:bg-red-700 transition-colors"
+                    >
+                      Xóa hình ảnh
+                    </button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Mô tả chi tiết *
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                required
+                rows={4}
+                placeholder="Mô tả các nội dung chính, diễn giả, hoạt động đặc sắc của sự kiện..."
+                className={`w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${fieldErrors.description
+                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
+                  : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                  }`}
+              />
+              {fieldErrors.description && (
+                <p className="mt-1 text-xs text-red-600 font-medium">
+                  ⚠ Vui lòng nhập mô tả chi tiết
+                </p>
+              )}
+            </div>
+
+            {/* Reason */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Lý do / mục tiêu tổ chức *
+              </label>
+              <textarea
+                name="reason"
+                value={formData.reason}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                required
+                rows={3}
+                placeholder="Nêu rõ mục tiêu của chương trình và lợi ích dành cho sinh viên tham gia..."
+                className={`w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${fieldErrors.reason
+                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
+                  : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                  }`}
+              />
+              {fieldErrors.reason && (
+                <p className="mt-1 text-xs text-red-600 font-medium">
+                  ⚠ Vui lòng nhập lý do / mục tiêu tổ chức
+                </p>
+              )}
+            </div>
           </div>
 
-          {/* ===== Expected Participants ===== */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Số lượng người tham gia dự kiến (Bội số của 10: 10, 20, 30...)
-            </label>
-            <input
-              type="number"
-              name="expectedParticipants"
-              value={formData.expectedParticipants}
-              onChange={handleChange}
-              min="10"
-              step="10"
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-blue-500 ${validationError
-                ? 'border-red-500 focus:ring-red-500'
-                : 'border-gray-300 focus:ring-blue-500'
-                }`}
-            />
-            {/* validationError hiện realtime */}
-            {validationError && (
-              <p className="mt-1 text-sm text-red-600">{validationError}</p>
-            )}
+          {/* SECTION 2: KẾ HOẠCH & SỐ LƯỢNG */}
+          <div className="space-y-6 pt-4">
+            <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-100 text-orange-600 text-sm font-bold">2</span>
+              <h2 className="text-lg font-bold text-gray-900">Kế hoạch thời gian & Sức chứa</h2>
+            </div>
+
+            {/* Preferred time range */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* preferredStart */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Thời gian bắt đầu mong muốn
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="preferredStart"
+                    value={formData.preferredStart}
+                    onChange={handleChange}
+                    onInput={handleDateTimeInput}
+                    max="9999-12-31T23:59"
+                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${timeValidationErrors.length > 0
+                      ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
+                      : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                      }`}
+                  />
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    📅 Khung giờ hoạt động: 07:00 - 21:00 (Kéo dài tối thiểu 60 phút)
+                  </p>
+                </div>
+
+                {/* preferredEnd */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Thời gian kết thúc mong muốn
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="preferredEnd"
+                    value={formData.preferredEnd}
+                    onChange={handleChange}
+                    onInput={handleDateTimeInput}
+                    max="9999-12-31T23:59"
+                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${timeValidationErrors.length > 0
+                      ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
+                      : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                      }`}
+                  />
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    ⏰ Sự kiện cần kết thúc trước 21:00 để dọn dẹp địa điểm
+                  </p>
+                </div>
+              </div>
+
+              {/* Time Validation Errors */}
+              {timeValidationErrors.length > 0 && (
+                <div className="p-5 bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-2xl shadow-sm">
+                  <div className="flex gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="font-bold text-red-900 mb-2">
+                        Vui lòng điều chỉnh thời gian sự kiện:
+                      </h4>
+                      <ul className="space-y-1">
+                        {timeValidationErrors.map((error, index) => (
+                          <li key={index} className="text-sm text-red-700 font-medium">
+                            • {error}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Expected Participants */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Số lượng người tham gia dự kiến
+              </label>
+              <input
+                type="number"
+                name="expectedParticipants"
+                value={formData.expectedParticipants}
+                onChange={handleChange}
+                min="10"
+                step="10"
+                placeholder="Nhập bội số của 10: 50, 100, 200..."
+                className={`w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${validationError
+                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
+                  : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                  }`}
+              />
+              {validationError && (
+                <p className="mt-1.5 text-xs text-red-600 font-medium">⚠ {validationError}</p>
+              )}
+            </div>
           </div>
 
           {/* ===== Error tổng khi submit fail / validate fail ===== */}
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="p-5 bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-2xl shadow-sm">
               <div className="flex gap-3">
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <h4 className="font-medium text-red-900 mb-1">Lỗi:</h4>
-                  <p className="text-sm text-red-700 whitespace-pre-line">{error}</p>
+                  <h4 className="font-bold text-red-900 mb-1">Gửi yêu cầu không thành công:</h4>
+                  <p className="text-sm text-red-700 whitespace-pre-line font-medium leading-relaxed">{error}</p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ===== Buttons ===== */}
-          <div className="pt-4 flex justify-end space-x-4">
-            {/* Hủy: về trang danh sách yêu cầu (nhưng đang dùng route /dashboard/my-event-requests) */}
+          {/* ===== Action Buttons ===== */}
+          <div className="pt-6 border-t border-gray-100 flex justify-end space-x-4">
             <button
               type="button"
               onClick={() => navigate('/dashboard/my-event-requests')}
-              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-6 py-3 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors duration-300 font-bold"
               disabled={isSubmitting}
             >
               Hủy
             </button>
 
-            {/* Submit button */}
             <button
               type="submit"
-              className="inline-flex items-center px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-8 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-orange-500 text-white font-bold shadow-lg shadow-orange-500/20 hover:shadow-orange-500/35 hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               disabled={isSubmitting}
             >
               <Send className="w-4 h-4 mr-2" />
-              {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu'}
+              {isSubmitting ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu ngay'}
             </button>
           </div>
         </form>

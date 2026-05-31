@@ -443,99 +443,135 @@ export default function Dashboard() {
     return items
   }
 
-  // ✅ Helper function: Convert event.status to badge label
-  // Based on 100% field value, NOT time-based calculation
-  const isEventClosedOrEnded = (event: EventListItem, tab?: 'open' | 'upcoming' | 'closed') => {
-    const nowMs = new Date().getTime()
-    const endMs = event.endTime ? new Date(event.endTime).getTime() : 0
-    return event.status === 'CLOSED' || (endMs > 0 && nowMs >= endMs) || tab === 'closed'
+  const isEventClosedOrEnded = (event: EventListItem, tab: string): boolean => {
+    if (tab === 'closed' || event.status === 'CLOSED') {
+      return true
+    }
+    if (event.endTime && new Date(event.endTime) < new Date()) {
+      return true
+    }
+    return false
   }
 
-  // ✅ Helper function: Convert event.status to badge label
-  // Time-aware and status-aware calculation
-  const getStatusBadge = (event: EventListItem, tab?: 'open' | 'upcoming' | 'closed') => {
-    const nowMs = new Date().getTime()
-    const endMs = event.endTime ? new Date(event.endTime).getTime() : 0
-    const startMs = event.startTime ? new Date(event.startTime).getTime() : 0
-
-    if (event.status === 'CLOSED' || (endMs > 0 && nowMs >= endMs) || tab === 'closed') {
+  const getStatusBadge = (event: EventListItem, tab: string): string => {
+    if (tab === 'closed' || event.status === 'CLOSED') {
       return 'Đã kết thúc'
     }
-    if (event.status === 'OPEN') {
-      if (tab === 'upcoming' || (startMs > 0 && nowMs < startMs)) {
-        return 'Sắp diễn ra'
-      }
-      return 'Đang mở'
+    if (tab === 'upcoming' || event.status === 'UPCOMING') {
+      return 'Sắp diễn ra'
     }
-    return event.status || 'Không xác định'
+    return 'Hôm nay'
   }
 
+  const renderLoadingSkeletons = () => (
+    <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+      {Array.from({ length: 8 }).map((_, idx) => (
+        <div key={idx} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-md animate-pulse flex flex-col h-full">
+          <div className="w-full h-44 bg-gray-200"></div>
+          <div className="p-5 flex-1 flex flex-col space-y-3">
+            <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+            <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-200 rounded w-full mt-auto"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
+  const renderEmptyState = (title: string, subtitle: string) => (
+    <div className="bg-white/80 backdrop-blur-md rounded-3xl border-2 border-dashed border-gray-200 p-16 text-center shadow-lg max-w-lg mx-auto my-12 transition-all duration-300 hover:border-orange-300">
+      <div className="flex justify-center mb-6">
+        <div className="relative">
+          <div className="absolute inset-0 bg-orange-100 rounded-full scale-150 opacity-40 blur-md animate-pulse"></div>
+          <svg className="w-20 h-20 text-orange-500 relative" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+      </div>
+      <h3 className="text-2xl font-extrabold text-gray-900 mb-2">{title}</h3>
+      <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto mb-6">{subtitle}</p>
+    </div>
+  )
+
   return (
-    <div className="w-full mx-auto">
+    <div className="w-full mx-auto pb-12">
       {/* Tiêu đề + Tìm kiếm */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Sự kiện tại Thành phố Hồ Chí Minh
-        </h1>
+      <div className="mb-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div>
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl">
+            Sự kiện tại <span className="bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">Thành phố Hồ Chí Minh</span>
+          </h1>
+          <p className="text-gray-500 mt-2 text-sm md:text-base font-medium">Khám phá và đăng ký tham gia các hoạt động nổi bật nhất tại campus.</p>
+        </div>
 
         {/* Search Input */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400 pointer-events-none" />
+        <div className="relative max-w-md w-full md:w-80">
+          <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" />
           <input
             type="text"
             placeholder="Tìm kiếm sự kiện..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white/50 backdrop-blur-sm hover:border-orange-300 focus:bg-white text-gray-800 placeholder-gray-400 font-semibold"
           />
         </div>
       </div>
 
-      {/* Hiển thị loading/error */}
-      {loading && <p className="text-gray-500 mb-4">Đang tải dữ liệu sự kiện...</p>}
-      {error && <p className="text-red-500 mb-4">Lỗi: {error}</p>}
+      {/* Hiển thị lỗi nếu có */}
+      {error && (
+        <div className="p-4 mb-6 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
+          <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span className="font-semibold">Lỗi: {error}</span>
+        </div>
+      )}
 
       {/* ===================== TAB PANEL ===================== */}
-      <div className="mb-6">
+      <div className="mb-8">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
             {/* Tab 1: Sự kiện hôm nay */}
             <button
               onClick={() => handleTabChange('open')}
-              className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${activeTab === 'open'
-                ? 'border-orange-500 text-orange-600'
+              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-300 relative ${activeTab === 'open'
+                ? 'border-orange-500 text-orange-600 scale-105'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
             >
-              <div className="flex flex-col items-start">
-                <span>Sự kiện hôm nay</span>
-              </div>
+              <span>Sự kiện hôm nay</span>
+              {activeTab === 'open' && (
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 rounded-full animate-pulse"></span>
+              )}
             </button>
 
             {/* Tab 2: Sự kiện sắp diễn ra */}
             <button
               onClick={() => handleTabChange('upcoming')}
-              className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${activeTab === 'upcoming'
-                ? 'border-orange-500 text-orange-600'
+              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-300 relative ${activeTab === 'upcoming'
+                ? 'border-orange-500 text-orange-600 scale-105'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
             >
-              <div className="flex flex-col items-start">
-                <span>Sự kiện sắp diễn ra</span>
-              </div>
+              <span>Sự kiện sắp diễn ra</span>
+              {activeTab === 'upcoming' && (
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 rounded-full animate-pulse"></span>
+              )}
             </button>
 
             {/* Tab 3: Sự kiện đã kết thúc */}
             <button
               onClick={() => handleTabChange('closed')}
-              className={`py-4 px-1 border-b-2 font-medium text-base transition-colors ${activeTab === 'closed'
-                ? 'border-orange-500 text-orange-600'
+              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-300 relative ${activeTab === 'closed'
+                ? 'border-orange-500 text-orange-600 scale-105'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
             >
-              <div className="flex flex-col items-start">
-                <span>Sự kiện đã kết thúc</span>
-              </div>
+              <span>Sự kiện đã kết thúc</span>
+              {activeTab === 'closed' && (
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 rounded-full animate-pulse"></span>
+              )}
             </button>
           </nav>
         </div>
@@ -546,61 +582,50 @@ export default function Dashboard() {
       {/* ===== TAB OPEN: Sự kiện hôm nay ===== */}
       {activeTab === 'open' && (
         <>
-          {events.length === 0 && totalItems === 0 ? (
-            <div className="bg-white rounded-lg shadow p-12 text-center">
-              <div className="flex justify-center mb-4">
-                <Calendar className="w-16 h-16 text-gray-300" />
-              </div>
-              <p className="text-gray-500 text-lg font-medium">Chưa có sự kiện nào trong mục này</p>
-              <p className="text-gray-400 text-sm mt-2">Hãy quay lại sau để xem các sự kiện hôm nay</p>
-            </div>
+          {loading ? (
+            renderLoadingSkeletons()
+          ) : events.length === 0 && totalItems === 0 ? (
+            renderEmptyState("Hôm nay chưa có sự kiện nào", "Hãy đón chờ các sự kiện tiếp theo trong ngày hôm nay nhé!")
           ) : (
             <>
               {/* Results Count */}
-              <div className="mb-4 text-sm text-gray-600">
-                <p>Hiển thị <span className="font-semibold">{displayedEvents.length}</span> trên tổng số <span className="font-semibold">{totalItems}</span> sự kiện</p>
+              <div className="mb-6 text-sm text-gray-600 font-medium">
+                <p>Hiển thị <span className="text-orange-600 font-bold">{displayedEvents.length}</span> trên tổng số <span className="text-orange-600 font-bold">{totalItems}</span> sự kiện</p>
               </div>
 
-              {/* Grid Sự kiện (hiển thị events từ API) - đúng 4 cột trên Desktop */}
+              {/* Grid Sự kiện - đúng 4 cột trên Desktop */}
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
                 {displayedEvents.map((event) => {
-                  // ✅ FIXED: Use event.status field from API instead of calculating isToday
-                  // Badge status is determined by the status field, not time-based logic
                   const showTodayBadge = activeTab === 'open' && event.status === 'OPEN'
 
                   return (
-                    // Event card: dùng button để click mở modal detail
                     <button
                       key={event.eventId}
-                      onClick={() => openEventDetail(event.eventId)} // click -> mở modal + fetch detail
-                      className={`text-left block rounded-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer bg-white h-full flex flex-col ${
-                        // Highlight "today" events
-                        showTodayBadge
-                          ? 'border-4 border-red-500 shadow-2xl shadow-red-500/50 transform scale-105'
-                          : 'border border-gray-200'
+                      onClick={() => openEventDetail(event.eventId)}
+                      className={`text-left block rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer bg-white h-full flex flex-col border-2 ${showTodayBadge
+                        ? 'border-red-500 shadow-xl shadow-red-500/20 transform scale-[1.02]'
+                        : 'border-white/80 shadow-md hover:border-orange-500'
                         }`}
                     >
                       {/* Banner Image */}
                       {event.bannerUrl ? (
-                        <div className="relative">
+                        <div className="relative overflow-hidden group h-44">
                           <img
                             src={event.bannerUrl}
                             alt={event.title}
-                            className="w-full h-40 object-cover"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           />
-                          {/* Show "🔥 HÔM NAY" badge only for today's OPEN events */}
                           {showTodayBadge && (
-                            <span className="absolute top-3 right-3 px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg shadow-lg animate-pulse">
+                            <span className="absolute top-3 right-3 px-3 py-1.5 bg-gradient-to-r from-red-600 to-orange-600 text-white text-xs font-bold rounded-lg shadow-lg animate-pulse">
                               🔥 HÔM NAY
                             </span>
                           )}
                         </div>
                       ) : (
-                        // Nếu không có bannerUrl -> hiển thị background + icon Calendar
-                        <div className="w-full h-40 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center relative">
+                        <div className="w-full h-44 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center relative">
                           <Calendar className="w-12 h-12 text-blue-400" />
                           {showTodayBadge && (
-                            <span className="absolute top-3 right-3 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg shadow-lg animate-pulse">
+                            <span className="absolute top-3 right-3 px-3 py-1.5 bg-gradient-to-r from-red-600 to-orange-600 text-white text-xs font-bold rounded-lg shadow-lg animate-pulse">
                               🔥 HÔM NAY
                             </span>
                           )}
@@ -608,9 +633,9 @@ export default function Dashboard() {
                       )}
 
                       {/* Content */}
-                      <div className="p-4 flex-1 flex flex-col">
-                        {/* Status Badge - Display based on event.status field */}
-                         <span className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 w-fit ${isEventClosedOrEnded(event, activeTab)
+                      <div className="p-5 flex-1 flex flex-col">
+                        {/* Status Badge */}
+                        <span className={`inline-block px-2.5 py-1 text-xs font-bold rounded-lg mb-3 w-fit tracking-wide ${isEventClosedOrEnded(event, activeTab)
                           ? 'bg-gray-100 text-gray-700'
                           : 'bg-red-100 text-red-700'
                           }`}>
@@ -618,25 +643,28 @@ export default function Dashboard() {
                         </span>
 
                         {/* Title */}
-                        <h3 className={`text-sm font-bold mb-2 line-clamp-2 ${showTodayBadge ? 'text-red-600' : 'text-gray-900'
+                        <h3 className={`text-base font-bold mb-2 line-clamp-2 leading-snug ${showTodayBadge ? 'text-red-600' : 'text-gray-900'
                           }`}>
                           {event.title}
                         </h3>
 
                         {/* Date & Time */}
-                        <p className={`text-xs mb-2 font-semibold line-clamp-1 ${showTodayBadge ? 'text-red-600' : 'text-gray-600'
+                        <p className={`text-xs mb-3 font-semibold line-clamp-1 ${showTodayBadge ? 'text-red-600' : 'text-gray-600'
                           }`}>
                           {formatWallClockDateTimeWithDayOfWeek(event.startTime)}
                         </p>
 
                         {/* Location */}
-                        <p className="text-xs text-gray-600 line-clamp-2 mt-auto">
-                          {event.venueLocation || event.location || 'Trực tuyến'}
+                        <p className="text-xs text-gray-500 line-clamp-2 mt-auto leading-relaxed">
+                          📍 {event.venueLocation || event.location || 'Trực tuyến'}
                         </p>
 
                         {/* View Details Button Spacer */}
-                        <div className="mt-2 pt-2 border-t border-gray-200">
-                          <p className="text-orange-600 text-xs font-semibold">Xem chi tiết →</p>
+                        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                          <p className="text-orange-600 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
+                          <svg className="w-4 h-4 text-orange-600 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                          </svg>
                         </div>
                       </div>
                     </button>
@@ -644,20 +672,18 @@ export default function Dashboard() {
                 })}
               </div>
 
-              {/* Pagination - Only show if totalPages > 1 */}
+              {/* Pagination */}
               {totalPages > 1 && (
-                <div className="w-full flex justify-center items-center gap-2 mt-8">
-                  {/* Nút Trước */}
+                <div className="w-full flex justify-center items-center gap-2 mt-10">
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage <= 1}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
                     ← Trước
                   </button>
 
-                  {/* Số trang */}
-                  <div className="flex gap-1">
+                  <div className="flex gap-1.5">
                     {getPaginationItems().map((item, index) => (
                       <button
                         key={index}
@@ -667,11 +693,11 @@ export default function Dashboard() {
                           }
                         }}
                         disabled={typeof item === 'string'}
-                        className={`px-3 py-2 rounded-lg transition-colors ${item === currentPage
-                          ? 'bg-orange-500 text-white font-semibold'
+                        className={`px-3.5 py-2 rounded-xl transition-all duration-300 font-semibold ${item === currentPage
+                          ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20'
                           : typeof item === 'number'
-                            ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                            : 'text-gray-500 cursor-default'
+                            ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                            : 'text-gray-400 cursor-default'
                           }`}
                       >
                         {item}
@@ -679,11 +705,10 @@ export default function Dashboard() {
                     ))}
                   </div>
 
-                  {/* Nút Sau */}
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage >= totalPages}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
                     Sau →
                   </button>
@@ -697,71 +722,67 @@ export default function Dashboard() {
       {/* ===== TAB UPCOMING: Sự kiện sắp diễn ra ===== */}
       {activeTab === 'upcoming' && (
         <>
-          {events.length === 0 && totalItems === 0 ? (
-            <div className="bg-white rounded-lg shadow p-12 text-center">
-              <div className="flex justify-center mb-4">
-                <Calendar className="w-16 h-16 text-yellow-300" />
-              </div>
-              <p className="text-gray-500 text-lg font-medium">Chưa có sự kiện nào trong mục này</p>
-              <p className="text-gray-400 text-sm mt-2">Các sự kiện sắp diễn ra sẽ hiển thị tại đây</p>
-            </div>
+          {loading ? (
+            renderLoadingSkeletons()
+          ) : events.length === 0 && totalItems === 0 ? (
+            renderEmptyState("Chưa có sự kiện nào sắp tới", "Các chương trình hấp dẫn đang được chuẩn bị chu đáo và sẽ sớm xuất hiện!")
           ) : (
             <>
               {/* Results Count */}
-              <div className="mb-4 text-sm text-gray-600">
-                <p>Hiển thị <span className="font-semibold">{displayedEvents.length}</span> trên tổng số <span className="font-semibold">{totalItems}</span> sự kiện</p>
+              <div className="mb-6 text-sm text-gray-600 font-medium">
+                <p>Hiển thị <span className="text-orange-600 font-bold">{displayedEvents.length}</span> trên tổng số <span className="text-orange-600 font-bold">{totalItems}</span> sự kiện</p>
               </div>
 
-              {/* Grid Sự kiện (hiển thị events từ API) - đúng 4 cột trên Desktop */}
+              {/* Grid Sự kiện - đúng 4 cột trên Desktop */}
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
                 {displayedEvents.map((event) => {
                   return (
                     <button
                       key={event.eventId}
-                      onClick={() => openEventDetail(event.eventId)} // click -> modal + fetch detail
-                      className="text-left block rounded-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer bg-white border border-gray-200 h-full flex flex-col"
+                      onClick={() => openEventDetail(event.eventId)}
+                      className="text-left block rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer bg-white border border-white/80 shadow-md h-full flex flex-col"
                     >
                       {/* Banner */}
                       {event.bannerUrl ? (
-                        <div className="relative">
+                        <div className="relative overflow-hidden group h-44">
                           <img
                             src={event.bannerUrl}
                             alt={event.title}
-                            className="w-full h-40 object-cover"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           />
                         </div>
                       ) : (
-                        <div className="w-full h-40 bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center relative">
+                        <div className="w-full h-44 bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center relative">
                           <Calendar className="w-12 h-12 text-yellow-400" />
                         </div>
                       )}
 
                       {/* Content */}
-                      <div className="p-4 flex-1 flex flex-col">
-                        {/* Status Badge - Display based on event.status field */}
-                         <span className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 w-fit ${isEventClosedOrEnded(event, activeTab)
+                      <div className="p-5 flex-1 flex flex-col">
+                        {/* Status Badge */}
+                        <span className={`inline-block px-2.5 py-1 text-xs font-bold rounded-lg mb-3 w-fit tracking-wide ${isEventClosedOrEnded(event, activeTab)
                           ? 'bg-gray-100 text-gray-700'
-                          : activeTab === 'upcoming'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-red-100 text-red-700'
+                          : 'bg-blue-100 text-blue-700'
                           }`}>
                           {getStatusBadge(event, activeTab)}
                         </span>
 
-                        <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">
+                        <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 leading-snug">
                           {event.title}
                         </h3>
-                        <p className="text-xs text-gray-600 mb-2 font-semibold line-clamp-1">
-                          {/* ✅ FIXED: Use formatWallClockDateTimeWithDayOfWeek - pure string extraction, no timezone shifting */}
+                        <p className="text-xs text-gray-600 mb-3 font-semibold line-clamp-1">
                           {formatWallClockDateTimeWithDayOfWeek(event.startTime)}
                         </p>
-                        <p className="text-xs text-gray-600 line-clamp-2 mt-auto">
-                          {event.venueLocation || event.location || 'Trực tuyến'}
+                        <p className="text-xs text-gray-500 line-clamp-2 mt-auto leading-relaxed">
+                          📍 {event.venueLocation || event.location || 'Trực tuyến'}
                         </p>
 
                         {/* View Details Button Spacer */}
-                        <div className="mt-2 pt-2 border-t border-gray-200">
-                          <p className="text-orange-600 text-xs font-semibold">Xem chi tiết →</p>
+                        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                          <p className="text-orange-600 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
+                          <svg className="w-4 h-4 text-orange-600 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                          </svg>
                         </div>
                       </div>
                     </button>
@@ -769,20 +790,18 @@ export default function Dashboard() {
                 })}
               </div>
 
-              {/* Pagination - Only show if totalPages > 1 */}
+              {/* Pagination */}
               {totalPages > 1 && (
-                <div className="w-full flex justify-center items-center gap-2 mt-8">
-                  {/* Nút Trước */}
+                <div className="w-full flex justify-center items-center gap-2 mt-10">
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage <= 1}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
                     ← Trước
                   </button>
 
-                  {/* Số trang */}
-                  <div className="flex gap-1">
+                  <div className="flex gap-1.5">
                     {getPaginationItems().map((item, index) => (
                       <button
                         key={index}
@@ -792,11 +811,11 @@ export default function Dashboard() {
                           }
                         }}
                         disabled={typeof item === 'string'}
-                        className={`px-3 py-2 rounded-lg transition-colors ${item === currentPage
-                          ? 'bg-orange-500 text-white font-semibold'
+                        className={`px-3.5 py-2 rounded-xl transition-all duration-300 font-semibold ${item === currentPage
+                          ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20'
                           : typeof item === 'number'
-                            ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                            : 'text-gray-500 cursor-default'
+                            ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                            : 'text-gray-400 cursor-default'
                           }`}
                       >
                         {item}
@@ -804,11 +823,10 @@ export default function Dashboard() {
                     ))}
                   </div>
 
-                  {/* Nút Sau */}
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage >= totalPages}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
                     Sau →
                   </button>
@@ -822,84 +840,81 @@ export default function Dashboard() {
       {/* ===== TAB CLOSED: Sự kiện đã kết thúc ===== */}
       {activeTab === 'closed' && (
         <>
-          {events.length === 0 && totalItems === 0 ? (
-            <div className="bg-white rounded-lg shadow p-12 text-center">
-              <div className="flex justify-center mb-4">
-                <Calendar className="w-16 h-16 text-gray-300" />
-              </div>
-              <p className="text-gray-500 text-lg font-medium">Chưa có sự kiện nào trong mục này</p>
-              <p className="text-gray-400 text-sm mt-2">Các sự kiện đã kết thúc sẽ hiển thị tại đây</p>
-            </div>
+          {loading ? (
+            renderLoadingSkeletons()
+          ) : events.length === 0 && totalItems === 0 ? (
+            renderEmptyState("Chưa có sự kiện nào khép lại", "Tất cả thông tin sự kiện đã kết thúc sẽ hiển thị chi tiết tại đây.")
           ) : (
             <>
               {/* Results Count */}
-              <div className="mb-4 text-sm text-gray-600">
-                <p>Hiển thị <span className="font-semibold">{displayedEvents.length}</span> trên tổng số <span className="font-semibold">{totalItems}</span> sự kiện</p>
+              <div className="mb-6 text-sm text-gray-600 font-medium">
+                <p>Hiển thị <span className="text-orange-600 font-bold">{displayedEvents.length}</span> trên tổng số <span className="text-orange-600 font-bold">{totalItems}</span> sự kiện</p>
               </div>
 
-              {/* Grid Sự kiện (hiển thị events từ API) - đúng 4 cột trên Desktop */}
+              {/* Grid Sự kiện - đúng 4 cột trên Desktop */}
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
                 {displayedEvents.map((event) => (
                   <button
                     key={event.eventId}
-                    onClick={() => openEventDetail(event.eventId)} // click -> modal + fetch detail
-                    className="text-left block rounded-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer bg-white border border-gray-200 opacity-75 h-full flex flex-col"
+                    onClick={() => openEventDetail(event.eventId)}
+                    className="text-left block rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer bg-white border border-white/80 shadow-md opacity-85 h-full flex flex-col"
                   >
                     {/* Banner */}
                     {event.bannerUrl ? (
-                      <img
-                        src={event.bannerUrl}
-                        alt={event.title}
-                        className="w-full h-40 object-cover"
-                      />
+                      <div className="relative overflow-hidden group h-44">
+                        <img
+                          src={event.bannerUrl}
+                          alt={event.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                      </div>
                     ) : (
-                      <div className="w-full h-40 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                      <div className="w-full h-44 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                         <Calendar className="w-12 h-12 text-gray-400" />
                       </div>
                     )}
-
+ 
                     {/* Content */}
-                    <div className="p-4 flex-1 flex flex-col">
-                       <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded mb-4 w-fit">
+                    <div className="p-5 flex-1 flex flex-col">
+                      <span className="inline-block px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded-lg mb-3 w-fit tracking-wide">
                         {getStatusBadge(event, activeTab)}
                       </span>
 
-                      <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">
+                      <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 leading-snug">
                         {event.title}
                       </h3>
 
-                      <p className="text-xs text-gray-600 mb-2 font-semibold line-clamp-1">
-                        {/* ✅ FIXED: Use formatWallClockDateTimeWithDayOfWeek - pure string extraction, no timezone shifting */}
+                      <p className="text-xs text-gray-600 mb-3 font-semibold line-clamp-1">
                         {formatWallClockDateTimeWithDayOfWeek(event.startTime)}
                       </p>
 
-                      <p className="text-xs text-gray-600 line-clamp-2 mt-auto">
-                        {event.venueLocation || event.location || 'Trực tuyến'}
+                      <p className="text-xs text-gray-500 line-clamp-2 mt-auto leading-relaxed">
+                        📍 {event.venueLocation || event.location || 'Trực tuyến'}
                       </p>
 
                       {/* View Details Button Spacer */}
-                      <div className="mt-2 pt-2 border-t border-gray-200">
-                        <p className="text-orange-600 text-xs font-semibold">Xem chi tiết →</p>
+                      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <p className="text-orange-600 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
+                        <svg className="w-4 h-4 text-orange-600 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                        </svg>
                       </div>
                     </div>
                   </button>
                 ))}
               </div>
-
-              {/* Pagination - Only show if totalPages > 1 */}
+              {/* Pagination */}
               {totalPages > 1 && (
-                <div className="w-full flex justify-center items-center gap-2 mt-8">
-                  {/* Nút Trước */}
+                <div className="w-full flex justify-center items-center gap-2 mt-10">
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage <= 1}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
                     ← Trước
                   </button>
 
-                  {/* Số trang */}
-                  <div className="flex gap-1">
+                  <div className="flex gap-1.5">
                     {getPaginationItems().map((item, index) => (
                       <button
                         key={index}
@@ -909,11 +924,11 @@ export default function Dashboard() {
                           }
                         }}
                         disabled={typeof item === 'string'}
-                        className={`px-3 py-2 rounded-lg transition-colors ${item === currentPage
-                          ? 'bg-orange-500 text-white font-semibold'
+                        className={`px-3.5 py-2 rounded-xl transition-all duration-300 font-semibold ${item === currentPage
+                          ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20'
                           : typeof item === 'number'
-                            ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                            : 'text-gray-500 cursor-default'
+                            ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                            : 'text-gray-400 cursor-default'
                           }`}
                       >
                         {item}
@@ -921,11 +936,10 @@ export default function Dashboard() {
                     ))}
                   </div>
 
-                  {/* Nút Sau */}
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage >= totalPages}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
                     Sau →
                   </button>

@@ -430,7 +430,7 @@ export default function GuestLanding() {
 
       {/* ===================== HEADER ===================== */}
       {/* sticky header: luôn nằm trên top khi scroll */}
-      <header className="sticky top-0 z-50 border-b border-white/20 bg-white/90 backdrop-blur-xl shadow-sm">
+      <header className="sticky top-0 z-50 border-b border-orange-500/10 bg-white/70 backdrop-blur-md shadow-sm transition-all duration-300">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
 
           {/* Logo -> link về "/" */}
@@ -459,15 +459,15 @@ export default function GuestLanding() {
       <main className="mx-auto max-w-7xl space-y-24 px-6 py-16">
 
         {/* ===================== HERO SECTION ===================== */}
-        <section className="space-y-10 text-center pt-8">
+        <section className="space-y-10 text-center pt-8 overflow-hidden">
           {/* Badge nhỏ phía trên */}
-          <div className="inline-flex items-center gap-2 rounded-full border-2 border-orange-400/40 bg-orange-50/80 backdrop-blur-sm px-5 py-2 text-xs font-bold uppercase tracking-[0.2em] text-orange-600 shadow-sm">
-            <TrendingUp className="w-4 h-4" />
+          <div className="animate-fade-in-up inline-flex items-center gap-2 rounded-full border border-orange-400/35 bg-orange-50/80 backdrop-blur-sm px-5 py-2 text-xs font-bold uppercase tracking-[0.2em] text-orange-600 shadow-sm transition-all duration-300" style={{ animationDelay: '100ms' }}>
+            <TrendingUp className="w-4 h-4 text-orange-500" />
             Nền tảng quản lý sự kiện
           </div>
 
           {/* Title */}
-          <h1 className="text-5xl font-extrabold leading-tight sm:text-6xl lg:text-7xl">
+          <h1 className="animate-fade-in-up text-5xl font-extrabold leading-tight sm:text-6xl lg:text-7xl tracking-tight" style={{ animationDelay: '200ms' }}>
             <span className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 bg-clip-text text-transparent">
               Tổ chức
             </span>
@@ -476,17 +476,17 @@ export default function GuestLanding() {
           </h1>
 
           {/* Subtitle */}
-          <p className="mx-auto max-w-3xl text-lg text-gray-600 sm:text-xl leading-relaxed">
+          <p className="animate-fade-in-up mx-auto max-w-3xl text-lg text-gray-600 sm:text-xl leading-relaxed" style={{ animationDelay: '300ms' }}>
             Dành cho Ban tổ chức, Bộ phận truyền thông và Câu lạc bộ trong hệ
             thống FPT Education. Dễ dàng đăng ký tham gia, quản lý sự kiện.
           </p>
 
           {/* CTA buttons */}
-          <div className="flex flex-wrap justify-center gap-5 pt-4">
+          <div className="animate-fade-in-up flex flex-wrap justify-center gap-5 pt-4" style={{ animationDelay: '400ms' }}>
             {/* Nút đăng nhập -> gọi handleLoginClick */}
             <button
               onClick={handleLoginClick}
-              className="group rounded-full bg-gradient-to-r from-orange-600 to-orange-500 px-8 py-4 text-base font-bold text-white shadow-2xl shadow-orange-500/50 transition-all duration-300 hover:shadow-orange-500/70 hover:-translate-y-1"
+              className="group rounded-full bg-gradient-to-r from-orange-600 to-orange-500 px-8 py-4 text-base font-bold text-white shadow-xl shadow-orange-500/30 transition-all duration-300 hover:shadow-2xl hover:shadow-orange-500/50 hover:-translate-y-1 hover:scale-[1.02]"
             >
               <span className="flex items-center gap-2">
                 Đăng nhập để bắt đầu
@@ -497,7 +497,7 @@ export default function GuestLanding() {
             {/* Link anchor xuống section #events */}
             <a
               href="#events"
-              className="rounded-full border-2 border-orange-300 bg-white px-8 py-4 text-base font-bold text-gray-700 shadow-lg transition-all duration-300 hover:border-orange-500 hover:shadow-xl hover:-translate-y-1"
+              className="rounded-full border border-orange-200 bg-white/80 backdrop-blur-sm px-8 py-4 text-base font-bold text-gray-700 shadow-md transition-all duration-300 hover:border-orange-500 hover:text-orange-600 hover:shadow-lg hover:-translate-y-1 hover:scale-[1.02]"
             >
               Xem sự kiện nổi bật
             </a>
@@ -508,42 +508,42 @@ export default function GuestLanding() {
         {/* ref={statsRef} để IntersectionObserver bắt được khi section vào viewport */}
         <section ref={statsRef} className="grid gap-6 sm:grid-cols-3">
           {/* Card 1 */}
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-white bg-white/80 backdrop-blur-sm p-8 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:border-orange-500">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/20 to-amber-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+          <div className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/85 bg-white/70 backdrop-blur-md p-8 shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:-translate-y-2 hover:border-orange-500" style={{ animationDelay: '100ms' }}>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-amber-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
             <div className="relative space-y-3">
-              <CalendarDays className="w-12 h-12 text-orange-600 group-hover:scale-110 transition-transform duration-300" />
-              <p className="text-5xl font-extrabold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
+              <CalendarDays className="w-12 h-12 text-orange-500 group-hover:scale-110 transition-transform duration-300" />
+              <p className="text-5xl font-extrabold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent tracking-tight">
                 {counters.events}+
               </p>
-              <p className="text-sm font-semibold uppercase tracking-wider text-gray-600">
+              <p className="text-sm font-bold uppercase tracking-wider text-gray-500">
                 Sự kiện đã tổ chức
               </p>
             </div>
           </div>
 
           {/* Card 2 */}
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-white bg-white/80 backdrop-blur-sm p-8 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:border-orange-500">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/20 to-amber-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+          <div className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/85 bg-white/70 backdrop-blur-md p-8 shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:-translate-y-2 hover:border-orange-500" style={{ animationDelay: '200ms' }}>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-amber-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
             <div className="relative space-y-3">
-              <Users className="w-12 h-12 text-orange-600 group-hover:scale-110 transition-transform duration-300" />
-              <p className="text-5xl font-extrabold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
+              <Users className="w-12 h-12 text-orange-500 group-hover:scale-110 transition-transform duration-300" />
+              <p className="text-5xl font-extrabold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent tracking-tight">
                 {counters.students.toLocaleString('vi-VN')}+
               </p>
-              <p className="text-sm font-semibold uppercase tracking-wider text-gray-600">
+              <p className="text-sm font-bold uppercase tracking-wider text-gray-500">
                 Sinh viên tham gia
               </p>
             </div>
           </div>
 
           {/* Card 3 */}
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-white bg-white/80 backdrop-blur-sm p-8 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:border-orange-500">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/20 to-amber-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+          <div className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/85 bg-white/70 backdrop-blur-md p-8 shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:-translate-y-2 hover:border-orange-500" style={{ animationDelay: '300ms' }}>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-amber-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
             <div className="relative space-y-3">
-              <Award className="w-12 h-12 text-orange-600 group-hover:scale-110 transition-transform duration-300" />
-              <p className="text-5xl font-extrabold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
+              <Award className="w-12 h-12 text-orange-500 group-hover:scale-110 transition-transform duration-300" />
+              <p className="text-5xl font-extrabold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent tracking-tight">
                 {counters.organizers}+
               </p>
-              <p className="text-sm font-semibold uppercase tracking-wider text-gray-600">
+              <p className="text-sm font-bold uppercase tracking-wider text-gray-500">
                 Đơn vị tổ chức
               </p>
             </div>
@@ -554,13 +554,13 @@ export default function GuestLanding() {
         <section className="space-y-12">
           <header className="space-y-4 text-center">
             <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.3em] text-orange-600">
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 text-orange-500" />
               Tính năng
             </p>
-            <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
+            <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl tracking-tight">
               Tất cả trong một
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto font-medium">
               Thiết kế dành riêng cho nhu cầu vận hành sự kiện nội bộ FPT.
             </p>
           </header>
@@ -570,10 +570,10 @@ export default function GuestLanding() {
             {benefits.map((benefit, index) => (
               <div
                 key={benefit.title}
-                className="group relative overflow-hidden rounded-2xl border-2 border-white bg-white/80 backdrop-blur-sm p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:border-orange-500"
-                style={{ animationDelay: `${index * 100}ms` }}
+                className="animate-fade-in-up group relative overflow-hidden rounded-2xl border border-white/85 bg-white/70 backdrop-blur-md p-6 shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/5 hover:-translate-y-2 hover:border-orange-500"
+                style={{ animationDelay: `${(index + 2) * 150}ms` }}
               >
-                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-orange-500/20 to-amber-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-500"></div>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-orange-500/10 to-amber-500/5 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700"></div>
                 <div className="relative space-y-4">
                   <div className="inline-flex rounded-2xl bg-gradient-to-br from-orange-600 to-orange-500 p-4 text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
                     <benefit.icon size={28} strokeWidth={2.5} />
@@ -581,7 +581,7 @@ export default function GuestLanding() {
                   <h3 className="text-xl font-bold text-gray-900">
                     {benefit.title}
                   </h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">
+                  <p className="text-sm text-gray-600 leading-relaxed font-medium">
                     {benefit.description}
                   </p>
                 </div>
@@ -657,7 +657,7 @@ export default function GuestLanding() {
               <div
                 ref={eventsScrollRef}
                 onScroll={checkScrollButtons} // cập nhật canScrollLeft/right khi user scroll
-                className="flex gap-6 overflow-x-auto scrollbar-hide pb-4"
+                className="flex gap-6 overflow-x-auto scrollbar-hide py-6 px-4 -my-6 -mx-4"
                 style={{
                   scrollbarWidth: 'none',
                   msOverflowStyle: 'none',
@@ -671,77 +671,78 @@ export default function GuestLanding() {
                     onMouseEnter={() => setHoveredEventId(event.eventId)} // set hover
                     onMouseLeave={() => setHoveredEventId(null)}
                     onClick={() => openEventDetail(event.eventId)} // guest click event -> open details in-place
-                    className="relative flex-shrink-0 w-[380px] overflow-hidden rounded-3xl border-2 border-white bg-white/80 backdrop-blur-sm transition-all duration-500 hover:border-orange-500 cursor-pointer"
-                    style={{
-                      transform: hoveredEventId === event.eventId ? 'scale(1.05)' : 'scale(1)'
-                    }}
+                    className="group relative flex-shrink-0 w-[380px] overflow-hidden rounded-3xl border border-white/85 bg-white/70 backdrop-blur-md shadow-lg hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-2 transition-all duration-500 cursor-pointer flex flex-col justify-between"
                   >
-                    {/* Banner */}
-                    {event.bannerUrl && (
-                      <div className="relative h-48 overflow-hidden">
-                        <img
-                          src={event.bannerUrl}
-                          alt={event.title}
-                          className="w-full h-full object-cover transition-transform duration-500"
-                          style={{
-                            transform: hoveredEventId === event.eventId ? 'scale(1.1)' : 'scale(1)'
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                    <div>
+                      {/* Banner */}
+                      {event.bannerUrl ? (
+                        <div className="relative h-48 overflow-hidden">
+                          <img
+                            src={event.bannerUrl}
+                            alt={event.title}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent opacity-60"></div>
+                        </div>
+                      ) : (
+                        <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                          <CalendarDays className="w-12 h-12 text-gray-450" />
+                        </div>
+                      )}
+
+                      {/* Blob decor */}
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-amber-500/5 rounded-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-150"></div>
+
+                      {/* Nội dung card */}
+                      <div className="relative p-6 space-y-4">
+                        {/* Badge status */}
+                        <div className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-orange-600 border border-orange-100/60">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {event.status}
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-orange-600 transition-colors duration-300 leading-snug line-clamp-2">
+                          {event.title}
+                        </h3>
+
+                        {/* Description */}
+                        <p className="text-sm text-gray-550 line-clamp-3 leading-relaxed font-medium">
+                          {event.description}
+                        </p>
                       </div>
-                    )}
+                    </div>
 
-                    {/* Blob decor */}
-                    <div
-                      className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/20 to-amber-500/10 rounded-full -mr-16 -mt-16 transition-transform duration-500"
-                      style={{
-                        transform: hoveredEventId === event.eventId ? 'scale(1.5)' : 'scale(1)'
-                      }}
-                    ></div>
-
-                    {/* Nội dung card */}
-                    <div className="relative p-6 space-y-4">
-                      {/* Badge status */}
-                      <div className="inline-flex items-center gap-2 rounded-full bg-orange-50 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-orange-600">
-                        <Sparkles className="w-3 h-3" />
-                        {event.status}
-                      </div>
-
-                      {/* Title */}
-                      <h3
-                        className="text-2xl font-bold text-gray-900 transition-colors duration-300"
-                        style={{
-                          color: hoveredEventId === event.eventId ? '#ea580c' : ''
-                        }}
-                      >
-                        {event.title}
-                      </h3>
-
-                      {/* Description */}
-                      <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
-                        {event.description}
-                      </p>
-
+                    {/* Bottom layout containing Info & Action */}
+                    <div className="relative p-6 pt-0 space-y-4">
                       {/* Info */}
-                      <div className="space-y-2 text-sm text-gray-500">
+                      <div className="space-y-2.5 pt-4 border-t border-gray-100/60 text-sm text-gray-550 font-medium">
                         <p className="flex items-center gap-2">
-                          <CalendarDays className="w-4 h-4" />
+                          <CalendarDays className="w-4 h-4 text-orange-500" />
                           {formatVietnamDateTime(event.startTime, 'dd/MM/yyyy HH:mm')}
                         </p>
 
                         {/* venueName nếu có */}
                         {event.venueName && (
                           <p className="flex items-center gap-2">
-                            <Award className="w-4 h-4" />
+                            <Award className="w-4 h-4 text-orange-500" />
                             {event.venueName}
                           </p>
                         )}
 
                         {/* Số chỗ */}
                         <p className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
+                          <Users className="w-4 h-4 text-orange-500" />
                           {event.maxSeats} chỗ ngồi
                         </p>
+                      </div>
+
+                      {/* Bottom action bar */}
+                      <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <p className="text-orange-600 text-xs font-bold tracking-wider">XEM CHI TIẾT</p>
+                        <svg className="w-4 h-4 text-orange-600 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                        </svg>
                       </div>
                     </div>
                   </div>
@@ -752,28 +753,28 @@ export default function GuestLanding() {
         </section>
 
         {/* ===================== CTA SECTION ===================== */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 via-orange-500 to-amber-500 p-12 text-center shadow-2xl">
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 via-orange-500 to-amber-500 p-12 text-center shadow-2xl shadow-orange-500/25 border border-white/10">
           {/* Background pattern trang trí */}
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30"></div>
-
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20"></div>
+ 
           <div className="relative space-y-6">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm mb-4">
               <Sparkles className="w-10 h-10 text-white animate-pulse" />
             </div>
-
-            <h2 className="text-4xl font-extrabold text-white sm:text-5xl">
+ 
+            <h2 className="text-4xl font-extrabold text-white sm:text-5xl tracking-tight leading-tight">
               Sẵn sàng nâng cấp trải nghiệm sự kiện?
             </h2>
-
-            <p className="mt-4 text-xl text-blue-50 max-w-3xl mx-auto leading-relaxed">
+ 
+            <p className="mt-4 text-xl text-orange-50 max-w-3xl mx-auto leading-relaxed font-medium">
               Đăng nhập bằng tài khoản nội bộ để truy cập bảng điều khiển dành
               cho Event Organizer, Staff và Volunteer.
             </p>
-
+ 
             {/* CTA login */}
             <button
               onClick={handleLoginClick}
-              className="group inline-flex items-center gap-3 mt-8 rounded-full bg-white px-10 py-5 text-lg font-bold text-blue-600 shadow-2xl transition-all duration-300 hover:shadow-white/30 hover:-translate-y-1 hover:scale-105"
+              className="group inline-flex items-center gap-3 mt-8 rounded-full bg-white px-10 py-5 text-lg font-bold text-orange-600 shadow-xl transition-all duration-300 hover:shadow-2xl hover:shadow-white/30 hover:-translate-y-1 hover:scale-105"
             >
               Đăng nhập hệ thống
               <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
