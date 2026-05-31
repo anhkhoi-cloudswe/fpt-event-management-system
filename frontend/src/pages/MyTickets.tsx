@@ -390,25 +390,23 @@ export default function MyTickets() {
   const getTicketDisplayCode = (t: MyTicket) =>
     t.ticketId ?? t.id ?? null
 
-  // ===================== UI RENDER =====================
-
-  /**
-   * Nếu có error:
-   * - Hiển thị thông báo lỗi
-   * - Hiển thị link sang /events để user xem sự kiện (mua vé)
-   */
   if (error) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Vé của tôi</h1>
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <Link
-            to="/dashboard/events"
-            className="inline-block text-blue-600 hover:text-blue-700"
-          >
-            Xem các sự kiện sắp tới →
-          </Link>
+      <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+        <div className="text-center py-16 bg-white/70 backdrop-blur-md border border-white/80 rounded-3xl p-8 max-w-md mx-auto my-12 shadow-md">
+          <div className="p-3.5 bg-rose-50 text-rose-500 rounded-2xl w-fit mx-auto mb-4 border border-rose-100/50">
+            <XCircle className="w-8 h-8 animate-pulse" />
+          </div>
+          <p className="text-slate-800 font-extrabold text-lg">Đã xảy ra lỗi</p>
+          <p className="text-slate-500 text-sm mt-1.5 font-medium leading-relaxed">{error}</p>
+          <div className="mt-6">
+            <Link
+              to="/dashboard/events"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-orange-650 hover:bg-orange-600 text-white rounded-xl text-xs font-extrabold transition-all duration-300 shadow-md shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
+            >
+              Xem các sự kiện sắp tới →
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -418,32 +416,41 @@ export default function MyTickets() {
    * Render danh sách vé với search/filter/pagination
    */
   return (
-    <div>
+    <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
       {/* Tiêu đề trang */}
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Vé của tôi</h1>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 pb-5">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl">
+            Vé của tôi
+          </h1>
+          <p className="text-sm text-slate-500 mt-1.5 max-w-2xl font-medium">
+            Quản lý, theo dõi lịch sử tham dự và sử dụng vé QR tham gia sự kiện tại trường FPT.
+          </p>
+        </div>
+      </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+      <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-5 shadow-md mb-8">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search input */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
             <input
               type="text"
               placeholder="Tìm kiếm theo tên sự kiện..."
               value={searchInput}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-11 pr-4 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
             />
           </div>
 
           {/* Status filter */}
-          <div className="relative min-w-[200px]">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <div className="relative min-w-[220px]">
+            <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4.5 h-4.5 text-slate-400 pointer-events-none" />
             <select
               value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              className="w-full pl-11 pr-10 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
               <option value="">Tất cả trạng thái</option>
               <option value="BOOKED">Chưa check-in</option>
@@ -458,8 +465,8 @@ export default function MyTickets() {
 
         {/* Results count */}
         {!loading && (
-          <div className="mt-3 text-sm text-gray-600">
-            Tìm thấy {totalRecords} vé
+          <div className="mt-3.5 text-xs text-slate-500 font-bold uppercase tracking-wider pl-1">
+            Tìm thấy <span className="text-orange-655 font-extrabold">{totalRecords}</span> vé
           </div>
         )}
       </div>
@@ -475,12 +482,17 @@ export default function MyTickets() {
 
       {/* Empty state */}
       {!loading && tickets.length === 0 && (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <TicketIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg mb-2">
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-16 text-center shadow-md animate-fade-in-up">
+          <div className="p-4 bg-orange-50 text-orange-500 rounded-full w-fit mx-auto mb-4 border border-orange-100/50">
+            <TicketIcon className="w-12 h-12 animate-pulse" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800">
+            {searchQuery || statusFilter ? 'Không tìm thấy vé phù hợp' : 'Bạn chưa có vé nào'}
+          </h3>
+          <p className="text-sm text-slate-400 mt-2 max-w-sm mx-auto font-medium">
             {searchQuery || statusFilter
-              ? 'Không tìm thấy vé phù hợp'
-              : 'Bạn chưa có vé nào'}
+              ? 'Vui lòng thử lại với từ khóa khác hoặc xóa bộ lọc.'
+              : 'Hãy khám phá các sự kiện thú vị và đăng ký vé tham gia ngay nhé!'}
           </p>
           {(searchQuery || statusFilter) && (
             <button
@@ -490,7 +502,7 @@ export default function MyTickets() {
                 setStatusFilter('')
                 setCurrentPage(1)
               }}
-              className="text-blue-600 hover:text-blue-700 underline"
+              className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-extrabold transition-all duration-300 shadow-md shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
             >
               Xóa bộ lọc
             </button>
@@ -498,9 +510,9 @@ export default function MyTickets() {
           {!searchQuery && !statusFilter && (
             <Link
               to="/dashboard/events"
-              className="mt-4 inline-block text-blue-600 hover:text-blue-700"
+              className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-extrabold transition-all duration-300 shadow-md shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
             >
-              Xem các sự kiện sắp tới →
+              Khám phá sự kiện ngay →
             </Link>
           )}
         </div>
@@ -510,7 +522,7 @@ export default function MyTickets() {
       {!loading && tickets.length > 0 && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {tickets.map((t) => {
+            {tickets.map((t, index) => {
               // id vé: ưu tiên ticketId, fallback id
               const id = t.ticketId ?? t.id
 
@@ -530,7 +542,6 @@ export default function MyTickets() {
               const hasExistingReport = !!existingReportStatus || status === 'PENDING'
 
               // startText: text hiển thị thời gian bắt đầu event
-              // default nếu chưa có data hoặc data lỗi
               let startText = 'Đang cập nhật thời gian'
               if (start) {
                 const d = new Date(start)
@@ -539,178 +550,146 @@ export default function MyTickets() {
                 }
               }
 
-              // Render card vé
               return (
                 <div
-                  key={id} // key để React quản lý list
-                  className="bg-white rounded-lg shadow-md overflow-hidden"
+                  key={id}
+                  className="animate-fade-in-up group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-white/80 bg-white/70 backdrop-blur-md shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500"
+                  style={{ animationDelay: `${index * 80}ms` }}
                 >
-                  {/* Nếu có ảnh -> hiển thị banner */}
-                  {imageUrl && (
-                    <img
-                      src={imageUrl}
-                      alt={title}
-                      className="w-full h-48 object-cover"
-                    />
-                  )}
+                  {/* Decorative Ticket Punchout circles on left/right for passbook look */}
+                  <div className="absolute left-0 top-[68%] -translate-y-1/2 w-4 h-8 bg-slate-50 border-r border-slate-200/50 rounded-r-full z-10" />
+                  <div className="absolute right-0 top-[68%] -translate-y-1/2 w-4 h-8 bg-slate-50 border-l border-slate-200/50 rounded-l-full z-10" />
 
-                  {/* Nội dung card */}
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      {/* Cột trái: thông tin vé */}
-                      <div className="flex-1">
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                          {title}
-                        </h3>
-
-                        {/* Thông tin phụ: thời gian, địa điểm, ghế */}
-                        <div className="space-y-1 text-sm text-gray-600">
-                          <div className="flex items-center">
-                            <Calendar className="w-4 h-4 mr-2" />
-                            {startText}
-                          </div>
-
-                          <div className="flex items-center">
-                            <MapPin className="w-4 h-4 mr-2" />
-                            {location}
-                          </div>
-
-                          {/* Nếu có seat -> hiển thị */}
-                          {seat && (
-                            <div className="flex items-center">
-                              <span className="font-medium">Ghế: {seat}</span>
-                            </div>
-                          )}
+                  <div>
+                    {/* Header Image/Banner */}
+                    <div className="relative h-44 overflow-hidden bg-slate-100">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-all duration-750"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-r from-orange-100 to-amber-50 flex items-center justify-center">
+                          <TicketIcon className="w-12 h-12 text-orange-350" />
                         </div>
+                      )}
+                      {/* Gradient overlay on banner */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-slate-900/10 to-transparent" />
+                      
+                      {/* Floating Indicator for Ticket Code */}
+                      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm border border-white/95 text-slate-800 font-extrabold text-[10px] uppercase tracking-wider py-1 px-3 rounded-full shadow-sm">
+                        Mã: #{id}
                       </div>
 
-                      {/* Cột phải: icon trạng thái */}
-                      {status === 'EXPIRED' ? (
-                        <XCircle className="w-6 h-6 text-red-500" />
-                      ) : status === 'REFUNDED' ? (
-                        <FileX className="w-6 h-6 text-indigo-500" />
-                      ) : status === 'PENDING' ? (
-                        <XCircle className="w-6 h-6 text-orange-500" />
-                      ) : status === 'CHECKED_OUT' ? (
-                        // Nếu đã check-out -> icon logout màu tím
-                        <LogOut className="w-6 h-6 text-purple-500" />
-                      ) : checkedIn ? (
-                        // Nếu đã check-in -> icon xanh
-                        <CheckCircle className="w-6 h-6 text-green-500" />
-                      ) : (
-                        // Chưa check-in -> icon xám
-                        <XCircle className="w-6 h-6 text-gray-400" />
-                      )}
-                    </div>
-
-                    {/* Khối trạng thái dạng badge */}
-                    <div className="mb-4">
-                      <p className="text-sm text-gray-600 mb-2">Trạng thái:</p>
-
-                      {/* Badge dựa trên trạng thái report (PENDING / APPROVED / REJECTED) hoặc trạng thái vé bình thường */}
-                      {existingReportStatus === 'PENDING' ? (
-                        <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
-                          Đang chờ hoàn tiền
-                        </span>
-                      ) : existingReportStatus === 'APPROVED' ? (
-                        <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                          Đã hoàn tiền
-                        </span>
-                      ) : existingReportStatus === 'REJECTED' ? (
-                        <>
-                          {/* Hiển thị trạng thái vé bình thường */}
-                          <span
-                            className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${status === 'EXPIRED'
-                              ? 'bg-red-100 text-red-800'
-                              : status === 'REFUNDED'
-                                ? 'bg-gray-100 text-gray-800'
-                                : status === 'CHECKED_OUT'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : status === 'CHECKED_IN'
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-yellow-100 text-yellow-800'
-                              }`}
-                          >
-                            {status === 'EXPIRED' ? 'Hết hạn'
-                              : status === 'REFUNDED' ? 'Đã hoàn tiền'
-                                : status === 'CHECKED_OUT' ? 'Đã check-out'
-                                  : status === 'CHECKED_IN' ? 'Đã check-in'
-                                    : 'Chưa check-in'}
+                      {/* Floating Status Badge */}
+                      <div className="absolute bottom-4 left-4 flex flex-col gap-1">
+                        {existingReportStatus === 'PENDING' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/90 text-white backdrop-blur-sm border border-amber-400 shadow-sm shadow-amber-500/20">
+                            <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+                            Chờ hoàn tiền
                           </span>
-                          {/* Dòng chữ nhỏ màu đỏ thông báo bị từ chối */}
-                          <p className="text-xs text-red-400 mt-1">Yêu cầu hoàn tiền bị từ chối</p>
-                        </>
-                      ) : (
-                        /* Badge màu theo trạng thái */
-                        <span
-                          className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${status === 'EXPIRED'
-                            ? 'bg-red-100 text-red-800'
-                            : status === 'REFUNDED'
-                              ? 'bg-gray-100 text-gray-800'
-                              : status === 'CHECKED_OUT'
-                                ? 'bg-purple-100 text-purple-800'
-                                : status === 'CHECKED_IN'
-                                  ? 'bg-green-100 text-green-800'
-                                  : status === 'PENDING'
-                                    ? 'bg-orange-100 text-orange-800'
-                                    : 'bg-yellow-100 text-yellow-800'
-                            }`}
-                        >
-                          {/* Text trạng thái hiển thị tiếng Việt */}
-                          {status === 'EXPIRED'
-                            ? 'Hết hạn'
-                            : status === 'REFUNDED'
-                              ? 'Đã hoàn tiền'
-                              : status === 'CHECKED_OUT'
-                                ? 'Đã check-out'
-                                : status === 'CHECKED_IN'
-                                  ? 'Đã check-in'
-                                  : status === 'PENDING'
-                                    ? 'Đang chờ hoàn tiền'
-                                    : 'Chưa check-in'}
-                        </span>
-                      )}
-
-                      {/* Nếu có check-in time -> hiển thị (hiển thị cả khi đã refunded) */}
-                      {getCheckInTime(t) && (
-                        <div className="flex items-center text-sm text-gray-600 mt-2">
-                          <Clock className={`w-4 h-4 mr-1 ${isCheckedOut(t) ? 'text-purple-500' : 'text-green-500'}`} />
-                          <span>Lúc: {formatTime(getCheckInTime(t))}</span>
-                        </div>
-                      )}
-
-                      {/* Nếu trạng thái CHECKED_OUT và có checkoutTime -> hiển thị thời điểm */}
-                      {status === 'CHECKED_OUT' && getCheckOutTime(t) && (
-                        <div className="flex items-center text-sm text-gray-600 mt-2">
-                          <Clock className="w-4 h-4 mr-1 text-purple-500" />
-                          <span>Lúc: {formatTime(getCheckOutTime(t))}</span>
-                        </div>
-                      )}
+                        ) : existingReportStatus === 'APPROVED' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/90 text-white backdrop-blur-sm border border-emerald-400 shadow-sm shadow-emerald-500/20">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Đã hoàn tiền
+                          </span>
+                        ) : existingReportStatus === 'REJECTED' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/90 text-white backdrop-blur-sm border border-rose-400 shadow-sm shadow-rose-500/20">
+                            <XCircle className="w-3.5 h-3.5" />
+                            Từ chối hoàn tiền
+                          </span>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm shadow-sm ${
+                            status === 'EXPIRED' ? 'bg-rose-500/90 text-white border border-rose-400 shadow-rose-500/10' :
+                            status === 'REFUNDED' ? 'bg-indigo-500/90 text-white border border-indigo-400 shadow-indigo-500/10' :
+                            status === 'CHECKED_OUT' ? 'bg-purple-500/90 text-white border border-purple-400 shadow-purple-500/10' :
+                            status === 'CHECKED_IN' ? 'bg-emerald-500/90 text-white border border-emerald-400 shadow-emerald-500/10' :
+                            'bg-amber-500/90 text-white border border-amber-400 shadow-amber-500/10'
+                          }`}>
+                            {status === 'CHECKED_IN' && <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />}
+                            {status === 'EXPIRED' ? 'Hết hạn' :
+                             status === 'REFUNDED' ? 'Đã hoàn tiền' :
+                             status === 'CHECKED_OUT' ? 'Đã check-out' :
+                             status === 'CHECKED_IN' ? 'Đã check-in' :
+                             'Chưa check-in'}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Các nút action */}
-                    <div className="flex gap-2">
-                      {/* Nút Báo Cáo Lỗi - chỉ hiển thị cho vé CHECKED_IN và chưa có report nào (One Ticket - One Report) */}
+                    {/* Main content body */}
+                    <div className="p-6 pb-4">
+                      <h3 className="text-xl font-bold text-slate-800 line-clamp-1 group-hover:text-orange-600 transition-colors duration-300 mb-4">
+                        {title}
+                      </h3>
+
+                      {/* Info details */}
+                      <div className="space-y-2.5 text-xs text-slate-500 font-bold">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                          <span>Thời gian: <strong className="text-slate-700">{startText}</strong></span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                          <span className="truncate">Địa điểm: <strong className="text-slate-700">{location}</strong></span>
+                        </div>
+
+                        {seat && (
+                          <div className="flex items-center gap-2">
+                            <TicketIcon className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                            <span>Số ghế: <strong className="text-slate-700">{seat}</strong></span>
+                          </div>
+                        )}
+
+                        {existingReportStatus === 'REJECTED' && (
+                          <div className="text-[11px] text-rose-500 font-semibold bg-rose-50/50 border border-rose-150 rounded-xl p-2.5 mt-2 flex items-center gap-1.5 animate-pulse">
+                            <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span>Yêu cầu báo cáo/hoàn tiền bị từ chối bởi Staff</span>
+                          </div>
+                        )}
+
+                        {/* Checkin checkout details if any */}
+                        {getCheckInTime(t) && (
+                          <div className="flex items-center gap-2 border-t border-slate-100 pt-2.5 mt-2.5">
+                            <Clock className={`w-4 h-4 flex-shrink-0 ${isCheckedOut(t) ? 'text-purple-500' : 'text-emerald-500'}`} />
+                            <span>Check-in: <strong className="text-slate-700">{formatTime(getCheckInTime(t))}</strong></span>
+                          </div>
+                        )}
+
+                        {status === 'CHECKED_OUT' && getCheckOutTime(t) && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <Clock className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                            <span>Check-out: <strong className="text-slate-700">{formatTime(getCheckOutTime(t))}</strong></span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tear-off Ticket Footer / Action Panel */}
+                  <div className="px-6 pb-6 pt-4 border-t-2 border-dashed border-slate-200/80 mt-2 relative">
+                    <div className="flex gap-3">
+                      {/* Action Button: Báo cáo lỗi (Only for CHECKED_IN events with seat issues) */}
                       {!hasExistingReport && status === 'CHECKED_IN' && (
                         <button
                           type="button"
                           onClick={() => setCancelTicket(t)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors"
+                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all duration-300 shadow-sm hover:shadow hover:scale-[1.02] active:scale-95"
                         >
-                          <FileX size={18} />
-                          Báo Cáo Lỗi
+                          <FileX className="w-4 h-4" /> Báo Cáo Lỗi
                         </button>
                       )}
 
-                      {/* Nút xem QR: bấm sẽ mở popup bằng cách setQrTicket(t) */}
-                      {/* Không navigate sang trang khác */}
+                      {/* Action Button: Xem vé QR */}
                       <button
                         type="button"
                         onClick={() => setQrTicket(t)}
                         className={`${!hasExistingReport && status === 'CHECKED_IN' ? 'flex-1' : 'w-full'
-                          } text-center bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors`}
+                          } inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 rounded-xl hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 hover:scale-[1.02] active:scale-95`}
                       >
-                        Xem vé QR
+                        <TicketIcon className="w-4 h-4" /> Xem vé QR
                       </button>
                     </div>
                   </div>
@@ -721,11 +700,13 @@ export default function MyTickets() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
+            <div className="mt-8 bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-5 shadow-md">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
           )}
 
           {/* ===================== MODAL HỦY VÉ ===================== */}
@@ -739,72 +720,83 @@ export default function MyTickets() {
           )}
 
           {/* ===================== POPUP QR CODE ===================== */}
-          {/* Nếu qrTicket != null thì mở popup overlay */}
           {qrTicket && (
-            // Overlay nền đen mờ phủ toàn màn hình
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              {/* Hộp popup */}
-              <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full text-center">
-                <h2 className="text-xl font-semibold mb-2">Mã QR vé</h2>
+            <div 
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
+              onClick={() => setQrTicket(null)}
+            >
+              <div 
+                className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 border border-slate-100 animate-in zoom-in-95 duration-150 relative text-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="absolute top-4 right-4">
+                  <button 
+                    onClick={() => setQrTicket(null)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-150 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
 
-                {/* Hiển thị tên sự kiện của vé đang mở */}
-                <p className="text-sm text-gray-600 mb-1">
+                <div className="p-2.5 bg-orange-50 text-orange-650 rounded-2xl w-fit mx-auto mb-4 border border-orange-100/50 animate-bounce">
+                  <TicketIcon className="w-6 h-6" />
+                </div>
+
+                <h2 className="text-xl font-extrabold text-slate-900 mb-1">Mã QR Vé</h2>
+                <p className="text-sm font-semibold text-slate-500 mb-3 px-4 truncate">
                   {getEventTitle(qrTicket)}
                 </p>
 
-                {/* ===== MÃ VÉ CHO ORGANIZER GÕ (ticketId/id) ===== */}
-                {/* Nếu có ticketId hoặc id thì hiển thị để staff nhập thủ công */}
                 {getTicketDisplayCode(qrTicket) && (
-                  <p className="text-sm font-semibold text-gray-800 mb-3">
-                    Mã vé:&nbsp;
-                    <span className="text-blue-600">
-                      {getTicketDisplayCode(qrTicket)}
-                    </span>
-                  </p>
+                  <div className="mb-4 bg-orange-50/50 border border-orange-100/40 rounded-2xl py-2.5 px-4 inline-block">
+                    <p className="text-xs font-bold text-slate-450 uppercase tracking-wide">
+                      Mã số vé của bạn
+                    </p>
+                    <p className="text-base font-black text-orange-600 tracking-wider">
+                      #{getTicketDisplayCode(qrTicket)}
+                    </p>
+                  </div>
                 )}
 
-                {/* 
-                  Display QR code image from backend (Base64 PNG)
-                  Backend generates QR as Base64 and stores in qr_code_value column
-                  Format: "data:image/png;base64,iVBORw0KGgoAAAA..."
-                  
-                  Fallback: If no Base64 QR from backend, show ticketId as text
-                  This ensures compatibility with old tickets that don't have QR yet
-                */}
+                {/* Display QR code image from backend */}
                 {qrTicket.ticketCode && qrTicket.ticketCode.startsWith('data:image') ? (
-                  <div className="mx-auto w-64 h-64 mb-4 flex items-center justify-center bg-white p-2 border border-gray-200 rounded-lg">
+                  <div className="mx-auto w-60 h-60 mb-5 flex items-center justify-center bg-white p-3 border border-slate-200/80 rounded-2xl shadow-inner relative overflow-hidden group">
                     <img
                       src={qrTicket.ticketCode}
                       alt="Ticket QR Code"
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain select-none"
                     />
+                    <div className="absolute inset-0 bg-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                   </div>
                 ) : getTicketDisplayCode(qrTicket) ? (
-                  <div className="mx-auto mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800 mb-2">
+                  <div className="mx-auto mb-5 p-5 bg-amber-50/60 border border-amber-100 rounded-2xl text-center">
+                    <p className="text-sm font-bold text-amber-800 flex items-center justify-center gap-1 mb-1">
                       ⚠️ QR chưa sẵn sàng (vé cũ)
                     </p>
-                    <p className="text-xs text-gray-600 mb-2">
-                      Vui lòng sử dụng mã vé để check-in:
+                    <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                      Sử dụng mã vé dưới đây để check-in tại quầy sự kiện:
                     </p>
-                    <p className="font-mono text-lg font-bold text-blue-600">
+                    <div className="font-mono text-xl font-black bg-white border border-amber-200/60 rounded-xl py-2 px-4 shadow-sm text-orange-600 tracking-widest inline-block animate-pulse">
                       {getTicketDisplayCode(qrTicket)}
-                    </p>
+                    </div>
                   </div>
                 ) : (
-                  // Nếu không có QR và không có ticketId -> hiển thị cảnh báo
-                  <p className="text-red-500 text-sm mb-4">
-                    Vé này chưa có mã QR. Vui lòng liên hệ hỗ trợ.
-                  </p>
+                  <div className="mx-auto mb-5 p-5 bg-rose-50 border border-rose-100 rounded-2xl text-center">
+                    <p className="text-sm font-bold text-rose-800 mb-1">
+                      Không tìm thấy QR
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Vé này chưa có mã QR hoặc ID hợp lệ. Vui lòng liên hệ bộ phận hỗ trợ.
+                    </p>
+                  </div>
                 )}
 
-                {/* Nút đóng popup: setQrTicket(null) */}
                 <button
                   type="button"
                   onClick={() => setQrTicket(null)}
-                  className="mt-2 px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300"
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-5 py-3 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-all duration-300 shadow-sm active:scale-95"
                 >
-                  Đóng
+                  Đóng cửa sổ
                 </button>
               </div>
             </div>

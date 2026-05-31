@@ -240,34 +240,41 @@ export default function MyBills() {
    * - Pagination controls
    */
   return (
-    <div>
+    <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
       {/* Header trang */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Hóa đơn của tôi</h1>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 pb-5">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl">
+            Hóa đơn của tôi
+          </h1>
+          <p className="text-sm text-slate-500 mt-1.5 max-w-2xl font-medium">
+            Theo dõi lịch sử giao dịch, thanh toán vé sự kiện và các chứng từ tài chính tại trường FPT.
+          </p>
+        </div>
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+      <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-5 shadow-md mb-8">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search input */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
             <input
               type="text"
               placeholder="Tìm kiếm theo mã hóa đơn..."
               value={searchInput}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-11 pr-4 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
             />
           </div>
 
           {/* Status filter */}
           <div className="relative min-w-[180px]">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4.5 h-4.5 text-slate-400 pointer-events-none" />
             <select
               value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              className="w-full pl-11 pr-10 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
               <option value="">Tất cả trạng thái</option>
               <option value="PENDING">Chờ thanh toán</option>
@@ -278,11 +285,11 @@ export default function MyBills() {
 
           {/* Method filter */}
           <div className="relative min-w-[180px]">
-            <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <CreditCard className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4.5 h-4.5 text-slate-400 pointer-events-none" />
             <select
               value={methodFilter}
               onChange={(e) => handleMethodChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              className="w-full pl-11 pr-10 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
               <option value="">Tất cả phương thức</option>
               <option value="MOMO">Ví MoMo</option>
@@ -294,135 +301,141 @@ export default function MyBills() {
 
         {/* Results count */}
         {!loading && (
-          <div className="mt-3 text-sm text-gray-600">
-            Tìm thấy {totalRecords} hóa đơn
+          <div className="mt-3.5 text-xs text-slate-500 font-bold uppercase tracking-wider pl-1">
+            Tìm thấy <span className="text-orange-600 font-extrabold">{totalRecords}</span> hóa đơn
           </div>
         )}
       </div>
 
       {/* Nếu có error -> hiển thị lỗi */}
       {!loading && error && (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <div className="text-red-600">{error}</div>
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 text-center shadow-md animate-fade-in-up">
+          <div className="text-rose-600 font-bold text-sm">Có lỗi xảy ra: {error}</div>
         </div>
       )}
 
       {/* Nếu không loading, không lỗi, và có hóa đơn -> render bảng */}
       {!loading && !error && bills.length > 0 && (
         <>
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            {/* Table hiển thị danh sách hóa đơn */}
-            <table className="min-w-full divide-y divide-gray-200">
-              {/* Header của bảng */}
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
-                    Mã hóa đơn
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
-                    Ngày tạo
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase">
-                    Số tiền
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase">
-                    Phương thức
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase">
-                    Trạng thái
-                  </th>
-                </tr>
-              </thead>
-
-              {/* Body của bảng */}
-              <tbody className="bg-white divide-y divide-gray-200">
-                {/* Duyệt từng hóa đơn để render 1 dòng */}
-                {bills.map(bill => (
-                  <tr key={bill.id} className="hover:bg-gray-50">
-                    {/* Cột mã hóa đơn */}
-                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                      {/* Hiển thị dạng #id cho dễ nhìn */}
-                      #{bill.id}
-                    </td>
-
-                    {/* Cột ngày tạo */}
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {/* Convert createdAt thành Date rồi format theo locale vi-VN với timezone corrction */}
-                      {formatVietnamDateTime(bill.createdAt, 'dd/MM/yyyy HH:mm:ss')}
-                    </td>
-
-                    {/* Cột số tiền */}
-                    <td className="px-6 py-4 text-sm text-right font-semibold text-gray-900">
-                      {/* Format số theo VN: 1000000 -> 1.000.000 */}
-                      {bill.totalAmount.toLocaleString('vi-VN')} đ
-                    </td>
-
-                    {/* Cột phương thức thanh toán */}
-                    <td className="px-6 py-4 text-sm text-center text-gray-600">
-                      {bill.paymentMethod || 'N/A'}
-                    </td>
-
-                    {/* Cột trạng thái */}
-                    <td className="px-6 py-4 text-sm text-center">
-                      {/* Badge trạng thái với màu khác nhau tùy status */}
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                        ${bill.status === 'PAID'
-                            ? 'bg-green-100 text-green-700'   // đã thanh toán
-                            : bill.status === 'PENDING'
-                              ? 'bg-yellow-100 text-yellow-700' // chờ thanh toán
-                              : 'bg-red-100 text-red-700'       // đã hủy
-                          }`}
-                      >
-                        {/* Icon credit card để minh họa trạng thái thanh toán */}
-                        <CreditCard className="w-3 h-3 mr-1" />
-
-                        {/* Text trạng thái tiếng Việt */}
-                        {bill.status === 'PAID'
-                          ? 'Đã thanh toán'
-                          : bill.status === 'PENDING'
-                            ? 'Chờ thanh toán'
-                            : 'Đã hủy'}
-                      </span>
-                    </td>
+          <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 overflow-hidden shadow-md animate-fade-in-up">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200/60">
+                {/* Header của bảng */}
+                <thead className="bg-slate-50/50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 uppercase tracking-wider">
+                      Mã hóa đơn
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 uppercase tracking-wider">
+                      Ngày tạo
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-extrabold text-slate-450 uppercase tracking-wider">
+                      Số tiền
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-450 uppercase tracking-wider">
+                      Phương thức
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-450 uppercase tracking-wider">
+                      Trạng thái
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                {/* Body của bảng */}
+                <tbody className="divide-y divide-slate-100/80 bg-transparent">
+                  {bills.map((bill, index) => (
+                    <tr 
+                      key={bill.id} 
+                      className="hover:bg-orange-50/10 transition-all duration-300 group"
+                      style={{ animationDelay: `${index * 40}ms` }}
+                    >
+                      {/* Cột mã hóa đơn */}
+                      <td className="px-6 py-4 text-sm text-slate-900 font-extrabold tracking-wide">
+                        #{bill.id}
+                      </td>
+
+                      {/* Cột ngày tạo */}
+                      <td className="px-6 py-4 text-sm text-slate-500 font-medium">
+                        {formatVietnamDateTime(bill.createdAt, 'dd/MM/yyyy HH:mm:ss')}
+                      </td>
+
+                      {/* Cột số tiền */}
+                      <td className="px-6 py-4 text-sm text-right font-black text-slate-900">
+                        {bill.totalAmount.toLocaleString('vi-VN')} đ
+                      </td>
+
+                      {/* Cột phương thức thanh toán */}
+                      <td className="px-6 py-4 text-sm text-center">
+                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-bold ${
+                          bill.paymentMethod === 'MOMO' ? 'bg-pink-50 text-pink-700 border border-pink-100' :
+                          bill.paymentMethod === 'WALLET' ? 'bg-orange-50 text-orange-700 border border-orange-100' :
+                          bill.paymentMethod === 'FREE' ? 'bg-teal-50 text-teal-700 border border-teal-100' :
+                          'bg-slate-50 text-slate-650 border border-slate-100'
+                        }`}>
+                          {bill.paymentMethod || 'N/A'}
+                        </span>
+                      </td>
+
+                      {/* Cột trạng thái */}
+                      <td className="px-6 py-4 text-sm text-center">
+                        {bill.status === 'PAID' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 shadow-sm shadow-emerald-500/5">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                            Đã thanh toán
+                          </span>
+                        ) : bill.status === 'PENDING' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/60 shadow-sm shadow-amber-500/5">
+                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                            Chờ thanh toán
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200/60 shadow-sm shadow-rose-500/5">
+                            <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
+                            Đã hủy
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
+            <div className="mt-8 bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-5 shadow-md">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
           )}
         </>
       )}
 
       {/* Loading skeleton */}
       {loading && (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 overflow-hidden shadow-md">
+          <table className="min-w-full divide-y divide-slate-100">
+            <thead className="bg-slate-50/50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
+                <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 uppercase tracking-wider">
                   Mã hóa đơn
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
+                <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 uppercase tracking-wider">
                   Ngày tạo
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase">
+                <th className="px-6 py-4 text-right text-xs font-extrabold text-slate-450 uppercase tracking-wider">
                   Số tiền
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase">
+                <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-450 uppercase tracking-wider">
                   Trạng thái
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-100">
               <BillSkeleton />
             </tbody>
           </table>
@@ -431,12 +444,19 @@ export default function MyBills() {
 
       {/* Empty state */}
       {!loading && !error && bills.length === 0 && (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg mb-2">
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-16 text-center shadow-md animate-fade-in-up">
+          <div className="p-4 bg-orange-50 text-orange-500 rounded-full w-fit mx-auto mb-4 border border-orange-100/50">
+            <FileText className="w-12 h-12 animate-pulse" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800">
             {searchQuery || statusFilter || methodFilter
               ? 'Không tìm thấy hóa đơn phù hợp'
               : 'Bạn chưa có hóa đơn nào'}
+          </h3>
+          <p className="text-sm text-slate-400 mt-2 max-w-sm mx-auto font-medium">
+            {searchQuery || statusFilter || methodFilter
+              ? 'Vui lòng thử lại với từ khóa khác hoặc xóa bộ lọc.'
+              : 'Các giao dịch hoặc thanh toán vé sự kiện của bạn sẽ hiển thị tại đây.'}
           </p>
           {(searchQuery || statusFilter || methodFilter) && (
             <button
@@ -447,7 +467,7 @@ export default function MyBills() {
                 setMethodFilter('')
                 setCurrentPage(1)
               }}
-              className="text-blue-600 hover:text-blue-700 underline"
+              className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-extrabold transition-all duration-300 shadow-md shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
             >
               Xóa bộ lọc
             </button>
