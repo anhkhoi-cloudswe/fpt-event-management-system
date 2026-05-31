@@ -80,39 +80,6 @@ Tài liệu này đề xuất chi tiết 3 giai đoạn phát triển (Scale Up)
 
 ---
 
-## 💸 Phân tích chi tiết Slide 06: Mô hình doanh thu (Revenue Model) - Tập trung Event Organizers
-
-Dưới đây là cấu trúc nội dung chi tiết được tối ưu hóa cho **Slide 06 - Revenue** theo đúng sơ đồ phân bố dạng lưới mới trong bản thiết kế của bạn (Chỉ tập trung vào đối tượng **Event Organizers**). Nội dung này đã sửa lỗi copy-paste trùng lặp ở ô **Premium - Ticket Commission Fees** và điền đầy đủ các vị trí trống bằng tiếng Anh chuyên nghiệp.
-
----
-
-### 📊 NỘI DUNG CHI TIẾT ĐỂ NHẬP VÀO SLIDE (TIẾNG ANH)
-
-#### **1. FREE TIER (Event organizers)**
-
-*   **Subscription Plans:**
-    *   *Bullet 1:* **Standard Capacity:** Under 100 seats per event.
-    *   *Bullet 2:* **Standard Features:** Includes default event registration forms and standard real-time web-based check-in tools.
-*   **Ticket Commission Fees:**
-    *   *Bullet 1:* **Pay-As-You-Grow:** 2.0% transaction fee per paid ticket sold.
-    *   *Bullet 2:* **Academic Waiver:** 100% free hosting and zero commission on free internal campus events.
-    *   *Bullet 3:* **Wallet Integration:** Access to local student digital wallet with default saga protection.
-
----
-
-#### **2. PREMIUM (Event organizers)**
-
-*   **Subscription Plans:**
-    *   *Bullet 1:* **Improved Capacity:** Scalable to large-scale events (1,000+ seats).
-    *   *Bullet 2:* **Custom Interactive Seating:** Full authority to custom SVG venue layouts (`venue-service`).
-    *   *Bullet 3:* **AI Insights:** Real-time dashboards with attendance forecasting and demand forecasting.
-*   **Ticket Commission Fees:** *(Sửa lỗi copy-paste trùng lặp của slide cũ)*
-    *   *Bullet 1:* **Discounted Commission:** Transaction fee reduced to 1.0% per paid ticket (or flat platform fee).
-    *   *Bullet 2:* **Automated Reconciliation:** Daily financial settlement & automated accounting statements.
-    *   *Bullet 3:* **Flexible Payments:** Dual-channel integrations (Direct VNPay gateway & student wallets).
-
----
-
 ### 💡 GIẢI THÍCH CHI TIẾT NỘI DUNG TỪNG PHẦN (Dành cho việc trả lời câu hỏi phản biện)
 
 1.  **Sự khác biệt về Phí hoa hồng (Ticket Commission Fees) giữa Free và Premium là gì?**
