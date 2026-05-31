@@ -453,7 +453,7 @@ export default function SignUp() {
             {/* Back to Login link */}
             <div className="text-center pt-3.5 border-t border-slate-100 mt-4 text-xs font-semibold text-slate-500">
               Đã có tài khoản?{' '}
-              <Link to="/login" className="text-orange-600 hover:text-orange-700 font-bold transition-colors inline-flex items-center gap-0.5">
+              <Link to="/login" className="text-sm font-black text-orange-600 hover:text-orange-700 transition-colors inline-flex items-center gap-0.5">
                 Quay lại Đăng nhập <LogIn className="w-3.5 h-3.5" />
               </Link>
             </div>

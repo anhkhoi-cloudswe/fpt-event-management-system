@@ -474,13 +474,13 @@ export default function Login() {
           </button>
 
           {/* Reset Password & Sign Up */}
-          <div className="flex flex-col gap-2.5 items-center text-center pt-2">
-            <Link to="/reset-password" className="text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors">
+          <div className="flex flex-col gap-2 items-center text-center !mt-2">
+            <Link to="/reset-password" className="text-sm font-black text-orange-600 hover:text-orange-700 transition-colors">
               Quên mật khẩu?
             </Link>
-            <div className="text-xs font-semibold text-slate-500 border-t border-slate-100 w-full pt-3 mt-1">
+            <div className="text-xs font-semibold text-slate-500 border-t border-slate-100 w-full pt-3 mt-1.5">
               Chưa có tài khoản?{' '}
-              <Link to="/signup" className="text-orange-600 hover:text-orange-700 font-bold transition-colors">
+              <Link to="/signup" className="text-sm font-black text-orange-600 hover:text-orange-700 transition-colors">
                 Đăng ký ngay
               </Link>
             </div>
