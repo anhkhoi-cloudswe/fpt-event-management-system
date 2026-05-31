@@ -473,11 +473,17 @@ export default function Login() {
             <span>Đăng nhập bằng Google</span>
           </button>
 
-          {/* Reset Password */}
-          <div className="text-center pt-2">
+          {/* Reset Password & Sign Up */}
+          <div className="flex flex-col gap-2.5 items-center text-center pt-2">
             <Link to="/reset-password" className="text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors">
               Quên mật khẩu?
             </Link>
+            <div className="text-xs font-semibold text-slate-500 border-t border-slate-100 w-full pt-3 mt-1">
+              Chưa có tài khoản?{' '}
+              <Link to="/signup" className="text-orange-600 hover:text-orange-700 font-bold transition-colors">
+                Đăng ký ngay
+              </Link>
+            </div>
           </div>
         </form>
       </div>

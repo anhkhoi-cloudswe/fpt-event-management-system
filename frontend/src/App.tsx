@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import Login from './pages/Login.tsx'
+import SignUp from './pages/SignUp.tsx'
 import ResetPassword from './pages/ResetPassword.tsx'
 import Dashboard from './pages/Dashboard.tsx'
 import Events from './pages/Events.tsx'
@@ -79,6 +80,7 @@ function AppRoutes() {
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/payment-failed" element={<PaymentFailed />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<SignUp />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/events/:id" element={<EventDetail />} />
       <Route
