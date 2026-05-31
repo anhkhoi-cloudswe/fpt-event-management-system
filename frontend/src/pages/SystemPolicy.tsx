@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ArrowLeft,
   HelpCircle,
-  Clock,
   Sparkles,
   HeartHandshake
 } from 'lucide-react'
@@ -127,7 +126,7 @@ export default function SystemPolicy() {
 
   return (
     <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 min-h-screen py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         
         {/* Quay lại trang chủ */}
         <div className="mb-6">
@@ -153,124 +152,144 @@ export default function SystemPolicy() {
           </p>
         </div>
 
-        {/* Tab Selector (Segmented control) */}
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-2 shadow-md mb-8 grid grid-cols-2 md:grid-cols-4 gap-1">
-          {categories.map((c) => {
-            const Icon = c.icon
-            const isActive = activeTab === c.id
-            return (
-              <button
-                key={c.id}
-                onClick={() => {
-                  setActiveTab(c.id)
-                  setExpandedFaq(null)
-                }}
-                className={`flex items-center justify-center gap-1.5 py-3.5 px-3 rounded-2xl text-xs font-extrabold transition-all duration-300 ${
-                  isActive
-                    ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20 scale-102'
-                    : 'text-slate-550 hover:bg-slate-100/50'
-                }`}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{c.title}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Main Content Area */}
-        <div className="space-y-6">
+        {/* Main Layout: Sidebar on Left, Content on Right */}
+        <div className="flex flex-col md:flex-row gap-8 items-start">
           
-          {/* Section: Quy định chính */}
-          <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 sm:p-8 shadow-md animate-fade-in-up">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl border border-orange-100/50">
-                <activeCategory.icon className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-xl font-extrabold text-slate-900">{activeCategory.title}</h2>
-                <p className="text-xs text-slate-400 font-semibold mt-0.5">{activeCategory.description}</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {activeCategory.rules.map((rule, idx) => (
-                <div key={idx} className="flex items-start gap-3 bg-white/40 border border-slate-100 rounded-2xl p-4 transition-all duration-300 hover:border-orange-200/50 hover:bg-white/70 shadow-sm">
-                  <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5">
-                    {idx + 1}
-                  </div>
-                  <p className="text-slate-650 text-xs sm:text-sm font-semibold leading-relaxed">
-                    {rule}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Section: FAQs Hỏi đáp nhanh */}
-          <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 sm:p-8 shadow-md animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <HelpCircle className="w-5 h-5 text-orange-500" />
-              <h3 className="text-lg font-extrabold text-slate-900">Giải Đáp Thắc Mắc</h3>
-            </div>
-
-            <div className="space-y-3">
-              {activeCategory.faqs.map((faq, idx) => {
-                const isExpanded = expandedFaq === idx
+          {/* Left Sidebar Navigation */}
+          <div className="w-full md:w-80 flex-shrink-0 bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-3 shadow-md animate-fade-in-up">
+            <div className="flex flex-col gap-2">
+              {categories.map((c) => {
+                const Icon = c.icon
+                const isActive = activeTab === c.id
                 return (
-                  <div
-                    key={idx}
-                    className="border border-slate-150 rounded-2xl overflow-hidden bg-white/40 transition-all duration-300 hover:bg-white/80 shadow-sm"
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      setActiveTab(c.id)
+                      setExpandedFaq(null)
+                    }}
+                    className={`flex items-center gap-4 py-3 px-4 rounded-2xl text-xs font-black transition-all duration-300 active:scale-95 text-left w-full ${
+                      isActive
+                        ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20 scale-[1.02]'
+                        : 'text-slate-550 hover:bg-slate-100/50 hover:text-slate-800'
+                    }`}
                   >
-                    <button
-                      onClick={() => toggleFaq(idx)}
-                      className="w-full flex items-center justify-between p-5 text-left focus:outline-none"
-                    >
-                      <span className="text-xs sm:text-sm font-extrabold text-slate-800 pr-4">
-                        {faq.question}
-                      </span>
-                      <ChevronDown
-                        className={`w-4 h-4 text-slate-400 transition-transform duration-300 flex-shrink-0 ${
-                          isExpanded ? 'rotate-180 text-orange-500' : ''
-                        }`}
-                      />
-                    </button>
-
-                    <div
-                      className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                        isExpanded ? 'max-h-48 border-t border-slate-150' : 'max-h-0'
-                      }`}
-                    >
-                      <div className="p-5 text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold">
-                        {faq.answer}
-                      </div>
+                    <div className={`p-2.5 rounded-xl transition-colors ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-orange-50 text-orange-655'
+                    }`}>
+                      <Icon className="w-4 h-4" />
                     </div>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="block font-black text-sm">{c.title}</span>
+                      <span className={`block text-[10px] truncate ${
+                        isActive ? 'text-orange-100' : 'text-slate-400 font-semibold'
+                      }`}>
+                        {c.id === 'booking' && '04 vé, 5 phút thanh toán'}
+                        {c.id === 'refunds' && 'Báo lỗi & Hoàn 100%'}
+                        {c.id === 'checkin' && 'Check-in mở suốt sự kiện'}
+                        {c.id === 'organizer' && 'Hạn ngạch 2 sự kiện/ngày'}
+                      </span>
+                    </div>
+                  </button>
                 )
               })}
             </div>
           </div>
 
-          {/* Banner trợ giúp trực tiếp */}
-          <div className="bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-orange-500/10 flex flex-col sm:flex-row items-center justify-between gap-6 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
-            <div className="space-y-1.5 text-center sm:text-left">
-              <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-                <Sparkles className="w-4 h-4" />
-                <span className="text-xs font-black uppercase tracking-wider">Hỗ trợ kỹ thuật</span>
+          {/* Right Main Content Area */}
+          <div className="flex-1 space-y-6 w-full">
+            
+            {/* Section: Quy định chính */}
+            <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 sm:p-8 shadow-md animate-fade-in-up">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl border border-orange-100/50">
+                  <activeCategory.icon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-900">{activeCategory.title}</h2>
+                  <p className="text-xs text-slate-400 font-semibold mt-0.5">{activeCategory.description}</p>
+                </div>
               </div>
-              <h3 className="text-lg sm:text-xl font-black">Bạn cần thêm sự trợ giúp khác?</h3>
-              <p className="text-xs font-bold text-orange-100 max-w-sm leading-relaxed">
-                Vui lòng gửi email phản ánh kỹ thuật hoặc liên hệ trực tiếp văn phòng Công tác sinh viên tại các Campus.
-              </p>
-            </div>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-1.5 px-6 py-3 bg-white text-orange-600 font-extrabold rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-[1.03] active:scale-97 text-sm"
-            >
-              Liên hệ chúng tôi
-            </Link>
-          </div>
 
+              <div className="space-y-4">
+                {activeCategory.rules.map((rule, idx) => (
+                  <div key={idx} className="flex items-start gap-3 bg-white/40 border border-slate-100 rounded-2xl p-4 transition-all duration-300 hover:border-orange-200/50 hover:bg-white/70 shadow-sm">
+                    <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5">
+                      {idx + 1}
+                    </div>
+                    <p className="text-slate-655 text-xs sm:text-sm font-semibold leading-relaxed">
+                      {rule}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Section: FAQs Hỏi đáp nhanh */}
+            <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 sm:p-8 shadow-md animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+              <div className="flex items-center gap-2 mb-6">
+                <HelpCircle className="w-5 h-5 text-orange-500" />
+                <h3 className="text-lg font-extrabold text-slate-900">Giải Đáp Thắc Mắc</h3>
+              </div>
+
+              <div className="space-y-3">
+                {activeCategory.faqs.map((faq, idx) => {
+                  const isExpanded = expandedFaq === idx
+                  return (
+                    <div
+                      key={idx}
+                      className="border border-slate-150 rounded-2xl overflow-hidden bg-white/40 transition-all duration-300 hover:bg-white/80 shadow-sm"
+                    >
+                      <button
+                        onClick={() => toggleFaq(idx)}
+                        className="w-full flex items-center justify-between p-5 text-left focus:outline-none"
+                      >
+                        <span className="text-xs sm:text-sm font-extrabold text-slate-800 pr-4">
+                          {faq.question}
+                        </span>
+                        <ChevronDown
+                          className={`w-4 h-4 text-slate-400 transition-transform duration-300 flex-shrink-0 ${
+                            isExpanded ? 'rotate-180 text-orange-500' : ''
+                          }`}
+                        />
+                      </button>
+
+                      <div
+                        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                          isExpanded ? 'max-h-48 border-t border-slate-150' : 'max-h-0'
+                        }`}
+                      >
+                        <div className="p-5 text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold">
+                          {faq.answer}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Banner trợ giúp trực tiếp */}
+            <div className="bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-orange-500/10 flex flex-col sm:flex-row items-center justify-between gap-6 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+              <div className="space-y-1.5 text-center sm:text-left">
+                <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-xs font-black uppercase tracking-wider">Hỗ trợ kỹ thuật</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black">Bạn cần thêm sự trợ giúp khác?</h3>
+                <p className="text-xs font-bold text-orange-100 max-w-sm leading-relaxed">
+                  Vui lòng gửi email phản ánh kỹ thuật hoặc liên hệ trực tiếp văn phòng Công tác sinh viên tại các Campus.
+                </p>
+              </div>
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-1.5 px-6 py-3 bg-white text-orange-600 font-extrabold rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-[1.03] active:scale-97 text-sm"
+              >
+                Liên hệ chúng tôi
+              </Link>
+            </div>
+
+          </div>
         </div>
 
       </div>
