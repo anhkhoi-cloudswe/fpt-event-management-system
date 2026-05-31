@@ -11,7 +11,12 @@ import {
   TrendingUp,
   Award,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Home,
+  LogIn,
+  Menu,
+  X,
+  BookOpen
 } from 'lucide-react'
 
 // React hooks: useState (state), useEffect (chạy side-effect), useRef (tham chiếu DOM)
@@ -117,6 +122,9 @@ export default function GuestLanding() {
 
   // showLoading: bật/tắt overlay loading khi bấm đăng nhập
   const [showLoading, setShowLoading] = useState(false)
+
+  // isMobileMenuOpen: control drawer on mobile/tablet
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   // States for Event Detail Modal in Guest Mode (Preserve Scroll Position)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
@@ -423,37 +431,209 @@ export default function GuestLanding() {
     }, 500)
   }
 
+  /**
+   * scrollToSection:
+   * - Smooth scroll to target element with sticky header offset
+   */
+  const scrollToSection = (id: string) => {
+    if (id === 'top') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    const element = document.getElementById(id)
+    if (element) {
+      const offset = 90
+      const bodyRect = document.body.getBoundingClientRect().top
+      const elementRect = element.getBoundingClientRect().top
+      const elementPosition = elementRect - bodyRect
+      const offsetPosition = elementPosition - offset
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      })
+    }
+  }
+
+  const sidebarItems = [
+    {
+      id: 'top',
+      label: 'Trang chủ',
+      icon: Home,
+      action: () => scrollToSection('top')
+    },
+    {
+      id: 'events',
+      label: 'Hoạt động nổi bật',
+      icon: CalendarDays,
+      action: () => scrollToSection('events')
+    },
+    {
+      id: 'features',
+      label: 'Tính năng chính',
+      icon: ShieldCheck,
+      action: () => scrollToSection('features')
+    },
+    {
+      id: 'policy',
+      label: 'Quy định & Chính sách',
+      icon: BookOpen,
+      action: () => navigate('/policy')
+    },
+    {
+      id: 'login',
+      label: 'Đăng nhập',
+      icon: LogIn,
+      action: (e: any) => handleLoginClick(e)
+    }
+  ]
+
   // =========================== JSX RENDER ===========================
   return (
     // Background gradient toàn trang
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100">
+    <div id="top" className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 lg:pl-20 transition-all duration-500">
+
+      {/* ===================== DESKTOP COLLAPSIBLE SIDEBAR ===================== */}
+      <aside className="fixed inset-y-0 left-0 z-50 hidden lg:flex flex-col bg-[#0B0F19]/95 backdrop-blur-md border-r border-slate-800/80 shadow-2xl text-slate-300 transition-all duration-500 ease-in-out w-20 hover:w-64 group/sidebar">
+        {/* Top Logo / Bolt Marker */}
+        <div className="h-20 flex items-center justify-start px-6 gap-4 border-b border-slate-800/60 overflow-hidden">
+          <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/20">
+            <Sparkles className="w-4 h-4 text-white animate-pulse" />
+          </div>
+          <span className="font-black text-sm bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+            FPT EVENT SYSTEM
+          </span>
+        </div>
+
+        {/* Navigation Items List */}
+        <nav className="flex-1 flex flex-col gap-2 p-3 overflow-y-auto overflow-x-hidden scrollbar-hide mt-4">
+          {sidebarItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.id}
+                onClick={item.action}
+                className="flex items-center gap-4 py-3.5 px-4 rounded-2xl text-xs font-black transition-all duration-300 text-left w-full group/item text-slate-400 hover:text-white hover:bg-slate-800/50 hover:shadow-lg hover:shadow-orange-500/5 hover:translate-x-1"
+              >
+                <div className="p-2.5 rounded-xl bg-slate-800/30 text-slate-400 group-hover/item:bg-orange-500 group-hover/item:text-white group-hover/item:shadow-lg group-hover/item:shadow-orange-500/20 transition-all duration-300">
+                  <Icon className="w-4 h-4" />
+                </div>
+                <span className="font-extrabold text-sm opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+                  {item.label}
+                </span>
+              </button>
+            )
+          })}
+        </nav>
+
+        {/* Footer info in Sidebar */}
+        <div className="p-4 border-t border-slate-800/60 overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black text-orange-500 flex-shrink-0 border border-slate-700/55">
+              FE
+            </div>
+            <div className="opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+              <p className="text-xs font-black text-slate-200">FPT Education</p>
+              <p className="text-[10px] text-slate-500 font-semibold">Guest Mode</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* ===================== MOBILE SIDEBAR DRAWER ===================== */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop blur */}
+          <div
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm transition-opacity duration-300"
+          ></div>
+
+          {/* Sidebar Panel */}
+          <aside className="fixed inset-y-0 left-0 w-72 bg-[#0B0F19]/98 text-slate-100 shadow-2xl flex flex-col p-6 z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right">
+            {/* Header of Drawer */}
+            <div className="flex items-center justify-between pb-6 border-b border-slate-800/60">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-black text-sm bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
+                  FPT EVENT
+                </span>
+              </div>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Navigation links */}
+            <nav className="flex-1 flex flex-col gap-2 mt-6">
+              {sidebarItems.map((item) => {
+                const Icon = item.icon
+                return (
+                  <button
+                    key={item.id}
+                    onClick={(e) => {
+                      setIsMobileMenuOpen(false)
+                      item.action(e)
+                    }}
+                    className="flex items-center gap-4 py-4 px-4 rounded-2xl text-xs font-black transition-all duration-300 text-left w-full text-slate-400 hover:text-white hover:bg-slate-800/40 active:scale-98"
+                  >
+                    <div className="p-2.5 rounded-xl bg-slate-800/40 text-slate-400 transition-colors">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className="font-extrabold text-sm">
+                      {item.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </nav>
+
+            {/* Footer of Drawer */}
+            <div className="pt-6 border-t border-slate-800/60 text-xs text-slate-500 font-semibold space-y-1">
+              <p>FPT Education Events</p>
+              <p>© {new Date().getFullYear()} All rights reserved.</p>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* ===================== HEADER ===================== */}
       {/* sticky header: luôn nằm trên top khi scroll */}
-      <header className="sticky top-0 z-50 border-b border-orange-500/10 bg-white/70 backdrop-blur-md shadow-sm transition-all duration-300">
+      <header className="sticky top-0 z-40 border-b border-orange-500/10 bg-white/70 backdrop-blur-md shadow-sm transition-all duration-300">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-
-          {/* Logo -> link về "/" */}
-          <Link to="/" className="flex items-center gap-3">
-            <img
-              src={fptLogo}
-              alt="FPT Education"
-              className="h-12 w-auto"
-            />
-          </Link>
-
-          {/* Nút đăng nhập */}
-          <div className="flex items-center gap-4">
-            <Link
-              to="/policy"
-              className="text-xs sm:text-sm font-extrabold text-slate-600 hover:text-orange-600 hover:bg-orange-50/20 px-3.5 py-2.5 rounded-xl border border-slate-100 hover:border-orange-200/50 transition-all duration-300 shadow-sm mr-2 flex items-center gap-1.5"
+          
+          {/* Mobile Menu Button + Logo */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden p-2 rounded-xl text-slate-655 hover:text-orange-600 hover:bg-orange-50 transition-colors"
             >
-              Quy định & Chính sách
+              <Menu className="w-6 h-6" />
+            </button>
+
+            {/* Logo -> link về "/" */}
+            <Link to="/" className="flex items-center gap-3">
+              <img
+                src={fptLogo}
+                alt="FPT Education"
+                className="h-10 sm:h-12 w-auto"
+              />
             </Link>
-            <RealtimeClock />
+          </div>
+
+          {/* Clock and Nút đăng nhập */}
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:block">
+              <RealtimeClock />
+            </div>
             <button
               onClick={handleLoginClick}
-              className="rounded-full bg-gradient-to-r from-orange-600 to-orange-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/50 transition-all duration-300 hover:-translate-y-0.5"
+              className="rounded-full bg-gradient-to-r from-orange-600 to-orange-500 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/5 transition-all duration-300 hover:-translate-y-0.5"
             >
               Đăng nhập
             </button>
@@ -557,7 +737,7 @@ export default function GuestLanding() {
         </section>
 
         {/* ===================== FEATURES SECTION ===================== */}
-        <section className="space-y-12">
+        <section id="features" className="space-y-12">
           <header className="space-y-4 text-center">
             <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.3em] text-orange-600">
               <Sparkles className="w-4 h-4 text-orange-500" />
