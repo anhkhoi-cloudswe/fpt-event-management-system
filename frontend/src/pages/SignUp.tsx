@@ -3,8 +3,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import {
   Eye,
   EyeOff,
-  User,
-  Phone,
   Mail,
   Lock,
   Sparkles,
@@ -25,21 +23,15 @@ import fptCampus from '../assets/dai-hoc-fpt-tp-hcm-1.jpeg'
 const API_URL = API_BASE_URL
 
 interface FormData {
-  fullName: string
-  phone: string
   email: string
   password: string
-  confirmPassword: string
 }
 
 export default function SignUp() {
   const [step, setStep] = useState<'form' | 'otp'>('form')
   const [formData, setFormData] = useState<FormData>({
-    fullName: '',
-    phone: '',
     email: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   })
 
   const [otpValue, setOtpValue] = useState('')
@@ -48,8 +40,6 @@ export default function SignUp() {
   const [otpCountdown, setOtpCountdown] = useState(0)
 
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
   const recaptchaRef = useRef<ReCAPTCHA | null>(null)
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([])
@@ -134,23 +124,8 @@ export default function SignUp() {
       return
     }
 
-    if (!formData.fullName.trim()) {
-      setError('Họ và tên không được để trống!')
-      return
-    }
-
-    if (!formData.phone.trim()) {
-      setError('Số điện thoại không được để trống!')
-      return
-    }
-
     if (formData.password.length < 6) {
       setError('Mật khẩu phải chứa ít nhất 6 ký tự!')
-      return
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp!')
       return
     }
 
@@ -162,12 +137,18 @@ export default function SignUp() {
     setLoading(true)
     setError('')
 
+    // Automatically extract username and set safe placeholder for required phone field
+    const email = formData.email.trim()
+    const password = formData.password
+    const username = email.split('@')[0]
+    const dummyPhone = '0900000000'
+
     try {
       const response = await axios.post(`${API_URL}/register/send-otp`, {
-        fullName: formData.fullName,
-        phone: formData.phone,
-        email: formData.email,
-        password: formData.password,
+        fullName: username,
+        phone: dummyPhone,
+        email: email,
+        password: password,
         recaptchaToken
       })
 
@@ -331,128 +312,53 @@ export default function SignUp() {
         backgroundRepeat: 'no-repeat'
       }}
     >
-      <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 bg-slate-955/40 backdrop-blur-[2px]" />
 
-      <div className="max-w-md w-full bg-slate-900/75 backdrop-blur-md rounded-3xl border border-slate-700/60 p-8 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/40 transition-all duration-500 relative z-10 animate-fade-in-up text-slate-100">
+      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up text-slate-800">
         
         {step === 'form' ? (
           <>
             {/* Logo + Header */}
-            <div className="text-center mb-6">
-              <div className="flex justify-center mb-3">
+            <div className="text-center mb-8">
+              <div className="flex justify-center mb-3.5">
                 <img
                   src={fptLogo}
                   alt="FPT Education"
-                  className="h-14 w-auto brightness-110"
+                  className="h-16 w-auto"
                 />
               </div>
-              <h2 className="text-xl font-black bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">Đăng Ký Tài Khoản</h2>
-              <p className="text-xs font-semibold text-slate-400 mt-1">Gia nhập cổng quản lý sự kiện FPT Education</p>
-            </div>
-
-            {/* Google Signup Button */}
-            <button
-              type="button"
-              onClick={() => googleRegister()}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 bg-[#0B0F19]/90 border border-slate-700/80 hover:border-orange-500/50 hover:bg-[#0B0F19] text-slate-200 py-3.5 px-4 rounded-2xl font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99 hover:shadow-lg"
-            >
-              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-.1.84-2.45 2.4l3.8 2.94c2.22-2.05 3.7-5.07 3.7-9.19z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.8-2.94c-1.08.72-2.45 1.16-4.13 1.16-3.18 0-5.87-2.15-6.83-5.05L1.24 17.3c2.01 4 6.16 6.7 10.76 6.7z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.17 14.26A7.12 7.12 0 0 1 4.8 12c0-.79.13-1.56.37-2.28L1.24 6.64A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.24 5.36l3.93-3.1z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.4 0 3.25 2.7 1.24 6.64l3.93 3.08c.96-2.9 3.65-5.05 6.83-5.05z"
-                />
-              </svg>
-              <span>Tiếp tục với Google</span>
-            </button>
-
-            {/* Separator */}
-            <div className="relative flex py-3 items-center">
-              <div className="flex-grow border-t border-slate-700/60"></div>
-              <span className="flex-shrink mx-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">hoặc đăng ký bằng email</span>
-              <div className="flex-grow border-t border-slate-700/60"></div>
+              <h2 className="text-lg font-black text-slate-800">Đăng Ký FPT Event</h2>
+              <p className="text-xs font-semibold text-slate-450 mt-1">Chào mừng bạn đến với cổng sự kiện FPT Education</p>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSendOtp} className="space-y-4">
+            <form onSubmit={handleSendOtp} className="space-y-5">
               {error && (
-                <div className="bg-rose-950/80 border border-rose-800 text-rose-250 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 animate-pulse">
-                  <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                <div className="bg-rose-50 border border-rose-250 text-rose-700 px-4.5 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 animate-pulse">
+                  <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
 
-              {/* Full Name */}
-              <div className="space-y-1">
-                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">Họ và Tên</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
-                  <input
-                    name="fullName"
-                    type="text"
-                    value={formData.fullName}
-                    onChange={handleInputChange}
-                    placeholder="Nguyễn Văn A"
-                    required
-                    disabled={loading}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-950/50 border border-slate-700/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none outline-none text-slate-100 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300"
-                  />
-                </div>
-              </div>
-
-              {/* Phone */}
-              <div className="space-y-1">
-                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">Số điện thoại</label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
-                  <input
-                    name="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="0912345678"
-                    required
-                    disabled={loading}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-950/50 border border-slate-700/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none outline-none text-slate-100 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300"
-                  />
-                </div>
-              </div>
-
               {/* Email */}
-              <div className="space-y-1">
-                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">Địa chỉ Email FPT</label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
-                  <input
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="anvse123456@fpt.edu.vn"
-                    required
-                    disabled={loading}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-950/50 border border-slate-700/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none outline-none text-slate-100 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">Địa chỉ Email</label>
+                <input
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="email@fpt.edu.vn"
+                  required
+                  disabled={loading}
+                  className="w-full px-4 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+                />
               </div>
 
               {/* Password */}
-              <div className="space-y-1">
-                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">Mật khẩu</label>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">Mật khẩu</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
                   <input
                     name="password"
                     type={showPassword ? 'text' : 'password'}
@@ -461,50 +367,25 @@ export default function SignUp() {
                     placeholder="••••••••"
                     required
                     disabled={loading}
-                    className="w-full pl-11 pr-12 py-3 bg-slate-950/50 border border-slate-700/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none outline-none text-slate-100 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300"
+                    className="w-full pl-4 pr-12 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-3.5 text-slate-500 hover:text-slate-350 transition-colors"
+                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
-              {/* Confirm Password */}
-              <div className="space-y-1">
-                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">Xác nhận mật khẩu</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
-                  <input
-                    name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    placeholder="••••••••"
-                    required
-                    disabled={loading}
-                    className="w-full pl-11 pr-12 py-3 bg-slate-950/50 border border-slate-700/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none outline-none text-slate-100 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-3.5 text-slate-500 hover:text-slate-350 transition-colors"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
               {/* reCAPTCHA */}
               {RECAPTCHA_SITE_KEY && (
-                <div className="flex justify-center my-3 overflow-hidden rounded-2xl border border-slate-800/85">
+                <div className="flex justify-center my-4 overflow-hidden rounded-2xl border border-slate-100">
                   <ReCAPTCHA
                     ref={recaptchaRef}
                     sitekey={RECAPTCHA_SITE_KEY}
-                    theme="dark"
+                    theme="light"
                     onChange={(token) => {
                       setRecaptchaToken(token)
                       setError('')
@@ -534,10 +415,45 @@ export default function SignUp() {
               </button>
             </form>
 
+            {/* Separator */}
+            <div className="relative flex py-3.5 items-center">
+              <div className="flex-grow border-t border-slate-200/60"></div>
+              <span className="flex-shrink mx-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">hoặc</span>
+              <div className="flex-grow border-t border-slate-200/60"></div>
+            </div>
+
+            {/* Google Signup Button BELOW manual signup */}
+            <button
+              type="button"
+              onClick={() => googleRegister()}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200/85 hover:border-slate-350 text-slate-700 py-3.5 px-4 rounded-2xl hover:bg-slate-50 font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 hover:shadow"
+            >
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-.1.84-2.45 2.4l3.8 2.94c2.22-2.05 3.7-5.07 3.7-9.19z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.8-2.94c-1.08.72-2.45 1.16-4.13 1.16-3.18 0-5.87-2.15-6.83-5.05L1.24 17.3c2.01 4 6.16 6.7 10.76 6.7z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.17 14.26A7.12 7.12 0 0 1 4.8 12c0-.79.13-1.56.37-2.28L1.24 6.64A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.24 5.36l3.93-3.1z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.4 0 3.25 2.7 1.24 6.64l3.93 3.08c.96-2.9 3.65-5.05 6.83-5.05z"
+                />
+              </svg>
+              <span>Đăng ký bằng Google</span>
+            </button>
+
             {/* Back to Login link */}
-            <div className="text-center pt-3.5 border-t border-slate-800/60 mt-4 text-xs font-semibold text-slate-400">
+            <div className="text-center pt-3.5 border-t border-slate-100 mt-4 text-xs font-semibold text-slate-500">
               Đã có tài khoản?{' '}
-              <Link to="/login" className="text-orange-400 hover:text-orange-300 font-bold transition-colors inline-flex items-center gap-0.5">
+              <Link to="/login" className="text-orange-600 hover:text-orange-700 font-bold transition-colors inline-flex items-center gap-0.5">
                 Quay lại Đăng nhập <LogIn className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -547,24 +463,24 @@ export default function SignUp() {
             {/* Step 2: OTP Verification */}
             <div className="text-center mb-6">
               <div className="flex justify-center mb-3">
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-600">
                   <Mail className="w-6 h-6 animate-pulse" />
                 </div>
               </div>
-              <h2 className="text-xl font-black bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">Xác Thực OTP</h2>
-              <p className="text-xs font-semibold text-slate-400 mt-1.5 leading-relaxed">
-                Chúng tôi đã gửi mã xác thực gồm 6 chữ số đến email <span className="text-orange-400 font-bold">{formData.email}</span>. Vui lòng nhập mã để kích hoạt tài khoản.
+              <h2 className="text-lg font-black text-slate-800">Xác Thực OTP</h2>
+              <p className="text-xs font-semibold text-slate-500 mt-1.5 leading-relaxed">
+                Chúng tôi đã gửi mã xác thực gồm 6 chữ số đến email <span className="text-orange-600 font-bold">{formData.email}</span>. Vui lòng nhập mã để kích hoạt tài khoản.
               </p>
             </div>
 
             {error && (
-              <div className="bg-rose-950/80 border border-rose-800 text-rose-250 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 animate-pulse mb-4">
-                <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+              <div className="bg-rose-50 border border-rose-250 text-rose-700 px-4.5 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 animate-pulse mb-4">
+                <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            {/* OTP horizontal inputs */}
+            {/* OTP horizontal inputs in White style */}
             <div className="flex justify-center gap-2.5 my-6">
               {Array.from({ length: otpLength }).map((_, index) => (
                 <input
@@ -582,14 +498,14 @@ export default function SignUp() {
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
                   onPaste={handleOtpPaste}
                   disabled={loading}
-                  className="w-12 h-13 text-center text-xl font-bold bg-slate-950/70 border border-slate-700 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none transition-all text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-12 h-13 text-center text-xl font-bold bg-white/50 border border-slate-250 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none transition-all text-slate-850 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               ))}
             </div>
 
             {/* OTP status or loading */}
             {loading && (
-              <div className="flex items-center justify-center gap-2 text-xs font-bold text-orange-400 mb-4 animate-pulse">
+              <div className="flex items-center justify-center gap-2 text-xs font-bold text-orange-600 mb-4 animate-pulse">
                 <svg className="animate-spin h-4 w-4 text-orange-550" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -599,17 +515,17 @@ export default function SignUp() {
             )}
 
             {/* Timer and Resend Trigger */}
-            <div className="text-center pt-2 text-xs font-semibold text-slate-400">
+            <div className="text-center pt-2 text-xs font-semibold text-slate-500 font-medium">
               {otpCountdown > 0 ? (
                 <p>
-                  Gửi lại mã OTP sau <span className="text-orange-400 font-bold">{otpCountdown}s</span>
+                  Gửi lại mã OTP sau <span className="text-orange-600 font-bold">{otpCountdown}s</span>
                 </p>
               ) : (
                 <button
                   type="button"
                   onClick={handleResendOtp}
                   disabled={loading}
-                  className="text-orange-400 hover:text-orange-300 font-bold transition-colors underline disabled:opacity-50"
+                  className="text-orange-600 hover:text-orange-700 font-bold transition-colors underline disabled:opacity-50"
                 >
                   Gửi lại mã OTP
                 </button>
@@ -625,7 +541,7 @@ export default function SignUp() {
                 setOtpValue('')
               }}
               disabled={loading}
-              className="mt-6 w-full flex items-center justify-center gap-1.5 py-3.5 bg-slate-800/40 hover:bg-slate-800 border border-slate-700/60 rounded-2xl text-xs font-bold text-slate-300 transition-all active:scale-98 disabled:opacity-50"
+              className="mt-6 w-full flex items-center justify-center gap-1.5 py-3.5 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 rounded-2xl text-xs font-bold text-slate-600 transition-all active:scale-98 disabled:opacity-50"
             >
               <ArrowLeft className="w-4 h-4" /> Quay lại nhập thông tin
             </button>
