@@ -65,7 +65,7 @@ export default function Layout() {
     }
   }, [user])
 
-  // Sync dark class on document root
+  // Sync dark class on document root + notify other components (e.g. Profile.tsx)
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark')
@@ -74,6 +74,7 @@ export default function Layout() {
       document.documentElement.classList.remove('dark')
       localStorage.setItem('theme', 'light')
     }
+    window.dispatchEvent(new Event('theme-change'))
   }, [isDarkMode])
 
   // Automatically detect timezone if enabled
@@ -138,8 +139,8 @@ export default function Layout() {
         : `${base} bg-orange-50/80 text-orange-600 border border-orange-100 shadow-md shadow-orange-500/5`
     } else {
       return isDarkMode
-        ? `${base} text-slate-455 hover:text-slate-100 hover:bg-slate-800/40 border border-transparent`
-        : `${base} text-slate-655 hover:text-slate-900 hover:bg-orange-50/50 border border-transparent`
+        ? `${base} text-slate-400 hover:text-slate-100 hover:bg-slate-800/40 border border-transparent`
+        : `${base} text-slate-600 hover:text-slate-900 hover:bg-orange-50/50 border border-transparent`
     }
   }
 
@@ -258,7 +259,7 @@ export default function Layout() {
       {/* Header Status Bar */}
       <header className={`fixed top-0 left-0 right-0 h-16 z-40 transition-colors duration-500 shadow-md border-b flex items-center px-4 md:px-6 ${
         isDarkMode 
-          ? 'bg-slate-900/90 backdrop-blur-md border-slate-850/80 shadow-slate-950/20' 
+          ? 'bg-slate-900/90 backdrop-blur-md border-slate-800/80 shadow-slate-950/20' 
           : 'bg-white/90 backdrop-blur-md border-orange-100/60 shadow-orange-100/10'
       }`}>
         <div className="flex justify-between items-center w-full">
@@ -277,17 +278,17 @@ export default function Layout() {
 
           {/* Right section items */}
           <div className="flex items-center space-x-3.5 relative">
-            <div className={`hidden sm:block text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-550'}`}>
+            <div className={`hidden sm:block text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               <RealtimeClock />
             </div>
 
             {showWallet && (
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all ${
                 isDarkMode 
-                  ? 'bg-slate-850 border-slate-800 text-orange-400 font-bold' 
-                  : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-150 text-slate-850 font-bold'
+                  ? 'bg-slate-800 border-slate-700 text-orange-400 font-bold' 
+                  : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 text-slate-800 font-bold'
               }`}>
-                <Wallet size={16} className="text-orange-550" />
+                <Wallet size={16} className="text-orange-500" />
                 <span className="text-xs">
                   {balanceLoading ? '...' : balance.toLocaleString('vi-VN')} ₫
                 </span>
@@ -299,8 +300,8 @@ export default function Layout() {
               onClick={() => setSettingsOpen(!settingsOpen)}
               className={`flex items-center gap-2 px-2.5 py-1.5 rounded-2xl cursor-pointer transition-all duration-300 select-none border border-transparent ${
                 isDarkMode 
-                  ? 'hover:bg-slate-850/80 text-slate-200 hover:text-white' 
-                  : 'hover:bg-orange-50/70 text-slate-850 hover:text-slate-950'
+                  ? 'hover:bg-slate-800/80 text-slate-200 hover:text-white' 
+                  : 'hover:bg-orange-50/70 text-slate-800 hover:text-slate-950'
               }`}
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-600 to-orange-500 flex items-center justify-center text-xs font-black text-white shadow-md shadow-orange-500/20">
@@ -310,7 +311,7 @@ export default function Layout() {
                 <p className="text-xs font-extrabold leading-tight">{user?.fullName}</p>
                 <p className="text-[9px] font-bold text-orange-500 leading-none mt-0.5">{user?.role}</p>
               </div>
-              <ChevronDown size={14} className={`text-slate-450 transition-transform ${settingsOpen ? 'rotate-180 text-orange-500' : ''}`} />
+              <ChevronDown size={14} className={`text-slate-400 transition-transform ${settingsOpen ? 'rotate-180 text-orange-500' : ''}`} />
             </div>
 
             {/* Floating Settings Popover Card */}
@@ -322,10 +323,10 @@ export default function Layout() {
                   className="fixed inset-0 z-40 cursor-default"
                 />
                 
-                <div className={`absolute right-0 top-13 w-80 rounded-3xl border shadow-2xl p-5 z-50 animate-fade-in-up ${
+                <div className={`absolute right-0 top-full mt-2 w-80 rounded-3xl border shadow-2xl p-5 z-50 animate-fade-in-up ${
                   isDarkMode 
                     ? 'bg-slate-900/95 backdrop-blur-md border-slate-700/80 text-slate-200 shadow-slate-950/50' 
-                    : 'bg-white/95 backdrop-blur-md border-orange-100 shadow-orange-500/10 text-slate-850'
+                    : 'bg-white/95 backdrop-blur-md border-orange-100 shadow-orange-500/10 text-slate-800'
                 }`}>
                   {/* Popover Header */}
                   <div className="flex items-center gap-3 pb-4 border-b border-slate-200/50 dark:border-slate-800/60">
@@ -473,7 +474,7 @@ export default function Layout() {
         {/* Desktop Left Sidebar */}
         <aside className={`hidden md:flex flex-col w-64 flex-shrink-0 border-r transition-colors duration-500 ${
           isDarkMode 
-            ? 'bg-slate-900/60 border-slate-850/80 text-slate-200' 
+            ? 'bg-slate-900/60 border-slate-800/80 text-slate-200' 
             : 'bg-white/60 border-orange-100/60 text-slate-800'
         }`}>
           <div className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">

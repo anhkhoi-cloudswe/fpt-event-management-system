@@ -580,12 +580,12 @@ export default function GuestLanding() {
                       setIsMobileMenuOpen(false)
                       item.action(e)
                     }}
-                    className="flex items-center gap-4 py-4 px-4 rounded-2xl text-xs font-black transition-all duration-300 text-left w-full text-slate-400 hover:text-white hover:bg-slate-800/40 active:scale-98"
+                    className="group/item flex items-center gap-4 py-4 px-4 rounded-2xl text-xs font-black transition-all duration-300 text-left w-full hover:bg-slate-800/60 active:scale-98"
                   >
-                    <div className="p-2.5 rounded-xl bg-slate-800/40 text-slate-400 transition-colors">
+                    <div className="p-2.5 rounded-xl bg-slate-800/50 text-slate-300 group-hover/item:bg-orange-500 group-hover/item:text-white group-hover/item:shadow-lg group-hover/item:shadow-orange-500/20 transition-all duration-300">
                       <Icon className="w-4 h-4" />
                     </div>
-                    <span className="font-extrabold text-sm">
+                    <span className="font-extrabold text-sm text-slate-200 group-hover/item:text-white transition-colors">
                       {item.label}
                     </span>
                   </button>

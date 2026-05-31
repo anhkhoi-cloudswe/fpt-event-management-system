@@ -342,7 +342,6 @@ export default function Login() {
             />
           </div>
           <h2 className="text-lg font-black text-slate-800">Đăng Nhập FPT Event</h2>
-          <p className="text-xs font-semibold text-slate-450 mt-1">Chào mừng bạn đến với cổng sự kiện FPT Education</p>
         </div>
 
         {/* Form login */}

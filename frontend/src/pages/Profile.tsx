@@ -54,7 +54,17 @@ export default function Profile() {
       document.documentElement.classList.remove('dark')
       localStorage.setItem('theme', 'light')
     }
+    window.dispatchEvent(new Event('theme-change'))
   }, [isDarkMode])
+
+  // Sync theme changes reactively when updated from header
+  useEffect(() => {
+    const handleThemeChange = () => {
+      setIsDarkMode(localStorage.getItem('theme') === 'dark')
+    }
+    window.addEventListener('theme-change', handleThemeChange)
+    return () => window.removeEventListener('theme-change', handleThemeChange)
+  }, [])
 
   // Sync auto-timezone check
   useEffect(() => {
@@ -137,7 +147,7 @@ export default function Profile() {
           <div className={`px-5 py-4 rounded-2xl border text-center md:text-right min-w-[150px] shadow-sm ${
             isDarkMode 
               ? 'bg-slate-950/50 border-slate-800/80 text-orange-400' 
-              : 'bg-orange-50/50 border-orange-100 text-slate-850'
+              : 'bg-orange-50/50 border-orange-100 text-slate-800'
           }`}>
             <div className="flex items-center justify-center md:justify-end gap-1.5 text-xs text-slate-400 font-bold mb-1">
               <Wallet size={14} className="text-orange-500" />
@@ -155,7 +165,7 @@ export default function Profile() {
           <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${
             isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
           }`}>
-            <h3 className="text-base font-black text-slate-850 dark:text-white mb-5 flex items-center gap-2">
+            <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
               <Phone size={18} className="text-orange-500" />
               <span>Thông tin Liên hệ</span>
             </h3>
@@ -203,7 +213,7 @@ export default function Profile() {
           <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${
             isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
           }`}>
-            <h3 className="text-base font-black text-slate-850 dark:text-white mb-5 flex items-center gap-2">
+            <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
               <Globe size={18} className="text-orange-500" />
               <span>Giao diện & Khu vực</span>
             </h3>
@@ -285,7 +295,7 @@ export default function Profile() {
           <div className={`p-6 rounded-3xl border shadow-xl transition-colors duration-500 ${
             isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
           }`}>
-            <h3 className="text-sm font-black text-slate-850 dark:text-white mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
               <Info size={16} className="text-orange-500" />
               <span>Quy trình Thay đổi Hồ sơ</span>
             </h3>
@@ -322,7 +332,7 @@ export default function Profile() {
           <div className={`p-6 rounded-3xl border shadow-xl transition-colors duration-500 ${
             isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
           }`}>
-            <h3 className="text-sm font-black text-slate-850 dark:text-white mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
               <Lock size={16} className="text-orange-500" />
               <span>Bảo mật Tài khoản</span>
             </h3>

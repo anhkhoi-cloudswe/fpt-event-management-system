@@ -315,7 +315,7 @@ export default function SignUp() {
       <div className="absolute inset-0 bg-slate-955/40 backdrop-blur-[2px]" />
 
       <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up text-slate-800">
-        
+
         {step === 'form' ? (
           <>
             {/* Logo + Header */}
@@ -328,7 +328,6 @@ export default function SignUp() {
                 />
               </div>
               <h2 className="text-lg font-black text-slate-800">Đăng Ký FPT Event</h2>
-              <p className="text-xs font-semibold text-slate-450 mt-1">Chào mừng bạn đến với cổng sự kiện FPT Education</p>
             </div>
 
             {/* Form */}
