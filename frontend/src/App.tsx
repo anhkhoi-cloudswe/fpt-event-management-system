@@ -32,6 +32,7 @@ import AdminDashboard from './pages/AdminDashboard.tsx'
 import Layout from './components/Layout.tsx'
 import GuestLanding from './pages/GuestLanding.tsx'
 import SystemPolicy from './pages/SystemPolicy.tsx'
+import Profile from './pages/Profile.tsx'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth()
@@ -120,6 +121,7 @@ function AppRoutes() {
           </StaffRoute>
         } />
         <Route path="system-config" element={<SystemConfig />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
       <Route
         path="/"

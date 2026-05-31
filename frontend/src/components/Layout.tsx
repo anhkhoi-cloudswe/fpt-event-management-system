@@ -58,6 +58,13 @@ export default function Layout() {
   const [timezone, setTimezone] = useState(localStorage.getItem('user_timezone') || 'Asia/Ho_Chi_Minh')
   const [autoDetectTz, setAutoDetectTz] = useState(localStorage.getItem('auto_timezone') !== 'false')
 
+  // Sync phone value when user is loaded/refreshed from DB
+  useEffect(() => {
+    if (user) {
+      setPhone(localStorage.getItem('user_phone_' + user.id) || user.phone || '')
+    }
+  }, [user])
+
   // Sync dark class on document root
   useEffect(() => {
     if (isDarkMode) {
@@ -83,7 +90,17 @@ export default function Layout() {
 
   // Handle phone update
   const handleUpdatePhone = () => {
-    localStorage.setItem('user_phone_' + user?.id, phone)
+    const cleaned = phone.trim()
+    if (!cleaned) {
+      showToast('error', 'Số điện thoại không được để trống!')
+      return
+    }
+    const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/
+    if (!phoneRegex.test(cleaned)) {
+      showToast('error', 'Số điện thoại Việt Nam không hợp lệ! Vui lòng nhập 10 chữ số (vd: 0901234567).')
+      return
+    }
+    localStorage.setItem('user_phone_' + user?.id, cleaned)
     showToast('success', 'Cập nhật số điện thoại thành công!')
   }
 
@@ -158,6 +175,10 @@ export default function Layout() {
             <Sliders size={18} />
             <span>Cấu Hình</span>
           </Link>
+          <Link to="/dashboard/profile" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/profile')}>
+            <User size={18} />
+            <span>Hồ sơ cá nhân</span>
+          </Link>
         </>
       )
     }
@@ -220,6 +241,10 @@ export default function Layout() {
             <span>Yêu Cầu Hoàn Tiền</span>
           </Link>
         )}
+        <Link to="/dashboard/profile" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/profile')}>
+          <User size={18} />
+          <span>Hồ sơ cá nhân</span>
+        </Link>
       </>
     )
   }
@@ -404,6 +429,16 @@ export default function Layout() {
 
                   {/* Popover Footer actions */}
                   <div className="pt-4 border-t border-slate-200/50 dark:border-slate-800/60 flex flex-col gap-2">
+                    <Link 
+                      to="/dashboard/profile"
+                      onClick={() => setSettingsOpen(false)}
+                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${
+                        isDarkMode ? 'hover:bg-slate-850 text-slate-300' : 'hover:bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      <User size={14} className="text-slate-400" />
+                      <span>Hồ sơ cá nhân</span>
+                    </Link>
                     <Link 
                       to="/reset-password"
                       onClick={() => setSettingsOpen(false)}
