@@ -73,7 +73,7 @@ Tài liệu này đề xuất chi tiết 3 giai đoạn phát triển (Scale Up)
 > *"Đầu tiên, chúng em đưa hệ thống vào chạy thử nghiệm tại các campus trường để xác thực độ khớp của sản phẩm với thị trường, đồng thời tối ưu hóa luồng thanh toán để tránh việc người dùng hủy bỏ giỏ hàng giữa chừng."*
 
 ### 📍 Giai đoạn 2 (B2B Scale)
-> *"Khi hệ thống ổn định, chúng em mở rộng quy mô bằng cách tự động hóa thủ tục phê duyệt hành chính của các phòng ban. Đồng thời, chúng em tạo thêm nguồn thu thương mại từ việc cho phép các Doanh nghiệp/Nhà tài trợ mua quảng cáo hiển thị, hoặc đính kèm các mã giảm giá, voucher điện tử trực tiếp lên vé QR của sinh viên, đồng thời tích hợp hệ thống đối soát tài chính tự động hoàn toàn."*
+> *"Khi hệ thống ổn định, chúng em mở rộng quy mô bằng cách tự động hóa thủ tục phê duyệt sự kiện của các phòng ban. Đồng thời, chúng em tạo thêm nguồn thu thương mại từ việc cho phép các Doanh nghiệp/Nhà tài trợ mua quảng cáo hiển thị, hoặc đính kèm các mã giảm giá, voucher điện tử trực tiếp lên vé QR của sinh viên."*
 
 ### 📍 Giai đoạn 3 (Data Intelligence)
 > *"Cuối cùng, chúng em ứng dụng dữ liệu lớn để dự đoán tỷ lệ tham gia thực tế, tự động linh hoạt giá vé theo nhu cầu thị trường để tối ưu doanh thu, và liên kết cổng check-in của app với hệ thống tích điểm thưởng, quà tặng để giữ chân người dùng trong hệ sinh thái."*
