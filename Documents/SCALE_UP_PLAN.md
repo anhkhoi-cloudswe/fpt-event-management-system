@@ -80,19 +80,6 @@ Tài liệu này đề xuất chi tiết 3 giai đoạn phát triển (Scale Up)
 
 ---
 
-### 💡 GIẢI THÍCH CHI TIẾT NỘI DUNG TỪNG PHẦN (Dành cho việc trả lời câu hỏi phản biện)
-
-1.  **Sự khác biệt về Phí hoa hồng (Ticket Commission Fees) giữa Free và Premium là gì?**
-    *   *Giải thích:* 
-        *   Ở **Free Tier**, ban tổ chức được sử dụng nền tảng miễn phí không cần trả gói tháng/năm, nhưng khi bán vé có phí thì hệ thống sẽ thu phí hoa hồng là **2.0%** trên mỗi vé bán được để bù đắp chi phí vận hành.
-        *   Ở **Premium Tier**, khi ban tổ chức đã trả một khoản phí đăng ký hàng tháng (Subscription Plan), hệ thống sẽ ưu đãi giảm phí hoa hồng bán vé xuống chỉ còn **1.0%** (Discounted Commission). Đây là đòn bẩy kinh tế khuyến khích các ban tổ chức lớn nâng cấp lên gói Premium.
-2.  **Tính năng "Automated Reconciliation" (Đối soát tự động) trong Premium hoạt động ra sao?**
-    *   *Giải thích:* Đối với các sự kiện lớn Premium có lượng giao dịch khổng lồ, việc đối soát doanh thu thủ công là cực kỳ phức tạp. Tính năng Premium này tự động đối soát dòng tiền giữa VNPay, ví nội bộ và tài khoản ngân hàng của ban tổ chức vào cuối ngày, xuất báo cáo tài chính tự động giúp loại bỏ hoàn toàn các tác vụ kế toán thủ công.
-3.  **Tại sao lại có "Academic Waiver" trong Free Tier?**
-    *   *Giải thích:* Để nhanh chóng thu hút các CLB sinh viên trong trường FPT sử dụng hệ thống, toàn bộ các sự kiện phi lợi nhuận (học thuật, sinh hoạt CLB miễn phí) sẽ được miễn hoàn toàn mọi loại phí. Điều này giúp hệ thống đạt mục tiêu mở rộng độ phủ thương hiệu (Market Validation) ở Phase 1.
-
----
-
 ## 🚀 Kế hoạch khởi nghiệp & Thuyết trình phản biện (Pitching & Business Defense)
 
 Phần này tổng hợp chi tiết các luận điểm cốt lõi phục vụ cho việc thuyết phục Hội đồng và Giảng viên hướng dẫn về tính khả thi, yếu tố đổi mới sáng tạo, và tiềm năng thương mại của dự án dưới dạng một mô hình khởi nghiệp thực tế.
