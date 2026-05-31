@@ -38,9 +38,10 @@ export default function SystemPolicy() {
       description: 'Chính sách đặt chỗ, số lượng vé tối đa và thời gian giữ chỗ của sinh viên FPT.',
       icon: BookOpen,
       rules: [
-        'Mỗi tài khoản sinh viên FPT chỉ được đăng ký tối đa 01 vé cho mỗi sự kiện đang diễn ra.',
-        'Vé đăng ký thành công sẽ đi kèm với mã QR duy nhất và thông tin số ghế (nếu có sảnh ghế ngồi).',
-        'Các sự kiện có phí thanh toán qua cổng VNPAY hoặc ví nội bộ phải được thanh toán trong vòng 10 phút, quá thời gian trên sảnh và sòng sẽ tự động giải phóng.'
+        'Mỗi tài khoản sinh viên FPT được đăng ký tối đa 04 vé/ghế ngồi cho mỗi sự kiện trong một giao dịch mua vé.',
+        'Vé đăng ký thành công sẽ đi kèm với mã QR duy nhất và thông tin số ghế ngồi tại hội trường (nếu sự kiện có cấu hình sơ đồ ghế).',
+        'Các sự kiện có phí phải được thanh toán trong vòng 05 phút kể từ lúc giữ chỗ (áp dụng cho cả ví nội bộ và SePay chuyển khoản). Quá thời gian trên, hệ thống sẽ tự động hủy đơn và giải phóng ghế để tránh "ghế ma".',
+        'Hành vi tự ý hủy hoặc để đơn hàng hết hạn thanh toán liên tiếp 03 lần sẽ kích hoạt cơ chế khóa tài khoản đặt vé tạm thời trong 15 phút (Seat Hoarding Lockout).'
       ],
       faqs: [
         {
@@ -80,9 +81,9 @@ export default function SystemPolicy() {
       description: 'Hướng dẫn tham gia kiểm tra thông tin vé tại quầy trước khi bước vào hội trường.',
       icon: QrCode,
       rules: [
-        'Sinh viên tham dự cần xuất trình mã QR vé từ ứng dụng điện thoại hoặc cung cấp mã số vé (#ID) cho kiểm soát viên tại sảnh.',
-        'Quầy check-in sẽ đóng cửa chính xác 15 phút sau khi sự kiện chính thức bắt đầu. Sinh viên đến muộn sẽ bị tính là vắng mặt và không được hoàn tiền.',
-        'Sau khi check-in, vị trí ghế ngồi và thông tin tham dự của bạn sẽ được đồng bộ lên hệ thống điểm danh tự động.'
+        'Sinh viên tham dự cần xuất trình mã QR vé từ mục "Vé của tôi" trên ứng dụng điện thoại hoặc cung cấp mã số vé (#ID) cho kiểm soát viên tại sảnh.',
+        'Thời gian mở cửa Check-in trước sự kiện được cấu hình động bởi Ban tổ chức (mặc định là 60 phút trước giờ bắt đầu). Hệ thống cho phép quét Check-in linh hoạt cho đến khi sự kiện chính thức kết thúc.',
+        'Hệ thống hỗ trợ quét Check-out phục vụ công tác cấp chứng nhận hoạt động ngoại khóa. Việc Check-out chỉ được ghi nhận khi sự kiện đã diễn ra đến thời gian đệm cho phép (tối thiểu 30-60 phút trước giờ kết thúc).'
       ],
       faqs: [
         {
@@ -91,7 +92,7 @@ export default function SystemPolicy() {
         },
         {
           question: 'Tôi có cần quét mã Check-Out khi ra về không?',
-          answer: 'Một số sự kiện đặc biệt yêu cầu quét Check-Out để xác nhận thời gian tham dự thực tế phục vụ cho việc cấp chứng nhận hoạt động ngoại khóa.'
+          answer: 'Có, đối với các sự kiện đặc biệt yêu cầu quét Check-Out để xác nhận thời gian tham dự thực tế phục vụ cho việc cấp chứng nhận hoạt động ngoại khóa và tính điểm rèn luyện.'
         }
       ]
     },
@@ -101,8 +102,8 @@ export default function SystemPolicy() {
       description: 'Chính sách giữ chỗ hội trường, sảnh sự kiện, cấu hình giá vé và phê duyệt hồ sơ.',
       icon: Award,
       rules: [
-        'Mọi yêu cầu tổ chức sự kiện từ các Câu lạc bộ/Ban tổ chức sinh viên phải được gửi trước ngày diễn ra ít nhất 07 ngày làm việc.',
-        'Lịch giữ chỗ và sảnh hội trường sẽ được phê duyệt tự động bởi Staff dựa trên mức độ ưu tiên và sức chứa dự kiến.',
+        'Mọi yêu cầu tổ chức sự kiện từ các Câu lạc bộ/Ban tổ chức sinh viên phải được gửi trước ngày diễn ra ít nhất 07 ngày làm việc để Staff phê duyệt.',
+        'Hạn ngạch tổ chức sự kiện (Daily Quota): Để đảm bảo chất lượng vận hành và điều phối cơ sở vật chất tốt nhất, hệ thống giới hạn tối đa 02 sự kiện được phép diễn ra đồng thời hoặc trong cùng một ngày trên toàn bộ các hội trường/sảnh.',
         'Nhà tổ chức phải đảm bảo tính trung thực của thông tin sự kiện. Mọi hành vi vi phạm đạo đức học đường sẽ dẫn đến việc đình chỉ sự kiện ngay lập tức.'
       ],
       faqs: [
