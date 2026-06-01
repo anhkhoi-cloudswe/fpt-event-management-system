@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"net"
 	"net/http"
 	"net/smtp"
 	"net/url"
@@ -76,6 +75,7 @@ type EmailMessage struct {
 	Body        string
 	HTMLBody    string
 	Attachments []Attachment
+	Purpose     string
 }
 
 type Attachment struct {
@@ -233,8 +233,24 @@ func getEnv(key, defaultValue string) string {
 func stripHTML(html string) string { return strings.ReplaceAll(html, "<br>", "\n") }
 
 // ============================================================
-// SENDING ENGINE
+// PROVIDER INTERFACE & STRATEGY ENGINE
 // ============================================================
+
+type ProviderType string
+
+const (
+	ProviderResend    ProviderType = "resend"
+	ProviderBrevo     ProviderType = "brevo"
+	ProviderMailjet   ProviderType = "mailjet"
+	ProviderGmailSMTP ProviderType = "gmail_smtp"
+)
+
+type EmailProvider interface {
+	Send(msg EmailMessage) error
+	Name() string
+}
+
+// ── RESEND PROVIDER ────────────────────────────────────────────────────────
 
 type ResendAttachment struct {
 	Filename    string `json:"filename"`
@@ -250,201 +266,31 @@ type ResendEmailPayload struct {
 	Attachments []ResendAttachment `json:"attachments,omitempty"`
 }
 
-// sendViaSMTPServer sends an email through an arbitrary SMTP server using the provided credentials/host/port.
-func (s *EmailService) sendViaSMTPServer(msg EmailMessage, host, port, username, password, fromAddress string) error {
-	log := logger.Default()
-	addr := fmt.Sprintf("%s:%s", host, port)
-
-	log.Info("[EMAIL] Dialing SMTP server %s with 10s timeout...", addr)
-	conn, err := net.DialTimeout("tcp", addr, 10*time.Second)
-	if err != nil {
-		log.Error("[EMAIL] ❌ SMTP Dial failed: %v", err)
-		return err
-	}
-	defer conn.Close()
-
-	client, err := smtp.NewClient(conn, host)
-	if err != nil {
-		log.Error("[EMAIL] ❌ SMTP client creation failed: %v", err)
-		return err
-	}
-	defer client.Quit()
-
-	// STARTTLS for port 587
-	if port == "587" || s.config.UseTLS {
-		log.Info("[EMAIL] Negotiating STARTTLS on %s...", host)
-		tlsConfig := &tls.Config{
-			ServerName:         host,
-			InsecureSkipVerify: s.config.SkipVerify,
-		}
-		if err = client.StartTLS(tlsConfig); err != nil {
-			log.Error("[EMAIL] ❌ STARTTLS negotiation failed: %v", err)
-			return err
-		}
-	}
-
-	if username != "" && password != "" {
-		log.Info("[EMAIL] Authenticating SMTP client on %s...", host)
-		auth := smtp.PlainAuth("", username, password, host)
-		if err = client.Auth(auth); err != nil {
-			log.Error("[EMAIL] ❌ SMTP authentication failed: %v", err)
-			return err
-		}
-	}
-
-	if err = client.Mail(fromAddress); err != nil {
-		log.Error("[EMAIL] ❌ SMTP MAIL command failed: %v", err)
-		return err
-	}
-
-	for _, to := range msg.To {
-		if err = client.Rcpt(to); err != nil {
-			log.Error("[EMAIL] ❌ SMTP RCPT command failed for %s: %v", to, err)
-			return err
-		}
-	}
-
-	wc, err := client.Data()
-	if err != nil {
-		log.Error("[EMAIL] ❌ SMTP DATA command failed: %v", err)
-		return err
-	}
-	defer wc.Close()
-
-	var body bytes.Buffer
-	body.WriteString(fmt.Sprintf("From: %s <%s>\r\n", s.config.FromName, fromAddress))
-	body.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
-	body.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
-	body.WriteString("MIME-Version: 1.0\r\n")
-
-	if msg.HTMLBody != "" {
-		body.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
-		body.WriteString("\r\n")
-		body.WriteString(msg.HTMLBody)
-	} else {
-		body.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
-		body.WriteString("\r\n")
-		body.WriteString(msg.Body)
-	}
-
-	if _, err = body.WriteTo(wc); err != nil {
-		log.Error("[EMAIL] ❌ SMTP failed to write body data: %v", err)
-		return err
-	}
-
-	log.Info("[EMAIL] ✅ SMTP Send successful via %s to %v", host, msg.To)
-	return nil
+type ResendProvider struct {
+	apiKey      string
+	fromName    string
+	defaultFrom string
 }
 
-// sendViaBrevo sends an email using secure SMTPS over Port 465 to bypass firewall restrictions on Render.
-type BrevoSender struct {
-	Name  string `json:"name,omitempty"`
-	Email string `json:"email"`
+func NewResendProvider(apiKey, fromName, defaultFrom string) *ResendProvider {
+	return &ResendProvider{
+		apiKey:      apiKey,
+		fromName:    fromName,
+		defaultFrom: defaultFrom,
+	}
 }
 
-type BrevoRecipient struct {
-	Name  string `json:"name,omitempty"`
-	Email string `json:"email"`
+func (p *ResendProvider) Name() string {
+	return "Resend"
 }
 
-type BrevoAttachment struct {
-	Name    string `json:"name"`
-	Content string `json:"content"`
-}
-
-type BrevoEmailPayload struct {
-	Sender      BrevoSender       `json:"sender"`
-	To          []BrevoRecipient  `json:"to"`
-	Subject     string            `json:"subject"`
-	HTMLContent string            `json:"htmlContent,omitempty"`
-	TextContent string            `json:"textContent,omitempty"`
-	Attachment  []BrevoAttachment `json:"attachment,omitempty"`
-}
-
-// sendViaBrevo sends an email using Brevo's HTTP REST API over Port 443.
-func (s *EmailService) sendViaBrevo(msg EmailMessage) error {
-	log := logger.Default()
-	recipients := strings.Join(msg.To, ", ")
-	log.Info("[EMAIL] 🚀 Tier 2 – Brevo REST API: to=%s subject=%s", recipients, msg.Subject)
-
-	apiKey := os.Getenv("BREVO_API_KEY")
-	if apiKey == "" {
-		apiKey = s.config.BrevoAPIKey
-	}
-
-	fromAddress := msg.From
-	if fromAddress == "" {
-		fromAddress = "evbatteryswap.system@gmail.com"
-	}
-
-	var brevoTo []BrevoRecipient
-	for _, to := range msg.To {
-		brevoTo = append(brevoTo, BrevoRecipient{Email: to})
-	}
-
-	var brevoAttachments []BrevoAttachment
-	for _, att := range msg.Attachments {
-		brevoAttachments = append(brevoAttachments, BrevoAttachment{
-			Name:    att.Filename,
-			Content: base64.StdEncoding.EncodeToString(att.Data),
-		})
-	}
-
-	payload := BrevoEmailPayload{
-		Sender: BrevoSender{
-			Name:  s.config.FromName,
-			Email: fromAddress,
-		},
-		To:          brevoTo,
-		Subject:     msg.Subject,
-		HTMLContent: msg.HTMLBody,
-		TextContent: msg.Body,
-		Attachment:  brevoAttachments,
-	}
-
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("brevo marshal error: %w", err)
-	}
-
-	req, err := http.NewRequest("POST", "https://api.brevo.com/v3/smtp/email", bytes.NewBuffer(payloadBytes))
-	if err != nil {
-		return fmt.Errorf("brevo http request error: %w", err)
-	}
-	
-	// Bypass Go's standard Header.Set canonicalization by assigning directly to Header map:
-	req.Header["accept"] = []string{"application/json"}
-	req.Header["content-type"] = []string{"application/json"}
-	req.Header["api-key"] = []string{apiKey}
-
-	httpClient := &http.Client{Timeout: 15 * time.Second}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("brevo api request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("brevo api error status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	log.Info("[EMAIL] ✅ Tier 2 Brevo success: to=%s response=%s", recipients, string(respBody))
-	return nil
-}
-
-// sendViaResend dispatches an email using the Resend HTTP API.
-func (s *EmailService) sendViaResend(msg EmailMessage) error {
-	log := logger.Default()
-	recipients := strings.Join(msg.To, ", ")
-	log.Info("[EMAIL] 🚀 Tier 1 – Resend API: to=%s subject=%s", recipients, msg.Subject)
-
+func (p *ResendProvider) Send(msg EmailMessage) error {
 	from := msg.From
 	if from == "" {
-		from = s.config.From
+		from = p.defaultFrom
 	}
-	if s.config.FromName != "" {
-		from = fmt.Sprintf("%s <%s>", s.config.FromName, from)
+	if p.fromName != "" && !strings.Contains(from, "<") {
+		from = fmt.Sprintf("%s <%s>", p.fromName, from)
 	}
 
 	var attachments []ResendAttachment
@@ -474,7 +320,7 @@ func (s *EmailService) sendViaResend(msg EmailMessage) error {
 		return fmt.Errorf("resend http request error: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.config.ResendAPIKey)
+	req.Header.Set("Authorization", "Bearer "+p.apiKey)
 
 	httpClient := &http.Client{Timeout: 15 * time.Second}
 	resp, err := httpClient.Do(req)
@@ -487,15 +333,434 @@ func (s *EmailService) sendViaResend(msg EmailMessage) error {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("resend api error status %d: %s", resp.StatusCode, string(respBody))
 	}
-
-	log.Info("[EMAIL] ✅ Tier 1 Resend success: to=%s response=%s", recipients, string(respBody))
 	return nil
 }
 
-// Send dispatches an email through a 2-tier fallback pipeline:
-//
-//	Tier 1: Resend API (primary free tier)
-//	Tier 2: Brevo SMTP relay (secondary free fallback)
+// ── BREVO PROVIDER ─────────────────────────────────────────────────────────
+
+type BrevoSender struct {
+	Name  string `json:"name,omitempty"`
+	Email string `json:"email"`
+}
+
+type BrevoRecipient struct {
+	Name  string `json:"name,omitempty"`
+	Email string `json:"email"`
+}
+
+type BrevoAttachment struct {
+	Name    string `json:"name"`
+	Content string `json:"content"`
+}
+
+type BrevoEmailPayload struct {
+	Sender      BrevoSender       `json:"sender"`
+	To          []BrevoRecipient  `json:"to"`
+	Subject     string            `json:"subject"`
+	HTMLContent string            `json:"htmlContent,omitempty"`
+	TextContent string            `json:"textContent,omitempty"`
+	Attachment  []BrevoAttachment `json:"attachment,omitempty"`
+}
+
+type BrevoProvider struct {
+	apiKey   string
+	fromName string
+}
+
+func NewBrevoProvider(apiKey, fromName string) *BrevoProvider {
+	return &BrevoProvider{
+		apiKey:   apiKey,
+		fromName: fromName,
+	}
+}
+
+func (p *BrevoProvider) Name() string {
+	return "Brevo"
+}
+
+func (p *BrevoProvider) Send(msg EmailMessage) error {
+	fromAddress := msg.From
+	if fromAddress == "" {
+		fromAddress = "evbatteryswap.system@gmail.com"
+	}
+
+	var brevoTo []BrevoRecipient
+	for _, to := range msg.To {
+		brevoTo = append(brevoTo, BrevoRecipient{Email: to})
+	}
+
+	var brevoAttachments []BrevoAttachment
+	for _, att := range msg.Attachments {
+		brevoAttachments = append(brevoAttachments, BrevoAttachment{
+			Name:    att.Filename,
+			Content: base64.StdEncoding.EncodeToString(att.Data),
+		})
+	}
+
+	payload := BrevoEmailPayload{
+		Sender: BrevoSender{
+			Name:  p.fromName,
+			Email: fromAddress,
+		},
+		To:          brevoTo,
+		Subject:     msg.Subject,
+		HTMLContent: msg.HTMLBody,
+		TextContent: msg.Body,
+		Attachment:  brevoAttachments,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("brevo marshal error: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", "https://api.brevo.com/v3/smtp/email", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("brevo http request error: %w", err)
+	}
+	
+	req.Header["accept"] = []string{"application/json"}
+	req.Header["content-type"] = []string{"application/json"}
+	req.Header["api-key"] = []string{p.apiKey}
+
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("brevo api request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("brevo api error status %d: %s", resp.StatusCode, string(respBody))
+	}
+	return nil
+}
+
+// ── MAILJET PROVIDER ───────────────────────────────────────────────────────
+
+type MailjetRecipient struct {
+	Email string `json:"Email"`
+	Name  string `json:"Name,omitempty"`
+}
+
+type MailjetAttachment struct {
+	ContentType string `json:"ContentType"`
+	Filename    string `json:"Filename"`
+	Content     string `json:"Content"` // Base64
+}
+
+type MailjetEmailPayload struct {
+	FromName    string              `json:"FromName,omitempty"`
+	FromEmail   string              `json:"FromEmail"`
+	Subject     string              `json:"Subject"`
+	TextPart    string              `json:"Text-part,omitempty"`
+	HTMLPart    string              `json:"Html-part,omitempty"`
+	Recipients  []MailjetRecipient  `json:"Recipients"`
+	Attachments []MailjetAttachment `json:"Attachments,omitempty"`
+}
+
+type MailjetProvider struct {
+	apiKey    string
+	secretKey string
+	fromName  string
+}
+
+func NewMailjetProvider(apiKey, secretKey, fromName string) *MailjetProvider {
+	return &MailjetProvider{
+		apiKey:    apiKey,
+		secretKey: secretKey,
+		fromName:  fromName,
+	}
+}
+
+func (p *MailjetProvider) Name() string {
+	return "Mailjet"
+}
+
+func (p *MailjetProvider) Send(msg EmailMessage) error {
+	fromAddress := msg.From
+	if fromAddress == "" {
+		fromAddress = "evbatteryswap.system@gmail.com"
+	}
+
+	var mailjetTo []MailjetRecipient
+	for _, to := range msg.To {
+		mailjetTo = append(mailjetTo, MailjetRecipient{Email: to})
+	}
+
+	var mailjetAttachments []MailjetAttachment
+	for _, att := range msg.Attachments {
+		mailjetAttachments = append(mailjetAttachments, MailjetAttachment{
+			ContentType: att.MimeType,
+			Filename:    att.Filename,
+			Content:     base64.StdEncoding.EncodeToString(att.Data),
+		})
+	}
+
+	payload := MailjetEmailPayload{
+		FromName:    p.fromName,
+		FromEmail:   fromAddress,
+		Subject:     msg.Subject,
+		TextPart:    msg.Body,
+		HTMLPart:    msg.HTMLBody,
+		Recipients:  mailjetTo,
+		Attachments: mailjetAttachments,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("mailjet marshal error: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", "https://api.mailjet.com/v3/send", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("mailjet http request error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(p.apiKey, p.secretKey)
+
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("mailjet request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("mailjet api error status %d: %s", resp.StatusCode, string(respBody))
+	}
+	return nil
+}
+
+// ── GMAIL SMTP PROVIDER ────────────────────────────────────────────────────
+
+type GmailSMTPProvider struct {
+	username   string
+	password   string
+	fromName   string
+	skipVerify bool
+}
+
+func NewGmailSMTPProvider(username, password, fromName string, skipVerify bool) *GmailSMTPProvider {
+	return &GmailSMTPProvider{
+		username:   username,
+		password:   password,
+		fromName:   fromName,
+		skipVerify: skipVerify,
+	}
+}
+
+func (p *GmailSMTPProvider) Name() string {
+	return "GmailSMTP"
+}
+
+func formatSMTPMessage(msg EmailMessage, fromName, fromAddress string) []byte {
+	var body bytes.Buffer
+	
+	if len(msg.Attachments) == 0 {
+		body.WriteString(fmt.Sprintf("From: %s <%s>\r\n", fromName, fromAddress))
+		body.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
+		body.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
+		body.WriteString("MIME-Version: 1.0\r\n")
+		if msg.HTMLBody != "" {
+			body.WriteString("Content-Type: text/html; charset=UTF-8\r\n\r\n")
+			body.WriteString(msg.HTMLBody)
+		} else {
+			body.WriteString("Content-Type: text/plain; charset=UTF-8\r\n\r\n")
+			body.WriteString(msg.Body)
+		}
+		return body.Bytes()
+	}
+
+	boundary := "MyMultiPartBoundary"
+	body.WriteString(fmt.Sprintf("From: %s <%s>\r\n", fromName, fromAddress))
+	body.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
+	body.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
+	body.WriteString("MIME-Version: 1.0\r\n")
+	body.WriteString(fmt.Sprintf("Content-Type: multipart/mixed; boundary=%s\r\n\r\n", boundary))
+
+	body.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+	if msg.HTMLBody != "" {
+		body.WriteString("Content-Type: text/html; charset=UTF-8\r\n\r\n")
+		body.WriteString(msg.HTMLBody)
+		body.WriteString("\r\n")
+	} else {
+		body.WriteString("Content-Type: text/plain; charset=UTF-8\r\n\r\n")
+		body.WriteString(msg.Body)
+		body.WriteString("\r\n")
+	}
+
+	for _, att := range msg.Attachments {
+		body.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+		contentType := att.MimeType
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		body.WriteString(fmt.Sprintf("Content-Type: %s; name=\"%s\"\r\n", contentType, att.Filename))
+		body.WriteString("Content-Transfer-Encoding: base64\r\n")
+		body.WriteString(fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\r\n\r\n", att.Filename))
+
+		encoded := base64.StdEncoding.EncodeToString(att.Data)
+		for i := 0; i < len(encoded); i += 76 {
+			end := i + 76
+			if end > len(encoded) {
+				end = len(encoded)
+			}
+			body.WriteString(encoded[i:end] + "\r\n")
+		}
+	}
+
+	body.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
+	return body.Bytes()
+}
+
+func (p *GmailSMTPProvider) Send(msg EmailMessage) error {
+	host := "smtp.gmail.com"
+	port := "465"
+	addr := fmt.Sprintf("%s:%s", host, port)
+
+	tlsConfig := &tls.Config{
+		ServerName:         host,
+		InsecureSkipVerify: p.skipVerify,
+	}
+
+	conn, err := tls.Dial("tcp", addr, tlsConfig)
+	if err != nil {
+		return fmt.Errorf("gmail smtps dial failed: %w", err)
+	}
+	defer conn.Close()
+
+	client, err := smtp.NewClient(conn, host)
+	if err != nil {
+		return fmt.Errorf("gmail smtps client creation failed: %w", err)
+	}
+	defer client.Quit()
+
+	if p.username != "" && p.password != "" {
+		auth := smtp.PlainAuth("", p.username, p.password, host)
+		if err = client.Auth(auth); err != nil {
+			return fmt.Errorf("gmail smtps auth failed: %w", err)
+		}
+	}
+
+	fromAddress := msg.From
+	if fromAddress == "" {
+		fromAddress = "evbatteryswap.system@gmail.com"
+	}
+
+	if err = client.Mail(fromAddress); err != nil {
+		return fmt.Errorf("gmail smtps mail command failed: %w", err)
+	}
+
+	for _, to := range msg.To {
+		if err = client.Rcpt(to); err != nil {
+			return fmt.Errorf("gmail smtps rcpt command failed for %s: %w", to, err)
+		}
+	}
+
+	wc, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("gmail smtps data command failed: %w", err)
+	}
+	defer wc.Close()
+
+	messageBytes := formatSMTPMessage(msg, p.fromName, fromAddress)
+	if _, err = wc.Write(messageBytes); err != nil {
+		return fmt.Errorf("gmail smtps write failed: %w", err)
+	}
+
+	return nil
+}
+
+// ── EMAIL PROVIDER FACTORY ─────────────────────────────────────────────────
+
+type EmailProviderFactory struct {
+	config *Config
+}
+
+func NewEmailProviderFactory(config *Config) *EmailProviderFactory {
+	return &EmailProviderFactory{config: config}
+}
+
+func (f *EmailProviderFactory) CreateProvider(pType ProviderType) (EmailProvider, error) {
+	switch pType {
+	case ProviderResend:
+		apiKey := os.Getenv("RESEND_API_KEY")
+		if apiKey == "" {
+			apiKey = f.config.ResendAPIKey
+		}
+		if apiKey == "" {
+			return nil, fmt.Errorf("resend api key not configured")
+		}
+		return NewResendProvider(apiKey, f.config.FromName, f.config.From), nil
+
+	case ProviderBrevo:
+		apiKey := os.Getenv("BREVO_API_KEY")
+		if apiKey == "" {
+			apiKey = f.config.BrevoAPIKey
+		}
+		if apiKey == "" {
+			return nil, fmt.Errorf("brevo api key not configured")
+		}
+		return NewBrevoProvider(apiKey, f.config.FromName), nil
+
+	case ProviderMailjet:
+		apiKey := os.Getenv("MAILJET_API_KEY")
+		secretKey := os.Getenv("MAILJET_SECRET_KEY")
+		if apiKey == "" || secretKey == "" {
+			return nil, fmt.Errorf("mailjet credentials not configured")
+		}
+		return NewMailjetProvider(apiKey, secretKey, f.config.FromName), nil
+
+	case ProviderGmailSMTP:
+		username := os.Getenv("GMAIL_SMTP_USERNAME")
+		password := os.Getenv("GMAIL_SMTP_PASSWORD")
+		if username == "" || password == "" {
+			return nil, fmt.Errorf("gmail smtp credentials not configured")
+		}
+		return NewGmailSMTPProvider(username, password, f.config.FromName, f.config.SkipVerify), nil
+
+	default:
+		return nil, fmt.Errorf("unknown provider type: %s", pType)
+	}
+}
+
+// ── STRATEGY ROUTING RESOLVER ──────────────────────────────────────────────
+
+func (s *EmailService) resolveProviderTiers(msg EmailMessage) []ProviderType {
+	resendTarget := os.Getenv("RESEND_VERIFIED_TARGET")
+	if resendTarget == "" {
+		resendTarget = "ahkhoinguyen169@gmail.com"
+	}
+
+	for _, toEmail := range msg.To {
+		if strings.EqualFold(toEmail, resendTarget) {
+			return []ProviderType{ProviderResend}
+		}
+	}
+
+	purpose := strings.ToLower(msg.Purpose)
+
+	if purpose == "register" || purpose == "forgot_password" || purpose == "register_otp" || strings.Contains(purpose, "otp") {
+		return []ProviderType{ProviderMailjet, ProviderGmailSMTP}
+	}
+
+	if purpose == "ticket_details" || purpose == "ticket" || strings.Contains(purpose, "ticket") {
+		return []ProviderType{ProviderBrevo, ProviderMailjet, ProviderGmailSMTP}
+	}
+
+	if purpose == "event_cancellation" || strings.Contains(purpose, "cancellation") {
+		return []ProviderType{ProviderBrevo, ProviderMailjet, ProviderGmailSMTP}
+	}
+
+	// Default fallback chain
+	return []ProviderType{ProviderBrevo, ProviderMailjet, ProviderGmailSMTP}
+}
+
+// ── SEND ROUTER ────────────────────────────────────────────────────────────
+
 func (s *EmailService) Send(msg EmailMessage) error {
 	log := logger.Default()
 	if s.devMode {
@@ -504,39 +769,50 @@ func (s *EmailService) Send(msg EmailMessage) error {
 	}
 
 	recipients := strings.Join(msg.To, ", ")
-	var lastErr error
+	tiers := s.resolveProviderTiers(msg)
 
-	// ── Tier 1: Resend API ──────────────────────────────────────────────────
-	if s.config.ResendAPIKey != "" {
-		msg.From = "onboarding@resend.dev"
-		if err := s.sendViaResend(msg); err == nil {
+	if len(tiers) == 0 {
+		return fmt.Errorf("no email providers resolved for purpose: %s", msg.Purpose)
+	}
+
+	factory := NewEmailProviderFactory(s.config)
+	var errs []string
+
+	resendTarget := os.Getenv("RESEND_VERIFIED_TARGET")
+	if resendTarget == "" {
+		resendTarget = "ahkhoinguyen169@gmail.com"
+	}
+	isVIP := false
+	for _, toEmail := range msg.To {
+		if strings.EqualFold(toEmail, resendTarget) {
+			isVIP = true
+			break
+		}
+	}
+
+	if isVIP {
+		log.Info("[EMAIL] 💎 VIP Bypass Route triggered for target: %s. Forcing ResendProvider.", recipients)
+	}
+
+	for idx, providerType := range tiers {
+		provider, err := factory.CreateProvider(providerType)
+		if err != nil {
+			log.Warn("[EMAIL] ⚠️ Failed to create provider %s (Tier %d): %v", providerType, idx+1, err)
+			errs = append(errs, fmt.Sprintf("%s init failed: %v", providerType, err))
+			continue
+		}
+
+		log.Info("[EMAIL] 🚀 Attempting dispatch via %s (Tier %d/%d) to %s (Purpose: %s)", provider.Name(), idx+1, len(tiers), recipients, msg.Purpose)
+		if sendErr := provider.Send(msg); sendErr == nil {
+			log.Info("[EMAIL] ✅ Dispatch successful via %s to %s", provider.Name(), recipients)
 			return nil
 		} else {
-			log.Warn("[EMAIL] ⚠️ Tier 1 (Resend) failed for %s: %v — falling back to Tier 2", recipients, err)
-			lastErr = err
+			log.Warn("[EMAIL] ⚠️ Provider %s (Tier %d) failed for %s: %v", provider.Name(), idx+1, recipients, sendErr)
+			errs = append(errs, fmt.Sprintf("%s error: %v", provider.Name(), sendErr))
 		}
-	} else {
-		log.Info("[EMAIL] ℹ️ Tier 1 (Resend) skipped – RESEND_API_KEY not configured")
 	}
 
-	// ── Tier 2: Brevo API ──────────────────────────────────────────────────
-	if s.config.BrevoAPIKey != "" || os.Getenv("BREVO_API_KEY") != "" {
-		msg.From = "evbatteryswap.system@gmail.com"
-		log.Info("[EMAIL] 🔄 Tier 2 – Brevo API: %s", recipients)
-		if err := s.sendViaBrevo(msg); err == nil {
-			return nil
-		} else {
-			log.Warn("[EMAIL] ⚠️ Tier 2 (Brevo) failed for %s: %v", recipients, err)
-			lastErr = err
-		}
-	} else {
-		log.Info("[EMAIL] ℹ️ Tier 2 (Brevo) skipped – BREVO_API_KEY not configured")
-	}
-
-	if lastErr != nil {
-		return fmt.Errorf("all email tiers exhausted for %s – last error: %w", recipients, lastErr)
-	}
-	return fmt.Errorf("no email provider configured (RESEND_API_KEY or BREVO credentials required)")
+	return fmt.Errorf("all email tiers exhausted for %s – errors: %s", recipients, strings.Join(errs, "; "))
 }
 
 // ============================================================
@@ -549,7 +825,12 @@ func (s *EmailService) SendTicketEmail(data TicketEmailData) error {
 	data.UserName, data.EventTitle, data.VenueName, data.VenueAddress = cleanVietnameseText(data.UserName), cleanVietnameseText(data.EventTitle), cleanVietnameseText(data.VenueName), cleanVietnameseText(data.VenueAddress)
 	data.TotalAmount = formatVND(data.TotalAmount)
 	html := s.buildTicketEmailHTML(data)
-	msg := EmailMessage{To: []string{data.UserEmail}, Subject: fmt.Sprintf("[FPT Event] E-Ticket - %s", data.EventTitle), HTMLBody: html}
+	msg := EmailMessage{
+		To:       []string{data.UserEmail},
+		Subject:  fmt.Sprintf("[FPT Event] E-Ticket - %s", data.EventTitle),
+		HTMLBody: html,
+		Purpose:  "ticket_details",
+	}
 	if len(data.PDFAttachment) > 0 {
 		msg.Attachments = []Attachment{{Filename: "ticket.pdf", Data: data.PDFAttachment, MimeType: "application/pdf"}}
 		log.Info("[EMAIL] 📎 Attaching PDF (size: %d bytes)", len(data.PDFAttachment))
@@ -636,7 +917,12 @@ func (s *EmailService) SendMultipleTicketsEmail(data MultipleTicketsEmailData) e
     <table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#F27124" style="border-radius:50px;padding:15px 35px;"><a href="%s" style="color:#ffffff;text-decoration:none;font-weight:bold;">VIEW ON MAP</a></td></tr></table>
     </td></tr><tr><td align="center" bgcolor="#2c2c2c" style="padding:25px;"><p style="margin:0;font-size:12px;color:#999999;">© 2026 FPT Event Management. All rights reserved.</p></td></tr></table></td></tr></table></body></html>`,
 		data.EventTitle, data.UserName, data.TicketCount, data.SeatList, data.VenueName, data.VenueAddress, eventDate, eventTime, data.TotalAmount, organizerSection, data.TicketCount, mapURL)
-	msg := EmailMessage{To: []string{data.UserEmail}, Subject: fmt.Sprintf("[FPT Event] %d E-Tickets - %s", data.TicketCount, data.EventTitle), HTMLBody: html}
+	msg := EmailMessage{
+		To:       []string{data.UserEmail},
+		Subject:  fmt.Sprintf("[FPT Event] %d E-Tickets - %s", data.TicketCount, data.EventTitle),
+		HTMLBody: html,
+		Purpose:  "ticket_details",
+	}
 	for _, att := range data.PDFAttachments {
 		msg.Attachments = append(msg.Attachments, Attachment{Filename: att.Filename, Data: att.Data, MimeType: "application/pdf"})
 		log.Info("[EMAIL] 📎 Attaching PDF: %s (size: %d bytes)", att.Filename, len(att.Data))
@@ -698,5 +984,10 @@ func (s *EmailService) SendOTPEmail(to, otp, purpose string) error {
 </body>
 </html>`, title, otp)
 
-	return s.Send(EmailMessage{To: []string{to}, Subject: subject, HTMLBody: html})
+	return s.Send(EmailMessage{
+		To:       []string{to},
+		Subject:  subject,
+		HTMLBody: html,
+		Purpose:  purpose,
+	})
 }
