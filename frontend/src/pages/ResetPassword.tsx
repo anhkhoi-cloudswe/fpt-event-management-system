@@ -42,11 +42,11 @@ export default function ResetPassword() {
   const navigate = useNavigate()
   const { showToast } = useToast()
 
-  // Format seconds as MM:SS
+  // Format seconds as MM:SS (always padded)
   const formatCountdown = (secs: number): string => {
     const m = Math.floor(secs / 60)
     const s = secs % 60
-    return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
   // Countdown timer for resend OTP
@@ -260,7 +260,7 @@ export default function ResetPassword() {
           </p>
         </div>
 
-        {error && (
+        {error && rateLimitCountdown === 0 && (
           <div className="mb-5 bg-rose-50 border border-rose-250 text-rose-700 px-4.5 py-3 rounded-2xl text-xs font-bold animate-pulse flex items-center gap-2">
             <span className="w-1.5 h-1.5 bg-rose-500 rounded-full flex-shrink-0" />
             <span>{error}</span>
@@ -299,6 +299,11 @@ export default function ResetPassword() {
                 required
                 className="w-full px-4 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
               />
+              {rateLimitCountdown > 0 && (
+                <p className="text-[11px] font-bold text-rose-600 mt-1 pl-1">
+                  Tần suất gửi mã quá nhanh. Vui lòng đợi đồng hồ đếm ngược kết thúc.
+                </p>
+              )}
             </div>
 
             <button

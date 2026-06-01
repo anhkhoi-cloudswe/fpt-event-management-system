@@ -52,11 +52,11 @@ export default function SignUp() {
   const otpLength = 6
   const otpArray = otpValue.split('').concat(Array(otpLength).fill('')).slice(0, otpLength)
 
-  // Format seconds as MM:SS
+  // Format seconds as MM:SS (always padded)
   const formatCountdown = (secs: number): string => {
     const m = Math.floor(secs / 60)
     const s = secs % 60
-    return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
   // Countdown timer for OTP
@@ -363,7 +363,7 @@ export default function SignUp() {
 
             {/* Form */}
             <form onSubmit={handleSendOtp} className="space-y-5">
-              {error && (
+              {error && rateLimitCountdown === 0 && (
                 <div className="bg-rose-50 border border-rose-250 text-rose-700 px-4.5 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 animate-pulse">
                   <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
                   <span>{error}</span>
@@ -383,6 +383,11 @@ export default function SignUp() {
                   disabled={loading}
                   className="w-full px-4 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
                 />
+                {rateLimitCountdown > 0 && (
+                  <p className="text-[11px] font-bold text-rose-600 mt-1 pl-1">
+                    Tần suất gửi mã quá nhanh. Vui lòng đợi đồng hồ đếm ngược kết thúc.
+                  </p>
+                )}
               </div>
 
               {/* Password */}
