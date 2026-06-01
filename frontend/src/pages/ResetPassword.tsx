@@ -231,7 +231,14 @@ export default function ResetPassword() {
         showToast('success', 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập.')
         navigate('/login')
       } else {
-        setError(response.data.message || 'Đặt lại mật khẩu thất bại')
+        const errorMsg = response.data.message || 'Đặt lại mật khẩu thất bại'
+        if (errorMsg.toLowerCase().includes('otp') || errorMsg.toLowerCase().includes('mã')) {
+          setOtpError(errorMsg)
+        } else if (errorMsg.toLowerCase().includes('mật khẩu') || errorMsg.toLowerCase().includes('password')) {
+          setNewPasswordError(errorMsg)
+        } else {
+          showToast('error', errorMsg)
+        }
       }
     } catch (err: any) {
       console.error('Reset Password Error:', err)

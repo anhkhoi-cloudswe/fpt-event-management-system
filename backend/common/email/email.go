@@ -342,13 +342,93 @@ func (s *EmailService) sendViaSMTPServer(msg EmailMessage, host, port, username,
 	return nil
 }
 
-// sendViaBrevo sends via Brevo SMTP relay (smtp-relay.brevo.com:587).
+type BrevoSender struct {
+	Name  string `json:"name,omitempty"`
+	Email string `json:"email"`
+}
+
+type BrevoRecipient struct {
+	Name  string `json:"name,omitempty"`
+	Email string `json:"email"`
+}
+
+type BrevoAttachment struct {
+	Name    string `json:"name"`
+	Content string `json:"content"`
+}
+
+type BrevoEmailPayload struct {
+	Sender      BrevoSender       `json:"sender"`
+	To          []BrevoRecipient  `json:"to"`
+	Subject     string            `json:"subject"`
+	HTMLContent string            `json:"htmlContent,omitempty"`
+	TextContent string            `json:"textContent,omitempty"`
+	Attachment  []BrevoAttachment `json:"attachment,omitempty"`
+}
+
+// sendViaBrevo sends via Brevo REST API endpoint (POST https://api.brevo.com/v3/smtp/email).
 func (s *EmailService) sendViaBrevo(msg EmailMessage) error {
+	log := logger.Default()
+	recipients := strings.Join(msg.To, ", ")
+	log.Info("[EMAIL] 🚀 Tier 2 – Brevo REST API: to=%s subject=%s", recipients, msg.Subject)
+
 	fromAddress := msg.From
 	if fromAddress == "" {
 		fromAddress = "evbatteryswap.system@gmail.com"
 	}
-	return s.sendViaSMTPServer(msg, s.config.BrevoHost, s.config.BrevoPort, s.config.BrevoUsername, s.config.BrevoPassword, fromAddress)
+
+	var brevoTo []BrevoRecipient
+	for _, to := range msg.To {
+		brevoTo = append(brevoTo, BrevoRecipient{Email: to})
+	}
+
+	var brevoAttachments []BrevoAttachment
+	for _, att := range msg.Attachments {
+		brevoAttachments = append(brevoAttachments, BrevoAttachment{
+			Name:    att.Filename,
+			Content: base64.StdEncoding.EncodeToString(att.Data),
+		})
+	}
+
+	payload := BrevoEmailPayload{
+		Sender: BrevoSender{
+			Name:  s.config.FromName,
+			Email: fromAddress,
+		},
+		To:          brevoTo,
+		Subject:     msg.Subject,
+		HTMLContent: msg.HTMLBody,
+		TextContent: msg.Body,
+		Attachment:  brevoAttachments,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("brevo marshal error: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", "https://api.brevo.com/v3/smtp/email", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("brevo http request error: %w", err)
+	}
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("api-key", s.config.BrevoPassword)
+
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("brevo api request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("brevo api error status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	log.Info("[EMAIL] ✅ Tier 2 Brevo success: to=%s response=%s", recipients, string(respBody))
+	return nil
 }
 
 // sendViaResend dispatches an email using the Resend HTTP API.

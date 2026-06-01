@@ -117,7 +117,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const requestUrl = String(error.config?.url ?? '')
           const isMeRequest = requestUrl.includes('/api/v1/auth/me') || requestUrl.includes('/api/auth/me')
 
-          if (!isLoadingRef.current && !isMeRequest && window.location.pathname !== '/login' && window.location.pathname !== '/') {
+          if (!isLoadingRef.current && !isMeRequest && 
+              window.location.pathname !== '/login' && 
+              window.location.pathname !== '/signup' && 
+              window.location.pathname !== '/reset-password' && 
+              window.location.pathname !== '/') {
             window.location.href = '/login'
           }
         }
