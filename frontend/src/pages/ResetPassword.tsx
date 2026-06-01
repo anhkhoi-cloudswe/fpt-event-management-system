@@ -8,6 +8,7 @@ import fptLogo from '../assets/fpt-logo.png'
 import fptCampus from '../assets/dai-hoc-fpt-tp-hcm-1.jpeg'
 import { useToast } from '../contexts/ToastContext'
 import { API_BASE_URL } from '../config/api'
+import { ArrowLeft } from 'lucide-react'
 
 const API_URL = API_BASE_URL
 
@@ -38,6 +39,10 @@ export default function ResetPassword() {
   const [resetToken, setResetToken] = useState('')
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0)
+  const [emailError, setEmailError] = useState('')
+  const [otpError, setOtpError] = useState('')
+  const [newPasswordError, setNewPasswordError] = useState('')
+  const [confirmPasswordError, setConfirmPasswordError] = useState('')
   const recaptchaRef = useRef<ReCAPTCHA | null>(null)
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -71,19 +76,25 @@ export default function ResetPassword() {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     setError('')
+    setEmailError('')
+    setOtpError('')
+    setNewPasswordError('')
+    setConfirmPasswordError('')
   }
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    setEmailError('')
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!formData.email || !emailRegex.test(formData.email)) {
-      setError('Vui lòng nhập email hợp lệ!')
+      setEmailError('Vui lòng nhập email hợp lệ!')
       return
     }
 
     if (!recaptchaToken) {
-      setError('Vui lòng xác nhận reCAPTCHA trước khi gửi OTP!')
+      showToast('error', 'Vui lòng xác nhận reCAPTCHA trước khi gửi OTP!')
       return
     }
 
@@ -121,12 +132,13 @@ export default function ResetPassword() {
       console.error('Send OTP Error:', err)
       const errData = err.response?.data
       const retryAfter = errData?.retry_after
+      const errorMsg = errData?.message || errData?.error || 'Đã xảy ra lỗi. Vui lòng thử lại.'
       if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
         setRateLimitCountdown(retryAfter)
-        setError(errData?.message || `Quá nhiều yêu cầu. Vui lòng thử lại sau ${formatCountdown(retryAfter)}.`)
+      } else if (errorMsg.toLowerCase().includes('email')) {
+        setEmailError(errorMsg)
       } else {
-        const errorMsg = errData?.message || errData?.error || 'Đã xảy ra lỗi. Vui lòng thử lại.'
-        setError(errorMsg)
+        showToast('error', errorMsg)
       }
       recaptchaRef.current?.reset()
       setRecaptchaToken(null)
@@ -151,12 +163,12 @@ export default function ResetPassword() {
       console.error('Resend OTP Error:', err)
       const errData = err.response?.data
       const retryAfter = errData?.retry_after
+      const srvMsg = errData?.message || errData?.error || 'Không thể gửi lại OTP. Vui lòng thử lại.'
       if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
         setRateLimitCountdown(retryAfter)
         setOtpCountdown(retryAfter)
-        setError(errData?.message || `Vui lòng thử lại sau ${formatCountdown(retryAfter)}.`)
       } else {
-        setError(errData?.message || 'Không thể gửi lại OTP. Vui lòng thử lại.')
+        showToast('error', srvMsg)
       }
     } finally {
       setLoading(false)
@@ -166,18 +178,22 @@ export default function ResetPassword() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    setOtpError('')
+    setNewPasswordError('')
+    setConfirmPasswordError('')
+
     if (!formData.otp || formData.otp.trim() === '') {
-      setError('Vui lòng nhập mã OTP!')
+      setOtpError('Vui lòng nhập mã OTP!')
       return
     }
 
     if (!formData.newPassword || formData.newPassword.length < 6) {
-      setError('Mật khẩu mới phải có ít nhất 6 ký tự!')
+      setNewPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự!')
       return
     }
 
     if (formData.newPassword !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp!')
+      setConfirmPasswordError('Mật khẩu xác nhận không khớp!')
       return
     }
 
@@ -219,12 +235,17 @@ export default function ResetPassword() {
       }
     } catch (err: any) {
       console.error('Reset Password Error:', err)
-      console.error('Error response data:', err.response?.data)
-      console.error('Error response status:', err.response?.status)
       const errorMsg = err.response?.data?.message ||
         err.response?.data?.error ||
         'Đã xảy ra lỗi. Vui lòng thử lại.'
-      setError(errorMsg)
+      
+      if (errorMsg.toLowerCase().includes('otp') || errorMsg.toLowerCase().includes('mã')) {
+        setOtpError(errorMsg)
+      } else if (errorMsg.toLowerCase().includes('mật khẩu') || errorMsg.toLowerCase().includes('password')) {
+        setNewPasswordError(errorMsg)
+      } else {
+        showToast('error', errorMsg)
+      }
     } finally {
       setLoading(false)
     }
@@ -241,16 +262,27 @@ export default function ResetPassword() {
       }}
     >
       {/* Overlay phủ đen nhẹ */}
-      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 bg-slate-955/40 backdrop-blur-[2px]" />
 
-      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up">
+      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 pt-14 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up">
+        {/* Floating Escape Link */}
+        <Link 
+          to="/" 
+          className="absolute left-6 top-6 flex items-center gap-1 text-slate-500 hover:text-orange-600 font-extrabold text-[11px] transition-colors duration-200 uppercase tracking-wider"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Quay lại Trang chủ</span>
+        </Link>
+
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3.5">
-            <img
-              src={fptLogo}
-              alt="FPT Education"
-              className="h-16 w-auto"
-            />
+            <Link to="/" className="cursor-pointer transition-opacity duration-200 hover:opacity-80">
+              <img
+                src={fptLogo}
+                alt="FPT Education"
+                className="h-16 w-auto cursor-pointer transition-opacity duration-200 hover:opacity-80"
+              />
+            </Link>
           </div>
           <h1 className="text-lg font-black text-slate-800">
             {step === 'email' ? 'Đặt lại mật khẩu' : 'Xác thực OTP'}
@@ -259,13 +291,6 @@ export default function ResetPassword() {
             {step === 'email' ? 'Nhập email trường để nhận mã OTP xác thực' : 'Nhập mã OTP và thiết lập mật khẩu mới'}
           </p>
         </div>
-
-        {error && rateLimitCountdown === 0 && (
-          <div className="mb-5 bg-rose-50 border border-rose-250 text-rose-700 px-4.5 py-3 rounded-2xl text-xs font-bold animate-pulse flex items-center gap-2">
-            <span className="w-1.5 h-1.5 bg-rose-500 rounded-full flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
 
         {step === 'email' ? (
           <form onSubmit={handleSendOtp} className="space-y-5">
@@ -297,8 +322,15 @@ export default function ResetPassword() {
                 onChange={handleInputChange}
                 placeholder="email@fpt.edu.vn"
                 required
-                className="w-full px-4 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+                className={`w-full px-4 py-3 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                  emailError 
+                    ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
+                    : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                }`}
               />
+              {emailError && (
+                <p className="text-red-500 text-xs mt-1 pl-1 font-medium animate-shake">{emailError}</p>
+              )}
               {rateLimitCountdown > 0 && (
                 <p className="text-[11px] font-bold text-rose-600 mt-1 pl-1">
                   Tần suất gửi mã quá nhanh. Vui lòng đợi đồng hồ đếm ngược kết thúc.
@@ -339,8 +371,12 @@ export default function ResetPassword() {
                 onChange={(value) => {
                   setFormData(prev => ({ ...prev, otp: value }))
                   setError('')
+                  setOtpError('')
                 }}
               />
+              {otpError && (
+                <p className="text-red-500 text-xs mt-1 text-center font-medium animate-shake">{otpError}</p>
+              )}
 
               <div className="flex items-center justify-between mt-2.5 px-1 flex-wrap gap-2">
                 <button
@@ -390,12 +426,6 @@ export default function ResetPassword() {
                   )}
                 </div>
               </div>
-
-              {otpCountdown > 0 && (
-                <p className="text-[11px] text-emerald-650 mt-2 text-center font-bold">
-                  Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư.
-                </p>
-              )}
             </div>
 
             <div className="space-y-1.5">
@@ -411,7 +441,11 @@ export default function ResetPassword() {
                   onChange={handleInputChange}
                   placeholder="Nhập mật khẩu mới"
                   required
-                  className="w-full px-4 py-3 pr-10 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+                  className={`w-full px-4 py-3 pr-10 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                    newPasswordError 
+                      ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                  }`}
                 />
                 <button
                   type="button"
@@ -421,6 +455,9 @@ export default function ResetPassword() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              {newPasswordError && (
+                <p className="text-red-500 text-xs mt-1 pl-1 font-medium animate-shake">{newPasswordError}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -436,7 +473,11 @@ export default function ResetPassword() {
                   onChange={handleInputChange}
                   placeholder="Nhập lại mật khẩu mới"
                   required
-                  className="w-full px-4 py-3 pr-10 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-855 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+                  className={`w-full px-4 py-3 pr-10 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                    confirmPasswordError 
+                      ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                  }`}
                 />
                 <button
                   type="button"
@@ -446,6 +487,9 @@ export default function ResetPassword() {
                   {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              {confirmPasswordError && (
+                <p className="text-red-500 text-xs mt-1 pl-1 font-medium animate-shake">{confirmPasswordError}</p>
+              )}
             </div>
 
             <button

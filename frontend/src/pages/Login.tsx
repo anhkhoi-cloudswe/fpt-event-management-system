@@ -9,10 +9,11 @@ import { useState, useRef } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 
 // Icon Eye để toggle hiển thị mật khẩu
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 
 // useAuth: lưu user vào context và refresh user từ backend sau khi cookie được set
 import { useAuth } from '../contexts/AuthContext'
+import { useToast } from '../contexts/ToastContext'
 
 // axios: thư viện gọi API thay cho fetch (tiện xử lý response/error)
 import axios from 'axios'
@@ -84,6 +85,9 @@ export default function Login() {
 
   // Lấy setUser/refreshUser từ context để đồng bộ user theo HttpOnly cookie
   const { setUser, setToken, refreshUser } = useAuth()
+  const { showToast } = useToast()
+  const [emailError, setEmailError] = useState('')
+  const [passwordError, setPasswordError] = useState('')
 
   // navigate: chuyển trang sang dashboard sau khi login
   const navigate = useNavigate()
@@ -146,6 +150,8 @@ export default function Login() {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     setError('')
+    setEmailError('')
+    setPasswordError('')
   }
 
   // ===================== HANDLE LOGIN LOGIC =====================
@@ -280,30 +286,35 @@ export default function Login() {
       await handleLogin()
     } catch (err: any) {
       console.error('Login Error (submit):', err)
-
-      // default message nếu không có err.message
+      
       let errorMessage = 'Có lỗi xảy ra. Vui lòng thử lại!'
-
-      // SECURITY FIX: User Enumeration Prevention
-      // Nếu lỗi là 401 Unauthorized (invalid credentials) -> hiển thị message duy nhất
-      // Không hiển thị cụ thể "user not found" hay "invalid password"
-      if (err.response && err.response.status === 401) {
-        errorMessage = 'Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.'
-      } else if (err.message && err.message.includes('Backend đã chạy')) {
-        errorMessage = err.message
-      } else if (err.response) {
-        // Các lỗi server khác (500, 403, etc.)
-        errorMessage = `Lỗi ${err.response.status}: ${err.response.statusText}`
-      } else if (err.request) {
-        // Network error
-        errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra backend và CORS.'
-      } else if (err.message) {
-        // Lỗi khác
+      if (err.message) {
         errorMessage = err.message
       }
+      if (err.response && err.response.data && err.response.data.message) {
+        errorMessage = err.response.data.message
+      }
 
-      // show error lên UI
-      setError(errorMessage)
+      // clear previous field errors
+      setEmailError('')
+      setPasswordError('')
+
+      if (err.response && err.response.status === 401) {
+        setEmailError('Email không chính xác hoặc chưa đăng ký.')
+        setPasswordError('Mật khẩu không chính xác. Vui lòng kiểm tra lại.')
+      } else if (errorMessage.toLowerCase().includes('robot') || errorMessage.toLowerCase().includes('recaptcha')) {
+        showToast('error', errorMessage)
+      } else if (err.response && err.response.status >= 500) {
+        showToast('error', `Lỗi hệ thống ${err.response.status}: Vui lòng thử lại sau.`)
+      } else if (err.request) {
+        showToast('error', 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.')
+      } else if (errorMessage.toLowerCase().includes('email')) {
+        setEmailError(errorMessage)
+      } else if (errorMessage.toLowerCase().includes('mật khẩu') || errorMessage.toLowerCase().includes('password')) {
+        setPasswordError(errorMessage)
+      } else {
+        showToast('error', errorMessage)
+      }
 
       // reset captcha nếu token bị reject/hết hạn
       try {
@@ -331,29 +342,32 @@ export default function Login() {
       <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]" />
 
       {/* Card login */}
-      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up">
+      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 pt-14 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up">
+        {/* Floating Escape Link */}
+        <Link 
+          to="/" 
+          className="absolute left-6 top-6 flex items-center gap-1 text-slate-500 hover:text-orange-600 font-extrabold text-[11px] transition-colors duration-200 uppercase tracking-wider"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Quay lại Trang chủ</span>
+        </Link>
+
         {/* Header logo + tiêu đề */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3.5">
-            <img
-              src={fptLogo}
-              alt="FPT Education"
-              className="h-16 w-auto"
-            />
+            <Link to="/" className="cursor-pointer transition-opacity duration-200 hover:opacity-80">
+              <img
+                src={fptLogo}
+                alt="FPT Education"
+                className="h-16 w-auto cursor-pointer transition-opacity duration-200 hover:opacity-80"
+              />
+            </Link>
           </div>
           <h2 className="text-lg font-black text-slate-800">Đăng Nhập FPT Event</h2>
         </div>
 
         {/* Form login */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Nếu có lỗi -> hiển thị box đỏ */}
-          {error && (
-            <div className="bg-rose-50 border border-rose-250 text-rose-700 px-4.5 py-3 rounded-2xl text-xs font-bold animate-pulse flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-rose-500 rounded-full flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
           {/* Input Email */}
           <div className="space-y-1.5">
             <label htmlFor="email" className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">
@@ -367,8 +381,15 @@ export default function Login() {
               onChange={handleInputChange}
               placeholder="email@fpt.edu.vn"
               required
-              className="w-full px-4 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+              className={`w-full px-4 py-3 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                emailError 
+                  ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
+                  : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+              }`}
             />
+            {emailError && (
+              <p className="text-red-500 text-xs mt-1 pl-1 font-medium animate-shake">{emailError}</p>
+            )}
           </div>
 
           {/* Input Password */}
@@ -385,7 +406,11 @@ export default function Login() {
                 onChange={handleInputChange}
                 placeholder="Nhập mật khẩu"
                 required
-                className="w-full px-4 py-3 pr-10 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+                className={`w-full px-4 py-3 pr-10 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                  passwordError 
+                    ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
+                    : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                }`}
               />
               <button
                 type="button"
@@ -395,6 +420,9 @@ export default function Login() {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            {passwordError && (
+              <p className="text-red-500 text-xs mt-1 pl-1 font-medium animate-shake">{passwordError}</p>
+            )}
           </div>
 
           {/* reCAPTCHA checkbox */}

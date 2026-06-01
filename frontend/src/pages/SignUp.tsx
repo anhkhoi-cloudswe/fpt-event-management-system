@@ -43,6 +43,8 @@ export default function SignUp() {
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0)
   const recaptchaRef = useRef<ReCAPTCHA | null>(null)
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([])
+  const [emailError, setEmailError] = useState('')
+  const [passwordError, setPasswordError] = useState('')
 
   const { setUser, setToken, refreshUser } = useAuth()
   const { showToast } = useToast()
@@ -127,26 +129,31 @@ export default function SignUp() {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     setError('')
+    setEmailError('')
+    setPasswordError('')
   }
 
   // Handle Send OTP (Step 1)
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    setEmailError('')
+    setPasswordError('')
+
     // Validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!formData.email || !emailRegex.test(formData.email)) {
-      setError('Vui lòng nhập email hợp lệ!')
+      setEmailError('Vui lòng nhập email hợp lệ!')
       return
     }
 
     if (formData.password.length < 6) {
-      setError('Mật khẩu phải chứa ít nhất 6 ký tự!')
+      setPasswordError('Mật khẩu phải chứa ít nhất 6 ký tự!')
       return
     }
 
     if (!recaptchaToken) {
-      setError('Vui lòng xác thực reCAPTCHA trước khi đăng ký!')
+      showToast('error', 'Vui lòng xác nhận reCAPTCHA trước khi đăng ký!')
       return
     }
 
@@ -181,12 +188,22 @@ export default function SignUp() {
       console.error('Send OTP error:', err)
       const errData = err.response?.data
       const retryAfter = errData?.retry_after
+      
+      let errorMessage = 'Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.'
+      if (errData?.message) {
+        errorMessage = errData.message
+      } else if (errData?.error) {
+        errorMessage = errData.error
+      }
+
       if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
         setRateLimitCountdown(retryAfter)
-        setError(errData?.message || `Quá nhiều yêu cầu. Vui lòng thử lại sau ${formatCountdown(retryAfter)}.`)
+      } else if (errorMessage.toLowerCase().includes('email')) {
+        setEmailError(errorMessage)
+      } else if (errorMessage.toLowerCase().includes('mật khẩu') || errorMessage.toLowerCase().includes('password')) {
+        setPasswordError(errorMessage)
       } else {
-        const srvMsg = errData?.message || errData?.error
-        setError(srvMsg || 'Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.')
+        showToast('error', errorMessage)
       }
     } finally {
       setLoading(false)
@@ -216,13 +233,12 @@ export default function SignUp() {
       console.error('Resend OTP error:', err)
       const errData = err.response?.data
       const retryAfter = errData?.retry_after
+      const srvMsg = errData?.message || errData?.error || 'Có lỗi xảy ra khi gửi lại OTP.'
       if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
         setRateLimitCountdown(retryAfter)
         setOtpCountdown(retryAfter)
-        setError(errData?.message || `Vui lòng thử lại sau ${formatCountdown(retryAfter)}.`)
       } else {
-        const srvMsg = errData?.message || errData?.error
-        setError(srvMsg || 'Có lỗi xảy ra khi gửi lại OTP.')
+        showToast('error', srvMsg)
       }
     } finally {
       setLoading(false)
@@ -261,7 +277,7 @@ export default function SignUp() {
     } catch (err: any) {
       console.error('Verify OTP error:', err)
       const srvMsg = err.response?.data?.message || err.response?.data?.error
-      setError(srvMsg || 'Xác thực OTP thất bại. Vui lòng thử lại.')
+      showToast('error', srvMsg || 'Xác thực OTP thất bại. Vui lòng thử lại.')
     } finally {
       setLoading(false)
     }
@@ -345,31 +361,34 @@ export default function SignUp() {
     >
       <div className="absolute inset-0 bg-slate-955/40 backdrop-blur-[2px]" />
 
-      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up text-slate-800">
+      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 pt-14 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up text-slate-800">
+        {/* Floating Escape Link */}
+        <Link 
+          to="/" 
+          className="absolute left-6 top-6 flex items-center gap-1 text-slate-500 hover:text-orange-600 font-extrabold text-[11px] transition-colors duration-200 uppercase tracking-wider"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Quay lại Trang chủ</span>
+        </Link>
 
         {step === 'form' ? (
           <>
             {/* Logo + Header */}
             <div className="text-center mb-8">
               <div className="flex justify-center mb-3.5">
-                <img
-                  src={fptLogo}
-                  alt="FPT Education"
-                  className="h-16 w-auto"
-                />
+                <Link to="/" className="cursor-pointer transition-opacity duration-200 hover:opacity-80">
+                  <img
+                    src={fptLogo}
+                    alt="FPT Education"
+                    className="h-16 w-auto cursor-pointer transition-opacity duration-200 hover:opacity-80"
+                  />
+                </Link>
               </div>
               <h2 className="text-lg font-black text-slate-800">Đăng Ký FPT Event</h2>
             </div>
 
             {/* Form */}
             <form onSubmit={handleSendOtp} className="space-y-5">
-              {error && rateLimitCountdown === 0 && (
-                <div className="bg-rose-50 border border-rose-250 text-rose-700 px-4.5 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 animate-pulse">
-                  <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
               {/* Email */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">Địa chỉ Email</label>
@@ -381,8 +400,15 @@ export default function SignUp() {
                   placeholder="email@fpt.edu.vn"
                   required
                   disabled={loading}
-                  className="w-full px-4 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+                  className={`w-full px-4 py-3 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                    emailError 
+                      ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                  }`}
                 />
+                {emailError && (
+                  <p className="text-red-500 text-xs mt-1 pl-1 font-medium animate-shake">{emailError}</p>
+                )}
                 {rateLimitCountdown > 0 && (
                   <p className="text-[11px] font-bold text-rose-600 mt-1 pl-1">
                     Tần suất gửi mã quá nhanh. Vui lòng đợi đồng hồ đếm ngược kết thúc.
@@ -402,7 +428,11 @@ export default function SignUp() {
                     placeholder="••••••••"
                     required
                     disabled={loading}
-                    className="w-full pl-4 pr-12 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+                    className={`w-full pl-4 pr-12 py-3 bg-white/50 border rounded-2xl focus:outline-none outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                      passwordError 
+                        ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                    }`}
                   />
                   <button
                     type="button"
@@ -412,6 +442,9 @@ export default function SignUp() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {passwordError && (
+                  <p className="text-red-500 text-xs mt-1 pl-1 font-medium animate-shake">{passwordError}</p>
+                )}
               </div>
 
               {/* reCAPTCHA */}
@@ -509,13 +542,6 @@ export default function SignUp() {
                 Chúng tôi đã gửi mã xác thực gồm 6 chữ số đến email <span className="text-orange-600 font-bold">{formData.email}</span>. Vui lòng nhập mã để kích hoạt tài khoản.
               </p>
             </div>
-
-            {error && (
-              <div className="bg-rose-50 border border-rose-250 text-rose-700 px-4.5 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 animate-pulse mb-4">
-                <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
 
             {/* OTP horizontal inputs in White style */}
             <div className="flex justify-center gap-2.5 my-6">
