@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/fpt-event-services/common/jwt"
 	"github.com/fpt-event-services/common/validator"
@@ -262,8 +263,17 @@ func (uc *AuthUseCase) CheckEmailExists(ctx context.Context, email string) (bool
 
 // GenerateRegisterOTP generates OTP for registration
 func (uc *AuthUseCase) GenerateRegisterOTP(ctx context.Context, req models.RegisterRequest) (string, error) {
+	// Automatically extract the prefix of the email string if FullName is empty
+	fullName := req.FullName
+	if strings.TrimSpace(fullName) == "" {
+		parts := strings.Split(req.Email, "@")
+		if len(parts) > 0 {
+			fullName = parts[0]
+		}
+	}
+
 	// Validate input
-	if err := validator.GetFullNameError(req.FullName); err != "" {
+	if err := validator.GetFullNameError(fullName); err != "" {
 		return "", errors.New(err)
 	}
 	if err := validator.GetPhoneError(req.Phone); err != "" {
@@ -285,7 +295,7 @@ func (uc *AuthUseCase) GenerateRegisterOTP(ctx context.Context, req models.Regis
 
 	pendingRegistrations[req.Email] = &models.PendingRegistration{
 		Email:        req.Email,
-		FullName:     req.FullName,
+		FullName:     fullName,
 		Phone:        req.Phone,
 		PasswordHash: hashedPassword,
 		OTP:          otp,

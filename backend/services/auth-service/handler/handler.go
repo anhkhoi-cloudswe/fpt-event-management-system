@@ -584,9 +584,16 @@ func createRateLimitResponse(message string, retryAfterSec int) (events.APIGatew
 // KHỚP VỚI Java RegisterJwtController sendOtp()
 // PRODUCTION: Tích hợp reCAPTCHA + SMTP email
 // ============================================================
-func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.APIGatewayProxyRequest) (resp events.APIGatewayProxyResponse, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("CRITICAL PANIC recovered in HandleRegisterSendOTP", "panic", r)
+			resp, err = createStatusResponse(http.StatusInternalServerError, "fail", "Đã xảy ra lỗi hệ thống nghiêm trọng")
+		}
+	}()
+
 	var req models.RegisterRequest
-	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+	if err = json.Unmarshal([]byte(request.Body), &req); err != nil {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Invalid request body")
 	}
 
@@ -650,9 +657,16 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 // Register step 2 - Verify OTP and create account
 // KHỚP VỚI Java RegisterJwtController verifyOtp()
 // ============================================================
-func (h *AuthHandler) HandleRegisterVerifyOTP(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func (h *AuthHandler) HandleRegisterVerifyOTP(ctx context.Context, request events.APIGatewayProxyRequest) (resp events.APIGatewayProxyResponse, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("CRITICAL PANIC recovered in HandleRegisterVerifyOTP", "panic", r)
+			resp, err = createStatusResponse(http.StatusInternalServerError, "fail", "Đã xảy ra lỗi hệ thống nghiêm trọng")
+		}
+	}()
+
 	var req models.VerifyOtpRequest
-	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+	if err = json.Unmarshal([]byte(request.Body), &req); err != nil {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Invalid request body")
 	}
 
@@ -674,19 +688,29 @@ func (h *AuthHandler) HandleRegisterVerifyOTP(ctx context.Context, request event
 		}
 	}
 
+	tokenCookie := http.Cookie{
+		Name:     "token",
+		Value:    authResponse.Token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	}
+
 	// Return format matching Java: {status: "success", user: {...}, token: "..."}
-	resp := map[string]interface{}{
+	responseMap := map[string]interface{}{
 		"status": "success",
 		"user":   authResponse.User,
 		"token":  authResponse.Token,
 	}
-	body, _ := json.Marshal(resp)
+	body, _ := json.Marshal(responseMap)
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
 			"Content-Type":                "application/json",
 			"Access-Control-Allow-Origin": "*",
+			"Set-Cookie":                  tokenCookie.String(),
 		},
 		Body: string(body),
 	}, nil
