@@ -591,7 +591,7 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 	}
 
 	// Validate required fields
-	if req.Email == "" || req.Password == "" || req.FullName == "" || req.Phone == "" {
+	if req.Email == "" || req.Password == "" {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Vui lòng điền đầy đủ thông tin")
 	}
 

@@ -102,7 +102,7 @@ func GetPhoneError(phone string) string {
 func GetFullNameError(name string) string {
 	trimmed := strings.TrimSpace(name)
 	if trimmed == "" {
-		return "Họ tên không được để trống"
+		return ""
 	}
 	if len(trimmed) < 2 {
 		return "Họ tên phải có ít nhất 2 ký tự"
