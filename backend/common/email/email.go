@@ -337,46 +337,39 @@ func (s *EmailService) sendViaSMTPServer(msg EmailMessage, host, port, username,
 }
 
 // sendViaBrevo sends an email using secure SMTPS over Port 465 to bypass firewall restrictions on Render.
+type BrevoSender struct {
+	Name  string `json:"name,omitempty"`
+	Email string `json:"email"`
+}
+
+type BrevoRecipient struct {
+	Name  string `json:"name,omitempty"`
+	Email string `json:"email"`
+}
+
+type BrevoAttachment struct {
+	Name    string `json:"name"`
+	Content string `json:"content"`
+}
+
+type BrevoEmailPayload struct {
+	Sender      BrevoSender       `json:"sender"`
+	To          []BrevoRecipient  `json:"to"`
+	Subject     string            `json:"subject"`
+	HTMLContent string            `json:"htmlContent,omitempty"`
+	TextContent string            `json:"textContent,omitempty"`
+	Attachment  []BrevoAttachment `json:"attachment,omitempty"`
+}
+
+// sendViaBrevo sends an email using Brevo's HTTP REST API over Port 443.
 func (s *EmailService) sendViaBrevo(msg EmailMessage) error {
 	log := logger.Default()
 	recipients := strings.Join(msg.To, ", ")
-	host := "smtp-relay.brevo.com"
-	addr := "smtp-relay.brevo.com:465"
-	log.Info("[EMAIL] 🔄 Tier 2 – Brevo SMTPS (Port 465): to=%s", recipients)
+	log.Info("[EMAIL] 🚀 Tier 2 – Brevo REST API: to=%s subject=%s", recipients, msg.Subject)
 
-	tlsConfig := &tls.Config{
-		ServerName:         host,
-		InsecureSkipVerify: s.config.SkipVerify,
-	}
-
-	log.Info("[EMAIL] Dialing Brevo SMTPS server %s with 15s timeout...", addr)
-	conn, err := tls.Dial("tcp", addr, tlsConfig)
-	if err != nil {
-		log.Error("[EMAIL] ❌ Brevo SMTPS Dial failed: %v", err)
-		return err
-	}
-	defer conn.Close()
-
-	client, err := smtp.NewClient(conn, host)
-	if err != nil {
-		log.Error("[EMAIL] ❌ Brevo SMTPS client creation failed: %v", err)
-		return err
-	}
-	defer client.Quit()
-
-	username := os.Getenv("BREVO_SMTP_USERNAME")
-	if username == "" {
-		username = "evbatteryswap.system@gmail.com"
-	}
-	password := os.Getenv("BREVO_SMTP_PASSWORD")
-
-	if username != "" && password != "" {
-		log.Info("[EMAIL] Authenticating SMTPS client on %s...", host)
-		auth := smtp.PlainAuth("", username, password, host)
-		if err = client.Auth(auth); err != nil {
-			log.Error("[EMAIL] ❌ SMTPS authentication failed: %v", err)
-			return err
-		}
+	apiKey := os.Getenv("BREVO_API_KEY")
+	if apiKey == "" {
+		apiKey = s.config.BrevoAPIKey
 	}
 
 	fromAddress := msg.From
@@ -384,47 +377,59 @@ func (s *EmailService) sendViaBrevo(msg EmailMessage) error {
 		fromAddress = "evbatteryswap.system@gmail.com"
 	}
 
-	if err = client.Mail(fromAddress); err != nil {
-		log.Error("[EMAIL] ❌ SMTPS MAIL command failed: %v", err)
-		return err
-	}
-
+	var brevoTo []BrevoRecipient
 	for _, to := range msg.To {
-		if err = client.Rcpt(to); err != nil {
-			log.Error("[EMAIL] ❌ SMTPS RCPT command failed for %s: %v", to, err)
-			return err
-		}
+		brevoTo = append(brevoTo, BrevoRecipient{Email: to})
 	}
 
-	wc, err := client.Data()
+	var brevoAttachments []BrevoAttachment
+	for _, att := range msg.Attachments {
+		brevoAttachments = append(brevoAttachments, BrevoAttachment{
+			Name:    att.Filename,
+			Content: base64.StdEncoding.EncodeToString(att.Data),
+		})
+	}
+
+	payload := BrevoEmailPayload{
+		Sender: BrevoSender{
+			Name:  s.config.FromName,
+			Email: fromAddress,
+		},
+		To:          brevoTo,
+		Subject:     msg.Subject,
+		HTMLContent: msg.HTMLBody,
+		TextContent: msg.Body,
+		Attachment:  brevoAttachments,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		log.Error("[EMAIL] ❌ SMTPS DATA command failed: %v", err)
-		return err
-	}
-	defer wc.Close()
-
-	var body bytes.Buffer
-	body.WriteString(fmt.Sprintf("From: %s <%s>\r\n", s.config.FromName, fromAddress))
-	body.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
-	body.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
-	body.WriteString("MIME-Version: 1.0\r\n")
-
-	if msg.HTMLBody != "" {
-		body.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
-		body.WriteString("\r\n")
-		body.WriteString(msg.HTMLBody)
-	} else {
-		body.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
-		body.WriteString("\r\n")
-		body.WriteString(msg.Body)
+		return fmt.Errorf("brevo marshal error: %w", err)
 	}
 
-	if _, err = body.WriteTo(wc); err != nil {
-		log.Error("[EMAIL] ❌ SMTPS failed to write body data: %v", err)
-		return err
+	req, err := http.NewRequest("POST", "https://api.brevo.com/v3/smtp/email", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("brevo http request error: %w", err)
+	}
+	
+	// Bypass Go's standard Header.Set canonicalization by assigning directly to Header map:
+	req.Header["accept"] = []string{"application/json"}
+	req.Header["content-type"] = []string{"application/json"}
+	req.Header["api-key"] = []string{apiKey}
+
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("brevo api request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("brevo api error status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	log.Info("[EMAIL] ✅ SMTPS Send successful via %s to %v", host, msg.To)
+	log.Info("[EMAIL] ✅ Tier 2 Brevo success: to=%s response=%s", recipients, string(respBody))
 	return nil
 }
 
