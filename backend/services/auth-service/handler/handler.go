@@ -452,11 +452,13 @@ func (h *AuthHandler) HandleForgotPassword(ctx context.Context, request events.A
 		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 	}
 
-	// GỬI EMAIL VỚI OTP (Production-ready) - Dual path: notification API or local
-	if err := sendOTPEmail(ctx, req.Email, otp, "forgot_password"); err != nil {
-		log.Error("Failed to send OTP email", "email", req.Email, "error", err)
-		// Vẫn trả về success để không leak thông tin email tồn tại hay không
-	}
+	// GỬI EMAIL VỚI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
+	go func() {
+		bgCtx := context.Background()
+		if err := sendOTPEmail(bgCtx, req.Email, otp, "forgot_password"); err != nil {
+			log.Error("Failed to send OTP email in background", "email", req.Email, "error", err)
+		}
+	}()
 
 	log.Info("OTP sent for forgot password", "email", req.Email)
 	return createStatusResponse(http.StatusOK, "success", "Đã gửi OTP đặt lại mật khẩu tới email")
@@ -557,11 +559,13 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 		return createStatusResponse(http.StatusBadGateway, "fail", "Không thể gửi OTP")
 	}
 
-	// GỬI EMAIL VỚI OTP (Production-ready) - Dual path: notification API or local
-	if err := sendOTPEmail(ctx, req.Email, otp, "register"); err != nil {
-		log.Error("Failed to send registration OTP email", "email", req.Email, "error", err)
-		// Continue anyway to not block registration flow in dev mode
-	}
+	// GỬI EMAIL VỚI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
+	go func() {
+		bgCtx := context.Background()
+		if err := sendOTPEmail(bgCtx, req.Email, otp, "register"); err != nil {
+			log.Error("Failed to send registration OTP email in background", "email", req.Email, "error", err)
+		}
+	}()
 
 	log.Info("Registration OTP sent", "email", req.Email)
 	return createStatusResponse(http.StatusOK, "success", "Đã gửi OTP tới email")
@@ -643,10 +647,13 @@ func (h *AuthHandler) HandleRegisterResendOTP(ctx context.Context, request event
 		}
 	}
 
-	// GỬI EMAIL VỚI OTP (Production-ready) - Dual path: notification API or local
-	if err := sendOTPEmail(ctx, req.Email, otp, "register"); err != nil {
-		log.Error("Failed to resend registration OTP email", "email", req.Email, "error", err)
-	}
+	// GỬI EMAIL VỚI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
+	go func() {
+		bgCtx := context.Background()
+		if err := sendOTPEmail(bgCtx, req.Email, otp, "register"); err != nil {
+			log.Error("Failed to resend registration OTP email in background", "email", req.Email, "error", err)
+		}
+	}()
 
 	log.Info("Registration OTP resent", "email", req.Email)
 	return createStatusResponse(http.StatusOK, "success", "Đã gửi lại OTP")

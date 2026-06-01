@@ -2,16 +2,19 @@ package email
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
+	"net"
 	"net/http"
 	"net/smtp"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/fpt-event-services/common/logger"
 )
@@ -256,10 +259,69 @@ func (s *EmailService) sendViaSMTP(msg EmailMessage) error {
 	log := logger.Default()
 	addr := fmt.Sprintf("%s:%s", s.config.Host, s.config.Port)
 
-	// Build PlainAuth using credentials from s.config
-	auth := smtp.PlainAuth("", s.config.Username, s.config.Password, s.config.Host)
+	log.Info("[EMAIL] Dialing SMTP server %s with 10s timeout...", addr)
+	// 1. Establish connection with explicit timeout
+	conn, err := net.DialTimeout("tcp", addr, 10*time.Second)
+	if err != nil {
+		log.Error("[EMAIL] ❌ SMTP Dial failed: %v", err)
+		return err
+	}
+	defer conn.Close()
 
-	// Build RFC 822 formatted email body
+	// 2. Establish SMTP Client
+	client, err := smtp.NewClient(conn, s.config.Host)
+	if err != nil {
+		log.Error("[EMAIL] ❌ SMTP client creation failed: %v", err)
+		return err
+	}
+	defer client.Quit()
+
+	// 3. Negotiate STARTTLS if port is 587 or UseTLS is true (AWS SES uses port 587 with STARTTLS)
+	if s.config.Port == "587" || s.config.UseTLS {
+		log.Info("[EMAIL] Negotiating STARTTLS...")
+		tlsConfig := &tls.Config{
+			ServerName:         s.config.Host,
+			InsecureSkipVerify: s.config.SkipVerify,
+		}
+		if err = client.StartTLS(tlsConfig); err != nil {
+			log.Error("[EMAIL] ❌ STARTTLS negotiation failed: %v", err)
+			return err
+		}
+	}
+
+	// 4. Authenticate
+	if s.config.Username != "" && s.config.Password != "" {
+		log.Info("[EMAIL] Authenticating SMTP client...")
+		auth := smtp.PlainAuth("", s.config.Username, s.config.Password, s.config.Host)
+		if err = client.Auth(auth); err != nil {
+			log.Error("[EMAIL] ❌ SMTP authentication failed: %v", err)
+			return err
+		}
+	}
+
+	// 5. Set sender
+	if err = client.Mail(s.config.From); err != nil {
+		log.Error("[EMAIL] ❌ SMTP MAIL command failed: %v", err)
+		return err
+	}
+
+	// 6. Set recipients
+	for _, to := range msg.To {
+		if err = client.Rcpt(to); err != nil {
+			log.Error("[EMAIL] ❌ SMTP RCPT command failed for %s: %v", to, err)
+			return err
+		}
+	}
+
+	// 7. Write data
+	wc, err := client.Data()
+	if err != nil {
+		log.Error("[EMAIL] ❌ SMTP DATA command failed: %v", err)
+		return err
+	}
+	defer wc.Close()
+
+	// Build MIME body
 	var body bytes.Buffer
 	body.WriteString(fmt.Sprintf("From: %s <%s>\r\n", s.config.FromName, s.config.From))
 	body.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
@@ -276,12 +338,11 @@ func (s *EmailService) sendViaSMTP(msg EmailMessage) error {
 		body.WriteString(msg.Body)
 	}
 
-	// Send email using standard net/smtp
-	err := smtp.SendMail(addr, auth, s.config.From, msg.To, body.Bytes())
-	if err != nil {
-		log.Warn("[EMAIL] ❌ SMTP Send failed: %v", err)
+	if _, err = body.WriteTo(wc); err != nil {
+		log.Error("[EMAIL] ❌ SMTP failed to write body data: %v", err)
 		return err
 	}
+
 	log.Info("[EMAIL] ✅ SMTP Send successful to %v", msg.To)
 	return nil
 }
