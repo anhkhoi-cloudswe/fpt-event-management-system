@@ -83,7 +83,7 @@ export default function ResetPassword() {
       console.log('Response status:', response.status)
       console.log('Full response:', response)
 
-      if (response.data.status === 'success' || response.status === 200) {
+      if (response.data && response.data.status === 'success') {
         // Lưu token nếu backend trả về
         if (response.data.token) {
           console.log('Token received:', response.data.token)
@@ -120,7 +120,7 @@ export default function ResetPassword() {
         email: formData.email
       })
 
-      if (response.data.status === 'success' || response.status === 200) {
+      if (response.data && response.data.status === 'success') {
         setOtpCountdown(60)
         setError('')
         showToast('success', 'Mã OTP mới đã được gửi lại!')
@@ -181,7 +181,7 @@ export default function ResetPassword() {
       console.log('Reset Password Response:', response.data)
       console.log('Response status:', response.status)
 
-      if (response.data.status === 'success' || response.status === 200) {
+      if (response.data && response.data.status === 'success') {
         showToast('success', 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập.')
         navigate('/login')
       } else {

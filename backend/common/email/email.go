@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/smtp"
 	"net/url"
 	"os"
 	"strings"
@@ -55,9 +56,10 @@ func NewEmailService(config *Config) *EmailService {
 	if config == nil {
 		config = DefaultConfig()
 	}
-	devMode := config.ResendAPIKey == ""
+	hasSMTP := config.Username != "" && config.Password != ""
+	devMode := config.ResendAPIKey == "" && !hasSMTP
 	if devMode {
-		logger.Default().Warn("[EMAIL] ⚠️ DEV MODE ENABLED - Emails will NOT be sent. Configure RESEND_API_KEY.")
+		logger.Default().Warn("[EMAIL] ⚠️ DEV MODE ENABLED - Emails will NOT be sent. Configure RESEND_API_KEY or SMTP settings.")
 	}
 	return &EmailService{
 		config:    config,
@@ -250,13 +252,63 @@ type ResendEmailPayload struct {
 	Attachments []ResendAttachment `json:"attachments,omitempty"`
 }
 
+func (s *EmailService) sendViaSMTP(msg EmailMessage) error {
+	log := logger.Default()
+	addr := fmt.Sprintf("%s:%s", s.config.Host, s.config.Port)
+
+	// Build PlainAuth using credentials from s.config
+	auth := smtp.PlainAuth("", s.config.Username, s.config.Password, s.config.Host)
+
+	// Build RFC 822 formatted email body
+	var body bytes.Buffer
+	body.WriteString(fmt.Sprintf("From: %s <%s>\r\n", s.config.FromName, s.config.From))
+	body.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
+	body.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
+	body.WriteString("MIME-Version: 1.0\r\n")
+
+	if msg.HTMLBody != "" {
+		body.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
+		body.WriteString("\r\n")
+		body.WriteString(msg.HTMLBody)
+	} else {
+		body.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
+		body.WriteString("\r\n")
+		body.WriteString(msg.Body)
+	}
+
+	// Send email using standard net/smtp
+	err := smtp.SendMail(addr, auth, s.config.From, msg.To, body.Bytes())
+	if err != nil {
+		log.Warn("[EMAIL] ❌ SMTP Send failed: %v", err)
+		return err
+	}
+	log.Info("[EMAIL] ✅ SMTP Send successful to %v", msg.To)
+	return nil
+}
+
 func (s *EmailService) Send(msg EmailMessage) error {
 	log := logger.Default()
 	if s.devMode {
-		log.Info("[EMAIL] 📧 DEV MODE - Skipping actual Resend to %v (Subject: %s)", msg.To, msg.Subject)
-		log.Warn("[SES_ERROR] dev mode enabled, Resend provider was not called")
+		log.Info("[EMAIL] 📧 DEV MODE - Skipping actual email send to %v (Subject: %s)", msg.To, msg.Subject)
+		log.Warn("[SES_ERROR] dev mode enabled, email provider was not called")
 		return nil
 	}
+
+	// Try sending via SMTP first if credentials are set
+	if s.config.Username != "" && s.config.Password != "" {
+		log.Info("[EMAIL] 📧 SMTP Mode active, attempting send via host %s:%s", s.config.Host, s.config.Port)
+		err := s.sendViaSMTP(msg)
+		if err == nil {
+			return nil
+		}
+		log.Warn("[EMAIL] ⚠️ SMTP Send failed, trying Resend API fallback if configured: %v", err)
+	}
+
+	// Fallback/Legacy path: Resend API
+	if s.config.ResendAPIKey == "" {
+		return fmt.Errorf("SMTP sending failed and Resend API key is not configured")
+	}
+
 	recipients := strings.Join(msg.To, ", ")
 	log.Info("[EMAIL] 🚀 Attempting to send email to %s (Subject: %s) via Resend API", recipients, msg.Subject)
 	log.Info("[SES_DEBUG] Starting to send email via Resend... to=%s subject=%s from=%s", recipients, msg.Subject, s.config.From)

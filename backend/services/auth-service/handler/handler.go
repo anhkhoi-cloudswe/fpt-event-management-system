@@ -289,40 +289,10 @@ func (h *AuthHandler) HandleLogout(ctx context.Context, request events.APIGatewa
 	}, nil
 }
 
-// HandleRegister handles POST /api/register
+// HandleRegister handles POST /api/register - DISABLED to prevent OTP bypass
 func (h *AuthHandler) HandleRegister(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Parse request body
-	var req models.RegisterRequest
-	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
-		return createErrorResponse(http.StatusBadRequest, "Invalid request body")
-	}
-
-	// Execute registration
-	authResponse, err := h.useCase.Register(ctx, req)
-	if err != nil {
-		statusCode := http.StatusBadRequest
-		if err.Error() == "email already exists" {
-			statusCode = http.StatusConflict
-		}
-		return createErrorResponse(statusCode, err.Error())
-	}
-
-	// Return format matching Java: {status: "success", user: {...}, token: "..."}
-	resp := map[string]interface{}{
-		"status": "success",
-		"user":   authResponse.User,
-		"token":  authResponse.Token,
-	}
-	body, _ := json.Marshal(resp)
-
-	return events.APIGatewayProxyResponse{
-		StatusCode: http.StatusOK,
-		Headers: map[string]string{
-			"Content-Type":                "application/json",
-			"Access-Control-Allow-Origin": "*",
-		},
-		Body: string(body),
-	}, nil
+	log.Warn("Direct registration attempt rejected to prevent OTP bypass")
+	return createErrorResponse(http.StatusForbidden, "Đăng ký trực tiếp đã bị vô hiệu hóa để bảo mật. Vui lòng sử dụng quy trình xác thực OTP tại /api/register/send-otp")
 }
 
 // HandleAdminCreateAccount handles POST /api/admin/create-account
