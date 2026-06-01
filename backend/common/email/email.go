@@ -29,10 +29,7 @@ type Config struct {
 	UseTLS        bool
 	SkipVerify    bool
 	ResendAPIKey  string
-	BrevoHost     string
-	BrevoPort     string
-	BrevoUsername string
-	BrevoPassword string
+	BrevoAPIKey   string
 }
 
 func DefaultConfig() *Config {
@@ -42,10 +39,7 @@ func DefaultConfig() *Config {
 		UseTLS:        getEnv("SMTP_USE_TLS", "true") == "true",
 		SkipVerify:    getEnv("SMTP_SKIP_VERIFY", "false") == "true",
 		ResendAPIKey:  getEnv("RESEND_API_KEY", ""),
-		BrevoHost:     getEnv("BREVO_SMTP_HOST", "smtp-relay.brevo.com"),
-		BrevoPort:     getEnv("BREVO_SMTP_PORT", "587"),
-		BrevoUsername: getEnv("BREVO_SMTP_USERNAME", "evbatteryswap.system@gmail.com"),
-		BrevoPassword: getEnv("BREVO_SMTP_PASSWORD", ""),
+		BrevoAPIKey:   getEnv("BREVO_API_KEY", ""),
 	}
 }
 
@@ -59,10 +53,10 @@ func NewEmailService(config *Config) *EmailService {
 	if config == nil {
 		config = DefaultConfig()
 	}
-	hasBrevo := config.BrevoUsername != "" && config.BrevoPassword != ""
+	hasBrevo := config.BrevoAPIKey != "" || os.Getenv("BREVO_API_KEY") != ""
 	devMode := config.ResendAPIKey == "" && !hasBrevo
 	if devMode {
-		logger.Default().Warn("[EMAIL] ⚠️ DEV MODE ENABLED - Emails will NOT be sent. Configure RESEND_API_KEY or BREVO settings.")
+		logger.Default().Warn("[EMAIL] ⚠️ DEV MODE ENABLED - Emails will NOT be sent. Configure RESEND_API_KEY or BREVO_API_KEY settings.")
 	}
 	return &EmailService{
 		config:    config,
@@ -407,13 +401,19 @@ func (s *EmailService) sendViaBrevo(msg EmailMessage) error {
 		return fmt.Errorf("brevo marshal error: %w", err)
 	}
 
+	apiKey := os.Getenv("BREVO_API_KEY")
+	if apiKey == "" {
+		apiKey = s.config.BrevoAPIKey
+	}
+
 	req, err := http.NewRequest("POST", "https://api.brevo.com/v3/smtp/email", bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		return fmt.Errorf("brevo http request error: %w", err)
 	}
-	req.Header.Set("accept", "application/json")
-	req.Header.Set("content-type", "application/json")
-	req.Header.Set("api-key", s.config.BrevoPassword)
+	
+	req.Header["accept"] = []string{"application/json"}
+	req.Header["content-type"] = []string{"application/json"}
+	req.Header["api-key"] = []string{apiKey}
 
 	httpClient := &http.Client{Timeout: 15 * time.Second}
 	resp, err := httpClient.Do(req)
@@ -517,10 +517,10 @@ func (s *EmailService) Send(msg EmailMessage) error {
 		log.Info("[EMAIL] ℹ️ Tier 1 (Resend) skipped – RESEND_API_KEY not configured")
 	}
 
-	// ── Tier 2: Brevo SMTP ──────────────────────────────────────────────────
-	if s.config.BrevoUsername != "" && s.config.BrevoPassword != "" {
+	// ── Tier 2: Brevo API ──────────────────────────────────────────────────
+	if s.config.BrevoAPIKey != "" || os.Getenv("BREVO_API_KEY") != "" {
 		msg.From = "evbatteryswap.system@gmail.com"
-		log.Info("[EMAIL] 🔄 Tier 2 – Brevo SMTP: %s:%s → %s", s.config.BrevoHost, s.config.BrevoPort, recipients)
+		log.Info("[EMAIL] 🔄 Tier 2 – Brevo API: %s", recipients)
 		if err := s.sendViaBrevo(msg); err == nil {
 			return nil
 		} else {
@@ -528,7 +528,7 @@ func (s *EmailService) Send(msg EmailMessage) error {
 			lastErr = err
 		}
 	} else {
-		log.Info("[EMAIL] ℹ️ Tier 2 (Brevo) skipped – BREVO_SMTP_USERNAME/PASSWORD not configured")
+		log.Info("[EMAIL] ℹ️ Tier 2 (Brevo) skipped – BREVO_API_KEY not configured")
 	}
 
 	if lastErr != nil {
