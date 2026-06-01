@@ -51,6 +51,7 @@ export default function SignUp() {
   const navigate = useNavigate()
 
   const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
+  const isRecaptchaVerified = !RECAPTCHA_SITE_KEY || !!recaptchaToken
   const otpLength = 6
   const otpArray = otpValue.split('').concat(Array(otpLength).fill('')).slice(0, otpLength)
 
@@ -466,7 +467,7 @@ export default function SignUp() {
               {/* Submit button */}
               <button
                 type="submit"
-                disabled={loading || rateLimitCountdown > 0}
+                disabled={!isRecaptchaVerified || loading || rateLimitCountdown > 0}
                 className="w-full py-4 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white rounded-2xl font-bold text-sm shadow-lg shadow-orange-500/20 hover:shadow-orange-500/35 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99"
               >
                 {loading ? (

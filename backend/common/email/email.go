@@ -934,8 +934,10 @@ func (s *EmailService) SendOTPEmail(to, otp, purpose string) error {
 	log := logger.Default()
 	log.Info("[EMAIL] 🔐 Preparing OTP email for %s (Purpose: %s)", to, purpose)
 	var subject, title string
+	normalizedPurpose := purpose
 	switch purpose {
-	case "register":
+	case "register", "register_otp":
+		normalizedPurpose = "register_otp"
 		subject, title = "FPT Event - Account Verification", "WELCOME TO FPT EVENT"
 	case "forgot_password":
 		subject, title = "FPT Event - Password Reset", "PASSWORD RESET"
@@ -988,6 +990,6 @@ func (s *EmailService) SendOTPEmail(to, otp, purpose string) error {
 		To:       []string{to},
 		Subject:  subject,
 		HTMLBody: html,
-		Purpose:  purpose,
+		Purpose:  normalizedPurpose,
 	})
 }

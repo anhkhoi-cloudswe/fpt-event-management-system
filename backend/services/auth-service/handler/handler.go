@@ -628,7 +628,7 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 	// GỬI EMAIL VỚI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
 	go func() {
 		bgCtx := context.Background()
-		if err := sendOTPEmail(bgCtx, req.Email, otp, "register"); err != nil {
+		if err := sendOTPEmail(bgCtx, req.Email, otp, "register_otp"); err != nil {
 			log.Error("Failed to send registration OTP email in background", "email", req.Email, "error", err)
 		}
 	}()
@@ -716,7 +716,7 @@ func (h *AuthHandler) HandleRegisterResendOTP(ctx context.Context, request event
 	// GỬI EMAIL VỚI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
 	go func() {
 		bgCtx := context.Background()
-		if err := sendOTPEmail(bgCtx, req.Email, otp, "register"); err != nil {
+		if err := sendOTPEmail(bgCtx, req.Email, otp, "register_otp"); err != nil {
 			log.Error("Failed to resend registration OTP email in background", "email", req.Email, "error", err)
 		}
 	}()
