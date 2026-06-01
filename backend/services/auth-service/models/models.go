@@ -4,15 +4,17 @@ import "time"
 
 // User represents a user in the system
 type User struct {
-	ID           int       `json:"id" db:"user_id"`
-	FullName     string    `json:"fullName" db:"full_name"`
-	Email        string    `json:"email" db:"email"`
-	Phone        string    `json:"phone" db:"phone"`
-	PasswordHash string    `json:"-" db:"password_hash"`
-	Role         string    `json:"role" db:"role"`
-	Status       string    `json:"status" db:"status"`
-	Wallet       float64   `json:"wallet" db:"Wallet"`
-	CreatedAt    time.Time `json:"createdAt" db:"created_at"`
+	ID           int        `json:"id" db:"user_id"`
+	FullName     string     `json:"fullName" db:"full_name"`
+	Email        string     `json:"email" db:"email"`
+	Phone        string     `json:"phone" db:"phone"`
+	PasswordHash string     `json:"-" db:"password_hash"`
+	Role         string     `json:"role" db:"role"`
+	Status       string     `json:"status" db:"status"`
+	Wallet       float64    `json:"wallet" db:"Wallet"`
+	CreatedAt    time.Time  `json:"createdAt" db:"created_at"`
+	SSOProvider  *string    `json:"ssoProvider" db:"sso_provider"`
+	DeletedAt    *time.Time `json:"deletedAt" db:"deleted_at"`
 }
 
 // LoginRequest represents login request body

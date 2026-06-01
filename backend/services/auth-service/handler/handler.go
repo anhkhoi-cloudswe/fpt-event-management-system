@@ -238,14 +238,14 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 		return createErrorResponse(http.StatusUnauthorized, "Invalid authentication token")
 	}
 
+	user, err := h.useCase.GetUserByEmail(ctx, claims.Email)
+	if err != nil || user == nil {
+		return createErrorResponse(http.StatusUnauthorized, "User not found")
+	}
+
 	resp := map[string]interface{}{
 		"status": "success",
-		"user": map[string]interface{}{
-			"id":       claims.UserID,
-			"email":    claims.Email,
-			"fullName": claims.FullName,
-			"role":     claims.Role,
-		},
+		"user":   user,
 	}
 	body, _ := json.Marshal(resp)
 
@@ -949,6 +949,43 @@ func (h *AuthHandler) HandleGoogleCallback(ctx context.Context, request events.A
 	}, nil
 }
 
+// HandleUpdatePhone handles POST /api/auth/update-phone for authenticated users
+func (h *AuthHandler) HandleUpdatePhone(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Extract the trusted email from headers injected by JWT middleware
+	email := request.Headers["X-User-Email"]
+	if email == "" {
+		token := extractToken(request)
+		if token != "" {
+			claims, err := jwt.ValidateToken(token)
+			if err == nil {
+				email = claims.Email
+			}
+		}
+	}
+	if email == "" {
+		return createErrorResponse(http.StatusUnauthorized, "User is not authenticated")
+	}
+
+	var req struct {
+		Phone string `json:"phone"`
+	}
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createStatusResponse(http.StatusBadRequest, "fail", "Invalid request body")
+	}
+
+	if req.Phone == "" {
+		return createStatusResponse(http.StatusBadRequest, "fail", "Số điện thoại không được để trống")
+	}
+
+	// Call use case to update phone directly
+	err := h.useCase.DirectUpdatePhone(ctx, email, req.Phone)
+	if err != nil {
+		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
+	}
+
+	return createStatusResponse(http.StatusOK, "success", "Cập nhật số điện thoại thành công")
+}
+
 // HandleUpdatePassword handles POST /api/auth/update-password for authenticated users
 func (h *AuthHandler) HandleUpdatePassword(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Extract the trusted email from headers injected by JWT middleware
@@ -973,4 +1010,103 @@ func (h *AuthHandler) HandleUpdatePassword(ctx context.Context, request events.A
 	}
 
 	return createStatusResponse(http.StatusOK, "success", "Cập nhật mật khẩu thành công")
+}
+
+// HandleCloseAccount handles POST /api/auth/close-account to soft-delete an account
+func (h *AuthHandler) HandleCloseAccount(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	token := extractToken(request)
+	if token == "" {
+		return createErrorResponse(http.StatusUnauthorized, "Missing authentication token")
+	}
+
+	claims, err := jwt.ValidateToken(token)
+	if err != nil {
+		return createErrorResponse(http.StatusUnauthorized, "Invalid authentication token")
+	}
+
+	err = h.useCase.CloseAccount(ctx, claims.UserID)
+	if err != nil {
+		return createErrorResponse(http.StatusBadRequest, err.Error())
+	}
+
+	// Clear HttpOnly token cookie
+	clearCookie := http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	}
+
+	resp := map[string]interface{}{
+		"status":  "success",
+		"message": "Tài khoản của bạn đã được đưa vào hàng đợi xóa. Bạn có 30 ngày để khôi phục trước khi bị xóa vĩnh viễn.",
+	}
+	body, _ := json.Marshal(resp)
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                "application/json",
+			"Access-Control-Allow-Origin": "*",
+			"Set-Cookie":                  clearCookie.String(),
+		},
+		Body: string(body),
+	}, nil
+}
+
+// HandleRestoreAccount handles POST /api/auth/restore-account to recover a PENDING_DELETE account
+func (h *AuthHandler) HandleRestoreAccount(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	token := extractToken(request)
+	if token == "" {
+		return createErrorResponse(http.StatusUnauthorized, "Missing authentication token")
+	}
+
+	claims, err := jwt.ValidateToken(token)
+	if err != nil {
+		return createErrorResponse(http.StatusUnauthorized, "Invalid authentication token")
+	}
+
+	err = h.useCase.RestoreAccount(ctx, claims.UserID)
+	if err != nil {
+		return createErrorResponse(http.StatusBadRequest, err.Error())
+	}
+
+	return createStatusResponse(http.StatusOK, "success", "Khôi phục tài khoản thành công")
+}
+
+// HandleSetSSOPassword handles POST /api/auth/set-sso-password for single sign-on users setting their password
+func (h *AuthHandler) HandleSetSSOPassword(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	token := extractToken(request)
+	if token == "" {
+		return createErrorResponse(http.StatusUnauthorized, "Missing authentication token")
+	}
+
+	claims, err := jwt.ValidateToken(token)
+	if err != nil {
+		return createErrorResponse(http.StatusUnauthorized, "Invalid authentication token")
+	}
+
+	var req models.UpdatePasswordRequest
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createStatusResponse(http.StatusBadRequest, "fail", "Invalid request body")
+	}
+
+	if req.Password == "" {
+		return createStatusResponse(http.StatusBadRequest, "fail", "Mật khẩu không được để trống")
+	}
+
+	err = h.useCase.SetSSOUserPassword(ctx, claims.Email, req.Password)
+	if err != nil {
+		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
+	}
+
+	return createStatusResponse(http.StatusOK, "success", "Thiết lập mật khẩu thành công. Từ giờ bạn có thể đăng nhập bằng mật khẩu này.")
+}
+
+// SweepExpiredAccounts invokes hard deletion of expired users
+func (h *AuthHandler) SweepExpiredAccounts(ctx context.Context) (int64, error) {
+	return h.useCase.HardDeleteExpiredAccounts(ctx)
 }

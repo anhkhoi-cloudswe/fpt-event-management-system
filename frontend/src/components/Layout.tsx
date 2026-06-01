@@ -32,6 +32,7 @@ import { RealtimeClock } from './RealtimeClock'
 import fptLogo from '../assets/fpt-logo.png'
 import fptLogoLoading from '../assets/fpt-logo-loading.png'
 import WelcomePasswordModal from './WelcomePasswordModal'
+import AccountRestoreOverlay from './common/AccountRestoreOverlay'
 
 const timezones = [
   { value: 'Asia/Ho_Chi_Minh', label: 'Asia/Ho_Chi_Minh (GMT+7)' },
@@ -256,6 +257,7 @@ export default function Layout() {
         ? 'bg-slate-950 text-slate-100 dark' 
         : 'bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 text-slate-800'
     }`}>
+      {user?.status === 'PENDING_DELETE' && <AccountRestoreOverlay />}
       {/* Header Status Bar */}
       <header className={`fixed top-0 left-0 right-0 h-16 z-40 transition-colors duration-500 shadow-md border-b flex items-center px-4 md:px-6 ${
         isDarkMode 

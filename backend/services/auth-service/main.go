@@ -123,6 +123,14 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return authHandler.HandleGoogleCallback(ctx, request)
 	case path == "/api/auth/update-password" && method == "POST":
 		return authHandler.HandleUpdatePassword(ctx, request)
+	case path == "/api/auth/update-phone" && method == "POST":
+		return authHandler.HandleUpdatePhone(ctx, request)
+	case path == "/api/auth/close-account" && method == "POST":
+		return authHandler.HandleCloseAccount(ctx, request)
+	case path == "/api/auth/restore-account" && method == "POST":
+		return authHandler.HandleRestoreAccount(ctx, request)
+	case path == "/api/auth/set-sso-password" && method == "POST":
+		return authHandler.HandleSetSSOPassword(ctx, request)
 	}
 
 	return events.APIGatewayProxyResponse{
@@ -135,6 +143,22 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 func main() {
 	loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
 	time.Local = loc
+
+	// Background sweeper for PENDING_DELETE accounts older than 30 days
+	go func() {
+		// Wait a bit on startup
+		time.Sleep(30 * time.Second)
+		for {
+			ctx := context.Background()
+			rows, err := authHandler.SweepExpiredAccounts(ctx)
+			if err != nil {
+				logger.Default().Error("Background sweeper failed: %v", err)
+			} else if rows > 0 {
+				logger.Default().Info("Background sweeper successfully hard-deleted %d expired user accounts", rows)
+			}
+			time.Sleep(12 * time.Hour) // Run twice a day
+		}
+	}()
 
 	handlerWithAuth := localserver.WithJWTAuth(Handler)
 

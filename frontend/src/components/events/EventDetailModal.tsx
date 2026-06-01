@@ -421,12 +421,12 @@ export function EventDetailModal({
         <div className="flex items-center justify-center min-h-screen p-4">
           {/* Modal Card: responsive width + scrollable */}
           <div
-            className="bg-white rounded-lg shadow-xl max-w-[90vw] w-full max-h-[85vh] flex flex-col overflow-hidden"
+            className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-lg shadow-xl max-w-[90vw] w-full max-h-[85vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()} // chặn click lan ra overlay (để không đóng khi click trong modal)
           >
             {/* ===== HEADER ===== */}
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
-              <h2 className="text-2xl font-bold text-gray-900">
+            <div className="sticky top-0 bg-white dark:bg-slate-900 border-b dark:border-slate-800 px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {event?.title ?? 'Chi tiết sự kiện'}
               </h2>
 
@@ -434,7 +434,7 @@ export function EventDetailModal({
               <button
                 type="button"
                 onClick={handleClose}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 dark:text-slate-300 rounded-full transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -479,8 +479,8 @@ export function EventDetailModal({
 
                   {/* ===== MÔ TẢ ===== */}
                   <div className="mb-6">
-                    <h3 className="text-lg font-semibold mb-2">Mô tả</h3>
-                    <p className="text-gray-700">{event.description}</p>
+                    <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Mô tả</h3>
+                    <p className="text-gray-700 dark:text-slate-300">{event.description}</p>
                   </div>
 
                   {/* ===== THÔNG TIN EVENT ===== */}
@@ -585,7 +585,7 @@ export function EventDetailModal({
 
                   {/* Speaker Bio dài -> hiển thị block riêng full width */}
                   {event.speakerName && event.speakerBio && event.speakerBio.length > 50 && (
-                    <div className="mb-6 pb-6 border-b bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg">
+                    <div className="mb-6 pb-6 border-b dark:border-slate-850 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-850 dark:to-slate-900/60 p-6 rounded-lg border dark:border-slate-800">
                       <div className="flex items-start gap-6">
                         {event.speakerAvatarUrl && (
                           <img
@@ -595,11 +595,11 @@ export function EventDetailModal({
                           />
                         )}
                         <div className="flex-1">
-                          <h3 className="text-lg sm:text-2xl font-bold mb-3 flex items-center text-gray-900">
+                          <h3 className="text-lg sm:text-2xl font-bold mb-3 flex items-center text-gray-900 dark:text-white">
                             {!event.speakerAvatarUrl && <span className="mr-2 text-2xl sm:text-3xl">👤</span>}
                             Về diễn giả{event.speakerName && `: ${event.speakerName}`}
                           </h3>
-                          <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
+                          <p className="text-gray-700 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
                             {event.speakerBio}
                           </p>
                         </div>
@@ -623,8 +623,8 @@ export function EventDetailModal({
 
                   {/* ===== GIÁ VÉ ===== */}
                   {event.tickets && event.tickets.length > 0 && (
-                    <div className="border-t pt-6 mb-6">
-                      <h3 className="text-lg font-semibold mb-4">Giá vé</h3>
+                    <div className="border-t dark:border-slate-800 pt-6 mb-6">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Giá vé</h3>
 
                       <div className="space-y-2">
                         {event.tickets.map((ticket) => {
@@ -663,27 +663,27 @@ export function EventDetailModal({
                                 })
                               }
                               className={`flex items-center justify-between gap-4 py-2 px-3 rounded-lg border cursor-pointer transition ${isSelectedTicket
-                                ? 'border-blue-600 bg-blue-50'
-                                : 'border-transparent hover:bg-gray-50'
+                                ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/30'
+                                : 'border-transparent dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-850'
                                 }`}
                             >
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium">{ticket.name}</p>
+                                <p className="font-medium text-gray-900 dark:text-white">{ticket.name}</p>
 
                                 {ticket.description && (
-                                  <p className="text-xs text-gray-500 line-clamp-2">
+                                  <p className="text-xs text-gray-500 dark:text-slate-400 line-clamp-2">
                                     {ticket.description}
                                   </p>
                                 )}
 
                                 {/* Hiển thị ghế còn lại */}
-                                <p className="text-sm text-gray-600">
+                                <p className="text-sm text-gray-600 dark:text-slate-300">
                                   Còn lại: {availableCount}/{total}
                                 </p>
                               </div>
 
                               {/* Giá vé */}
-                              <p className="font-semibold text-lg text-gray-900 whitespace-nowrap flex-shrink-0">
+                              <p className="font-semibold text-lg text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
                                 {ticket.price.toLocaleString('vi-VN')} đ
                               </p>
                             </div>
@@ -696,8 +696,8 @@ export function EventDetailModal({
                   {/* ===== SEAT GRID ===== */}
                   {/* Cho mọi role đều xem sơ đồ ghế, chỉ chặn đặt ghế cho manager hoặc event closed */}
                   {event.areaId && (
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-semibold mb-4">Chọn ghế</h3>
+                    <div className="border-t dark:border-slate-800 pt-6">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Chọn ghế</h3>
                       <SeatGrid
                         seats={allSeats}
                         loading={loadingSeats}
@@ -712,16 +712,16 @@ export function EventDetailModal({
                   )}
 
                   {/* ===== FOOTER ACTIONS ===== */}
-                  <div className="border-t mt-6 pt-6 flex justify-between items-center">
+                  <div className="border-t dark:border-slate-800 mt-6 pt-6 flex justify-between items-center">
                     {/* Bên trái: tổng tiền + ghế đã chọn */}
                     <div>
                       {selectedSeats.length > 0 && (
                         <div className="text-left">
-                          <p className="text-sm text-gray-600">Tổng tiền</p>
-                          <p className="text-2xl font-bold text-blue-600">
+                          <p className="text-sm text-gray-600 dark:text-slate-400">Tổng tiền</p>
+                          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                             {totalAmount.toLocaleString('vi-VN')} đ
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                             Ghế: {selectedSeatCodesText || 'Chưa chọn'}
                             {' · '}Số lượng: {selectedSeats.length}
                           </p>
@@ -755,7 +755,7 @@ export function EventDetailModal({
                         <button
                           type="button"
                           onClick={handleClose}
-                          className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                          className="px-6 py-2 border border-gray-300 dark:border-slate-700 dark:text-slate-350 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
                         >
                           Đóng
                         </button>

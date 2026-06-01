@@ -252,11 +252,11 @@ export function SeatGrid({
      * -> text-transparent để ẩn seatCode (trông như khóa toàn bộ)
      */
     if (gridDisabled && !isSelected) {
-      return 'border-gray-200 bg-white cursor-not-allowed text-transparent'
+      return 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-850 cursor-not-allowed text-transparent'
     }
 
     // Nếu ghế đang được chọn => highlight xanh dương
-    if (isSelected) return 'border-blue-600 bg-blue-100 font-semibold'
+    if (isSelected) return 'border-blue-600 dark:border-blue-500 bg-blue-100 dark:bg-blue-950/40 font-semibold dark:text-blue-300'
 
     /**
      * Nếu đã chọn đủ số ghế (maxReached) mà ghế này chưa chọn:
@@ -264,23 +264,23 @@ export function SeatGrid({
      * -> text-transparent để ẩn seatCode
      */
     if (maxReached && !isSelected) {
-      return 'border-gray-200 bg-white cursor-not-allowed text-transparent'
+      return 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-850 cursor-not-allowed text-transparent'
     }
 
     // Nếu ghế đã được đặt/chiếm => đỏ, disable
     const seatStatus = normalizeSeatStatus(seat.status)
 
     if (seatStatus === 'BOOKED') {
-      return 'border-red-400 bg-red-100 cursor-not-allowed text-red-800'
+      return 'border-red-400 dark:border-red-800 bg-red-100 dark:bg-red-950/40 cursor-not-allowed text-red-800 dark:text-red-300'
     }
 
     // Nếu ghế đang giữ chỗ / hold => xám, disable
     if (seatStatus === 'PENDING') {
-      return 'border-gray-400 bg-gray-200 cursor-not-allowed text-gray-700'
+      return 'border-gray-400 dark:border-slate-700 bg-gray-200 dark:bg-slate-800 cursor-not-allowed text-gray-700 dark:text-slate-400'
     }
 
     // Mặc định xem là ghế trống (AVAILABLE) => xanh lá + hover
-    return 'border-green-400 bg-green-50 hover:bg-green-100 text-green-800'
+    return 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-950/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-800 dark:text-green-300'
   }
 
   // ===================== PREPARE CATEGORY SECTIONS FOR RENDERING =====================
@@ -290,16 +290,16 @@ export function SeatGrid({
     {
       key: 'VIP',
       label: 'VIP SECTION',
-      borderColor: 'border-red-500',
-      bgColor: 'bg-red-50/30',
-      labelStyle: 'px-3 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full border border-red-300'
+      borderColor: 'border-red-500 dark:border-red-700',
+      bgColor: 'bg-red-50/30 dark:bg-red-950/5',
+      labelStyle: 'px-3 py-1 bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 text-xs font-semibold rounded-full border border-red-300 dark:border-red-800'
     },
     {
       key: 'STANDARD',
       label: 'STANDARD SECTION',
-      borderColor: 'border-blue-400',
-      bgColor: 'bg-blue-50/30',
-      labelStyle: 'px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full border border-blue-300'
+      borderColor: 'border-blue-400 dark:border-blue-600',
+      bgColor: 'bg-blue-50/30 dark:bg-blue-950/5',
+      labelStyle: 'px-3 py-1 bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-xs font-semibold rounded-full border border-blue-300 dark:border-blue-800'
     },
   ]
 
@@ -349,7 +349,7 @@ export function SeatGrid({
                       {/* Row display: letter + seat buttons */}
                       <div className="flex items-center space-x-2 lg:justify-center">
                         {/* Row letter (A/B/C...) */}
-                        <div className="w-5 sm:w-8 text-center font-semibold text-gray-700 text-xs sm:text-sm">
+                        <div className="w-5 sm:w-8 text-center font-semibold text-gray-700 dark:text-slate-350 text-xs sm:text-sm">
                           {row}
                         </div>
 
@@ -424,20 +424,20 @@ export function SeatGrid({
       </div>
 
       {/* ===================== LEGEND / CHÚ THÍCH ===================== */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <p className="text-xs font-semibold text-gray-700 mb-2">Chú thích:</p>
+      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-800">
+        <p className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-2">Chú thích:</p>
         <div className="flex flex-wrap gap-3 text-xs">
           <div className="flex items-center">
-            <div className="w-6 h-6 bg-green-50 border-2 border-green-400 rounded mr-1.5"></div>
-            <span>Ghế trống</span>
+            <div className="w-6 h-6 bg-green-50 dark:bg-green-950/20 border-2 border-green-400 dark:border-green-600 rounded mr-1.5"></div>
+            <span className="text-gray-650 dark:text-slate-400">Ghế trống</span>
           </div>
           <div className="flex items-center">
-            <div className="w-6 h-6 bg-gray-200 border-2 border-gray-400 rounded mr-1.5"></div>
-            <span>Đang đặt</span>
+            <div className="w-6 h-6 bg-gray-200 dark:bg-slate-800 border-2 border-gray-400 dark:border-slate-700 rounded mr-1.5"></div>
+            <span className="text-gray-650 dark:text-slate-400">Đang đặt</span>
           </div>
           <div className="flex items-center">
-            <div className="w-6 h-6 bg-red-100 border-2 border-red-400 rounded mr-1.5"></div>
-            <span>Đã đặt</span>
+            <div className="w-6 h-6 bg-red-100 dark:bg-red-950/40 border-2 border-red-400 dark:border-red-800 rounded mr-1.5"></div>
+            <span className="text-gray-650 dark:text-slate-400">Đã đặt</span>
           </div>
         </div>
       </div>

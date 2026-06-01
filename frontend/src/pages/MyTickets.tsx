@@ -416,21 +416,21 @@ export default function MyTickets() {
    * Render danh sách vé với search/filter/pagination
    */
   return (
-    <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+    <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
       {/* Tiêu đề trang */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-5">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight sm:text-4xl">
             Vé của tôi
           </h1>
-          <p className="text-sm text-slate-500 mt-1.5 max-w-2xl font-medium">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
             Quản lý, theo dõi lịch sử tham dự và sử dụng vé QR tham gia sự kiện tại trường FPT.
           </p>
         </div>
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-5 shadow-md mb-8">
+      <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-5 shadow-md mb-8">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search input */}
           <div className="flex-1 relative">
@@ -440,7 +440,7 @@ export default function MyTickets() {
               placeholder="Tìm kiếm theo tên sự kiện..."
               value={searchInput}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+              className="w-full pl-11 pr-4 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 dark:text-white font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
             />
           </div>
 
@@ -450,7 +450,7 @@ export default function MyTickets() {
             <select
               value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
-              className="w-full pl-11 pr-10 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
+              className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
               <option value="">Tất cả trạng thái</option>
               <option value="BOOKED">Chưa check-in</option>
@@ -465,7 +465,7 @@ export default function MyTickets() {
 
         {/* Results count */}
         {!loading && (
-          <div className="mt-3.5 text-xs text-slate-500 font-bold uppercase tracking-wider pl-1">
+          <div className="mt-3.5 text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider pl-1">
             Tìm thấy <span className="text-orange-655 font-extrabold">{totalRecords}</span> vé
           </div>
         )}
@@ -553,12 +553,12 @@ export default function MyTickets() {
               return (
                 <div
                   key={id}
-                  className="animate-fade-in-up group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-white/80 bg-white/70 backdrop-blur-md shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500"
+                  className="animate-fade-in-up group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500"
                   style={{ animationDelay: `${index * 80}ms` }}
                 >
                   {/* Decorative Ticket Punchout circles on left/right for passbook look */}
-                  <div className="absolute left-0 top-[68%] -translate-y-1/2 w-4 h-8 bg-slate-50 border-r border-slate-200/50 rounded-r-full z-10" />
-                  <div className="absolute right-0 top-[68%] -translate-y-1/2 w-4 h-8 bg-slate-50 border-l border-slate-200/50 rounded-l-full z-10" />
+                  <div className="absolute left-0 top-[68%] -translate-y-1/2 w-4 h-8 bg-slate-50 dark:bg-slate-950 border-r border-slate-200/50 dark:border-slate-850 rounded-r-full z-10" />
+                  <div className="absolute right-0 top-[68%] -translate-y-1/2 w-4 h-8 bg-slate-50 dark:bg-slate-950 border-l border-slate-200/50 dark:border-slate-850 rounded-l-full z-10" />
 
                   <div>
                     {/* Header Image/Banner */}
@@ -578,7 +578,7 @@ export default function MyTickets() {
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-slate-900/10 to-transparent" />
                       
                       {/* Floating Indicator for Ticket Code */}
-                      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm border border-white/95 text-slate-800 font-extrabold text-[10px] uppercase tracking-wider py-1 px-3 rounded-full shadow-sm">
+                      <div className="absolute top-4 right-4 bg-white/90 dark:bg-slate-800/90 border border-white/95 dark:border-slate-700 text-slate-800 dark:text-white font-extrabold text-[10px] uppercase tracking-wider py-1 px-3 rounded-full shadow-sm">
                         Mã: #{id}
                       </div>
 
@@ -620,26 +620,26 @@ export default function MyTickets() {
 
                     {/* Main content body */}
                     <div className="p-6 pb-4">
-                      <h3 className="text-xl font-bold text-slate-800 line-clamp-1 group-hover:text-orange-600 transition-colors duration-300 mb-4">
+                      <h3 className="text-xl font-bold text-slate-800 dark:text-white line-clamp-1 group-hover:text-orange-600 transition-colors duration-300 mb-4">
                         {title}
                       </h3>
 
                       {/* Info details */}
-                      <div className="space-y-2.5 text-xs text-slate-500 font-bold">
+                      <div className="space-y-2.5 text-xs text-slate-500 dark:text-slate-400 font-bold">
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                          <span>Thời gian: <strong className="text-slate-700">{startText}</strong></span>
+                          <span>Thời gian: <strong className="text-slate-700 dark:text-slate-200">{startText}</strong></span>
                         </div>
 
                         <div className="flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                          <span className="truncate">Địa điểm: <strong className="text-slate-700">{location}</strong></span>
+                          <span className="truncate">Địa điểm: <strong className="text-slate-700 dark:text-slate-200">{location}</strong></span>
                         </div>
 
                         {seat && (
                           <div className="flex items-center gap-2">
                             <TicketIcon className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                            <span>Số ghế: <strong className="text-slate-700">{seat}</strong></span>
+                            <span>Số ghế: <strong className="text-slate-700 dark:text-slate-200">{seat}</strong></span>
                           </div>
                         )}
 
@@ -652,16 +652,16 @@ export default function MyTickets() {
 
                         {/* Checkin checkout details if any */}
                         {getCheckInTime(t) && (
-                          <div className="flex items-center gap-2 border-t border-slate-100 pt-2.5 mt-2.5">
+                          <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-2.5 mt-2.5">
                             <Clock className={`w-4 h-4 flex-shrink-0 ${isCheckedOut(t) ? 'text-purple-500' : 'text-emerald-500'}`} />
-                            <span>Check-in: <strong className="text-slate-700">{formatTime(getCheckInTime(t))}</strong></span>
+                            <span>Check-in: <strong className="text-slate-700 dark:text-slate-200">{formatTime(getCheckInTime(t))}</strong></span>
                           </div>
                         )}
 
                         {status === 'CHECKED_OUT' && getCheckOutTime(t) && (
                           <div className="flex items-center gap-2 pt-1">
                             <Clock className="w-4 h-4 text-purple-500 flex-shrink-0" />
-                            <span>Check-out: <strong className="text-slate-700">{formatTime(getCheckOutTime(t))}</strong></span>
+                            <span>Check-out: <strong className="text-slate-700 dark:text-slate-200">{formatTime(getCheckOutTime(t))}</strong></span>
                           </div>
                         )}
                       </div>
@@ -669,7 +669,7 @@ export default function MyTickets() {
                   </div>
 
                   {/* Tear-off Ticket Footer / Action Panel */}
-                  <div className="px-6 pb-6 pt-4 border-t-2 border-dashed border-slate-200/80 mt-2 relative">
+                  <div className="px-6 pb-6 pt-4 border-t-2 border-dashed border-slate-200/80 dark:border-slate-800 mt-2 relative">
                     <div className="flex gap-3">
                       {/* Action Button: Báo cáo lỗi (Only for CHECKED_IN events with seat issues) */}
                       {!hasExistingReport && status === 'CHECKED_IN' && (
@@ -719,37 +719,37 @@ export default function MyTickets() {
             />
           )}
 
-          {/* ===================== POPUP QR CODE ===================== */}
+          {/* ===================== MODAL QR VÉ ===================== */}
           {qrTicket && (
             <div 
               className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
               onClick={() => setQrTicket(null)}
             >
               <div 
-                className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 border border-slate-100 animate-in zoom-in-95 duration-150 relative text-center"
+                className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-sm w-full p-6 border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-150 relative text-center"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="absolute top-4 right-4">
                   <button 
                     onClick={() => setQrTicket(null)}
-                    className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-150 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-150 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 transition-colors"
                   >
                     ✕
                   </button>
                 </div>
 
-                <div className="p-2.5 bg-orange-50 text-orange-650 rounded-2xl w-fit mx-auto mb-4 border border-orange-100/50 animate-bounce">
+                <div className="p-2.5 bg-orange-50 dark:bg-orange-950/30 text-orange-650 rounded-2xl w-fit mx-auto mb-4 border border-orange-100/50 animate-bounce">
                   <TicketIcon className="w-6 h-6" />
                 </div>
 
-                <h2 className="text-xl font-extrabold text-slate-900 mb-1">Mã QR Vé</h2>
-                <p className="text-sm font-semibold text-slate-500 mb-3 px-4 truncate">
+                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mb-1">Mã QR Vé</h2>
+                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 px-4 truncate">
                   {getEventTitle(qrTicket)}
                 </p>
 
                 {getTicketDisplayCode(qrTicket) && (
-                  <div className="mb-4 bg-orange-50/50 border border-orange-100/40 rounded-2xl py-2.5 px-4 inline-block">
-                    <p className="text-xs font-bold text-slate-450 uppercase tracking-wide">
+                  <div className="mb-4 bg-orange-50/50 dark:bg-orange-950/20 border border-orange-100/40 dark:border-orange-900/30 rounded-2xl py-2.5 px-4 inline-block">
+                    <p className="text-xs font-bold text-slate-450 dark:text-slate-400 uppercase tracking-wide">
                       Mã số vé của bạn
                     </p>
                     <p className="text-base font-black text-orange-600 tracking-wider">
@@ -760,7 +760,7 @@ export default function MyTickets() {
 
                 {/* Display QR code image from backend */}
                 {qrTicket.ticketCode && qrTicket.ticketCode.startsWith('data:image') ? (
-                  <div className="mx-auto w-60 h-60 mb-5 flex items-center justify-center bg-white p-3 border border-slate-200/80 rounded-2xl shadow-inner relative overflow-hidden group">
+                  <div className="mx-auto w-60 h-60 mb-5 flex items-center justify-center bg-white p-3 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-inner relative overflow-hidden group">
                     <img
                       src={qrTicket.ticketCode}
                       alt="Ticket QR Code"
@@ -769,23 +769,23 @@ export default function MyTickets() {
                     <div className="absolute inset-0 bg-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                   </div>
                 ) : getTicketDisplayCode(qrTicket) ? (
-                  <div className="mx-auto mb-5 p-5 bg-amber-50/60 border border-amber-100 rounded-2xl text-center">
+                  <div className="mx-auto mb-5 p-5 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl text-center">
                     <p className="text-sm font-bold text-amber-800 flex items-center justify-center gap-1 mb-1">
                       ⚠️ QR chưa sẵn sàng (vé cũ)
                     </p>
-                    <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">
                       Sử dụng mã vé dưới đây để check-in tại quầy sự kiện:
                     </p>
-                    <div className="font-mono text-xl font-black bg-white border border-amber-200/60 rounded-xl py-2 px-4 shadow-sm text-orange-600 tracking-widest inline-block animate-pulse">
+                    <div className="font-mono text-xl font-black bg-white dark:bg-slate-800 border border-amber-200/60 dark:border-slate-700 rounded-xl py-2 px-4 shadow-sm text-orange-600 tracking-widest inline-block animate-pulse">
                       {getTicketDisplayCode(qrTicket)}
                     </div>
                   </div>
                 ) : (
-                  <div className="mx-auto mb-5 p-5 bg-rose-50 border border-rose-100 rounded-2xl text-center">
+                  <div className="mx-auto mb-5 p-5 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl text-center">
                     <p className="text-sm font-bold text-rose-800 mb-1">
                       Không tìm thấy QR
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Vé này chưa có mã QR hoặc ID hợp lệ. Vui lòng liên hệ bộ phận hỗ trợ.
                     </p>
                   </div>
@@ -794,7 +794,7 @@ export default function MyTickets() {
                 <button
                   type="button"
                   onClick={() => setQrTicket(null)}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-5 py-3 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-all duration-300 shadow-sm active:scale-95"
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-5 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 rounded-2xl transition-all duration-300 shadow-sm active:scale-95"
                 >
                   Đóng cửa sổ
                 </button>

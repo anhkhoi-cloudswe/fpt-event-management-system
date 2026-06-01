@@ -14,6 +14,7 @@ export interface User {
   status?: string
   createdAt?: string
   wallet?: number
+  ssoProvider?: string
 }
 
 interface AuthContextType {

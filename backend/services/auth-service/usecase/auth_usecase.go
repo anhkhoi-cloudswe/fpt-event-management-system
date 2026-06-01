@@ -476,6 +476,7 @@ func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name st
 		_, _ = rand.Read(b)
 		randomPass := "GOOGLE_OAUTH_" + hex.EncodeToString(b)
 		
+		googleProvider := "GOOGLE"
 		newUser := &models.User{
 			FullName:     name,
 			Email:        email,
@@ -483,6 +484,7 @@ func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name st
 			PasswordHash: randomPass, // Repository will hash it properly
 			Role:         "STUDENT",
 			Status:       "ACTIVE",
+			SSOProvider:  &googleProvider,
 		}
 
 		userID, err = uc.userRepo.CreateUser(ctx, newUser)
@@ -517,6 +519,26 @@ func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name st
 	}, nil
 }
 
+// DirectUpdatePhone updates the user's phone number directly
+func (uc *AuthUseCase) DirectUpdatePhone(ctx context.Context, email, phone string) error {
+	// Verify user exists
+	user, err := uc.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return errors.New("lỗi khi kiểm tra email")
+	}
+	if user == nil {
+		return errors.New("email không tồn tại trong hệ thống")
+	}
+
+	// Update phone in database
+	err = uc.userRepo.UpdatePhoneByEmail(ctx, email, phone)
+	if err != nil {
+		return errors.New("không thể cập nhật số điện thoại")
+	}
+
+	return nil
+}
+
 // DirectUpdatePassword handles direct password update for authenticated users without OTP verification
 func (uc *AuthUseCase) DirectUpdatePassword(ctx context.Context, email, newPassword string) error {
 	if len(newPassword) < 6 {
@@ -539,4 +561,48 @@ func (uc *AuthUseCase) DirectUpdatePassword(ctx context.Context, email, newPassw
 	}
 
 	return nil
+}
+
+// GetUserByEmail gets full user details by email
+func (uc *AuthUseCase) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	return uc.userRepo.FindByEmail(ctx, email)
+}
+
+// CloseAccount soft deletes user account (sets status to PENDING_DELETE and sets deleted_at)
+func (uc *AuthUseCase) CloseAccount(ctx context.Context, userID int) error {
+	return uc.userRepo.SoftDeleteUserWithTimestamp(ctx, userID)
+}
+
+// RestoreAccount restores pending deleted account
+func (uc *AuthUseCase) RestoreAccount(ctx context.Context, userID int) error {
+	return uc.userRepo.RestoreUserAccount(ctx, userID)
+}
+
+// SetSSOUserPassword sets password for Google authenticated users and removes SSO status
+func (uc *AuthUseCase) SetSSOUserPassword(ctx context.Context, email, password string) error {
+	if len(password) < 6 {
+		return errors.New("mật khẩu phải có ít nhất 6 ký tự")
+	}
+
+	// Verify user exists
+	user, err := uc.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return errors.New("lỗi khi kiểm tra email")
+	}
+	if user == nil {
+		return errors.New("email không tồn tại trong hệ thống")
+	}
+
+	// Update password and clear SSO provider in database
+	err = uc.userRepo.UpdatePasswordAndClearSSO(ctx, email, password)
+	if err != nil {
+		return errors.New("không thể cập nhật mật khẩu và sso")
+	}
+
+	return nil
+}
+
+// HardDeleteExpiredAccounts sweeps PENDING_DELETE users older than 30 days
+func (uc *AuthUseCase) HardDeleteExpiredAccounts(ctx context.Context) (int64, error) {
+	return uc.userRepo.HardDeleteExpiredUsers(ctx)
 }

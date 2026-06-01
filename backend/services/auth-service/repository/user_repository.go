@@ -38,7 +38,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 	}
 
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, Wallet, created_at
+		SELECT user_id, full_name, email, phone, password_hash, role, status, Wallet, created_at, sso_provider, deleted_at
 		FROM Users
 		WHERE email = $1
 	`
@@ -54,6 +54,8 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 		&user.Status,
 		&user.Wallet,
 		&user.CreatedAt,
+		&user.SSOProvider,
+		&user.DeletedAt,
 	)
 
 	if err != nil {
@@ -113,7 +115,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 // FindByEmail finds a user by email
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, Wallet, created_at
+		SELECT user_id, full_name, email, phone, password_hash, role, status, Wallet, created_at, sso_provider, deleted_at
 		FROM Users
 		WHERE email = $1
 	`
@@ -129,6 +131,8 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 		&user.Status,
 		&user.Wallet,
 		&user.CreatedAt,
+		&user.SSOProvider,
+		&user.DeletedAt,
 	)
 
 	if err != nil {
@@ -172,8 +176,8 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (int
 	user.PasswordHash = hashedPwd
 
 	query := `
-		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet)
-		VALUES ($1, $2, $3, $4, $5, $6, 0)
+		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet, sso_provider, deleted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8)
 		RETURNING user_id
 	`
 
@@ -187,6 +191,8 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (int
 		user.PasswordHash,
 		user.Role,
 		user.Status,
+		user.SSOProvider,
+		user.DeletedAt,
 	).Scan(&userID)
 
 	if err != nil {
@@ -229,6 +235,27 @@ func (r *UserRepository) AdminCreateAccount(ctx context.Context, req models.Admi
 	return userID, nil
 }
 
+// UpdatePhoneByEmail - Cập nhật số điện thoại theo email
+func (r *UserRepository) UpdatePhoneByEmail(ctx context.Context, email, phone string) error {
+	query := `UPDATE Users SET phone = $1 WHERE email = $2`
+
+	result, err := r.db.ExecContext(ctx, query, phone, email)
+	if err != nil {
+		return fmt.Errorf("failed to update phone: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+
+	if rows == 0 {
+		return errors.New("user not found")
+	}
+
+	return nil
+}
+
 // UpdatePasswordByEmail - Cập nhật mật khẩu theo email
 // KHỚP VỚI Java UsersDAO.updatePasswordByEmail
 func (r *UserRepository) UpdatePasswordByEmail(ctx context.Context, email, newPassword string) error {
@@ -267,8 +294,8 @@ func (r *UserRepository) CreateUserWithHash(ctx context.Context, user *models.Us
 	}
 
 	query := `
-		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet)
-		VALUES ($1, $2, $3, $4, $5, $6, 0)
+		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet, sso_provider, deleted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8)
 		RETURNING user_id
 	`
 
@@ -282,6 +309,8 @@ func (r *UserRepository) CreateUserWithHash(ctx context.Context, user *models.Us
 		passwordHash,
 		user.Role,
 		user.Status,
+		user.SSOProvider,
+		user.DeletedAt,
 	).Scan(&userID)
 
 	if err != nil {
@@ -382,7 +411,7 @@ func (r *UserRepository) SoftDeleteUser(ctx context.Context, userID string) erro
 // KHỚP VỚI Java UsersDAO.getStaffAndOrganizer() - filter by ACTIVE and INACTIVE status
 func (r *UserRepository) FindByRole(ctx context.Context, role string) ([]models.User, error) {
 	query := `
-		SELECT user_id, full_name, email, phone, role, status, Wallet, created_at
+		SELECT user_id, full_name, email, phone, role, status, Wallet, created_at, sso_provider, deleted_at
 		FROM Users
 		WHERE role = $1 AND status IN ('ACTIVE', 'INACTIVE')
 		ORDER BY full_name
@@ -406,6 +435,8 @@ func (r *UserRepository) FindByRole(ctx context.Context, role string) ([]models.
 			&user.Status,
 			&user.Wallet,
 			&user.CreatedAt,
+			&user.SSOProvider,
+			&user.DeletedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan user: %w", err)
@@ -414,4 +445,87 @@ func (r *UserRepository) FindByRole(ctx context.Context, role string) ([]models.
 	}
 
 	return users, nil
+}
+
+// SoftDeleteUserWithTimestamp soft deletes user (sets status to PENDING_DELETE and sets deleted_at)
+func (r *UserRepository) SoftDeleteUserWithTimestamp(ctx context.Context, userID int) error {
+	query := `UPDATE Users SET status = 'PENDING_DELETE', deleted_at = CURRENT_TIMESTAMP WHERE user_id = $1`
+
+	result, err := r.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("failed to soft delete user with timestamp: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errors.New("user not found")
+	}
+
+	return nil
+}
+
+// RestoreUserAccount restores user status to ACTIVE and clears deleted_at
+func (r *UserRepository) RestoreUserAccount(ctx context.Context, userID int) error {
+	query := `UPDATE Users SET status = 'ACTIVE', deleted_at = NULL WHERE user_id = $1`
+
+	result, err := r.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("failed to restore user account: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errors.New("user not found")
+	}
+
+	return nil
+}
+
+// UpdatePasswordAndClearSSO updates password and sets sso_provider to NULL
+func (r *UserRepository) UpdatePasswordAndClearSSO(ctx context.Context, email, newPassword string) error {
+	passwordHash, hashErr := hash.HashPassword(newPassword)
+	if hashErr != nil {
+		return fmt.Errorf("failed to hash password: %w", hashErr)
+	}
+
+	query := `UPDATE Users SET password_hash = $1, sso_provider = NULL WHERE email = $2`
+
+	result, err := r.db.ExecContext(ctx, query, passwordHash, email)
+	if err != nil {
+		return fmt.Errorf("failed to update password and sso: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+
+	if rows == 0 {
+		return errors.New("user not found")
+	}
+
+	return nil
+}
+
+// HardDeleteExpiredUsers permanently deletes user accounts in PENDING_DELETE state older than 30 days
+func (r *UserRepository) HardDeleteExpiredUsers(ctx context.Context) (int64, error) {
+	query := `DELETE FROM Users WHERE status = 'PENDING_DELETE' AND deleted_at < CURRENT_TIMESTAMP - INTERVAL '30 days'`
+
+	result, err := r.db.ExecContext(ctx, query)
+	if err != nil {
+		return 0, fmt.Errorf("failed to hard delete expired users: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return rows, nil
 }
