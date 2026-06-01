@@ -154,6 +154,10 @@ func NewAuthHandlerWithDB(dbConn *sql.DB) *AuthHandler {
 
 // verifyRecaptcha verifies reCAPTCHA token if configured
 func verifyRecaptcha(token, action, clientIP string) error {
+	if recaptchaService == nil {
+		log.Warn("reCAPTCHA service is not initialized, skipping verification")
+		return nil
+	}
 	if !recaptchaService.IsConfigured() {
 		log.Debug("reCAPTCHA not configured, skipping verification")
 		return nil
@@ -163,6 +167,10 @@ func verifyRecaptcha(token, action, clientIP string) error {
 	if err != nil {
 		log.Error("reCAPTCHA verification error", "error", err)
 		return err
+	}
+	if result == nil {
+		log.Error("reCAPTCHA verification returned nil result")
+		return fmt.Errorf("empty recaptcha response")
 	}
 	if !result.Valid {
 		log.Warn("reCAPTCHA verification failed", "message", result.ErrorMessage, "score", result.Score)
@@ -605,8 +613,8 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 	if req.RecaptchaToken != "" {
 		clientIP := getClientIP(request)
 		if err := verifyRecaptcha(req.RecaptchaToken, "register", clientIP); err != nil {
-			log.Warn("reCAPTCHA failed for registration", "email", req.Email, "error", err)
-			return createStatusResponse(http.StatusForbidden, "fail", "Xác thực reCAPTCHA thất bại")
+			log.Error("reCAPTCHA failed for registration", "email", req.Email, "error", err)
+			return createStatusResponse(http.StatusBadRequest, "fail", "Xác thực reCAPTCHA không hợp lệ")
 		}
 	}
 

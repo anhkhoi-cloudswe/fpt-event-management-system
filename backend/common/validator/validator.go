@@ -90,7 +90,7 @@ func GetEmailError(email string) string {
 func GetPhoneError(phone string) string {
 	trimmed := strings.TrimSpace(phone)
 	if trimmed == "" {
-		return "Số điện thoại không được để trống"
+		return ""
 	}
 	if !IsValidVNPhone(trimmed) {
 		return "Số điện thoại không hợp lệ. Phải là số Việt Nam (03x, 05x, 07x, 08x, 09x)"
