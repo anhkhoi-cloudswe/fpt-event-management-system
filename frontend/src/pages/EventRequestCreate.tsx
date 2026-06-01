@@ -198,61 +198,7 @@ export default function EventRequestCreate() {
     preferredStart: '',
     preferredEnd: '',
     expectedParticipants: '',
-    bannerUrl: '',
   })
-
-  // selectedImage: file ảnh banner user chọn
-  const [selectedImage, setSelectedImage] = useState<File | null>(null)
-
-  // imagePreview: preview ảnh banner
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-
-  // isDragging: trạng thái kéo thả file
-  const [isDragging, setIsDragging] = useState(false)
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }
-
-  const handleDragLeave = () => {
-    setIsDragging(false)
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0]
-      if (file.type.startsWith('image/')) {
-        setSelectedImage(file)
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          setImagePreview(reader.result as string)
-        }
-        reader.readAsDataURL(file)
-      } else {
-        showToast('error', 'Chỉ chấp nhận tệp hình ảnh')
-      }
-    }
-  }
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0]
-      setSelectedImage(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleRemoveImage = () => {
-    setSelectedImage(null)
-    setImagePreview(null)
-  }
 
   // isSubmitting: trạng thái đang submit form -> disable nút
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -512,56 +458,6 @@ export default function EventRequestCreate() {
               )}
             </div>
 
-            {/* Banner Dropzone Area */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                Banner quảng bá sự kiện
-              </label>
-              
-              {!imagePreview ? (
-                <div
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onClick={() => document.getElementById('banner-file-input')?.click()}
-                  className={`w-full border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center min-h-[160px] ${
-                    isDragging
-                      ? 'border-orange-500 bg-orange-50/50 scale-[1.01]'
-                      : 'border-gray-300 bg-gray-50/50 hover:border-orange-400 hover:bg-orange-50/10'
-                  }`}
-                >
-                  <input
-                    type="file"
-                    id="banner-file-input"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                  />
-                  <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-sm font-bold text-gray-700">Kéo và thả ảnh banner vào đây</p>
-                  <p className="text-xs text-gray-500 mt-1">Hoặc click để duyệt tìm tệp hình ảnh từ thiết bị của bạn</p>
-                </div>
-              ) : (
-                <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-md h-48 group">
-                  <img
-                    src={imagePreview}
-                    alt="Banner Preview"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={handleRemoveImage}
-                      className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold shadow-lg hover:bg-red-700 transition-colors"
-                    >
-                      Xóa hình ảnh
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
 
             {/* Description */}
             <div>

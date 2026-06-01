@@ -396,7 +396,7 @@ export default function Events() {
                     {upcomingEvents.map(event => (
                       <div
                         key={event.eventId}
-                        className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full"
+                        className="bg-white dark:bg-slate-900 border border-white/80 dark:border-slate-800/80 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full"
                       >
                         {/* Banner */}
                         {event.bannerUrl && (
@@ -410,7 +410,7 @@ export default function Events() {
                         {/* Content */}
                         <div className="p-6 flex flex-col flex-grow">
                           <div className="flex items-start justify-between mb-2">
-                            <h3 className="text-xl font-semibold text-gray-900 flex-1 line-clamp-2 min-h-[3.5rem]">
+                            <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex-1 line-clamp-2 min-h-[3.5rem]">
                               {event.title}
                             </h3>
 
@@ -421,7 +421,7 @@ export default function Events() {
                                 {(user?.role === 'ADMIN' || isOrganizer) && (
                                   <button
                                     onClick={() => handleManageConfig(event.eventId, event.title)}
-                                    className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                                    className="p-1 text-purple-650 hover:bg-purple-50 rounded"
                                     title="Quản lý Check-in Gate"
                                   >
                                     <Settings size={18} />
@@ -458,27 +458,27 @@ export default function Events() {
                           </div>
 
                           {/* Mô tả */}
-                          <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-[2.5rem]">
+                          <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2 min-h-[2.5rem]">
                             {event.description}
                           </p>
 
                           {/* Thông tin ngày/địa điểm/số chỗ */}
                           <div className="space-y-2 mb-4 flex-grow">
-                            <div className="flex items-center text-sm text-gray-600">
+                            <div className="flex items-center text-sm text-gray-650 dark:text-gray-350">
                               <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
                               {format(new Date(event.startTime), 'dd/MM/yyyy HH:mm', {
                                 locale: vi
                               })}
                             </div>
 
-                            <div className="flex items-center text-sm text-gray-600">
+                            <div className="flex items-center text-sm text-gray-650 dark:text-gray-350">
                               <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
                               <span className="line-clamp-1">
                                 {event.venueLocation || event.location || 'Chưa xác định'}
                               </span>
                             </div>
 
-                            <div className="flex items-center text-sm text-gray-600">
+                            <div className="flex items-center text-sm text-gray-650 dark:text-gray-350">
                               <Users className="w-4 h-4 mr-2 flex-shrink-0" />
                               {event.maxSeats} chỗ
                             </div>
@@ -489,10 +489,10 @@ export default function Events() {
                             <div className="flex items-center justify-between mb-4">
                               <span
                                 className={`px-3 py-1 rounded-full text-xs font-medium ${event.status === 'OPEN'
-                                  ? 'bg-green-100 text-green-800'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300'
                                   : event.status === 'CLOSED'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-gray-100 text-gray-800'
+                                    ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
+                                    : 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-300'
                                   }`}
                               >
                                 {event.status === 'OPEN'
@@ -505,7 +505,7 @@ export default function Events() {
 
                             <button
                               onClick={() => handleEventClick(event)}
-                              className="w-full text-center bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                              className="w-full text-center bg-blue-600 dark:bg-orange-600 hover:bg-blue-700 dark:hover:bg-orange-500 text-white py-2 rounded-lg transition-colors font-bold"
                             >
                               Xem chi tiết
                             </button>

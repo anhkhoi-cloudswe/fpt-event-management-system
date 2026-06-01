@@ -472,10 +472,10 @@ export default function Layout() {
       {/* Main Layout Grid */}
       <div className="flex flex-1 pt-16 overflow-hidden">
         {/* Desktop Left Sidebar */}
-        <aside className={`hidden md:flex flex-col w-64 flex-shrink-0 border-r transition-colors duration-500 ${
+        <aside className={`hidden md:flex flex-col w-64 flex-shrink-0 border-r transition-colors duration-500 backdrop-blur-md ${
           isDarkMode 
-            ? 'bg-slate-900/60 border-slate-800/80 text-slate-200' 
-            : 'bg-white/60 border-orange-100/60 text-slate-800'
+            ? 'bg-slate-900/90 border-slate-800/80 text-slate-200' 
+            : 'bg-white/80 border-orange-100/60 text-slate-800'
         }`}>
           <div className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
             {renderSidebarLinks()}
@@ -487,7 +487,7 @@ export default function Layout() {
           <>
             {/* Backdrop */}
             <div 
-              className="fixed inset-0 z-45 bg-slate-950/40 backdrop-blur-xs md:hidden"
+              className="fixed inset-0 z-45 bg-slate-950/60 backdrop-blur-md md:hidden"
               onClick={() => setMobileMenuOpen(false)}
             />
             <aside className={`fixed top-0 left-0 bottom-0 w-72 z-50 flex flex-col border-r shadow-2xl transition-all duration-300 md:hidden ${

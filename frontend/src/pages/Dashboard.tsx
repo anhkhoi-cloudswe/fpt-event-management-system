@@ -602,9 +602,9 @@ export default function Dashboard() {
                     <button
                       key={event.eventId}
                       onClick={() => openEventDetail(event.eventId)}
-                      className={`text-left block rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer bg-white h-full flex flex-col border-2 ${showTodayBadge
+                      className={`text-left block rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer bg-white dark:bg-slate-900 h-full flex flex-col border-2 ${showTodayBadge
                         ? 'border-red-500 shadow-xl shadow-red-500/20 transform scale-[1.02]'
-                        : 'border-white/80 shadow-md hover:border-orange-500'
+                        : 'border-white/80 dark:border-slate-800/80 shadow-md hover:border-orange-500 dark:hover:border-orange-500'
                         }`}
                     >
                       {/* Banner Image */}
@@ -622,8 +622,8 @@ export default function Dashboard() {
                           )}
                         </div>
                       ) : (
-                        <div className="w-full h-44 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center relative">
-                          <Calendar className="w-12 h-12 text-blue-400" />
+                        <div className="w-full h-44 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center relative">
+                          <Calendar className="w-12 h-12 text-blue-400 dark:text-blue-500" />
                           {showTodayBadge && (
                             <span className="absolute top-3 right-3 px-3 py-1.5 bg-gradient-to-r from-red-600 to-orange-600 text-white text-xs font-bold rounded-lg shadow-lg animate-pulse">
                               🔥 HÔM NAY
@@ -636,33 +636,33 @@ export default function Dashboard() {
                       <div className="p-5 flex-1 flex flex-col">
                         {/* Status Badge */}
                         <span className={`inline-block px-2.5 py-1 text-xs font-bold rounded-lg mb-3 w-fit tracking-wide ${isEventClosedOrEnded(event, activeTab)
-                          ? 'bg-gray-100 text-gray-700'
-                          : 'bg-red-100 text-red-700'
+                          ? 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-gray-300'
+                          : 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300'
                           }`}>
                           {getStatusBadge(event, activeTab)}
                         </span>
 
                         {/* Title */}
-                        <h3 className={`text-base font-bold mb-2 line-clamp-2 leading-snug ${showTodayBadge ? 'text-red-600' : 'text-gray-900'
+                        <h3 className={`text-base font-bold mb-2 line-clamp-2 leading-snug ${showTodayBadge ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'
                           }`}>
                           {event.title}
                         </h3>
 
                         {/* Date & Time */}
-                        <p className={`text-xs mb-3 font-semibold line-clamp-1 ${showTodayBadge ? 'text-red-600' : 'text-gray-600'
+                        <p className={`text-xs mb-3 font-semibold line-clamp-1 ${showTodayBadge ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300'
                           }`}>
                           {formatWallClockDateTimeWithDayOfWeek(event.startTime)}
                         </p>
 
                         {/* Location */}
-                        <p className="text-xs text-gray-500 line-clamp-2 mt-auto leading-relaxed">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-auto leading-relaxed">
                           📍 {event.venueLocation || event.location || 'Trực tuyến'}
                         </p>
 
                         {/* View Details Button Spacer */}
-                        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                          <p className="text-orange-600 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
-                          <svg className="w-4 h-4 text-orange-600 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
+                          <p className="text-orange-600 dark:text-orange-500 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
+                          <svg className="w-4 h-4 text-orange-600 dark:text-orange-500 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                           </svg>
                         </div>
@@ -740,7 +740,7 @@ export default function Dashboard() {
                     <button
                       key={event.eventId}
                       onClick={() => openEventDetail(event.eventId)}
-                      className="text-left block rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer bg-white border border-white/80 shadow-md h-full flex flex-col"
+                      className="text-left block rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer bg-white dark:bg-slate-900 border border-white/80 dark:border-slate-800/80 shadow-md h-full flex flex-col"
                     >
                       {/* Banner */}
                       {event.bannerUrl ? (
@@ -752,8 +752,8 @@ export default function Dashboard() {
                           />
                         </div>
                       ) : (
-                        <div className="w-full h-44 bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center relative">
-                          <Calendar className="w-12 h-12 text-yellow-400" />
+                        <div className="w-full h-44 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center relative">
+                          <Calendar className="w-12 h-12 text-yellow-400 dark:text-yellow-500" />
                         </div>
                       )}
 
@@ -761,26 +761,26 @@ export default function Dashboard() {
                       <div className="p-5 flex-1 flex flex-col">
                         {/* Status Badge */}
                         <span className={`inline-block px-2.5 py-1 text-xs font-bold rounded-lg mb-3 w-fit tracking-wide ${isEventClosedOrEnded(event, activeTab)
-                          ? 'bg-gray-100 text-gray-700'
-                          : 'bg-blue-100 text-blue-700'
+                          ? 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-gray-300'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
                           }`}>
                           {getStatusBadge(event, activeTab)}
                         </span>
 
-                        <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 leading-snug">
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 leading-snug">
                           {event.title}
                         </h3>
-                        <p className="text-xs text-gray-600 mb-3 font-semibold line-clamp-1">
+                        <p className="text-xs text-gray-600 dark:text-gray-300 mb-3 font-semibold line-clamp-1">
                           {formatWallClockDateTimeWithDayOfWeek(event.startTime)}
                         </p>
-                        <p className="text-xs text-gray-500 line-clamp-2 mt-auto leading-relaxed">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-auto leading-relaxed">
                           📍 {event.venueLocation || event.location || 'Trực tuyến'}
                         </p>
 
                         {/* View Details Button Spacer */}
-                        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                          <p className="text-orange-600 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
-                          <svg className="w-4 h-4 text-orange-600 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
+                          <p className="text-orange-600 dark:text-orange-500 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
+                          <svg className="w-4 h-4 text-orange-600 dark:text-orange-500 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                           </svg>
                         </div>
@@ -857,7 +857,7 @@ export default function Dashboard() {
                   <button
                     key={event.eventId}
                     onClick={() => openEventDetail(event.eventId)}
-                    className="text-left block rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer bg-white border border-white/80 shadow-md opacity-85 h-full flex flex-col"
+                    className="text-left block rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer bg-white dark:bg-slate-900 border border-white/80 dark:border-slate-800/80 shadow-md opacity-85 hover:opacity-100 transition-opacity h-full flex flex-col"
                   >
                     {/* Banner */}
                     {event.bannerUrl ? (
@@ -869,33 +869,33 @@ export default function Dashboard() {
                         />
                       </div>
                     ) : (
-                      <div className="w-full h-44 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                        <Calendar className="w-12 h-12 text-gray-400" />
+                      <div className="w-full h-44 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center relative">
+                        <Calendar className="w-12 h-12 text-gray-450 dark:text-gray-500" />
                       </div>
                     )}
  
                     {/* Content */}
                     <div className="p-5 flex-1 flex flex-col">
-                      <span className="inline-block px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded-lg mb-3 w-fit tracking-wide">
+                      <span className="inline-block px-2.5 py-1 bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-gray-300 text-xs font-bold rounded-lg mb-3 w-fit tracking-wide">
                         {getStatusBadge(event, activeTab)}
                       </span>
 
-                      <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 leading-snug">
+                      <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 leading-snug">
                         {event.title}
                       </h3>
 
-                      <p className="text-xs text-gray-600 mb-3 font-semibold line-clamp-1">
+                      <p className="text-xs text-gray-650 dark:text-gray-300 mb-3 font-semibold line-clamp-1">
                         {formatWallClockDateTimeWithDayOfWeek(event.startTime)}
                       </p>
 
-                      <p className="text-xs text-gray-500 line-clamp-2 mt-auto leading-relaxed">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-auto leading-relaxed">
                         📍 {event.venueLocation || event.location || 'Trực tuyến'}
                       </p>
 
                       {/* View Details Button Spacer */}
-                      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                        <p className="text-orange-600 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
-                        <svg className="w-4 h-4 text-orange-600 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
+                        <p className="text-orange-600 dark:text-orange-500 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
+                        <svg className="w-4 h-4 text-orange-600 dark:text-orange-500 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
@@ -903,6 +903,7 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
+
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="w-full flex justify-center items-center gap-2 mt-10">

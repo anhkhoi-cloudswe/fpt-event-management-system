@@ -494,7 +494,10 @@ export default function GuestLanding() {
     <div id="top" className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 lg:pl-20 transition-all duration-500">
 
       {/* ===================== DESKTOP COLLAPSIBLE SIDEBAR ===================== */}
-      <aside className="fixed inset-y-0 left-0 z-50 hidden lg:flex flex-col bg-[#0B0F19]/95 backdrop-blur-md border-r border-slate-800/80 shadow-2xl text-slate-300 transition-all duration-500 ease-in-out w-20 hover:w-64 group/sidebar">
+      <aside 
+        className="fixed inset-y-0 left-0 z-50 hidden lg:flex flex-col border-r border-slate-800/80 shadow-2xl text-slate-300 transition-all duration-500 ease-in-out w-20 hover:w-64 group/sidebar"
+        style={{ backgroundColor: 'rgba(11, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}
+      >
         {/* Top Logo / Bolt Marker */}
         <div className="h-20 flex items-center justify-start px-6 gap-4 border-b border-slate-800/60 overflow-hidden">
           <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/20">
@@ -546,11 +549,14 @@ export default function GuestLanding() {
           {/* Backdrop blur */}
           <div
             onClick={() => setIsMobileMenuOpen(false)}
-            className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm transition-opacity duration-300"
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300"
           ></div>
 
           {/* Sidebar Panel */}
-          <aside className="fixed inset-y-0 left-0 w-72 bg-[#0B0F19]/98 text-slate-100 shadow-2xl flex flex-col p-6 z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right">
+          <aside 
+            className="fixed inset-y-0 left-0 w-72 text-slate-100 shadow-2xl flex flex-col p-6 z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right"
+            style={{ backgroundColor: 'rgba(11, 15, 25, 0.96)', backdropFilter: 'blur(24px)' }}
+          >
             {/* Header of Drawer */}
             <div className="flex items-center justify-between pb-6 border-b border-slate-800/60">
               <div className="flex items-center gap-3">
