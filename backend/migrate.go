@@ -77,6 +77,10 @@ func main() {
 			desc:  "Add sso_provider column",
 			query: "ALTER TABLE users ADD COLUMN IF NOT EXISTS sso_provider VARCHAR(50) DEFAULT NULL",
 		},
+		{
+			desc:  "Add theme column",
+			query: "ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(10) DEFAULT 'light'",
+		},
 	}
 
 	for _, q := range queries {

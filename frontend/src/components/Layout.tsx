@@ -43,7 +43,7 @@ const timezones = [
 ]
 
 export default function Layout() {
-  const { user, logout } = useAuth()
+  const { user, logout, refreshUser } = useAuth()
   const { balance, loading: balanceLoading } = useWallet()
   const { showToast } = useToast()
   const navigate = useNavigate()
@@ -51,32 +51,89 @@ export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showLoading, setShowLoading] = useState(false)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+  const [sidebarMode, setSidebarMode] = useState<'expanded' | 'collapsed' | 'hover-expand'>(() => {
+    if (user?.id) {
+      return (localStorage.getItem('sidebar_mode_' + user.id) as any) || 'hover-expand'
+    }
+    return 'hover-expand'
+  })
+  const [showModePopover, setShowModePopover] = useState(false)
+
+  useEffect(() => {
+    if (user?.id) {
+      setSidebarMode((localStorage.getItem('sidebar_mode_' + user.id) as any) || 'hover-expand')
+    }
+  }, [user])
 
   // Settings Panel States
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [phone, setPhone] = useState(localStorage.getItem('user_phone_' + user?.id) || user?.phone || '')
-  const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') === 'dark')
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (user?.id) {
+      return localStorage.getItem('theme_user_' + user.id) === 'dark'
+    }
+    return localStorage.getItem('theme') === 'dark'
+  })
   const [timezone, setTimezone] = useState(localStorage.getItem('user_timezone') || 'Asia/Ho_Chi_Minh')
   const [autoDetectTz, setAutoDetectTz] = useState(localStorage.getItem('auto_timezone') !== 'false')
 
-  // Sync phone value when user is loaded/refreshed from DB
+  // Sync theme changes reactively when updated from profile or header
+  useEffect(() => {
+    const handleThemeChange = () => {
+      if (user?.id) {
+        setIsDarkMode(localStorage.getItem('theme_user_' + user.id) === 'dark')
+      } else {
+        setIsDarkMode(localStorage.getItem('theme') === 'dark')
+      }
+    }
+    window.addEventListener('theme-change', handleThemeChange)
+    return () => window.removeEventListener('theme-change', handleThemeChange)
+  }, [user])
+
+  // Sync phone value and theme when user is loaded/refreshed from DB
   useEffect(() => {
     if (user) {
       setPhone(localStorage.getItem('user_phone_' + user.id) || user.phone || '')
+      setIsDarkMode(localStorage.getItem('theme_user_' + user.id) === 'dark')
     }
   }, [user])
 
-  // Sync dark class on document root + notify other components (e.g. Profile.tsx)
+  // Sync dark class on document root + notify other components
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('theme', 'dark')
+    if (user?.id) {
+      const currentTheme = isDarkMode ? 'dark' : 'light'
+      document.documentElement.classList.toggle('dark', isDarkMode)
+      localStorage.setItem('theme', currentTheme)
+      localStorage.setItem('theme_user_' + user.id, currentTheme)
     } else {
       document.documentElement.classList.remove('dark')
       localStorage.setItem('theme', 'light')
     }
     window.dispatchEvent(new Event('theme-change'))
-  }, [isDarkMode])
+  }, [isDarkMode, user])
+
+  // Theme change action call to DB
+  const handleToggleTheme = async () => {
+    const nextTheme = !isDarkMode ? 'dark' : 'light'
+    setIsDarkMode(!isDarkMode)
+
+    if (user) {
+      localStorage.setItem('theme_user_' + user.id, nextTheme)
+      localStorage.setItem('theme', nextTheme)
+      try {
+        await fetch('/api/auth/update-theme', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ theme: nextTheme }),
+        })
+        await refreshUser()
+      } catch (err) {
+        console.error('Failed to sync theme with DB:', err)
+      }
+    }
+  }
 
   // Automatically detect timezone if enabled
   useEffect(() => {
@@ -145,6 +202,45 @@ export default function Layout() {
     }
   }
 
+  const SidebarIcon = ({ size = 18 }: { size?: number }) => (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width={size} 
+      height={size} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className="lucide"
+    >
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" strokeDasharray="2 2" />
+    </svg>
+  )
+
+  const renderLink = (to: string, Icon: any, label: string, onClick?: () => void, isMobile = false, customClass?: string) => {
+    const isCollapsed = !isMobile && sidebarMode === 'collapsed'
+    const isHoverExpand = !isMobile && sidebarMode === 'hover-expand'
+    return (
+      <Link 
+        to={to} 
+        onClick={onClick} 
+        className={customClass || getNavLinkClass(to)}
+      >
+        <div className="flex-shrink-0"><Icon size={18} /></div>
+        <span className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
+          isCollapsed 
+            ? 'opacity-0 w-0 pointer-events-none' 
+            : isHoverExpand 
+              ? 'opacity-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto w-0 pointer-events-none group-hover/sidebar:pointer-events-auto' 
+              : 'opacity-100 w-auto'
+        }`}>{label}</span>
+      </Link>
+    )
+  }
+
   const renderSidebarLinks = (closeMobile = false) => {
     const handleLinkClick = () => {
       if (closeMobile) setMobileMenuOpen(false)
@@ -153,100 +249,51 @@ export default function Layout() {
     if (isAdmin) {
       return (
         <>
-          <Link to="/dashboard" onClick={handleLinkClick} className={getNavLinkClass('/dashboard')}>
-            <LayoutDashboard size={18} />
-            <span>Dashboard</span>
-          </Link>
-          <Link to="/dashboard/events" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/events')}>
-            <Calendar size={18} />
-            <span>Sự kiện</span>
-          </Link>
-          <Link to="/dashboard/venues" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/venues')}>
-            <MapPin size={18} />
-            <span>Địa Điểm</span>
-          </Link>
-          <Link to="/dashboard/manage" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/manage')}>
-            <Users size={18} />
-            <span>Quản lý người dùng</span>
-          </Link>
-          <Link to="/dashboard/reports" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/reports')}>
-            <FileBarChart size={18} />
-            <span>Báo cáo</span>
-          </Link>
-          <Link to="/dashboard/system-config" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/system-config')}>
-            <Sliders size={18} />
-            <span>Cấu Hình</span>
-          </Link>
-          <Link to="/dashboard/profile" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/profile')}>
-            <User size={18} />
-            <span>Hồ sơ cá nhân</span>
-          </Link>
+          {renderLink("/dashboard", LayoutDashboard, "Dashboard", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/events", Calendar, "Sự kiện", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/venues", MapPin, "Địa Điểm", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/manage", Users, "Quản lý người dùng", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/reports", FileBarChart, "Báo cáo", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/system-config", Sliders, "Cấu Hinh", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/profile", User, "Hồ sơ cá nhân", handleLinkClick, closeMobile)}
         </>
       )
     }
 
     return (
       <>
-        <Link to="/dashboard" onClick={handleLinkClick} className={getNavLinkClass('/dashboard')}>
-          <LayoutDashboard size={18} />
-          <span>Dashboard</span>
-        </Link>
-        <Link to="/dashboard/events" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/events')}>
-          <Calendar size={18} />
-          <span>Sự kiện</span>
-        </Link>
-        {isOrganizer && (
-          <Link to="/dashboard/events/create" onClick={handleLinkClick} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-extrabold transition-all duration-300 w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white hover:shadow-lg hover:shadow-orange-500/25 active:scale-98">
-            <PlusCircle size={18} />
-            <span>Tạo sự kiện</span>
-          </Link>
+        {renderLink("/dashboard", LayoutDashboard, "Dashboard", handleLinkClick, closeMobile)}
+        {renderLink("/dashboard/events", Calendar, "Sự kiện", handleLinkClick, closeMobile)}
+        {isOrganizer && renderLink(
+          "/dashboard/events/create", 
+          PlusCircle, 
+          "Tạo sự kiện", 
+          handleLinkClick, 
+          closeMobile,
+          "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-extrabold transition-all duration-300 w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-450 text-white hover:shadow-lg hover:shadow-orange-500/25 active:scale-98"
         )}
-        {(user?.role === 'ORGANIZER' || isStaff) && (
-          <Link to="/dashboard/event-requests" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/event-requests')}>
-            <Undo2 size={18} />
-            <span>{isStaff ? 'Quản lý yêu cầu' : 'Yêu cầu của tôi'}</span>
-          </Link>
+        {(user?.role === 'ORGANIZER' || isStaff) && renderLink(
+          "/dashboard/event-requests", 
+          Undo2, 
+          isStaff ? "Quản lý yêu cầu" : "Yêu cầu của tôi", 
+          handleLinkClick, 
+          closeMobile
         )}
         {user?.role === 'ORGANIZER' && (
           <>
-            <Link to="/dashboard/check-in" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/check-in')}>
-              <CheckSquare size={18} />
-              <span>Check-in</span>
-            </Link>
-            <Link to="/dashboard/system-config" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/system-config')}>
-              <Sliders size={18} />
-              <span>Cấu hình</span>
-            </Link>
+            {renderLink("/dashboard/check-in", CheckSquare, "Check-in", handleLinkClick, closeMobile)}
+            {renderLink("/dashboard/system-config", Sliders, "Cấu hình", handleLinkClick, closeMobile)}
           </>
         )}
-        {isOrganizer && (
-          <Link to="/dashboard/reports" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/reports')}>
-            <FileBarChart size={18} />
-            <span>Báo cáo</span>
-          </Link>
-        )}
+        {isOrganizer && renderLink("/dashboard/reports", FileBarChart, "Báo cáo", handleLinkClick, closeMobile)}
         {!isOrganizer && !isStaff && (
           <>
-            <Link to="/dashboard/my-tickets" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/my-tickets')}>
-              <Ticket size={18} />
-              <span>Vé của tôi</span>
-            </Link>
-            <Link to="/dashboard/bills" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/bills')}>
-              <Receipt size={18} />
-              <span>Hóa đơn</span>
-            </Link>
+            {renderLink("/dashboard/my-tickets", Ticket, "Vé của tôi", handleLinkClick, closeMobile)}
+            {renderLink("/dashboard/bills", Receipt, "Hóa đơn", handleLinkClick, closeMobile)}
           </>
         )}
-        {isStaff && (
-          <Link to="/dashboard/report-requests" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/report-requests')}>
-            <Undo2 size={18} />
-            <span>Yêu Cầu Hoàn Tiền</span>
-          </Link>
-        )}
-        <Link to="/dashboard/profile" onClick={handleLinkClick} className={getNavLinkClass('/dashboard/profile')}>
-          <User size={18} />
-          <span>Hồ sơ cá nhân</span>
-        </Link>
+        {isStaff && renderLink("/dashboard/report-requests", Undo2, "Yêu Cầu Hoàn Tiền", handleLinkClick, closeMobile)}
+        {renderLink("/dashboard/profile", User, "Hồ sơ cá nhân", handleLinkClick, closeMobile)}
       </>
     )
   }
@@ -348,7 +395,7 @@ export default function Layout() {
                       <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">Giao diện hệ thống</label>
                       <button
                         type="button"
-                        onClick={() => setIsDarkMode(!isDarkMode)}
+                        onClick={handleToggleTheme}
                         className={`w-full flex items-center justify-between p-2.5 rounded-xl border transition-all active:scale-98 ${
                           isDarkMode 
                             ? 'bg-slate-800 border-slate-700 hover:border-orange-500/40 text-slate-200' 
@@ -473,14 +520,113 @@ export default function Layout() {
 
       {/* Main Layout Grid */}
       <div className="flex flex-1 pt-16 overflow-hidden">
-        {/* Desktop Left Sidebar */}
-        <aside className={`hidden md:flex flex-col w-64 flex-shrink-0 border-r transition-colors duration-500 backdrop-blur-md ${
+        {/* Desktop Left Sidebar with Sticky Locking & Width Transitions */}
+        <aside className={`hidden md:flex flex-col flex-shrink-0 border-r transition-all duration-300 ease-in-out backdrop-blur-md sticky top-16 h-[calc(100vh-4rem)] z-30 ${
+          sidebarMode === 'expanded' 
+            ? 'w-64' 
+            : sidebarMode === 'collapsed' 
+              ? 'w-20' 
+              : 'w-20 hover:w-64 group/sidebar'
+        } ${
           isDarkMode 
-            ? 'bg-slate-900/90 border-slate-800/80 text-slate-200' 
-            : 'bg-white/80 border-orange-100/60 text-slate-800'
+            ? 'bg-slate-900/90 border-slate-800/80 text-slate-200 shadow-slate-950/20' 
+            : 'bg-white/80 border-orange-100/60 text-slate-800 shadow-orange-100/10'
         }`}>
-          <div className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
-            {renderSidebarLinks()}
+          <div className={`flex-1 py-6 space-y-2 overflow-y-auto transition-all duration-300 ${
+            sidebarMode === 'expanded' 
+              ? 'px-4' 
+              : sidebarMode === 'hover-expand' 
+                ? 'px-3 group-hover/sidebar:px-4' 
+                : 'px-3'
+          }`}>
+            {renderSidebarLinks(false)}
+          </div>
+
+          {/* Sidebar Mode Control Widget (Figure 3 Matching) */}
+          <div className={`p-4 border-t transition-colors duration-300 relative ${
+            isDarkMode ? 'border-slate-800/80' : 'border-orange-100/60'
+          }`}>
+            <button
+              type="button"
+              onClick={() => setShowModePopover(!showModePopover)}
+              className={`p-2.5 rounded-xl border transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${
+                isDarkMode 
+                  ? 'bg-slate-800/60 border-slate-700 hover:border-orange-500/40 text-slate-350 hover:text-white' 
+                  : 'bg-orange-50/60 border-orange-200 hover:border-orange-500/30 text-slate-650 hover:text-slate-900'
+              } ${
+                sidebarMode === 'expanded' 
+                  ? 'w-full gap-3' 
+                  : sidebarMode === 'hover-expand' 
+                    ? 'w-full group-hover/sidebar:w-full group-hover/sidebar:gap-3 mx-auto justify-center' 
+                    : 'mx-auto'
+              }`}
+            >
+              <SidebarIcon size={18} />
+              <span className={`transition-all duration-300 whitespace-nowrap overflow-hidden text-xs font-bold ${
+                sidebarMode === 'collapsed' 
+                  ? 'opacity-0 w-0 pointer-events-none' 
+                  : sidebarMode === 'hover-expand' 
+                    ? 'opacity-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto w-0 pointer-events-none group-hover/sidebar:pointer-events-auto' 
+                    : 'opacity-100 w-auto'
+              }`}>
+                Điều khiển
+              </span>
+            </button>
+
+            {/* Popover Menu matching Figure 3 */}
+            {showModePopover && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40 cursor-default" 
+                  onClick={() => setShowModePopover(false)} 
+                />
+                <div className={`absolute bottom-full left-4 mb-2 w-52 rounded-2xl border shadow-2xl p-3.5 z-50 animate-fade-in-up ${
+                  isDarkMode 
+                    ? 'bg-slate-900 border-slate-800 text-slate-200 shadow-slate-950/80' 
+                    : 'bg-white border-orange-150 text-slate-800 shadow-orange-500/10'
+                }`}>
+                  <div className="text-[10px] font-black tracking-wider uppercase opacity-50 px-2.5 pb-2 border-b border-slate-200/40 dark:border-slate-800/50">
+                    Sidebar control
+                  </div>
+                  <div className="pt-2 space-y-1">
+                    {[
+                      { value: 'expanded', label: 'Expanded' },
+                      { value: 'collapsed', label: 'Collapsed' },
+                      { value: 'hover-expand', label: 'Expand on hover' }
+                    ].map((mode) => (
+                      <button
+                        key={mode.value}
+                        type="button"
+                        onClick={() => {
+                          setSidebarMode(mode.value as any)
+                          if (user?.id) {
+                            localStorage.setItem('sidebar_mode_' + user.id, mode.value)
+                          }
+                          setShowModePopover(false)
+                          showToast('success', `Đã chuyển sang chế độ: ${mode.label}`)
+                        }}
+                        className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-all ${
+                          sidebarMode === mode.value
+                            ? isDarkMode
+                              ? 'bg-orange-500/10 text-orange-400'
+                              : 'bg-orange-50 text-orange-600'
+                            : isDarkMode
+                              ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-250'
+                              : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
+                        }`}
+                      >
+                        <div className="w-4 flex items-center justify-center">
+                          {sidebarMode === mode.value && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                          )}
+                        </div>
+                        <span>{mode.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </aside>
 

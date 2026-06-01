@@ -182,6 +182,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('storage', handleStorageChange)
   }, [user])
 
+  // Sync user-isolated theme preference on user state changes
+  useEffect(() => {
+    if (user) {
+      const isolatedTheme = localStorage.getItem('theme_user_' + user.id) || user.theme || 'light'
+      if (isolatedTheme === 'dark') {
+        document.documentElement.classList.add('dark')
+        localStorage.setItem('theme', 'dark')
+        localStorage.setItem('theme_user_' + user.id, 'dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+        localStorage.setItem('theme', 'light')
+        localStorage.setItem('theme_user_' + user.id, 'light')
+      }
+      window.dispatchEvent(new Event('theme-change'))
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+      window.dispatchEvent(new Event('theme-change'))
+    }
+  }, [user])
+
   useEffect(() => {
     const refreshOnFocus = () => {
       void refreshUser()

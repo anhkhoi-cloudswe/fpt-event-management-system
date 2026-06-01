@@ -38,7 +38,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 	}
 
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, Wallet, created_at, sso_provider, deleted_at
+		SELECT user_id, full_name, email, phone, password_hash, role, status, Wallet, created_at, sso_provider, deleted_at, theme
 		FROM Users
 		WHERE email = $1
 	`
@@ -56,6 +56,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 		&user.CreatedAt,
 		&user.SSOProvider,
 		&user.DeletedAt,
+		&user.Theme,
 	)
 
 	if err != nil {
@@ -115,7 +116,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 // FindByEmail finds a user by email
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, Wallet, created_at, sso_provider, deleted_at
+		SELECT user_id, full_name, email, phone, password_hash, role, status, Wallet, created_at, sso_provider, deleted_at, theme
 		FROM Users
 		WHERE email = $1
 	`
@@ -133,6 +134,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 		&user.CreatedAt,
 		&user.SSOProvider,
 		&user.DeletedAt,
+		&user.Theme,
 	)
 
 	if err != nil {
@@ -175,9 +177,12 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (int
 	}
 	user.PasswordHash = hashedPwd
 
+	if user.Theme == "" {
+		user.Theme = "light"
+	}
 	query := `
-		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet, sso_provider, deleted_at)
-		VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8)
+		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet, sso_provider, deleted_at, theme)
+		VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9)
 		RETURNING user_id
 	`
 
@@ -193,6 +198,7 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (int
 		user.Status,
 		user.SSOProvider,
 		user.DeletedAt,
+		user.Theme,
 	).Scan(&userID)
 
 	if err != nil {
@@ -293,9 +299,12 @@ func (r *UserRepository) CreateUserWithHash(ctx context.Context, user *models.Us
 		user.Status = "ACTIVE"
 	}
 
+	if user.Theme == "" {
+		user.Theme = "light"
+	}
 	query := `
-		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet, sso_provider, deleted_at)
-		VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8)
+		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet, sso_provider, deleted_at, theme)
+		VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9)
 		RETURNING user_id
 	`
 
@@ -311,6 +320,7 @@ func (r *UserRepository) CreateUserWithHash(ctx context.Context, user *models.Us
 		user.Status,
 		user.SSOProvider,
 		user.DeletedAt,
+		user.Theme,
 	).Scan(&userID)
 
 	if err != nil {
@@ -411,7 +421,7 @@ func (r *UserRepository) SoftDeleteUser(ctx context.Context, userID string) erro
 // KHỚP VỚI Java UsersDAO.getStaffAndOrganizer() - filter by ACTIVE and INACTIVE status
 func (r *UserRepository) FindByRole(ctx context.Context, role string) ([]models.User, error) {
 	query := `
-		SELECT user_id, full_name, email, phone, role, status, Wallet, created_at, sso_provider, deleted_at
+		SELECT user_id, full_name, email, phone, role, status, Wallet, created_at, sso_provider, deleted_at, theme
 		FROM Users
 		WHERE role = $1 AND status IN ('ACTIVE', 'INACTIVE')
 		ORDER BY full_name
@@ -437,6 +447,7 @@ func (r *UserRepository) FindByRole(ctx context.Context, role string) ([]models.
 			&user.CreatedAt,
 			&user.SSOProvider,
 			&user.DeletedAt,
+			&user.Theme,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan user: %w", err)
@@ -528,4 +539,25 @@ func (r *UserRepository) HardDeleteExpiredUsers(ctx context.Context) (int64, err
 	}
 
 	return rows, nil
+}
+
+// UpdateThemeByEmail updates theme preference by email
+func (r *UserRepository) UpdateThemeByEmail(ctx context.Context, email, theme string) error {
+	query := `UPDATE Users SET theme = $1 WHERE email = $2`
+
+	result, err := r.db.ExecContext(ctx, query, theme, email)
+	if err != nil {
+		return fmt.Errorf("failed to update theme: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+
+	if rows == 0 {
+		return errors.New("user not found")
+	}
+
+	return nil
 }

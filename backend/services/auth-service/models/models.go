@@ -15,6 +15,7 @@ type User struct {
 	CreatedAt    time.Time  `json:"createdAt" db:"created_at"`
 	SSOProvider  *string    `json:"ssoProvider" db:"sso_provider"`
 	DeletedAt    *time.Time `json:"deletedAt" db:"deleted_at"`
+	Theme        string     `json:"theme" db:"theme"`
 }
 
 // LoginRequest represents login request body

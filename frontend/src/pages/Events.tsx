@@ -315,19 +315,22 @@ export default function Events() {
   return (
     <div>
       {/* Header + nút toggle view */}
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-5">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight sm:text-4xl">
             Danh sách sự kiện
           </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
+            Khám phá và tham gia các sự kiện, hội thảo khoa học và hoạt động ngoại khóa tại trường FPT.
+          </p>
 
           {/* Toggle Calendar/List */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 shadow-inner border border-slate-200/40 dark:border-slate-700/30 w-fit mt-4">
             <button
               onClick={() => setViewMode('calendar')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'calendar'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${viewMode === 'calendar'
+                ? 'bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200/50 dark:border-slate-850'
+                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
             >
               <CalendarDays className="w-4 h-4" />
@@ -336,9 +339,9 @@ export default function Events() {
 
             <button
               onClick={() => setViewMode('list')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'list'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${viewMode === 'list'
+                ? 'bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200/50 dark:border-slate-850'
+                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
             >
               <List className="w-4 h-4" />
@@ -351,7 +354,7 @@ export default function Events() {
         {isOrganizer && (
           <Link
             to="/dashboard/events/create"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-5 py-2.5 rounded-2xl text-xs font-black shadow-md hover:shadow-lg active:scale-95 transition-all"
           >
             Tạo sự kiện mới
           </Link>
@@ -360,36 +363,44 @@ export default function Events() {
 
       {/* Loading / Error / Empty / Content */}
       {loading ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <p className="text-gray-500">Đang tải...</p>
+        <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-16 text-center shadow-md animate-fade-in-up">
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-bold animate-pulse">Đang tải danh sách sự kiện...</p>
         </div>
       ) : error ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <p className="text-red-500">{error}</p>
+        <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-rose-100 dark:border-rose-950/20 p-16 text-center shadow-md animate-fade-in-up">
+          <p className="text-rose-600 dark:text-rose-450 text-sm font-extrabold">Đã xảy ra lỗi: {error}</p>
         </div>
       ) : openEvents.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <p className="text-gray-500 text-lg">Chưa có sự kiện đang mở</p>
+        <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-16 text-center shadow-md animate-fade-in-up">
+          <div className="p-4 bg-orange-50 dark:bg-orange-950/20 text-orange-500 dark:text-orange-350 rounded-full w-fit mx-auto mb-4 border border-orange-100/50 dark:border-orange-900/30">
+            <CalendarDays className="w-12 h-12" />
+          </div>
+          <h3 className="text-lg font-black text-slate-800 dark:text-white">Chưa có sự kiện đang mở</h3>
+          <p className="text-sm text-slate-400 dark:text-slate-450 mt-2 max-w-sm mx-auto font-medium">
+            Hiện tại không có sự kiện công khai nào đang mở đăng ký vé. Vui lòng quay lại sau.
+          </p>
         </div>
       ) : (
         <>
           {/* ===== Calendar View ===== */}
           {viewMode === 'calendar' && (
-            <EventCalendar events={openEvents} onEventClick={handleEventClick} />
+            <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-6 shadow-md overflow-hidden animate-fade-in-up">
+              <EventCalendar events={openEvents} onEventClick={handleEventClick} />
+            </div>
           )}
 
           {/* ===== List View ===== */}
           {viewMode === 'list' && (
-            <div className="space-y-12">
+            <div className="space-y-12 animate-fade-in-up">
               {/* ---------- Upcoming events ---------- */}
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6 pl-1 tracking-tight">
                   Sự kiện sắp tới
                 </h2>
 
                 {upcomingEvents.length === 0 ? (
-                  <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                    <p className="text-gray-500">Không có sự kiện sắp tới</p>
+                  <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-12 text-center shadow-md animate-fade-in-up">
+                    <p className="text-slate-500 dark:text-slate-400 text-sm font-bold">Không có sự kiện sắp tới nào</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

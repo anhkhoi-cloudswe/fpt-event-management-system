@@ -606,3 +606,11 @@ func (uc *AuthUseCase) SetSSOUserPassword(ctx context.Context, email, password s
 func (uc *AuthUseCase) HardDeleteExpiredAccounts(ctx context.Context) (int64, error) {
 	return uc.userRepo.HardDeleteExpiredUsers(ctx)
 }
+
+// UpdateTheme updates user theme preference in the database
+func (uc *AuthUseCase) UpdateTheme(ctx context.Context, email, theme string) error {
+	if theme != "light" && theme != "dark" {
+		return errors.New("giao diện không hợp lệ")
+	}
+	return uc.userRepo.UpdateThemeByEmail(ctx, email, theme)
+}

@@ -35,8 +35,13 @@ export default function Profile() {
   // Tab state: profile vs security
   const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile')
 
-  // Theme state synchronized with local storage
-  const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') === 'dark')
+  // Theme state synchronized with local storage (user isolated)
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (user?.id) {
+      return localStorage.getItem('theme_user_' + user.id) === 'dark'
+    }
+    return localStorage.getItem('theme') === 'dark'
+  })
   
   // Phone settings
   const [phone, setPhone] = useState(user?.phone || '')
@@ -65,33 +70,65 @@ export default function Profile() {
   // Error states for phone input
   const [phoneError, setPhoneError] = useState('')
 
-  // Sync phone state when user context is loaded/refreshed
+  // Sync phone & theme state when user context is loaded/refreshed
   useEffect(() => {
     if (user?.phone) {
       setPhone(user.phone)
+    }
+    if (user?.id) {
+      setIsDarkMode(localStorage.getItem('theme_user_' + user.id) === 'dark')
     }
   }, [user])
 
   // Sync theme changes
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('theme', 'dark')
+    if (user?.id) {
+      const currentTheme = isDarkMode ? 'dark' : 'light'
+      document.documentElement.classList.toggle('dark', isDarkMode)
+      localStorage.setItem('theme', currentTheme)
+      localStorage.setItem('theme_user_' + user.id, currentTheme)
     } else {
       document.documentElement.classList.remove('dark')
       localStorage.setItem('theme', 'light')
     }
     window.dispatchEvent(new Event('theme-change'))
-  }, [isDarkMode])
+  }, [isDarkMode, user])
 
   // Sync theme changes reactively when updated from header
   useEffect(() => {
     const handleThemeChange = () => {
-      setIsDarkMode(localStorage.getItem('theme') === 'dark')
+      if (user?.id) {
+        setIsDarkMode(localStorage.getItem('theme_user_' + user.id) === 'dark')
+      } else {
+        setIsDarkMode(localStorage.getItem('theme') === 'dark')
+      }
     }
     window.addEventListener('theme-change', handleThemeChange)
     return () => window.removeEventListener('theme-change', handleThemeChange)
-  }, [])
+  }, [user])
+
+  // Theme change action call to DB
+  const handleToggleTheme = async () => {
+    const nextTheme = !isDarkMode ? 'dark' : 'light'
+    setIsDarkMode(!isDarkMode)
+
+    if (user) {
+      localStorage.setItem('theme_user_' + user.id, nextTheme)
+      localStorage.setItem('theme', nextTheme)
+      try {
+        await fetch('/api/auth/update-theme', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ theme: nextTheme }),
+        })
+        await refreshUser()
+      } catch (err) {
+        console.error('Failed to sync theme with DB:', err)
+      }
+    }
+  }
 
   // Sync auto-timezone check
   useEffect(() => {
@@ -411,7 +448,7 @@ export default function Profile() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setIsDarkMode(!isDarkMode)}
+                    onClick={handleToggleTheme}
                     className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border transition-all min-w-[160px] active:scale-98 ${
                       isDarkMode 
                         ? 'bg-slate-800 border-slate-700 text-slate-200' 

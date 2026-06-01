@@ -501,7 +501,7 @@ export default function GuestLanding() {
         {/* Top Logo / Bolt Marker */}
         <div className="h-20 flex items-center justify-start px-6 gap-4 border-b border-slate-800/60 overflow-hidden">
           <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/20">
-            <Sparkles className="w-4 h-4 text-white animate-pulse" />
+            <img src="/favicon.svg" alt="FPT Event Logo" className="w-5 h-5 object-contain" />
           </div>
           <span className="font-black text-sm bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 whitespace-nowrap">
             FPT EVENT SYSTEM
@@ -561,7 +561,7 @@ export default function GuestLanding() {
             <div className="flex items-center justify-between pb-6 border-b border-slate-800/60">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg">
-                  <Sparkles className="w-4 h-4 text-white" />
+                  <img src="/favicon.svg" alt="FPT Event Logo" className="w-5 h-5 object-contain" />
                 </div>
                 <span className="font-black text-sm bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
                   FPT EVENT

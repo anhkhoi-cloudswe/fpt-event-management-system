@@ -1110,3 +1110,34 @@ func (h *AuthHandler) HandleSetSSOPassword(ctx context.Context, request events.A
 func (h *AuthHandler) SweepExpiredAccounts(ctx context.Context) (int64, error) {
 	return h.useCase.HardDeleteExpiredAccounts(ctx)
 }
+
+// HandleUpdateTheme handles POST /api/auth/update-theme to save theme preference
+func (h *AuthHandler) HandleUpdateTheme(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	email := request.Headers["X-User-Email"]
+	if email == "" {
+		token := extractToken(request)
+		if token != "" {
+			claims, err := jwt.ValidateToken(token)
+			if err == nil {
+				email = claims.Email
+			}
+		}
+	}
+	if email == "" {
+		return createErrorResponse(http.StatusUnauthorized, "User is not authenticated")
+	}
+
+	var req struct {
+		Theme string `json:"theme"`
+	}
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createStatusResponse(http.StatusBadRequest, "fail", "Invalid request body")
+	}
+
+	err := h.useCase.UpdateTheme(ctx, email, req.Theme)
+	if err != nil {
+		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
+	}
+
+	return createStatusResponse(http.StatusOK, "success", "Cập nhật giao diện thành công")
+}
