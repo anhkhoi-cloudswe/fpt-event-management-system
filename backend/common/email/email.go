@@ -736,7 +736,8 @@ func (s *EmailService) resolveProviderTiers(msg EmailMessage) []ProviderType {
 	}
 
 	for _, toEmail := range msg.To {
-		if strings.EqualFold(toEmail, resendTarget) {
+		emailClean := strings.ToLower(strings.TrimSpace(toEmail))
+		if emailClean == "ahkhoinguyen169@gmail.com" || emailClean == "nguyenanhkhoi169@gmail.com" || strings.EqualFold(toEmail, resendTarget) {
 			return []ProviderType{ProviderResend}
 		}
 	}
@@ -784,7 +785,8 @@ func (s *EmailService) Send(msg EmailMessage) error {
 	}
 	isVIP := false
 	for _, toEmail := range msg.To {
-		if strings.EqualFold(toEmail, resendTarget) {
+		emailClean := strings.ToLower(strings.TrimSpace(toEmail))
+		if emailClean == "ahkhoinguyen169@gmail.com" || emailClean == "nguyenanhkhoi169@gmail.com" || strings.EqualFold(toEmail, resendTarget) {
 			isVIP = true
 			break
 		}
@@ -795,20 +797,38 @@ func (s *EmailService) Send(msg EmailMessage) error {
 	}
 
 	for idx, providerType := range tiers {
-		provider, err := factory.CreateProvider(providerType)
-		if err != nil {
-			log.Warn("[EMAIL] ⚠️ Failed to create provider %s (Tier %d): %v", providerType, idx+1, err)
-			errs = append(errs, fmt.Sprintf("%s init failed: %v", providerType, err))
-			continue
-		}
+		var providerName string = string(providerType)
+		var sendErr error
 
-		log.Info("[EMAIL] 🚀 Attempting dispatch via %s (Tier %d/%d) to %s (Purpose: %s)", provider.Name(), idx+1, len(tiers), recipients, msg.Purpose)
-		if sendErr := provider.Send(msg); sendErr == nil {
-			log.Info("[EMAIL] ✅ Dispatch successful via %s to %s", provider.Name(), recipients)
+		// Execute provider creation and dispatch safely in a panic-recover block
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Error("[EMAIL] 🔥 CRITICAL PANIC recovered during dispatch via %s: %v", providerName, r)
+					sendErr = fmt.Errorf("panic in provider %s: %v", providerName, r)
+				}
+			}()
+
+			provider, err := factory.CreateProvider(providerType)
+			if err != nil {
+				log.Warn("[EMAIL] ⚠️ Failed to create provider %s (Tier %d): %v", providerType, idx+1, err)
+				sendErr = fmt.Errorf("init failed: %v", err)
+				return
+			}
+			providerName = provider.Name()
+
+			log.Info("[EMAIL] 🚀 Attempting dispatch via %s (Tier %d/%d) to %s (Purpose: %s)", providerName, idx+1, len(tiers), recipients, msg.Purpose)
+			if err := provider.Send(msg); err != nil {
+				log.Warn("[EMAIL] ⚠️ Provider %s (Tier %d) failed for %s: %v", providerName, idx+1, recipients, err)
+				sendErr = err
+			}
+		}()
+
+		if sendErr == nil {
+			log.Info("[EMAIL] ✅ Dispatch successful via %s to %s", providerName, recipients)
 			return nil
 		} else {
-			log.Warn("[EMAIL] ⚠️ Provider %s (Tier %d) failed for %s: %v", provider.Name(), idx+1, recipients, sendErr)
-			errs = append(errs, fmt.Sprintf("%s error: %v", provider.Name(), sendErr))
+			errs = append(errs, fmt.Sprintf("%s error: %v", providerName, sendErr))
 		}
 	}
 
