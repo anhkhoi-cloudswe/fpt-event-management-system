@@ -24,10 +24,6 @@ import (
 // ============================================================
 
 type Config struct {
-	Host          string
-	Port          string
-	Username      string
-	Password      string
 	From          string
 	FromName      string
 	UseTLS        bool
@@ -41,10 +37,6 @@ type Config struct {
 
 func DefaultConfig() *Config {
 	return &Config{
-		Host:          getEnv("SMTP_HOST", "smtp.gmail.com"),
-		Port:          getEnv("SMTP_PORT", "587"),
-		Username:      getEnv("SMTP_USERNAME", ""),
-		Password:      getEnv("SMTP_PASSWORD", ""),
 		From:          getEnv("EMAIL_FROM", getEnv("SMTP_FROM", "onboarding@resend.dev")),
 		FromName:      getEnv("SMTP_FROM_NAME", "FPT Event System"),
 		UseTLS:        getEnv("SMTP_USE_TLS", "true") == "true",
@@ -52,7 +44,7 @@ func DefaultConfig() *Config {
 		ResendAPIKey:  getEnv("RESEND_API_KEY", ""),
 		BrevoHost:     getEnv("BREVO_SMTP_HOST", "smtp-relay.brevo.com"),
 		BrevoPort:     getEnv("BREVO_SMTP_PORT", "587"),
-		BrevoUsername: getEnv("BREVO_SMTP_USERNAME", ""),
+		BrevoUsername: getEnv("BREVO_SMTP_USERNAME", "evbatteryswap.system@gmail.com"),
 		BrevoPassword: getEnv("BREVO_SMTP_PASSWORD", ""),
 	}
 }
@@ -67,11 +59,10 @@ func NewEmailService(config *Config) *EmailService {
 	if config == nil {
 		config = DefaultConfig()
 	}
-	hasSMTP := config.Username != "" && config.Password != ""
 	hasBrevo := config.BrevoUsername != "" && config.BrevoPassword != ""
-	devMode := config.ResendAPIKey == "" && !hasSMTP && !hasBrevo
+	devMode := config.ResendAPIKey == "" && !hasBrevo
 	if devMode {
-		logger.Default().Warn("[EMAIL] ⚠️ DEV MODE ENABLED - Emails will NOT be sent. Configure RESEND_API_KEY, BREVO, or SMTP settings.")
+		logger.Default().Warn("[EMAIL] ⚠️ DEV MODE ENABLED - Emails will NOT be sent. Configure RESEND_API_KEY or BREVO settings.")
 	}
 	return &EmailService{
 		config:    config,
@@ -85,6 +76,7 @@ func NewEmailService(config *Config) *EmailService {
 // ============================================================
 
 type EmailMessage struct {
+	From        string
 	To          []string
 	Subject     string
 	Body        string
@@ -265,7 +257,7 @@ type ResendEmailPayload struct {
 }
 
 // sendViaSMTPServer sends an email through an arbitrary SMTP server using the provided credentials/host/port.
-func (s *EmailService) sendViaSMTPServer(msg EmailMessage, host, port, username, password string) error {
+func (s *EmailService) sendViaSMTPServer(msg EmailMessage, host, port, username, password, fromAddress string) error {
 	log := logger.Default()
 	addr := fmt.Sprintf("%s:%s", host, port)
 
@@ -306,7 +298,7 @@ func (s *EmailService) sendViaSMTPServer(msg EmailMessage, host, port, username,
 		}
 	}
 
-	if err = client.Mail(s.config.From); err != nil {
+	if err = client.Mail(fromAddress); err != nil {
 		log.Error("[EMAIL] ❌ SMTP MAIL command failed: %v", err)
 		return err
 	}
@@ -326,7 +318,7 @@ func (s *EmailService) sendViaSMTPServer(msg EmailMessage, host, port, username,
 	defer wc.Close()
 
 	var body bytes.Buffer
-	body.WriteString(fmt.Sprintf("From: %s <%s>\r\n", s.config.FromName, s.config.From))
+	body.WriteString(fmt.Sprintf("From: %s <%s>\r\n", s.config.FromName, fromAddress))
 	body.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
 	body.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
 	body.WriteString("MIME-Version: 1.0\r\n")
@@ -350,14 +342,13 @@ func (s *EmailService) sendViaSMTPServer(msg EmailMessage, host, port, username,
 	return nil
 }
 
-// sendViaSMTP sends via the primary SMTP host (AWS SES or generic).
-func (s *EmailService) sendViaSMTP(msg EmailMessage) error {
-	return s.sendViaSMTPServer(msg, s.config.Host, s.config.Port, s.config.Username, s.config.Password)
-}
-
 // sendViaBrevo sends via Brevo SMTP relay (smtp-relay.brevo.com:587).
 func (s *EmailService) sendViaBrevo(msg EmailMessage) error {
-	return s.sendViaSMTPServer(msg, s.config.BrevoHost, s.config.BrevoPort, s.config.BrevoUsername, s.config.BrevoPassword)
+	fromAddress := msg.From
+	if fromAddress == "" {
+		fromAddress = "evbatteryswap.system@gmail.com"
+	}
+	return s.sendViaSMTPServer(msg, s.config.BrevoHost, s.config.BrevoPort, s.config.BrevoUsername, s.config.BrevoPassword, fromAddress)
 }
 
 // sendViaResend dispatches an email using the Resend HTTP API.
@@ -366,9 +357,12 @@ func (s *EmailService) sendViaResend(msg EmailMessage) error {
 	recipients := strings.Join(msg.To, ", ")
 	log.Info("[EMAIL] 🚀 Tier 1 – Resend API: to=%s subject=%s", recipients, msg.Subject)
 
-	from := s.config.From
+	from := msg.From
+	if from == "" {
+		from = s.config.From
+	}
 	if s.config.FromName != "" {
-		from = fmt.Sprintf("%s <%s>", s.config.FromName, s.config.From)
+		from = fmt.Sprintf("%s <%s>", s.config.FromName, from)
 	}
 
 	var attachments []ResendAttachment
@@ -416,11 +410,10 @@ func (s *EmailService) sendViaResend(msg EmailMessage) error {
 	return nil
 }
 
-// Send dispatches an email through a 3-tier fallback pipeline:
+// Send dispatches an email through a 2-tier fallback pipeline:
 //
 //	Tier 1: Resend API (primary free tier)
 //	Tier 2: Brevo SMTP relay (secondary free fallback)
-//	Tier 3: AWS SES SMTP (paid fallback, SES sandbox bypass enabled)
 func (s *EmailService) Send(msg EmailMessage) error {
 	log := logger.Default()
 	if s.devMode {
@@ -433,6 +426,7 @@ func (s *EmailService) Send(msg EmailMessage) error {
 
 	// ── Tier 1: Resend API ──────────────────────────────────────────────────
 	if s.config.ResendAPIKey != "" {
+		msg.From = "onboarding@resend.dev"
 		if err := s.sendViaResend(msg); err == nil {
 			return nil
 		} else {
@@ -445,40 +439,22 @@ func (s *EmailService) Send(msg EmailMessage) error {
 
 	// ── Tier 2: Brevo SMTP ──────────────────────────────────────────────────
 	if s.config.BrevoUsername != "" && s.config.BrevoPassword != "" {
+		msg.From = "evbatteryswap.system@gmail.com"
 		log.Info("[EMAIL] 🔄 Tier 2 – Brevo SMTP: %s:%s → %s", s.config.BrevoHost, s.config.BrevoPort, recipients)
 		if err := s.sendViaBrevo(msg); err == nil {
 			return nil
 		} else {
-			log.Warn("[EMAIL] ⚠️ Tier 2 (Brevo) failed for %s: %v — falling back to Tier 3", recipients, err)
+			log.Warn("[EMAIL] ⚠️ Tier 2 (Brevo) failed for %s: %v", recipients, err)
 			lastErr = err
 		}
 	} else {
 		log.Info("[EMAIL] ℹ️ Tier 2 (Brevo) skipped – BREVO_SMTP_USERNAME/PASSWORD not configured")
 	}
 
-	// ── Tier 3: AWS SES SMTP ────────────────────────────────────────────────
-	if s.config.Username != "" && s.config.Password != "" {
-		log.Info("[EMAIL] 🔄 Tier 3 – AWS SES SMTP: %s:%s → %s", s.config.Host, s.config.Port, recipients)
-		if err := s.sendViaSMTP(msg); err != nil {
-			// Gracefully bypass SES Sandbox unverified-recipient errors
-			errStr := err.Error()
-			if strings.Contains(errStr, "554") && strings.Contains(errStr, "not verified") {
-				log.Warn("[EMAIL] ⚠️ [SES_SANDBOX] Unverified recipient %s – bypassing error gracefully. Verify recipient in SES console to enable delivery.", recipients)
-				return nil
-			}
-			log.Error("[EMAIL] ❌ Tier 3 (AWS SES) failed for %s: %v", recipients, err)
-			lastErr = err
-		} else {
-			return nil
-		}
-	} else {
-		log.Info("[EMAIL] ℹ️ Tier 3 (AWS SES) skipped – SMTP_USERNAME/PASSWORD not configured")
-	}
-
 	if lastErr != nil {
 		return fmt.Errorf("all email tiers exhausted for %s – last error: %w", recipients, lastErr)
 	}
-	return fmt.Errorf("no email provider configured (RESEND_API_KEY, BREVO, or SMTP credentials required)")
+	return fmt.Errorf("no email provider configured (RESEND_API_KEY or BREVO credentials required)")
 }
 
 // ============================================================
