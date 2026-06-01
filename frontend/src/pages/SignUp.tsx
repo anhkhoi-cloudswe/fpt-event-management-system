@@ -38,9 +38,9 @@ export default function SignUp() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [otpCountdown, setOtpCountdown] = useState(0)
-
   const [showPassword, setShowPassword] = useState(false)
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
+  const [rateLimitCountdown, setRateLimitCountdown] = useState(0)
   const recaptchaRef = useRef<ReCAPTCHA | null>(null)
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([])
 
@@ -52,6 +52,13 @@ export default function SignUp() {
   const otpLength = 6
   const otpArray = otpValue.split('').concat(Array(otpLength).fill('')).slice(0, otpLength)
 
+  // Format seconds as MM:SS
+  const formatCountdown = (secs: number): string => {
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`
+  }
+
   // Countdown timer for OTP
   useEffect(() => {
     let timer: number
@@ -60,6 +67,15 @@ export default function SignUp() {
     }
     return () => clearTimeout(timer)
   }, [otpCountdown])
+
+  // Rate-limit countdown
+  useEffect(() => {
+    let timer: number
+    if (rateLimitCountdown > 0) {
+      timer = window.setTimeout(() => setRateLimitCountdown(rateLimitCountdown - 1), 1000)
+    }
+    return () => clearTimeout(timer)
+  }, [rateLimitCountdown])
 
   // Google OAuth registration
   const googleRegister = useGoogleLogin({
@@ -163,8 +179,15 @@ export default function SignUp() {
       }
     } catch (err: any) {
       console.error('Send OTP error:', err)
-      const srvMsg = err.response?.data?.message || err.response?.data?.error
-      setError(srvMsg || 'Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.')
+      const errData = err.response?.data
+      const retryAfter = errData?.retry_after
+      if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
+        setRateLimitCountdown(retryAfter)
+        setError(errData?.message || `Quá nhiều yêu cầu. Vui lòng thử lại sau ${formatCountdown(retryAfter)}.`)
+      } else {
+        const srvMsg = errData?.message || errData?.error
+        setError(srvMsg || 'Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.')
+      }
     } finally {
       setLoading(false)
     }
@@ -191,8 +214,16 @@ export default function SignUp() {
       }
     } catch (err: any) {
       console.error('Resend OTP error:', err)
-      const srvMsg = err.response?.data?.message || err.response?.data?.error
-      setError(srvMsg || 'Có lỗi xảy ra khi gửi lại OTP.')
+      const errData = err.response?.data
+      const retryAfter = errData?.retry_after
+      if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
+        setRateLimitCountdown(retryAfter)
+        setOtpCountdown(retryAfter)
+        setError(errData?.message || `Vui lòng thử lại sau ${formatCountdown(retryAfter)}.`)
+      } else {
+        const srvMsg = errData?.message || errData?.error
+        setError(srvMsg || 'Có lỗi xảy ra khi gửi lại OTP.')
+      }
     } finally {
       setLoading(false)
     }
@@ -397,7 +428,7 @@ export default function SignUp() {
               {/* Submit button */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || rateLimitCountdown > 0}
                 className="w-full py-4 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white rounded-2xl font-bold text-sm shadow-lg shadow-orange-500/20 hover:shadow-orange-500/35 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99"
               >
                 {loading ? (
@@ -408,6 +439,8 @@ export default function SignUp() {
                     </svg>
                     Đang kết nối...
                   </span>
+                ) : rateLimitCountdown > 0 ? (
+                  `Thử lại sau ${formatCountdown(rateLimitCountdown)}`
                 ) : (
                   'Đăng ký tài khoản'
                 )}

@@ -34,6 +34,7 @@ var (
 	log                 = logger.Default()
 	servicesInitialized bool
 	forgotPasswordGuard = newForgotPasswordLimiter()
+	registerGuard       = newForgotPasswordLimiter() // reuse same struct, independent state
 )
 
 type rateLimitEntry struct {
@@ -104,6 +105,26 @@ func (l *forgotPasswordLimiter) cleanup(now time.Time) {
 			delete(l.byIP, key)
 		}
 	}
+}
+
+// retryAfterSeconds returns how many seconds until the limiter allows the next request.
+// It peeks at the reservation without consuming a token.
+func (l *forgotPasswordLimiter) retryAfterSeconds(key string, store map[string]*rateLimitEntry) int {
+	entry, ok := store[key]
+	if !ok {
+		return 120 // default 2 min window
+	}
+	res := entry.limiter.Reserve()
+	res.Cancel() // don't consume the token
+	d := res.Delay()
+	if d <= 0 {
+		return 120
+	}
+	sec := int(d.Seconds()) + 1 // +1 to round up
+	if sec > 120 {
+		sec = 120
+	}
+	return sec
 }
 
 // InitServices initializes email and recaptcha services
@@ -430,8 +451,18 @@ func (h *AuthHandler) HandleForgotPassword(ctx context.Context, request events.A
 	}
 
 	clientIP := getClientIP(request)
+
+	emailKey := strings.ToLower(strings.TrimSpace(req.Email))
+	ipKey := strings.TrimSpace(clientIP)
+
 	if !forgotPasswordGuard.allow(req.Email, clientIP) {
-		return createStatusResponse(http.StatusTooManyRequests, "fail", "Too many requests. Vui lòng thử lại sau 2 phút")
+		forgotPasswordGuard.mu.Lock()
+		retryAfter := forgotPasswordGuard.retryAfterSeconds(emailKey, forgotPasswordGuard.byEmail)
+		if ra := forgotPasswordGuard.retryAfterSeconds(ipKey, forgotPasswordGuard.byIP); ra > retryAfter {
+			retryAfter = ra
+		}
+		forgotPasswordGuard.mu.Unlock()
+		return createRateLimitResponse(fmt.Sprintf("Quá nhiều yêu cầu. Vui lòng thử lại sau %d giây.", retryAfter), retryAfter)
 	}
 
 	// Verify reCAPTCHA (if configured)
@@ -518,6 +549,27 @@ func createStatusResponse(statusCode int, status, message string) (events.APIGat
 	}, nil
 }
 
+// createRateLimitResponse returns a 429 response with retry_after field so
+// the frontend can render a live countdown without additional server calls.
+func createRateLimitResponse(message string, retryAfterSec int) (events.APIGatewayProxyResponse, error) {
+	resp := map[string]interface{}{
+		"status":      "error",
+		"message":     message,
+		"retry_after": retryAfterSec,
+	}
+	body, _ := json.Marshal(resp)
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusTooManyRequests,
+		Headers: map[string]string{
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Access-Control-Allow-Origin": "*",
+			"Retry-After":                fmt.Sprintf("%d", retryAfterSec),
+		},
+		Body: string(body),
+	}, nil
+}
+
 // ============================================================
 // HandleRegisterSendOTP - POST /api/register/send-otp
 // Register step 1 - Send OTP to email
@@ -533,6 +585,20 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 	// Validate required fields
 	if req.Email == "" || req.Password == "" || req.FullName == "" || req.Phone == "" {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Vui lòng điền đầy đủ thông tin")
+	}
+
+	// Rate-limit per email + IP using registerGuard
+	clientIP2 := getClientIP(request)
+	emailKey2 := strings.ToLower(strings.TrimSpace(req.Email))
+	ipKey2 := strings.TrimSpace(clientIP2)
+	if !registerGuard.allow(req.Email, clientIP2) {
+		registerGuard.mu.Lock()
+		retryAfter := registerGuard.retryAfterSeconds(emailKey2, registerGuard.byEmail)
+		if ra := registerGuard.retryAfterSeconds(ipKey2, registerGuard.byIP); ra > retryAfter {
+			retryAfter = ra
+		}
+		registerGuard.mu.Unlock()
+		return createRateLimitResponse(fmt.Sprintf("Quá nhiều yêu cầu. Vui lòng thử lại sau %d giây.", retryAfter), retryAfter)
 	}
 
 	// Verify reCAPTCHA (if provided)

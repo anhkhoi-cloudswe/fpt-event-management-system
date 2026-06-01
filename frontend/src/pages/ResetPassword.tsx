@@ -37,9 +37,17 @@ export default function ResetPassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [resetToken, setResetToken] = useState('')
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
+  const [rateLimitCountdown, setRateLimitCountdown] = useState(0)
   const recaptchaRef = useRef<ReCAPTCHA | null>(null)
   const navigate = useNavigate()
   const { showToast } = useToast()
+
+  // Format seconds as MM:SS
+  const formatCountdown = (secs: number): string => {
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`
+  }
 
   // Countdown timer for resend OTP
   useEffect(() => {
@@ -49,6 +57,15 @@ export default function ResetPassword() {
     }
     return () => clearTimeout(timer)
   }, [otpCountdown])
+
+  // Rate-limit countdown
+  useEffect(() => {
+    let timer: number
+    if (rateLimitCountdown > 0) {
+      timer = window.setTimeout(() => setRateLimitCountdown(rateLimitCountdown - 1), 1000)
+    }
+    return () => clearTimeout(timer)
+  }, [rateLimitCountdown])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -102,10 +119,15 @@ export default function ResetPassword() {
       }
     } catch (err: any) {
       console.error('Send OTP Error:', err)
-      const errorMsg = err.response?.data?.message ||
-        err.response?.data?.error ||
-        'Đã xảy ra lỗi. Vui lòng thử lại.'
-      setError(errorMsg)
+      const errData = err.response?.data
+      const retryAfter = errData?.retry_after
+      if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
+        setRateLimitCountdown(retryAfter)
+        setError(errData?.message || `Quá nhiều yêu cầu. Vui lòng thử lại sau ${formatCountdown(retryAfter)}.`)
+      } else {
+        const errorMsg = errData?.message || errData?.error || 'Đã xảy ra lỗi. Vui lòng thử lại.'
+        setError(errorMsg)
+      }
       recaptchaRef.current?.reset()
       setRecaptchaToken(null)
     } finally {
@@ -127,7 +149,15 @@ export default function ResetPassword() {
       }
     } catch (err: any) {
       console.error('Resend OTP Error:', err)
-      setError(err.response?.data?.message || 'Không thể gửi lại OTP. Vui lòng thử lại.')
+      const errData = err.response?.data
+      const retryAfter = errData?.retry_after
+      if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
+        setRateLimitCountdown(retryAfter)
+        setOtpCountdown(retryAfter)
+        setError(errData?.message || `Vui lòng thử lại sau ${formatCountdown(retryAfter)}.`)
+      } else {
+        setError(errData?.message || 'Không thể gửi lại OTP. Vui lòng thử lại.')
+      }
     } finally {
       setLoading(false)
     }
@@ -273,10 +303,14 @@ export default function ResetPassword() {
 
             <button
               type="submit"
-              disabled={loading || !recaptchaToken}
+              disabled={loading || !recaptchaToken || rateLimitCountdown > 0}
               className="w-full bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 text-white py-3.5 px-4 rounded-2xl hover:shadow-lg hover:shadow-orange-500/25 focus:outline-none font-extrabold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 shadow-md"
             >
-              {loading ? 'Đang gửi mã...' : 'Gửi mã OTP'}
+              {loading
+                ? 'Đang gửi mã...'
+                : rateLimitCountdown > 0
+                ? `Thử lại sau ${formatCountdown(rateLimitCountdown)}`
+                : 'Gửi mã OTP'}
             </button>
 
             <div className="text-center">
