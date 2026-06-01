@@ -161,16 +161,16 @@ export default function SignUp() {
     setLoading(true)
     setError('')
 
-    // Automatically extract username and set safe placeholder for required phone field
+    // Automatically extract username and send empty string for optional phone field
     const email = formData.email.trim()
     const password = formData.password
     const username = email.split('@')[0]
-    const dummyPhone = '0900000000'
+    const phone = ''
 
     try {
       const response = await axios.post(`${API_URL}/register/send-otp`, {
         fullName: username,
-        phone: dummyPhone,
+        phone: phone,
         email: email,
         password: password,
         recaptchaToken
