@@ -35,12 +35,10 @@ export default function Profile() {
   // Tab state: profile vs security
   const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile')
 
-  // Theme state synchronized with local storage (user isolated)
+  // CRITICAL FIX: Read theme directly from document.documentElement.classList
+  // This is the SOURCE OF TRUTH set by AuthContext, NOT localStorage
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (user?.id) {
-      return localStorage.getItem('theme_user_' + user.id) === 'dark'
-    }
-    return localStorage.getItem('theme') === 'dark'
+    return document.documentElement.classList.contains('dark')
   })
 
   // Phone settings

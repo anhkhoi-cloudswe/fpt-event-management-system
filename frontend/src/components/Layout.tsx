@@ -68,11 +68,10 @@ export default function Layout() {
   // Settings Panel States
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [phone, setPhone] = useState(localStorage.getItem('user_phone_' + user?.id) || user?.phone || '')
+  // CRITICAL FIX: Read theme directly from document.documentElement.classList
+  // This is the SOURCE OF TRUTH set by AuthContext, NOT localStorage
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (user?.id) {
-      return localStorage.getItem('theme_user_' + user.id) === 'dark'
-    }
-    return localStorage.getItem('theme') === 'dark'
+    return document.documentElement.classList.contains('dark')
   })
   const [timezone, setTimezone] = useState(localStorage.getItem('user_timezone') || 'Asia/Ho_Chi_Minh')
   const [autoDetectTz, setAutoDetectTz] = useState(localStorage.getItem('auto_timezone') !== 'false')
