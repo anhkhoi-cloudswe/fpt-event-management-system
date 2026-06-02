@@ -23,22 +23,22 @@ import (
 // ============================================================
 
 type Config struct {
-	From          string
-	FromName      string
-	UseTLS        bool
-	SkipVerify    bool
-	ResendAPIKey  string
-	BrevoAPIKey   string
+	From         string
+	FromName     string
+	UseTLS       bool
+	SkipVerify   bool
+	ResendAPIKey string
+	BrevoAPIKey  string
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		From:          getEnv("EMAIL_FROM", getEnv("SMTP_FROM", "onboarding@resend.dev")),
-		FromName:      getEnv("SMTP_FROM_NAME", "FPT Event System"),
-		UseTLS:        getEnv("SMTP_USE_TLS", "true") == "true",
-		SkipVerify:    getEnv("SMTP_SKIP_VERIFY", "false") == "true",
-		ResendAPIKey:  getEnv("RESEND_API_KEY", ""),
-		BrevoAPIKey:   getEnv("BREVO_API_KEY", ""),
+		From:         getEnv("EMAIL_FROM", getEnv("SMTP_FROM", "onboarding@resend.dev")),
+		FromName:     getEnv("SMTP_FROM_NAME", "FPT Event System"),
+		UseTLS:       getEnv("SMTP_USE_TLS", "true") == "true",
+		SkipVerify:   getEnv("SMTP_SKIP_VERIFY", "false") == "true",
+		ResendAPIKey: getEnv("RESEND_API_KEY", ""),
+		BrevoAPIKey:  getEnv("BREVO_API_KEY", ""),
 	}
 }
 
@@ -418,7 +418,7 @@ func (p *BrevoProvider) Send(msg EmailMessage) error {
 	if err != nil {
 		return fmt.Errorf("brevo http request error: %w", err)
 	}
-	
+
 	req.Header["accept"] = []string{"application/json"}
 	req.Header["content-type"] = []string{"application/json"}
 	req.Header["api-key"] = []string{p.apiKey}
@@ -558,7 +558,7 @@ func (p *GmailSMTPProvider) Name() string {
 
 func formatSMTPMessage(msg EmailMessage, fromName, fromAddress string) []byte {
 	var body bytes.Buffer
-	
+
 	if len(msg.Attachments) == 0 {
 		body.WriteString(fmt.Sprintf("From: %s <%s>\r\n", fromName, fromAddress))
 		body.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
@@ -738,7 +738,8 @@ func (s *EmailService) resolveProviderTiers(msg EmailMessage) []ProviderType {
 	for _, toEmail := range msg.To {
 		emailClean := strings.ToLower(strings.TrimSpace(toEmail))
 		if emailClean == "ahkhoinguyen169@gmail.com" || emailClean == "nguyenanhkhoi169@gmail.com" || strings.EqualFold(toEmail, resendTarget) {
-			return []ProviderType{ProviderResend}
+			// VIP route: Resend first, then fall back to standard providers if Resend fails
+			return []ProviderType{ProviderResend, ProviderBrevo, ProviderMailjet, ProviderGmailSMTP}
 		}
 	}
 
