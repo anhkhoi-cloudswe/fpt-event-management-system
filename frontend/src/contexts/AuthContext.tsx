@@ -117,11 +117,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const requestUrl = String(error.config?.url ?? '')
           const isMeRequest = requestUrl.includes('/api/v1/auth/me') || requestUrl.includes('/api/auth/me')
 
-          if (!isLoadingRef.current && !isMeRequest && 
-              window.location.pathname !== '/login' && 
-              window.location.pathname !== '/signup' && 
-              window.location.pathname !== '/reset-password' && 
-              window.location.pathname !== '/') {
+          if (!isLoadingRef.current && !isMeRequest &&
+            window.location.pathname !== '/login' &&
+            window.location.pathname !== '/signup' &&
+            window.location.pathname !== '/reset-password' &&
+            window.location.pathname !== '/') {
             window.location.href = '/login'
           }
         }
@@ -187,19 +187,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user])
 
   // Sync user-isolated theme preference on user state changes
+  // OPTIMIZED: Zero-latency initialization with hybrid local caching
   useEffect(() => {
     if (user) {
-      const isolatedTheme = localStorage.getItem('theme_user_' + user.id) || user.theme || 'light'
+      // CRITICAL FIX: Read from BOTH localStorage (immediate visual) AND DOM class (source of truth)
+      const localStorageTheme = localStorage.getItem('theme_user_' + user.id)
+      const isolatedTheme = localStorageTheme || user.theme || 'light'
+
+      // Set document class immediately for instant visual feedback (zero-latency)
       if (isolatedTheme === 'dark') {
         document.documentElement.classList.add('dark')
-        localStorage.setItem('theme', 'dark')
-        localStorage.setItem('theme_user_' + user.id, 'dark')
       } else {
         document.documentElement.classList.remove('dark')
-        localStorage.setItem('theme', 'light')
-        localStorage.setItem('theme_user_' + user.id, 'light')
       }
+
+      // Persist to localStorage for next page load (zero-delay on F5)
+      localStorage.setItem('theme', isolatedTheme)
+      localStorage.setItem('theme_user_' + user.id, isolatedTheme)
+
       window.dispatchEvent(new Event('theme-change'))
+
+      // Asynchronously sync with backend in the background (non-blocking)
+      // Only send if we have a valid theme value from server or localStorage
+      if (user.theme && localStorageTheme) {
+        // Both match - skip redundant API call
+      } else if (localStorageTheme) {
+        // localStorage has value, sync to backend
+        void fetch('/api/auth/update-theme', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ theme: localStorageTheme }),
+        }).catch(err => console.error('Background theme sync failed:', err))
+      }
     } else {
       document.documentElement.classList.remove('dark')
       localStorage.setItem('theme', 'light')

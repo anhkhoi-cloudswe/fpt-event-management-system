@@ -38,7 +38,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 	}
 
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, Wallet, created_at, sso_provider, deleted_at, theme
+		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme
 		FROM Users
 		WHERE email = $1
 	`
@@ -52,8 +52,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 		&user.PasswordHash,
 		&user.Role,
 		&user.Status,
-		&user.Wallet,
-		&user.CreatedAt,
+				&user.CreatedAt,
 		&user.SSOProvider,
 		&user.DeletedAt,
 		&user.Theme,
@@ -114,9 +113,10 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 }
 
 // FindByEmail finds a user by email
+// OPTIMIZED: Removed Wallet column reference - balance now queried from dedicated wallets table
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, Wallet, created_at, sso_provider, deleted_at, theme
+		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme
 		FROM Users
 		WHERE email = $1
 	`
@@ -130,7 +130,6 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 		&user.PasswordHash,
 		&user.Role,
 		&user.Status,
-		&user.Wallet,
 		&user.CreatedAt,
 		&user.SSOProvider,
 		&user.DeletedAt,
@@ -181,8 +180,8 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (int
 		user.Theme = "light"
 	}
 	query := `
-		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet, sso_provider, deleted_at, theme)
-		VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9)
+		INSERT INTO Users (full_name, email, phone, password_hash, role, status, sso_provider, deleted_at, theme)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING user_id
 	`
 
@@ -209,6 +208,7 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (int
 }
 
 // AdminCreateAccount creates an account with specific role (khớp UsersDAO.adminCreateAccount)
+// OPTIMIZED: Removed Wallet column - wallets table handles balance separately
 func (r *UserRepository) AdminCreateAccount(ctx context.Context, req models.AdminCreateAccountRequest) (int, error) {
 	// Hash password
 	passwordHash, hashErr := hash.HashPassword(req.Password)
@@ -217,8 +217,8 @@ func (r *UserRepository) AdminCreateAccount(ctx context.Context, req models.Admi
 	}
 
 	query := `
-		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet)
-		VALUES ($1, $2, $3, $4, $5, $6, 0)
+		INSERT INTO Users (full_name, email, phone, password_hash, role, status)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING user_id
 	`
 
@@ -303,8 +303,8 @@ func (r *UserRepository) CreateUserWithHash(ctx context.Context, user *models.Us
 		user.Theme = "light"
 	}
 	query := `
-		INSERT INTO Users (full_name, email, phone, password_hash, role, status, Wallet, sso_provider, deleted_at, theme)
-		VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9)
+		INSERT INTO Users (full_name, email, phone, password_hash, role, status, sso_provider, deleted_at, theme)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING user_id
 	`
 
@@ -421,7 +421,7 @@ func (r *UserRepository) SoftDeleteUser(ctx context.Context, userID string) erro
 // KHỚP VỚI Java UsersDAO.getStaffAndOrganizer() - filter by ACTIVE and INACTIVE status
 func (r *UserRepository) FindByRole(ctx context.Context, role string) ([]models.User, error) {
 	query := `
-		SELECT user_id, full_name, email, phone, role, status, Wallet, created_at, sso_provider, deleted_at, theme
+		SELECT user_id, full_name, email, phone, role, status, created_at, sso_provider, deleted_at, theme
 		FROM Users
 		WHERE role = $1 AND status IN ('ACTIVE', 'INACTIVE')
 		ORDER BY full_name
@@ -443,7 +443,6 @@ func (r *UserRepository) FindByRole(ctx context.Context, role string) ([]models.
 			&user.Phone,
 			&user.Role,
 			&user.Status,
-			&user.Wallet,
 			&user.CreatedAt,
 			&user.SSOProvider,
 			&user.DeletedAt,
@@ -542,8 +541,10 @@ func (r *UserRepository) HardDeleteExpiredUsers(ctx context.Context) (int64, err
 }
 
 // UpdateThemeByEmail updates theme preference by email
+// OPTIMIZED: Uses preventive guard constraint to avoid redundant I/O
 func (r *UserRepository) UpdateThemeByEmail(ctx context.Context, email, theme string) error {
-	query := `UPDATE Users SET theme = $1 WHERE email = $2`
+	// Preventive guard: only update if theme has actually changed
+	query := `UPDATE Users SET theme = $1 WHERE email = $2 AND theme != $1`
 
 	result, err := r.db.ExecContext(ctx, query, theme, email)
 	if err != nil {
@@ -556,7 +557,17 @@ func (r *UserRepository) UpdateThemeByEmail(ctx context.Context, email, theme st
 	}
 
 	if rows == 0 {
-		return errors.New("user not found")
+		// No rows updated - either user not found OR theme already matches (no-op)
+		// Check if user exists
+		var exists bool
+		err = r.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM Users WHERE email = $1)`, email).Scan(&exists)
+		if err != nil {
+			return fmt.Errorf("failed to check user existence: %w", err)
+		}
+		if !exists {
+			return errors.New("user not found")
+		}
+		// Theme already matches - this is actually a success (no-op write)
 	}
 
 	return nil
@@ -582,3 +593,11 @@ func (r *UserRepository) UpdateFullNameByEmail(ctx context.Context, email, fullN
 
 	return nil
 }
+
+// DB returns the underlying database connection for custom queries
+// Use this method when you need to execute queries outside the standard repository methods
+func (r *UserRepository) DB() *sql.DB {
+	return r.db
+}
+
+

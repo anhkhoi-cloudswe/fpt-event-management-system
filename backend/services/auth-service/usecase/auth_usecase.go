@@ -584,6 +584,26 @@ func (uc *AuthUseCase) UpdateTheme(ctx context.Context, email, theme string) err
 	return uc.userRepo.UpdateThemeByEmail(ctx, email, theme)
 }
 
+// GetUserWalletBalance fetches the user's wallet balance from the dedicated wallets table
+// This replaces the obsolete User.Wallet field - now uses wallets.balance for O(1) lookup
+func (uc *AuthUseCase) GetUserWalletBalance(ctx context.Context, email string) (float64, error) {
+	// First get user ID by email
+	user, err := uc.userRepo.FindByEmail(ctx, email)
+	if err != nil || user == nil {
+		return 0, errors.New("user not found")
+	}
+
+	// Query dedicated wallets table for balance
+	query := `SELECT COALESCE(balance, 0) FROM wallets WHERE user_id = $1`
+	var balance float64
+	err = uc.userRepo.DB().QueryRowContext(ctx, query, user.ID).Scan(&balance)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch wallet balance: %w", err)
+	}
+
+	return balance, nil
+}
+
 // UpdateFullName updates user fullName in the database
 func (uc *AuthUseCase) UpdateFullName(ctx context.Context, email, fullName string) error {
 	fullName = strings.TrimSpace(fullName)

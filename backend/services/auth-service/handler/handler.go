@@ -257,6 +257,7 @@ func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGateway
 
 // HandleMe handles GET /api/v1/auth/me
 // Returns trusted user identity from JWT token stored in HttpOnly cookie.
+// OPTIMIZED: Now fetches wallet balance from dedicated wallets table for O(1) lookup
 func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	token := extractToken(request)
 	if token == "" {
@@ -273,9 +274,28 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 		return createErrorResponse(http.StatusUnauthorized, "User not found")
 	}
 
+	// Fetch wallet balance from dedicated wallets table (O(1) lookup)
+	walletBalance, err := h.useCase.GetUserWalletBalance(ctx, claims.Email)
+	if err != nil {
+		logger.Warn(`[HandleMe] Failed to fetch wallet balance for user ` + claims.Email + `: ` + err.Error())
+		// Return 0 balance if wallet not found - not an authentication error
+		walletBalance = 0
+	}
+
 	resp := map[string]interface{}{
 		"status": "success",
-		"user":   user,
+		"user": map[string]interface{}{
+			"id":          user.ID,
+			"fullName":    user.FullName,
+			"email":       user.Email,
+			"phone":       user.Phone,
+			"role":        user.Role,
+			"status":      user.Status,
+			"createdAt":   user.CreatedAt.Format(time.RFC3339),
+			"ssoProvider": user.SSOProvider,
+			"theme":       user.Theme,
+			"wallet":      walletBalance, // Balance from dedicated wallets table
+		},
 	}
 	body, _ := json.Marshal(resp)
 
@@ -1257,3 +1277,5 @@ func (h *AuthHandler) HandleUpdateProfile(ctx context.Context, request events.AP
 
 	return createStatusResponse(http.StatusOK, "success", "Cập nhật hồ sơ thành công")
 }
+
+

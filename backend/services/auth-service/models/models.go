@@ -3,6 +3,7 @@ package models
 import "time"
 
 // User represents a user in the system
+// OPTIMIZED: Wallet field removed - balance is now fetched from dedicated wallets table via GetUserWalletBalance
 type User struct {
 	ID           int        `json:"id" db:"user_id"`
 	FullName     string     `json:"fullName" db:"full_name"`
@@ -11,11 +12,11 @@ type User struct {
 	PasswordHash string     `json:"-" db:"password_hash"`
 	Role         string     `json:"role" db:"role"`
 	Status       string     `json:"status" db:"status"`
-	Wallet       float64    `json:"wallet" db:"Wallet"`
 	CreatedAt    time.Time  `json:"createdAt" db:"created_at"`
 	SSOProvider  *string    `json:"ssoProvider" db:"sso_provider"`
 	DeletedAt    *time.Time `json:"deletedAt" db:"deleted_at"`
 	Theme        string     `json:"theme" db:"theme"`
+	// Wallet field removed - balance now queried from wallets table for O(1) lookup
 }
 
 // LoginRequest represents login request body

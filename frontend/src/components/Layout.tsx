@@ -68,8 +68,8 @@ export default function Layout() {
   // Settings Panel States
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [phone, setPhone] = useState(localStorage.getItem('user_phone_' + user?.id) || user?.phone || '')
-  // CRITICAL FIX: Read theme directly from document.documentElement.classList
-  // This is the SOURCE OF TRUTH set by AuthContext, NOT localStorage
+  // OPTIMIZED: Read theme directly from document class (source of truth), not localStorage
+  // localStorage is ONLY used for initial hydration, then DOM class is authoritative
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return document.documentElement.classList.contains('dark')
   })
@@ -111,26 +111,30 @@ export default function Layout() {
     window.dispatchEvent(new Event('theme-change'))
   }, [isDarkMode, user])
 
-  // Theme change action call to DB
-  const handleToggleTheme = async () => {
+  // Theme change action call to DB - OPTIMIZED: Async background sync
+  const handleToggleTheme = () => {
     const nextTheme = !isDarkMode ? 'dark' : 'light'
-    setIsDarkMode(!isDarkMode)
 
-    if (user) {
-      localStorage.setItem('theme_user_' + user.id, nextTheme)
+    // IMMEDIATE VISUAL UPDATE - Update DOM class and localStorage synchronously
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark')
+    if (user?.id) {
       localStorage.setItem('theme', nextTheme)
-      try {
-        await fetch('/api/auth/update-theme', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ theme: nextTheme }),
-        })
-        await refreshUser()
-      } catch (err) {
-        console.error('Failed to sync theme with DB:', err)
-      }
+      localStorage.setItem('theme_user_' + user.id, nextTheme)
+    }
+
+    // Update state immediately for zero-latency UI response
+    setIsDarkMode(!isDarkMode)
+    window.dispatchEvent(new Event('theme-change'))
+
+    // BACKGROUND ASYNC SYNC - Don't block UI on API call
+    if (user) {
+      void fetch('/api/auth/update-theme', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ theme: nextTheme }),
+      }).catch(err => console.error('Background theme sync failed:', err))
     }
   }
 
