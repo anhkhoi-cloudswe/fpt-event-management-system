@@ -44,6 +44,8 @@ var routes = []Route{
 	{"/api/reset-password", "Auth"},
 	{"/api/auth/google/callback", "Auth"},
 	{"/api/auth/update-password", "Auth"},
+	{"/api/auth/update-theme", "Auth"},
+	{"/api/auth/update-profile", "Auth"},
 	{"/api/admin/create-account", "Auth"},
 	{"/api/users/", "Auth"},
 

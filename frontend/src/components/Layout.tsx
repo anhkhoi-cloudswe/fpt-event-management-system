@@ -646,10 +646,10 @@ export default function Layout() {
 
         {/* Scrollable Content Panel with Margin-Left Offset for Fixed Sidebar */}
         <main className={`flex-1 overflow-y-auto min-w-0 transition-all duration-300 ${sidebarMode === 'expanded'
-            ? 'md:ml-64'
-            : sidebarMode === 'collapsed'
-              ? 'md:ml-20'
-              : 'md:ml-20 group-hover/sidebar:md:ml-64'
+          ? 'md:ml-64'
+          : sidebarMode === 'collapsed'
+            ? 'md:ml-20'
+            : 'md:ml-20 group-hover/sidebar:md:ml-64'
           }`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <Outlet />
@@ -657,9 +657,12 @@ export default function Layout() {
         </main>
       </div>
 
-      {/* Loading Overlay */}
+      {/* Loading Overlay - Context-Aware Theme Inversion */}
       {showLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center transition-colors duration-300 ${isDarkMode
+          ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
+          : 'bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100'
+          }`}>
           <div className="flex flex-col items-center gap-6">
             <img
               src={fptLogoLoading}

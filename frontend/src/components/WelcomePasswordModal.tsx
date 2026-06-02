@@ -69,7 +69,7 @@ export default function WelcomePasswordModal({ isOpen, onClose }: WelcomePasswor
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
       {/* Modal Container */}
-      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-orange-100 transform scale-100 transition-all duration-300 animate-slide-in">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl dark:shadow-slate-950 max-w-md w-full overflow-hidden border border-orange-100 transform scale-100 transition-all duration-300 animate-slide-in">
         {/* Decorative top bar with orange FPT gradient */}
         <div className="bg-gradient-to-r from-orange-600 to-orange-500 p-8 text-center text-white relative">
           <div className="mx-auto bg-white/20 p-4 rounded-full w-20 h-20 flex items-center justify-center mb-4 backdrop-blur-md border border-white/30 shadow-inner">
@@ -92,7 +92,7 @@ export default function WelcomePasswordModal({ isOpen, onClose }: WelcomePasswor
 
           {/* New Password Input */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-bold text-gray-700">Mật khẩu mới</label>
+            <label className="block text-sm font-bold text-slate-700">Mật khẩu mới</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -108,17 +108,17 @@ export default function WelcomePasswordModal({ isOpen, onClose }: WelcomePasswor
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-            <p className="text-xs text-gray-500">Mật khẩu tối thiểu 6 ký tự, gồm ít nhất 1 chữ cái và 1 chữ số.</p>
+            <p className="text-xs text-slate-500">Mật khẩu tối thiểu 6 ký tự, gồm ít nhất 1 chữ cái và 1 chữ số.</p>
           </div>
 
           {/* Confirm Password Input */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-bold text-gray-700">Xác nhận mật khẩu mới</label>
+            <label className="block text-sm font-bold text-slate-700">Xác nhận mật khẩu mới</label>
             <div className="relative">
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
@@ -134,7 +134,7 @@ export default function WelcomePasswordModal({ isOpen, onClose }: WelcomePasswor
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
               >
                 {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -168,7 +168,7 @@ export default function WelcomePasswordModal({ isOpen, onClose }: WelcomePasswor
               type="button"
               onClick={handleSkip}
               disabled={loading}
-              className="w-full text-center py-2.5 text-gray-500 font-semibold hover:text-gray-800 transition-colors text-sm"
+              className="w-full text-center py-2.5 text-slate-500 font-semibold hover:text-slate-800 transition-colors text-sm"
             >
               Bỏ qua bước này
             </button>
@@ -178,3 +178,4 @@ export default function WelcomePasswordModal({ isOpen, onClose }: WelcomePasswor
     </div>
   )
 }
+

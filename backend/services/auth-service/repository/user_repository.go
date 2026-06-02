@@ -561,3 +561,24 @@ func (r *UserRepository) UpdateThemeByEmail(ctx context.Context, email, theme st
 
 	return nil
 }
+
+// UpdateFullNameByEmail updates fullName by email
+func (r *UserRepository) UpdateFullNameByEmail(ctx context.Context, email, fullName string) error {
+	query := `UPDATE Users SET full_name = $1 WHERE email = $2`
+
+	result, err := r.db.ExecContext(ctx, query, fullName, email)
+	if err != nil {
+		return fmt.Errorf("failed to update fullName: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+
+	if rows == 0 {
+		return errors.New("user not found")
+	}
+
+	return nil
+}

@@ -573,7 +573,7 @@ func createRateLimitResponse(message string, retryAfterSec int) (events.APIGatew
 		Headers: map[string]string{
 			"Content-Type":                "application/json;charset=UTF-8",
 			"Access-Control-Allow-Origin": "*",
-			"Retry-After":                fmt.Sprintf("%d", retryAfterSec),
+			"Retry-After":                 fmt.Sprintf("%d", retryAfterSec),
 		},
 		Body: string(body),
 	}, nil
@@ -1222,4 +1222,38 @@ func (h *AuthHandler) HandleUpdateTheme(ctx context.Context, request events.APIG
 	}
 
 	return createStatusResponse(http.StatusOK, "success", "Cập nhật giao diện thành công")
+}
+
+// HandleUpdateProfile handles POST /api/auth/update-profile to save profile info (fullName, etc.)
+func (h *AuthHandler) HandleUpdateProfile(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	email := request.Headers["X-User-Email"]
+	if email == "" {
+		token := extractToken(request)
+		if token != "" {
+			claims, err := jwt.ValidateToken(token)
+			if err == nil {
+				email = claims.Email
+			}
+		}
+	}
+	if email == "" {
+		return createErrorResponse(http.StatusUnauthorized, "User is not authenticated")
+	}
+
+	var req struct {
+		FullName string `json:"fullName"`
+	}
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createStatusResponse(http.StatusBadRequest, "fail", "Invalid request body")
+	}
+
+	// If fullName is provided, update it
+	if req.FullName != "" {
+		err := h.useCase.UpdateFullName(ctx, email, req.FullName)
+		if err != nil {
+			return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
+		}
+	}
+
+	return createStatusResponse(http.StatusOK, "success", "Cập nhật hồ sơ thành công")
 }

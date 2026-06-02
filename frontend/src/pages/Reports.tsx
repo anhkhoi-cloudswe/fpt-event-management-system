@@ -897,61 +897,61 @@ export default function Reports() {
     <div>
       {/* ===== Header ===== */}
       <div className="flex items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Báo cáo tham dự</h1>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Báo cáo tham dự</h1>
       </div>
 
       {/* ===== Overall Statistics (5 cards) ===== */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         {/* Card: Tổng sự kiện (sau lọc dateRange) */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tổng sự kiện</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{totalEvents}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Tổng sự kiện</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{totalEvents}</p>
             </div>
             <Calendar className="w-12 h-12 text-blue-500" />
           </div>
         </div>
 
         {/* Card: Tổng đăng ký (dùng displayStats - unified) */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tổng đăng ký</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{displayStats.totalRegistered}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Tổng đăng ký</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{displayStats.totalRegistered}</p>
             </div>
             <Users className="w-12 h-12 text-green-500" />
           </div>
         </div>
 
         {/* Card: Tổng check-in (dùng displayStats - unified) */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tổng check-in</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{displayStats.totalCheckedIn}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Tổng check-in</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{displayStats.totalCheckedIn}</p>
             </div>
             <CheckCircle className="w-12 h-12 text-green-500" />
           </div>
         </div>
 
         {/* Card: Tổng check-out (dùng displayStats - unified) */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tổng check-out</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{displayStats.totalCheckedOut}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Tổng check-out</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{displayStats.totalCheckedOut}</p>
             </div>
             <XCircle className="w-12 h-12 text-purple-500" />
           </div>
         </div>
 
         {/* Card: Tổng hoàn tiền */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tổng Đã Hoàn Tiền</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{refundedCount}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Tổng Đã Hoàn Tiền</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{refundedCount}</p>
             </div>
             <XCircle className="w-12 h-12 text-red-500" />
           </div>
@@ -961,10 +961,10 @@ export default function Reports() {
       {/* ===== Rate cards: check-in / check-out / refunded ===== */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Rate: check-in (dùng displayStats - unified) */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tỷ lệ check-in</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Tỷ lệ check-in</p>
               <p className="text-3xl font-bold text-green-600 mt-2">
                 {displayStats.totalRegistered > 0
                   ? Math.round((displayStats.totalCheckedIn / displayStats.totalRegistered) * 100)
@@ -978,10 +978,10 @@ export default function Reports() {
         </div>
 
         {/* Rate: check-out (dùng displayStats - unified) */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tỷ lệ check-out</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Tỷ lệ check-out</p>
               <p className="text-3xl font-bold text-purple-600 mt-2">
                 {displayStats.totalRegistered > 0
                   ? Math.round((displayStats.totalCheckedOut / displayStats.totalRegistered) * 100)
@@ -995,10 +995,10 @@ export default function Reports() {
         </div>
 
         {/* Rate: refunded */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tỷ lệ hoàn tiền</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Tỷ lệ hoàn tiền</p>
               <p className="text-3xl font-bold text-red-600 mt-2">
                 {displayStats.totalRegistered > 0
                   ? Math.round((refundedCount / displayStats.totalRegistered) * 100)
@@ -1016,7 +1016,7 @@ export default function Reports() {
       </div>
 
       {/* ===== Filters: dropdown event + date range + aggregate button ===== */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800 mb-8">
         <h2 className="text-xl font-semibold mb-4 flex items-center">
           <Filter className="w-5 h-5 mr-2" />
           Lọc báo cáo
@@ -1231,12 +1231,12 @@ export default function Reports() {
 
       {/* ===== Ticket List (chỉ hiện khi đang xem stats 1 event, không phải "Tất cả") ===== */}
       {selectedStats && selectedEventId && selectedEventId !== '0' && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800 mb-8">
           <h2 className="text-xl font-semibold mb-4">
             Danh sách vé — {selectedStats.eventTitle || selectedEvent?.title}
           </h2>
 
-          <p className="text-sm text-gray-600 mb-4">Tổng vé: {totalRegistrations}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Tổng vé: {totalRegistrations}</p>
 
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -1313,7 +1313,7 @@ export default function Reports() {
           {/* Phân trang (Pagination Component) */}
           {totalCount > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200">
-              <span className="text-sm text-gray-600 font-medium">
+              <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">
                 Hiển thị {Math.min(totalCount, (currentPage - 1) * limit + 1)}-{Math.min(totalCount, currentPage * limit)} trong số {totalCount} vé
               </span>
               <div className="flex items-center space-x-3">
@@ -1343,7 +1343,7 @@ export default function Reports() {
       {/* ===== Aggregated Results (chỉ hiện khi đã bấm tổng hợp và chọn "Tất cả sự kiện") ===== */}
       {aggregatedStats && selectedEventId === '0' && (
         <>
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800 mb-8">
             <h2 className="text-xl font-semibold mb-4 text-blue-600">
               Thống kê tổng hợp ({aggregatedStats.eventsCount} sự kiện)
             </h2>
@@ -1352,7 +1352,7 @@ export default function Reports() {
               <div className="bg-blue-50 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Tổng đăng ký</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Tổng đăng ký</p>
                     <p className="text-3xl font-bold text-blue-600 mt-2">
                       {displayStats.totalRegistered}
                     </p>
@@ -1364,7 +1364,7 @@ export default function Reports() {
               <div className="bg-green-50 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Đã check-in</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Đã check-in</p>
                     <p className="text-3xl font-bold text-green-600 mt-2">
                       {displayStats.totalCheckedIn}
                     </p>
@@ -1376,7 +1376,7 @@ export default function Reports() {
               <div className="bg-purple-50 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Đã check-out</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Đã check-out</p>
                     <p className="text-3xl font-bold text-purple-600 mt-2">
                       {displayStats.totalCheckedOut}
                     </p>
@@ -1388,7 +1388,7 @@ export default function Reports() {
               <div className="bg-orange-50 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Chưa check-in</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Chưa check-in</p>
                     <p className="text-3xl font-bold text-orange-600 mt-2">
                       {displayStats.totalNotCheckedIn}
                     </p>
@@ -1399,7 +1399,7 @@ export default function Reports() {
             </div>
 
             <div className="mt-4 pt-4 border-t border-gray-200 flex gap-8">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Tỷ lệ check-in:{' '}
                 <span className="font-bold text-lg text-green-600">
                   {displayStats.totalRegistered > 0
@@ -1409,7 +1409,7 @@ export default function Reports() {
                 </span>
               </p>
 
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Tỷ lệ check-out:{' '}
                 <span className="font-bold text-lg text-purple-600">
                   {displayStats.totalRegistered > 0
@@ -1425,10 +1425,10 @@ export default function Reports() {
 
       {/* ===== Hướng dẫn dùng (khi chưa có event được chọn và chưa tổng hợp) ===== */}
       {!selectedEvent && !aggregatedStats && (
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800">
           <h2 className="text-xl font-semibold mb-4">Hướng dẫn sử dụng</h2>
 
-          <div className="space-y-2 text-sm text-gray-600">
+          <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
             <p>
               • <strong>Chọn khoảng thời gian:</strong> Sử dụng "Từ ngày" và "Đến ngày" để lọc các sự kiện trong khoảng thời gian cụ thể
             </p>
@@ -1449,4 +1449,5 @@ export default function Reports() {
     </div>
   )
 }
+
 

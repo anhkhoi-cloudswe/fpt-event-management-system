@@ -357,7 +357,7 @@ export default function Profile() {
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in-up">
       {/* Profile Banner */}
       <div className={`relative overflow-hidden rounded-3xl border p-6 md:p-8 flex flex-col md:flex-row items-center md:items-start gap-6 shadow-xl transition-colors duration-500 ${isDarkMode
-        ? 'bg-slate-900/90 border-slate-800 shadow-slate-950/20'
+        ? 'bg-slate-900 border-slate-800 text-white shadow-slate-950/20'
         : 'bg-white/80 border-orange-100/60 shadow-orange-100/10 backdrop-blur-md'
         }`}>
         <div className="relative group">
@@ -434,7 +434,7 @@ export default function Profile() {
           {/* Main content left */}
           <div className="md:col-span-2 space-y-8">
             {/* Form contact */}
-            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 backdrop-blur-md'
               }`}>
               <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
                 <Phone size={18} className="text-orange-500" />
@@ -443,7 +443,7 @@ export default function Profile() {
 
               <form onSubmit={handleUpdatePhone} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="block text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-wider pl-1">
+                  <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider pl-1">
                     Số điện thoại
                   </label>
                   <div className="relative">
@@ -457,9 +457,7 @@ export default function Profile() {
                       placeholder="Chưa cập nhật số điện thoại"
                       className={`w-full pl-4 pr-24 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${phoneError
                         ? 'border-rose-300 bg-rose-50/30 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 text-rose-600'
-                        : isDarkMode
-                          ? 'bg-slate-950 border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-200'
-                          : 'bg-white border-slate-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-800'
+                        : isDarkMode ? 'bg-slate-900 border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-white' : 'bg-white border-slate-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-900'
                         }`}
                     />
                     <button
@@ -480,7 +478,7 @@ export default function Profile() {
             </div>
 
             {/* Full Name Update Form */}
-            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 backdrop-blur-md'
               }`}>
               <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
                 <User size={18} className="text-orange-500" />
@@ -489,7 +487,7 @@ export default function Profile() {
 
               <form onSubmit={handleUpdateFullName} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="block text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-wider pl-1">
+                  <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider pl-1">
                     Họ và Tên Đầy Đủ
                   </label>
                   <div className="relative">
@@ -503,9 +501,7 @@ export default function Profile() {
                       placeholder="Nhập họ và tên đầy đủ"
                       className={`w-full pl-4 pr-24 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${fullNameError
                         ? 'border-rose-300 bg-rose-50/30 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 text-rose-600 dark:bg-rose-500/10 dark:border-rose-700 dark:text-rose-400'
-                        : isDarkMode
-                          ? 'bg-slate-950 border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-200'
-                          : 'bg-white border-slate-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-800'
+                        : isDarkMode ? 'bg-slate-900 border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-white' : 'bg-white border-slate-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-900'
                         }`}
                     />
                     <button
@@ -526,7 +522,7 @@ export default function Profile() {
             </div>
 
             {/* Config theme and timezone */}
-            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 backdrop-blur-md'
               }`}>
               <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
                 <Globe size={18} className="text-orange-500" />
@@ -605,7 +601,7 @@ export default function Profile() {
 
           {/* Sidebar right */}
           <div className="space-y-8">
-            <div className={`p-6 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+            <div className={`p-6 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 backdrop-blur-md'
               }`}>
               <h3 className="text-sm font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
                 <Info size={16} className="text-orange-500" />
@@ -648,7 +644,7 @@ export default function Profile() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-8">
             {/* Password Tab content */}
-            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 backdrop-blur-md'
               }`}>
               <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
                 <Lock size={18} className="text-orange-500" />
@@ -761,7 +757,7 @@ export default function Profile() {
 
           {/* Sidebar right */}
           <div className="space-y-8">
-            <div className={`p-6 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+            <div className={`p-6 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 backdrop-blur-md'
               }`}>
               <h3 className="text-sm font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
                 <Shield size={16} className="text-orange-500" />
@@ -777,7 +773,7 @@ export default function Profile() {
 
       {/* Set SSO Password Modal */}
       {showSetPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
           <div className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl transition-all duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-orange-100 text-slate-900'
             }`}>
             <h3 className="text-lg font-black mb-2 flex items-center gap-2">
@@ -829,7 +825,7 @@ export default function Profile() {
                     setConfirmPassword('')
                     setPasswordError('')
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
                 >
                   Hủy bỏ
@@ -849,7 +845,7 @@ export default function Profile() {
 
       {/* Close Account Confirmation Modal */}
       {showCloseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
           <div className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl transition-all duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-orange-100 text-slate-900'
             }`}>
             <h3 className="text-lg font-black mb-3 text-rose-600 flex items-center gap-2">
@@ -872,7 +868,7 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={() => setShowCloseModal(false)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                   }`}
               >
                 Hủy bỏ
@@ -892,3 +888,6 @@ export default function Profile() {
     </div>
   )
 }
+
+
+

@@ -444,7 +444,7 @@ func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name st
 		b := make([]byte, 16)
 		_, _ = rand.Read(b)
 		randomPass := "GOOGLE_OAUTH_" + hex.EncodeToString(b)
-		
+
 		googleProvider := "GOOGLE"
 		newUser := &models.User{
 			FullName:     name,
@@ -582,4 +582,19 @@ func (uc *AuthUseCase) UpdateTheme(ctx context.Context, email, theme string) err
 		return errors.New("giao diện không hợp lệ")
 	}
 	return uc.userRepo.UpdateThemeByEmail(ctx, email, theme)
+}
+
+// UpdateFullName updates user fullName in the database
+func (uc *AuthUseCase) UpdateFullName(ctx context.Context, email, fullName string) error {
+	fullName = strings.TrimSpace(fullName)
+	if fullName == "" {
+		return errors.New("họ và tên không được để trống")
+	}
+	if len(fullName) < 2 {
+		return errors.New("họ và tên phải có ít nhất 2 ký tự")
+	}
+	if len(fullName) > 100 {
+		return errors.New("họ và tên không được vượt quá 100 ký tự")
+	}
+	return uc.userRepo.UpdateFullNameByEmail(ctx, email, fullName)
 }

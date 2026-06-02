@@ -133,6 +133,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return authHandler.HandleSetSSOPassword(ctx, request)
 	case path == "/api/auth/update-theme" && method == "POST":
 		return authHandler.HandleUpdateTheme(ctx, request)
+	case path == "/api/auth/update-profile" && method == "POST":
+		return authHandler.HandleUpdateProfile(ctx, request)
 	}
 
 	return events.APIGatewayProxyResponse{

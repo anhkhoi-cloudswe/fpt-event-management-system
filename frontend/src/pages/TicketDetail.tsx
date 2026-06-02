@@ -65,7 +65,7 @@ export default function TicketDetail() {
       </Link>
 
       <div className="max-w-2xl mx-auto">
-        <div className={`rounded-lg shadow-lg p-8 transition-colors ${isDarkMode ? 'bg-slate-900 dark:border dark:border-slate-800' : 'bg-white'}`}>
+        <div className={`rounded-lg shadow-lg p-8 transition-colors ${isDarkMode ? 'bg-slate-900 border border-slate-800 text-white' : 'bg-white text-slate-900'}`}>
           <div className="text-center mb-8">
             <h1 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{event.title}</h1>
             <p className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Vé tham dự sự kiện</p>
@@ -122,8 +122,8 @@ export default function TicketDetail() {
               <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Trạng thái:</span>
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${registration.checkedIn
-                    ? isDarkMode ? 'bg-green-900/40 text-green-300' : 'bg-green-100 text-green-800'
-                    : isDarkMode ? 'bg-yellow-900/40 text-yellow-300' : 'bg-yellow-100 text-yellow-800'
+                  ? isDarkMode ? 'bg-green-900/40 text-green-300' : 'bg-green-100 text-green-800'
+                  : isDarkMode ? 'bg-yellow-900/40 text-yellow-300' : 'bg-yellow-100 text-yellow-800'
                   }`}
               >
                 {registration.checkedIn ? 'Đã check-in' : 'Chưa check-in'}
