@@ -29,7 +29,8 @@ import {
   Cell,
 } from 'recharts'
 
-// AuthContext: lấy thông tin user (phân quyền, role...)
+// Color constants for theme-aware UI
+import { CHART_COLORS } from '../constants/colors'// AuthContext: lấy thông tin user (phân quyền, role...)
 // (Trong file này có lấy user nhưng hiện chưa dùng để chặn quyền)
 import { useAuth } from '../contexts/AuthContext'
 
@@ -88,6 +89,29 @@ export default function Reports() {
 
   // Lấy user từ context (phục vụ phân quyền nếu cần)
   const { user } = useAuth()
+
+  // Theme detection for chart colors
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark')
+    }
+    return false
+  })
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'))
+    }
+    window.addEventListener('theme-change', handleThemeChange)
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'))
+    })
+    observer.observe(document.documentElement, { attributes: true })
+    return () => {
+      window.removeEventListener('theme-change', handleThemeChange)
+      observer.disconnect()
+    }
+  }, [])
 
   // JWT token để gọi API (lấy từ localStorage; check window để tránh lỗi SSR)
 
@@ -849,12 +873,12 @@ export default function Reports() {
   /**
    * checkInPieData:
    * - Data cho PieChart: luôn dùng displayStats (unified source)
-   * - Có kèm màu (hex) theo từng phần
+   * - Có kèm màu (hex) theo từng phần - dùng theme-aware colors
    */
   const checkInPieData = [
-    { name: 'Đã check-in', value: displayStats.totalCheckedIn, color: '#10b981' },
-    { name: 'Đã check-out', value: displayStats.totalCheckedOut, color: '#8b5cf6' },
-    { name: 'Chưa check-in', value: displayStats.totalNotCheckedIn, color: '#f59e0b' },
+    { name: 'Đã check-in', value: displayStats.totalCheckedIn, color: isDarkMode ? CHART_COLORS.DARK_CHECKED_IN : CHART_COLORS.CHECKED_IN },
+    { name: 'Đã check-out', value: displayStats.totalCheckedOut, color: isDarkMode ? CHART_COLORS.DARK_CHECKED_OUT : CHART_COLORS.CHECKED_OUT },
+    { name: 'Chưa check-in', value: displayStats.totalNotCheckedIn, color: isDarkMode ? CHART_COLORS.DARK_NOT_CHECKED_IN : CHART_COLORS.NOT_CHECKED_IN },
   ]
 
   /**

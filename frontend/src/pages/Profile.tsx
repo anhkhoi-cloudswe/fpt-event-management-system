@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { 
-  User, 
-  Phone, 
-  Mail, 
-  Shield, 
-  Calendar, 
-  Wallet, 
-  Globe, 
-  Moon, 
+import {
+  User,
+  Phone,
+  Mail,
+  Shield,
+  Calendar,
+  Wallet,
+  Globe,
+  Moon,
   Sun,
   AlertCircle,
   HelpCircle,
@@ -31,7 +31,7 @@ const timezones = [
 export default function Profile() {
   const { user, logout, refreshUser } = useAuth()
   const { showToast } = useToast()
-  
+
   // Tab state: profile vs security
   const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile')
 
@@ -42,10 +42,14 @@ export default function Profile() {
     }
     return localStorage.getItem('theme') === 'dark'
   })
-  
+
   // Phone settings
   const [phone, setPhone] = useState(user?.phone || '')
-  
+
+  // Full Name settings
+  const [fullName, setFullName] = useState(user?.fullName || '')
+  const [fullNameError, setFullNameError] = useState('')
+
   // Timezone states
   const [timezone, setTimezone] = useState(localStorage.getItem('user_timezone') || 'Asia/Ho_Chi_Minh')
   const [autoDetectTz, setAutoDetectTz] = useState(localStorage.getItem('auto_timezone') !== 'false')
@@ -74,6 +78,9 @@ export default function Profile() {
   useEffect(() => {
     if (user?.phone) {
       setPhone(user.phone)
+    }
+    if (user?.fullName) {
+      setFullName(user.fullName)
     }
     if (user?.id) {
       setIsDarkMode(localStorage.getItem('theme_user_' + user.id) === 'dark')
@@ -158,6 +165,25 @@ export default function Profile() {
     return true
   }
 
+  // Validate full name
+  const validateFullName = (value: string): boolean => {
+    const cleaned = value.trim()
+    if (!cleaned) {
+      setFullNameError('Họ và tên không được để trống')
+      return false
+    }
+    if (cleaned.length < 2) {
+      setFullNameError('Họ và tên phải có ít nhất 2 ký tự')
+      return false
+    }
+    if (cleaned.length > 100) {
+      setFullNameError('Họ và tên không được vượt quá 100 ký tự')
+      return false
+    }
+    setFullNameError('')
+    return true
+  }
+
   // Handle phone update action directly to DB
   const handleUpdatePhone = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -182,6 +208,35 @@ export default function Profile() {
         await refreshUser()
       } else {
         showToast('error', data.message || 'Cập nhật số điện thoại thất bại!')
+      }
+    } catch (err) {
+      showToast('error', 'Có lỗi kết nối mạng xảy ra!')
+    }
+  }
+
+  // Handle full name update action directly to DB
+  const handleUpdateFullName = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateFullName(fullName)) {
+      showToast('error', 'Vui lòng kiểm tra lỗi nhập liệu!')
+      return
+    }
+
+    try {
+      const res = await fetch('/api/auth/update-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fullName: fullName.trim() }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        showToast('success', 'Cập nhật họ và tên thành công!')
+        await refreshUser()
+      } else {
+        showToast('error', data.message || 'Cập nhật họ và tên thất bại!')
       }
     } catch (err) {
       showToast('error', 'Có lỗi kết nối mạng xảy ra!')
@@ -294,18 +349,17 @@ export default function Profile() {
     }
   }
 
-  const joinDate = user?.createdAt 
+  const joinDate = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })
     : 'Chưa cập nhật'
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in-up">
       {/* Profile Banner */}
-      <div className={`relative overflow-hidden rounded-3xl border p-6 md:p-8 flex flex-col md:flex-row items-center md:items-start gap-6 shadow-xl transition-colors duration-500 ${
-        isDarkMode 
-          ? 'bg-slate-900/90 border-slate-800 shadow-slate-950/20' 
-          : 'bg-white/80 border-orange-100/60 shadow-orange-100/10 backdrop-blur-md'
-      }`}>
+      <div className={`relative overflow-hidden rounded-3xl border p-6 md:p-8 flex flex-col md:flex-row items-center md:items-start gap-6 shadow-xl transition-colors duration-500 ${isDarkMode
+        ? 'bg-slate-900/90 border-slate-800 shadow-slate-950/20'
+        : 'bg-white/80 border-orange-100/60 shadow-orange-100/10 backdrop-blur-md'
+        }`}>
         <div className="relative group">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-600 to-orange-500 flex items-center justify-center text-3xl font-black text-white shadow-xl shadow-orange-500/20 transition-transform group-hover:scale-105 duration-300">
             {user?.fullName?.charAt(0) || 'U'}
@@ -333,11 +387,10 @@ export default function Profile() {
         </div>
 
         {user?.wallet !== undefined && (
-          <div className={`px-5 py-4 rounded-2xl border text-center md:text-right min-w-[150px] shadow-sm ${
-            isDarkMode 
-              ? 'bg-slate-950/50 border-slate-800/80 text-orange-400' 
-              : 'bg-orange-50/50 border-orange-100 text-slate-800'
-          }`}>
+          <div className={`px-5 py-4 rounded-2xl border text-center md:text-right min-w-[150px] shadow-sm ${isDarkMode
+            ? 'bg-slate-950/50 border-slate-800/80 text-orange-400'
+            : 'bg-orange-50/50 border-orange-100 text-slate-800'
+            }`}>
             <div className="flex items-center justify-center md:justify-end gap-1.5 text-xs text-slate-400 font-bold mb-1">
               <Wallet size={14} className="text-orange-500" />
               <span>Số dư ví điện tử</span>
@@ -351,11 +404,10 @@ export default function Profile() {
       <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6">
         <button
           onClick={() => setActiveTab('profile')}
-          className={`pb-3 text-sm font-extrabold transition-all relative ${
-            activeTab === 'profile'
-              ? 'text-orange-600 dark:text-orange-500'
-              : 'text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
-          }`}
+          className={`pb-3 text-sm font-extrabold transition-all relative ${activeTab === 'profile'
+            ? 'text-orange-600 dark:text-orange-500'
+            : 'text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
+            }`}
         >
           Thông tin cá nhân
           {activeTab === 'profile' && (
@@ -364,11 +416,10 @@ export default function Profile() {
         </button>
         <button
           onClick={() => setActiveTab('security')}
-          className={`pb-3 text-sm font-extrabold transition-all relative ${
-            activeTab === 'security'
-              ? 'text-orange-600 dark:text-orange-500'
-              : 'text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
-          }`}
+          className={`pb-3 text-sm font-extrabold transition-all relative ${activeTab === 'security'
+            ? 'text-orange-600 dark:text-orange-500'
+            : 'text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
+            }`}
         >
           Bảo mật & Tài khoản
           {activeTab === 'security' && (
@@ -383,9 +434,8 @@ export default function Profile() {
           {/* Main content left */}
           <div className="md:col-span-2 space-y-8">
             {/* Form contact */}
-            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${
-              isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
-            }`}>
+            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+              }`}>
               <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
                 <Phone size={18} className="text-orange-500" />
                 <span>Thông tin Liên hệ</span>
@@ -393,7 +443,7 @@ export default function Profile() {
 
               <form onSubmit={handleUpdatePhone} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                  <label className="block text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-wider pl-1">
                     Số điện thoại
                   </label>
                   <div className="relative">
@@ -405,13 +455,12 @@ export default function Profile() {
                         if (phoneError) validatePhone(e.target.value)
                       }}
                       placeholder="Chưa cập nhật số điện thoại"
-                      className={`w-full pl-4 pr-24 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${
-                        phoneError 
-                          ? 'border-rose-300 bg-rose-50/30 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 text-rose-600'
-                          : isDarkMode 
-                            ? 'bg-slate-950 border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-200' 
-                            : 'bg-white border-slate-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-800'
-                      }`}
+                      className={`w-full pl-4 pr-24 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${phoneError
+                        ? 'border-rose-300 bg-rose-50/30 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 text-rose-600'
+                        : isDarkMode
+                          ? 'bg-slate-950 border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-200'
+                          : 'bg-white border-slate-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-800'
+                        }`}
                     />
                     <button
                       type="submit"
@@ -430,10 +479,55 @@ export default function Profile() {
               </form>
             </div>
 
+            {/* Full Name Update Form */}
+            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+              }`}>
+              <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
+                <User size={18} className="text-orange-500" />
+                <span>Họ và Tên</span>
+              </h3>
+
+              <form onSubmit={handleUpdateFullName} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-wider pl-1">
+                    Họ và Tên Đầy Đủ
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => {
+                        setFullName(e.target.value)
+                        if (fullNameError) validateFullName(e.target.value)
+                      }}
+                      placeholder="Nhập họ và tên đầy đủ"
+                      className={`w-full pl-4 pr-24 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${fullNameError
+                        ? 'border-rose-300 bg-rose-50/30 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 text-rose-600 dark:bg-rose-500/10 dark:border-rose-700 dark:text-rose-400'
+                        : isDarkMode
+                          ? 'bg-slate-950 border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-200'
+                          : 'bg-white border-slate-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-800'
+                        }`}
+                    />
+                    <button
+                      type="submit"
+                      className="absolute right-2 top-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-black text-xs rounded-xl shadow active:scale-95 transition-all"
+                    >
+                      Lưu thay đổi
+                    </button>
+                  </div>
+                  {fullNameError && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-bold pl-1 flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      {fullNameError}
+                    </p>
+                  )}
+                </div>
+              </form>
+            </div>
+
             {/* Config theme and timezone */}
-            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${
-              isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
-            }`}>
+            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+              }`}>
               <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
                 <Globe size={18} className="text-orange-500" />
                 <span>Giao diện & Khu vực</span>
@@ -449,11 +543,10 @@ export default function Profile() {
                   <button
                     type="button"
                     onClick={handleToggleTheme}
-                    className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border transition-all min-w-[160px] active:scale-98 ${
-                      isDarkMode 
-                        ? 'bg-slate-800 border-slate-700 text-slate-200' 
-                        : 'bg-slate-50 border-slate-200 text-slate-700'
-                    }`}
+                    className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border transition-all min-w-[160px] active:scale-98 ${isDarkMode
+                      ? 'bg-slate-800 border-slate-700 text-slate-200'
+                      : 'bg-slate-50 border-slate-200 text-slate-700'
+                      }`}
                   >
                     <div className="flex items-center gap-2 text-xs font-bold">
                       {isDarkMode ? <Moon size={15} className="text-orange-400" /> : <Sun size={15} className="text-orange-500" />}
@@ -492,11 +585,10 @@ export default function Profile() {
                         setTimezone(e.target.value)
                         localStorage.setItem('user_timezone', e.target.value)
                       }}
-                      className={`w-full pl-9 pr-8 py-2.5 text-xs font-semibold rounded-xl border outline-none appearance-none transition-all cursor-pointer ${
-                        isDarkMode 
-                          ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200 disabled:opacity-50' 
-                          : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800 disabled:opacity-50'
-                      }`}
+                      className={`w-full pl-9 pr-8 py-2.5 text-xs font-semibold rounded-xl border outline-none appearance-none transition-all cursor-pointer ${isDarkMode
+                        ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200 disabled:opacity-50'
+                        : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800 disabled:opacity-50'
+                        }`}
                     >
                       {timezones.map((tz) => (
                         <option key={tz.value} value={tz.value}>
@@ -513,9 +605,8 @@ export default function Profile() {
 
           {/* Sidebar right */}
           <div className="space-y-8">
-            <div className={`p-6 rounded-3xl border shadow-xl transition-colors duration-500 ${
-              isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
-            }`}>
+            <div className={`p-6 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+              }`}>
               <h3 className="text-sm font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
                 <Info size={16} className="text-orange-500" />
                 <span>Quy trình Thay đổi Hồ sơ</span>
@@ -557,9 +648,8 @@ export default function Profile() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-8">
             {/* Password Tab content */}
-            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${
-              isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
-            }`}>
+            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+              }`}>
               <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
                 <Lock size={18} className="text-orange-500" />
                 <span>Bảo mật mật khẩu</span>
@@ -608,11 +698,10 @@ export default function Profile() {
                       value={standardPassword}
                       onChange={(e) => setStandardPassword(e.target.value)}
                       placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                      className={`w-full px-4 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${
-                        isDarkMode 
-                          ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200' 
-                          : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800'
-                      }`}
+                      className={`w-full px-4 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${isDarkMode
+                        ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200'
+                        : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800'
+                        }`}
                     />
                   </div>
 
@@ -625,11 +714,10 @@ export default function Profile() {
                       value={standardConfirmPassword}
                       onChange={(e) => setStandardConfirmPassword(e.target.value)}
                       placeholder="Nhập lại mật khẩu mới"
-                      className={`w-full px-4 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${
-                        isDarkMode 
-                          ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200' 
-                          : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800'
-                      }`}
+                      className={`w-full px-4 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${isDarkMode
+                        ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200'
+                        : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800'
+                        }`}
                     />
                   </div>
 
@@ -673,9 +761,8 @@ export default function Profile() {
 
           {/* Sidebar right */}
           <div className="space-y-8">
-            <div className={`p-6 rounded-3xl border shadow-xl transition-colors duration-500 ${
-              isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
-            }`}>
+            <div className={`p-6 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/80 border-orange-100/60 backdrop-blur-md'
+              }`}>
               <h3 className="text-sm font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
                 <Shield size={16} className="text-orange-500" />
                 <span>Cam kết Bảo mật</span>
@@ -691,9 +778,8 @@ export default function Profile() {
       {/* Set SSO Password Modal */}
       {showSetPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl transition-all duration-300 ${
-            isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-orange-100 text-slate-900'
-          }`}>
+          <div className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl transition-all duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-orange-100 text-slate-900'
+            }`}>
             <h3 className="text-lg font-black mb-2 flex items-center gap-2">
               <Lock className="text-orange-500" />
               <span>Thiết lập mật khẩu tài khoản</span>
@@ -710,9 +796,8 @@ export default function Profile() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Tối thiểu 6 ký tự"
-                  className={`w-full px-4 py-2.5 text-sm font-semibold rounded-xl border outline-none ${
-                    isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-orange-500' : 'bg-white border-slate-200 text-slate-800 focus:border-orange-500'
-                  }`}
+                  className={`w-full px-4 py-2.5 text-sm font-semibold rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-orange-500' : 'bg-white border-slate-200 text-slate-800 focus:border-orange-500'
+                    }`}
                 />
               </div>
 
@@ -723,9 +808,8 @@ export default function Profile() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Nhập lại mật khẩu mới"
-                  className={`w-full px-4 py-2.5 text-sm font-semibold rounded-xl border outline-none ${
-                    isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-orange-500' : 'bg-white border-slate-200 text-slate-800 focus:border-orange-500'
-                  }`}
+                  className={`w-full px-4 py-2.5 text-sm font-semibold rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-orange-500' : 'bg-white border-slate-200 text-slate-800 focus:border-orange-500'
+                    }`}
                 />
               </div>
 
@@ -745,9 +829,8 @@ export default function Profile() {
                     setConfirmPassword('')
                     setPasswordError('')
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                    isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
                 >
                   Hủy bỏ
                 </button>
@@ -767,9 +850,8 @@ export default function Profile() {
       {/* Close Account Confirmation Modal */}
       {showCloseModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl transition-all duration-300 ${
-            isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-orange-100 text-slate-900'
-          }`}>
+          <div className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl transition-all duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-orange-100 text-slate-900'
+            }`}>
             <h3 className="text-lg font-black mb-3 text-rose-600 flex items-center gap-2">
               <AlertCircle className="text-rose-500 animate-bounce" />
               <span>Xác nhận xóa tài khoản</span>
@@ -790,9 +872,8 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={() => setShowCloseModal(false)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
               >
                 Hủy bỏ
               </button>

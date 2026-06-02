@@ -494,7 +494,7 @@ export default function GuestLanding() {
     <div id="top" className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 lg:pl-20 transition-all duration-500">
 
       {/* ===================== DESKTOP COLLAPSIBLE SIDEBAR ===================== */}
-      <aside 
+      <aside
         className="fixed inset-y-0 left-0 z-50 hidden lg:flex flex-col border-r border-slate-800/80 shadow-2xl text-slate-300 transition-all duration-500 ease-in-out w-20 hover:w-64 group/sidebar"
         style={{ backgroundColor: 'rgba(11, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}
       >
@@ -553,7 +553,7 @@ export default function GuestLanding() {
           ></div>
 
           {/* Sidebar Panel */}
-          <aside 
+          <aside
             className="fixed inset-y-0 left-0 w-72 text-slate-100 shadow-2xl flex flex-col p-6 z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right"
             style={{ backgroundColor: 'rgba(11, 15, 25, 0.96)', backdropFilter: 'blur(24px)' }}
           >
@@ -612,7 +612,7 @@ export default function GuestLanding() {
       {/* sticky header: luôn nằm trên top khi scroll */}
       <header className="sticky top-0 z-40 border-b border-orange-500/10 bg-white/70 backdrop-blur-md shadow-sm transition-all duration-300">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-          
+
           {/* Mobile Menu Button + Logo */}
           <div className="flex items-center gap-3">
             <button
@@ -948,21 +948,21 @@ export default function GuestLanding() {
         <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 via-orange-500 to-amber-500 p-12 text-center shadow-2xl shadow-orange-500/25 border border-white/10">
           {/* Background pattern trang trí */}
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20"></div>
- 
+
           <div className="relative space-y-6">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm mb-4">
               <Sparkles className="w-10 h-10 text-white animate-pulse" />
             </div>
- 
+
             <h2 className="text-4xl font-extrabold text-white sm:text-5xl tracking-tight leading-tight">
               Sẵn sàng nâng cấp trải nghiệm sự kiện?
             </h2>
- 
+
             <p className="mt-4 text-xl text-orange-50 max-w-3xl mx-auto leading-relaxed font-medium">
               Đăng nhập bằng tài khoản nội bộ để truy cập bảng điều khiển dành
               cho Event Organizer, Staff và Volunteer.
             </p>
- 
+
             {/* CTA login */}
             <button
               onClick={handleLoginClick}
@@ -1006,7 +1006,7 @@ export default function GuestLanding() {
       {/* ===================== LOADING OVERLAY ===================== */}
       {/* Khi showLoading = true thì hiển thị overlay */}
       {showLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
           <div className="flex flex-col items-center gap-6">
             {/* Logo loading */}
             <img
@@ -1018,15 +1018,15 @@ export default function GuestLanding() {
             {/* 3 chấm nhảy bounce */}
             <div className="flex gap-2">
               <div
-                className="h-3 w-3 rounded-full bg-orange-600 animate-bounce"
+                className="h-3 w-3 rounded-full bg-orange-600 dark:bg-orange-500 animate-bounce"
                 style={{ animationDelay: '0ms' }}
               ></div>
               <div
-                className="h-3 w-3 rounded-full bg-orange-600 animate-bounce"
+                className="h-3 w-3 rounded-full bg-orange-600 dark:bg-orange-500 animate-bounce"
                 style={{ animationDelay: '150ms' }}
               ></div>
               <div
-                className="h-3 w-3 rounded-full bg-orange-600 animate-bounce"
+                className="h-3 w-3 rounded-full bg-orange-600 dark:bg-orange-500 animate-bounce"
                 style={{ animationDelay: '300ms' }}
               ></div>
             </div>
