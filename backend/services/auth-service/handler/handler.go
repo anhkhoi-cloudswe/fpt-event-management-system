@@ -637,7 +637,7 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 	// Generate and send OTP
 	otp, err := h.useCase.GenerateRegisterOTP(ctx, req)
 	if err != nil {
-		return createStatusResponse(http.StatusBadGateway, "fail", "Không thể gửi OTP")
+		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 	}
 
 	// GỬI EMAIL VỚI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
