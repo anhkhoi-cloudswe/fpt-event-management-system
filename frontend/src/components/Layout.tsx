@@ -1,17 +1,17 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { 
-  LogOut, 
-  Menu, 
-  X, 
-  Wallet, 
-  Settings, 
-  User, 
-  Globe, 
-  Moon, 
-  Sun, 
-  ChevronDown, 
-  Check, 
+import {
+  LogOut,
+  Menu,
+  X,
+  Wallet,
+  Settings,
+  User,
+  Globe,
+  Moon,
+  Sun,
+  ChevronDown,
+  Check,
   Lock,
   LayoutDashboard,
   Calendar,
@@ -203,16 +203,16 @@ export default function Layout() {
   }
 
   const SidebarIcon = ({ size = 18 }: { size?: number }) => (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className="lucide"
     >
       <rect width="18" height="18" x="3" y="3" rx="2" />
@@ -224,19 +224,18 @@ export default function Layout() {
     const isCollapsed = !isMobile && sidebarMode === 'collapsed'
     const isHoverExpand = !isMobile && sidebarMode === 'hover-expand'
     return (
-      <Link 
-        to={to} 
-        onClick={onClick} 
+      <Link
+        to={to}
+        onClick={onClick}
         className={customClass || getNavLinkClass(to)}
       >
         <div className="flex-shrink-0"><Icon size={18} /></div>
-        <span className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
-          isCollapsed 
-            ? 'opacity-0 w-0 pointer-events-none' 
-            : isHoverExpand 
-              ? 'opacity-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto w-0 pointer-events-none group-hover/sidebar:pointer-events-auto' 
-              : 'opacity-100 w-auto'
-        }`}>{label}</span>
+        <span className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${isCollapsed
+          ? 'opacity-0 w-0 pointer-events-none'
+          : isHoverExpand
+            ? 'opacity-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto w-0 pointer-events-none group-hover/sidebar:pointer-events-auto'
+            : 'opacity-100 w-auto'
+          }`}>{label}</span>
       </Link>
     )
   }
@@ -265,18 +264,18 @@ export default function Layout() {
         {renderLink("/dashboard", LayoutDashboard, "Dashboard", handleLinkClick, closeMobile)}
         {renderLink("/dashboard/events", Calendar, "Sự kiện", handleLinkClick, closeMobile)}
         {isOrganizer && renderLink(
-          "/dashboard/events/create", 
-          PlusCircle, 
-          "Tạo sự kiện", 
-          handleLinkClick, 
+          "/dashboard/events/create",
+          PlusCircle,
+          "Tạo sự kiện",
+          handleLinkClick,
           closeMobile,
           "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-extrabold transition-all duration-300 w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-450 text-white hover:shadow-lg hover:shadow-orange-500/25 active:scale-98"
         )}
         {(user?.role === 'ORGANIZER' || isStaff) && renderLink(
-          "/dashboard/event-requests", 
-          Undo2, 
-          isStaff ? "Quản lý yêu cầu" : "Yêu cầu của tôi", 
-          handleLinkClick, 
+          "/dashboard/event-requests",
+          Undo2,
+          isStaff ? "Quản lý yêu cầu" : "Yêu cầu của tôi",
+          handleLinkClick,
           closeMobile
         )}
         {user?.role === 'ORGANIZER' && (
@@ -299,18 +298,16 @@ export default function Layout() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col transition-colors duration-500 ${
-      isDarkMode 
-        ? 'bg-slate-950 text-slate-100 dark' 
-        : 'bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 text-slate-800'
-    }`}>
+    <div className={`min-h-screen flex flex-col transition-colors duration-500 ${isDarkMode
+      ? 'bg-slate-950 text-slate-100 dark'
+      : 'bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 text-slate-800'
+      }`}>
       {user?.status === 'PENDING_DELETE' && <AccountRestoreOverlay />}
       {/* Header Status Bar */}
-      <header className={`fixed top-0 left-0 right-0 h-16 z-40 transition-colors duration-500 shadow-md border-b flex items-center px-4 md:px-6 ${
-        isDarkMode 
-          ? 'bg-slate-900/90 backdrop-blur-md border-slate-800/80 shadow-slate-950/20' 
-          : 'bg-white/90 backdrop-blur-md border-orange-100/60 shadow-orange-100/10'
-      }`}>
+      <header className={`fixed top-0 left-0 right-0 h-16 z-40 transition-colors duration-500 shadow-md border-b flex items-center px-4 md:px-6 ${isDarkMode
+        ? 'bg-slate-900/90 backdrop-blur-md border-slate-800/80 shadow-slate-950/20'
+        : 'bg-white/90 backdrop-blur-md border-orange-100/60 shadow-orange-100/10'
+        }`}>
         <div className="flex justify-between items-center w-full">
           {/* Logo & Toggle Menu */}
           <div className="flex items-center gap-3">
@@ -332,11 +329,10 @@ export default function Layout() {
             </div>
 
             {showWallet && (
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all ${
-                isDarkMode 
-                  ? 'bg-slate-800 border-slate-700 text-orange-400 font-bold' 
-                  : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 text-slate-800 font-bold'
-              }`}>
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all ${isDarkMode
+                ? 'bg-slate-800 border-slate-700 text-orange-400 font-bold'
+                : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 text-slate-800 font-bold'
+                }`}>
                 <Wallet size={16} className="text-orange-500" />
                 <span className="text-xs">
                   {balanceLoading ? '...' : balance.toLocaleString('vi-VN')} ₫
@@ -345,13 +341,12 @@ export default function Layout() {
             )}
 
             {/* Clickable User profile summary to toggle popover settings */}
-            <div 
+            <div
               onClick={() => setSettingsOpen(!settingsOpen)}
-              className={`flex items-center gap-2 px-2.5 py-1.5 rounded-2xl cursor-pointer transition-all duration-300 select-none border border-transparent ${
-                isDarkMode 
-                  ? 'hover:bg-slate-800/80 text-slate-200 hover:text-white' 
-                  : 'hover:bg-orange-50/70 text-slate-800 hover:text-slate-950'
-              }`}
+              className={`flex items-center gap-2 px-2.5 py-1.5 rounded-2xl cursor-pointer transition-all duration-300 select-none border border-transparent ${isDarkMode
+                ? 'hover:bg-slate-800/80 text-slate-200 hover:text-white'
+                : 'hover:bg-orange-50/70 text-slate-800 hover:text-slate-950'
+                }`}
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-600 to-orange-500 flex items-center justify-center text-xs font-black text-white shadow-md shadow-orange-500/20">
                 {user?.fullName?.charAt(0) || 'U'}
@@ -367,16 +362,15 @@ export default function Layout() {
             {settingsOpen && (
               <>
                 {/* Invisible backdrop helper for easy tap-out closing */}
-                <div 
+                <div
                   onClick={() => setSettingsOpen(false)}
                   className="fixed inset-0 z-40 cursor-default"
                 />
-                
-                <div className={`absolute right-0 top-full mt-2 w-80 rounded-3xl border shadow-2xl p-5 z-50 animate-fade-in-up ${
-                  isDarkMode 
-                    ? 'bg-slate-900/95 backdrop-blur-md border-slate-700/80 text-slate-200 shadow-slate-950/50' 
-                    : 'bg-white/95 backdrop-blur-md border-orange-100 shadow-orange-500/10 text-slate-800'
-                }`}>
+
+                <div className={`absolute right-0 top-full mt-2 w-80 rounded-3xl border shadow-2xl p-5 z-50 animate-fade-in-up ${isDarkMode
+                  ? 'bg-slate-900/95 backdrop-blur-md border-slate-700/80 text-slate-200 shadow-slate-950/50'
+                  : 'bg-white/95 backdrop-blur-md border-orange-100 shadow-orange-500/10 text-slate-800'
+                  }`}>
                   {/* Popover Header */}
                   <div className="flex items-center gap-3 pb-4 border-b border-slate-200/50 dark:border-slate-800/60">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-600 to-orange-500 flex items-center justify-center text-sm font-black text-white shadow-md">
@@ -396,11 +390,10 @@ export default function Layout() {
                       <button
                         type="button"
                         onClick={handleToggleTheme}
-                        className={`w-full flex items-center justify-between p-2.5 rounded-xl border transition-all active:scale-98 ${
-                          isDarkMode 
-                            ? 'bg-slate-800 border-slate-700 hover:border-orange-500/40 text-slate-200' 
-                            : 'bg-slate-50 border-slate-200 hover:border-orange-500/35 text-slate-750'
-                        }`}
+                        className={`w-full flex items-center justify-between p-2.5 rounded-xl border transition-all active:scale-98 ${isDarkMode
+                          ? 'bg-slate-800 border-slate-700 hover:border-orange-500/40 text-slate-200'
+                          : 'bg-slate-50 border-slate-200 hover:border-orange-500/35 text-slate-750'
+                          }`}
                       >
                         <div className="flex items-center gap-2.5 text-xs font-bold">
                           {isDarkMode ? <Moon size={16} className="text-orange-400" /> : <Sun size={16} className="text-orange-500" />}
@@ -421,11 +414,10 @@ export default function Layout() {
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           placeholder="Chưa cập nhật SĐT"
-                          className={`flex-1 px-3 py-2 text-xs font-semibold rounded-xl border outline-none transition-all ${
-                            isDarkMode 
-                              ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200 placeholder-slate-600' 
-                              : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800 placeholder-slate-400'
-                          }`}
+                          className={`flex-1 px-3 py-2 text-xs font-semibold rounded-xl border outline-none transition-all ${isDarkMode
+                            ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200 placeholder-slate-600'
+                            : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800 placeholder-slate-400'
+                            }`}
                         />
                         <button
                           type="button"
@@ -460,11 +452,10 @@ export default function Layout() {
                             setTimezone(e.target.value)
                             localStorage.setItem('user_timezone', e.target.value)
                           }}
-                          className={`w-full pl-9 pr-4 py-2 text-xs font-semibold rounded-xl border outline-none appearance-none transition-all cursor-pointer ${
-                            isDarkMode 
-                              ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200 disabled:opacity-50' 
-                              : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800 disabled:opacity-50'
-                          }`}
+                          className={`w-full pl-9 pr-4 py-2 text-xs font-semibold rounded-xl border outline-none appearance-none transition-all cursor-pointer ${isDarkMode
+                            ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200 disabled:opacity-50'
+                            : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800 disabled:opacity-50'
+                            }`}
                         >
                           {timezones.map((tz) => (
                             <option key={tz.value} value={tz.value}>
@@ -479,22 +470,20 @@ export default function Layout() {
 
                   {/* Popover Footer actions */}
                   <div className="pt-4 border-t border-slate-200/50 dark:border-slate-800/60 flex flex-col gap-2">
-                    <Link 
+                    <Link
                       to="/dashboard/profile"
                       onClick={() => setSettingsOpen(false)}
-                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${
-                        isDarkMode ? 'hover:bg-slate-850 text-slate-300' : 'hover:bg-slate-50 text-slate-600'
-                      }`}
+                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${isDarkMode ? 'hover:bg-slate-850 text-slate-300' : 'hover:bg-slate-50 text-slate-600'
+                        }`}
                     >
                       <User size={14} className="text-slate-400" />
                       <span>Hồ sơ cá nhân</span>
                     </Link>
-                    <Link 
+                    <Link
                       to="/reset-password"
                       onClick={() => setSettingsOpen(false)}
-                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${
-                        isDarkMode ? 'hover:bg-slate-850 text-slate-300' : 'hover:bg-slate-50 text-slate-600'
-                      }`}
+                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${isDarkMode ? 'hover:bg-slate-850 text-slate-300' : 'hover:bg-slate-50 text-slate-600'
+                        }`}
                     >
                       <Lock size={14} className="text-slate-400" />
                       <span>Thay đổi mật khẩu</span>
@@ -520,55 +509,48 @@ export default function Layout() {
 
       {/* Main Layout Grid */}
       <div className="flex flex-1 pt-16 overflow-hidden">
-        {/* Desktop Left Sidebar with Sticky Locking & Width Transitions */}
-        <aside className={`hidden md:flex flex-col flex-shrink-0 border-r transition-all duration-300 ease-in-out backdrop-blur-md sticky top-16 h-[calc(100vh-4rem)] z-30 ${
-          sidebarMode === 'expanded' 
-            ? 'w-64' 
-            : sidebarMode === 'collapsed' 
-              ? 'w-20' 
-              : 'w-20 hover:w-64 group/sidebar'
-        } ${
-          isDarkMode 
-            ? 'bg-slate-900/90 border-slate-800/80 text-slate-200 shadow-slate-950/20' 
+        {/* Desktop Left Sidebar with Fixed Positioning - Locked to Left */}
+        <aside className={`hidden md:fixed md:flex flex-col flex-shrink-0 border-r transition-all duration-300 ease-in-out backdrop-blur-md top-16 left-0 h-[calc(100vh-4rem)] z-30 ${sidebarMode === 'expanded'
+          ? 'w-64'
+          : sidebarMode === 'collapsed'
+            ? 'w-20'
+            : 'w-20 hover:w-64 group/sidebar'
+          } ${isDarkMode
+            ? 'bg-slate-900/90 border-slate-800/80 text-slate-200 shadow-slate-950/20'
             : 'bg-white/80 border-orange-100/60 text-slate-800 shadow-orange-100/10'
-        }`}>
-          <div className={`flex-1 py-6 space-y-2 overflow-y-auto transition-all duration-300 ${
-            sidebarMode === 'expanded' 
-              ? 'px-4' 
-              : sidebarMode === 'hover-expand' 
-                ? 'px-3 group-hover/sidebar:px-4' 
-                : 'px-3'
           }`}>
+          <div className={`flex-1 py-6 space-y-2 overflow-y-auto transition-all duration-300 ${sidebarMode === 'expanded'
+            ? 'px-4'
+            : sidebarMode === 'hover-expand'
+              ? 'px-3 group-hover/sidebar:px-4'
+              : 'px-3'
+            }`}>
             {renderSidebarLinks(false)}
           </div>
 
           {/* Sidebar Mode Control Widget (Figure 3 Matching) */}
-          <div className={`p-4 border-t transition-colors duration-300 relative ${
-            isDarkMode ? 'border-slate-800/80' : 'border-orange-100/60'
-          }`}>
+          <div className={`p-4 border-t transition-colors duration-300 relative ${isDarkMode ? 'border-slate-800/80' : 'border-orange-100/60'
+            }`}>
             <button
               type="button"
               onClick={() => setShowModePopover(!showModePopover)}
-              className={`p-2.5 rounded-xl border transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${
-                isDarkMode 
-                  ? 'bg-slate-800/60 border-slate-700 hover:border-orange-500/40 text-slate-350 hover:text-white' 
-                  : 'bg-orange-50/60 border-orange-200 hover:border-orange-500/30 text-slate-650 hover:text-slate-900'
-              } ${
-                sidebarMode === 'expanded' 
-                  ? 'w-full gap-3' 
-                  : sidebarMode === 'hover-expand' 
-                    ? 'w-full group-hover/sidebar:w-full group-hover/sidebar:gap-3 mx-auto justify-center' 
+              className={`p-2.5 rounded-xl border transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${isDarkMode
+                ? 'bg-slate-800/60 border-slate-700 hover:border-orange-500/40 text-slate-350 hover:text-white'
+                : 'bg-orange-50/60 border-orange-200 hover:border-orange-500/30 text-slate-650 hover:text-slate-900'
+                } ${sidebarMode === 'expanded'
+                  ? 'w-full gap-3'
+                  : sidebarMode === 'hover-expand'
+                    ? 'w-full group-hover/sidebar:w-full group-hover/sidebar:gap-3 mx-auto justify-center'
                     : 'mx-auto'
-              }`}
+                }`}
             >
               <SidebarIcon size={18} />
-              <span className={`transition-all duration-300 whitespace-nowrap overflow-hidden text-xs font-bold ${
-                sidebarMode === 'collapsed' 
-                  ? 'opacity-0 w-0 pointer-events-none' 
-                  : sidebarMode === 'hover-expand' 
-                    ? 'opacity-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto w-0 pointer-events-none group-hover/sidebar:pointer-events-auto' 
-                    : 'opacity-100 w-auto'
-              }`}>
+              <span className={`transition-all duration-300 whitespace-nowrap overflow-hidden text-xs font-bold ${sidebarMode === 'collapsed'
+                ? 'opacity-0 w-0 pointer-events-none'
+                : sidebarMode === 'hover-expand'
+                  ? 'opacity-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto w-0 pointer-events-none group-hover/sidebar:pointer-events-auto'
+                  : 'opacity-100 w-auto'
+                }`}>
                 Điều khiển
               </span>
             </button>
@@ -576,15 +558,14 @@ export default function Layout() {
             {/* Popover Menu matching Figure 3 */}
             {showModePopover && (
               <>
-                <div 
-                  className="fixed inset-0 z-40 cursor-default" 
-                  onClick={() => setShowModePopover(false)} 
+                <div
+                  className="fixed inset-0 z-40 cursor-default"
+                  onClick={() => setShowModePopover(false)}
                 />
-                <div className={`absolute bottom-full left-4 mb-2 w-52 rounded-2xl border shadow-2xl p-3.5 z-50 animate-fade-in-up ${
-                  isDarkMode 
-                    ? 'bg-slate-900 border-slate-800 text-slate-200 shadow-slate-950/80' 
-                    : 'bg-white border-orange-150 text-slate-800 shadow-orange-500/10'
-                }`}>
+                <div className={`absolute bottom-full left-4 mb-2 w-52 rounded-2xl border shadow-2xl p-3.5 z-50 animate-fade-in-up ${isDarkMode
+                  ? 'bg-slate-900 border-slate-800 text-slate-200 shadow-slate-950/80'
+                  : 'bg-white border-orange-150 text-slate-800 shadow-orange-500/10'
+                  }`}>
                   <div className="text-[10px] font-black tracking-wider uppercase opacity-50 px-2.5 pb-2 border-b border-slate-200/40 dark:border-slate-800/50">
                     Sidebar control
                   </div>
@@ -605,15 +586,14 @@ export default function Layout() {
                           setShowModePopover(false)
                           showToast('success', `Đã chuyển sang chế độ: ${mode.label}`)
                         }}
-                        className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-all ${
-                          sidebarMode === mode.value
-                            ? isDarkMode
-                              ? 'bg-orange-500/10 text-orange-400'
-                              : 'bg-orange-50 text-orange-600'
-                            : isDarkMode
-                              ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-250'
-                              : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
-                        }`}
+                        className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-all ${sidebarMode === mode.value
+                          ? isDarkMode
+                            ? 'bg-orange-500/10 text-orange-400'
+                            : 'bg-orange-50 text-orange-600'
+                          : isDarkMode
+                            ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-250'
+                            : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
+                          }`}
                       >
                         <div className="w-4 flex items-center justify-center">
                           {sidebarMode === mode.value && (
@@ -634,24 +614,23 @@ export default function Layout() {
         {mobileMenuOpen && (
           <>
             {/* Backdrop */}
-            <div 
+            <div
               className="fixed inset-0 z-45 bg-slate-950/60 backdrop-blur-md md:hidden"
               onClick={() => setMobileMenuOpen(false)}
             />
-            <aside className={`fixed top-0 left-0 bottom-0 w-72 z-50 flex flex-col border-r shadow-2xl transition-all duration-300 md:hidden ${
-              isDarkMode 
-                ? 'bg-slate-900 border-slate-800 text-slate-200' 
-                : 'bg-white border-orange-100 text-slate-800'
-            }`}>
+            <aside className={`fixed top-0 left-0 bottom-0 w-72 z-50 flex flex-col border-r shadow-2xl transition-all duration-300 md:hidden ${isDarkMode
+              ? 'bg-slate-900 border-slate-800 text-slate-200'
+              : 'bg-white border-orange-100 text-slate-800'
+              }`}>
               <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200/50 dark:border-slate-800/60">
-                <Link 
-                  to="/dashboard" 
+                <Link
+                  to="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3"
                 >
                   <img src={fptLogo} alt="FPT Education" className="h-10 w-auto" />
                 </Link>
-                <button 
+                <button
                   onClick={() => setMobileMenuOpen(false)}
                   className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
                 >
@@ -665,8 +644,13 @@ export default function Layout() {
           </>
         )}
 
-        {/* Scrollable Content Panel */}
-        <main className="flex-1 overflow-y-auto min-w-0">
+        {/* Scrollable Content Panel with Margin-Left Offset for Fixed Sidebar */}
+        <main className={`flex-1 overflow-y-auto min-w-0 transition-all duration-300 ${sidebarMode === 'expanded'
+            ? 'md:ml-64'
+            : sidebarMode === 'collapsed'
+              ? 'md:ml-20'
+              : 'md:ml-20 group-hover/sidebar:md:ml-64'
+          }`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <Outlet />
           </div>
