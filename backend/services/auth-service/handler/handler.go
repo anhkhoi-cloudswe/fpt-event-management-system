@@ -22,6 +22,7 @@ import (
 	"github.com/fpt-event-services/common/response"
 	"github.com/fpt-event-services/common/timeutil"
 	"github.com/fpt-event-services/common/utils"
+	"github.com/fpt-event-services/common/validator"
 	"github.com/fpt-event-services/services/auth-service/models"
 	"github.com/fpt-event-services/services/auth-service/usecase"
 	"golang.org/x/time/rate"
@@ -600,6 +601,12 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 	// Validate required fields
 	if req.Email == "" || req.Password == "" {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Vui lòng điền đầy đủ thông tin")
+	}
+	if strings.TrimSpace(req.FullName) == "" {
+		parts := strings.Split(req.Email, "@")
+		if len(parts) > 0 {
+			req.FullName = validator.SanitizeFullNamePlaceholder(parts[0])
+		}
 	}
 
 	// Rate-limit per email + IP using registerGuard

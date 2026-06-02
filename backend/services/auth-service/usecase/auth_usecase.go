@@ -268,7 +268,7 @@ func (uc *AuthUseCase) GenerateRegisterOTP(ctx context.Context, req models.Regis
 	if strings.TrimSpace(fullName) == "" {
 		parts := strings.Split(req.Email, "@")
 		if len(parts) > 0 {
-			fullName = parts[0]
+			fullName = validator.SanitizeFullNamePlaceholder(parts[0])
 		}
 	}
 

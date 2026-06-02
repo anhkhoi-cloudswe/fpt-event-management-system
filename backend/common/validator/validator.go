@@ -104,6 +104,13 @@ func GetFullNameError(name string) string {
 	if trimmed == "" {
 		return ""
 	}
+	sanitized := strings.TrimSpace(removeDigits(trimmed))
+	if sanitized != trimmed {
+		trimmed = sanitized
+		if trimmed == "" {
+			return "Họ tên phải có ít nhất 2 ký tự"
+		}
+	}
 	if len(trimmed) < 2 {
 		return "Họ tên phải có ít nhất 2 ký tự"
 	}
@@ -114,6 +121,20 @@ func GetFullNameError(name string) string {
 		return "Họ tên chỉ được chứa chữ cái, khoảng trắng, dấu chấm, gạch ngang và dấu nháy đơn"
 	}
 	return ""
+}
+
+// SanitizeFullNamePlaceholder removes digits from auto-generated placeholder names.
+func SanitizeFullNamePlaceholder(name string) string {
+	return strings.TrimSpace(removeDigits(name))
+}
+
+func removeDigits(value string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return -1
+		}
+		return r
+	}, value)
 }
 
 // GetPasswordError returns user-friendly error message for password
