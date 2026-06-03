@@ -352,7 +352,7 @@ export default function SignUp() {
 
   return (
     <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 relative" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
-      <div className="bg-white/90 backdrop-blur-md p-10 rounded-[32px] shadow-2xl w-full max-w-md border border-white/20 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900">
+      <div className="bg-white/75 backdrop-blur-lg p-10 rounded-[32px] shadow-2xl w-full max-w-md border border-white/40 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900">
         {/* Floating Escape Link */}
         <Link 
           to="/" 
