@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, Globe, LocateFixed, Search } from 'lucide-react'
+import { ChevronDown, Globe, Search } from 'lucide-react'
 
 export const timezones = [
   { value: 'Asia/Ho_Chi_Minh', label: 'Asia/Ho_Chi_Minh', offset: 'GMT+7', region: 'Vietnam' },
@@ -15,7 +15,6 @@ interface TimezoneComboboxProps {
   isDarkMode?: boolean
   onChange: (value: string) => void
   onAutoDetectChange: (enabled: boolean) => void
-  onDetectNow?: () => void
 }
 
 export function TimezoneCombobox({
@@ -24,7 +23,6 @@ export function TimezoneCombobox({
   isDarkMode,
   onChange,
   onAutoDetectChange,
-  onDetectNow,
 }: TimezoneComboboxProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -50,24 +48,16 @@ export function TimezoneCombobox({
 
   return (
     <div className="relative">
-      <div className="flex items-center justify-between mb-2">
-        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+      <div className="mb-2">
+        <label className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer select-none transition-colors ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
           <input
             type="checkbox"
             checked={autoDetect}
             onChange={(e) => onAutoDetectChange(e.target.checked)}
             className="accent-orange-500 w-3.5 h-3.5"
           />
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">Auto-detect</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">Tự động xác định</span>
         </label>
-        <button
-          type="button"
-          onClick={onDetectNow}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-500/20"
-        >
-          <LocateFixed size={12} />
-          Detect
-        </button>
       </div>
 
       <button
