@@ -253,7 +253,7 @@ export default function Layout() {
           {renderLink("/dashboard/venues", MapPin, currentLanguage === 'en' ? "Venues" : "Địa Điểm", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/manage", Users, currentLanguage === 'en' ? "User Management" : "Quản lý người dùng", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/reports", FileBarChart, currentLanguage === 'en' ? "Reports" : "Báo cáo", handleLinkClick, closeMobile)}
-          {renderLink("/dashboard/system-config", Sliders, currentLanguage === 'en' ? "Configuration" : "Cấu Hinh", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/system-config", Sliders, currentLanguage === 'en' ? "Configuration" : "Cấu hình", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/profile", User, currentLanguage === 'en' ? "Profile" : "Hồ sơ cá nhân", handleLinkClick, closeMobile)}
         </>
       )
@@ -384,7 +384,7 @@ export default function Layout() {
                     </div>
                                 {/* Theme Toggle option */}
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{currentLanguage === 'en' ? 'SYSTEM THEME' : 'Giao diện hệ thống'}</label>
+                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{currentLanguage === 'en' ? 'System Theme' : 'Giao diện hệ thống'}</label>
                       <button
                         type="button"
                         onClick={handleToggleTheme}
@@ -430,7 +430,7 @@ export default function Layout() {
                     {/* Timezone option */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{currentLanguage === 'en' ? 'WORKING TIMEZONE' : 'Múi giờ khu vực'}</label>
+                        <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{currentLanguage === 'en' ? 'Working Timezone' : 'Múi giờ khu vực'}</label>
                       </div>
                       <TimezoneCombobox
                         value={timezone}

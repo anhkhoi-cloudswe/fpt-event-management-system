@@ -259,12 +259,12 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-slate-50 relative">
-      <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 pt-14 shadow-xl hover:shadow-orange-500/5 transition-all duration-500 relative z-10 animate-fade-in-up text-slate-900">
+    <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 relative" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
+      <div className="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl w-full max-w-md border border-slate-100 relative z-10 animate-fade-in-up text-slate-900">
         {/* Floating Escape Link */}
         <Link 
           to="/" 
-          className="absolute left-6 top-6 flex items-center gap-1 text-slate-500 hover:text-orange-600 font-extrabold text-[11px] transition-colors duration-200 uppercase tracking-wider"
+          className="absolute left-6 top-6 flex items-center gap-1 text-slate-900 hover:text-orange-600 font-extrabold text-[11px] transition-colors duration-200 uppercase tracking-wider"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Quay lại Trang chủ</span>
@@ -349,7 +349,7 @@ export default function ResetPassword() {
             <div className="text-center">
               <Link
                 to="/login"
-                className="text-xs font-bold text-orange-650 hover:text-orange-700 transition-colors"
+                className="text-xs font-bold text-slate-900 hover:text-orange-700 transition-colors"
               >
                 ← Quay lại đăng nhập
               </Link>

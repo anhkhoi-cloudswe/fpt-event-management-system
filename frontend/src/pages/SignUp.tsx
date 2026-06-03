@@ -351,12 +351,12 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-slate-50 relative">
-      <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 pt-14 shadow-xl hover:shadow-orange-500/5 transition-all duration-500 relative z-10 animate-fade-in-up text-slate-900">
+    <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 relative" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
+      <div className="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl w-full max-w-md border border-slate-100 relative z-10 animate-fade-in-up text-slate-900">
         {/* Floating Escape Link */}
         <Link 
           to="/" 
-          className="absolute left-6 top-6 flex items-center gap-1 text-slate-500 hover:text-orange-600 font-extrabold text-[11px] transition-colors duration-200 uppercase tracking-wider"
+          className="absolute left-6 top-6 flex items-center gap-1 text-slate-900 hover:text-orange-600 font-extrabold text-[11px] transition-colors duration-200 uppercase tracking-wider"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Quay lại Trang chủ</span>
@@ -382,7 +382,7 @@ export default function SignUp() {
             <form onSubmit={handleSendOtp} className="space-y-5">
               {/* Email */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide pl-1">Địa chỉ Email</label>
+                <label className="block text-xs font-extrabold text-slate-900 uppercase tracking-wide pl-1">Địa chỉ Email</label>
                 <input
                   name="email"
                   type="email"
@@ -409,7 +409,7 @@ export default function SignUp() {
 
               {/* Password */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide pl-1">Mật khẩu</label>
+                <label className="block text-xs font-extrabold text-slate-900 uppercase tracking-wide pl-1">Mật khẩu</label>
                 <div className="relative">
                   <input
                     name="password"
@@ -512,9 +512,9 @@ export default function SignUp() {
             </button>
 
             {/* Back to Login link */}
-            <div className="text-center pt-3.5 border-t border-slate-200/60 mt-4 text-xs font-semibold text-slate-500">
+            <div className="text-center pt-3.5 border-t border-slate-200/60 mt-4 text-xs font-semibold text-slate-900">
               Đã có tài khoản?{' '}
-              <Link to="/login" className="text-sm font-black text-orange-600 hover:text-orange-700 transition-colors inline-flex items-center gap-0.5">
+              <Link to="/login" className="text-sm font-black text-slate-900 hover:text-orange-700 transition-colors inline-flex items-center gap-0.5">
                 Quay lại Đăng nhập <LogIn className="w-3.5 h-3.5" />
               </Link>
             </div>
