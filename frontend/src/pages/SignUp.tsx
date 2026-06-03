@@ -351,18 +351,8 @@ export default function SignUp() {
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4 relative"
-      style={{
-        backgroundImage: `url(${fptCampus})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}
-    >
-      <div className="absolute inset-0 bg-slate-955/40 backdrop-blur-[2px]" />
-
-      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 pt-14 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up text-slate-800">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-slate-50 relative">
+      <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 pt-14 shadow-xl hover:shadow-orange-500/5 transition-all duration-500 relative z-10 animate-fade-in-up text-slate-900">
         {/* Floating Escape Link */}
         <Link 
           to="/" 
@@ -385,14 +375,14 @@ export default function SignUp() {
                   />
                 </Link>
               </div>
-              <h2 className="text-lg font-black text-slate-800">Đăng Ký FPT Event</h2>
+              <h2 className="text-lg font-black text-slate-900">Đăng Ký FPT Event</h2>
             </div>
 
             {/* Form */}
             <form onSubmit={handleSendOtp} className="space-y-5">
               {/* Email */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">Địa chỉ Email</label>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide pl-1">Địa chỉ Email</label>
                 <input
                   name="email"
                   type="email"
@@ -401,10 +391,10 @@ export default function SignUp() {
                   placeholder="email@fpt.edu.vn"
                   required
                   disabled={loading}
-                  className={`w-full px-4 py-3 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                  className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 focus:bg-white ${
                     emailError 
-                      ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
-                      : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                      ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
+                      : 'border-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
                   }`}
                 />
                 {emailError && (
@@ -419,7 +409,7 @@ export default function SignUp() {
 
               {/* Password */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">Mật khẩu</label>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide pl-1">Mật khẩu</label>
                 <div className="relative">
                   <input
                     name="password"
@@ -429,9 +419,9 @@ export default function SignUp() {
                     placeholder="••••••••"
                     required
                     disabled={loading}
-                    className={`w-full pl-4 pr-12 py-3 bg-white/50 border rounded-2xl focus:outline-none outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                    className={`w-full pl-4 pr-12 py-3 bg-slate-50 border rounded-2xl focus:outline-none outline-none text-slate-900 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 focus:bg-white ${
                       passwordError 
-                        ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
+                        ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
                         : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
                     }`}
                   />
@@ -522,7 +512,7 @@ export default function SignUp() {
             </button>
 
             {/* Back to Login link */}
-            <div className="text-center pt-3.5 border-t border-slate-100 mt-4 text-xs font-semibold text-slate-500">
+            <div className="text-center pt-3.5 border-t border-slate-200/60 mt-4 text-xs font-semibold text-slate-500">
               Đã có tài khoản?{' '}
               <Link to="/login" className="text-sm font-black text-orange-600 hover:text-orange-700 transition-colors inline-flex items-center gap-0.5">
                 Quay lại Đăng nhập <LogIn className="w-3.5 h-3.5" />
@@ -538,7 +528,7 @@ export default function SignUp() {
                   <Mail className="w-6 h-6 animate-pulse" />
                 </div>
               </div>
-              <h2 className="text-lg font-black text-slate-800">Xác Thực OTP</h2>
+              <h2 className="text-lg font-black text-slate-900">Xác Thực OTP</h2>
               <p className="text-xs font-semibold text-slate-500 mt-1.5 leading-relaxed">
                 Chúng tôi đã gửi mã xác thực gồm 6 chữ số đến email <span className="text-orange-600 font-bold">{formData.email}</span>. Vui lòng nhập mã để kích hoạt tài khoản.
               </p>
@@ -562,7 +552,7 @@ export default function SignUp() {
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
                   onPaste={handleOtpPaste}
                   disabled={loading}
-                  className="w-12 h-13 text-center text-xl font-bold bg-white/50 border border-slate-250 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none transition-all text-slate-850 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-12 h-13 text-center text-xl font-bold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none transition-all text-slate-900 focus:bg-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               ))}
             </div>

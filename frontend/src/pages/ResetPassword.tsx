@@ -259,19 +259,8 @@ export default function ResetPassword() {
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4 relative"
-      style={{
-        backgroundImage: `url(${fptCampus})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}
-    >
-      {/* Overlay phủ đen nhẹ */}
-      <div className="absolute inset-0 bg-slate-955/40 backdrop-blur-[2px]" />
-
-      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 pt-14 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-slate-50 relative">
+      <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 pt-14 shadow-xl hover:shadow-orange-500/5 transition-all duration-500 relative z-10 animate-fade-in-up text-slate-900">
         {/* Floating Escape Link */}
         <Link 
           to="/" 
@@ -291,10 +280,10 @@ export default function ResetPassword() {
               />
             </Link>
           </div>
-          <h1 className="text-lg font-black text-slate-800">
+          <h1 className="text-lg font-black text-slate-900">
             {step === 'email' ? 'Đặt lại mật khẩu' : 'Xác thực OTP'}
           </h1>
-          <p className="text-xs font-semibold text-slate-450 mt-1">
+          <p className="text-xs font-semibold text-slate-600 mt-1">
             {step === 'email' ? 'Nhập email trường để nhận mã OTP xác thực' : 'Nhập mã OTP và thiết lập mật khẩu mới'}
           </p>
         </div>
@@ -302,7 +291,7 @@ export default function ResetPassword() {
         {step === 'email' ? (
           <form onSubmit={handleSendOtp} className="space-y-5">
             {RECAPTCHA_SITE_KEY && (
-              <div className="flex justify-center border border-slate-200/40 rounded-2xl p-2.5 bg-white/40 mb-2">
+              <div className="flex justify-center border border-slate-200 rounded-2xl p-2.5 bg-slate-50 mb-2">
                 <ReCAPTCHA
                   ref={recaptchaRef}
                   sitekey={RECAPTCHA_SITE_KEY}
@@ -318,7 +307,7 @@ export default function ResetPassword() {
             )}
 
             <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">
+              <label htmlFor="email" className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide pl-1">
                 Địa chỉ Email
               </label>
               <input
@@ -329,10 +318,10 @@ export default function ResetPassword() {
                 onChange={handleInputChange}
                 placeholder="email@fpt.edu.vn"
                 required
-                className={`w-full px-4 py-3 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 focus:bg-white ${
                   emailError 
-                    ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
-                    : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                    ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
+                    : 'border-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
                 }`}
               />
               {emailError && (
@@ -369,7 +358,7 @@ export default function ResetPassword() {
         ) : (
           <form onSubmit={handleResetPassword} className="space-y-5">
              <div className="space-y-2">
-              <label className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide text-center">
+              <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide text-center">
                 Mã xác thực OTP
               </label>
               
@@ -418,7 +407,7 @@ export default function ResetPassword() {
                   Dán mã OTP
                 </button>
 
-                <div className="text-xs text-slate-500 font-semibold">
+                <div className="text-xs text-slate-700 font-semibold">
                   {otpCountdown > 0 ? (
                     <span>Gửi lại mã sau <strong className="text-emerald-600 font-black">{otpCountdown}s</strong></span>
                   ) : (
@@ -436,7 +425,7 @@ export default function ResetPassword() {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="newPassword" className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">
+              <label htmlFor="newPassword" className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide pl-1">
                 Mật khẩu mới
               </label>
               <div className="relative">
@@ -448,10 +437,10 @@ export default function ResetPassword() {
                   onChange={handleInputChange}
                   placeholder="Nhập mật khẩu mới"
                   required
-                  className={`w-full px-4 py-3 pr-10 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                  className={`w-full px-4 py-3 pr-10 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 focus:bg-white ${
                     newPasswordError 
                       ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
-                      : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                      : 'focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
                   }`}
                 />
                 <button
@@ -468,7 +457,7 @@ export default function ResetPassword() {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="confirmPassword" className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">
+              <label htmlFor="confirmPassword" className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide pl-1">
                 Xác nhận mật khẩu
               </label>
               <div className="relative">
@@ -480,10 +469,10 @@ export default function ResetPassword() {
                   onChange={handleInputChange}
                   placeholder="Nhập lại mật khẩu mới"
                   required
-                  className={`w-full px-4 py-3 pr-10 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                  className={`w-full px-4 py-3 pr-10 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 focus:bg-white ${
                     confirmPasswordError 
                       ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
-                      : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                      : 'focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
                   }`}
                 />
                 <button

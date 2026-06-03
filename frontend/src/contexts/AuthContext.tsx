@@ -223,10 +223,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Sync user-isolated theme preference on user state changes.
   // Backend profile theme is the source of truth on initialization/F5.
   useEffect(() => {
+    const isDashboardRoute = (pathname: string) => {
+      return pathname === '/' || pathname.startsWith('/dashboard') || pathname.startsWith('/my-tickets')
+    }
+
     if (user) {
       const profileTheme = user.theme === 'dark' ? 'dark' : 'light'
 
-      if (profileTheme === 'dark') {
+      if (profileTheme === 'dark' && isDashboardRoute(window.location.pathname)) {
         document.documentElement.classList.add('dark')
       } else {
         document.documentElement.classList.remove('dark')
@@ -245,9 +249,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
+      const isDashboardRoute = (pathname: string) => {
+        return pathname === '/' || pathname.startsWith('/dashboard') || pathname.startsWith('/my-tickets')
+      }
+
       if (user?.id && e.key === `theme_user_${user.id}`) {
         const newTheme = e.newValue
-        if (newTheme === 'dark') {
+        if (newTheme === 'dark' && isDashboardRoute(window.location.pathname)) {
           document.documentElement.classList.add('dark')
           localStorage.setItem('theme', 'dark')
         } else {

@@ -329,20 +329,9 @@ export default function Login() {
   // ===================== UI RENDER =====================
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4 relative"
-      style={{
-        backgroundImage: `url(${fptCampus})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}
-    >
-      {/* Overlay phủ đen nhẹ */}
-      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]" />
-
+    <div className="min-h-screen flex items-center justify-center px-4 bg-slate-50 relative">
       {/* Card login */}
-      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 pt-14 shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500/50 transition-all duration-500 relative z-10 animate-fade-in-up">
+      <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 pt-14 shadow-xl hover:shadow-orange-500/5 transition-all duration-500 relative z-10 animate-fade-in-up">
         {/* Floating Escape Link */}
         <Link 
           to="/" 
@@ -363,14 +352,14 @@ export default function Login() {
               />
             </Link>
           </div>
-          <h2 className="text-lg font-black text-slate-800">Đăng Nhập FPT Event</h2>
+          <h2 className="text-lg font-black text-slate-900">Đăng Nhập FPT Event</h2>
         </div>
 
         {/* Form login */}
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Input Email */}
           <div className="space-y-1.5">
-            <label htmlFor="email" className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">
+            <label htmlFor="email" className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide pl-1">
               Địa chỉ Email
             </label>
             <input
@@ -381,10 +370,10 @@ export default function Login() {
               onChange={handleInputChange}
               placeholder="email@fpt.edu.vn"
               required
-              className={`w-full px-4 py-3 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+              className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 focus:bg-white ${
                 emailError 
-                  ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
-                  : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                  ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
+                  : 'border-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
               }`}
             />
             {emailError && (
@@ -394,7 +383,7 @@ export default function Login() {
 
           {/* Input Password */}
           <div className="space-y-1.5">
-            <label htmlFor="password" className="block text-xs font-extrabold text-slate-600 uppercase tracking-wide pl-1">
+            <label htmlFor="password" className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide pl-1">
               Mật khẩu
             </label>
             <div className="relative">
@@ -406,16 +395,16 @@ export default function Login() {
                 onChange={handleInputChange}
                 placeholder="Nhập mật khẩu"
                 required
-                className={`w-full px-4 py-3 pr-10 bg-white/50 border rounded-2xl outline-none text-slate-850 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 ${
+                className={`w-full px-4 py-3 pr-10 bg-slate-50 border rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 focus:bg-white ${
                   passwordError 
-                    ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' 
-                    : 'border-slate-200/80 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                    ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
+                    : 'border-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
                 }`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors focus:outline-none"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-450 hover:text-slate-700 transition-colors focus:outline-none"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -427,7 +416,7 @@ export default function Login() {
 
           {/* reCAPTCHA checkbox */}
           {RECAPTCHA_SITE_KEY && (
-            <div className="flex justify-center border border-slate-200/40 rounded-2xl p-2.5 bg-white/40">
+            <div className="flex justify-center border border-slate-200 rounded-2xl p-2.5 bg-slate-50">
               <ReCAPTCHA
                 ref={recaptchaRef}
                 sitekey={RECAPTCHA_SITE_KEY}
@@ -477,7 +466,7 @@ export default function Login() {
             type="button"
             onClick={() => googleLogin()}
             disabled={loading}
-            className="!mt-3 w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200/85 hover:border-slate-350 text-slate-700 py-3.5 px-4 rounded-2xl hover:bg-slate-50 font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 hover:shadow"
+            className="!mt-3 w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200 hover:border-slate-350 text-slate-700 py-3.5 px-4 rounded-2xl hover:bg-slate-50 font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 hover:shadow"
           >
             <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
               <path
@@ -505,7 +494,7 @@ export default function Login() {
             <Link to="/reset-password" className="text-sm font-black text-orange-600 hover:text-orange-700 transition-colors">
               Quên mật khẩu?
             </Link>
-            <div className="text-xs font-semibold text-slate-500 border-t border-slate-100 w-full pt-3 mt-1.5">
+            <div className="text-xs font-semibold text-slate-500 border-t border-slate-200/60 w-full pt-3 mt-1.5">
               Chưa có tài khoản?{' '}
               <Link to="/signup" className="text-sm font-black text-orange-600 hover:text-orange-700 transition-colors">
                 Đăng ký ngay

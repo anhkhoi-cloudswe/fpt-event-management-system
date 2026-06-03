@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -147,6 +148,38 @@ function AppRoutes() {
   )
 }
 
+function ThemeRouteIsolation() {
+  const { user } = useAuth()
+  const location = useLocation()
+
+  useEffect(() => {
+    const isDashboardRoute = (pathname: string) => {
+      return pathname === '/' || 
+             pathname.startsWith('/dashboard') || 
+             pathname.startsWith('/my-tickets')
+    }
+
+    if (isDashboardRoute(location.pathname)) {
+      const savedTheme = user?.id 
+        ? localStorage.getItem('theme_user_' + user.id) 
+        : localStorage.getItem('theme')
+      
+      const themeToApply = user?.theme === 'dark' || savedTheme === 'dark' ? 'dark' : 'light'
+      
+      if (themeToApply === 'dark') {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+    window.dispatchEvent(new Event('theme-change'))
+  }, [location.pathname, user])
+
+  return null
+}
+
 function App() {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '331189456885-v814j259l9p4nd0p6qmo2v8e744j5s1s.apps.googleusercontent.com'
 
@@ -155,6 +188,7 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <Router>
+            <ThemeRouteIsolation />
             <AppRoutes />
           </Router>
         </ToastProvider>
