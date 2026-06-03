@@ -31,6 +31,7 @@ const timezones = [
 export default function Profile() {
   const { user, logout, refreshUser } = useAuth()
   const { showToast } = useToast()
+  const profileWalletBalance = user?.balance ?? user?.wallet_balance
 
   // Tab state: profile vs security
   const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile')
@@ -97,7 +98,7 @@ export default function Profile() {
       localStorage.setItem('theme', 'light')
     }
     window.dispatchEvent(new Event('theme-change'))
-  }, [isDarkMode, user])
+  }, [isDarkMode])
 
   // Sync theme changes reactively when updated from header
   useEffect(() => {
@@ -384,7 +385,7 @@ export default function Profile() {
           </p>
         </div>
 
-        {user?.wallet !== undefined && (
+        {profileWalletBalance !== undefined && (
           <div className={`px-5 py-4 rounded-2xl border text-center md:text-right min-w-[150px] shadow-sm ${isDarkMode
             ? 'bg-slate-950/50 border-slate-800/80 text-orange-400'
             : 'bg-orange-50/50 border-orange-100 text-slate-800'
@@ -393,7 +394,7 @@ export default function Profile() {
               <Wallet size={14} className="text-orange-500" />
               <span>Số dư ví điện tử</span>
             </div>
-            <p className="text-xl font-black">{user.wallet.toLocaleString('vi-VN')} ₫</p>
+            <p className="text-xl font-black">{profileWalletBalance.toLocaleString('vi-VN')} đ</p>
           </div>
         )}
       </div>
@@ -886,6 +887,3 @@ export default function Profile() {
     </div>
   )
 }
-
-
-

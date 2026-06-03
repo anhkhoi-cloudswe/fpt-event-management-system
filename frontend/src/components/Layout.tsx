@@ -109,7 +109,7 @@ export default function Layout() {
       localStorage.setItem('theme', 'light')
     }
     window.dispatchEvent(new Event('theme-change'))
-  }, [isDarkMode, user])
+  }, [isDarkMode])
 
   // Theme change action call to DB - OPTIMIZED: Async background sync
   const handleToggleTheme = () => {

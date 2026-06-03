@@ -285,16 +285,17 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 	resp := map[string]interface{}{
 		"status": "success",
 		"user": map[string]interface{}{
-			"id":          user.ID,
-			"fullName":    user.FullName,
-			"email":       user.Email,
-			"phone":       user.Phone,
-			"role":        user.Role,
-			"status":      user.Status,
-			"createdAt":   user.CreatedAt.Format(time.RFC3339),
-			"ssoProvider": user.SSOProvider,
-			"theme":       user.Theme,
-			"wallet":      walletBalance, // Balance from dedicated wallets table
+			"id":             user.ID,
+			"fullName":       user.FullName,
+			"email":          user.Email,
+			"phone":          user.Phone,
+			"role":           user.Role,
+			"status":         user.Status,
+			"createdAt":      user.CreatedAt.Format(time.RFC3339),
+			"ssoProvider":    user.SSOProvider,
+			"theme":          user.Theme,
+			"balance":        walletBalance,
+			"wallet_balance": walletBalance,
 		},
 	}
 	body, _ := json.Marshal(resp)
@@ -1277,5 +1278,3 @@ func (h *AuthHandler) HandleUpdateProfile(ctx context.Context, request events.AP
 
 	return createStatusResponse(http.StatusOK, "success", "Cập nhật hồ sơ thành công")
 }
-
-
