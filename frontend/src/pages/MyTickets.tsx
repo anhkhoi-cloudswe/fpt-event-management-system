@@ -30,6 +30,7 @@ import { vi } from 'date-fns/locale'
 // Import components
 import Pagination from '../components/common/Pagination'
 import TicketSkeleton from '../components/common/TicketSkeleton'
+import placeholderBanner from '../assets/dai-hoc-fpt-tp-hcm-1.jpeg'
 
 /**
  * Kiểu dữ liệu MyTicket:
@@ -322,7 +323,7 @@ export default function MyTickets() {
 
   // Lấy ảnh: bannerUrl hoặc imageUrl
   const getImageUrl = (t: MyTicket) =>
-    t.bannerUrl || t.imageUrl || ''
+    t.bannerUrl || t.imageUrl || (t as any).event?.banner_url || (t as any).event?.bannerUrl || placeholderBanner
 
   // Xác định đã check-in chưa:
   // - checkedIn boolean hoặc có checkInTime/checkinTime
@@ -562,18 +563,12 @@ export default function MyTickets() {
 
                   <div>
                     {/* Header Image/Banner */}
-                    <div className="relative h-44 overflow-hidden bg-slate-100">
-                      {imageUrl ? (
-                        <img
-                          src={imageUrl}
-                          alt={title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-all duration-750"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-r from-orange-100 to-amber-50 flex items-center justify-center">
-                          <TicketIcon className="w-12 h-12 text-orange-350" />
-                        </div>
-                      )}
+                    <div className="relative h-44 overflow-hidden bg-slate-100 dark:bg-slate-900">
+                      <img
+                        src={imageUrl}
+                        alt={title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-all duration-750"
+                      />
                       {/* Gradient overlay on banner */}
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-slate-900/10 to-transparent" />
                       

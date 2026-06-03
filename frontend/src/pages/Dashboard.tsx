@@ -480,7 +480,7 @@ export default function Dashboard() {
   )
 
   const renderEmptyState = (title: string, subtitle: string) => (
-    <div className="bg-white/80 backdrop-blur-md rounded-3xl border-2 border-dashed border-gray-200 p-16 text-center shadow-lg max-w-lg mx-auto my-12 transition-all duration-300 hover:border-orange-300">
+    <div className="bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-3xl border-2 border-dashed border-gray-200 dark:border-slate-800 p-16 text-center shadow-lg max-w-lg mx-auto my-12 transition-all duration-300 hover:border-orange-300">
       <div className="flex justify-center mb-6">
         <div className="relative">
           <div className="absolute inset-0 bg-orange-100 rounded-full scale-150 opacity-40 blur-md animate-pulse"></div>
@@ -489,8 +489,8 @@ export default function Dashboard() {
           </svg>
         </div>
       </div>
-      <h3 className="text-2xl font-extrabold text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto mb-6">{subtitle}</p>
+      <h3 className="text-2xl font-extrabold text-gray-900 dark:text-slate-50 mb-2">{title}</h3>
+      <p className="text-gray-500 dark:text-slate-400 text-sm leading-relaxed max-w-xs mx-auto mb-6">{subtitle}</p>
     </div>
   )
 
@@ -499,7 +499,7 @@ export default function Dashboard() {
       {/* Tiêu đề + Tìm kiếm */}
       <div className="mb-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl">
+          <h1 className="text-4xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight sm:text-5xl">
             Sự kiện tại <span className="bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">Thành phố Hồ Chí Minh</span>
           </h1>
           <p className="text-gray-500 mt-2 text-sm md:text-base font-medium">Khám phá và đăng ký tham gia các hoạt động nổi bật nhất tại campus.</p>

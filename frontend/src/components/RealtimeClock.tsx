@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Clock } from 'lucide-react'
-import { getSystemTime, getSystemTimeSync, syncSystemTime } from '../utils/systemTime'
+import { getSystemTimeSync, syncSystemTime } from '../utils/systemTime'
+import { useAuth } from '../contexts/AuthContext'
 
 export function RealtimeClock() {
+    const { user } = useAuth()
     const [time, setTime] = useState<string>('')
     const [userTimeZone, setUserTimeZone] = useState<string>('')
     const [isSyncing, setIsSyncing] = useState(true)
@@ -29,16 +31,47 @@ export function RealtimeClock() {
         return () => clearInterval(syncInterval)
     }, [])
 
-    // Detect user's timezone on mount
+    // Use selected user timezone first, then browser timezone as fallback.
     useEffect(() => {
+        const resolveTimeZone = () => {
+            const storedTimeZone = localStorage.getItem('user_timezone')
+            return user?.timezone_id || storedTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh'
+        }
+
+        const updateTimeZone = () => {
+            try {
+                setUserTimeZone(resolveTimeZone())
+            } catch (error) {
+                console.error('Error detecting timezone:', error)
+                setUserTimeZone('Asia/Ho_Chi_Minh')
+            }
+        }
+
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === 'user_timezone') {
+                updateTimeZone()
+            }
+        }
+
+        updateTimeZone()
+        window.addEventListener('storage', handleStorageChange)
+        window.addEventListener('timezone-change', updateTimeZone)
+        return () => {
+            window.removeEventListener('storage', handleStorageChange)
+            window.removeEventListener('timezone-change', updateTimeZone)
+        }
+    }, [user?.timezone_id])
+
+    useEffect(() => {
+        if (!userTimeZone) return
+
         try {
-            const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-            setUserTimeZone(detectedTimeZone)
+            new Intl.DateTimeFormat('en-US', { timeZone: userTimeZone })
         } catch (error) {
-            console.error('Error detecting timezone:', error)
+            console.error('Invalid timezone selected:', error)
             setUserTimeZone('Asia/Ho_Chi_Minh')
         }
-    }, [])
+    }, [userTimeZone])
 
     // Calculate GMT offset once (memoized, doesn't change)
     const timezone = useMemo(() => {

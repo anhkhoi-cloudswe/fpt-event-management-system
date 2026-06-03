@@ -18,6 +18,7 @@ export interface User {
   wallet_balance?: number
   ssoProvider?: string
   theme?: 'light' | 'dark' | string
+  timezone_id?: string
 }
 
 interface AuthContextType {

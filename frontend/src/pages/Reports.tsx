@@ -894,14 +894,14 @@ export default function Reports() {
 
   // ===================== RENDER UI =====================
   return (
-    <div>
+    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen py-4 px-4 sm:px-6 lg:px-8">
       {/* ===== Header ===== */}
-      <div className="flex items-center mb-8">
+      <div className="flex items-center mb-4">
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Báo cáo tham dự</h1>
       </div>
 
       {/* ===== Overall Statistics (5 cards) ===== */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-4">
         {/* Card: Tổng sự kiện (sau lọc dateRange) */}
         <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800">
           <div className="flex items-center justify-between">
@@ -959,7 +959,7 @@ export default function Reports() {
       </div>
 
       {/* ===== Rate cards: check-in / check-out / refunded ===== */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
         {/* Rate: check-in (dùng displayStats - unified) */}
         <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800">
           <div className="flex items-center justify-between">
@@ -1016,7 +1016,7 @@ export default function Reports() {
       </div>
 
       {/* ===== Filters: dropdown event + date range + aggregate button ===== */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800 mb-8">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800 mb-4">
         <h2 className="text-xl font-semibold mb-4 flex items-center">
           <Filter className="w-5 h-5 mr-2" />
           Lọc báo cáo
@@ -1210,7 +1210,7 @@ export default function Reports() {
 
       {/* ===== All Events Notice ===== */}
       {selectedStats && selectedEventId === '0' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+        <div className="bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-slate-800 rounded-lg p-6 mb-4">
           <div className="flex items-start">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -1231,16 +1231,16 @@ export default function Reports() {
 
       {/* ===== Ticket List (chỉ hiện khi đang xem stats 1 event, không phải "Tất cả") ===== */}
       {selectedStats && selectedEventId && selectedEventId !== '0' && (
-        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800 mb-8">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800 mb-4">
           <h2 className="text-xl font-semibold mb-4">
             Danh sách vé — {selectedStats.eventTitle || selectedEvent?.title}
           </h2>
 
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Tổng vé: {totalRegistrations}</p>
 
-          <div className="overflow-x-auto">
+          <div className="max-h-[400px] overflow-y-auto overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-slate-800">
                 <tr>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Ticket ID</th>
@@ -1253,7 +1253,7 @@ export default function Reports() {
                 </tr>
               </thead>
 
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
                 {registrations.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-6 text-center text-sm text-gray-500">
@@ -1343,7 +1343,7 @@ export default function Reports() {
       {/* ===== Aggregated Results (chỉ hiện khi đã bấm tổng hợp và chọn "Tất cả sự kiện") ===== */}
       {aggregatedStats && selectedEventId === '0' && (
         <>
-          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800 mb-8">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md dark:shadow-slate-950 p-6 border dark:border-slate-800 mb-4">
             <h2 className="text-xl font-semibold mb-4 text-blue-600">
               Thống kê tổng hợp ({aggregatedStats.eventsCount} sự kiện)
             </h2>

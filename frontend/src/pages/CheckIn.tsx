@@ -705,28 +705,28 @@ export default function CheckIn() {
   // ===========================================================================
 
   return (
-    <div className="bg-slate-900 rounded-3xl border border-slate-850 p-6 sm:p-8 shadow-2xl text-slate-100 animate-fade-in-up">
+    <div className="bg-slate-50 dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-850 p-4 sm:p-6 shadow-2xl text-slate-900 dark:text-slate-100 animate-fade-in-up">
       {/* ===== TIÊU ĐỀ TRANG ===== */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800/60 pb-5 mb-6 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 dark:border-slate-800/60 pb-4 mb-4 gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-white uppercase sm:text-3xl">
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white uppercase sm:text-3xl">
             Kiểm Soát Check-In / Check-Out
           </h1>
-          <p className="text-xs font-semibold text-slate-450 mt-1">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-450 mt-1">
             Bảng điều khiển quét mã QR và nhập mã vé tham gia hội trường sự kiện FPT.
           </p>
         </div>
       </div>
 
       {/* ===== TAB CHUYỂN ĐỔI CHECK-IN / CHECK-OUT ===== */}
-      <div className="flex bg-slate-950/80 rounded-2xl p-1.5 mb-6 max-w-md border border-slate-800/50">
+      <div className="flex bg-white dark:bg-slate-900 rounded-2xl p-1.5 mb-4 max-w-md border border-slate-200 dark:border-slate-800/50">
         {/* Nút tab Check-in */}
         <button
           onClick={() => setActiveTab('checkin')}
           className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-300 ${
             activeTab === 'checkin'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20 scale-102'
-              : 'text-slate-450 hover:text-slate-200'
+              : 'text-slate-500 dark:text-slate-450 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
           <LogIn className="w-4 h-4" />
@@ -739,7 +739,7 @@ export default function CheckIn() {
           className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-300 ${
             activeTab === 'checkout'
               ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/20 scale-102'
-              : 'text-slate-450 hover:text-slate-200'
+              : 'text-slate-500 dark:text-slate-450 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
           <LogOut className="w-4 h-4" />
@@ -751,9 +751,9 @@ export default function CheckIn() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* CỘT TRÁI: KHU VỰC QUÉT MÃ QR VÀ NHẬP THỦ CÔNG */}
-        <div className="bg-slate-950/60 border border-slate-850/80 rounded-3xl p-6 shadow-md flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850/80 rounded-3xl p-4 shadow-md flex flex-col justify-between">
           <div>
-            <h2 className="text-base font-extrabold text-slate-200 mb-4 flex items-center gap-2">
+            <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
               <Scan className="w-4.5 h-4.5 text-orange-500" />
               Quét mã QR - {actionLabel}
             </h2>
@@ -794,7 +794,7 @@ export default function CheckIn() {
                     <div className="w-full border-t border-slate-800" />
                   </div>
                   <div className="relative flex justify-center text-xs font-bold uppercase tracking-wider">
-                    <span className="px-3 bg-slate-950 text-slate-500">Hoặc nhập tay</span>
+                    <span className="px-3 bg-white dark:bg-slate-900 text-slate-500">Hoặc nhập tay</span>
                   </div>
                 </div>
 
@@ -809,7 +809,7 @@ export default function CheckIn() {
                       value={manualCode}
                       onChange={(e) => setManualCode(e.target.value)}
                       placeholder="Ví dụ: 123 hoặc TICKETS:123,124"
-                      className="flex-1 px-4 py-3 bg-slate-900/80 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-slate-100 placeholder-slate-600 font-bold text-sm shadow-sm transition-all duration-300"
+                      className="flex-1 px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-600 font-bold text-sm shadow-sm transition-all duration-300"
                       onKeyDown={(e) => e.key === 'Enter' && handleManualAction()}
                     />
                     <button
@@ -829,7 +829,7 @@ export default function CheckIn() {
             ) : (
               /* ĐANG QUÉT QR CAMERA */
               <div className="space-y-4">
-                <div className="relative bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-inner">
+                <div className="relative bg-white dark:bg-slate-950 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-inner">
                   <div id="reader" className="w-full h-full" style={{ minHeight: 320 }} />
 
                   {/* Overlay khung quét HUD */}
@@ -863,16 +863,16 @@ export default function CheckIn() {
         </div>
 
         {/* CỘT PHẢI: KẾT QUẢ CHECK-IN/CHECK-OUT */}
-        <div className="bg-slate-950/60 border border-slate-850/80 rounded-3xl p-6 shadow-md flex flex-col justify-between min-h-[350px]">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850/80 rounded-3xl p-4 shadow-md flex flex-col justify-between min-h-[350px] max-h-[400px] overflow-y-auto">
           <div>
-            <h2 className="text-base font-extrabold text-slate-200 mb-4 flex items-center gap-2">
+            <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
               <CheckCircle className="w-4.5 h-4.5 text-orange-550" />
               Kết quả quét - {actionLabel}
             </h2>
 
             {!result ? (
               <div className="text-center py-16 text-slate-500 flex flex-col items-center justify-center h-full">
-                <div className="p-4 bg-slate-900 border border-slate-800 rounded-full w-fit mb-4 text-slate-600 animate-pulse">
+                <div className="p-4 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full w-fit mb-4 text-slate-500 dark:text-slate-600 animate-pulse">
                   <Scan className="w-12 h-12" />
                 </div>
                 <p className="font-extrabold text-sm text-slate-400">Chưa có kết quả quét</p>
@@ -886,7 +886,7 @@ export default function CheckIn() {
                 {result.success ? (
                   /* THÀNH CÔNG CARD */
                   <div className="space-y-4">
-                    <div className="text-center py-4 bg-slate-900/60 border border-slate-850 rounded-2xl p-5 relative overflow-hidden">
+                    <div className="text-center py-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-850 rounded-2xl p-5 relative overflow-hidden">
                       <div className="absolute inset-0 bg-emerald-500/5 opacity-40 pointer-events-none" />
                       <CheckCircle
                         className={`w-14 h-14 mx-auto mb-3.5 animate-bounce ${isCheckIn ? 'text-emerald-500' : 'text-purple-500'}`}
@@ -897,7 +897,7 @@ export default function CheckIn() {
                     </div>
 
                     {(result.registration?.ticketId || result.registration?.checkedInAt || result.registration?.checkedOutAt) && (
-                      <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 space-y-2.5 text-xs">
+                      <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-2.5 text-xs">
                         {result.registration?.ticketId && (
                           <div className="flex justify-between items-center">
                             <span className="text-slate-450 font-bold">Ticket ID:</span>
@@ -982,7 +982,7 @@ export default function CheckIn() {
                           {result.registration.results.map((r: any, idx: number) => (
                             <div
                               key={idx}
-                              className="border-l-4 pl-3 py-2.5 rounded-xl bg-slate-900/40 text-xs"
+                              className="border-l-4 pl-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 text-xs"
                               style={{ borderColor: r.success ? '#10b981' : '#ef4444' }}
                             >
                               <div className="flex justify-between items-center font-bold">

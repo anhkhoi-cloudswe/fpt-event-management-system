@@ -468,12 +468,12 @@ export default function OrganizerEventRequests() {
   }
 
   return (
-    <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen py-4 px-4 sm:px-6 lg:px-8">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl">Yêu Cầu Sự Kiện Của Tôi</h1>
-          <p className="text-sm text-slate-500 mt-1.5 max-w-2xl font-medium">
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight sm:text-4xl">Yêu Cầu Sự Kiện Của Tôi</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
             Theo dõi, cập nhật và quản lý trạng thái hồ sơ đăng ký tổ chức sự kiện của bạn.
           </p>
         </div>
@@ -496,34 +496,34 @@ export default function OrganizerEventRequests() {
       </div>
 
       {/* Stats Widgets */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-4">
+        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
           <div className="p-3.5 bg-amber-50 text-amber-600 rounded-2xl border border-amber-100/50">
             <Clock className="w-6 h-6 animate-pulse" />
           </div>
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hồ sơ chờ duyệt</p>
-            <p className="text-3xl font-extrabold text-slate-950 mt-0.5 tracking-tight">{activeTabData.totalCount}</p>
+            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeTabData.totalCount}</p>
           </div>
         </div>
 
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
+        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
           <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100/50">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hồ sơ đã xử lý</p>
-            <p className="text-3xl font-extrabold text-slate-950 mt-0.5 tracking-tight">{archivedTabData.totalCount}</p>
+            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{archivedTabData.totalCount}</p>
           </div>
         </div>
 
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
+        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
           <div className="p-3.5 bg-orange-50 text-orange-600 rounded-2xl border border-orange-100/50">
             <Inbox className="w-6 h-6" />
           </div>
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng cộng đã gửi</p>
-            <p className="text-3xl font-extrabold text-slate-950 mt-0.5 tracking-tight">{activeTabData.totalCount + archivedTabData.totalCount}</p>
+            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeTabData.totalCount + archivedTabData.totalCount}</p>
           </div>
         </div>
       </div>
@@ -536,7 +536,7 @@ export default function OrganizerEventRequests() {
       )}
 
       {/* Main Tabs Segmented Floating Control */}
-      <div className="flex bg-slate-200/40 backdrop-blur-sm p-1 rounded-2xl gap-1.5 w-fit mb-8 border border-slate-200/10 shadow-inner">
+      <div className="flex bg-slate-200/40 dark:bg-slate-900 backdrop-blur-sm p-1 rounded-2xl gap-1.5 w-fit mb-4 border border-slate-200/10 dark:border-slate-800 shadow-inner">
         <button
           onClick={() => handleTabChange('active')}
           className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
@@ -571,7 +571,7 @@ export default function OrganizerEventRequests() {
       </div>
 
       {/* Filters & Toolbar Section */}
-      <div className="mb-6 bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-5 shadow-md">
+      <div className="mb-4 bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 shadow-md">
         <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
           {/* Search bar */}
           <div className="flex-1 relative flex items-center">
@@ -682,11 +682,11 @@ export default function OrganizerEventRequests() {
           ) : (
             <>
               {/* Cards Grid */}
-              <div className="grid grid-cols-1 gap-4 mb-6">
+              <div className="grid grid-cols-1 gap-4 mb-4 max-h-[400px] overflow-y-auto pr-1">
                 {filteredRequests.map((req, index) => (
                   <div
                     key={req.requestId}
-                    className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/80 bg-white/70 backdrop-blur-md p-6 shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-5"
+                    className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/80 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur-md p-6 shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-5"
                     style={{ animationDelay: `${index * 80}ms` }}
                     onClick={() => handleViewDetails(req)}
                   >
@@ -831,7 +831,7 @@ export default function OrganizerEventRequests() {
 
               {/* Pagination controls */}
               {currentTotalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-5 shadow-md">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-2 bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 shadow-md">
                   <div className="text-sm text-slate-500 font-semibold">
                     Trang <span className="text-orange-600 font-extrabold">{currentPage}</span> /{' '}
                     <span className="text-slate-800 font-extrabold">{currentTotalPages}</span> ({currentData.totalCount} hồ sơ)

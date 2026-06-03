@@ -143,6 +143,7 @@ export default function Profile() {
       setTimezone(detected)
       localStorage.setItem('user_timezone', detected)
       localStorage.setItem('auto_timezone', 'true')
+      window.dispatchEvent(new Event('timezone-change'))
     } else {
       localStorage.setItem('auto_timezone', 'false')
     }
@@ -579,6 +580,7 @@ export default function Profile() {
                       onChange={(e) => {
                         setTimezone(e.target.value)
                         localStorage.setItem('user_timezone', e.target.value)
+                        window.dispatchEvent(new Event('timezone-change'))
                       }}
                       className={`w-full pl-9 pr-8 py-2.5 text-xs font-semibold rounded-xl border outline-none appearance-none transition-all cursor-pointer ${isDarkMode
                         ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200 disabled:opacity-50'
