@@ -31,6 +31,8 @@ interface AuthContextType {
   login: (email: string, password: string, role: UserRole) => void
   logout: () => void
   refreshUser: () => Promise<void>
+  currentLanguage: 'vi' | 'en'
+  changeLanguage: (lang: 'vi' | 'en') => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -41,6 +43,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Keep token state only for compatibility with existing consumers.
   const [token, setToken] = useState<string | null>(null)
   const isLoadingRef = useRef(true)
+
+  const [currentLanguage, setCurrentLanguage] = useState<'vi' | 'en'>(() => {
+    const saved = localStorage.getItem('language') || localStorage.getItem('user_locale')
+    return saved?.toLowerCase().startsWith('en') ? 'en' : 'vi'
+  })
+
+  const changeLanguage = useCallback((lang: 'vi' | 'en') => {
+    setCurrentLanguage(lang)
+    localStorage.setItem('language', lang)
+    localStorage.setItem('user_locale', lang)
+    window.dispatchEvent(new CustomEvent('language-change', { detail: { locale: lang } }))
+  }, [])
 
   useEffect(() => {
     isLoadingRef.current = isLoading
@@ -62,6 +76,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           const data = await res.json()
           const userObj = data?.user ?? data
+          if (userObj?.language) {
+            const normalized = userObj.language.toLowerCase().startsWith('en') ? 'en' : 'vi'
+            setCurrentLanguage(normalized)
+            localStorage.setItem('language', normalized)
+            localStorage.setItem('user_locale', normalized)
+          }
           return userObj ?? null
         }
 
@@ -172,6 +192,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fetchUserFromMe])
 
+  useEffect(() => {
+    if (user?.language) {
+      const normalized = user.language.toLowerCase().startsWith('en') ? 'en' : 'vi'
+      setCurrentLanguage(normalized)
+      localStorage.setItem('language', normalized)
+      localStorage.setItem('user_locale', normalized)
+    }
+  }, [user])
+
   // Defensive: Monitor and clear any user entries in localStorage.
   // User state must ONLY exist in React state + HttpOnly cookie, never localStorage.
   useEffect(() => {
@@ -259,7 +288,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, token, setUser, setToken, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, token, setUser, setToken, login, logout, refreshUser, currentLanguage, changeLanguage }}>
       {children}
     </AuthContext.Provider>
   )

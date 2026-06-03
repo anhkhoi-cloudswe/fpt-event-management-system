@@ -2,6 +2,9 @@
 // - useState: lưu state UI (danh sách hóa đơn, loading, error)
 // - useEffect: chạy side-effect (gọi API) khi component mount
 import { useEffect, useState, useCallback } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/AuthContext'
 
 // Import useSearchParams để quản lý URL params
 import { useSearchParams } from 'react-router-dom'
@@ -35,6 +38,7 @@ type PaginatedBillsResponse = {
 
 // Component MyBills: trang "Hóa đơn của tôi"
 export default function MyBills() {
+  const { currentLanguage } = useAuth()
   // URL params management
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -245,10 +249,10 @@ export default function MyBills() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight sm:text-4xl">
-            Hóa đơn của tôi
+            {currentLanguage === 'en' ? 'My Bills' : 'Hóa đơn của tôi'}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
-            Theo dõi lịch sử giao dịch, thanh toán vé sự kiện và các chứng từ tài chính tại trường FPT.
+            {currentLanguage === 'en' ? 'Track transaction history, event ticket payments, and financial documents at FPT University.' : 'Theo dõi lịch sử giao dịch, thanh toán vé sự kiện và các chứng từ tài chính tại trường FPT.'}
           </p>
         </div>
       </div>
@@ -261,7 +265,7 @@ export default function MyBills() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Tìm kiếm theo mã hóa đơn..."
+              placeholder={currentLanguage === 'en' ? 'Search by bill ID...' : 'Tìm kiếm theo mã hóa đơn...'}
               value={searchInput}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full pl-11 pr-4 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 dark:text-white font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
@@ -276,10 +280,10 @@ export default function MyBills() {
               onChange={(e) => handleStatusChange(e.target.value)}
               className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
-              <option value="">Tất cả trạng thái</option>
-              <option value="PENDING">Chờ thanh toán</option>
-              <option value="PAID">Đã thanh toán</option>
-              <option value="CANCELED">Đã hủy</option>
+              <option value="">{currentLanguage === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
+              <option value="PENDING">{currentLanguage === 'en' ? 'Pending Payment' : 'Chờ thanh toán'}</option>
+              <option value="PAID">{currentLanguage === 'en' ? 'Paid' : 'Đã thanh toán'}</option>
+              <option value="CANCELED">{currentLanguage === 'en' ? 'Canceled' : 'Đã hủy'}</option>
             </select>
           </div>
 
@@ -291,10 +295,10 @@ export default function MyBills() {
               onChange={(e) => handleMethodChange(e.target.value)}
               className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
-              <option value="">Tất cả phương thức</option>
-              <option value="MOMO">Ví MoMo</option>
-              <option value="WALLET">Ví điện tử</option>
-              <option value="FREE">Miễn phí</option>
+              <option value="">{currentLanguage === 'en' ? 'All Methods' : 'Tất cả phương thức'}</option>
+              <option value="MOMO">{currentLanguage === 'en' ? 'MoMo Wallet' : 'Ví MoMo'}</option>
+              <option value="WALLET">{currentLanguage === 'en' ? 'E-wallet' : 'Ví điện tử'}</option>
+              <option value="FREE">{currentLanguage === 'en' ? 'Free' : 'Miễn phí'}</option>
             </select>
           </div>
         </div>
@@ -302,7 +306,7 @@ export default function MyBills() {
         {/* Results count */}
         {!loading && (
           <div className="mt-3.5 text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider pl-1">
-            Tìm thấy <span className="text-orange-600 dark:text-orange-500 font-extrabold">{totalRecords}</span> hóa đơn
+            {currentLanguage === 'en' ? 'Found' : 'Tìm thấy'} <span className="text-orange-600 dark:text-orange-500 font-extrabold">{totalRecords}</span> {currentLanguage === 'en' ? 'bills' : 'hóa đơn'}
           </div>
         )}
       </div>
@@ -310,7 +314,7 @@ export default function MyBills() {
       {/* Nếu có error -> hiển thị lỗi */}
       {!loading && error && (
         <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-8 text-center shadow-md animate-fade-in-up">
-          <div className="text-rose-600 font-bold text-sm">Có lỗi xảy ra: {error}</div>
+          <div className="text-rose-600 font-bold text-sm">{currentLanguage === 'en' ? 'An error occurred:' : 'Có lỗi xảy ra:'} {error}</div>
         </div>
       )}
 
@@ -324,19 +328,19 @@ export default function MyBills() {
                 <thead className="bg-slate-50/50 dark:bg-slate-950/50">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
-                      Mã hóa đơn
+                      {currentLanguage === 'en' ? 'Bill ID' : 'Mã hóa đơn'}
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
-                      Ngày tạo
+                      {currentLanguage === 'en' ? 'Created Date' : 'Ngày tạo'}
                     </th>
                     <th className="px-6 py-4 text-right text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
-                      Số tiền
+                      {currentLanguage === 'en' ? 'Amount' : 'Số tiền'}
                     </th>
                     <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
-                      Phương thức
+                      {currentLanguage === 'en' ? 'Method' : 'Phương thức'}
                     </th>
                     <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
-                      Trạng thái
+                      {currentLanguage === 'en' ? 'Status' : 'Trạng thái'}
                     </th>
                   </tr>
                 </thead>
@@ -361,7 +365,7 @@ export default function MyBills() {
 
                       {/* Cột số tiền */}
                       <td className="px-6 py-4 text-sm text-right font-black text-slate-900 dark:text-slate-100">
-                        {bill.totalAmount.toLocaleString('vi-VN')} đ
+                        {bill.totalAmount.toLocaleString('vi-VN')} {currentLanguage === 'en' ? 'VND' : 'đ'}
                       </td>
 
                       {/* Cột phương thức thanh toán */}
@@ -372,7 +376,7 @@ export default function MyBills() {
                           bill.paymentMethod === 'FREE' ? 'bg-teal-50 dark:bg-teal-950/20 text-teal-700 dark:text-teal-300 border border-teal-100 dark:border-teal-900/30' :
                           'bg-slate-50 dark:bg-slate-800 text-slate-650 dark:text-slate-350 border border-slate-100 dark:border-slate-700'
                         }`}>
-                          {bill.paymentMethod || 'N/A'}
+                          {bill.paymentMethod === 'WALLET' ? (currentLanguage === 'en' ? 'E-Wallet' : 'Ví điện tử') : bill.paymentMethod === 'FREE' ? (currentLanguage === 'en' ? 'Free' : 'Miễn phí') : (bill.paymentMethod || 'N/A')}
                         </span>
                       </td>
 
@@ -381,17 +385,17 @@ export default function MyBills() {
                         {bill.status === 'PAID' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/30 shadow-sm shadow-emerald-500/5">
                             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                            Đã thanh toán
+                            {currentLanguage === 'en' ? 'Paid' : 'Đã thanh toán'}
                           </span>
                         ) : bill.status === 'PENDING' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/30 shadow-sm shadow-amber-500/5">
                             <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-                            Chờ thanh toán
+                            {currentLanguage === 'en' ? 'Pending Payment' : 'Chờ thanh toán'}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900/30 shadow-sm shadow-rose-500/5">
                             <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
-                            Đã hủy
+                            {currentLanguage === 'en' ? 'Canceled' : 'Đã hủy'}
                           </span>
                         )}
                       </td>
@@ -422,16 +426,16 @@ export default function MyBills() {
             <thead className="bg-slate-50/50 dark:bg-slate-950/50">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
-                  Mã hóa đơn
+                  {currentLanguage === 'en' ? 'Bill ID' : 'Mã hóa đơn'}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
-                  Ngày tạo
+                  {currentLanguage === 'en' ? 'Created Date' : 'Ngày tạo'}
                 </th>
                 <th className="px-6 py-4 text-right text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
-                  Số tiền
+                  {currentLanguage === 'en' ? 'Amount' : 'Số tiền'}
                 </th>
                 <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
-                  Trạng thái
+                  {currentLanguage === 'en' ? 'Status' : 'Trạng thái'}
                 </th>
               </tr>
             </thead>
@@ -450,13 +454,13 @@ export default function MyBills() {
           </div>
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">
             {searchQuery || statusFilter || methodFilter
-              ? 'Không tìm thấy hóa đơn phù hợp'
-              : 'Bạn chưa có hóa đơn nào'}
+              ? (currentLanguage === 'en' ? 'No matching bills found' : 'Không tìm thấy hóa đơn phù hợp')
+              : (currentLanguage === 'en' ? "You don't have any bills yet" : 'Bạn chưa có hóa đơn nào')}
           </h3>
-          <p className="text-sm text-slate-400 dark:text-slate-450 mt-2 max-w-sm mx-auto font-medium">
+          <p className="text-sm text-slate-400 dark:text-slate-455 mt-2 max-w-sm mx-auto font-medium">
             {searchQuery || statusFilter || methodFilter
-              ? 'Vui lòng thử lại với từ khóa khác hoặc xóa bộ lọc.'
-              : 'Các giao dịch hoặc thanh toán vé sự kiện của bạn sẽ hiển thị tại đây.'}
+              ? (currentLanguage === 'en' ? 'Please try again with a different keyword or clear filters.' : 'Vui lòng thử lại với từ khóa khác hoặc xóa bộ lọc.')
+              : (currentLanguage === 'en' ? 'Your transactions or event ticket payments will be displayed here.' : 'Các giao dịch hoặc thanh toán vé sự kiện của bạn sẽ hiển thị tại đây.')}
           </p>
           {(searchQuery || statusFilter || methodFilter) && (
             <button
@@ -469,7 +473,7 @@ export default function MyBills() {
               }}
               className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-extrabold transition-all duration-300 shadow-md shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
             >
-              Xóa bộ lọc
+              {currentLanguage === 'en' ? 'Clear filters' : 'Xóa bộ lọc'}
             </button>
           )}
         </div>

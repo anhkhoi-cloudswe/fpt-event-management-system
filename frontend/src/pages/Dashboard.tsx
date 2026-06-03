@@ -45,7 +45,7 @@ import { EventDetailModal } from '../components/events/EventDetailModal'
 
 export default function Dashboard() {
   // Lấy user từ AuthContext (hiện tại user chưa dùng trong UI)
-  const { user } = useAuth()
+  const { user, currentLanguage } = useAuth()
 
   // ===================== URL PARAMS MANAGEMENT =====================
   // Lấy search params từ URL
@@ -455,12 +455,12 @@ export default function Dashboard() {
 
   const getStatusBadge = (event: EventListItem, tab: string): string => {
     if (tab === 'closed' || event.status === 'CLOSED') {
-      return 'Đã kết thúc'
+      return currentLanguage === 'en' ? 'Ended' : 'Đã kết thúc'
     }
     if (tab === 'upcoming' || event.status === 'UPCOMING') {
-      return 'Sắp diễn ra'
+      return currentLanguage === 'en' ? 'Upcoming' : 'Sắp diễn ra'
     }
-    return 'Hôm nay'
+    return currentLanguage === 'en' ? 'Today' : 'Hôm nay'
   }
 
   const renderLoadingSkeletons = () => (
@@ -500,9 +500,9 @@ export default function Dashboard() {
       <div className="mb-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div>
           <h1 className="text-4xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight sm:text-5xl">
-            Sự kiện tại <span className="bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">Thành phố Hồ Chí Minh</span>
+            {currentLanguage === 'en' ? 'Events in' : 'Sự kiện tại'}{' '}<span className="bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">{currentLanguage === 'en' ? 'Ho Chi Minh City' : 'Thành phố Hồ Chí Minh'}</span>
           </h1>
-          <p className="text-gray-500 mt-2 text-sm md:text-base font-medium">Khám phá và đăng ký tham gia các hoạt động nổi bật nhất tại campus.</p>
+          <p className="text-gray-500 mt-2 text-sm md:text-base font-medium">{currentLanguage === 'en' ? 'Discover and register for the most outstanding activities on campus.' : 'Khám phá và đăng ký tham gia các hoạt động nổi bật nhất tại campus.'}</p>
         </div>
 
         {/* Search Input */}
@@ -510,7 +510,7 @@ export default function Dashboard() {
           <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="Tìm kiếm sự kiện..."
+            placeholder={currentLanguage === 'en' ? 'Search events...' : 'Tìm kiếm sự kiện...'}
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white/50 backdrop-blur-sm hover:border-orange-300 focus:bg-white text-gray-800 placeholder-gray-400 font-semibold"
@@ -524,7 +524,7 @@ export default function Dashboard() {
           <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <span className="font-semibold">Lỗi: {error}</span>
+          <span className="font-semibold">{currentLanguage === 'en' ? 'Error:' : 'Lỗi:'} {error}</span>
         </div>
       )}
 
@@ -540,7 +540,7 @@ export default function Dashboard() {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
             >
-              <span>Sự kiện hôm nay</span>
+              <span>{currentLanguage === 'en' ? "Today's Events" : 'Sự kiện hôm nay'}</span>
               {activeTab === 'open' && (
                 <span className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 rounded-full animate-pulse"></span>
               )}
@@ -554,7 +554,7 @@ export default function Dashboard() {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
             >
-              <span>Sự kiện sắp diễn ra</span>
+              <span>{currentLanguage === 'en' ? 'Upcoming Events' : 'Sự kiện sắp diễn ra'}</span>
               {activeTab === 'upcoming' && (
                 <span className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 rounded-full animate-pulse"></span>
               )}
@@ -568,7 +568,7 @@ export default function Dashboard() {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
             >
-              <span>Sự kiện đã kết thúc</span>
+              <span>{currentLanguage === 'en' ? 'Ended Events' : 'Sự kiện đã kết thúc'}</span>
               {activeTab === 'closed' && (
                 <span className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 rounded-full animate-pulse"></span>
               )}
@@ -585,12 +585,15 @@ export default function Dashboard() {
           {loading ? (
             renderLoadingSkeletons()
           ) : events.length === 0 && totalItems === 0 ? (
-            renderEmptyState("Hôm nay chưa có sự kiện nào", "Hãy đón chờ các sự kiện tiếp theo trong ngày hôm nay nhé!")
+            renderEmptyState(
+              currentLanguage === 'en' ? 'No events today' : 'Hôm nay chưa có sự kiện nào',
+              currentLanguage === 'en' ? 'Stay tuned for more events coming up today!' : 'Hãy đón chờ các sự kiện tiếp theo trong ngày hôm nay nhé!'
+            )
           ) : (
             <>
               {/* Results Count */}
               <div className="mb-6 text-sm text-gray-600 font-medium">
-                <p>Hiển thị <span className="text-orange-600 font-bold">{displayedEvents.length}</span> trên tổng số <span className="text-orange-600 font-bold">{totalItems}</span> sự kiện</p>
+                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
               </div>
 
               {/* Grid Sự kiện - đúng 4 cột trên Desktop */}
@@ -617,7 +620,7 @@ export default function Dashboard() {
                           />
                           {showTodayBadge && (
                             <span className="absolute top-3 right-3 px-3 py-1.5 bg-gradient-to-r from-red-600 to-orange-600 text-white text-xs font-bold rounded-lg shadow-lg animate-pulse">
-                              🔥 HÔM NAY
+                              {currentLanguage === 'en' ? '🔥 TODAY' : '🔥 HÔM NAY'}
                             </span>
                           )}
                         </div>
@@ -626,7 +629,7 @@ export default function Dashboard() {
                           <Calendar className="w-12 h-12 text-blue-400 dark:text-blue-500" />
                           {showTodayBadge && (
                             <span className="absolute top-3 right-3 px-3 py-1.5 bg-gradient-to-r from-red-600 to-orange-600 text-white text-xs font-bold rounded-lg shadow-lg animate-pulse">
-                              🔥 HÔM NAY
+                              {currentLanguage === 'en' ? '🔥 TODAY' : '🔥 HÔM NAY'}
                             </span>
                           )}
                         </div>
@@ -661,7 +664,7 @@ export default function Dashboard() {
 
                         {/* View Details Button Spacer */}
                         <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
-                          <p className="text-orange-600 dark:text-orange-500 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
+                          <p className="text-orange-600 dark:text-orange-500 text-xs font-bold tracking-wide">{currentLanguage === 'en' ? 'VIEW DETAILS' : 'XEM CHI TIẾT'}</p>
                           <svg className="w-4 h-4 text-orange-600 dark:text-orange-500 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                           </svg>
@@ -680,7 +683,7 @@ export default function Dashboard() {
                     disabled={currentPage <= 1}
                     className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
-                    ← Trước
+                    {currentLanguage === 'en' ? '← Prev' : '← Trước'}
                   </button>
 
                   <div className="flex gap-1.5">
@@ -710,7 +713,7 @@ export default function Dashboard() {
                     disabled={currentPage >= totalPages}
                     className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
-                    Sau →
+                    {currentLanguage === 'en' ? 'Next →' : 'Sau →'}
                   </button>
                 </div>
               )}
@@ -725,12 +728,15 @@ export default function Dashboard() {
           {loading ? (
             renderLoadingSkeletons()
           ) : events.length === 0 && totalItems === 0 ? (
-            renderEmptyState("Chưa có sự kiện nào sắp tới", "Các chương trình hấp dẫn đang được chuẩn bị chu đáo và sẽ sớm xuất hiện!")
+            renderEmptyState(
+              currentLanguage === 'en' ? 'No upcoming events' : 'Chưa có sự kiện nào sắp tới',
+              currentLanguage === 'en' ? 'Exciting programs are being carefully prepared and will appear soon!' : 'Các chương trình hấp dẫn đang được chuẩn bị chu đáo và sẽ sớm xuất hiện!'
+            )
           ) : (
             <>
               {/* Results Count */}
               <div className="mb-6 text-sm text-gray-600 font-medium">
-                <p>Hiển thị <span className="text-orange-600 font-bold">{displayedEvents.length}</span> trên tổng số <span className="text-orange-600 font-bold">{totalItems}</span> sự kiện</p>
+                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
               </div>
 
               {/* Grid Sự kiện - đúng 4 cột trên Desktop */}
@@ -779,7 +785,7 @@ export default function Dashboard() {
 
                         {/* View Details Button Spacer */}
                         <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
-                          <p className="text-orange-600 dark:text-orange-500 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
+                          <p className="text-orange-600 dark:text-orange-500 text-xs font-bold tracking-wide">{currentLanguage === 'en' ? 'VIEW DETAILS' : 'XEM CHI TIẾT'}</p>
                           <svg className="w-4 h-4 text-orange-600 dark:text-orange-500 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                           </svg>
@@ -798,7 +804,7 @@ export default function Dashboard() {
                     disabled={currentPage <= 1}
                     className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
-                    ← Trước
+                    {currentLanguage === 'en' ? '← Prev' : '← Trước'}
                   </button>
 
                   <div className="flex gap-1.5">
@@ -828,7 +834,7 @@ export default function Dashboard() {
                     disabled={currentPage >= totalPages}
                     className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
-                    Sau →
+                    {currentLanguage === 'en' ? 'Next →' : 'Sau →'}
                   </button>
                 </div>
               )}
@@ -843,12 +849,15 @@ export default function Dashboard() {
           {loading ? (
             renderLoadingSkeletons()
           ) : events.length === 0 && totalItems === 0 ? (
-            renderEmptyState("Chưa có sự kiện nào khép lại", "Tất cả thông tin sự kiện đã kết thúc sẽ hiển thị chi tiết tại đây.")
+            renderEmptyState(
+              currentLanguage === 'en' ? 'No ended events' : 'Chưa có sự kiện nào khép lại',
+              currentLanguage === 'en' ? 'All information about ended events will be displayed in detail here.' : 'Tất cả thông tin sự kiện đã kết thúc sẽ hiển thị chi tiết tại đây.'
+            )
           ) : (
             <>
               {/* Results Count */}
               <div className="mb-6 text-sm text-gray-600 font-medium">
-                <p>Hiển thị <span className="text-orange-600 font-bold">{displayedEvents.length}</span> trên tổng số <span className="text-orange-600 font-bold">{totalItems}</span> sự kiện</p>
+                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
               </div>
 
               {/* Grid Sự kiện - đúng 4 cột trên Desktop */}
@@ -894,7 +903,7 @@ export default function Dashboard() {
 
                       {/* View Details Button Spacer */}
                       <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
-                        <p className="text-orange-600 dark:text-orange-500 text-xs font-bold tracking-wide">XEM CHI TIẾT</p>
+                        <p className="text-orange-600 dark:text-orange-500 text-xs font-bold tracking-wide">{currentLanguage === 'en' ? 'VIEW DETAILS' : 'XEM CHI TIẾT'}</p>
                         <svg className="w-4 h-4 text-orange-600 dark:text-orange-500 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                         </svg>
@@ -912,7 +921,7 @@ export default function Dashboard() {
                     disabled={currentPage <= 1}
                     className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
-                    ← Trước
+                    {currentLanguage === 'en' ? '← Prev' : '← Trước'}
                   </button>
 
                   <div className="flex gap-1.5">
@@ -942,7 +951,7 @@ export default function Dashboard() {
                     disabled={currentPage >= totalPages}
                     className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
                   >
-                    Sau →
+                    {currentLanguage === 'en' ? 'Next →' : 'Sau →'}
                   </button>
                 </div>
               )}

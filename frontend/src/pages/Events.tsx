@@ -73,7 +73,7 @@ type ViewMode = 'list' | 'calendar'
  */
 export default function Events() {
   // Lấy user từ AuthContext
-  const { user } = useAuth()
+  const { user, currentLanguage } = useAuth()
 
   // Hook điều hướng
   const navigate = useNavigate()
@@ -269,7 +269,11 @@ export default function Events() {
    * - Nếu confirm thì chạy performDisableEvent(eventId)
    */
   const handleDisableEvent = (eventId: number) => {
-    setConfirmMessage('Bạn có chắc chắn muốn vô hiệu hóa (đóng) sự kiện này?')
+    setConfirmMessage(
+      currentLanguage === 'en'
+        ? 'Are you sure you want to disable (close) this event?'
+        : 'Bạn có chắc chắn muốn vô hiệu hóa (đóng) sự kiện này?'
+    )
     setConfirmAction(() => () => performDisableEvent(eventId))
     setConfirmOpen(true)
   }
@@ -318,10 +322,10 @@ export default function Events() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight sm:text-4xl">
-            Danh sách sự kiện
+            {currentLanguage === 'en' ? 'Event List' : 'Danh sách sự kiện'}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
-            Khám phá và tham gia các sự kiện, hội thảo khoa học và hoạt động ngoại khóa tại trường FPT.
+            {currentLanguage === 'en' ? 'Explore and participate in events, scientific seminars, and extracurricular activities at FPT University.' : 'Khám phá và tham gia các sự kiện, hội thảo khoa học và hoạt động ngoại khóa tại trường FPT.'}
           </p>
 
           {/* Toggle Calendar/List */}
@@ -334,7 +338,7 @@ export default function Events() {
                 }`}
             >
               <CalendarDays className="w-4 h-4" />
-              Lịch
+              {currentLanguage === 'en' ? 'Calendar' : 'Lịch'}
             </button>
 
             <button
@@ -345,7 +349,7 @@ export default function Events() {
                 }`}
             >
               <List className="w-4 h-4" />
-              Danh sách
+              {currentLanguage === 'en' ? 'List' : 'Danh sách'}
             </button>
           </div>
         </div>
@@ -356,7 +360,7 @@ export default function Events() {
             to="/dashboard/events/create"
             className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-5 py-2.5 rounded-2xl text-xs font-black shadow-md hover:shadow-lg active:scale-95 transition-all"
           >
-            Tạo sự kiện mới
+            {currentLanguage === 'en' ? 'Create New Event' : 'Tạo sự kiện mới'}
           </Link>
         )}
       </div>
@@ -364,20 +368,20 @@ export default function Events() {
       {/* Loading / Error / Empty / Content */}
       {loading ? (
         <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-16 text-center shadow-md animate-fade-in-up">
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-bold animate-pulse">Đang tải danh sách sự kiện...</p>
+<p className="text-slate-500 dark:text-slate-400 text-sm font-bold animate-pulse">{currentLanguage === 'en' ? 'Loading event list...' : 'Đang tải danh sách sự kiện...'}</p>
         </div>
       ) : error ? (
         <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-rose-100 dark:border-rose-950/20 p-16 text-center shadow-md animate-fade-in-up">
-          <p className="text-rose-600 dark:text-rose-450 text-sm font-extrabold">Đã xảy ra lỗi: {error}</p>
+          <p className="text-rose-600 dark:text-rose-450 text-sm font-extrabold">{currentLanguage === 'en' ? 'An error occurred: ' : 'Đã xảy ra lỗi: '}{error}</p>
         </div>
       ) : openEvents.length === 0 ? (
         <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-16 text-center shadow-md animate-fade-in-up">
           <div className="p-4 bg-orange-50 dark:bg-orange-950/20 text-orange-500 dark:text-orange-350 rounded-full w-fit mx-auto mb-4 border border-orange-100/50 dark:border-orange-900/30">
             <CalendarDays className="w-12 h-12" />
           </div>
-          <h3 className="text-lg font-black text-slate-800 dark:text-white">Chưa có sự kiện đang mở</h3>
+<h3 className="text-lg font-black text-slate-800 dark:text-white">{currentLanguage === 'en' ? 'No open events' : 'Chưa có sự kiện đang mở'}</h3>
           <p className="text-sm text-slate-400 dark:text-slate-450 mt-2 max-w-sm mx-auto font-medium">
-            Hiện tại không có sự kiện công khai nào đang mở đăng ký vé. Vui lòng quay lại sau.
+            {currentLanguage === 'en' ? 'There are currently no public events open for registration. Please check back later.' : 'Hiện tại không có sự kiện công khai nào đang mở đăng ký vé. Vui lòng quay lại sau.'}
           </p>
         </div>
       ) : (
@@ -395,12 +399,12 @@ export default function Events() {
               {/* ---------- Upcoming events ---------- */}
               <div>
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6 pl-1 tracking-tight">
-                  Sự kiện sắp tới
+                  {currentLanguage === 'en' ? 'Upcoming Events' : 'Sự kiện sắp tới'}
                 </h2>
 
                 {upcomingEvents.length === 0 ? (
                   <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-12 text-center shadow-md animate-fade-in-up">
-                    <p className="text-slate-500 dark:text-slate-400 text-sm font-bold">Không có sự kiện sắp tới nào</p>
+<p className="text-slate-500 dark:text-slate-400 text-sm font-bold">{currentLanguage === 'en' ? 'No upcoming events' : 'Không có sự kiện sắp tới nào'}</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -433,7 +437,7 @@ export default function Events() {
                                   <button
                                     onClick={() => handleManageConfig(event.eventId, event.title)}
                                     className="p-1 text-purple-650 hover:bg-purple-50 rounded"
-                                    title="Quản lý Check-in Gate"
+                                    title={currentLanguage === 'en' ? 'Manage Check-in Gate' : 'Quản lý Check-in Gate'}
                                   >
                                     <Settings size={18} />
                                   </button>
@@ -444,7 +448,7 @@ export default function Events() {
                                   <Link
                                     to={`/dashboard/events/${event.eventId}/edit`}
                                     className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                    title="Chỉnh sửa"
+                                    title={currentLanguage === 'en' ? 'Edit' : 'Chỉnh sửa'}
                                   >
                                     <Edit size={18} />
                                   </Link>
@@ -458,7 +462,7 @@ export default function Events() {
                                       ? 'text-gray-400'
                                       : 'text-red-600 hover:bg-red-50'
                                       } rounded`}
-                                    title="Xóa"
+                                    title={currentLanguage === 'en' ? 'Delete' : 'Xóa'}
                                     disabled={disablingIds.includes(event.eventId)}
                                   >
                                     <Trash2 size={18} />
@@ -485,13 +489,13 @@ export default function Events() {
                             <div className="flex items-center text-sm text-gray-650 dark:text-gray-350">
                               <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
                               <span className="line-clamp-1">
-                                {event.venueLocation || event.location || 'Chưa xác định'}
+{event.venueLocation || event.location || (currentLanguage === 'en' ? 'TBD' : 'Chưa xác định')}
                               </span>
                             </div>
 
                             <div className="flex items-center text-sm text-gray-650 dark:text-gray-350">
                               <Users className="w-4 h-4 mr-2 flex-shrink-0" />
-                              {event.maxSeats} chỗ
+{event.maxSeats} {currentLanguage === 'en' ? 'seats' : 'chỗ'}
                             </div>
                           </div>
 
@@ -506,10 +510,10 @@ export default function Events() {
                                     : 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-300'
                                   }`}
                               >
-                                {event.status === 'OPEN'
-                                  ? 'Đang mở'
+{event.status === 'OPEN'
+                                  ? (currentLanguage === 'en' ? 'Open' : 'Đang mở')
                                   : event.status === 'CLOSED'
-                                    ? 'Đã đóng'
+                                    ? (currentLanguage === 'en' ? 'Closed' : 'Đã đóng')
                                     : event.status}
                               </span>
                             </div>
@@ -518,7 +522,7 @@ export default function Events() {
                               onClick={() => handleEventClick(event)}
                               className="w-full text-center bg-blue-600 dark:bg-orange-600 hover:bg-blue-700 dark:hover:bg-orange-500 text-white py-2 rounded-lg transition-colors font-bold"
                             >
-                              Xem chi tiết
+                              {currentLanguage === 'en' ? 'View details' : 'Xem chi tiết'}
                             </button>
                           </div>
                         </div>
@@ -533,7 +537,7 @@ export default function Events() {
                 <div>
                   <h2 className="text-2xl font-bold text-gray-500 mb-6 flex items-center">
                     <Clock className="w-6 h-6 mr-2" />
-                    Sự kiện đã qua
+                    {currentLanguage === 'en' ? 'Past Events' : 'Sự kiện đã qua'}
                   </h2>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -563,7 +567,7 @@ export default function Events() {
                                   <button
                                     onClick={() => handleManageConfig(event.eventId, event.title)}
                                     className="p-1 text-gray-400 hover:bg-gray-100 rounded"
-                                    title="Quản lý Check-in Gate"
+                                    title={currentLanguage === 'en' ? 'Manage Check-in Gate' : 'Quản lý Check-in Gate'}
                                     disabled
                                   >
                                     <Settings size={18} />
@@ -573,7 +577,7 @@ export default function Events() {
                                   <Link
                                     to={`/dashboard/events/${event.eventId}/edit`}
                                     className="p-1 text-gray-400 hover:bg-gray-100 rounded"
-                                    title="Chỉnh sửa"
+                                    title={currentLanguage === 'en' ? 'Edit' : 'Chỉnh sửa'}
                                   >
                                     <Edit size={18} />
                                   </Link>
@@ -585,7 +589,7 @@ export default function Events() {
                                       ? 'text-gray-400'
                                       : 'text-gray-400 hover:bg-gray-100'
                                       } rounded`}
-                                    title="Xóa"
+                                    title={currentLanguage === 'en' ? 'Delete' : 'Xóa'}
                                     disabled={disablingIds.includes(event.eventId)}
                                   >
                                     <Trash2 size={18} />
@@ -612,13 +616,13 @@ export default function Events() {
                             <div className="flex items-center text-sm text-gray-500">
                               <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
                               <span className="line-clamp-1">
-                                {event.venueLocation || event.location || 'Chưa xác định'}
+{event.venueLocation || event.location || (currentLanguage === 'en' ? 'TBD' : 'Chưa xác định')}
                               </span>
                             </div>
 
                             <div className="flex items-center text-sm text-gray-500">
                               <Users className="w-4 h-4 mr-2 flex-shrink-0" />
-                              {event.maxSeats} chỗ
+{event.maxSeats} {currentLanguage === 'en' ? 'seats' : 'chỗ'}
                             </div>
                           </div>
 
@@ -626,7 +630,7 @@ export default function Events() {
                           <div className="mt-auto">
                             <div className="flex items-center justify-between mb-4">
                               <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
-                                Đã kết thúc
+                                {currentLanguage === 'en' ? 'Ended' : 'Đã kết thúc'}
                               </span>
                             </div>
 
@@ -635,7 +639,7 @@ export default function Events() {
                               className="w-full text-center bg-gray-400 text-white py-2 rounded-lg opacity-50 cursor-not-allowed"
                               disabled
                             >
-                              Xem chi tiết
+                              {currentLanguage === 'en' ? 'View details' : 'Xem chi tiết'}
                             </button>
                           </div>
                         </div>

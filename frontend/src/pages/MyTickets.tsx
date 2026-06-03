@@ -1,5 +1,6 @@
 // Import hook React để dùng state + lifecycle
 import { useEffect, useState, useCallback } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 
 // Import Link và useSearchParams để điều hướng và quản lý URL params
 import { Link, useSearchParams } from 'react-router-dom'
@@ -25,7 +26,7 @@ import CancelTicketModal from '../components/common/CancelTicketModal'
 import { format } from 'date-fns'
 
 // Import locale tiếng Việt để format ngày theo định dạng VN
-import { vi } from 'date-fns/locale'
+import { vi, enUS } from 'date-fns/locale'
 
 // Import components
 import Pagination from '../components/common/Pagination'
@@ -104,6 +105,7 @@ type PaginatedTicketsResponse = {
  * - Hiển thị trạng thái: chưa check-in / đã check-in / đã check-out / hết hạn
  */
 export default function MyTickets() {
+  const { currentLanguage } = useAuth()
   // URL params management
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -177,10 +179,10 @@ export default function MyTickets() {
       if (!res.ok) {
         if (res.status === 401) {
           // 401: token hết hạn / không hợp lệ
-          setError('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.')
+          setError(currentLanguage === 'en' ? 'Session expired. Please login again.' : 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.')
         } else {
           // Lỗi chung
-          setError('Không thể tải danh sách vé. Vui lòng thử lại sau.')
+          setError(currentLanguage === 'en' ? 'Failed to load tickets. Please try again later.' : 'Không thể tải danh sách vé. Vui lòng thử lại sau.')
         }
         // reset danh sách vé về rỗng
         setTickets([])
@@ -201,7 +203,7 @@ export default function MyTickets() {
     } catch (err) {
       // Nếu lỗi network/cors/timeout
       console.error('Error loading tickets:', err)
-      setError('Có lỗi xảy ra khi tải danh sách vé.')
+      setError(currentLanguage === 'en' ? 'An error occurred while loading tickets.' : 'Có lỗi xảy ra khi tải danh sách vé.')
       setTickets([])
     } finally {
       // Dù thành công hay lỗi đều tắt loading
@@ -307,7 +309,7 @@ export default function MyTickets() {
 
   // Lấy tên sự kiện: ưu tiên eventName -> eventTitle -> title -> fallback
   const getEventTitle = (t: MyTicket) =>
-    t.eventName || t.eventTitle || t.title || 'Sự kiện không tên'
+    t.eventName || t.eventTitle || t.title || (currentLanguage === 'en' ? 'Unnamed Event' : 'Sự kiện không tên')
 
   // Lấy thời gian bắt đầu: ưu tiên eventStartTime -> startTime -> startDate
   const getStartTime = (t: MyTicket) =>
@@ -315,7 +317,7 @@ export default function MyTickets() {
 
   // Lấy địa điểm: ưu tiên venueName -> location -> fallback
   const getLocation = (t: MyTicket) =>
-    t.venueName || t.location || 'Đang cập nhật địa điểm'
+    t.venueName || t.location || (currentLanguage === 'en' ? 'TBD' : 'Đang cập nhật địa điểm')
 
   // Lấy thông tin ghế: seatCode hoặc seatNumber
   const getSeatLabel = (t: MyTicket) =>
@@ -380,7 +382,7 @@ export default function MyTickets() {
     if (!time) return null
     const d = new Date(time)
     if (isNaN(d.getTime())) return null
-    return format(d, 'dd/MM/yyyy HH:mm:ss', { locale: vi })
+    return format(d, 'dd/MM/yyyy HH:mm:ss', { locale: currentLanguage === 'en' ? enUS : vi })
   }
 
   /**
@@ -398,14 +400,14 @@ export default function MyTickets() {
           <div className="p-3.5 bg-rose-50 text-rose-500 rounded-2xl w-fit mx-auto mb-4 border border-rose-100/50">
             <XCircle className="w-8 h-8 animate-pulse" />
           </div>
-          <p className="text-slate-800 font-extrabold text-lg">Đã xảy ra lỗi</p>
+          <p className="text-slate-800 font-extrabold text-lg">{currentLanguage === 'en' ? 'An error occurred' : 'Đã xảy ra lỗi'}</p>
           <p className="text-slate-500 text-sm mt-1.5 font-medium leading-relaxed">{error}</p>
           <div className="mt-6">
             <Link
               to="/dashboard/events"
               className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-orange-650 hover:bg-orange-600 text-white rounded-xl text-xs font-extrabold transition-all duration-300 shadow-md shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
             >
-              Xem các sự kiện sắp tới →
+              {currentLanguage === 'en' ? 'View upcoming events →' : 'Xem các sự kiện sắp tới →'}
             </Link>
           </div>
         </div>
@@ -422,10 +424,10 @@ export default function MyTickets() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight sm:text-4xl">
-            Vé của tôi
+            {currentLanguage === 'en' ? 'My Tickets' : 'Vé của tôi'}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
-            Quản lý, theo dõi lịch sử tham dự và sử dụng vé QR tham gia sự kiện tại trường FPT.
+            {currentLanguage === 'en' ? 'Manage, track attendance history and use QR tickets to participate in events at FPT University.' : 'Quản lý, theo dõi lịch sử tham dự và sử dụng vé QR tham gia sự kiện tại trường FPT.'}
           </p>
         </div>
       </div>
@@ -438,7 +440,7 @@ export default function MyTickets() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Tìm kiếm theo tên sự kiện..."
+              placeholder={currentLanguage === 'en' ? 'Search by event name...' : 'Tìm kiếm theo tên sự kiện...'}
               value={searchInput}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 dark:text-white font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
@@ -453,13 +455,13 @@ export default function MyTickets() {
               onChange={(e) => handleStatusChange(e.target.value)}
               className="w-full pl-11 pr-10 py-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
-              <option value="">Tất cả trạng thái</option>
-              <option value="BOOKED">Chưa check-in</option>
-              <option value="CHECKED_IN">Đã check-in</option>
-              <option value="CHECKED_OUT">Đã check-out</option>
-              <option value="PENDING">Đang chờ hoàn tiền</option>
-              <option value="REFUNDED">Đã hoàn tiền</option>
-              <option value="EXPIRED">Hết hạn</option>
+              <option value="">{currentLanguage === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
+              <option value="BOOKED">{currentLanguage === 'en' ? 'Not Checked In' : 'Chưa check-in'}</option>
+              <option value="CHECKED_IN">{currentLanguage === 'en' ? 'Checked In' : 'Đã check-in'}</option>
+              <option value="CHECKED_OUT">{currentLanguage === 'en' ? 'Checked Out' : 'Đã check-out'}</option>
+              <option value="PENDING">{currentLanguage === 'en' ? 'Pending Refund' : 'Đang chờ hoàn tiền'}</option>
+              <option value="REFUNDED">{currentLanguage === 'en' ? 'Refunded' : 'Đã hoàn tiền'}</option>
+              <option value="EXPIRED">{currentLanguage === 'en' ? 'Expired' : 'Hết hạn'}</option>
             </select>
           </div>
         </div>
@@ -467,7 +469,7 @@ export default function MyTickets() {
         {/* Results count */}
         {!loading && (
           <div className="mt-3.5 text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider pl-1">
-            Tìm thấy <span className="text-orange-655 font-extrabold">{totalRecords}</span> vé
+{currentLanguage === 'en' ? 'Found' : 'Tìm thấy'} <span className="text-orange-655 font-extrabold">{totalRecords}</span> {currentLanguage === 'en' ? 'tickets' : 'vé'}
           </div>
         )}
       </div>
@@ -488,12 +490,12 @@ export default function MyTickets() {
             <TicketIcon className="w-12 h-12 animate-pulse" />
           </div>
           <h3 className="text-lg font-bold text-slate-800">
-            {searchQuery || statusFilter ? 'Không tìm thấy vé phù hợp' : 'Bạn chưa có vé nào'}
+{searchQuery || statusFilter ? (currentLanguage === 'en' ? 'No matching tickets found' : 'Không tìm thấy vé phù hợp') : (currentLanguage === 'en' ? "You don't have any tickets yet" : 'Bạn chưa có vé nào')}
           </h3>
           <p className="text-sm text-slate-400 mt-2 max-w-sm mx-auto font-medium">
-            {searchQuery || statusFilter
-              ? 'Vui lòng thử lại với từ khóa khác hoặc xóa bộ lọc.'
-              : 'Hãy khám phá các sự kiện thú vị và đăng ký vé tham gia ngay nhé!'}
+{searchQuery || statusFilter
+              ? (currentLanguage === 'en' ? 'Please try again with a different keyword or clear filters.' : 'Vui lòng thử lại với từ khóa khác hoặc xóa bộ lọc.')
+              : (currentLanguage === 'en' ? 'Explore interesting events and register for tickets to join now!' : 'Hãy khám phá các sự kiện thú vị và đăng ký vé tham gia ngay nhé!')}
           </p>
           {(searchQuery || statusFilter) && (
             <button
@@ -505,7 +507,7 @@ export default function MyTickets() {
               }}
               className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-extrabold transition-all duration-300 shadow-md shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
             >
-              Xóa bộ lọc
+              {currentLanguage === 'en' ? 'Clear filters' : 'Xóa bộ lọc'}
             </button>
           )}
           {!searchQuery && !statusFilter && (
@@ -513,7 +515,7 @@ export default function MyTickets() {
               to="/dashboard/events"
               className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-extrabold transition-all duration-300 shadow-md shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
             >
-              Khám phá sự kiện ngay →
+              {currentLanguage === 'en' ? 'Explore events now →' : 'Khám phá sự kiện ngay →'}
             </Link>
           )}
         </div>
@@ -543,11 +545,11 @@ export default function MyTickets() {
               const hasExistingReport = !!existingReportStatus || status === 'PENDING'
 
               // startText: text hiển thị thời gian bắt đầu event
-              let startText = 'Đang cập nhật thời gian'
+              let startText = currentLanguage === 'en' ? 'TBD' : 'Đang cập nhật thời gian'
               if (start) {
                 const d = new Date(start)
                 if (!isNaN(d.getTime())) {
-                  startText = format(d, 'dd/MM/yyyy HH:mm', { locale: vi })
+                  startText = format(d, 'dd/MM/yyyy HH:mm', { locale: currentLanguage === 'en' ? enUS : vi })
                 }
               }
 
@@ -574,7 +576,7 @@ export default function MyTickets() {
                       
                       {/* Floating Indicator for Ticket Code */}
                       <div className="absolute top-4 right-4 bg-white/90 dark:bg-slate-800/90 border border-white/95 dark:border-slate-700 text-slate-800 dark:text-white font-extrabold text-[10px] uppercase tracking-wider py-1 px-3 rounded-full shadow-sm">
-                        Mã: #{id}
+                        {currentLanguage === 'en' ? 'Code:' : 'Mã:'} #{id}
                       </div>
 
                       {/* Floating Status Badge */}
@@ -582,17 +584,17 @@ export default function MyTickets() {
                         {existingReportStatus === 'PENDING' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/90 text-white backdrop-blur-sm border border-amber-400 shadow-sm shadow-amber-500/20">
                             <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
-                            Chờ hoàn tiền
+                            {currentLanguage === 'en' ? 'Pending Refund' : 'Chờ hoàn tiền'}
                           </span>
                         ) : existingReportStatus === 'APPROVED' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/90 text-white backdrop-blur-sm border border-emerald-400 shadow-sm shadow-emerald-500/20">
                             <CheckCircle className="w-3.5 h-3.5" />
-                            Đã hoàn tiền
+                            {currentLanguage === 'en' ? 'Refunded' : 'Đã hoàn tiền'}
                           </span>
                         ) : existingReportStatus === 'REJECTED' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/90 text-white backdrop-blur-sm border border-rose-400 shadow-sm shadow-rose-500/20">
                             <XCircle className="w-3.5 h-3.5" />
-                            Từ chối hoàn tiền
+                            {currentLanguage === 'en' ? 'Refund Rejected' : 'Từ chối hoàn tiền'}
                           </span>
                         ) : (
                           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm shadow-sm ${
@@ -603,11 +605,11 @@ export default function MyTickets() {
                             'bg-amber-500/90 text-white border border-amber-400 shadow-amber-500/10'
                           }`}>
                             {status === 'CHECKED_IN' && <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />}
-                            {status === 'EXPIRED' ? 'Hết hạn' :
-                             status === 'REFUNDED' ? 'Đã hoàn tiền' :
-                             status === 'CHECKED_OUT' ? 'Đã check-out' :
-                             status === 'CHECKED_IN' ? 'Đã check-in' :
-                             'Chưa check-in'}
+                            {status === 'EXPIRED' ? (currentLanguage === 'en' ? 'Expired' : 'Hết hạn') :
+                             status === 'REFUNDED' ? (currentLanguage === 'en' ? 'Refunded' : 'Đã hoàn tiền') :
+                             status === 'CHECKED_OUT' ? (currentLanguage === 'en' ? 'Checked Out' : 'Đã check-out') :
+                             status === 'CHECKED_IN' ? (currentLanguage === 'en' ? 'Checked In' : 'Đã check-in') :
+                             (currentLanguage === 'en' ? 'Not Checked In' : 'Chưa check-in')}
                           </span>
                         )}
                       </div>
@@ -623,25 +625,25 @@ export default function MyTickets() {
                       <div className="space-y-2.5 text-xs text-slate-500 dark:text-slate-400 font-bold">
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                          <span>Thời gian: <strong className="text-slate-700 dark:text-slate-200">{startText}</strong></span>
+                          <span>{currentLanguage === 'en' ? 'Time:' : 'Thời gian:'} <strong className="text-slate-700 dark:text-slate-200">{startText}</strong></span>
                         </div>
 
                         <div className="flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                          <span className="truncate">Địa điểm: <strong className="text-slate-700 dark:text-slate-200">{location}</strong></span>
+                          <span className="truncate">{currentLanguage === 'en' ? 'Location:' : 'Địa điểm:'} <strong className="text-slate-700 dark:text-slate-200">{location}</strong></span>
                         </div>
 
                         {seat && (
                           <div className="flex items-center gap-2">
                             <TicketIcon className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                            <span>Số ghế: <strong className="text-slate-700 dark:text-slate-200">{seat}</strong></span>
+                            <span>{currentLanguage === 'en' ? 'Seat:' : 'Số ghế:'} <strong className="text-slate-700 dark:text-slate-200">{seat}</strong></span>
                           </div>
                         )}
 
                         {existingReportStatus === 'REJECTED' && (
                           <div className="text-[11px] text-rose-500 font-semibold bg-rose-50/50 border border-rose-150 rounded-xl p-2.5 mt-2 flex items-center gap-1.5 animate-pulse">
                             <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span>Yêu cầu báo cáo/hoàn tiền bị từ chối bởi Staff</span>
+                            <span>{currentLanguage === 'en' ? 'Report/Refund request rejected by Staff' : 'Yêu cầu báo cáo/hoàn tiền bị từ chối bởi Staff'}</span>
                           </div>
                         )}
 
@@ -649,14 +651,14 @@ export default function MyTickets() {
                         {getCheckInTime(t) && (
                           <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-2.5 mt-2.5">
                             <Clock className={`w-4 h-4 flex-shrink-0 ${isCheckedOut(t) ? 'text-purple-500' : 'text-emerald-500'}`} />
-                            <span>Check-in: <strong className="text-slate-700 dark:text-slate-200">{formatTime(getCheckInTime(t))}</strong></span>
+                            <span>{currentLanguage === 'en' ? 'Checked In At:' : 'Check-in:'} <strong className="text-slate-700 dark:text-slate-200">{formatTime(getCheckInTime(t))}</strong></span>
                           </div>
                         )}
 
                         {status === 'CHECKED_OUT' && getCheckOutTime(t) && (
                           <div className="flex items-center gap-2 pt-1">
                             <Clock className="w-4 h-4 text-purple-500 flex-shrink-0" />
-                            <span>Check-out: <strong className="text-slate-700 dark:text-slate-200">{formatTime(getCheckOutTime(t))}</strong></span>
+                            <span>{currentLanguage === 'en' ? 'Checked Out At:' : 'Check-out:'} <strong className="text-slate-700 dark:text-slate-200">{formatTime(getCheckOutTime(t))}</strong></span>
                           </div>
                         )}
                       </div>
@@ -673,7 +675,7 @@ export default function MyTickets() {
                           onClick={() => setCancelTicket(t)}
                           className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all duration-300 shadow-sm hover:shadow hover:scale-[1.02] active:scale-95"
                         >
-                          <FileX className="w-4 h-4" /> Báo Cáo Lỗi
+                          <FileX className="w-4 h-4" /> {currentLanguage === 'en' ? 'Report Issue' : 'Báo Cáo Lỗi'}
                         </button>
                       )}
 
@@ -684,7 +686,7 @@ export default function MyTickets() {
                         className={`${!hasExistingReport && status === 'CHECKED_IN' ? 'flex-1' : 'w-full'
                           } inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 rounded-xl hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 hover:scale-[1.02] active:scale-95`}
                       >
-                        <TicketIcon className="w-4 h-4" /> Xem vé QR
+                        <TicketIcon className="w-4 h-4" /> {currentLanguage === 'en' ? 'View QR Ticket' : 'Xem vé QR'}
                       </button>
                     </div>
                   </div>
@@ -737,7 +739,7 @@ export default function MyTickets() {
                   <TicketIcon className="w-6 h-6" />
                 </div>
 
-                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mb-1">Mã QR Vé</h2>
+                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mb-1">{currentLanguage === 'en' ? 'Ticket QR Code' : 'Mã QR Vé'}</h2>
                 <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 px-4 truncate">
                   {getEventTitle(qrTicket)}
                 </p>
@@ -745,7 +747,7 @@ export default function MyTickets() {
                 {getTicketDisplayCode(qrTicket) && (
                   <div className="mb-4 bg-orange-50/50 dark:bg-orange-950/20 border border-orange-100/40 dark:border-orange-900/30 rounded-2xl py-2.5 px-4 inline-block">
                     <p className="text-xs font-bold text-slate-450 dark:text-slate-400 uppercase tracking-wide">
-                      Mã số vé của bạn
+                      {currentLanguage === 'en' ? 'Your Ticket ID' : 'Mã số vé của bạn'}
                     </p>
                     <p className="text-base font-black text-orange-600 tracking-wider">
                       #{getTicketDisplayCode(qrTicket)}
@@ -766,10 +768,10 @@ export default function MyTickets() {
                 ) : getTicketDisplayCode(qrTicket) ? (
                   <div className="mx-auto mb-5 p-5 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl text-center">
                     <p className="text-sm font-bold text-amber-800 flex items-center justify-center gap-1 mb-1">
-                      ⚠️ QR chưa sẵn sàng (vé cũ)
+                      {currentLanguage === 'en' ? '⚠️ QR not ready (legacy ticket)' : '⚠️ QR chưa sẵn sàng (vé cũ)'}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">
-                      Sử dụng mã vé dưới đây để check-in tại quầy sự kiện:
+                      {currentLanguage === 'en' ? 'Use the ticket ID below to check-in at the event counter:' : 'Sử dụng mã vé dưới đây để check-in tại quầy sự kiện:'}
                     </p>
                     <div className="font-mono text-xl font-black bg-white dark:bg-slate-800 border border-amber-200/60 dark:border-slate-700 rounded-xl py-2 px-4 shadow-sm text-orange-600 tracking-widest inline-block animate-pulse">
                       {getTicketDisplayCode(qrTicket)}
@@ -778,10 +780,10 @@ export default function MyTickets() {
                 ) : (
                   <div className="mx-auto mb-5 p-5 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl text-center">
                     <p className="text-sm font-bold text-rose-800 mb-1">
-                      Không tìm thấy QR
+                      {currentLanguage === 'en' ? 'QR Code Not Found' : 'Không tìm thấy QR'}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Vé này chưa có mã QR hoặc ID hợp lệ. Vui lòng liên hệ bộ phận hỗ trợ.
+                      {currentLanguage === 'en' ? 'This ticket does not have a valid QR code or ID. Please contact support.' : 'Vé này chưa có mã QR hoặc ID hợp lệ. Vui lòng liên hệ bộ phận hỗ trợ.'}
                     </p>
                   </div>
                 )}
@@ -791,7 +793,7 @@ export default function MyTickets() {
                   onClick={() => setQrTicket(null)}
                   className="w-full inline-flex items-center justify-center gap-1.5 px-5 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 rounded-2xl transition-all duration-300 shadow-sm active:scale-95"
                 >
-                  Đóng cửa sổ
+                  {currentLanguage === 'en' ? 'Close Window' : 'Đóng cửa sổ'}
                 </button>
               </div>
             </div>

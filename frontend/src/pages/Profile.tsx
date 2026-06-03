@@ -1,4 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useWallet } from '../hooks/useWallet'
+import { useWallet } from '../hooks/useWallet'
+import { useWallet } from '../hooks/useWallet'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import {
@@ -46,6 +49,76 @@ const profileTranslations: Record<string, Record<string, string>> = {
     updatePassword: 'Update password',
     updating: 'Updating...',
     walletBalance: 'E-wallet balance',
+    contactInfo: 'Contact Information',
+    phoneNumber: 'Phone number',
+    noPhone: 'No phone number updated',
+    saveChanges: 'Save Changes',
+    phoneEmptyError: 'Phone number cannot be empty',
+    phoneInvalidError: 'Invalid Vietnamese phone number (10 digits, e.g. 0912345678)',
+    checkInputError: 'Please check your inputs!',
+    phoneUpdateSuccess: 'Phone number updated successfully!',
+    phoneUpdateFail: 'Failed to update phone number!',
+    networkError: 'A network connection error occurred!',
+    fullName: 'Full Name',
+    fullNameLabel: 'Full Name',
+    fullNamePlaceholder: 'Enter full name',
+    fullNameEmptyError: 'Full name cannot be empty',
+    fullNameMinError: 'Full name must be at least 2 characters',
+    fullNameMaxError: 'Full name cannot exceed 100 characters',
+    fullNameSuccess: 'Full name updated successfully!',
+    fullNameFail: 'Failed to update full name!',
+    themeLocal: 'Theme & Localization',
+    appTheme: 'App Theme',
+    themeHelp: 'Change screen contrast (Light or Dark)',
+    darkMode: 'Dark mode',
+    lightMode: 'Light mode',
+    timezoneTitle: 'Working Timezone',
+    timezoneHelp: 'Configure timezone to synchronize event calendars accurately',
+    procedureTitle: 'Profile Change Procedure',
+    p1: 'Phone number can be adjusted and stored immediately via the form to support quick communication.',
+    p2: 'Legal identity information such as Full name, School email, and System role cannot be self-updated to prevent identity fraud.',
+    p3: 'Steps to request changes:',
+    p4: 'Send an email from your official FPT email to the administrators at',
+    p5: 'Provide student ID/staff ID and attach a copy of student card/ID card for verification.',
+    p6: 'FPT Event technical support will process the change request within 24 working hours.',
+    securityCommit: 'Security Commitment',
+    securityCommitHelp: 'We apply the most advanced encryption standards to protect your password. FPT Event does not store passwords in plain text and never shares your identification data with third parties.',
+    dangerZone: 'Danger Zone',
+    dangerZoneHelp: 'When closing your account, the system will place your account in the deletion queue. You have 30 days to cancel the request if you change your mind.',
+    closeAccount: 'Close my account',
+    ssoTitle: 'You logged in via Google',
+    ssoHelp: 'Your account currently does not have a password stored on the FPT Event server because you use Single Sign On (SSO).',
+    ssoExplain: 'You can set a separate password at any time. This allows you to log in flexibly using both your Google account and direct email/password.',
+    setNewPassword: 'Set new password',
+    passwordSecurityTitle: 'Password Security',
+    passwordSecurityHelp: 'Set a password of at least 6 characters to secure your account.',
+    oldPasswordPlaceholder: 'Enter current password',
+    newPasswordPlaceholder: 'Enter new password (at least 6 characters)',
+    confirmPasswordPlaceholder: 'Re-enter new password',
+    joinedOn: 'Joined on',
+    notUpdated: 'Not updated',
+    setSSOPasswordTitle: 'Set Account Password',
+    setSSOPasswordHelp: 'Set a password for your Google account to be able to log in freely with your email.',
+    cancel: 'Cancel',
+    setBtn: 'Set Password',
+    settingBtn: 'Setting up...',
+    closeAccountTitle: 'Confirm account deletion',
+    close1: 'You are requesting to delete your personal account.',
+    close2: 'Your account will be placed in the deletion queue and you will be logged out immediately.',
+    close3: 'You have',
+    close4: '30 days',
+    close5: 'to log in again and restore the account. After this period, the account and all related data will be permanently deleted and cannot be restored.',
+    processing: 'Processing...',
+    confirmDelete: 'Confirm delete',
+    oldPasswordEmptyError: 'Please enter current password',
+    passwordMinError: 'Password must be at least 6 characters',
+    passwordMatchError: 'Confirmation password does not match',
+    passwordSuccess: 'Password changed successfully!',
+    passwordFail: 'Failed to change password',
+    ssoSuccess: 'Set password successfully!',
+    ssoFail: 'Failed to set password',
+    closeSuccess: 'Account closure request successful!',
+    closeFail: 'Failed to request account closure'
   },
   vi: {
     profileTab: 'Thông tin cá nhân',
@@ -62,6 +135,76 @@ const profileTranslations: Record<string, Record<string, string>> = {
     updatePassword: 'Cập nhật mật khẩu',
     updating: 'Đang cập nhật...',
     walletBalance: 'Số dư ví điện tử',
+    contactInfo: 'Thông tin Liên hệ',
+    phoneNumber: 'Số điện thoại',
+    noPhone: 'Chưa cập nhật số điện thoại',
+    saveChanges: 'Lưu thay đổi',
+    phoneEmptyError: 'Số điện thoại không được để trống',
+    phoneInvalidError: 'Số điện thoại Việt Nam không hợp lệ (10 chữ số, ví dụ: 0912345678)',
+    checkInputError: 'Vui lòng kiểm tra lỗi nhập liệu!',
+    phoneUpdateSuccess: 'Cập nhật số điện thoại thành công!',
+    phoneUpdateFail: 'Cập nhật số điện thoại thất bại!',
+    networkError: 'Có lỗi kết nối mạng xảy ra!',
+    fullName: 'Họ và Tên',
+    fullNameLabel: 'Họ và Tên Đầy Đủ',
+    fullNamePlaceholder: 'Nhập họ và tên đầy đủ',
+    fullNameEmptyError: 'Họ và tên không được để trống',
+    fullNameMinError: 'Họ và tên phải có ít nhất 2 ký tự',
+    fullNameMaxError: 'Họ và tên không được vượt quá 100 ký tự',
+    fullNameSuccess: 'Cập nhật họ và tên thành công!',
+    fullNameFail: 'Cập nhật họ và tên thất bại!',
+    themeLocal: 'Giao diện & Khu vực',
+    appTheme: 'Giao diện ứng dụng',
+    themeHelp: 'Tự do thay đổi độ tương phản màn hình (Sáng hoặc Tối)',
+    darkMode: 'Bản tối (Dark)',
+    lightMode: 'Bản sáng (Light)',
+    timezoneTitle: 'Múi giờ làm việc',
+    timezoneHelp: 'Cài đặt hiển thị múi giờ để đồng bộ chính xác lịch sự kiện',
+    procedureTitle: 'Quy trình Thay đổi Hồ sơ',
+    p1: 'Số điện thoại có thể tự điều chỉnh và lưu trữ tức thì thông qua form bên cạnh để hỗ trợ liên lạc nhanh chóng.',
+    p2: 'Các thông tin định danh pháp lý như Họ và tên, Email trường học, và Vai trò hệ thống không thể tự cập nhật nhằm phòng chống gian lận danh tính.',
+    p3: 'Các bước yêu cầu thay đổi:',
+    p4: 'Gửi email từ hòm thư FPT chính thức tới ban quản trị tại',
+    p5: 'Cung cấp mã số sinh viên/mã cán bộ và đính kèm bản sao thẻ sinh viên/CMND đối chiếu.',
+    p6: 'Bộ phận hỗ trợ kỹ thuật FPT Event sẽ xử lý yêu cầu thay đổi trong vòng 24h làm việc.',
+    securityCommit: 'Cam kết Bảo mật',
+    securityCommitHelp: 'Chúng tôi áp dụng các tiêu chuẩn mã hóa tiên tiến nhất để bảo vệ thông tin mật khẩu của bạn. FPT Event không lưu trữ mật khẩu ở dạng plain-text và không bao giờ chia sẻ dữ liệu định danh của bạn cho bên thứ ba.',
+    dangerZone: 'Khu vực Nguy hiểm',
+    dangerZoneHelp: 'Khi đóng tài khoản, hệ thống sẽ đưa tài khoản của bạn vào hàng đợi xóa. Bạn có 30 ngày để hủy yêu cầu nếu đổi ý.',
+    closeAccount: 'Đóng tài khoản của tôi',
+    ssoTitle: 'Bạn đăng nhập qua Google',
+    ssoHelp: 'Tài khoản của bạn hiện tại chưa có mật khẩu được lưu trữ trên máy chủ FPT Event vì bạn sử dụng phương thức đăng nhập một lần (Single Sign On).',
+    ssoExplain: 'Bạn có thể thiết lập mật khẩu riêng bất cứ lúc nào. Việc này cho phép bạn đăng nhập linh hoạt bằng cả tài khoản Google lẫn email/mật khẩu trực tiếp.',
+    setNewPassword: 'Thiết lập mật khẩu mới',
+    passwordSecurityTitle: 'Bảo mật mật khẩu',
+    passwordSecurityHelp: 'Thiết lập mật khẩu có độ dài tối thiểu 6 ký tự để bảo vệ an toàn cho tài khoản của bạn.',
+    oldPasswordPlaceholder: 'Nhập mật khẩu hiện tại',
+    newPasswordPlaceholder: 'Nhập mật khẩu mới (ít nhất 6 ký tự)',
+    confirmPasswordPlaceholder: 'Nhập lại mật khẩu mới',
+    joinedOn: 'Tham gia ngày',
+    notUpdated: 'Chưa cập nhật',
+    setSSOPasswordTitle: 'Thiết lập mật khẩu tài khoản',
+    setSSOPasswordHelp: 'Thiết lập mật khẩu cho tài khoản Google để có thể tự do đăng nhập bằng email của bạn.',
+    cancel: 'Hủy bỏ',
+    setBtn: 'Thiết lập mật khẩu',
+    settingBtn: 'Đang thiết lập...',
+    closeAccountTitle: 'Xác nhận xóa tài khoản',
+    close1: 'Bạn đang thực hiện yêu cầu xóa tài khoản cá nhân.',
+    close2: 'Tài khoản của bạn sẽ được đưa vào hàng đợi xóa và bạn sẽ được đăng xuất ngay lập tức.',
+    close3: 'Bạn có',
+    close4: '30 ngày',
+    close5: 'để đăng nhập lại và khôi phục tài khoản. Sau thời gian này, tài khoản và mọi dữ liệu liên quan sẽ bị xóa vĩnh viễn và không thể khôi phục.',
+    processing: 'Đang xử lý...',
+    confirmDelete: 'Xác nhận xóa',
+    oldPasswordEmptyError: 'Vui lòng nhập mật khẩu cũ',
+    passwordMinError: 'Mật khẩu phải có ít nhất 6 ký tự',
+    passwordMatchError: 'Mật khẩu xác nhận không khớp',
+    passwordSuccess: 'Đổi mật khẩu thành công!',
+    passwordFail: 'Đổi mật khẩu thất bại',
+    ssoSuccess: 'Thiết lập mật khẩu thành công!',
+    ssoFail: 'Thiết lập mật khẩu thất bại',
+    closeSuccess: 'Yêu cầu đóng tài khoản thành công!',
+    closeFail: 'Yêu cầu xóa tài khoản thất bại'
   },
 }
 
@@ -69,9 +212,10 @@ export default function Profile() {
   const { user, logout, refreshUser } = useAuth()
   const { showToast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { balance: liveBalance } = useWallet()
   const profileWalletBalance = useMemo(() => {
-    return Number(user?.wallet_balance ?? user?.balance ?? 0)
-  }, [user])
+    return Number(liveBalance ?? user?.balance ?? user?.wallet_balance ?? user?.wallet?.balance ?? 0)
+  }, [user, liveBalance])
 
   // Tab state: profile vs security
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'language'>(() => {
@@ -258,12 +402,12 @@ export default function Profile() {
   const validatePhone = (value: string): boolean => {
     const cleaned = value.trim()
     if (!cleaned) {
-      setPhoneError('Số điện thoại không được để trống')
+      setPhoneError(t.phoneEmptyError)
       return false
     }
     const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/
     if (!phoneRegex.test(cleaned)) {
-      setPhoneError('Số điện thoại Việt Nam không hợp lệ (10 chữ số, ví dụ: 0912345678)')
+      setPhoneError(t.phoneInvalidError)
       return false
     }
     setPhoneError('')
@@ -274,15 +418,15 @@ export default function Profile() {
   const validateFullName = (value: string): boolean => {
     const cleaned = value.trim()
     if (!cleaned) {
-      setFullNameError('Họ và tên không được để trống')
+      setFullNameError(t.fullNameEmptyError)
       return false
     }
     if (cleaned.length < 2) {
-      setFullNameError('Họ và tên phải có ít nhất 2 ký tự')
+      setFullNameError(t.fullNameMinError)
       return false
     }
     if (cleaned.length > 100) {
-      setFullNameError('Họ và tên không được vượt quá 100 ký tự')
+      setFullNameError(t.fullNameMaxError)
       return false
     }
     setFullNameError('')
@@ -293,7 +437,7 @@ export default function Profile() {
   const handleUpdatePhone = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validatePhone(phone)) {
-      showToast('error', 'Vui lòng kiểm tra lỗi nhập liệu!')
+      showToast('error', t.checkInputError)
       return
     }
 
@@ -308,14 +452,14 @@ export default function Profile() {
 
       const data = await res.json()
       if (res.ok) {
-        showToast('success', 'Cập nhật số điện thoại thành công!')
+        showToast('success', t.phoneUpdateSuccess)
         localStorage.removeItem('user_phone_' + user?.id)
         await refreshUser()
       } else {
-        showToast('error', data.message || 'Cập nhật số điện thoại thất bại!')
+        showToast('error', data.message || t.phoneUpdateFail)
       }
     } catch (err) {
-      showToast('error', 'Có lỗi kết nối mạng xảy ra!')
+      showToast('error', t.networkError)
     }
   }
 
@@ -323,7 +467,7 @@ export default function Profile() {
   const handleUpdateFullName = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validateFullName(fullName)) {
-      showToast('error', 'Vui lòng kiểm tra lỗi nhập liệu!')
+      showToast('error', t.checkInputError)
       return
     }
 
@@ -338,13 +482,13 @@ export default function Profile() {
 
       const data = await res.json()
       if (res.ok) {
-        showToast('success', 'Cập nhật họ và tên thành công!')
+        showToast('success', t.fullNameSuccess)
         await refreshUser()
       } else {
-        showToast('error', data.message || 'Cập nhật họ và tên thất bại!')
+        showToast('error', data.message || t.fullNameFail)
       }
     } catch (err) {
-      showToast('error', 'Có lỗi kết nối mạng xảy ra!')
+      showToast('error', t.networkError)
     }
   }
 
@@ -352,11 +496,11 @@ export default function Profile() {
   const handleSetSSOPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     if (newPassword.length < 6) {
-      setPasswordError('Mật khẩu phải có ít nhất 6 ký tự')
+      setPasswordError(t.passwordMinError)
       return
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('Mật khẩu xác nhận không khớp')
+      setPasswordError(t.passwordMatchError)
       return
     }
 
@@ -374,16 +518,16 @@ export default function Profile() {
 
       const data = await res.json()
       if (res.ok) {
-        showToast('success', 'Thiết lập mật khẩu thành công!')
+        showToast('success', t.ssoSuccess)
         setShowSetPasswordModal(false)
         setNewPassword('')
         setConfirmPassword('')
         await refreshUser()
       } else {
-        setPasswordError(data.message || 'Thiết lập mật khẩu thất bại')
+        setPasswordError(data.message || t.ssoFail)
       }
     } catch (err) {
-      setPasswordError('Lỗi kết nối mạng')
+      setPasswordError(t.networkError)
     } finally {
       setIsSubmittingPassword(false)
     }
@@ -393,15 +537,15 @@ export default function Profile() {
   const handleUpdateStandardPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!oldPassword) {
-      setStandardPasswordError('Vui lòng nhập mật khẩu cũ')
+      setStandardPasswordError(t.oldPasswordEmptyError)
       return
     }
     if (standardPassword.length < 6) {
-      setStandardPasswordError('Mật khẩu phải có ít nhất 6 ký tự')
+      setStandardPasswordError(t.passwordMinError)
       return
     }
     if (standardPassword !== standardConfirmPassword) {
-      setStandardPasswordError('Mật khẩu xác nhận không khớp')
+      setStandardPasswordError(t.passwordMatchError)
       return
     }
 
@@ -419,15 +563,15 @@ export default function Profile() {
 
       const data = await res.json()
       if (res.ok) {
-        showToast('success', 'Đổi mật khẩu thành công!')
+        showToast('success', t.passwordSuccess)
         setOldPassword('')
         setStandardPassword('')
         setStandardConfirmPassword('')
       } else {
-        setStandardPasswordError(data.message || 'Đổi mật khẩu thất bại')
+        setStandardPasswordError(data.message || t.passwordFail)
       }
     } catch (err) {
-      setStandardPasswordError('Lỗi kết nối mạng')
+      setStandardPasswordError(t.networkError)
     } finally {
       setIsUpdatingStandardPassword(false)
     }
@@ -445,23 +589,23 @@ export default function Profile() {
       })
 
       if (res.ok) {
-        showToast('success', 'Yêu cầu đóng tài khoản thành công!')
+        showToast('success', t.closeSuccess)
         setShowCloseModal(false)
         logout()
       } else {
         const data = await res.json()
-        showToast('error', data.message || 'Yêu cầu xóa tài khoản thất bại')
+        showToast('error', data.message || t.closeFail)
       }
     } catch (err) {
-      showToast('error', 'Có lỗi kết nối mạng xảy ra!')
+      showToast('error', t.networkError)
     } finally {
       setIsClosingAccount(false)
     }
   }
 
   const joinDate = user?.createdAt
-    ? new Date(user.createdAt).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })
-    : 'Chưa cập nhật'
+    ? new Date(user.createdAt).toLocaleDateString(appliedLanguage === 'en' ? 'en-US' : 'vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })
+    : t.notUpdated
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in-up">
@@ -492,7 +636,7 @@ export default function Profile() {
           </p>
           <p className="text-xs text-slate-400 font-bold flex items-center gap-1.5 justify-center md:justify-start">
             <Calendar size={15} className="text-slate-400" />
-            Tham gia ngày {joinDate}
+            {t.joinedOn} {joinDate}
           </p>
         </div>
 
@@ -560,13 +704,13 @@ export default function Profile() {
               }`}>
               <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
                 <Phone size={18} className="text-orange-500" />
-                <span>Thông tin Liên hệ</span>
+                <span>{t.contactInfo}</span>
               </h3>
 
               <form onSubmit={handleUpdatePhone} className="space-y-4">
                 <div className="space-y-2">
                   <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider pl-1">
-                    Số điện thoại
+                    {t.phoneNumber}
                   </label>
                   <div className="relative">
                     <input
@@ -576,7 +720,7 @@ export default function Profile() {
                         setPhone(e.target.value)
                         if (phoneError) validatePhone(e.target.value)
                       }}
-                      placeholder="Chưa cập nhật số điện thoại"
+                      placeholder={t.noPhone}
                       className={`w-full pl-4 pr-24 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${phoneError
                         ? 'border-rose-300 bg-rose-50/30 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 text-rose-600'
                         : isDarkMode ? 'bg-slate-900 border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-white' : 'bg-white border-slate-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-900'
@@ -586,7 +730,7 @@ export default function Profile() {
                       type="submit"
                       className="absolute right-2 top-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-black text-xs rounded-xl shadow active:scale-95 transition-all"
                     >
-                      Lưu thay đổi
+                      {t.saveChanges}
                     </button>
                   </div>
                   {phoneError && (
@@ -604,13 +748,13 @@ export default function Profile() {
               }`}>
               <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
                 <User size={18} className="text-orange-500" />
-                <span>Họ và Tên</span>
+                <span>{t.fullName}</span>
               </h3>
 
               <form onSubmit={handleUpdateFullName} className="space-y-4">
                 <div className="space-y-2">
                   <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider pl-1">
-                    Họ và Tên Đầy Đủ
+                    {t.fullNameLabel}
                   </label>
                   <div className="relative">
                     <input
@@ -620,7 +764,7 @@ export default function Profile() {
                         setFullName(e.target.value)
                         if (fullNameError) validateFullName(e.target.value)
                       }}
-                      placeholder="Nhập họ và tên đầy đủ"
+                      placeholder={t.fullNamePlaceholder}
                       className={`w-full pl-4 pr-24 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${fullNameError
                         ? 'border-rose-300 bg-rose-50/30 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 text-rose-600 dark:bg-rose-500/10 dark:border-rose-700 dark:text-rose-400'
                         : isDarkMode ? 'bg-slate-900 border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-white' : 'bg-white border-slate-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-900'
@@ -630,7 +774,7 @@ export default function Profile() {
                       type="submit"
                       className="absolute right-2 top-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-black text-xs rounded-xl shadow active:scale-95 transition-all"
                     >
-                      Lưu thay đổi
+                      {t.saveChanges}
                     </button>
                   </div>
                   {fullNameError && (
@@ -648,15 +792,15 @@ export default function Profile() {
               }`}>
               <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
                 <Globe size={18} className="text-orange-500" />
-                <span>Giao diện & Khu vực</span>
+                <span>{t.themeLocal}</span>
               </h3>
 
               <div className="space-y-6">
                 {/* Theme selector */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/50 dark:border-slate-800/60">
                   <div>
-                    <h4 className="text-sm font-black text-slate-850 dark:text-slate-100">Giao diện ứng dụng</h4>
-                    <p className="text-xs text-slate-400 mt-0.5">Tự do thay đổi độ tương phản màn hình (Sáng hoặc Tối)</p>
+                    <h4 className="text-sm font-black text-slate-850 dark:text-slate-100">{t.appTheme}</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">{t.themeHelp}</p>
                   </div>
                   <button
                     type="button"
@@ -668,7 +812,7 @@ export default function Profile() {
                   >
                     <div className="flex items-center gap-2 text-xs font-bold">
                       {isDarkMode ? <Moon size={15} className="text-orange-400" /> : <Sun size={15} className="text-orange-500" />}
-                      <span>{isDarkMode ? 'Bản tối (Dark)' : 'Bản sáng (Light)'}</span>
+                      <span>{isDarkMode ? t.darkMode : t.lightMode}</span>
                     </div>
                     <div className={`w-8 h-4 rounded-full relative transition-colors ${isDarkMode ? 'bg-orange-500' : 'bg-slate-350'}`}>
                       <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.25 transition-all ${isDarkMode ? 'right-0.5' : 'left-0.5'}`} />
@@ -680,8 +824,8 @@ export default function Profile() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-sm font-black text-slate-850 dark:text-slate-100">Múi giờ làm việc</h4>
-                      <p className="text-xs text-slate-400 mt-0.5">Cài đặt hiển thị múi giờ để đồng bộ chính xác lịch sự kiện</p>
+                      <h4 className="text-sm font-black text-slate-850 dark:text-slate-100">{t.timezoneTitle}</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">{t.timezoneHelp}</p>
                     </div>
                   </div>
 
@@ -709,32 +853,32 @@ export default function Profile() {
               }`}>
               <h3 className="text-sm font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
                 <Info size={16} className="text-orange-500" />
-                <span>Quy trình Thay đổi Hồ sơ</span>
+                <span>{t.procedureTitle}</span>
               </h3>
 
               <div className="space-y-4 text-xs leading-relaxed text-slate-400 font-medium">
                 <div className="p-3 rounded-2xl bg-orange-500/5 border border-orange-500/10 flex items-start gap-2.5">
                   <CheckCircle2 size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
                   <p>
-                    <strong>Số điện thoại</strong> có thể tự điều chỉnh và lưu trữ tức thì thông qua form bên cạnh để hỗ trợ liên lạc nhanh chóng.
+                    {t.p1}
                   </p>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 flex items-start gap-2.5">
                   <AlertCircle size={16} className="text-amber-550 flex-shrink-0 mt-0.5" />
                   <p>
-                    Các thông tin định danh pháp lý như <strong>Họ và tên</strong>, <strong>Email trường học</strong>, và <strong>Vai trò hệ thống</strong> không thể tự cập nhật nhằm phòng chống gian lận danh tính.
+                    {t.p2}
                   </p>
                 </div>
 
                 <div className="space-y-2 pt-2">
                   <p className="font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-[10px]">
-                    Các bước yêu cầu thay đổi:
+                    {t.p3}
                   </p>
                   <ol className="list-decimal list-inside pl-1 space-y-1.5">
-                    <li>Gửi email từ hòm thư FPT chính thức tới ban quản trị tại <a href="mailto:support@fpt.edu.vn" className="text-orange-600 font-bold hover:underline">support@fpt.edu.vn</a>.</li>
-                    <li>Cung cấp mã số sinh viên/mã cán bộ và đính kèm bản sao thẻ sinh viên/CMND đối chiếu.</li>
-                    <li>Bộ phận hỗ trợ kỹ thuật FPT Event sẽ xử lý yêu cầu thay đổi trong vòng <strong>24h làm việc</strong>.</li>
+                    <li>{t.p4} <a href="mailto:support@fpt.edu.vn" className="text-orange-600 font-bold hover:underline">support@fpt.edu.vn</a>.</li>
+                    <li>{t.p5}</li>
+                    <li>{t.p6}</li>
                   </ol>
                 </div>
               </div>
@@ -752,7 +896,7 @@ export default function Profile() {
               }`}>
               <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
                 <Lock size={18} className="text-orange-500" />
-                <span>Bảo mật mật khẩu</span>
+                <span>{t.passwordSecurityTitle}</span>
               </h3>
 
               {user?.ssoProvider === 'GOOGLE' ? (
@@ -762,16 +906,16 @@ export default function Profile() {
                     <div className="flex items-start gap-3">
                       <AlertCircle className="w-5 h-5 text-amber-550 flex-shrink-0 mt-0.5" />
                       <div className="text-sm font-medium leading-relaxed">
-                        <p className="font-extrabold text-amber-900 dark:text-amber-200">Bạn đăng nhập qua Google</p>
+                        <p className="font-extrabold text-amber-900 dark:text-amber-200">{t.ssoTitle}</p>
                         <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                          Tài khoản của bạn hiện tại chưa có mật khẩu được lưu trữ trên máy chủ FPT Event vì bạn sử dụng phương thức đăng nhập một lần (Single Sign On).
+                          {t.ssoHelp}
                         </p>
                       </div>
                     </div>
                   </div>
 
                   <p className="text-xs text-slate-400 font-semibold pl-1 leading-relaxed">
-                    Bạn có thể thiết lập mật khẩu riêng bất cứ lúc nào. Việc này cho phép bạn đăng nhập linh hoạt bằng cả tài khoản Google lẫn email/mật khẩu trực tiếp.
+                    {t.ssoExplain}
                   </p>
 
                   <button
@@ -779,14 +923,14 @@ export default function Profile() {
                     className="px-5 py-3 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-black text-xs rounded-2xl shadow-md shadow-orange-500/10 active:scale-95 transition-all flex items-center gap-2"
                   >
                     <Lock size={14} />
-                    <span>Thiết lập mật khẩu mới</span>
+                    <span>{t.setNewPassword}</span>
                   </button>
                 </div>
               ) : (
                 // Standard Password Change Form
                 <form onSubmit={handleUpdateStandardPassword} className="space-y-4">
                   <p className="text-xs text-slate-450 dark:text-slate-400 font-semibold pl-1">
-                    Thiết lập mật khẩu có độ dài tối thiểu 6 ký tự để bảo vệ an toàn cho tài khoản của bạn.
+                    {t.passwordSecurityHelp}
                   </p>
 
                   <div className="space-y-2">
@@ -798,7 +942,7 @@ export default function Profile() {
                         type={showOldPassword ? 'text' : 'password'}
                         value={oldPassword}
                         onChange={(e) => setOldPassword(e.target.value)}
-                        placeholder="Nhập mật khẩu hiện tại"
+                        placeholder={t.oldPasswordPlaceholder}
                         className={`w-full px-4 pr-11 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${isDarkMode
                           ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200'
                           : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800'
@@ -824,7 +968,7 @@ export default function Profile() {
                         type={showNewPassword ? 'text' : 'password'}
                         value={standardPassword}
                         onChange={(e) => setStandardPassword(e.target.value)}
-                        placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                        placeholder={t.newPasswordPlaceholder}
                         className={`w-full px-4 pr-11 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${isDarkMode
                           ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200'
                           : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800'
@@ -850,7 +994,7 @@ export default function Profile() {
                         type={showConfirmPassword ? 'text' : 'password'}
                         value={standardConfirmPassword}
                         onChange={(e) => setStandardConfirmPassword(e.target.value)}
-                        placeholder="Nhập lại mật khẩu mới"
+                        placeholder={t.confirmPasswordPlaceholder}
                         className={`w-full px-4 pr-11 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${isDarkMode
                           ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200'
                           : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800'
@@ -889,10 +1033,10 @@ export default function Profile() {
             <div className={`p-6 md:p-8 rounded-3xl border border-rose-500/30 dark:border-rose-500/20 bg-rose-500/5 shadow-xl transition-colors duration-500`}>
               <h3 className="text-base font-black text-rose-600 mb-2 flex items-center gap-2">
                 <AlertCircle size={18} className="text-rose-500" />
-                <span>Khu vực Nguy hiểm</span>
+                <span>{t.dangerZone}</span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold pl-1 leading-relaxed mb-5">
-                Khi đóng tài khoản, hệ thống sẽ đưa tài khoản của bạn vào hàng đợi xóa. Bạn có 30 ngày để hủy yêu cầu nếu đổi ý.
+                {t.dangerZoneHelp}
               </p>
 
               <button
@@ -900,7 +1044,7 @@ export default function Profile() {
                 onClick={() => setShowCloseModal(true)}
                 className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-2xl shadow-md shadow-rose-500/10 active:scale-95 transition-all"
               >
-                Đóng tài khoản của tôi
+                {t.closeAccount}
               </button>
             </div>
           </div>
@@ -911,10 +1055,10 @@ export default function Profile() {
               }`}>
               <h3 className="text-sm font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
                 <Shield size={16} className="text-orange-500" />
-                <span>Cam kết Bảo mật</span>
+                <span>{t.securityCommit}</span>
               </h3>
               <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                Chúng tôi áp dụng các tiêu chuẩn mã hóa tiên tiến nhất để bảo vệ thông tin mật khẩu của bạn. FPT Event không lưu trữ mật khẩu ở dạng plain-text và không bao giờ chia sẻ dữ liệu định danh của bạn cho bên thứ ba.
+                {t.securityCommitHelp}
               </p>
             </div>
           </div>
@@ -980,32 +1124,32 @@ export default function Profile() {
             }`}>
             <h3 className="text-lg font-black mb-2 flex items-center gap-2">
               <Lock className="text-orange-500" />
-              <span>Thiết lập mật khẩu tài khoản</span>
+              <span>{t.setSSOPasswordTitle}</span>
             </h3>
             <p className="text-xs text-slate-400 mb-5 font-medium leading-relaxed">
-              Thiết lập mật khẩu cho tài khoản Google để có thể tự do đăng nhập bằng email của bạn.
+              {t.setSSOPasswordHelp}
             </p>
 
             <form onSubmit={handleSetSSOPassword} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">Mật khẩu mới</label>
+                <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">{t.newPassword}</label>
                 <input
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Tối thiểu 6 ký tự"
+                  placeholder={t.newPasswordPlaceholder}
                   className={`w-full px-4 py-2.5 text-sm font-semibold rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-orange-500' : 'bg-white border-slate-200 text-slate-800 focus:border-orange-500'
                     }`}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">Xác nhận mật khẩu mới</label>
+                <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">{t.confirmPassword}</label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Nhập lại mật khẩu mới"
+                  placeholder={t.confirmPasswordPlaceholder}
                   className={`w-full px-4 py-2.5 text-sm font-semibold rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-orange-500' : 'bg-white border-slate-200 text-slate-800 focus:border-orange-500'
                     }`}
                 />
@@ -1030,14 +1174,14 @@ export default function Profile() {
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
                 >
-                  Hủy bỏ
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingPassword}
                   className="px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white text-xs font-black rounded-xl hover:shadow-lg active:scale-95 transition-all"
                 >
-                  {isSubmittingPassword ? 'Đang thiết lập...' : 'Thiết lập mật khẩu'}
+                  {isSubmittingPassword ? t.settingBtn : t.setBtn}
                 </button>
               </div>
             </form>
@@ -1052,17 +1196,17 @@ export default function Profile() {
             }`}>
             <h3 className="text-lg font-black mb-3 text-rose-600 flex items-center gap-2">
               <AlertCircle className="text-rose-500 animate-bounce" />
-              <span>Xác nhận xóa tài khoản</span>
+              <span>{t.closeAccountTitle}</span>
             </h3>
             <div className="text-sm space-y-3 mb-6 leading-relaxed text-slate-400 font-medium">
               <p className="font-extrabold text-slate-750 dark:text-slate-350">
-                Bạn đang thực hiện yêu cầu xóa tài khoản cá nhân.
+                {t.close1}
               </p>
               <p>
-                Tài khoản của bạn sẽ được đưa vào hàng đợi xóa và bạn sẽ được đăng xuất ngay lập tức.
+                {t.close2}
               </p>
               <p>
-                Bạn có <strong className="text-orange-500">30 ngày</strong> để đăng nhập lại và khôi phục tài khoản. Sau thời gian này, tài khoản và mọi dữ liệu liên quan sẽ bị xóa vĩnh viễn và không thể khôi phục.
+                {t.close3} <strong className="text-orange-500">{t.close4}</strong> {t.close5}
               </p>
             </div>
 
@@ -1073,7 +1217,7 @@ export default function Profile() {
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                   }`}
               >
-                Hủy bỏ
+                {t.cancel}
               </button>
               <button
                 type="button"
@@ -1081,7 +1225,7 @@ export default function Profile() {
                 disabled={isClosingAccount}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black rounded-xl hover:shadow-lg active:scale-95 transition-all"
               >
-                {isClosingAccount ? 'Đang xử lý...' : 'Xác nhận xóa'}
+                {isClosingAccount ? t.processing : t.confirmDelete}
               </button>
             </div>
           </div>
