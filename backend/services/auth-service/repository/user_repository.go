@@ -38,7 +38,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 	}
 
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme
+		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi')
 		FROM Users
 		WHERE email = $1
 	`
@@ -52,10 +52,11 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 		&user.PasswordHash,
 		&user.Role,
 		&user.Status,
-				&user.CreatedAt,
+		&user.CreatedAt,
 		&user.SSOProvider,
 		&user.DeletedAt,
 		&user.Theme,
+		&user.Language,
 	)
 
 	if err != nil {
@@ -116,7 +117,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 // OPTIMIZED: Removed Wallet column reference - balance now queried from dedicated wallets table
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme
+		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi')
 		FROM Users
 		WHERE email = $1
 	`
@@ -134,6 +135,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 		&user.SSOProvider,
 		&user.DeletedAt,
 		&user.Theme,
+		&user.Language,
 	)
 
 	if err != nil {
@@ -573,6 +575,34 @@ func (r *UserRepository) UpdateThemeByEmail(ctx context.Context, email, theme st
 	return nil
 }
 
+// UpdateLanguageByEmail updates language preference by email.
+func (r *UserRepository) UpdateLanguageByEmail(ctx context.Context, email, language string) error {
+	query := `UPDATE Users SET language = $1 WHERE email = $2 AND COALESCE(language, 'vi') != $1`
+
+	result, err := r.db.ExecContext(ctx, query, language, email)
+	if err != nil {
+		return fmt.Errorf("failed to update language: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+
+	if rows == 0 {
+		var exists bool
+		err = r.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM Users WHERE email = $1)`, email).Scan(&exists)
+		if err != nil {
+			return fmt.Errorf("failed to check user existence: %w", err)
+		}
+		if !exists {
+			return errors.New("user not found")
+		}
+	}
+
+	return nil
+}
+
 // UpdateFullNameByEmail updates fullName by email
 func (r *UserRepository) UpdateFullNameByEmail(ctx context.Context, email, fullName string) error {
 	query := `UPDATE Users SET full_name = $1 WHERE email = $2`
@@ -599,5 +629,3 @@ func (r *UserRepository) UpdateFullNameByEmail(ctx context.Context, email, fullN
 func (r *UserRepository) DB() *sql.DB {
 	return r.db
 }
-
-

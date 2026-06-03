@@ -294,6 +294,7 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 			"createdAt":      user.CreatedAt.Format(time.RFC3339),
 			"ssoProvider":    user.SSOProvider,
 			"theme":          user.Theme,
+			"language":       user.Language,
 			"balance":        walletBalance,
 			"wallet_balance": walletBalance,
 			"wallet": map[string]interface{}{
@@ -1269,6 +1270,7 @@ func (h *AuthHandler) HandleUpdateProfile(ctx context.Context, request events.AP
 
 	var req struct {
 		FullName string `json:"fullName"`
+		Language string `json:"language"`
 	}
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Invalid request body")
@@ -1277,6 +1279,13 @@ func (h *AuthHandler) HandleUpdateProfile(ctx context.Context, request events.AP
 	// If fullName is provided, update it
 	if req.FullName != "" {
 		err := h.useCase.UpdateFullName(ctx, email, req.FullName)
+		if err != nil {
+			return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
+		}
+	}
+
+	if req.Language != "" {
+		err := h.useCase.UpdateLanguage(ctx, email, req.Language)
 		if err != nil {
 			return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 		}

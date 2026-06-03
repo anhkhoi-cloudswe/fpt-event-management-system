@@ -81,6 +81,10 @@ func main() {
 			desc:  "Add theme column",
 			query: "ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(10) DEFAULT 'light'",
 		},
+		{
+			desc:  "Add language column",
+			query: "ALTER TABLE users ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'vi'",
+		},
 	}
 
 	for _, q := range queries {

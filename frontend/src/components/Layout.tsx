@@ -151,16 +151,16 @@ export default function Layout() {
   const handleUpdatePhone = () => {
     const cleaned = phone.trim()
     if (!cleaned) {
-      showToast('error', 'Sá»‘ Ä‘iá»‡n thoáº¡i khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng!')
+      showToast('error', 'Số điện thoại không được để trống!')
       return
     }
     const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/
     if (!phoneRegex.test(cleaned)) {
-      showToast('error', 'Sá»‘ Ä‘iá»‡n thoáº¡i Viá»‡t Nam khÃ´ng há»£p lá»‡! Vui lÃ²ng nháº­p 10 chá»¯ sá»‘ (vd: 0901234567).')
+      showToast('error', 'Số điện thoại Việt Nam không hợp lệ! Vui lòng nhập 10 chữ số (vd: 0901234567).')
       return
     }
     localStorage.setItem('user_phone_' + user?.id, cleaned)
-    showToast('success', 'Cáº­p nháº­t sá»‘ Ä‘iá»‡n thoáº¡i thÃ nh cÃ´ng!')
+    showToast('success', 'Cập nhật số điện thoại thành công!')
   }
 
   useEffect(() => {
@@ -249,12 +249,12 @@ export default function Layout() {
       return (
         <>
           {renderLink("/dashboard", LayoutDashboard, "Dashboard", handleLinkClick, closeMobile)}
-          {renderLink("/dashboard/events", Calendar, "Sá»± kiá»‡n", handleLinkClick, closeMobile)}
-          {renderLink("/dashboard/venues", MapPin, "Äá»‹a Äiá»ƒm", handleLinkClick, closeMobile)}
-          {renderLink("/dashboard/manage", Users, "Quáº£n lÃ½ ngÆ°á»i dÃ¹ng", handleLinkClick, closeMobile)}
-          {renderLink("/dashboard/reports", FileBarChart, "BÃ¡o cÃ¡o", handleLinkClick, closeMobile)}
-          {renderLink("/dashboard/system-config", Sliders, "Cáº¥u Hinh", handleLinkClick, closeMobile)}
-          {renderLink("/dashboard/profile", User, "Há»“ sÆ¡ cÃ¡ nhÃ¢n", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/events", Calendar, "Sự kiện", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/venues", MapPin, "Địa Điểm", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/manage", Users, "Quản lý người dùng", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/reports", FileBarChart, "Báo cáo", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/system-config", Sliders, "Cấu Hinh", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/profile", User, "Hồ sơ cá nhân", handleLinkClick, closeMobile)}
         </>
       )
     }
@@ -262,11 +262,11 @@ export default function Layout() {
     return (
       <>
         {renderLink("/dashboard", LayoutDashboard, "Dashboard", handleLinkClick, closeMobile)}
-        {renderLink("/dashboard/events", Calendar, "Sá»± kiá»‡n", handleLinkClick, closeMobile)}
+        {renderLink("/dashboard/events", Calendar, "Sự kiện", handleLinkClick, closeMobile)}
         {isOrganizer && renderLink(
           "/dashboard/events/create",
           PlusCircle,
-          "Táº¡o sá»± kiá»‡n",
+          "Tạo sự kiện",
           handleLinkClick,
           closeMobile,
           "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-extrabold transition-all duration-300 w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-450 text-white hover:shadow-lg hover:shadow-orange-500/25 active:scale-98"
@@ -274,25 +274,25 @@ export default function Layout() {
         {(user?.role === 'ORGANIZER' || isStaff) && renderLink(
           "/dashboard/event-requests",
           Undo2,
-          isStaff ? "Quáº£n lÃ½ yÃªu cáº§u" : "YÃªu cáº§u cá»§a tÃ´i",
+          isStaff ? "Quản lý yêu cầu" : "Yêu cầu của tôi",
           handleLinkClick,
           closeMobile
         )}
         {user?.role === 'ORGANIZER' && (
           <>
             {renderLink("/dashboard/check-in", CheckSquare, "Check-in", handleLinkClick, closeMobile)}
-            {renderLink("/dashboard/system-config", Sliders, "Cáº¥u hÃ¬nh", handleLinkClick, closeMobile)}
+            {renderLink("/dashboard/system-config", Sliders, "Cấu hình", handleLinkClick, closeMobile)}
           </>
         )}
-        {isOrganizer && renderLink("/dashboard/reports", FileBarChart, "BÃ¡o cÃ¡o", handleLinkClick, closeMobile)}
+        {isOrganizer && renderLink("/dashboard/reports", FileBarChart, "Báo cáo", handleLinkClick, closeMobile)}
         {!isOrganizer && !isStaff && (
           <>
-            {renderLink("/dashboard/my-tickets", Ticket, "VÃ© cá»§a tÃ´i", handleLinkClick, closeMobile)}
-            {renderLink("/dashboard/bills", Receipt, "HÃ³a Ä‘Æ¡n", handleLinkClick, closeMobile)}
+            {renderLink("/dashboard/my-tickets", Ticket, "Vé của tôi", handleLinkClick, closeMobile)}
+            {renderLink("/dashboard/bills", Receipt, "Hóa đơn", handleLinkClick, closeMobile)}
           </>
         )}
-        {isStaff && renderLink("/dashboard/report-requests", Undo2, "YÃªu Cáº§u HoÃ n Tiá»n", handleLinkClick, closeMobile)}
-        {renderLink("/dashboard/profile", User, "Há»“ sÆ¡ cÃ¡ nhÃ¢n", handleLinkClick, closeMobile)}
+        {isStaff && renderLink("/dashboard/report-requests", Undo2, "Yêu Cầu Hoàn Tiền", handleLinkClick, closeMobile)}
+        {renderLink("/dashboard/profile", User, "Hồ sơ cá nhân", handleLinkClick, closeMobile)}
       </>
     )
   }
@@ -335,7 +335,7 @@ export default function Layout() {
                 }`}>
                 <Wallet size={16} className="text-orange-500" />
                 <span className="text-xs">
-                  {balanceLoading ? '...' : balance.toLocaleString('vi-VN')} â‚«
+                  {balanceLoading ? '...' : balance.toLocaleString('vi-VN')} đ
                 </span>
               </div>
             )}
@@ -386,7 +386,7 @@ export default function Layout() {
                   <div className="py-4 space-y-4 text-left">
                     {/* Theme Toggle option */}
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">Giao diá»‡n há»‡ thá»‘ng</label>
+                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">Giao diện hệ thống</label>
                       <button
                         type="button"
                         onClick={handleToggleTheme}
@@ -397,7 +397,7 @@ export default function Layout() {
                       >
                         <div className="flex items-center gap-2.5 text-xs font-bold">
                           {isDarkMode ? <Moon size={16} className="text-orange-400" /> : <Sun size={16} className="text-orange-500" />}
-                          <span>{isDarkMode ? 'Giao diá»‡n Tá»‘i (Dark)' : 'Giao diá»‡n SÃ¡ng (Light)'}</span>
+                          <span>{isDarkMode ? 'Giao diện Tối (Dark)' : 'Giao diện Sáng (Light)'}</span>
                         </div>
                         <div className={`w-8 h-4 rounded-full relative transition-colors ${isDarkMode ? 'bg-orange-500' : 'bg-slate-350'}`}>
                           <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.25 transition-all ${isDarkMode ? 'right-0.5' : 'left-0.5'}`} />
@@ -407,13 +407,13 @@ export default function Layout() {
 
                     {/* Phone Update option */}
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">Sá»‘ Ä‘iá»‡n thoáº¡i (KhÃ´ng báº¯t buá»™c)</label>
+                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">Số điện thoại (Không bắt buộc)</label>
                       <div className="flex gap-2">
                         <input
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          placeholder="ChÆ°a cáº­p nháº­t SÄT"
+                          placeholder="Chưa cập nhật SĐT"
                           className={`flex-1 px-3 py-2 text-xs font-semibold rounded-xl border outline-none transition-all ${isDarkMode
                             ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200 placeholder-slate-600'
                             : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800 placeholder-slate-400'
@@ -424,7 +424,7 @@ export default function Layout() {
                           onClick={handleUpdatePhone}
                           className="px-3.5 py-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow active:scale-95 transition-all"
                         >
-                          Cáº­p nháº­t
+                          Cập nhật
                         </button>
                       </div>
                     </div>
@@ -432,7 +432,7 @@ export default function Layout() {
                     {/* Timezone option */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">MÃºi giá» khu vá»±c</label>
+                        <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">Múi giờ khu vực</label>
                       </div>
                       <TimezoneCombobox
                         value={timezone}
@@ -457,7 +457,7 @@ export default function Layout() {
                         }`}
                     >
                       <User size={14} className="text-slate-400" />
-                      <span>Há»“ sÆ¡ cÃ¡ nhÃ¢n</span>
+                      <span>Hồ sơ cá nhân</span>
                     </Link>
                     <button
                       type="button"
@@ -469,7 +469,7 @@ export default function Layout() {
                         }`}
                     >
                       <Lock size={14} className="text-slate-400" />
-                      <span>Thay Ä‘á»•i máº­t kháº©u</span>
+                      <span>Thay đổi mật khẩu</span>
                     </button>
                     <button
                       type="button"
@@ -480,7 +480,7 @@ export default function Layout() {
                       className="flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 w-full transition-all duration-305 text-left"
                     >
                       <LogOut size={14} className="text-red-500" />
-                      <span>ÄÄƒng xuáº¥t tÃ i khoáº£n</span>
+                      <span>Đăng xuất tài khoản</span>
                     </button>
                   </div>
                 </div>
@@ -534,7 +534,7 @@ export default function Layout() {
                   ? 'opacity-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto w-0 pointer-events-none group-hover/sidebar:pointer-events-auto'
                   : 'opacity-100 w-auto'
                 }`}>
-                Äiá»u khiá»ƒn
+                Điều khiển
               </span>
             </button>
 
@@ -567,7 +567,7 @@ export default function Layout() {
                             localStorage.setItem('sidebar_mode_' + user.id, mode.value)
                           }
                           setShowModePopover(false)
-                          showToast('success', `ÄÃ£ chuyá»ƒn sang cháº¿ Ä‘á»™: ${mode.label}`)
+                          showToast('success', `Đã chuyển sang chế độ: ${mode.label}`)
                         }}
                         className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-all ${sidebarMode === mode.value
                           ? isDarkMode

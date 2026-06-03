@@ -16,6 +16,7 @@ type User struct {
 	SSOProvider  *string    `json:"ssoProvider" db:"sso_provider"`
 	DeletedAt    *time.Time `json:"deletedAt" db:"deleted_at"`
 	Theme        string     `json:"theme" db:"theme"`
+	Language     string     `json:"language" gorm:"column:language;default:vi" db:"language"`
 	// Wallet field removed - balance now queried from wallets table for O(1) lookup
 }
 

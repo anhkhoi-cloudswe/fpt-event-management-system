@@ -589,6 +589,15 @@ func (uc *AuthUseCase) UpdateTheme(ctx context.Context, email, theme string) err
 	return uc.userRepo.UpdateThemeByEmail(ctx, email, theme)
 }
 
+// UpdateLanguage updates user language preference in the database.
+func (uc *AuthUseCase) UpdateLanguage(ctx context.Context, email, language string) error {
+	language = strings.TrimSpace(strings.ToLower(language))
+	if language != "vi" && language != "en" {
+		return errors.New("language must be vi or en")
+	}
+	return uc.userRepo.UpdateLanguageByEmail(ctx, email, language)
+}
+
 // GetUserWalletBalance fetches the user's wallet balance from the dedicated wallets table
 // This replaces the obsolete User.Wallet field - now uses wallets.balance for O(1) lookup
 func (uc *AuthUseCase) GetUserWalletBalance(ctx context.Context, email string) (float64, error) {
