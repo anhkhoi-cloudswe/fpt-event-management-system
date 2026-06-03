@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, Globe, Search } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 
 export const timezones = [
   { value: 'Asia/Ho_Chi_Minh', label: 'Asia/Ho_Chi_Minh', offset: 'GMT+7', region: 'Vietnam' },
@@ -26,6 +27,7 @@ export function TimezoneCombobox({
 }: TimezoneComboboxProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const { currentLanguage } = useAuth()
 
   const selected = timezones.find((tz) => tz.value === value) ?? timezones[0]
   const filteredTimezones = useMemo(() => {
@@ -56,7 +58,9 @@ export function TimezoneCombobox({
             onChange={(e) => onAutoDetectChange(e.target.checked)}
             className="accent-orange-500 w-3.5 h-3.5"
           />
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">Tự động xác định</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">
+            {currentLanguage === 'en' ? 'Auto-detect' : 'Tự động xác định'}
+          </span>
         </label>
       </div>
 
@@ -85,7 +89,7 @@ export function TimezoneCombobox({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search timezone..."
+                placeholder={currentLanguage === 'en' ? 'Search timezone...' : 'Tìm kiếm múi giờ...'}
                 className={`w-full pl-9 pr-3 py-2 text-xs font-semibold rounded-xl border outline-none ${fieldClass}`}
               />
             </div>

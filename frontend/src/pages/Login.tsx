@@ -331,7 +331,7 @@ export default function Login() {
   return (
     <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 relative" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
       {/* Card login */}
-      <div className="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl w-full max-w-md border border-slate-100 relative z-10 animate-fade-in-up">
+      <div className="bg-white/90 backdrop-blur-md p-10 rounded-[32px] shadow-2xl w-full max-w-md border border-white/20 transform transition-all duration-300 relative z-10 animate-fade-in-up">
         {/* Floating Escape Link */}
         <Link 
           to="/" 
@@ -370,10 +370,10 @@ export default function Login() {
               onChange={handleInputChange}
               placeholder="email@fpt.edu.vn"
               required
-              className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 focus:bg-white ${
+              className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
                 emailError 
                   ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
-                  : 'border-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                  : ''
               }`}
             />
             {emailError && (
@@ -395,10 +395,10 @@ export default function Login() {
                 onChange={handleInputChange}
                 placeholder="Nhập mật khẩu"
                 required
-                className={`w-full px-4 py-3 pr-10 bg-slate-50 border rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300 focus:bg-white ${
+                className={`w-full px-4 py-3 pr-10 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
                   passwordError 
                     ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
-                    : 'border-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                    : ''
                 }`}
               />
               <button

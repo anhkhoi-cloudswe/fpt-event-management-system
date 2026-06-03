@@ -384,7 +384,7 @@ export default function Layout() {
                     </div>
                                 {/* Theme Toggle option */}
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{currentLanguage === 'en' ? 'System Theme' : 'Giao diện hệ thống'}</label>
+                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{currentLanguage === 'en' ? 'SYSTEM THEME' : 'Giao diện hệ thống'}</label>
                       <button
                         type="button"
                         onClick={handleToggleTheme}
@@ -430,7 +430,7 @@ export default function Layout() {
                     {/* Timezone option */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{currentLanguage === 'en' ? 'Working Timezone' : 'Múi giờ khu vực'}</label>
+                        <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{currentLanguage === 'en' ? 'WORKING TIMEZONE' : 'Múi giờ khu vực'}</label>
                       </div>
                       <TimezoneCombobox
                         value={timezone}
@@ -514,6 +514,7 @@ export default function Layout() {
             }`}>
             <button
               type="button"
+              title={currentLanguage === 'en' ? 'Sidebar Control' : 'Điều khiển Sidebar'}
               onClick={() => setShowModePopover(!showModePopover)}
               className={`p-2.5 rounded-xl border transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${isDarkMode
                 ? 'bg-slate-800/60 border-slate-700 hover:border-orange-500/40 text-slate-350 hover:text-white'
@@ -548,13 +549,13 @@ export default function Layout() {
                   : 'bg-white border-orange-150 text-slate-800 shadow-orange-500/10'
                   }`}>
                   <div className="text-[10px] font-black tracking-wider uppercase opacity-50 px-2.5 pb-2 border-b border-slate-200/40 dark:border-slate-800/50">
-                    Sidebar control
+                    {currentLanguage === 'en' ? 'Sidebar control' : 'Điều khiển sidebar'}
                   </div>
                   <div className="pt-2 space-y-1">
                     {[
-                      { value: 'expanded', label: 'Expanded' },
-                      { value: 'collapsed', label: 'Collapsed' },
-                      { value: 'hover-expand', label: 'Expand on hover' }
+                      { value: 'expanded', label: currentLanguage === 'en' ? 'Expanded' : 'Mở rộng' },
+                      { value: 'collapsed', label: currentLanguage === 'en' ? 'Collapsed' : 'Thu gọn' },
+                      { value: 'hover-expand', label: currentLanguage === 'en' ? 'Expand on hover' : 'Tự động mở rộng khi di chuột' }
                     ].map((mode) => (
                       <button
                         key={mode.value}
