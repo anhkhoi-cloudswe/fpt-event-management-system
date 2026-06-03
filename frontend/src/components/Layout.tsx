@@ -33,14 +33,7 @@ import fptLogo from '../assets/fpt-logo.png'
 import fptLogoLoading from '../assets/fpt-logo-loading.png'
 import WelcomePasswordModal from './WelcomePasswordModal'
 import AccountRestoreOverlay from './common/AccountRestoreOverlay'
-
-const timezones = [
-  { value: 'Asia/Ho_Chi_Minh', label: 'Asia/Ho_Chi_Minh (GMT+7)' },
-  { value: 'UTC', label: 'UTC (GMT+0)' },
-  { value: 'Asia/Tokyo', label: 'Asia/Tokyo (GMT+9)' },
-  { value: 'Europe/London', label: 'Europe/London (GMT+1)' },
-  { value: 'America/New_York', label: 'America/New_York (GMT-4)' }
-]
+import { TimezoneCombobox } from './TimezoneCombobox'
 
 export default function Layout() {
   const { user, logout, refreshUser } = useAuth()
@@ -139,13 +132,17 @@ export default function Layout() {
   }
 
   // Automatically detect timezone if enabled
+  const detectTimezone = () => {
+    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh'
+    setTimezone(detected)
+    localStorage.setItem('user_timezone', detected)
+    localStorage.setItem('auto_timezone', 'true')
+    window.dispatchEvent(new Event('timezone-change'))
+  }
+
   useEffect(() => {
     if (autoDetectTz) {
-      const detected = Intl.DateTimeFormat().resolvedOptions().timeZone
-      setTimezone(detected)
-      localStorage.setItem('user_timezone', detected)
-      localStorage.setItem('auto_timezone', 'true')
-      window.dispatchEvent(new Event('timezone-change'))
+      detectTimezone()
     } else {
       localStorage.setItem('auto_timezone', 'false')
     }
@@ -447,29 +444,18 @@ export default function Layout() {
                           <span className="text-[10px] text-slate-400 font-bold">Tự động</span>
                         </label>
                       </div>
-                      <div className="relative">
-                        <Globe className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
-                        <select
-                          disabled={autoDetectTz}
-                          value={timezone}
-                          onChange={(e) => {
-                            setTimezone(e.target.value)
-                            localStorage.setItem('user_timezone', e.target.value)
-                            window.dispatchEvent(new Event('timezone-change'))
-                          }}
-                          className={`w-full pl-9 pr-4 py-2 text-xs font-semibold rounded-xl border outline-none appearance-none transition-all cursor-pointer ${isDarkMode
-                            ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200 disabled:opacity-50'
-                            : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800 disabled:opacity-50'
-                            }`}
-                        >
-                          {timezones.map((tz) => (
-                            <option key={tz.value} value={tz.value}>
-                              {tz.label}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown size={12} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
-                      </div>
+                      <TimezoneCombobox
+                        value={timezone}
+                        autoDetect={autoDetectTz}
+                        isDarkMode={isDarkMode}
+                        onAutoDetectChange={setAutoDetectTz}
+                        onDetectNow={detectTimezone}
+                        onChange={(nextTimezone) => {
+                          setTimezone(nextTimezone)
+                          localStorage.setItem('user_timezone', nextTimezone)
+                          window.dispatchEvent(new Event('timezone-change'))
+                        }}
+                      />
                     </div>
                   </div>
 
@@ -484,15 +470,18 @@ export default function Layout() {
                       <User size={14} className="text-slate-400" />
                       <span>Hồ sơ cá nhân</span>
                     </Link>
-                    <Link
-                      to="/reset-password"
-                      onClick={() => setSettingsOpen(false)}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettingsOpen(false)
+                        navigate('/dashboard/profile?tab=security')
+                      }}
                       className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${isDarkMode ? 'hover:bg-slate-850 text-slate-300' : 'hover:bg-slate-50 text-slate-600'
                         }`}
                     >
                       <Lock size={14} className="text-slate-400" />
                       <span>Thay đổi mật khẩu</span>
-                    </Link>
+                    </button>
                     <button
                       type="button"
                       onClick={() => {

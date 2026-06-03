@@ -60,7 +60,8 @@ type GoogleCallbackRequest struct {
 
 // UpdatePasswordRequest represents direct password update payload
 type UpdatePasswordRequest struct {
-	Password string `json:"password"`
+	OldPassword string `json:"oldPassword"`
+	Password    string `json:"password"`
 }
 
 // VerifyOtpRequest represents OTP verification request

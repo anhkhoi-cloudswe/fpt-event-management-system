@@ -209,7 +209,7 @@ func getScheme(request events.APIGatewayProxyRequest) string {
 // HandleLogin handles POST /api/login
 func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Log which JWT secret is active (debug: helps verify Auth signs with same key as Gateway)
-	log.Info(fmt.Sprintf("[Auth] HandleLogin — JWT_SECRET preview: %s****", jwt.GetSecretPreview()))
+	log.Info(fmt.Sprintf("[Auth] HandleLogin â€” JWT_SECRET preview: %s****", jwt.GetSecretPreview()))
 
 	// Parse request body
 	var req models.LoginRequest
@@ -296,6 +296,9 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 			"theme":          user.Theme,
 			"balance":        walletBalance,
 			"wallet_balance": walletBalance,
+			"wallet": map[string]interface{}{
+				"balance": walletBalance,
+			},
 		},
 	}
 	body, _ := json.Marshal(resp)
@@ -343,7 +346,7 @@ func (h *AuthHandler) HandleLogout(ctx context.Context, request events.APIGatewa
 // HandleRegister handles POST /api/register - DISABLED to prevent OTP bypass
 func (h *AuthHandler) HandleRegister(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	log.Warn("Direct registration attempt rejected to prevent OTP bypass")
-	return createErrorResponse(http.StatusForbidden, "Đăng ký trực tiếp đã bị vô hiệu hóa để bảo mật. Vui lòng sử dụng quy trình xác thực OTP tại /api/register/send-otp")
+	return createErrorResponse(http.StatusForbidden, "ÄÄƒng kÃ½ trá»±c tiáº¿p Ä‘Ã£ bá»‹ vÃ´ hiá»‡u hÃ³a Ä‘á»ƒ báº£o máº­t. Vui lÃ²ng sá»­ dá»¥ng quy trÃ¬nh xÃ¡c thá»±c OTP táº¡i /api/register/send-otp")
 }
 
 // HandleAdminCreateAccount handles POST /api/admin/create-account
@@ -465,9 +468,9 @@ func createErrorResponse(statusCode int, message string) (events.APIGatewayProxy
 
 // ============================================================
 // HandleForgotPassword - POST /api/forgot-password
-// Gửi OTP đặt lại mật khẩu qua email
-// KHỚP VỚI Java ForgotPasswordJwtController
-// PRODUCTION: Tích hợp reCAPTCHA + SMTP email
+// Gá»­i OTP Ä‘áº·t láº¡i máº­t kháº©u qua email
+// KHá»šP Vá»šI Java ForgotPasswordJwtController
+// PRODUCTION: TÃ­ch há»£p reCAPTCHA + SMTP email
 // ============================================================
 func (h *AuthHandler) HandleForgotPassword(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Parse request body
@@ -477,7 +480,7 @@ func (h *AuthHandler) HandleForgotPassword(ctx context.Context, request events.A
 	}
 
 	if req.Email == "" {
-		return createStatusResponse(http.StatusBadRequest, "fail", "Email không được để trống")
+		return createStatusResponse(http.StatusBadRequest, "fail", "Email khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
 	}
 
 	clientIP := getClientIP(request)
@@ -492,14 +495,14 @@ func (h *AuthHandler) HandleForgotPassword(ctx context.Context, request events.A
 			retryAfter = ra
 		}
 		forgotPasswordGuard.mu.Unlock()
-		return createRateLimitResponse(fmt.Sprintf("Quá nhiều yêu cầu. Vui lòng thử lại sau %d giây.", retryAfter), retryAfter)
+		return createRateLimitResponse(fmt.Sprintf("QuÃ¡ nhiá»u yÃªu cáº§u. Vui lÃ²ng thá»­ láº¡i sau %d giÃ¢y.", retryAfter), retryAfter)
 	}
 
 	// Verify reCAPTCHA (if configured)
 	if req.RecaptchaToken != "" {
 		if err := verifyRecaptcha(req.RecaptchaToken, "forgot_password", clientIP); err != nil {
 			log.Warn("reCAPTCHA failed for forgot-password", "email", req.Email, "error", err)
-			return createStatusResponse(http.StatusForbidden, "fail", "Xác thực reCAPTCHA thất bại")
+			return createStatusResponse(http.StatusForbidden, "fail", "XÃ¡c thá»±c reCAPTCHA tháº¥t báº¡i")
 		}
 	}
 
@@ -507,13 +510,13 @@ func (h *AuthHandler) HandleForgotPassword(ctx context.Context, request events.A
 	otp, err := h.useCase.ForgotPassword(ctx, req.Email)
 	if err != nil {
 		// Check specific error types
-		if err.Error() == "email không tồn tại trong hệ thống" {
+		if err.Error() == "email khÃ´ng tá»“n táº¡i trong há»‡ thá»‘ng" {
 			return createStatusResponse(http.StatusNotFound, "fail", err.Error())
 		}
 		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 	}
 
-	// GỬI EMAIL VỚI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
+	// Gá»¬I EMAIL Vá»šI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
 	go func() {
 		bgCtx := context.Background()
 		if err := sendOTPEmail(bgCtx, req.Email, otp, "forgot_password"); err != nil {
@@ -522,13 +525,13 @@ func (h *AuthHandler) HandleForgotPassword(ctx context.Context, request events.A
 	}()
 
 	log.Info("OTP sent for forgot password", "email", req.Email)
-	return createStatusResponse(http.StatusOK, "success", "Đã gửi OTP đặt lại mật khẩu tới email")
+	return createStatusResponse(http.StatusOK, "success", "ÄÃ£ gá»­i OTP Ä‘áº·t láº¡i máº­t kháº©u tá»›i email")
 }
 
 // ============================================================
 // HandleResetPassword - POST /api/reset-password
-// Xác thực OTP và đổi mật khẩu
-// KHỚP VỚI Java ResetPasswordJwtController
+// XÃ¡c thá»±c OTP vÃ  Ä‘á»•i máº­t kháº©u
+// KHá»šP Vá»šI Java ResetPasswordJwtController
 // ============================================================
 func (h *AuthHandler) HandleResetPassword(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Parse request body
@@ -539,7 +542,7 @@ func (h *AuthHandler) HandleResetPassword(ctx context.Context, request events.AP
 
 	// Validate required fields
 	if req.Email == "" || req.OTP == "" || req.NewPassword == "" {
-		return createStatusResponse(http.StatusBadRequest, "fail", "Vui lòng điền đầy đủ thông tin")
+		return createStatusResponse(http.StatusBadRequest, "fail", "Vui lÃ²ng Ä‘iá»n Ä‘áº§y Ä‘á»§ thÃ´ng tin")
 	}
 
 	// Reset password
@@ -548,20 +551,20 @@ func (h *AuthHandler) HandleResetPassword(ctx context.Context, request events.AP
 		// Determine error type
 		errMsg := err.Error()
 		switch errMsg {
-		case "email không tồn tại trong hệ thống":
+		case "email khÃ´ng tá»“n táº¡i trong há»‡ thá»‘ng":
 			return createStatusResponse(http.StatusNotFound, "fail", errMsg)
-		case "OTP không đúng", "OTP đã hết hạn", "OTP đã được sử dụng", "Đã nhập sai quá 5 lần, vui lòng yêu cầu OTP mới":
+		case "OTP khÃ´ng Ä‘Ãºng", "OTP Ä‘Ã£ háº¿t háº¡n", "OTP Ä‘Ã£ Ä‘Æ°á»£c sá»­ dá»¥ng", "ÄÃ£ nháº­p sai quÃ¡ 5 láº§n, vui lÃ²ng yÃªu cáº§u OTP má»›i":
 			return createStatusResponse(http.StatusUnauthorized, "fail", errMsg)
 		default:
 			return createStatusResponse(http.StatusBadRequest, "fail", errMsg)
 		}
 	}
 
-	return createStatusResponse(http.StatusOK, "success", "Đổi mật khẩu thành công")
+	return createStatusResponse(http.StatusOK, "success", "Äá»•i máº­t kháº©u thÃ nh cÃ´ng")
 }
 
-// createStatusResponse tạo response với format {status, message}
-// KHỚP VỚI Java ForgotPassword và ResetPassword response format
+// createStatusResponse táº¡o response vá»›i format {status, message}
+// KHá»šP Vá»šI Java ForgotPassword vÃ  ResetPassword response format
 func createStatusResponse(statusCode int, status, message string) (events.APIGatewayProxyResponse, error) {
 	resp := map[string]string{
 		"status":  status,
@@ -603,14 +606,14 @@ func createRateLimitResponse(message string, retryAfterSec int) (events.APIGatew
 // ============================================================
 // HandleRegisterSendOTP - POST /api/register/send-otp
 // Register step 1 - Send OTP to email
-// KHỚP VỚI Java RegisterJwtController sendOtp()
-// PRODUCTION: Tích hợp reCAPTCHA + SMTP email
+// KHá»šP Vá»šI Java RegisterJwtController sendOtp()
+// PRODUCTION: TÃ­ch há»£p reCAPTCHA + SMTP email
 // ============================================================
 func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.APIGatewayProxyRequest) (resp events.APIGatewayProxyResponse, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error("CRITICAL PANIC recovered in HandleRegisterSendOTP", "panic", r)
-			resp, err = createStatusResponse(http.StatusInternalServerError, "fail", "Đã xảy ra lỗi hệ thống nghiêm trọng")
+			resp, err = createStatusResponse(http.StatusInternalServerError, "fail", "ÄÃ£ xáº£y ra lá»—i há»‡ thá»‘ng nghiÃªm trá»ng")
 		}
 	}()
 
@@ -621,7 +624,7 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 
 	// Validate required fields
 	if req.Email == "" || req.Password == "" {
-		return createStatusResponse(http.StatusBadRequest, "fail", "Vui lòng điền đầy đủ thông tin")
+		return createStatusResponse(http.StatusBadRequest, "fail", "Vui lÃ²ng Ä‘iá»n Ä‘áº§y Ä‘á»§ thÃ´ng tin")
 	}
 	if strings.TrimSpace(req.FullName) == "" {
 		parts := strings.Split(req.Email, "@")
@@ -641,7 +644,7 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 			retryAfter = ra
 		}
 		registerGuard.mu.Unlock()
-		return createRateLimitResponse(fmt.Sprintf("Quá nhiều yêu cầu. Vui lòng thử lại sau %d giây.", retryAfter), retryAfter)
+		return createRateLimitResponse(fmt.Sprintf("QuÃ¡ nhiá»u yÃªu cáº§u. Vui lÃ²ng thá»­ láº¡i sau %d giÃ¢y.", retryAfter), retryAfter)
 	}
 
 	// Verify reCAPTCHA (if provided)
@@ -649,7 +652,7 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 		clientIP := getClientIP(request)
 		if err := verifyRecaptcha(req.RecaptchaToken, "register", clientIP); err != nil {
 			log.Error("reCAPTCHA failed for registration", "email", req.Email, "error", err)
-			return createStatusResponse(http.StatusBadRequest, "fail", "Xác thực reCAPTCHA không hợp lệ")
+			return createStatusResponse(http.StatusBadRequest, "fail", "XÃ¡c thá»±c reCAPTCHA khÃ´ng há»£p lá»‡")
 		}
 	}
 
@@ -659,7 +662,7 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 		return createStatusResponse(http.StatusInternalServerError, "fail", err.Error())
 	}
 	if exists {
-		return createStatusResponse(http.StatusConflict, "fail", "Email đã tồn tại trong hệ thống")
+		return createStatusResponse(http.StatusConflict, "fail", "Email Ä‘Ã£ tá»“n táº¡i trong há»‡ thá»‘ng")
 	}
 
 	// Generate and send OTP
@@ -668,7 +671,7 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 	}
 
-	// GỬI EMAIL VỚI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
+	// Gá»¬I EMAIL Vá»šI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
 	go func() {
 		bgCtx := context.Background()
 		if err := sendOTPEmail(bgCtx, req.Email, otp, "register_otp"); err != nil {
@@ -677,19 +680,19 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 	}()
 
 	log.Info("Registration OTP sent", "email", req.Email)
-	return createStatusResponse(http.StatusOK, "success", "Đã gửi OTP tới email")
+	return createStatusResponse(http.StatusOK, "success", "ÄÃ£ gá»­i OTP tá»›i email")
 }
 
 // ============================================================
 // HandleRegisterVerifyOTP - POST /api/register/verify-otp
 // Register step 2 - Verify OTP and create account
-// KHỚP VỚI Java RegisterJwtController verifyOtp()
+// KHá»šP Vá»šI Java RegisterJwtController verifyOtp()
 // ============================================================
 func (h *AuthHandler) HandleRegisterVerifyOTP(ctx context.Context, request events.APIGatewayProxyRequest) (resp events.APIGatewayProxyResponse, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error("CRITICAL PANIC recovered in HandleRegisterVerifyOTP", "panic", r)
-			resp, err = createStatusResponse(http.StatusInternalServerError, "fail", "Đã xảy ra lỗi hệ thống nghiêm trọng")
+			resp, err = createStatusResponse(http.StatusInternalServerError, "fail", "ÄÃ£ xáº£y ra lá»—i há»‡ thá»‘ng nghiÃªm trá»ng")
 		}
 	}()
 
@@ -699,7 +702,7 @@ func (h *AuthHandler) HandleRegisterVerifyOTP(ctx context.Context, request event
 	}
 
 	if req.Email == "" || req.OTP == "" {
-		return createStatusResponse(http.StatusBadRequest, "fail", "Email và OTP không được để trống")
+		return createStatusResponse(http.StatusBadRequest, "fail", "Email vÃ  OTP khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
 	}
 
 	// Verify OTP and create user
@@ -707,9 +710,9 @@ func (h *AuthHandler) HandleRegisterVerifyOTP(ctx context.Context, request event
 	if err != nil {
 		errMsg := err.Error()
 		switch errMsg {
-		case "OTP không đúng", "OTP đã hết hạn":
+		case "OTP khÃ´ng Ä‘Ãºng", "OTP Ä‘Ã£ háº¿t háº¡n":
 			return createStatusResponse(http.StatusBadRequest, "fail", errMsg)
-		case "Email đã tồn tại":
+		case "Email Ä‘Ã£ tá»“n táº¡i":
 			return createStatusResponse(http.StatusConflict, "fail", errMsg)
 		default:
 			return createStatusResponse(http.StatusBadRequest, "fail", errMsg)
@@ -747,7 +750,7 @@ func (h *AuthHandler) HandleRegisterVerifyOTP(ctx context.Context, request event
 // ============================================================
 // HandleRegisterResendOTP - POST /api/register/resend-otp
 // Resend OTP for pending registration
-// KHỚP VỚI Java RegisterJwtController resendOtp()
+// KHá»šP Vá»šI Java RegisterJwtController resendOtp()
 // ============================================================
 func (h *AuthHandler) HandleRegisterResendOTP(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	var req models.ResendOtpRequest
@@ -756,7 +759,7 @@ func (h *AuthHandler) HandleRegisterResendOTP(ctx context.Context, request event
 	}
 
 	if req.Email == "" {
-		return createStatusResponse(http.StatusBadRequest, "fail", "Email không được để trống")
+		return createStatusResponse(http.StatusBadRequest, "fail", "Email khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
 	}
 
 	// Resend OTP
@@ -764,16 +767,16 @@ func (h *AuthHandler) HandleRegisterResendOTP(ctx context.Context, request event
 	if err != nil {
 		errMsg := err.Error()
 		switch errMsg {
-		case "Không có đăng ký đang chờ cho email này":
+		case "KhÃ´ng cÃ³ Ä‘Äƒng kÃ½ Ä‘ang chá» cho email nÃ y":
 			return createStatusResponse(http.StatusBadRequest, "fail", errMsg)
-		case "Quá nhiều lần gửi lại":
+		case "QuÃ¡ nhiá»u láº§n gá»­i láº¡i":
 			return createStatusResponse(http.StatusTooManyRequests, "fail", errMsg)
 		default:
-			return createStatusResponse(http.StatusBadGateway, "fail", "Không thể gửi OTP")
+			return createStatusResponse(http.StatusBadGateway, "fail", "KhÃ´ng thá»ƒ gá»­i OTP")
 		}
 	}
 
-	// GỬI EMAIL VỚI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
+	// Gá»¬I EMAIL Vá»šI OTP (Production-ready) - Asynchronous to prevent synchronous network hangs
 	go func() {
 		bgCtx := context.Background()
 		if err := sendOTPEmail(bgCtx, req.Email, otp, "register_otp"); err != nil {
@@ -782,13 +785,13 @@ func (h *AuthHandler) HandleRegisterResendOTP(ctx context.Context, request event
 	}()
 
 	log.Info("Registration OTP resent", "email", req.Email)
-	return createStatusResponse(http.StatusOK, "success", "Đã gửi lại OTP")
+	return createStatusResponse(http.StatusOK, "success", "ÄÃ£ gá»­i láº¡i OTP")
 }
 
 // ============================================================
 // HandleAdminUpdateUser - PUT /api/admin/create-account
 // Update user (fullName, phone, role, status, optional password)
-// KHỚP VỚI Java AdminController updateUser()
+// KHá»šP Vá»šI Java AdminController updateUser()
 // ============================================================
 func (h *AuthHandler) HandleAdminUpdateUser(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Check authorization
@@ -809,7 +812,7 @@ func (h *AuthHandler) HandleAdminUpdateUser(ctx context.Context, request events.
 	}
 
 	if req.ID == 0 {
-		return createErrorResponse(http.StatusBadRequest, "ID không hợp lệ")
+		return createErrorResponse(http.StatusBadRequest, "ID khÃ´ng há»£p lá»‡")
 	}
 
 	// Update user
@@ -818,13 +821,13 @@ func (h *AuthHandler) HandleAdminUpdateUser(ctx context.Context, request events.
 		return createErrorResponse(http.StatusBadRequest, err.Error())
 	}
 
-	return createStatusResponse(http.StatusOK, "success", "Cập nhật thành công")
+	return createStatusResponse(http.StatusOK, "success", "Cáº­p nháº­t thÃ nh cÃ´ng")
 }
 
 // ============================================================
 // HandleAdminDeleteUser - DELETE /api/admin/create-account
 // Soft delete user (status -> INACTIVE)
-// KHỚP VỚI Java AdminController deleteUser()
+// KHá»šP Vá»šI Java AdminController deleteUser()
 // ============================================================
 func (h *AuthHandler) HandleAdminDeleteUser(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Check authorization
@@ -850,13 +853,13 @@ func (h *AuthHandler) HandleAdminDeleteUser(ctx context.Context, request events.
 		return createErrorResponse(http.StatusBadRequest, err.Error())
 	}
 
-	return createStatusResponse(http.StatusOK, "success", "Xóa user thành công")
+	return createStatusResponse(http.StatusOK, "success", "XÃ³a user thÃ nh cÃ´ng")
 }
 
 // ============================================================
 // HandleGetStaffOrganizer - GET /api/users/staff-organizer
 // Get STAFF and ORGANIZER users (2 lists)
-// KHỚP VỚI Java AdminController getStaffOrganizer()
+// KHá»šP Vá»šI Java AdminController getStaffOrganizer()
 // ============================================================
 func (h *AuthHandler) HandleGetStaffOrganizer(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Check authorization
@@ -890,7 +893,7 @@ func (h *AuthHandler) HandleGetStaffOrganizer(ctx context.Context, request event
 
 // ============================================================
 // sendOTPEmail - Dual path: Notification API or local email service
-// Phase 6: Tách Notification Service
+// Phase 6: TÃ¡ch Notification Service
 // ============================================================
 func sendOTPEmail(ctx context.Context, recipient, otp, purpose string) error {
 	// Phase 6: Route through Notification Service API if enabled
@@ -1077,7 +1080,7 @@ func (h *AuthHandler) HandleUpdatePhone(ctx context.Context, request events.APIG
 	}
 
 	if req.Phone == "" {
-		return createStatusResponse(http.StatusBadRequest, "fail", "Số điện thoại không được để trống")
+		return createStatusResponse(http.StatusBadRequest, "fail", "Sá»‘ Ä‘iá»‡n thoáº¡i khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
 	}
 
 	// Call use case to update phone directly
@@ -1086,7 +1089,7 @@ func (h *AuthHandler) HandleUpdatePhone(ctx context.Context, request events.APIG
 		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 	}
 
-	return createStatusResponse(http.StatusOK, "success", "Cập nhật số điện thoại thành công")
+	return createStatusResponse(http.StatusOK, "success", "Cáº­p nháº­t sá»‘ Ä‘iá»‡n thoáº¡i thÃ nh cÃ´ng")
 }
 
 // HandleUpdatePassword handles POST /api/auth/update-password for authenticated users
@@ -1103,16 +1106,19 @@ func (h *AuthHandler) HandleUpdatePassword(ctx context.Context, request events.A
 	}
 
 	if req.Password == "" {
-		return createStatusResponse(http.StatusBadRequest, "fail", "Mật khẩu không được để trống")
+		return createStatusResponse(http.StatusBadRequest, "fail", "Máº­t kháº©u khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
 	}
 
-	// Call use case to update password directly without OTP
-	err := h.useCase.DirectUpdatePassword(ctx, email, req.Password)
+	if req.OldPassword == "" {
+		return createStatusResponse(http.StatusBadRequest, "fail", "Old password is required")
+	}
+
+	err := h.useCase.DirectUpdatePassword(ctx, email, req.OldPassword, req.Password)
 	if err != nil {
 		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 	}
 
-	return createStatusResponse(http.StatusOK, "success", "Cập nhật mật khẩu thành công")
+	return createStatusResponse(http.StatusOK, "success", "Cáº­p nháº­t máº­t kháº©u thÃ nh cÃ´ng")
 }
 
 // HandleCloseAccount handles POST /api/auth/close-account to soft-delete an account
@@ -1145,7 +1151,7 @@ func (h *AuthHandler) HandleCloseAccount(ctx context.Context, request events.API
 
 	resp := map[string]interface{}{
 		"status":  "success",
-		"message": "Tài khoản của bạn đã được đưa vào hàng đợi xóa. Bạn có 30 ngày để khôi phục trước khi bị xóa vĩnh viễn.",
+		"message": "TÃ i khoáº£n cá»§a báº¡n Ä‘Ã£ Ä‘Æ°á»£c Ä‘Æ°a vÃ o hÃ ng Ä‘á»£i xÃ³a. Báº¡n cÃ³ 30 ngÃ y Ä‘á»ƒ khÃ´i phá»¥c trÆ°á»›c khi bá»‹ xÃ³a vÄ©nh viá»…n.",
 	}
 	body, _ := json.Marshal(resp)
 
@@ -1177,7 +1183,7 @@ func (h *AuthHandler) HandleRestoreAccount(ctx context.Context, request events.A
 		return createErrorResponse(http.StatusBadRequest, err.Error())
 	}
 
-	return createStatusResponse(http.StatusOK, "success", "Khôi phục tài khoản thành công")
+	return createStatusResponse(http.StatusOK, "success", "KhÃ´i phá»¥c tÃ i khoáº£n thÃ nh cÃ´ng")
 }
 
 // HandleSetSSOPassword handles POST /api/auth/set-sso-password for single sign-on users setting their password
@@ -1198,7 +1204,7 @@ func (h *AuthHandler) HandleSetSSOPassword(ctx context.Context, request events.A
 	}
 
 	if req.Password == "" {
-		return createStatusResponse(http.StatusBadRequest, "fail", "Mật khẩu không được để trống")
+		return createStatusResponse(http.StatusBadRequest, "fail", "Máº­t kháº©u khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
 	}
 
 	err = h.useCase.SetSSOUserPassword(ctx, claims.Email, req.Password)
@@ -1206,7 +1212,7 @@ func (h *AuthHandler) HandleSetSSOPassword(ctx context.Context, request events.A
 		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 	}
 
-	return createStatusResponse(http.StatusOK, "success", "Thiết lập mật khẩu thành công. Từ giờ bạn có thể đăng nhập bằng mật khẩu này.")
+	return createStatusResponse(http.StatusOK, "success", "Thiáº¿t láº­p máº­t kháº©u thÃ nh cÃ´ng. Tá»« giá» báº¡n cÃ³ thá»ƒ Ä‘Äƒng nháº­p báº±ng máº­t kháº©u nÃ y.")
 }
 
 // SweepExpiredAccounts invokes hard deletion of expired users
@@ -1242,7 +1248,7 @@ func (h *AuthHandler) HandleUpdateTheme(ctx context.Context, request events.APIG
 		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 	}
 
-	return createStatusResponse(http.StatusOK, "success", "Cập nhật giao diện thành công")
+	return createStatusResponse(http.StatusOK, "success", "Cáº­p nháº­t giao diá»‡n thÃ nh cÃ´ng")
 }
 
 // HandleUpdateProfile handles POST /api/auth/update-profile to save profile info (fullName, etc.)
@@ -1276,5 +1282,5 @@ func (h *AuthHandler) HandleUpdateProfile(ctx context.Context, request events.AP
 		}
 	}
 
-	return createStatusResponse(http.StatusOK, "success", "Cập nhật hồ sơ thành công")
+	return createStatusResponse(http.StatusOK, "success", "Cáº­p nháº­t há»“ sÆ¡ thÃ nh cÃ´ng")
 }

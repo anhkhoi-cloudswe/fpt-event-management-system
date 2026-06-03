@@ -13,7 +13,7 @@ export interface User {
   role: UserRole
   status?: string
   createdAt?: string
-  wallet?: number
+  wallet?: number | { balance?: number }
   balance?: number
   wallet_balance?: number
   ssoProvider?: string

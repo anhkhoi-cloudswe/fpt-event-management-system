@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import {
@@ -12,29 +12,39 @@ import {
   Moon,
   Sun,
   AlertCircle,
-  HelpCircle,
   Lock,
-  ChevronRight,
   Info,
   CheckCircle2
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import { TimezoneCombobox } from '../components/TimezoneCombobox'
 
-const timezones = [
-  { value: 'Asia/Ho_Chi_Minh', label: 'Asia/Ho_Chi_Minh (GMT+7)' },
-  { value: 'UTC', label: 'UTC (GMT+0)' },
-  { value: 'Asia/Tokyo', label: 'Asia/Tokyo (GMT+9)' },
-  { value: 'Europe/London', label: 'Europe/London (GMT+1)' },
-  { value: 'America/New_York', label: 'America/New_York (GMT-4)' }
+const locales = [
+  { value: 'en-US', label: 'English (United States)' },
+  { value: 'vi-VN', label: 'Vietnamese (Vietnam)' },
+  { value: 'fr-FR', label: 'Français (France)' },
+  { value: 'it-IT', label: 'Italiano (Italia)' },
+  { value: 'es-ES', label: 'Español (España)' },
+  { value: 'pt-BR', label: 'Português (Brasil)' },
+  { value: 'de-DE', label: 'Deutsch (Deutschland)' },
 ]
 
 export default function Profile() {
   const { user, logout, refreshUser } = useAuth()
   const { showToast } = useToast()
-  const profileWalletBalance = user?.balance ?? user?.wallet_balance
+  const [searchParams, setSearchParams] = useSearchParams()
+  const profileWalletBalance = useMemo(() => {
+    const walletValue = user?.wallet
+    if (walletValue && typeof walletValue === 'object' && walletValue.balance !== undefined) {
+      return walletValue.balance
+    }
+    return user?.balance ?? user?.wallet_balance
+  }, [user])
 
   // Tab state: profile vs security
-  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'language'>(() => {
+    return searchParams.get('tab') === 'security' ? 'security' : searchParams.get('tab') === 'language' ? 'language' : 'profile'
+  })
 
   // CRITICAL FIX: Read theme directly from document.documentElement.classList
   // This is the SOURCE OF TRUTH set by AuthContext, NOT localStorage
@@ -52,6 +62,7 @@ export default function Profile() {
   // Timezone states
   const [timezone, setTimezone] = useState(localStorage.getItem('user_timezone') || 'Asia/Ho_Chi_Minh')
   const [autoDetectTz, setAutoDetectTz] = useState(localStorage.getItem('auto_timezone') !== 'false')
+  const [language, setLanguage] = useState(localStorage.getItem('user_locale') || 'vi-VN')
 
   // Password tab states
   const [showSetPasswordModal, setShowSetPasswordModal] = useState(false)
@@ -61,6 +72,7 @@ export default function Profile() {
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false)
 
   // Standard user password change states
+  const [oldPassword, setOldPassword] = useState('')
   const [standardPassword, setStandardPassword] = useState('')
   const [standardConfirmPassword, setStandardConfirmPassword] = useState('')
   const [standardPasswordError, setStandardPasswordError] = useState('')
@@ -85,6 +97,18 @@ export default function Profile() {
       setIsDarkMode(localStorage.getItem('theme_user_' + user.id) === 'dark')
     }
   }, [user])
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'profile' || tab === 'security' || tab === 'language') {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
+
+  const handleTabChange = (tab: 'profile' | 'security' | 'language') => {
+    setActiveTab(tab)
+    setSearchParams(tab === 'profile' ? {} : { tab }, { replace: true })
+  }
 
   // Sync theme changes
   useEffect(() => {
@@ -136,18 +160,28 @@ export default function Profile() {
     }
   }
 
+  const detectTimezone = () => {
+    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh'
+    setTimezone(detected)
+    localStorage.setItem('user_timezone', detected)
+    localStorage.setItem('auto_timezone', 'true')
+    window.dispatchEvent(new Event('timezone-change'))
+  }
+
   // Sync auto-timezone check
   useEffect(() => {
     if (autoDetectTz) {
-      const detected = Intl.DateTimeFormat().resolvedOptions().timeZone
-      setTimezone(detected)
-      localStorage.setItem('user_timezone', detected)
-      localStorage.setItem('auto_timezone', 'true')
-      window.dispatchEvent(new Event('timezone-change'))
+      detectTimezone()
     } else {
       localStorage.setItem('auto_timezone', 'false')
     }
   }, [autoDetectTz])
+
+  const handleLanguageChange = (locale: string) => {
+    setLanguage(locale)
+    localStorage.setItem('user_locale', locale)
+    localStorage.setItem('language', locale)
+  }
 
   // Input phone number validation
   const validatePhone = (value: string): boolean => {
@@ -287,6 +321,10 @@ export default function Profile() {
   // Handle standard password change
   const handleUpdateStandardPassword = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!oldPassword) {
+      setStandardPasswordError('Vui lòng nhập mật khẩu cũ')
+      return
+    }
     if (standardPassword.length < 6) {
       setStandardPasswordError('Mật khẩu phải có ít nhất 6 ký tự')
       return
@@ -305,12 +343,13 @@ export default function Profile() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password: standardPassword }),
+        body: JSON.stringify({ oldPassword, password: standardPassword }),
       })
 
       const data = await res.json()
       if (res.ok) {
         showToast('success', 'Đổi mật khẩu thành công!')
+        setOldPassword('')
         setStandardPassword('')
         setStandardConfirmPassword('')
       } else {
@@ -403,7 +442,7 @@ export default function Profile() {
       {/* Tabs Switcher */}
       <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6">
         <button
-          onClick={() => setActiveTab('profile')}
+          onClick={() => handleTabChange('profile')}
           className={`pb-3 text-sm font-extrabold transition-all relative ${activeTab === 'profile'
             ? 'text-orange-600 dark:text-orange-500'
             : 'text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
@@ -415,7 +454,7 @@ export default function Profile() {
           )}
         </button>
         <button
-          onClick={() => setActiveTab('security')}
+          onClick={() => handleTabChange('security')}
           className={`pb-3 text-sm font-extrabold transition-all relative ${activeTab === 'security'
             ? 'text-orange-600 dark:text-orange-500'
             : 'text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
@@ -423,6 +462,18 @@ export default function Profile() {
         >
           Bảo mật & Tài khoản
           {activeTab === 'security' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 dark:bg-orange-500 rounded-full" />
+          )}
+        </button>
+        <button
+          onClick={() => handleTabChange('language')}
+          className={`pb-3 text-sm font-extrabold transition-all relative ${activeTab === 'language'
+            ? 'text-orange-600 dark:text-orange-500'
+            : 'text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
+            }`}
+        >
+          Ngôn ngữ
+          {activeTab === 'language' && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 dark:bg-orange-500 rounded-full" />
           )}
         </button>
@@ -572,28 +623,19 @@ export default function Profile() {
                     </label>
                   </div>
 
-                  <div className="relative max-w-xs">
-                    <Globe className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                    <select
-                      disabled={autoDetectTz}
+                  <div className="max-w-sm">
+                    <TimezoneCombobox
                       value={timezone}
-                      onChange={(e) => {
-                        setTimezone(e.target.value)
-                        localStorage.setItem('user_timezone', e.target.value)
+                      autoDetect={autoDetectTz}
+                      isDarkMode={isDarkMode}
+                      onAutoDetectChange={setAutoDetectTz}
+                      onDetectNow={detectTimezone}
+                      onChange={(nextTimezone) => {
+                        setTimezone(nextTimezone)
+                        localStorage.setItem('user_timezone', nextTimezone)
                         window.dispatchEvent(new Event('timezone-change'))
                       }}
-                      className={`w-full pl-9 pr-8 py-2.5 text-xs font-semibold rounded-xl border outline-none appearance-none transition-all cursor-pointer ${isDarkMode
-                        ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200 disabled:opacity-50'
-                        : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800 disabled:opacity-50'
-                        }`}
-                    >
-                      {timezones.map((tz) => (
-                        <option key={tz.value} value={tz.value}>
-                          {tz.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronRight size={14} className="absolute right-3 top-3.5 text-slate-400 rotate-90 pointer-events-none" />
+                    />
                   </div>
                 </div>
               </div>
@@ -688,6 +730,22 @@ export default function Profile() {
 
                   <div className="space-y-2">
                     <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                      MẬT KHẨU CŨ
+                    </label>
+                    <input
+                      type="password"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      placeholder="Nhập mật khẩu hiện tại"
+                      className={`w-full px-4 py-3 text-sm font-semibold rounded-2xl border outline-none transition-all ${isDarkMode
+                        ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200'
+                        : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800'
+                        }`}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
                       Mật khẩu mới
                     </label>
                     <input
@@ -766,6 +824,51 @@ export default function Profile() {
               </h3>
               <p className="text-xs text-slate-400 font-medium leading-relaxed">
                 Chúng tôi áp dụng các tiêu chuẩn mã hóa tiên tiến nhất để bảo vệ thông tin mật khẩu của bạn. FPT Event không lưu trữ mật khẩu ở dạng plain-text và không bao giờ chia sẻ dữ liệu định danh của bạn cho bên thứ ba.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'language' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-2">
+            <div className={`p-6 md:p-8 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 backdrop-blur-md'
+              }`}>
+              <h3 className="text-base font-black text-slate-800 dark:text-white mb-5 flex items-center gap-2">
+                <Globe size={18} className="text-orange-500" />
+                <span>Ngôn ngữ</span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {locales.map((locale) => (
+                  <button
+                    key={locale.value}
+                    type="button"
+                    onClick={() => handleLanguageChange(locale.value)}
+                    className={`text-left p-4 rounded-2xl border transition-all ${language === locale.value
+                      ? 'border-orange-500 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 shadow-sm'
+                      : isDarkMode
+                        ? 'border-slate-800 bg-slate-950/50 text-slate-200 hover:border-slate-700'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-orange-200'
+                      }`}
+                  >
+                    <div className="text-sm font-black">{locale.label}</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">{locale.value}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            <div className={`p-6 rounded-3xl border shadow-xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 backdrop-blur-md'
+              }`}>
+              <h3 className="text-sm font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                <Info size={16} className="text-orange-500" />
+                <span>Thiết lập hiển thị</span>
+              </h3>
+              <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                Lựa chọn ngôn ngữ được lưu trên trình duyệt này và sẽ được dùng cho các lần truy cập tiếp theo.
               </p>
             </div>
           </div>
