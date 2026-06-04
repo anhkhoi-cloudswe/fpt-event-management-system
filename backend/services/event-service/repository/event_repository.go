@@ -1210,7 +1210,7 @@ func (r *EventRepository) GetCategoryTicketsByEventID(ctx context.Context, event
 	query := `
 		SELECT
 			ct.category_ticket_id, ct.name, ct.description, ct.price, ct.max_quantity, ct.status,
-			GREATEST(0, ct.max_quantity - COUNT(CASE WHEN t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN') THEN 1 END)) AS remaining
+			COALESCE(GREATEST(0, COALESCE(ct.max_quantity, 0) - COUNT(CASE WHEN t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN') THEN 1 END)), 0) AS remaining
 		FROM Category_Ticket ct
 		LEFT JOIN Ticket t ON ct.category_ticket_id = t.category_ticket_id
 		WHERE ct.event_id = $1

@@ -22,7 +22,7 @@ import { format, startOfDay, isAfter } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
 // React hooks
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 // Toast để hiện thông báo
 import { useToast } from '../contexts/ToastContext'
@@ -289,14 +289,41 @@ export default function Events() {
     setIsConfigModalOpen(true)
   }
 
-  /**
-   * handleCloseModal:
-   * - Đóng EventDetailModal
-   */
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setSelectedEvent(null)
   }
+
+  const getCountdownText = useCallback((startTimeStr: string) => {
+    try {
+      const start = new Date(startTimeStr)
+      const now = new Date()
+      const diffMs = start.getTime() - now.getTime()
+
+      if (diffMs <= 0) return null
+
+      const diffMins = Math.floor(diffMs / (1000 * 60))
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+      if (diffDays > 0) {
+        return currentLanguage === 'en'
+          ? `${diffDays} day${diffDays > 1 ? 's' : ''} left`
+          : `Còn ${diffDays} ngày`
+      } else if (diffHours > 0) {
+        return currentLanguage === 'en'
+          ? `Starts in ${diffHours} hour${diffHours > 1 ? 's' : ''}`
+          : `Bắt đầu sau ${diffHours} giờ`
+      } else if (diffMins > 0) {
+        return currentLanguage === 'en'
+          ? `Starts in ${diffMins} min${diffMins > 1 ? 's' : ''}`
+          : `Bắt đầu sau ${diffMins} phút`
+      }
+      return null
+    } catch (e) {
+      return null
+    }
+  }, [currentLanguage])
 
   // ===== Filter chỉ lấy các sự kiện đang OPEN và chưa kết thúc =====
   const nowTime = new Date().getTime()
@@ -510,12 +537,18 @@ export default function Events() {
                                     : 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-300'
                                   }`}
                               >
-{event.status === 'OPEN'
+                                {event.status === 'OPEN'
                                   ? (currentLanguage === 'en' ? 'Open' : 'Đang mở')
                                   : event.status === 'CLOSED'
                                     ? (currentLanguage === 'en' ? 'Closed' : 'Đã đóng')
                                     : event.status}
                               </span>
+
+                              {event.status === 'OPEN' && getCountdownText(event.startTime) && (
+                                <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 animate-pulse flex items-center gap-1">
+                                  ⏱️ {getCountdownText(event.startTime)}
+                                </span>
+                              )}
                             </div>
 
                             <button
