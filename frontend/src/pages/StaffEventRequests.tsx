@@ -72,6 +72,52 @@ type EventRequest = {
 
 const ITEMS_PER_PAGE = 10
 
+const isRecord = (value: unknown): value is Record<string, any> =>
+  value !== null && typeof value === 'object'
+
+const sanitizeEventRequest = (value: unknown): EventRequest | null => {
+  if (!isRecord(value)) return null
+
+  const requestId = Number(value.requestId ?? value.request_id ?? value.id)
+  if (!Number.isFinite(requestId) || requestId <= 0) return null
+
+  return {
+    requestId,
+    requesterId: Number(value.requesterId ?? value.requester_id ?? 0) || 0,
+    requesterName: value.requesterName ?? value.requester_name ?? value.Organizer?.name,
+    title: String(value.title ?? 'Yêu cầu sự kiện'),
+    description: String(value.description ?? 'N/A'),
+    preferredStartTime: String(value.preferredStartTime ?? value.preferred_start_time ?? ''),
+    preferredEndTime: String(value.preferredEndTime ?? value.preferred_end_time ?? ''),
+    expectedCapacity: Number(value.expectedCapacity ?? value.expected_capacity ?? 0) || 0,
+    status: String(value.status ?? 'PENDING').toUpperCase() as EventRequestStatus,
+    createdAt: String(value.createdAt ?? value.created_at ?? new Date().toISOString()),
+    processedBy: Number(value.processedBy ?? value.processed_by ?? 0) || undefined,
+    processedByName: value.processedByName ?? value.processed_by_name,
+    processedAt: value.processedAt ?? value.processed_at,
+    organizerNote: value.organizerNote ?? value.organizer_note,
+    createdEventId: Number(value.createdEventId ?? value.created_event_id ?? 0) || undefined,
+    bannerUrl: value.bannerUrl ?? value.banner_url,
+  }
+}
+
+const normalizeEventRequestsPayload = (payload: unknown): EventRequest[] => {
+  const source = isRecord(payload) && isRecord(payload.data) ? payload.data : payload
+  const buckets = ['pending', 'approved', 'rejected', 'cancelled', 'updating', 'finished']
+
+  if (isRecord(source) && buckets.some((bucket) => Array.isArray(source[bucket]))) {
+    return buckets
+      .flatMap((bucket) => (Array.isArray(source[bucket]) ? source[bucket] : []))
+      .map(sanitizeEventRequest)
+      .filter((req): req is EventRequest => req !== null)
+  }
+
+  const rawRequests = isRecord(source) ? source.requests ?? source.data ?? source.items : source
+  return Array.isArray(rawRequests)
+    ? rawRequests.map(sanitizeEventRequest).filter((req): req is EventRequest => req !== null)
+    : []
+}
+
 /**
  * getStatusLabel - Chuyển status code -> text tiếng Việt
  */
@@ -142,39 +188,19 @@ export default function StaffEventRequests() {
       })
 
       if (response.ok) {
-        const data = await response.json()
-        let allRequests: EventRequest[] = []
+        const data = await response.json().catch(() => null)
+        const allRequests = normalizeEventRequestsPayload(data)
 
-        if (data.pending || data.approved || data.rejected) {
-          const pending = Array.isArray(data.pending) ? data.pending : []
-          const approved = Array.isArray(data.approved) ? data.approved : []
-          const rejected = Array.isArray(data.rejected) ? data.rejected : []
-          const cancelled = Array.isArray(data.cancelled) ? data.cancelled : []
-          const updating = Array.isArray(data.updating) ? data.updating : []
-          const finished = Array.isArray(data.finished) ? data.finished : []
-
-          allRequests = [
-            ...pending,
-            ...approved,
-            ...rejected,
-            ...cancelled,
-            ...updating,
-            ...finished,
-          ]
-        } else if (Array.isArray(data)) {
-          allRequests = data
-        }
-
-        const waiting = allRequests.filter(
-          (req) => req.status === 'PENDING' || req.status === 'UPDATING',
+        const waiting = (Array.isArray(allRequests) ? allRequests : []).filter(
+          (req) => req?.status === 'PENDING' || req?.status === 'UPDATING',
         )
 
-        const processed = allRequests.filter(
+        const processed = (Array.isArray(allRequests) ? allRequests : []).filter(
           (req) =>
-            req.status === 'APPROVED' ||
-            req.status === 'REJECTED' ||
-            req.status === 'CANCELLED' ||
-            req.status === 'FINISHED',
+            req?.status === 'APPROVED' ||
+            req?.status === 'REJECTED' ||
+            req?.status === 'CANCELLED' ||
+            req?.status === 'FINISHED',
         )
 
         setAllWaitingRequests(waiting)
@@ -193,19 +219,19 @@ export default function StaffEventRequests() {
   }
 
   const applyFilters = (requests: EventRequest[]): EventRequest[] => {
-    let filtered = [...requests]
+    let filtered = Array.isArray(requests) ? requests.filter(Boolean) : []
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
         (req) =>
-          req.title.toLowerCase().includes(query) ||
-          (req.requesterName?.toLowerCase().includes(query) ?? false),
+          (req?.title ?? '').toLowerCase().includes(query) ||
+          (req?.requesterName?.toLowerCase().includes(query) ?? false),
       )
     }
 
     if (statusFilter) {
-      filtered = filtered.filter((req) => req.status === statusFilter)
+      filtered = filtered.filter((req) => req?.status === statusFilter)
     }
 
     if (dateRangeFilter !== 'all') {
@@ -214,7 +240,7 @@ export default function StaffEventRequests() {
       const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)
 
       filtered = filtered.filter((req) => {
-        const createdDate = new Date(req.createdAt)
+        const createdDate = new Date(req?.createdAt ?? '')
         return createdDate >= cutoffDate
       })
     }
@@ -223,14 +249,15 @@ export default function StaffEventRequests() {
   }
 
   const currentRequests = activeTab === 'waiting' ? allWaitingRequests : allProcessedRequests
-  const filteredRequests = applyFilters(currentRequests)
-  const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE)
+  const filteredRequests = applyFilters(Array.isArray(currentRequests) ? currentRequests : [])
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / ITEMS_PER_PAGE))
   const paginatedRequests = filteredRequests.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   )
 
-  const handleViewDetails = (request: EventRequest) => {
+  const handleViewDetails = (request: EventRequest | null | undefined) => {
+    if (!request?.requestId) return
     setSelectedRequest(request)
     setIsModalOpen(true)
   }
@@ -240,13 +267,15 @@ export default function StaffEventRequests() {
     setSelectedRequest(null)
   }
 
-  const handleApprove = (request: EventRequest) => {
+  const handleApprove = (request: EventRequest | null | undefined) => {
+    if (!request?.requestId) return
     setRequestToProcess(request)
     setProcessAction('APPROVE')
     setIsProcessModalOpen(true)
   }
 
-  const handleReject = (request: EventRequest) => {
+  const handleReject = (request: EventRequest | null | undefined) => {
+    if (!request?.requestId) return
     setRequestToProcess(request)
     setProcessAction('REJECT')
     setIsProcessModalOpen(true)
@@ -261,7 +290,7 @@ export default function StaffEventRequests() {
 
     try {
       const payload = {
-        requestId: requestToProcess.requestId,
+        requestId: requestToProcess?.requestId,
         action: processAction === 'APPROVE' ? 'APPROVED' : 'REJECTED',
         organizerNote: processAction === 'APPROVE' ? organizerNote : null,
         rejectReason: processAction === 'REJECT' ? rejectReason : null,
@@ -511,75 +540,75 @@ export default function StaffEventRequests() {
             <>
               {/* Cards Grid */}
               <div className="grid grid-cols-1 gap-4 mb-6">
-                {paginatedRequests.map((req, index) => (
+                {Array.isArray(paginatedRequests) ? paginatedRequests.map((req, index) => (
                   <div
-                    key={req.requestId}
+                    key={req?.requestId ?? `request-${index}`}
                     className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/80 bg-white/70 backdrop-blur-md p-6 shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-5"
                     style={{ animationDelay: `${index * 80}ms` }}
                     onClick={() => handleViewDetails(req)}
                   >
                     {/* Visual left accent bar */}
                     <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-                      req.status === 'PENDING' ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.5)]' :
-                      req.status === 'APPROVED' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' :
-                      req.status === 'REJECTED' ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]' :
-                      req.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-slate-450'
+                      req?.status === 'PENDING' ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.5)]' :
+                      req?.status === 'APPROVED' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' :
+                      req?.status === 'REJECTED' ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]' :
+                      req?.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-slate-450'
                     }`} />
 
                     <div className="flex-1 min-w-0 pl-1.5">
                       <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
                         <h3 className="text-lg font-bold text-slate-900 truncate group-hover:text-orange-600 transition-colors duration-300">
-                          {req.title}
+                          {req?.title || 'Yêu cầu sự kiện'}
                         </h3>
                         
                         {/* Status Badges with Custom Styles */}
-                        {req.status === 'PENDING' ? (
+                        {req?.status === 'PENDING' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/60 shadow-sm shadow-amber-500/5">
                             <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
                             Chờ duyệt
                           </span>
-                        ) : req.status === 'APPROVED' ? (
+                        ) : req?.status === 'APPROVED' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 shadow-sm shadow-emerald-500/5">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             Đã duyệt
                           </span>
-                        ) : req.status === 'REJECTED' ? (
+                        ) : req?.status === 'REJECTED' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200/60 shadow-sm shadow-rose-500/5">
                             <XCircle className="w-3.5 h-3.5" />
                             Từ chối
                           </span>
-                        ) : req.status === 'UPDATING' ? (
+                        ) : req?.status === 'UPDATING' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/60 shadow-sm shadow-blue-500/5">
                             <Clock className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '3s' }} />
                             Chờ cập nhật
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-50 text-slate-700 border border-slate-200/60">
-                            {getStatusLabel(req.status)}
+                            {getStatusLabel(req?.status ?? 'PENDING')}
                           </span>
                         )}
                       </div>
 
                       <p className="text-sm text-slate-500 line-clamp-2 mb-4 leading-relaxed font-medium">
-                        {req.description}
+                        {req?.description || 'N/A'}
                       </p>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-500 font-bold">
                         <div className="flex items-center gap-1.5">
                           <User className="w-4 h-4 text-orange-500" />
-                          <span>Ban tổ chức: <strong className="text-slate-700">{req.requesterName || 'N/A'}</strong></span>
+                          <span>Ban tổ chức: <strong className="text-slate-700">{req?.requesterName || 'N/A'}</strong></span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Users className="w-4 h-4 text-orange-500" />
-                          <span>Dự kiến: <strong className="text-slate-700">{req.expectedCapacity} người</strong></span>
+                          <span>Dự kiến: <strong className="text-slate-700">{req?.expectedCapacity ?? 0} người</strong></span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-4 h-4 text-orange-500" />
-                          <span>Ngày gửi: <strong className="text-slate-700">{new Date(req.createdAt).toLocaleDateString('vi-VN')}</strong></span>
+                          <span>Ngày gửi: <strong className="text-slate-700">{req?.createdAt ? new Date(req.createdAt).toLocaleDateString('vi-VN') : 'N/A'}</strong></span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Clock className="w-4 h-4 text-orange-500" />
-                          <span>Tổ chức: <strong className="text-slate-700">{req.preferredStartTime ? new Date(req.preferredStartTime).toLocaleDateString('vi-VN') : 'N/A'}</strong></span>
+                          <span>Tổ chức: <strong className="text-slate-700">{req?.preferredStartTime ? new Date(req.preferredStartTime).toLocaleDateString('vi-VN') : 'N/A'}</strong></span>
                         </div>
                       </div>
                     </div>
@@ -607,7 +636,7 @@ export default function StaffEventRequests() {
                       </div>
                     )}
                   </div>
-                ))}
+                )) : null}
               </div>
 
               {/* Pagination controls */}

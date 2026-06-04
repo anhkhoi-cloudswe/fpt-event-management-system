@@ -114,6 +114,58 @@ type ApiTabResponse = {
   totalCount: number
 }
 
+const isRecord = (value: unknown): value is Record<string, any> =>
+  value !== null && typeof value === 'object'
+
+const sanitizeEventRequest = (value: unknown): EventRequest | null => {
+  if (!isRecord(value)) return null
+
+  const requestId = Number(value.requestId ?? value.request_id ?? value.id)
+  if (!Number.isFinite(requestId) || requestId <= 0) return null
+
+  const status = String(value.status ?? 'PENDING').toUpperCase() as EventRequestStatus
+
+  return {
+    requestId,
+    requesterId: Number(value.requesterId ?? value.requester_id ?? 0) || 0,
+    requesterName: value.requesterName ?? value.requester_name ?? value.Organizer?.name,
+    title: String(value.title ?? 'Yeu cau su kien'),
+    description: value.description ? String(value.description) : undefined,
+    preferredStartTime: value.preferredStartTime ?? value.preferred_start_time,
+    preferredEndTime: value.preferredEndTime ?? value.preferred_end_time,
+    expectedCapacity: Number(value.expectedCapacity ?? value.expected_capacity ?? 0) || undefined,
+    status,
+    createdAt: value.createdAt ?? value.created_at,
+    processedBy: Number(value.processedBy ?? value.processed_by ?? 0) || undefined,
+    processedByName: value.processedByName ?? value.processed_by_name,
+    processedAt: value.processedAt ?? value.processed_at,
+    organizerNote: value.organizerNote ?? value.organizer_note,
+    createdEventId: Number(value.createdEventId ?? value.created_event_id ?? 0) || undefined,
+    eventStatus: value.eventStatus ?? value.event_status,
+    bannerUrl: value.bannerUrl ?? value.banner_url,
+    venueName: value.venueName ?? value.venue_name ?? value.Venue?.name,
+    areaName: value.areaName ?? value.area_name,
+    floor: value.floor,
+    areaCapacity: Number(value.areaCapacity ?? value.area_capacity ?? 0) || undefined,
+  }
+}
+
+const normalizeTabResponse = (payload: unknown): ApiTabResponse => {
+  const source = isRecord(payload) && isRecord(payload.data) ? payload.data : payload
+  const rawRequests = isRecord(source) ? source.requests ?? source.data ?? source.items : source
+  const requests = Array.isArray(rawRequests)
+    ? rawRequests.map(sanitizeEventRequest).filter((req): req is EventRequest => req !== null)
+    : []
+
+  const rawTotal = isRecord(source) ? source.totalCount ?? source.total_count ?? source.total : undefined
+  const totalCount = Number(rawTotal)
+
+  return {
+    requests,
+    totalCount: Number.isFinite(totalCount) ? totalCount : requests.length,
+  }
+}
+
 /**
  * getStatusLabel - Chuyển status code -> text tiếng Việt
  */
@@ -146,11 +198,11 @@ const getStatusLabel = (status: EventRequestStatus) => {
 const convertToModalRequest = (request: EventRequest): EventRequestForModal => {
   return {
     ...request,
-    description: request.description || 'N/A',
-    preferredStartTime: request.preferredStartTime || new Date().toISOString(),
-    preferredEndTime: request.preferredEndTime || new Date().toISOString(),
-    expectedCapacity: request.expectedCapacity || 0,
-    createdAt: request.createdAt || new Date().toISOString(),
+    description: request?.description || 'N/A',
+    preferredStartTime: request?.preferredStartTime || new Date().toISOString(),
+    preferredEndTime: request?.preferredEndTime || new Date().toISOString(),
+    expectedCapacity: request?.expectedCapacity || 0,
+    createdAt: request?.createdAt || new Date().toISOString(),
   }
 }
 
@@ -158,10 +210,10 @@ const convertToModalRequest = (request: EventRequest): EventRequestForModal => {
  * isRequestActiveTabEligible - Check if request should appear in "Chờ" (Active) tab
  */
 const isRequestActiveTabEligible = (request: EventRequest): boolean => {
-  if (request.status === 'PENDING') {
+  if (request?.status === 'PENDING') {
     return true
   }
-  if (request.status === 'APPROVED' && request.eventStatus === 'UPDATING') {
+  if (request?.status === 'APPROVED' && request?.eventStatus === 'UPDATING') {
     return true
   }
   return false
@@ -171,12 +223,12 @@ const isRequestActiveTabEligible = (request: EventRequest): boolean => {
  * isRequestArchivedTabEligible - Check if request should appear in "Đã xử lý" (Archived) tab
  */
 const isRequestArchivedTabEligible = (request: EventRequest): boolean => {
-  if (request.status === 'REJECTED' || request.status === 'CANCELLED') {
+  if (request?.status === 'REJECTED' || request?.status === 'CANCELLED') {
     return true
   }
-  if (request.status === 'APPROVED') {
+  if (request?.status === 'APPROVED') {
     const finishedStatuses = ['OPEN', 'CLOSED', 'CANCELLED', 'FINISHED']
-    if (request.eventStatus && finishedStatuses.includes(request.eventStatus)) {
+    if (request?.eventStatus && finishedStatuses.includes(request.eventStatus)) {
       return true
     }
   }
@@ -187,7 +239,7 @@ const isRequestArchivedTabEligible = (request: EventRequest): boolean => {
  * getDisplayStatus - Get status to display on Card badge
  */
 const getDisplayStatus = (request: EventRequest): EventRequestStatus => {
-  return request.status
+  return request?.status ?? 'PENDING'
 }
 
 /**
@@ -251,12 +303,8 @@ export default function OrganizerEventRequests() {
       })
 
       if (response.ok) {
-        const data: ApiTabResponse = await response.json()
-        const normalizedData: ApiTabResponse = {
-          requests: data.requests || [],
-          totalCount: data.totalCount || 0,
-        }
-        setActiveTabData(normalizedData)
+        const data = await response.json().catch(() => null)
+        setActiveTabData(normalizeTabResponse(data))
         setActiveTabPage(page)
       } else {
         throw new Error('Failed to fetch active event requests')
@@ -285,12 +333,8 @@ export default function OrganizerEventRequests() {
       })
 
       if (response.ok) {
-        const data: ApiTabResponse = await response.json()
-        const normalizedData: ApiTabResponse = {
-          requests: data.requests || [],
-          totalCount: data.totalCount || 0,
-        }
-        setArchivedTabData(normalizedData)
+        const data = await response.json().catch(() => null)
+        setArchivedTabData(normalizeTabResponse(data))
         setArchivedTabPage(page)
       } else {
         throw new Error('Failed to fetch archived event requests')
@@ -313,8 +357,10 @@ export default function OrganizerEventRequests() {
       })
 
       if (response.ok) {
-        const detailedRequest: EventRequest = await response.json()
-        setSelectedRequest(detailedRequest)
+        const detailedRequest = sanitizeEventRequest(await response.json().catch(() => null))
+        if (detailedRequest) {
+          setSelectedRequest(detailedRequest)
+        }
       } else {
         throw new Error('Failed to fetch event request details')
       }
@@ -326,7 +372,8 @@ export default function OrganizerEventRequests() {
     }
   }
 
-  const handleViewDetails = (request: EventRequest) => {
+  const handleViewDetails = (request: EventRequest | null | undefined) => {
+    if (!request?.requestId) return
     setSelectedRequest(request)
     setIsModalOpen(true)
     fetchEventRequestDetail(request.requestId)
@@ -338,19 +385,21 @@ export default function OrganizerEventRequests() {
   }
 
   const isEventEligibleForUpdate = (
-    request: EventRequest,
+    request: EventRequest | null | undefined,
   ): { eligible: boolean; reason: string } => {
-    if (!request.createdEventId) {
+    if (!request?.createdEventId) {
       return { eligible: false, reason: 'Sự kiện chưa được tạo' }
     }
     return { eligible: true, reason: '' }
   }
 
-  const handleUpdateRequest = (request: EventRequest) => {
+  const handleUpdateRequest = (request: EventRequest | null | undefined) => {
+    if (!request?.requestId) return
     navigate(`/dashboard/event-requests/${request.requestId}/edit`)
   }
 
-  const handleCancelClick = (request: EventRequest) => {
+  const handleCancelClick = (request: EventRequest | null | undefined) => {
+    if (!request?.requestId) return
     setEventToCancel(request)
     setShowCancelModal(true)
   }
@@ -361,9 +410,9 @@ export default function OrganizerEventRequests() {
       return
     }
 
-    const hasCreatedEvent = eventToCancel.createdEventId && eventToCancel.createdEventId > 0
+    const hasCreatedEvent = Boolean(eventToCancel?.createdEventId && eventToCancel.createdEventId > 0)
 
-    if (hasCreatedEvent && !eventToCancel.createdEventId) {
+    if (hasCreatedEvent && !eventToCancel?.createdEventId) {
       showToast('error', 'Không tìm thấy sự kiện để hủy')
       return
     }
@@ -371,8 +420,8 @@ export default function OrganizerEventRequests() {
     try {
       const userIdStr = localStorage.getItem('userId')
       const payload = {
-        eventId: hasCreatedEvent ? eventToCancel.createdEventId : 0,
-        requestId: hasCreatedEvent ? 0 : eventToCancel.requestId,
+        eventId: hasCreatedEvent ? eventToCancel?.createdEventId : 0,
+        requestId: hasCreatedEvent ? 0 : eventToCancel?.requestId,
       }
 
       const response = await fetch('/api/organizer/events/cancel', {
@@ -438,14 +487,20 @@ export default function OrganizerEventRequests() {
     )
   }
 
-  const activeTabTotalPages = Math.ceil(activeTabData.totalCount / ITEMS_PER_PAGE)
-  const archivedTabTotalPages = Math.ceil(archivedTabData.totalCount / ITEMS_PER_PAGE)
-  const currentData = activeTab === 'active' ? activeTabData : archivedTabData
+  const activeRequests = Array.isArray(activeTabData?.requests) ? activeTabData.requests : []
+  const archivedRequests = Array.isArray(archivedTabData?.requests) ? archivedTabData.requests : []
+  const activeCount = Number.isFinite(Number(activeTabData?.totalCount)) ? Number(activeTabData.totalCount) : activeRequests.length
+  const archivedCount = Number.isFinite(Number(archivedTabData?.totalCount)) ? Number(archivedTabData.totalCount) : archivedRequests.length
+  const activeTabTotalPages = Math.max(1, Math.ceil(activeCount / ITEMS_PER_PAGE))
+  const archivedTabTotalPages = Math.max(1, Math.ceil(archivedCount / ITEMS_PER_PAGE))
   const currentPage = activeTab === 'active' ? activeTabPage : archivedTabPage
   const currentTotalPages = activeTab === 'active' ? activeTabTotalPages : archivedTabTotalPages
   const currentLoading = activeTab === 'active' ? activeLoading : archivedLoading
+  const currentRequests = activeTab === 'active' ? activeRequests : archivedRequests
+  const currentTotalCount = activeTab === 'active' ? activeCount : archivedCount
 
-  const filteredRequests = (currentData?.requests || []).filter((req) => {
+  const filteredRequests = (Array.isArray(currentRequests) ? currentRequests : []).filter((req) => {
+    if (!req) return false
     const tabValid =
       activeTab === 'active'
         ? isRequestActiveTabEligible(req)
@@ -455,7 +510,7 @@ export default function OrganizerEventRequests() {
 
     const statusFilter =
       activeTab === 'active' ? activeTabStatusFilter : archivedTabStatusFilter
-    if (statusFilter !== 'ALL' && req.status !== statusFilter) {
+    if (statusFilter !== 'ALL' && req?.status !== statusFilter) {
       return false
     }
 
@@ -497,7 +552,7 @@ export default function OrganizerEventRequests() {
           </div>
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hồ sơ chờ duyệt</p>
-            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeTabData.totalCount}</p>
+            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeCount}</p>
           </div>
         </div>
 
@@ -507,7 +562,7 @@ export default function OrganizerEventRequests() {
           </div>
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hồ sơ đã xử lý</p>
-            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{archivedTabData.totalCount}</p>
+            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{archivedCount}</p>
           </div>
         </div>
 
@@ -517,7 +572,7 @@ export default function OrganizerEventRequests() {
           </div>
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng cộng đã gửi</p>
-            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeTabData.totalCount + archivedTabData.totalCount}</p>
+            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeCount + archivedCount}</p>
           </div>
         </div>
       </div>
@@ -543,7 +598,7 @@ export default function OrganizerEventRequests() {
           <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
             activeTab === 'active' ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-850 dark:text-orange-405' : 'bg-slate-300/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
           }`}>
-            {activeTabData.totalCount}
+            {activeCount}
           </span>
         </button>
 
@@ -559,7 +614,7 @@ export default function OrganizerEventRequests() {
           <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
             activeTab === 'archived' ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-850 dark:text-orange-405' : 'bg-slate-300/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
           }`}>
-            {archivedTabData.totalCount}
+            {archivedCount}
           </span>
         </button>
       </div>
@@ -641,7 +696,7 @@ export default function OrganizerEventRequests() {
           <div className="mb-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex justify-between items-center flex-wrap gap-2">
             <span>
               Tìm thấy <span className="text-blue-600 dark:text-blue-400 font-bold">{filteredRequests.length}</span> hồ sơ trên{' '}
-              <span className="font-bold text-slate-700 dark:text-slate-300">{currentData.totalCount}</span> yêu cầu
+              <span className="font-bold text-slate-700 dark:text-slate-300">{currentTotalCount}</span> yêu cầu
             </span>
 
             {searchQuery && (
@@ -677,82 +732,82 @@ export default function OrganizerEventRequests() {
             <>
               {/* Cards Grid */}
               <div className="grid grid-cols-1 gap-4 mb-4">
-                {filteredRequests.map((req, index) => (
+                {Array.isArray(filteredRequests) ? filteredRequests.map((req, index) => (
                   <div
-                    key={req.requestId}
+                    key={req?.requestId ?? `request-${index}`}
                     className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/80 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur-md p-6 shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-5"
                     style={{ animationDelay: `${index * 80}ms` }}
                     onClick={() => handleViewDetails(req)}
                   >
                     {/* Color Accent left bar */}
                     <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-                      req.status === 'PENDING' ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.5)]' :
-                      req.status === 'APPROVED' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(10,185,129,0.5)]' :
-                      req.status === 'REJECTED' ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]' :
-                      req.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-slate-450'
+                      req?.status === 'PENDING' ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.5)]' :
+                      req?.status === 'APPROVED' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(10,185,129,0.5)]' :
+                      req?.status === 'REJECTED' ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]' :
+                      req?.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-slate-450'
                     }`} />
 
                     <div className="flex-1 min-w-0 pl-1.5">
                       <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
                         <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-orange-600 transition-colors duration-300">
-                          {req.title}
+                          {req?.title || 'Yêu cầu sự kiện'}
                         </h3>
 
                         {/* Status Badges with custom visual tags */}
-                        {req.status === 'PENDING' ? (
+                        {req?.status === 'PENDING' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40 shadow-sm shadow-amber-500/5">
                             <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
                             Chờ duyệt
                           </span>
-                        ) : req.status === 'APPROVED' ? (
+                        ) : req?.status === 'APPROVED' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-450 border border-emerald-200/60 dark:border-emerald-900/40 shadow-sm shadow-emerald-500/5">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             Đã duyệt
                           </span>
-                        ) : req.status === 'REJECTED' ? (
+                        ) : req?.status === 'REJECTED' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-455 border border-rose-200/60 dark:border-rose-900/40 shadow-sm shadow-rose-500/5">
                             <XCircle className="w-3.5 h-3.5" />
                             Từ chối
                           </span>
-                        ) : req.status === 'UPDATING' ? (
+                        ) : req?.status === 'UPDATING' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40 shadow-sm shadow-blue-500/5">
                             <Clock className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '3s' }} />
                             Chờ cập nhật
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border border-slate-200/60 dark:border-slate-700">
-                            {getStatusLabel(req.status)}
+                            {getStatusLabel(req?.status ?? 'PENDING')}
                           </span>
                         )}
                       </div>
 
                       <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mb-4 leading-relaxed font-medium">
-                        {req.description}
+                        {req?.description || 'N/A'}
                       </p>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-500 dark:text-slate-400 font-bold">
-                        {req.createdAt && (
+                        {req?.createdAt && (
                           <div className="flex items-center gap-1.5">
                             <Calendar className="w-4 h-4 text-orange-500" />
                             <span>Gửi: <strong className="text-slate-700 dark:text-slate-300">{new Date(req.createdAt).toLocaleDateString('vi-VN')}</strong></span>
                           </div>
                         )}
-                        {req.expectedCapacity && (
+                        {req?.expectedCapacity && (
                           <div className="flex items-center gap-1.5">
                             <Users className="w-4 h-4 text-orange-500" />
-                            <span>Sức chứa: <strong className="text-slate-700 dark:text-slate-300">{req.expectedCapacity} người</strong></span>
+                            <span>Sức chứa: <strong className="text-slate-700 dark:text-slate-300">{req?.expectedCapacity} người</strong></span>
                           </div>
                         )}
-                        {req.preferredStartTime && (
+                        {req?.preferredStartTime && (
                           <div className="flex items-center gap-1.5">
                             <Clock className="w-4 h-4 text-orange-500" />
                             <span>Dự kiến: <strong className="text-slate-700 dark:text-slate-300">{new Date(req.preferredStartTime).toLocaleDateString('vi-VN')}</strong></span>
                           </div>
                         )}
-                        {req.processedByName && (
+                        {req?.processedByName && (
                           <div className="flex items-center gap-1.5">
                             <User className="w-4 h-4 text-orange-500" />
-                            <span>Duyệt bởi: <strong className="text-slate-700 dark:text-slate-300">{req.processedByName}</strong></span>
+                            <span>Duyệt bởi: <strong className="text-slate-700 dark:text-slate-300">{req?.processedByName}</strong></span>
                           </div>
                         )}
                       </div>
@@ -765,7 +820,7 @@ export default function OrganizerEventRequests() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         {/* APPROVED: Cập nhật button */}
-                        {req.status === 'APPROVED' && (() => {
+                        {req?.status === 'APPROVED' && (() => {
                           const eligibility = isEventEligibleForUpdate(req)
                           return (
                             <button
@@ -791,7 +846,7 @@ export default function OrganizerEventRequests() {
                         })()}
 
                         {/* PENDING/UPDATING: Hủy yêu cầu button */}
-                        {(req.status === 'PENDING' || req.status === 'UPDATING') && (
+                        {(req?.status === 'PENDING' || req?.status === 'UPDATING') && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -805,7 +860,7 @@ export default function OrganizerEventRequests() {
                         )}
 
                         {/* APPROVED + createdEventId: Hủy sự kiện button */}
-                        {req.status === 'APPROVED' && req.createdEventId && (
+                        {req?.status === 'APPROVED' && req?.createdEventId && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -820,7 +875,7 @@ export default function OrganizerEventRequests() {
                       </div>
                     )}
                   </div>
-                ))}
+                )) : null}
               </div>
 
               {/* Pagination controls */}
@@ -828,7 +883,7 @@ export default function OrganizerEventRequests() {
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-2 bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 shadow-md">
                   <div className="text-sm text-slate-500 dark:text-slate-400 font-semibold">
                     Trang <span className="text-orange-600 dark:text-orange-400 font-extrabold">{currentPage}</span> /{' '}
-                    <span className="text-slate-800 dark:text-slate-300 font-extrabold">{currentTotalPages}</span> ({currentData.totalCount} hồ sơ)
+                    <span className="text-slate-800 dark:text-slate-300 font-extrabold">{currentTotalPages}</span> ({currentTotalCount} hồ sơ)
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -903,23 +958,23 @@ export default function OrganizerEventRequests() {
                   <AlertCircle className="w-6 h-6 animate-bounce" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  {eventToCancel.status === 'PENDING' || eventToCancel.status === 'UPDATING'
+                  {eventToCancel?.status === 'PENDING' || eventToCancel?.status === 'UPDATING'
                     ? 'Rút yêu cầu đăng ký'
                     : 'Yêu cầu hủy sự kiện'}
                 </h3>
               </div>
 
               <p className="text-sm text-slate-655 dark:text-slate-300 mb-4 leading-relaxed">
-                {eventToCancel.status === 'PENDING' ||
-                eventToCancel.status === 'UPDATING' ? (
+                {eventToCancel?.status === 'PENDING' ||
+                eventToCancel?.status === 'UPDATING' ? (
                   <>
                     Bạn có chắc chắn muốn rút lại yêu cầu đăng ký{' '}
-                    <strong className="text-slate-900 dark:text-slate-200">"{eventToCancel.title}"</strong>?
+                    <strong className="text-slate-900 dark:text-slate-200">"{eventToCancel?.title || 'Yêu cầu sự kiện'}"</strong>?
                   </>
                 ) : (
                   <>
                     Bạn có chắc chắn muốn dừng/hủy sự kiện{' '}
-                    <strong className="text-slate-900 dark:text-slate-200">"{eventToCancel.title}"</strong>?
+                    <strong className="text-slate-900 dark:text-slate-200">"{eventToCancel?.title || 'Yêu cầu sự kiện'}"</strong>?
                   </>
                 )}
               </p>
@@ -928,8 +983,8 @@ export default function OrganizerEventRequests() {
                 <p className="font-bold flex items-center gap-1 text-[11px] uppercase tracking-wide">
                   ⚠️ Lưu ý quan trọng:
                 </p>
-                {eventToCancel.status === 'PENDING' ||
-                eventToCancel.status === 'UPDATING' ? (
+                {eventToCancel?.status === 'PENDING' ||
+                eventToCancel?.status === 'UPDATING' ? (
                   <ul className="list-disc pl-4 space-y-1 font-medium text-slate-600 dark:text-slate-400">
                     <li>Hệ thống sẽ lập tức giải phóng sảnh và lịch đã giữ chỗ.</li>
                     <li>Yêu cầu này sẽ được hủy và không thể khôi phục lại trạng thái.</li>
@@ -957,7 +1012,7 @@ export default function OrganizerEventRequests() {
                   onClick={confirmCancelEvent}
                   className="px-5 py-2.5 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-all active:scale-95 shadow-sm hover:shadow text-sm"
                 >
-                  Có, {eventToCancel.status === 'APPROVED' ? 'hủy sự kiện' : 'rút lại'}
+                  Có, {eventToCancel?.status === 'APPROVED' ? 'hủy sự kiện' : 'rút lại'}
                 </button>
               </div>
             </div>
