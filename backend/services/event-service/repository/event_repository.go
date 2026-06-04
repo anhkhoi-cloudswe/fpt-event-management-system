@@ -1249,10 +1249,18 @@ func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) 
 	var maxSeats sql.NullInt64
 	var status sql.NullString
 
-	err := r.db.QueryRowContext(ctx, query, eventID).Scan(
-		&detail.EventID, &detail.Title, &description, &startTime, &endTime, &maxSeats, &status, &bannerURL,
-		&areaID, &speakerID,
-	)
+	var err error
+	for attempt := 1; attempt <= 3; attempt++ {
+		err = r.db.QueryRowContext(ctx, query, eventID).Scan(
+			&detail.EventID, &detail.Title, &description, &startTime, &endTime, &maxSeats, &status, &bannerURL,
+			&areaID, &speakerID,
+		)
+		if err == nil || err == sql.ErrNoRows {
+			break
+		}
+		log.Printf("[GetEventDetail] Core event lookup attempt %d failed for event %d: %v", attempt, eventID, err)
+		time.Sleep(time.Duration(attempt*50) * time.Millisecond)
+	}
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, areaID, speakerID, nil
@@ -1302,7 +1310,8 @@ func (r *EventRepository) loadEventDetailVenue(ctx context.Context, detail *mode
 		if err == sql.ErrNoRows {
 			return nil
 		}
-		return fmt.Errorf("failed to load event venue area: %w", err)
+		log.Printf("[GetEventDetail] Failed to load venue area %d: %v", areaID.Int64, err)
+		return nil
 	}
 
 	if venueName.Valid {
@@ -1341,7 +1350,8 @@ func (r *EventRepository) loadEventDetailSpeaker(ctx context.Context, detail *mo
 		if err == sql.ErrNoRows {
 			return nil
 		}
-		return fmt.Errorf("failed to load event speaker: %w", err)
+		log.Printf("[GetEventDetail] Failed to load speaker %d: %v", speakerID.Int64, err)
+		return nil
 	}
 
 	if speakerName.Valid {
@@ -1366,7 +1376,8 @@ func (r *EventRepository) loadEventDetailSpeaker(ctx context.Context, detail *mo
 func (r *EventRepository) loadEventDetailCollections(ctx context.Context, detail *models.EventDetailDto, eventID int) error {
 	tickets, err := r.GetCategoryTicketsByEventID(ctx, eventID)
 	if err != nil {
-		return fmt.Errorf("failed to load category tickets: %w", err)
+		log.Printf("[GetEventDetail] Failed to load category tickets for event %d: %v", eventID, err)
+		tickets = []models.CategoryTicket{}
 	}
 	if tickets == nil {
 		tickets = []models.CategoryTicket{}
@@ -1376,7 +1387,8 @@ func (r *EventRepository) loadEventDetailCollections(ctx context.Context, detail
 	if detail.AreaID != nil {
 		seats, err := r.GetSeatsByAreaID(ctx, *detail.AreaID, eventID)
 		if err != nil {
-			return fmt.Errorf("failed to load seats: %w", err)
+			log.Printf("[GetEventDetail] Failed to load seats for event %d area %d: %v", eventID, *detail.AreaID, err)
+			seats = []models.SeatResponse{}
 		}
 		if seats == nil {
 			seats = []models.SeatResponse{}
