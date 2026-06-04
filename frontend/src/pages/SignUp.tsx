@@ -46,7 +46,7 @@ export default function SignUp() {
   const [emailError, setEmailError] = useState('')
   const [passwordError, setPasswordError] = useState('')
 
-  const { setUser, setToken, refreshUser } = useAuth()
+  const { setUser, setToken, refreshUser, currentLanguage } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
 
@@ -196,6 +196,7 @@ export default function SignUp() {
       console.error('Send OTP error:', err)
       const errData = err.response?.data
       const retryAfter = errData?.retry_after
+      const isConflict = err.response?.status === 409
       
       let errorMessage = 'Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.'
       if (errData?.message) {
@@ -204,7 +205,9 @@ export default function SignUp() {
         errorMessage = errData.error
       }
 
-      if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
+      if (isConflict) {
+        setEmailError(errData?.message || errData?.error || (currentLanguage === 'en' ? 'This email is already registered.' : 'Email này đã được đăng ký trong hệ thống.'))
+      } else if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
         setRateLimitCountdown(retryAfter)
       } else if (errorMessage.toLowerCase().includes('email')) {
         setEmailError(errorMessage)

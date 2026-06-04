@@ -38,6 +38,8 @@ var (
 	registerGuard       = newForgotPasswordLimiter() // reuse same struct, independent state
 )
 
+const jsonContentTypeUTF8 = "application/json; charset=utf-8"
+
 type rateLimitEntry struct {
 	limiter  *rate.Limiter
 	lastSeen time.Time
@@ -244,7 +246,7 @@ func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGateway
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 			"Set-Cookie":   tokenCookie.String(),
 		},
@@ -304,7 +306,7 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 		},
 		Body: string(body),
@@ -333,7 +335,7 @@ func (h *AuthHandler) HandleLogout(ctx context.Context, request events.APIGatewa
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 			"Set-Cookie":   clearCookie.String(),
 		},
@@ -443,7 +445,7 @@ func createSuccessResponse(statusCode int, data interface{}) (events.APIGatewayP
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
 		Headers: map[string]string{
-			"Content-Type": "application/json",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 		},
 		Body: string(body),
@@ -457,7 +459,7 @@ func createErrorResponse(statusCode int, message string) (events.APIGatewayProxy
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
 		Headers: map[string]string{
-			"Content-Type": "application/json",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 		},
 		Body: string(body),
@@ -576,7 +578,7 @@ func createStatusResponse(statusCode int, status, message string) (events.APIGat
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
 		Headers: map[string]string{
-			"Content-Type": "application/json;charset=UTF-8",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 		},
 		Body: string(body),
@@ -596,7 +598,7 @@ func createRateLimitResponse(message string, retryAfterSec int) (events.APIGatew
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusTooManyRequests,
 		Headers: map[string]string{
-			"Content-Type": "application/json;charset=UTF-8",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 			"Retry-After":  fmt.Sprintf("%d", retryAfterSec),
 		},
@@ -617,7 +619,7 @@ func createCooldownResponse(cooldownRemaining int) (events.APIGatewayProxyRespon
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json;charset=UTF-8",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 		},
 		Body: string(body),
@@ -763,7 +765,7 @@ func (h *AuthHandler) HandleRegisterVerifyOTP(ctx context.Context, request event
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 			"Set-Cookie":   tokenCookie.String(),
 		},
@@ -911,7 +913,7 @@ func (h *AuthHandler) HandleGetStaffOrganizer(ctx context.Context, request event
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 		},
 		Body: string(body),
@@ -1074,7 +1076,7 @@ func (h *AuthHandler) HandleGoogleCallback(ctx context.Context, request events.A
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 			"Set-Cookie":   tokenCookie.String(),
 		},
@@ -1191,7 +1193,7 @@ func (h *AuthHandler) HandleCloseAccount(ctx context.Context, request events.API
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json",
+			"Content-Type": jsonContentTypeUTF8,
 			"Vary":         "Origin",
 			"Set-Cookie":   clearCookie.String(),
 		},
