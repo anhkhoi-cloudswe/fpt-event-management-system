@@ -1280,7 +1280,7 @@ func (r *EventRepository) GetSeatsByAreaID(ctx context.Context, areaID int, even
 			GROUP BY t.seat_id
 		) ts ON ts.seat_id = s.seat_id
 		WHERE s.area_id = $3
-		ORDER BY s.row_no ASC, CAST(s.col_no AS INTEGER) ASC, s.seat_code ASC
+		ORDER BY s.row_no ASC, CASE WHEN s.col_no ~ '^[0-9]+$' THEN s.col_no::integer ELSE 0 END ASC, s.col_no ASC, s.seat_code ASC
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, eventID, eventID, areaID)
