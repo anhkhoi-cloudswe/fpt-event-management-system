@@ -540,11 +540,9 @@ func (r *TicketRepository) GetCategoryTicketsByEventID(ctx context.Context, even
 			ct.price,
 			ct.max_quantity,
 			ct.status,
-			GREATEST(0, ct.max_quantity - COUNT(CASE WHEN t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN') THEN 1 END)) AS remaining
+			COALESCE(ct.max_quantity, 0) - COALESCE((SELECT COUNT(*) FROM Ticket t WHERE t.category_ticket_id = ct.category_ticket_id AND t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN')), 0) AS remaining
 		FROM Category_Ticket ct
-		LEFT JOIN Ticket t ON ct.category_ticket_id = t.category_ticket_id
 		WHERE ct.event_id = $1
-		GROUP BY ct.category_ticket_id, ct.event_id, ct.name, ct.description, ct.price, ct.max_quantity, ct.status
 		ORDER BY ct.price ASC
 	`
 
@@ -577,8 +575,16 @@ func (r *TicketRepository) GetCategoryTicketsByEventID(ctx context.Context, even
 			ct.Description = &description.String
 		}
 
+		remainingVal := 0
+		if ct.Remaining != nil {
+			remainingVal = *ct.Remaining
+		}
+		maxQtyVal := 0
+		if ct.MaxQuantity != nil {
+			maxQtyVal = *ct.MaxQuantity
+		}
 		fmt.Printf("[TICKET] Category: %s | Giá: %.0f VNĐ | Còn lại: %d/%d\n",
-			ct.Name, ct.Price, ct.Remaining, ct.MaxQuantity)
+			ct.Name, ct.Price, remainingVal, maxQtyVal)
 
 		tickets = append(tickets, ct)
 	}

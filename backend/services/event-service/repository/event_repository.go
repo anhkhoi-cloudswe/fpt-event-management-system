@@ -1206,15 +1206,13 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 }
 
 func (r *EventRepository) GetCategoryTicketsByEventID(ctx context.Context, eventID int) ([]models.CategoryTicket, error) {
-	// ✅ FIX: Tính Remaining = MaxQuantity - COUNT(sold/pending tickets)
+	// ✅ FIX: Tính Remaining = MaxQuantity - COUNT(sold/pending tickets) qua subquery để tương thích 100% strict groupings
 	query := `
 		SELECT
 			ct.category_ticket_id, ct.name, ct.description, ct.price, ct.max_quantity, ct.status,
-			COALESCE(GREATEST(0, COALESCE(ct.max_quantity, 0) - COUNT(CASE WHEN t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN') THEN 1 END)), 0) AS remaining
+			COALESCE(ct.max_quantity, 0) - COALESCE((SELECT COUNT(*) FROM Ticket t WHERE t.category_ticket_id = ct.category_ticket_id AND t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN')), 0) AS remaining
 		FROM Category_Ticket ct
-		LEFT JOIN Ticket t ON ct.category_ticket_id = t.category_ticket_id
 		WHERE ct.event_id = $1
-		GROUP BY ct.category_ticket_id, ct.name, ct.description, ct.price, ct.max_quantity, ct.status
 		ORDER BY ct.price ASC
 	`
 	rows, err := r.db.QueryContext(ctx, query, eventID)
@@ -1228,8 +1226,7 @@ func (r *EventRepository) GetCategoryTicketsByEventID(ctx context.Context, event
 		var ct models.CategoryTicket
 		var desc sql.NullString
 		var price sql.NullFloat64
-		var maxQty sql.NullInt64
-		if err := rows.Scan(&ct.CategoryTicketID, &ct.Name, &desc, &price, &maxQty, &ct.Status, &ct.Remaining); err != nil {
+		if err := rows.Scan(&ct.CategoryTicketID, &ct.Name, &desc, &price, &ct.MaxQuantity, &ct.Status, &ct.Remaining); err != nil {
 			return nil, fmt.Errorf("failed to scan category ticket: %w", err)
 		}
 		if desc.Valid {
@@ -1239,10 +1236,15 @@ func (r *EventRepository) GetCategoryTicketsByEventID(ctx context.Context, event
 			// Round price to avoid floating-point precision issues (e.g., 49999.999 -> 50000)
 			ct.Price = math.Round(price.Float64)
 		}
-		if maxQty.Valid {
-			ct.MaxQuantity = int(maxQty.Int64)
+		remainingVal := 0
+		if ct.Remaining != nil {
+			remainingVal = *ct.Remaining
 		}
-		log.Printf("[TICKET] Category: %s | Giá: %.0f VNĐ | Còn lại: %d/%d", ct.Name, ct.Price, ct.Remaining, ct.MaxQuantity)
+		maxQtyVal := 0
+		if ct.MaxQuantity != nil {
+			maxQtyVal = *ct.MaxQuantity
+		}
+		log.Printf("[TICKET] Category: %s | Giá: %.0f VNĐ | Còn lại: %d/%d", ct.Name, ct.Price, remainingVal, maxQtyVal)
 		cats = append(cats, ct)
 	}
 	return cats, rows.Err()
