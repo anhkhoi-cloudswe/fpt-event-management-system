@@ -117,6 +117,24 @@ type ApiTabResponse = {
 const isRecord = (value: unknown): value is Record<string, any> =>
   value !== null && typeof value === 'object'
 
+const getValidDateString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  return /\d{4}-\d{2}-\d{2}/.test(trimmed) ? trimmed : undefined
+}
+
+const formatSafeDate = (value: unknown): string => {
+  const dateStr = getValidDateString(value)
+  if (!dateStr) return '---'
+
+  const match = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/)
+  if (!match) return '---'
+
+  const [, year, month, day] = match
+  return `${day}/${month}/${year}`
+}
+
 const sanitizeEventRequest = (value: unknown): EventRequest | null => {
   if (!isRecord(value)) return null
 
@@ -131,14 +149,14 @@ const sanitizeEventRequest = (value: unknown): EventRequest | null => {
     requesterName: value.requesterName ?? value.requester_name ?? value.Organizer?.name,
     title: String(value.title ?? 'Yeu cau su kien'),
     description: value.description ? String(value.description) : undefined,
-    preferredStartTime: value.preferredStartTime ?? value.preferred_start_time,
-    preferredEndTime: value.preferredEndTime ?? value.preferred_end_time,
+    preferredStartTime: getValidDateString(value.preferredStartTime ?? value.preferred_start_time),
+    preferredEndTime: getValidDateString(value.preferredEndTime ?? value.preferred_end_time),
     expectedCapacity: Number(value.expectedCapacity ?? value.expected_capacity ?? 0) || undefined,
     status,
-    createdAt: value.createdAt ?? value.created_at,
+    createdAt: getValidDateString(value.createdAt ?? value.created_at),
     processedBy: Number(value.processedBy ?? value.processed_by ?? 0) || undefined,
     processedByName: value.processedByName ?? value.processed_by_name,
-    processedAt: value.processedAt ?? value.processed_at,
+    processedAt: getValidDateString(value.processedAt ?? value.processed_at),
     organizerNote: value.organizerNote ?? value.organizer_note,
     createdEventId: Number(value.createdEventId ?? value.created_event_id ?? 0) || undefined,
     eventStatus: value.eventStatus ?? value.event_status,
@@ -199,10 +217,10 @@ const convertToModalRequest = (request: EventRequest): EventRequestForModal => {
   return {
     ...request,
     description: request?.description || 'N/A',
-    preferredStartTime: request?.preferredStartTime || new Date().toISOString(),
-    preferredEndTime: request?.preferredEndTime || new Date().toISOString(),
+    preferredStartTime: getValidDateString(request?.preferredStartTime) || '',
+    preferredEndTime: getValidDateString(request?.preferredEndTime) || '',
     expectedCapacity: request?.expectedCapacity || 0,
-    createdAt: request?.createdAt || new Date().toISOString(),
+    createdAt: getValidDateString(request?.createdAt) || '',
   }
 }
 
@@ -789,7 +807,7 @@ export default function OrganizerEventRequests() {
                         {req?.createdAt && (
                           <div className="flex items-center gap-1.5">
                             <Calendar className="w-4 h-4 text-orange-500" />
-                            <span>Gửi: <strong className="text-slate-700 dark:text-slate-300">{new Date(req.createdAt).toLocaleDateString('vi-VN')}</strong></span>
+                            <span>Gửi: <strong className="text-slate-700 dark:text-slate-300">{formatSafeDate(req?.createdAt)}</strong></span>
                           </div>
                         )}
                         {req?.expectedCapacity && (
@@ -801,7 +819,7 @@ export default function OrganizerEventRequests() {
                         {req?.preferredStartTime && (
                           <div className="flex items-center gap-1.5">
                             <Clock className="w-4 h-4 text-orange-500" />
-                            <span>Dự kiến: <strong className="text-slate-700 dark:text-slate-300">{new Date(req.preferredStartTime).toLocaleDateString('vi-VN')}</strong></span>
+                            <span>Dự kiến: <strong className="text-slate-700 dark:text-slate-300">{formatSafeDate(req?.preferredStartTime)}</strong></span>
                           </div>
                         )}
                         {req?.processedByName && (

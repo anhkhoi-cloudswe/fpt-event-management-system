@@ -84,6 +84,12 @@ const getStatusClass = (status: EventRequestStatus) => {
   }
 }
 
+const safeFormatWallClock = (value: unknown): string => {
+  if (typeof value !== 'string' || !value.trim()) return '---'
+  const formatted = formatWallClockTimeFromRFC3339(value)
+  return formatted || '---'
+}
+
 // ===================== MAIN COMPONENT =====================
 
 export function EventRequestDetailModal({
@@ -236,7 +242,7 @@ export function EventRequestDetailModal({
                 <div>
                   <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Thời gian bắt đầu mong muốn</p>
                   <p className="font-medium text-gray-900 dark:text-slate-200">
-                    {formatWallClockTimeFromRFC3339(request.preferredStartTime)}
+                    {safeFormatWallClock(request?.preferredStartTime)}
                   </p>
                 </div>
               </div>
@@ -249,7 +255,7 @@ export function EventRequestDetailModal({
                 <div>
                   <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Thời gian kết thúc mong muốn</p>
                   <p className="font-medium text-gray-900 dark:text-slate-200">
-                    {formatWallClockTimeFromRFC3339(request.preferredEndTime)}
+                    {safeFormatWallClock(request?.preferredEndTime)}
                   </p>
                 </div>
               </div>
@@ -262,7 +268,7 @@ export function EventRequestDetailModal({
                 <div>
                   <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Ngày tạo</p>
                   <p className="font-medium text-gray-900 dark:text-slate-200">
-                    {formatWallClockTimeFromRFC3339(request.createdAt)}
+                    {safeFormatWallClock(request?.createdAt)}
                   </p>
                 </div>
               </div>
@@ -276,7 +282,7 @@ export function EventRequestDetailModal({
                   <div>
                     <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Ngày xử lý</p>
                     <p className="font-medium text-gray-900 dark:text-slate-200">
-                      {formatWallClockTimeFromRFC3339(request.processedAt)}
+                      {safeFormatWallClock(request?.processedAt)}
                     </p>
                   </div>
                 </div>
