@@ -1127,6 +1127,11 @@ func (h *AuthHandler) HandleUpdatePassword(ctx context.Context, request events.A
 		return createErrorResponse(http.StatusUnauthorized, "User is not authenticated")
 	}
 
+	user, err := h.useCase.GetUserByEmail(ctx, email)
+	if err != nil || user == nil {
+		return createStatusResponse(http.StatusNotFound, "fail", "User not found")
+	}
+
 	var req models.UpdatePasswordRequest
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Invalid request body")
@@ -1134,12 +1139,6 @@ func (h *AuthHandler) HandleUpdatePassword(ctx context.Context, request events.A
 
 	if req.Password == "" {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Máº­t kháº©u khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
-	}
-
-	// Fetch user details to inspect password hash
-	user, err := h.useCase.GetUserByEmail(ctx, email)
-	if err != nil || user == nil {
-		return createStatusResponse(http.StatusNotFound, "fail", "User not found")
 	}
 
 	// Only require old password if user already has a password hash set
