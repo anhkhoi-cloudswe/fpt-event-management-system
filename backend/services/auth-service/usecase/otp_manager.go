@@ -50,9 +50,33 @@ func (m *OTPManager) GenerateOTP(email string) string {
 		ExpiresAt: timeutil.GetNow().Add(5 * time.Minute).Unix(),
 		Attempts:  0,
 		Used:      false,
+		CreatedAt: timeutil.GetNow().Unix(),
 	}
 
 	return otp
+}
+
+// GetRemainingCooldown trả về số giây cooldown còn lại nếu còn trong vòng 60s kể từ lúc tạo OTP
+func (m *OTPManager) GetRemainingCooldown(email string) int64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	record, exists := m.records[email]
+	if !exists {
+		return 0
+	}
+
+	// Nếu OTP đã được sử dụng, không cần cooldown
+	if record.Used {
+		return 0
+	}
+
+	elapsed := timeutil.GetNow().Unix() - record.CreatedAt
+	if elapsed < 60 && elapsed >= 0 {
+		return 60 - elapsed
+	}
+
+	return 0
 }
 
 // VerifyOTP kiểm tra OTP có hợp lệ không

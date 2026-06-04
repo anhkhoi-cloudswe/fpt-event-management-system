@@ -176,10 +176,17 @@ export default function SignUp() {
         recaptchaToken
       })
 
-      if (response.data.status === 'success') {
-        showToast('success', 'Mã xác thực OTP đã được gửi đến email của bạn!')
-        setStep('otp')
-        setOtpCountdown(60)
+      if (response.data.status === 'success' || response.data.success === true) {
+        const cooldownRemaining = response.data.cooldown_remaining
+        if (cooldownRemaining && typeof cooldownRemaining === 'number' && cooldownRemaining > 0) {
+          showToast('success', 'Mã OTP đang hoạt động. Vui lòng kiểm tra email của bạn!')
+          setStep('otp')
+          setOtpCountdown(cooldownRemaining)
+        } else {
+          showToast('success', 'Mã xác thực OTP đã được gửi đến email của bạn!')
+          setStep('otp')
+          setOtpCountdown(60)
+        }
         setRecaptchaToken(null)
         recaptchaRef.current?.reset()
       } else {
@@ -223,9 +230,15 @@ export default function SignUp() {
         email: formData.email
       })
 
-      if (response.data.status === 'success') {
-        showToast('success', 'Đã gửi lại mã OTP tới email của bạn!')
-        setOtpCountdown(60)
+      if (response.data.status === 'success' || response.data.success === true) {
+        const cooldownRemaining = response.data.cooldown_remaining
+        if (cooldownRemaining && typeof cooldownRemaining === 'number' && cooldownRemaining > 0) {
+          showToast('success', 'Mã OTP đang hoạt động. Vui lòng kiểm tra email của bạn!')
+          setOtpCountdown(cooldownRemaining)
+        } else {
+          showToast('success', 'Đã gửi lại mã OTP tới email của bạn!')
+          setOtpCountdown(60)
+        }
         setOtpValue('')
       } else {
         setError(response.data.message || 'Không thể gửi lại OTP. Vui lòng thử lại.')

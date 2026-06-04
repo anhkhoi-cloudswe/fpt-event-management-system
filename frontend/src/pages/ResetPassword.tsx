@@ -111,7 +111,7 @@ export default function ResetPassword() {
       console.log('Response status:', response.status)
       console.log('Full response:', response)
 
-      if (response.data && response.data.status === 'success') {
+      if (response.data && (response.data.status === 'success' || response.data.success === true)) {
         // Lưu token nếu backend trả về
         if (response.data.token) {
           console.log('Token received:', response.data.token)
@@ -120,9 +120,15 @@ export default function ResetPassword() {
           console.log('No token in response, will use email for reset')
         }
         setStep('otp')
-        setOtpCountdown(60)
+        const cooldownRemaining = response.data.cooldown_remaining
+        if (cooldownRemaining && typeof cooldownRemaining === 'number' && cooldownRemaining > 0) {
+          showToast('success', 'Mã OTP đang hoạt động. Vui lòng kiểm tra email của bạn!')
+          setOtpCountdown(cooldownRemaining)
+        } else {
+          setOtpCountdown(60)
+          showToast('success', 'Mã OTP đã được gửi đến email của bạn!')
+        }
         setError('')
-        showToast('success', 'Mã OTP đã được gửi đến email của bạn!')
         recaptchaRef.current?.reset()
         setRecaptchaToken(null)
       } else {
@@ -154,10 +160,16 @@ export default function ResetPassword() {
         email: formData.email
       })
 
-      if (response.data && response.data.status === 'success') {
-        setOtpCountdown(60)
+      if (response.data && (response.data.status === 'success' || response.data.success === true)) {
+        const cooldownRemaining = response.data.cooldown_remaining
+        if (cooldownRemaining && typeof cooldownRemaining === 'number' && cooldownRemaining > 0) {
+          showToast('success', 'Mã OTP đang hoạt động. Vui lòng kiểm tra email của bạn!')
+          setOtpCountdown(cooldownRemaining)
+        } else {
+          setOtpCountdown(60)
+          showToast('success', 'Mã OTP mới đã được gửi lại!')
+        }
         setError('')
-        showToast('success', 'Mã OTP mới đã được gửi lại!')
       }
     } catch (err: any) {
       console.error('Resend OTP Error:', err)

@@ -17,6 +17,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// OTPCooldownError represents remaining cooldown seconds before a new OTP can be requested
+type OTPCooldownError struct {
+	Remaining int
+}
+
+func (e *OTPCooldownError) Error() string {
+	return fmt.Sprintf("OTP active: cooldown remaining %d seconds", e.Remaining)
+}
+
 // AuthUseCase handles authentication business logic
 type AuthUseCase struct {
 	userRepo *repository.UserRepository
@@ -202,6 +211,9 @@ func (uc *AuthUseCase) ForgotPassword(ctx context.Context, email string) (string
 
 	// Sinh OTP
 	otpManager := GetOTPManager()
+	if cooldown := otpManager.GetRemainingCooldown(email); cooldown > 0 {
+		return "", &OTPCooldownError{Remaining: int(cooldown)}
+	}
 	otp := otpManager.GenerateOTP(email)
 
 	// Return OTP (caller sáº½ gá»­i email)
@@ -292,6 +304,9 @@ func (uc *AuthUseCase) GenerateRegisterOTP(ctx context.Context, req models.Regis
 
 	// Store pending registration
 	otpManager := GetOTPManager()
+	if cooldown := otpManager.GetRemainingCooldown(req.Email); cooldown > 0 {
+		return "", &OTPCooldownError{Remaining: int(cooldown)}
+	}
 	otp := otpManager.GenerateOTP(req.Email)
 
 	pendingRegistrations[req.Email] = &models.PendingRegistration{
@@ -375,6 +390,9 @@ func (uc *AuthUseCase) ResendRegisterOTP(ctx context.Context, email string) (str
 	}
 
 	otpManager := GetOTPManager()
+	if cooldown := otpManager.GetRemainingCooldown(email); cooldown > 0 {
+		return "", &OTPCooldownError{Remaining: int(cooldown)}
+	}
 	otp := otpManager.GenerateOTP(email)
 
 	return otp, nil

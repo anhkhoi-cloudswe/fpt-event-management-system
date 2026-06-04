@@ -25,6 +25,7 @@ type OTPRecord struct {
 	ExpiresAt int64 // Unix timestamp
 	Attempts  int   // Số lần nhập sai
 	Used      bool  // Đã dùng chưa
+	CreatedAt int64 // Unix timestamp
 }
 
 // PasswordResetResponse - Response chung

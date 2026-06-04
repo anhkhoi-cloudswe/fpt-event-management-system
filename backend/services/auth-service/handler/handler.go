@@ -507,6 +507,9 @@ func (h *AuthHandler) HandleForgotPassword(ctx context.Context, request events.A
 	// Generate OTP
 	otp, err := h.useCase.ForgotPassword(ctx, req.Email)
 	if err != nil {
+		if cooldownErr, ok := err.(*usecase.OTPCooldownError); ok {
+			return createCooldownResponse(cooldownErr.Remaining)
+		}
 		// Check specific error types
 		if err.Error() == "email khÃ´ng tá»“n táº¡i trong há»‡ thá»‘ng" {
 			return createStatusResponse(http.StatusNotFound, "fail", err.Error())
@@ -601,6 +604,26 @@ func createRateLimitResponse(message string, retryAfterSec int) (events.APIGatew
 	}, nil
 }
 
+// createCooldownResponse returns a 200 OK response with success=true and cooldown_remaining
+func createCooldownResponse(cooldownRemaining int) (events.APIGatewayProxyResponse, error) {
+	resp := map[string]interface{}{
+		"success":            true,
+		"status":             "success",
+		"message":            "OTP active",
+		"cooldown_remaining": cooldownRemaining,
+	}
+	body, _ := json.Marshal(resp)
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type": "application/json;charset=UTF-8",
+			"Vary":         "Origin",
+		},
+		Body: string(body),
+	}, nil
+}
+
 // ============================================================
 // HandleRegisterSendOTP - POST /api/register/send-otp
 // Register step 1 - Send OTP to email
@@ -666,6 +689,9 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 	// Generate and send OTP
 	otp, err := h.useCase.GenerateRegisterOTP(ctx, req)
 	if err != nil {
+		if cooldownErr, ok := err.(*usecase.OTPCooldownError); ok {
+			return createCooldownResponse(cooldownErr.Remaining)
+		}
 		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 	}
 
@@ -763,6 +789,9 @@ func (h *AuthHandler) HandleRegisterResendOTP(ctx context.Context, request event
 	// Resend OTP
 	otp, err := h.useCase.ResendRegisterOTP(ctx, req.Email)
 	if err != nil {
+		if cooldownErr, ok := err.(*usecase.OTPCooldownError); ok {
+			return createCooldownResponse(cooldownErr.Remaining)
+		}
 		errMsg := err.Error()
 		switch errMsg {
 		case "KhÃ´ng cÃ³ Ä‘Äƒng kÃ½ Ä‘ang chá» cho email nÃ y":
@@ -914,8 +943,8 @@ func sendOTPEmail(ctx context.Context, recipient, otp, purpose string) error {
 			// Fallback to local email service on API failure
 			return emailService.SendOTPEmail(recipient, otp, purpose)
 		}
-		if statusCode != http.StatusOK {
-			log.Warn("Notification API returned non-200, falling back to local email",
+		if statusCode != http.StatusOK && statusCode != http.StatusAccepted {
+			log.Warn("Notification API returned non-200/202, falling back to local email",
 				"status", statusCode, "body", string(respBody), "email", recipient)
 			return emailService.SendOTPEmail(recipient, otp, purpose)
 		}
