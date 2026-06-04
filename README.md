@@ -110,42 +110,6 @@ During architectural optimization, the legacy `Wallet` decimal column was droppe
 
 ---
 
-## ⚙️ Environment Configuration Template
-
-To run this project locally, copy `.env.example` to `.env` at the root and fill in the values. **Do not commit actual credentials to the repository.**
-
-```env
-# Database Settings
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=your_secure_db_password
-DB_NAME=fpt_event_db
-
-# Security & JWT
-JWT_SECRET=your_jwt_signing_secret_key
-INTERNAL_AUTH_TOKEN=shared_jwt_gateway_internal_auth_token
-
-# MoMo Integration
-MOMO_PARTNER_CODE=your_momo_partner_code
-MOMO_ACCESS_KEY=your_momo_access_key
-MOMO_SECRET_KEY=your_momo_secret_key
-MOMO_REDIRECT_URL=http://localhost:3000/payment-success
-MOMO_IPN_URL=http://localhost:8080/api/tickets/webhook/momo
-
-# VNPay Integration
-VNPAY_TMN_CODE=your_vnpay_tmn_code
-VNPAY_HASH_SECRET=your_vnpay_hash_secret
-
-# Third-Party Integrations
-AWS_REGION=ap-southeast-1
-S3_BUCKET=fpt-event-media-bucket
-SMTP_USERNAME=your_smtp_username
-SMTP_PASSWORD=your_smtp_password
-```
-
----
-
 ## 🚀 Running Locally
 
 ### Option 1: Docker Compose (Recommended)
