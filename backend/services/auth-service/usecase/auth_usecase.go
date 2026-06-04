@@ -10,6 +10,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/fpt-event-services/common/hash"
 	"github.com/fpt-event-services/common/jwt"
 	"github.com/fpt-event-services/common/validator"
 	"github.com/fpt-event-services/services/auth-service/models"
@@ -300,7 +301,10 @@ func (uc *AuthUseCase) GenerateRegisterOTP(ctx context.Context, req models.Regis
 	}
 
 	// Hash password for storage
-	hashedPassword := hashPassword(req.Password)
+	hashedPassword, err := hash.HashPassword(req.Password)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %w", err)
+	}
 
 	// Store pending registration
 	otpManager := GetOTPManager()
@@ -441,11 +445,7 @@ func (uc *AuthUseCase) GetStaffAndOrganizers(ctx context.Context) (*models.Staff
 	}, nil
 }
 
-// hashPassword hashes password using SHA-256 (same as Java)
-func hashPassword(password string) string {
-	// Import from common/hash package
-	return password // Will be hashed in repository
-}
+
 
 // LoginOrRegisterGoogle handles Google sign-in auth response
 func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name string) (*models.AuthResponse, error) {
