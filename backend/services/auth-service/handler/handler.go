@@ -83,7 +83,7 @@ func (l *forgotPasswordLimiter) allowKey(store map[string]*rateLimitEntry, key s
 	entry, ok := store[key]
 	if !ok {
 		entry = &rateLimitEntry{
-			limiter: rate.NewLimiter(rate.Every(2*time.Minute), 1),
+			limiter: rate.NewLimiter(rate.Every(1*time.Minute), 3),
 		}
 		store[key] = entry
 	}
@@ -115,17 +115,17 @@ func (l *forgotPasswordLimiter) cleanup(now time.Time) {
 func (l *forgotPasswordLimiter) retryAfterSeconds(key string, store map[string]*rateLimitEntry) int {
 	entry, ok := store[key]
 	if !ok {
-		return 120 // default 2 min window
+		return 60 // default 1 min window
 	}
 	res := entry.limiter.Reserve()
 	res.Cancel() // don't consume the token
 	d := res.Delay()
 	if d <= 0 {
-		return 120
+		return 60
 	}
 	sec := int(d.Seconds()) + 1 // +1 to round up
-	if sec > 120 {
-		sec = 120
+	if sec > 60 {
+		sec = 60
 	}
 	return sec
 }
