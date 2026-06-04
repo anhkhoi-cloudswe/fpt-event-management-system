@@ -315,7 +315,7 @@ export default function Layout() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 md:hidden"
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 md:hidden"
             >
               <Menu size={20} />
             </button>
@@ -455,7 +455,7 @@ export default function Layout() {
                     <Link
                       to="/dashboard/profile"
                       onClick={() => setSettingsOpen(false)}
-                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${isDarkMode ? 'hover:bg-slate-850 text-slate-300' : 'hover:bg-slate-50 text-slate-650'
+                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${isDarkMode ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-50 text-slate-650'
                         }`}
                     >
                       <User size={14} className="text-slate-400" />
@@ -467,7 +467,7 @@ export default function Layout() {
                         setSettingsOpen(false)
                         navigate('/dashboard/profile?tab=security')
                       }}
-                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${isDarkMode ? 'hover:bg-slate-850 text-slate-300' : 'hover:bg-slate-50 text-slate-650'
+                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${isDarkMode ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-50 text-slate-650'
                         }`}
                     >
                       <Lock size={14} className="text-slate-400" />

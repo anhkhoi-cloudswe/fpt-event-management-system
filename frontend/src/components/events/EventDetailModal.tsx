@@ -585,7 +585,7 @@ export function EventDetailModal({
 
                   {/* Speaker Bio dài -> hiển thị block riêng full width */}
                   {event.speakerName && event.speakerBio && event.speakerBio.length > 50 && (
-                    <div className="mb-6 pb-6 border-b dark:border-slate-850 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-850 dark:to-slate-900/60 p-6 rounded-lg border dark:border-slate-800">
+                    <div className="mb-6 pb-6 border-b dark:border-slate-800 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-900/60 p-6 rounded-lg border dark:border-slate-800">
                       <div className="flex items-start gap-6">
                         {event.speakerAvatarUrl && (
                           <img
@@ -664,7 +664,7 @@ export function EventDetailModal({
                               }
                               className={`flex items-center justify-between gap-4 py-2 px-3 rounded-lg border cursor-pointer transition ${isSelectedTicket
                                 ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/30'
-                                : 'border-transparent dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-850'
+                                : 'border-transparent dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60 dark:hover:text-white'
                                 }`}
                             >
                               <div className="flex-1 min-w-0">

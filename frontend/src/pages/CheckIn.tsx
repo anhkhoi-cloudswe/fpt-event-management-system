@@ -705,7 +705,7 @@ export default function CheckIn() {
   // ===========================================================================
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-850 p-4 sm:p-6 shadow-2xl text-slate-900 dark:text-slate-100 animate-fade-in-up">
+    <div className="bg-slate-50 dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-2xl text-slate-900 dark:text-slate-100 animate-fade-in-up">
       {/* ===== TIÊU ĐỀ TRANG ===== */}
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 dark:border-slate-800/60 pb-4 mb-4 gap-4">
         <div>
@@ -751,7 +751,7 @@ export default function CheckIn() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* CỘT TRÁI: KHU VỰC QUÉT MÃ QR VÀ NHẬP THỦ CÔNG */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850/80 rounded-3xl p-4 shadow-md flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 shadow-md flex flex-col justify-between">
           <div>
             <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
               <Scan className="w-4.5 h-4.5 text-orange-500" />
@@ -863,7 +863,7 @@ export default function CheckIn() {
         </div>
 
         {/* CỘT PHẢI: KẾT QUẢ CHECK-IN/CHECK-OUT */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850/80 rounded-3xl p-4 shadow-md flex flex-col justify-between min-h-[350px] max-h-[400px] overflow-y-auto">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 shadow-md flex flex-col justify-between min-h-[350px] max-h-[400px] overflow-y-auto">
           <div>
             <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
               <CheckCircle className="w-4.5 h-4.5 text-orange-550" />
@@ -886,7 +886,7 @@ export default function CheckIn() {
                 {result.success ? (
                   /* THÀNH CÔNG CARD */
                   <div className="space-y-4">
-                    <div className="text-center py-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-850 rounded-2xl p-5 relative overflow-hidden">
+                    <div className="text-center py-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 relative overflow-hidden">
                       <div className="absolute inset-0 bg-emerald-500/5 opacity-40 pointer-events-none" />
                       <CheckCircle
                         className={`w-14 h-14 mx-auto mb-3.5 animate-bounce ${isCheckIn ? 'text-emerald-500' : 'text-purple-500'}`}

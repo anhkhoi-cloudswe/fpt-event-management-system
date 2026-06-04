@@ -350,7 +350,7 @@ export default function MyBills() {
                   {bills.map((bill, index) => (
                     <tr 
                       key={bill.id} 
-                      className="hover:bg-orange-50/10 dark:hover:bg-slate-850/50 transition-all duration-300 group"
+                      className="hover:bg-orange-50/10 dark:hover:bg-slate-800/50 transition-all duration-300 group"
                       style={{ animationDelay: `${index * 40}ms` }}
                     >
                       {/* Cột mã hóa đơn */}

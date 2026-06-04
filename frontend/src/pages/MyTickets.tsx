@@ -443,7 +443,7 @@ export default function MyTickets() {
               placeholder={currentLanguage === 'en' ? 'Search by event name...' : 'Tìm kiếm theo tên sự kiện...'}
               value={searchInput}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 dark:text-white font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+              className="w-full pl-11 pr-4 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 dark:text-white font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
             />
           </div>
 
@@ -560,8 +560,8 @@ export default function MyTickets() {
                   style={{ animationDelay: `${index * 80}ms` }}
                 >
                   {/* Decorative Ticket Punchout circles on left/right for passbook look */}
-                  <div className="absolute left-0 top-[68%] -translate-y-1/2 w-4 h-8 bg-slate-50 dark:bg-slate-950 border-r border-slate-200/50 dark:border-slate-850 rounded-r-full z-10" />
-                  <div className="absolute right-0 top-[68%] -translate-y-1/2 w-4 h-8 bg-slate-50 dark:bg-slate-950 border-l border-slate-200/50 dark:border-slate-850 rounded-l-full z-10" />
+                  <div className="absolute left-0 top-[68%] -translate-y-1/2 w-4 h-8 bg-slate-50 dark:bg-slate-950 border-r border-slate-200/50 dark:border-slate-800 rounded-r-full z-10" />
+                  <div className="absolute right-0 top-[68%] -translate-y-1/2 w-4 h-8 bg-slate-50 dark:bg-slate-950 border-l border-slate-200/50 dark:border-slate-800 rounded-l-full z-10" />
 
                   <div>
                     {/* Header Image/Banner */}

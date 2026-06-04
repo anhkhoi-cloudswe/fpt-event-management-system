@@ -799,7 +799,7 @@ export default function Profile() {
                 {/* Theme selector */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/50 dark:border-slate-800/60">
                   <div>
-                    <h4 className="text-sm font-black text-slate-850 dark:text-slate-100">{t.appTheme}</h4>
+                    <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">{t.appTheme}</h4>
                     <p className="text-xs text-slate-400 mt-0.5">{t.themeHelp}</p>
                   </div>
                   <button
@@ -824,7 +824,7 @@ export default function Profile() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-sm font-black text-slate-850 dark:text-slate-100">{t.timezoneTitle}</h4>
+                      <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">{t.timezoneTitle}</h4>
                       <p className="text-xs text-slate-400 mt-0.5">{t.timezoneHelp}</p>
                     </div>
                   </div>

@@ -248,7 +248,7 @@ export function SeatGrid({
      * -> text-transparent để ẩn seatCode (trông như khóa toàn bộ)
      */
     if (gridDisabled && !isSelected) {
-      return 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-850 cursor-not-allowed text-transparent'
+      return 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 cursor-not-allowed text-transparent'
     }
 
     // Selected/Processing: bg-green-500 animate-pulse text-white
@@ -262,7 +262,7 @@ export function SeatGrid({
      * -> text-transparent để ẩn seatCode
      */
     if (maxReached && !isSelected) {
-      return 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-850 cursor-not-allowed text-transparent'
+      return 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 cursor-not-allowed text-transparent'
     }
 
     // Nếu ghế đã được đặt/chiếm => bg-red-500 text-white cursor-not-allowed

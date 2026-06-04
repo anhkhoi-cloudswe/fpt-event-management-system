@@ -1158,7 +1158,7 @@ export default function Dashboard() {
 
             onChange={(e) => handleSearchChange(e.target.value)}
 
-            className="w-full pl-11 pr-4 py-3 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white/50 dark:bg-slate-850/50 backdrop-blur-sm hover:border-orange-300 dark:hover:border-slate-700 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-white placeholder-slate-400 font-semibold"
+            className="w-full pl-11 pr-4 py-3 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm hover:border-orange-300 dark:hover:border-slate-700 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-white placeholder-slate-400 font-semibold"
 
           />
 

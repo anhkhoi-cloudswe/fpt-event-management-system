@@ -111,29 +111,29 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           {monthNames[month]} {year}
         </h2>
         <div className="flex items-center gap-2">
           <button
             onClick={goToToday}
-            className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+            className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
           >
             Hôm nay
           </button>
           <button
             onClick={prevMonth}
-            className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 rounded-md transition-colors"
             aria-label="Previous month"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={nextMonth}
-            className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 rounded-md transition-colors"
             aria-label="Next month"
           >
             <ChevronRight className="w-5 h-5" />
@@ -147,7 +147,7 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
         {dayNames.map(day => (
           <div
             key={day}
-            className="text-center text-sm font-semibold text-gray-600 py-2"
+            className="text-center text-sm font-semibold text-gray-650 dark:text-slate-400 py-2"
           >
             {day}
           </div>
@@ -163,20 +163,20 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
           return (
             <div
               key={index}
-              className={`min-h-[100px] border border-gray-200 p-2 ${!isCurrentMonth
-                  ? 'bg-gray-50 opacity-50'
+              className={`min-h-[100px] border border-gray-200 dark:border-slate-800 p-2 ${!isCurrentMonth
+                  ? 'bg-gray-50 dark:bg-slate-950/40 opacity-50'
                   : hasEvents
-                    ? 'bg-gray-100'
-                    : 'bg-white'
+                    ? 'bg-gray-100 dark:bg-slate-800/40'
+                    : 'bg-white dark:bg-slate-900'
                 } ${today ? 'ring-2 ring-blue-500' : ''}`}
             >
               {/* Day number */}
               <div
                 className={`text-sm font-semibold mb-1 ${!isCurrentMonth
-                    ? 'text-gray-400'
+                    ? 'text-gray-400 dark:text-slate-600'
                     : today
                       ? 'text-blue-600'
-                      : 'text-gray-900'
+                      : 'text-gray-900 dark:text-slate-200'
                   }`}
               >
                 {day}
@@ -233,15 +233,15 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
       {/* All Events Modal */}
       {selectedDayEvents && selectedDay && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-xl font-bold text-gray-900">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                 Sự kiện ngày {selectedDay} {monthNames[month]} {year}
               </h3>
               <button
                 onClick={handleCloseModal}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 rounded-full transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -257,7 +257,7 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
                       onEventClick?.(event)
                       handleCloseModal()
                     }}
-                    className="w-full text-left border border-gray-200 rounded-lg overflow-hidden hover:shadow-md hover:border-blue-400 transition-all"
+                    className="w-full text-left border border-gray-200 dark:border-slate-800 rounded-lg overflow-hidden hover:shadow-md dark:hover:border-blue-500 transition-all bg-white dark:bg-slate-900"
                   >
                     <div className="flex gap-3 p-3">
                       {event.bannerUrl ? (
@@ -272,10 +272,10 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-gray-900 mb-1 line-clamp-2">
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2">
                           {event.title}
                         </h4>
-                        <p className="text-sm text-gray-600 mb-1 line-clamp-2">
+                        <p className="text-sm text-gray-655 dark:text-gray-300 mb-1 line-clamp-2">
                           {event.description}
                         </p>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -303,13 +303,13 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
       )}
 
       {/* Legend */}
-      <div className="mt-4 flex items-center gap-4 text-sm text-gray-600">
+      <div className="mt-4 flex items-center gap-4 text-sm text-gray-600 dark:text-slate-400">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 border-2 border-blue-500 rounded"></div>
           <span>Hôm nay</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-blue-100 rounded"></div>
+          <div className="w-4 h-4 bg-blue-100 dark:bg-slate-800/40 rounded"></div>
           <span>Có sự kiện</span>
         </div>
       </div>
