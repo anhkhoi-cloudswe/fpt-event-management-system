@@ -3,8 +3,6 @@
 // - useEffect: chạy side-effect (gọi API) khi component mount
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useAuth } from '../contexts/AuthContext'
-import { useAuth } from '../contexts/AuthContext'
 
 // Import useSearchParams để quản lý URL params
 import { useSearchParams } from 'react-router-dom'

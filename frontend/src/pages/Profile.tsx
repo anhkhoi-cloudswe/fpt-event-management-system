@@ -1,7 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useWallet } from '../hooks/useWallet'
-import { useWallet } from '../hooks/useWallet'
-import { useWallet } from '../hooks/useWallet'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import {
