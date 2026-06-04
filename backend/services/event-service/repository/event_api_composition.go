@@ -412,6 +412,43 @@ func (r *EventRepository) GetAllEventsSeparatedWithPaginationComposed(ctx contex
 func (r *EventRepository) GetEventDetailComposed(ctx context.Context, eventID int) (*models.EventDetailDto, error) {
 	log.Printf("[API_COMPOSITION] GetEventDetailComposed: eventID=%d", eventID)
 
+	{
+		detail, areaID, speakerID, err := r.loadEventDetailCore(ctx, eventID)
+		if err != nil || detail == nil {
+			return detail, err
+		}
+
+		if err := r.loadEventDetailSpeaker(ctx, detail, speakerID); err != nil {
+			return nil, err
+		}
+
+		if areaID.Valid {
+			aid := int(areaID.Int64)
+			detail.AreaID = &aid
+
+			areaInfo, err := fetchAreaWithVenue(ctx, aid)
+			if err != nil {
+				log.Printf("[API_COMPOSITION] Failed to fetch area %d: %v", aid, err)
+			} else {
+				detail.AreaName = &areaInfo.AreaName
+				detail.Floor = areaInfo.Floor
+				if areaInfo.Capacity != nil {
+					detail.AreaCapacity = areaInfo.Capacity
+				}
+				if areaInfo.VenueName != nil {
+					detail.VenueName = areaInfo.VenueName
+				}
+			}
+		}
+
+		if err := r.loadEventDetailCollections(ctx, detail, eventID); err != nil {
+			return nil, err
+		}
+
+		log.Printf("[API_COMPOSITION] GetEventDetail: eventID=%d, venue=%v", eventID, detail.VenueName)
+		return detail, nil
+	}
+
 	// Query Event + Speaker ONLY (Speaker thuộc Event domain)
 	query := `
 		SELECT

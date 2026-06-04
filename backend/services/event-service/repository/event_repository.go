@@ -1083,6 +1083,34 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 		return r.GetEventDetailComposed(ctx, eventID)
 	}
 
+	{
+		detail, areaID, speakerID, err := r.loadEventDetailCore(ctx, eventID)
+		if err != nil || detail == nil {
+			return detail, err
+		}
+
+		log.Printf("[GetEventDetail] EventID=%d: e.speaker_id from DB = %v (Valid=%v)", eventID, speakerID.Int64, speakerID.Valid)
+
+		if err := r.loadEventDetailVenue(ctx, detail, areaID); err != nil {
+			return nil, err
+		}
+		if err := r.loadEventDetailSpeaker(ctx, detail, speakerID); err != nil {
+			return nil, err
+		}
+		if err := r.loadEventDetailCollections(ctx, detail, eventID); err != nil {
+			return nil, err
+		}
+
+		speakerNameVal := "nil"
+		if detail.SpeakerName != nil {
+			speakerNameVal = *detail.SpeakerName
+		}
+		// Security: Don't log speaker PII; only log metadata.
+		log.Printf("[GetEventDetail] EventID=%d - Event details retrieved (speaker: %s)", eventID, speakerNameVal)
+
+		return detail, nil
+	}
+
 	query := `
 		SELECT
 			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
@@ -1205,6 +1233,172 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 	return &detail, nil
 }
 
+func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) (*models.EventDetailDto, sql.NullInt64, sql.NullInt64, error) {
+	query := `
+		SELECT
+			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
+			e.area_id, e.speaker_id
+		FROM Event e
+		WHERE e.event_id = $1
+	`
+
+	var detail models.EventDetailDto
+	var description, bannerURL sql.NullString
+	var areaID, speakerID sql.NullInt64
+	var startTime, endTime time.Time
+	var maxSeats sql.NullInt64
+	var status sql.NullString
+
+	err := r.db.QueryRowContext(ctx, query, eventID).Scan(
+		&detail.EventID, &detail.Title, &description, &startTime, &endTime, &maxSeats, &status, &bannerURL,
+		&areaID, &speakerID,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, areaID, speakerID, nil
+		}
+		return nil, areaID, speakerID, fmt.Errorf("failed to query event detail: %w", err)
+	}
+
+	if description.Valid {
+		detail.Description = &description.String
+	}
+	detail.StartTime = formatTimeToWallClockRFC3339(startTime)
+	detail.EndTime = formatTimeToWallClockRFC3339(endTime)
+	if maxSeats.Valid {
+		detail.MaxSeats = int(maxSeats.Int64)
+	}
+	if status.Valid {
+		detail.Status = status.String
+	}
+	if bannerURL.Valid {
+		detail.BannerURL = &bannerURL.String
+	}
+	detail.Tickets = []models.CategoryTicket{}
+	detail.Seats = []models.SeatResponse{}
+
+	return &detail, areaID, speakerID, nil
+}
+
+func (r *EventRepository) loadEventDetailVenue(ctx context.Context, detail *models.EventDetailDto, areaID sql.NullInt64) error {
+	if !areaID.Valid {
+		return nil
+	}
+
+	aid := int(areaID.Int64)
+	detail.AreaID = &aid
+
+	query := `
+		SELECT va.area_name, va.floor, va.capacity, v.venue_name
+		FROM Venue_Area va
+		LEFT JOIN Venue v ON va.venue_id = v.venue_id
+		WHERE va.area_id = $1
+	`
+
+	var areaName, floor, venueName sql.NullString
+	var areaCapacity sql.NullInt64
+	err := r.db.QueryRowContext(ctx, query, areaID.Int64).Scan(&areaName, &floor, &areaCapacity, &venueName)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		return fmt.Errorf("failed to load event venue area: %w", err)
+	}
+
+	if venueName.Valid {
+		detail.VenueName = &venueName.String
+	}
+	if areaName.Valid {
+		detail.AreaName = &areaName.String
+	}
+	if floor.Valid {
+		detail.Floor = &floor.String
+	}
+	if areaCapacity.Valid {
+		ac := int(areaCapacity.Int64)
+		detail.AreaCapacity = &ac
+	}
+
+	return nil
+}
+
+func (r *EventRepository) loadEventDetailSpeaker(ctx context.Context, detail *models.EventDetailDto, speakerID sql.NullInt64) error {
+	if !speakerID.Valid {
+		return nil
+	}
+
+	query := `
+		SELECT full_name, bio, avatar_url, email, phone
+		FROM Speaker
+		WHERE speaker_id = $1
+	`
+
+	var speakerName, speakerBio, speakerAvatar, speakerEmail, speakerPhone sql.NullString
+	err := r.db.QueryRowContext(ctx, query, speakerID.Int64).Scan(
+		&speakerName, &speakerBio, &speakerAvatar, &speakerEmail, &speakerPhone,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		return fmt.Errorf("failed to load event speaker: %w", err)
+	}
+
+	if speakerName.Valid {
+		detail.SpeakerName = &speakerName.String
+	}
+	if speakerBio.Valid {
+		detail.SpeakerBio = &speakerBio.String
+	}
+	if speakerAvatar.Valid {
+		detail.SpeakerAvatarURL = &speakerAvatar.String
+	}
+	if speakerEmail.Valid {
+		detail.SpeakerEmail = &speakerEmail.String
+	}
+	if speakerPhone.Valid {
+		detail.SpeakerPhone = &speakerPhone.String
+	}
+
+	return nil
+}
+
+func (r *EventRepository) loadEventDetailCollections(ctx context.Context, detail *models.EventDetailDto, eventID int) error {
+	tickets, err := r.GetCategoryTicketsByEventID(ctx, eventID)
+	if err != nil {
+		return fmt.Errorf("failed to load category tickets: %w", err)
+	}
+	if tickets == nil {
+		tickets = []models.CategoryTicket{}
+	}
+	detail.Tickets = tickets
+
+	if detail.AreaID != nil {
+		seats, err := r.GetSeatsByAreaID(ctx, *detail.AreaID, eventID)
+		if err != nil {
+			return fmt.Errorf("failed to load seats: %w", err)
+		}
+		if seats == nil {
+			seats = []models.SeatResponse{}
+		}
+		detail.Seats = seats
+	} else {
+		detail.Seats = []models.SeatResponse{}
+	}
+
+	var bookingCount int
+	err = r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM Ticket WHERE event_id = $1 AND status IN ('PENDING','BOOKED','CHECKED_IN')", eventID).Scan(&bookingCount)
+	has := false
+	if err == nil {
+		has = bookingCount > 0
+	} else {
+		log.Printf("[GetEventDetail] Failed to count bookings for event %d: %v", eventID, err)
+	}
+	detail.HasBookings = &has
+
+	return nil
+}
+
 func (r *EventRepository) GetCategoryTicketsByEventID(ctx context.Context, eventID int) ([]models.CategoryTicket, error) {
 	// ✅ FIX: Tính Remaining = MaxQuantity - COUNT(sold/pending tickets) qua subquery để tương thích 100% strict groupings
 	query := `
@@ -1221,7 +1415,7 @@ func (r *EventRepository) GetCategoryTicketsByEventID(ctx context.Context, event
 	}
 	defer rows.Close()
 
-	var cats []models.CategoryTicket
+	cats := make([]models.CategoryTicket, 0)
 	for rows.Next() {
 		var ct models.CategoryTicket
 		var desc sql.NullString
