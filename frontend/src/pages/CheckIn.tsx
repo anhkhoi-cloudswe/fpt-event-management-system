@@ -1016,17 +1016,21 @@ export default function CheckIn() {
       </div>
 
       {/* ===== PHẦN HƯỚNG DẪN SỬ DỤNG ===== */}
-      <div className={`mt-6 p-5 rounded-3xl border text-xs leading-relaxed ${
-        isCheckIn ? 'bg-orange-950/25 border-orange-500/35 text-orange-200 shadow-lg shadow-orange-500/5' : 'bg-purple-950/25 border-purple-500/35 text-purple-200 shadow-lg shadow-purple-500/5'
+      <div className={`mt-6 p-5 rounded-3xl border text-xs leading-relaxed transition-all duration-300 ${
+        isCheckIn
+          ? 'bg-orange-50/80 border-orange-200 text-orange-800 dark:bg-orange-950/25 dark:border-orange-500/35 dark:text-orange-200 shadow-md dark:shadow-lg dark:shadow-orange-500/5'
+          : 'bg-purple-50/80 border-purple-200 text-purple-800 dark:bg-purple-950/25 dark:border-purple-500/35 dark:text-purple-200 shadow-md dark:shadow-lg dark:shadow-purple-500/5'
       }`}>
-        <h3 className={`font-black uppercase tracking-wider mb-2 text-[11px] ${isCheckIn ? 'text-orange-400' : 'text-purple-400'}`}>
+        <h3 className={`font-black uppercase tracking-wider mb-2 text-[11px] ${
+          isCheckIn ? 'text-orange-750 dark:text-orange-400' : 'text-purple-750 dark:text-purple-400'
+        }`}>
           Hướng dẫn nghiệp vụ {actionLabel}
         </h3>
         <ul className="space-y-1.5 font-bold">
           {isCheckIn ? (
             <>
               <li className="flex items-center gap-1.5">• Sử dụng camera sau để quét mã QR vé đơn hoặc mã kiểm soát lô vé của SV.</li>
-              <li className="flex items-center gap-1.5">• Cho phép quét QR đa vé định dạng <strong className="text-orange-400">TICKETS:id1,id2,id3</strong> để check-in hàng loạt.</li>
+              <li className="flex items-center gap-1.5">• Cho phép quét QR đa vé định dạng <strong className="text-orange-605 dark:text-orange-400 font-black">TICKETS:id1,id2,id3</strong> để check-in hàng loạt.</li>
               <li className="flex items-center gap-1.5">• Nhập trực tiếp số ID vé vào ô tìm kiếm thủ công nếu thiết bị không bật được camera hoặc camera mờ.</li>
             </>
           ) : (

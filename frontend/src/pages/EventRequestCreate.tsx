@@ -415,27 +415,27 @@ export default function EventRequestCreate() {
   // ======================= UI RENDER =======================
   return (
     <div className="flex justify-center pb-12">
-      <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-gray-100 shadow-xl p-8 md:p-10 max-w-4xl w-full">
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-3xl border border-gray-100 dark:border-slate-800/80 shadow-xl p-8 md:p-10 max-w-4xl w-full transition-colors duration-500">
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
+          <h1 className="text-4xl font-extrabold text-gray-900 dark:text-slate-50 tracking-tight">
             Đề xuất <span className="bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">Yêu cầu Sự kiện</span>
           </h1>
-          <p className="text-gray-500 mt-2 text-sm font-medium">Vui lòng điền thông tin đề xuất chi tiết để chuyển đến Ban quản lý phê duyệt.</p>
+          <p className="text-gray-500 dark:text-slate-400 mt-2 text-sm font-medium">Vui lòng điền thông tin đề xuất chi tiết để chuyển đến Ban quản lý phê duyệt.</p>
         </div>
 
         {/* Form submit */}
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* SECTION 1: THÔNG TIN CHUNG */}
           <div className="space-y-6">
-            <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
-              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-100 text-orange-600 text-sm font-bold">1</span>
-              <h2 className="text-lg font-bold text-gray-900">Thông tin sự kiện cơ bản</h2>
+            <div className="flex items-center gap-3 border-b border-gray-100 dark:border-slate-800/80 pb-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-transparent dark:border-orange-900/40 text-sm font-bold">1</span>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-slate-50">Thông tin sự kiện cơ bản</h2>
             </div>
 
             {/* Title */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">
                 Tiêu đề sự kiện đề xuất *
               </label>
               <input
@@ -447,12 +447,12 @@ export default function EventRequestCreate() {
                 required
                 placeholder="Nhập tên sự kiện thu hút người tham gia..."
                 className={`w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${fieldErrors.title
-                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
-                  : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent bg-white dark:bg-slate-950 text-slate-850 dark:text-slate-100'
+                  : 'border-gray-200 dark:border-slate-800 focus:ring-orange-500 dark:focus:ring-orange-500/20 focus:border-transparent hover:border-orange-300 dark:hover:border-orange-800/60 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100'
                   }`}
               />
               {fieldErrors.title && (
-                <p className="mt-1 text-xs text-red-600 font-medium">
+                <p className="mt-1 text-xs text-red-650 dark:text-red-400 font-medium">
                   ⚠ Vui lòng nhập tiêu đề sự kiện
                 </p>
               )}
@@ -461,7 +461,7 @@ export default function EventRequestCreate() {
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">
                 Mô tả chi tiết *
               </label>
               <textarea
@@ -473,12 +473,12 @@ export default function EventRequestCreate() {
                 rows={4}
                 placeholder="Mô tả các nội dung chính, diễn giả, hoạt động đặc sắc của sự kiện..."
                 className={`w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${fieldErrors.description
-                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
-                  : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent bg-white dark:bg-slate-950 text-slate-850 dark:text-slate-100'
+                  : 'border-gray-200 dark:border-slate-800 focus:ring-orange-500 dark:focus:ring-orange-500/20 focus:border-transparent hover:border-orange-300 dark:hover:border-orange-800/60 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100'
                   }`}
               />
               {fieldErrors.description && (
-                <p className="mt-1 text-xs text-red-600 font-medium">
+                <p className="mt-1 text-xs text-red-650 dark:text-red-400 font-medium">
                   ⚠ Vui lòng nhập mô tả chi tiết
                 </p>
               )}
@@ -486,7 +486,7 @@ export default function EventRequestCreate() {
 
             {/* Reason */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">
                 Lý do / mục tiêu tổ chức *
               </label>
               <textarea
@@ -498,12 +498,12 @@ export default function EventRequestCreate() {
                 rows={3}
                 placeholder="Nêu rõ mục tiêu của chương trình và lợi ích dành cho sinh viên tham gia..."
                 className={`w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${fieldErrors.reason
-                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
-                  : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent bg-white dark:bg-slate-950 text-slate-850 dark:text-slate-100'
+                  : 'border-gray-200 dark:border-slate-800 focus:ring-orange-500 dark:focus:ring-orange-500/20 focus:border-transparent hover:border-orange-300 dark:hover:border-orange-800/60 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100'
                   }`}
               />
               {fieldErrors.reason && (
-                <p className="mt-1 text-xs text-red-600 font-medium">
+                <p className="mt-1 text-xs text-red-650 dark:text-red-400 font-medium">
                   ⚠ Vui lòng nhập lý do / mục tiêu tổ chức
                 </p>
               )}
@@ -512,9 +512,9 @@ export default function EventRequestCreate() {
 
           {/* SECTION 2: KẾ HOẠCH & SỐ LƯỢNG */}
           <div className="space-y-6 pt-4">
-            <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
-              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-100 text-orange-600 text-sm font-bold">2</span>
-              <h2 className="text-lg font-bold text-gray-900">Kế hoạch thời gian & Sức chứa</h2>
+            <div className="flex items-center gap-3 border-b border-gray-100 dark:border-slate-800/80 pb-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-transparent dark:border-orange-900/40 text-sm font-bold">2</span>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-slate-50">Kế hoạch thời gian & Sức chứa</h2>
             </div>
 
             {/* Preferred time range */}
@@ -522,7 +522,7 @@ export default function EventRequestCreate() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* preferredStart */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">
                     Thời gian bắt đầu mong muốn
                   </label>
                   <input
@@ -533,18 +533,18 @@ export default function EventRequestCreate() {
                     onInput={handleDateTimeInput}
                     max="9999-12-31T23:59"
                     className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${timeValidationErrors.length > 0
-                      ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
-                      : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                      ? 'border-red-500 focus:ring-red-500 focus:border-transparent bg-white dark:bg-slate-950 text-slate-850 dark:text-slate-100'
+                      : 'border-gray-200 dark:border-slate-800 focus:ring-orange-500 dark:focus:ring-orange-500/20 focus:border-transparent hover:border-orange-300 dark:hover:border-orange-850 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100'
                       }`}
                   />
-                  <p className="mt-1.5 text-xs text-gray-500">
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-slate-400">
                     📅 Khung giờ hoạt động: 07:00 - 21:00 (Kéo dài tối thiểu 60 phút)
                   </p>
                 </div>
 
                 {/* preferredEnd */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">
                     Thời gian kết thúc mong muốn
                   </label>
                   <input
@@ -555,11 +555,11 @@ export default function EventRequestCreate() {
                     onInput={handleDateTimeInput}
                     max="9999-12-31T23:59"
                     className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${timeValidationErrors.length > 0
-                      ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
-                      : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                      ? 'border-red-500 focus:ring-red-500 focus:border-transparent bg-white dark:bg-slate-950 text-slate-850 dark:text-slate-100'
+                      : 'border-gray-200 dark:border-slate-800 focus:ring-orange-500 dark:focus:ring-orange-500/20 focus:border-transparent hover:border-orange-300 dark:hover:border-orange-850 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100'
                       }`}
                   />
-                  <p className="mt-1.5 text-xs text-gray-500">
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-slate-400">
                     ⏰ Sự kiện cần kết thúc trước 21:00 để dọn dẹp địa điểm
                   </p>
                 </div>
@@ -567,16 +567,16 @@ export default function EventRequestCreate() {
 
               {/* Time Validation Errors */}
               {timeValidationErrors.length > 0 && (
-                <div className="p-5 bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-2xl shadow-sm">
+                <div className="p-5 bg-red-50/80 dark:bg-red-950/20 backdrop-blur-sm border border-red-200 dark:border-red-900/35 rounded-2xl shadow-sm">
                   <div className="flex gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="w-5 h-5 text-red-650 dark:text-red-400 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <h4 className="font-bold text-red-900 mb-2">
+                      <h4 className="font-bold text-red-900 dark:text-red-400 mb-2">
                         Vui lòng điều chỉnh thời gian sự kiện:
                       </h4>
                       <ul className="space-y-1">
                         {timeValidationErrors.map((error, index) => (
-                          <li key={index} className="text-sm text-red-700 font-medium">
+                          <li key={index} className="text-sm text-red-700 dark:text-red-300 font-medium">
                             • {error}
                           </li>
                         ))}
@@ -589,7 +589,7 @@ export default function EventRequestCreate() {
 
             {/* Expected Participants */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">
                 Số lượng người tham gia dự kiến
               </label>
               <input
@@ -601,35 +601,35 @@ export default function EventRequestCreate() {
                 step="10"
                 placeholder="Nhập bội số của 10: 50, 100, 200..."
                 className={`w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 transition-all duration-300 font-medium ${validationError
-                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent'
-                  : 'border-gray-200 focus:ring-orange-500 focus:border-transparent hover:border-orange-300'
+                  ? 'border-red-500 focus:ring-red-500 focus:border-transparent bg-white dark:bg-slate-950 text-slate-850 dark:text-slate-100'
+                  : 'border-gray-200 dark:border-slate-800 focus:ring-orange-500 dark:focus:ring-orange-500/20 focus:border-transparent hover:border-orange-300 dark:hover:border-orange-850 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100'
                   }`}
               />
               {validationError && (
-                <p className="mt-1.5 text-xs text-red-600 font-medium">⚠ {validationError}</p>
+                <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium">⚠ {validationError}</p>
               )}
             </div>
           </div>
 
           {/* ===== Error tổng khi submit fail / validate fail ===== */}
           {error && (
-            <div className="p-5 bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-2xl shadow-sm">
+            <div className="p-5 bg-red-50/80 dark:bg-red-950/20 backdrop-blur-sm border border-red-200 dark:border-red-900/35 rounded-2xl shadow-sm">
               <div className="flex gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-red-650 dark:text-red-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <h4 className="font-bold text-red-900 mb-1">Gửi yêu cầu không thành công:</h4>
-                  <p className="text-sm text-red-700 whitespace-pre-line font-medium leading-relaxed">{error}</p>
+                  <h4 className="font-bold text-red-900 dark:text-red-400 mb-1">Gửi yêu cầu không thành công:</h4>
+                  <p className="text-sm text-red-700 dark:text-red-300 whitespace-pre-line font-medium leading-relaxed">{error}</p>
                 </div>
               </div>
             </div>
           )}
 
           {/* ===== Action Buttons ===== */}
-          <div className="pt-6 border-t border-gray-100 flex justify-end space-x-4">
+          <div className="pt-6 border-t border-gray-100 dark:border-slate-800/80 flex justify-end space-x-4">
             <button
               type="button"
               onClick={() => navigate('/dashboard/my-event-requests')}
-              className="px-6 py-3 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors duration-300 font-bold"
+              className="px-6 py-3 border border-gray-200 dark:border-slate-800 rounded-xl text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900 transition-colors duration-300 font-bold"
               disabled={isSubmitting}
             >
               Hủy

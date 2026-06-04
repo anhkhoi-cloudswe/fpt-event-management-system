@@ -388,7 +388,7 @@ export default function Layout() {
                   <div className="py-4 space-y-4">
                     {/* Theme Toggle option */}
                     <div className="space-y-1.5 min-w-0">
-                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider truncate">{currentLanguage === 'en' ? 'SYSTEM THEME' : 'Giao diện hệ thống'}</label>
+                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider truncate">{currentLanguage === 'en' ? 'SYSTEM THEME' : 'Giao diện hệ thống'}</label>
                       <button
                         type="button"
                         onClick={handleToggleTheme}
@@ -401,8 +401,8 @@ export default function Layout() {
                           {isDarkMode ? <Moon size={16} className="text-orange-400" /> : <Sun size={16} className="text-orange-500" />}
                           <span className="truncate">{isDarkMode ? (currentLanguage === 'en' ? 'Dark Mode' : 'Giao diện Tối (Dark)') : (currentLanguage === 'en' ? 'Light Mode' : 'Giao diện Sáng (Light)')}</span>
                         </div>
-                        <div className={`w-8 h-4 shrink-0 rounded-full relative transition-colors ${isDarkMode ? 'bg-orange-500' : 'bg-slate-350'}`}>
-                          <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.25 transition-all ${isDarkMode ? 'right-0.5' : 'left-0.5'}`} />
+                        <div className={`w-8 h-4 shrink-0 rounded-full relative transition-colors ${isDarkMode ? 'bg-orange-500' : 'bg-slate-200 border border-slate-300'}`}>
+                          <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[1px] transition-all ${isDarkMode ? 'right-[2px]' : 'left-[2px]'}`} />
                         </div>
                       </button>
                     </div>

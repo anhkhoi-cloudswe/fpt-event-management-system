@@ -392,15 +392,12 @@ export default function SystemConfig() {
     }
   }
 
-  /**
-   * UI loading khi đang fetch config
-   */
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4 bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 shadow-md">
+        <div className="flex flex-col items-center gap-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 p-8 shadow-md">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-          <p className="text-slate-650 font-extrabold text-sm">Đang tải cấu hình...</p>
+          <p className="text-slate-655 dark:text-slate-300 font-extrabold text-sm">Đang tải cấu hình...</p>
         </div>
       </div>
     )
@@ -412,7 +409,7 @@ export default function SystemConfig() {
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-2 shadow-md mb-8 grid grid-cols-2 gap-1 max-w-2xl mx-auto animate-fade-in-up">
+      <div className="bg-white/70 border border-white/80 dark:bg-slate-900/70 dark:border-slate-800/80 backdrop-blur-md rounded-3xl p-2 shadow-md mb-8 grid grid-cols-2 gap-1 max-w-2xl mx-auto animate-fade-in-up">
         {/* Tab 1: System Config - ✅ Only show for ADMIN */}
         {isAdmin && (
           <button
@@ -420,7 +417,7 @@ export default function SystemConfig() {
             className={`flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl text-sm font-extrabold transition-all duration-300 active:scale-95 ${
               activeTab === 'system'
                 ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20 scale-[1.02]'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-white/40'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-white/40 dark:hover:bg-slate-800/40'
             }`}
           >
             <Settings className="w-4 h-4" />
@@ -434,7 +431,7 @@ export default function SystemConfig() {
           className={`flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl text-sm font-extrabold transition-all duration-300 active:scale-95 ${
             activeTab === 'events'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20 scale-[1.02]'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-white/40'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-white/40 dark:hover:bg-slate-800/40'
           }`}
           style={!isAdmin ? { gridColumn: 'span 2' } : undefined}
         >
@@ -445,10 +442,10 @@ export default function SystemConfig() {
 
       {/* Tab Content: System Config - ✅ Only show for ADMIN */}
       {isAdmin && activeTab === 'system' && (
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 max-w-2xl w-full mx-auto shadow-xl hover:shadow-orange-500/5 transition-all duration-500 animate-fade-in-up">
+        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 p-8 max-w-2xl w-full mx-auto shadow-xl hover:shadow-orange-500/5 transition-all duration-500 animate-fade-in-up">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-3">
+          <div className="flex items-center justify-between mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3">
               <Settings className="w-6 h-6 text-orange-655" />
               Cấu hình hệ thống
             </h1>
@@ -457,7 +454,7 @@ export default function SystemConfig() {
             <button
               onClick={handleReload}
               disabled={loading}
-              className="p-2 text-slate-500 hover:text-orange-650 hover:bg-white/80 rounded-xl border border-slate-100 transition-all duration-300 active:scale-95 shadow-sm"
+              className="p-2 text-slate-500 dark:text-slate-400 hover:text-orange-650 dark:hover:text-orange-500 hover:bg-white/80 dark:hover:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 transition-all duration-300 active:scale-95 shadow-sm"
               title="Tải lại cấu hình"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -466,7 +463,7 @@ export default function SystemConfig() {
 
           {/* Hiển thị lỗi nếu có */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50/50 border border-red-200 rounded-2xl flex items-center gap-2 text-sm text-red-600 font-semibold shadow-sm">
+            <div className="mb-6 p-4 bg-red-50/50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-2xl flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-semibold shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></span>
               <p>{error}</p>
             </div>
@@ -474,15 +471,15 @@ export default function SystemConfig() {
 
           <div className="space-y-6">
             {/* checkinAllowedBeforeStartMinutes - Check-in */}
-            <div className="border border-emerald-100 bg-emerald-50/20 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="border border-emerald-100 dark:border-emerald-950/50 bg-emerald-50/20 dark:bg-emerald-950/10 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                <label className="block text-base font-extrabold text-slate-900">
+                <label className="block text-base font-extrabold text-slate-900 dark:text-slate-100">
                   Thời gian cho phép Check-in trước sự kiện (phút)
                 </label>
               </div>
 
-              <p className="text-xs text-slate-500 font-medium mb-4 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-4 leading-relaxed">
                 Số phút trước khi sự kiện bắt đầu mà người dùng có thể check-in.
                 Giá trị từ 0 đến 600 phút (10 giờ).
               </p>
@@ -495,9 +492,9 @@ export default function SystemConfig() {
                   onChange={handleChange}
                   min="0"
                   max="600"
-                  className="w-32 px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-lg font-bold shadow-sm transition-all duration-300"
+                  className="w-32 px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-lg font-bold text-slate-900 dark:text-slate-100 shadow-sm transition-all duration-300"
                 />
-                <span className="text-sm font-bold text-slate-655">phút trước khi bắt đầu</span>
+                <span className="text-sm font-bold text-slate-655 dark:text-slate-300">phút trước khi bắt đầu</span>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -515,7 +512,7 @@ export default function SystemConfig() {
                     className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all duration-300 active:scale-95 ${
                       config.checkinAllowedBeforeStartMinutes === val
                         ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-md shadow-orange-500/10'
-                        : 'bg-white border border-slate-150 text-slate-600 hover:bg-orange-50 hover:text-orange-600'
+                        : 'bg-white border border-slate-150 text-slate-600 hover:bg-orange-550 hover:text-orange-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-400'
                     }`}
                   >
                     {val} phút
@@ -525,15 +522,15 @@ export default function SystemConfig() {
             </div>
 
             {/* minMinutesAfterStart - Check-out */}
-            <div className="border border-purple-100 bg-purple-50/20 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="border border-purple-100 dark:border-purple-950/50 bg-purple-50/20 dark:bg-purple-950/10 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse"></div>
-                <label className="block text-base font-extrabold text-slate-900">
+                <label className="block text-base font-extrabold text-slate-900 dark:text-slate-100">
                   Thời gian tối thiểu TRƯỚC KHI kết thúc để cho phép Check-out (phút)
                 </label>
               </div>
 
-              <p className="text-xs text-slate-500 font-medium mb-4 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-4 leading-relaxed">
                 Số phút trước khi sự kiện kết thúc mà người dùng mới có thể check-out.
                 Giá trị từ 0 đến 600 phút (10 giờ).
               </p>
@@ -546,9 +543,9 @@ export default function SystemConfig() {
                   onChange={handleChange}
                   min="0"
                   max="600"
-                  className="w-32 px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-lg font-bold shadow-sm transition-all duration-300"
+                  className="w-32 px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-lg font-bold text-slate-900 dark:text-slate-100 shadow-sm transition-all duration-300"
                 />
-                <span className="text-sm font-bold text-slate-655">phút trước khi kết thúc</span>
+                <span className="text-sm font-bold text-slate-655 dark:text-slate-300">phút trước khi kết thúc</span>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -563,7 +560,7 @@ export default function SystemConfig() {
                     className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all duration-300 active:scale-95 ${
                       config.minMinutesAfterStart === val
                         ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-md shadow-orange-500/10'
-                        : 'bg-white border border-slate-150 text-slate-600 hover:bg-orange-50 hover:text-orange-600'
+                        : 'bg-white border border-slate-150 text-slate-600 hover:bg-orange-550 hover:text-orange-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-400'
                     }`}
                   >
                     {val} phút
@@ -573,27 +570,27 @@ export default function SystemConfig() {
             </div>
 
             {/* Info box: giải thích ý nghĩa cấu hình */}
-            <div className="bg-blue-50/40 border border-blue-100 rounded-2xl p-5 shadow-sm text-slate-700 leading-relaxed font-semibold text-xs sm:text-sm">
-              <h3 className="font-extrabold text-blue-900 mb-2 flex items-center gap-1.5">
+            <div className="bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-5 shadow-sm text-slate-700 dark:text-slate-350 leading-relaxed font-semibold text-xs sm:text-sm">
+              <h3 className="font-extrabold text-blue-900 dark:text-blue-400 mb-2 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                 Hướng dẫn vận hành
               </h3>
-              <ul className="space-y-2 text-slate-600">
+              <ul className="space-y-2 text-slate-600 dark:text-slate-400">
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
                   <span>
-                    <strong className="text-slate-800">Check-in</strong>: Người dùng có thể check-in trước thời gian bắt đầu sự kiện theo số phút đã cấu hình.
+                    <strong className="text-slate-800 dark:text-slate-200">Check-in</strong>: Người dùng có thể check-in trước thời gian bắt đầu sự kiện theo số phút đã cấu hình.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 flex-shrink-0"></span>
                   <span>
-                    <strong className="text-slate-800">Check-out</strong>: Người dùng chỉ có thể check-out trước thời gian kết thúc sự kiện theo số phút đã cấu hình.
+                    <strong className="text-slate-800 dark:text-slate-200">Check-out</strong>: Người dùng chỉ có thể check-out trước thời gian kết thúc sự kiện theo số phút đã cấu hình.
                   </span>
                 </li>
-                <li className="mt-3 pt-3 border-t border-slate-200/50">
-                  <strong className="text-slate-800">Ví dụ thực tế:</strong> Sự kiện kết thúc lúc 17:00
-                  <ul className="ml-4 mt-1 space-y-1 text-slate-550 text-xs">
+                <li className="mt-3 pt-3 border-t border-slate-200/50 dark:border-slate-800/50">
+                  <strong className="text-slate-800 dark:text-slate-200">Ví dụ thực tế:</strong> Sự kiện kết thúc lúc 17:00
+                  <ul className="ml-4 mt-1 space-y-1 text-slate-550 dark:text-slate-400 text-xs">
                     <li>• Check-in = 60 phút → Có thể check-in mở từ 13:00</li>
                     <li>• Check-out = 30 phút → Có thể check-out trước 16:30</li>
                   </ul>
@@ -602,7 +599,7 @@ export default function SystemConfig() {
             </div>
 
             {/* Save button */}
-            <div className="pt-4 flex justify-end border-t border-slate-100">
+            <div className="pt-4 flex justify-end border-t border-slate-100 dark:border-slate-800">
               <button
                 onClick={handleSave}
                 disabled={saving}
@@ -618,13 +615,13 @@ export default function SystemConfig() {
 
       {/* Tab Content: Events Config */}
       {activeTab === 'events' && (
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-8 max-w-7xl w-full mx-auto shadow-xl hover:shadow-orange-500/5 transition-all duration-500 animate-fade-in-up">
-          <div className="mb-6 border-b border-slate-100 pb-4">
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-3 mb-2">
+        <div className="bg-white/70 dark:bg-slate-900/70 border border-white/80 dark:border-slate-800/80 backdrop-blur-md rounded-3xl p-8 max-w-7xl w-full mx-auto shadow-xl hover:shadow-orange-500/5 transition-all duration-500 animate-fade-in-up">
+          <div className="mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 mb-2">
               <Settings className="w-6 h-6 text-orange-655" />
               Cấu hình riêng cho từng sự kiện
             </h2>
-            <p className="text-xs text-slate-550 font-semibold leading-relaxed">
+            <p className="text-xs text-slate-550 dark:text-slate-400 font-semibold leading-relaxed">
               Tùy chỉnh thời gian check-in/check-out cho từng sự kiện cụ thể. Cấu hình riêng sẽ ghi đè lên cấu hình toàn hệ thống.
             </p>
           </div>
@@ -639,7 +636,7 @@ export default function SystemConfig() {
                 placeholder="Tìm kiếm sự kiện..."
                 value={searchQuery}
                 onChange={e => handleSearchChange(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+                className="w-full pl-11 pr-4 py-3 bg-white/50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 dark:text-slate-100 font-semibold placeholder-slate-400 dark:placeholder-slate-500 text-sm shadow-sm transition-all duration-300"
               />
             </div>
 
@@ -648,11 +645,11 @@ export default function SystemConfig() {
               <select
                 value={statusFilter}
                 onChange={e => handleStatusFilterChange(e.target.value as 'ALL' | 'OPEN' | 'CLOSED')}
-                className="w-full pl-4 pr-10 py-3 bg-white/50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 font-semibold text-sm shadow-sm cursor-pointer transition-all duration-300 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M7%209l3%203%203-3%22%20stroke%3D%22%25236b7280%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.75rem_center] bg-no-repeat bg-[length:1rem_1rem]"
+                className="w-full pl-4 pr-10 py-3 bg-white/50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-755 dark:text-slate-200 font-semibold text-sm shadow-sm cursor-pointer transition-all duration-300 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M7%209l3%203%203-3%22%20stroke%3D%22%25236b7280%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.75rem_center] bg-no-repeat bg-[length:1rem_1rem]"
               >
-                <option value="ALL">Tất cả trạng thái</option>
-                <option value="OPEN">🟢 Đang mở</option>
-                <option value="CLOSED">⚫ Đã đóng</option>
+                <option value="ALL" className="dark:bg-slate-950">Tất cả trạng thái</option>
+                <option value="OPEN" className="dark:bg-slate-950">🟢 Đang mở</option>
+                <option value="CLOSED" className="dark:bg-slate-950">⚫ Đã đóng</option>
               </select>
             </div>
           </div>
@@ -663,51 +660,51 @@ export default function SystemConfig() {
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600"></div>
             </div>
           ) : filteredEvents.length === 0 ? (
-            <div className="text-center py-12 bg-white/40 border border-slate-100 rounded-3xl shadow-inner">
-              <p className="text-slate-500 font-bold text-sm">
+            <div className="text-center py-12 bg-white/40 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-inner">
+              <p className="text-slate-500 dark:text-slate-400 font-bold text-sm">
                 {searchQuery || statusFilter !== 'ALL'
                   ? 'Không tìm thấy sự kiện phù hợp'
                   : 'Chưa có sự kiện nào'}
               </p>
             </div>
           ) : (
-            <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 overflow-hidden shadow-md animate-fade-in-up mt-6 overflow-x-auto" data-event-table>
-              <table className="min-w-full divide-y divide-slate-100">
-                <thead className="bg-slate-50/50">
+            <div className="bg-white/70 dark:bg-slate-900/40 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 overflow-hidden shadow-md animate-fade-in-up mt-6 overflow-x-auto" data-event-table>
+              <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+                <thead className="bg-slate-50/50 dark:bg-slate-950/50">
                   <tr>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Tên sự kiện
                     </th>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Thời gian bắt đầu
                     </th>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Địa điểm
                     </th>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Trạng thái
                     </th>
-                    <th scope="col" className="px-6 py-4 text-center text-xs font-black text-slate-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-4 text-center text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Hành động
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white/40 divide-y divide-slate-100">
+                <tbody className="bg-white/40 dark:bg-slate-900/20 divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredEvents.map(event => (
                     <tr
                       key={event.eventId}
-                      className="hover:bg-slate-50/30 transition-colors"
+                      className="hover:bg-slate-50/30 dark:hover:bg-slate-850/30 transition-colors"
                     >
                       {/* Event Title */}
                       <td className="px-6 py-4">
-                        <div className="text-sm font-bold text-slate-800 max-w-xs md:max-w-md truncate">
+                        <div className="text-sm font-bold text-slate-800 dark:text-slate-200 max-w-xs md:max-w-md truncate">
                           {event.title}
                         </div>
                       </td>
 
                       {/* Start Time */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-xs font-semibold text-slate-550">
+                        <div className="text-xs font-semibold text-slate-550 dark:text-slate-400">
                           {new Date(event.startTime).toLocaleDateString('vi-VN', {
                             day: '2-digit',
                             month: '2-digit',
@@ -720,13 +717,13 @@ export default function SystemConfig() {
 
                       {/* Venue Location */}
                       <td className="px-6 py-4">
-                        <div className="text-xs font-bold text-slate-600">
+                        <div className="text-xs font-bold text-slate-600 dark:text-slate-300">
                           {event.venueLocation ? (
                             <span className="flex items-center gap-1">
                               📍 {event.venueLocation}
                             </span>
                           ) : (
-                            <span className="text-slate-400 italic font-semibold">Chưa có địa điểm</span>
+                            <span className="text-slate-400 dark:text-slate-550 italic font-semibold">Chưa có địa điểm</span>
                           )}
                         </div>
                       </td>
@@ -736,12 +733,12 @@ export default function SystemConfig() {
                         <span
                           className={`inline-flex px-2.5 py-1 text-[11px] font-extrabold rounded-full border shadow-sm ${
                             event.status === 'OPEN'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-450 dark:border-emerald-900/50'
                               : event.status === 'CLOSED'
-                                ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                ? 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-350 dark:border-slate-700'
                                 : event.status === 'CANCELLED'
-                                  ? 'bg-red-50 text-red-700 border-red-200'
-                                  : 'bg-blue-50 text-blue-755 border-blue-200'
+                                  ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50'
+                                  : 'bg-blue-50 text-blue-755 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50'
                           }`}
                         >
                           {event.status === 'OPEN' && '🟢 Đang mở'}
@@ -767,7 +764,7 @@ export default function SystemConfig() {
                         ) : (
                           <button
                             disabled
-                            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-400 cursor-not-allowed"
+                            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-100 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold text-slate-400 dark:text-slate-600 cursor-not-allowed"
                             title="Chỉ có thể cấu hình sự kiện đang mở"
                           >
                             <Settings className="w-3.5 h-3.5" />

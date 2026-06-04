@@ -195,22 +195,22 @@ export function EventConfigModal({
                 {/* Centering wrapper */}
                 <div className="flex items-center justify-center min-h-screen p-4">
                     {/* Modal Card: responsive width + scrollable */}
-                    <div className="bg-white rounded-lg shadow-xl max-w-[90vw] w-full max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl max-w-[90vw] w-full max-h-[90vh] overflow-y-auto border dark:border-slate-800">
                         {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-800">
                             <div className="flex items-center gap-3">
                                 <Settings className="w-6 h-6 text-orange-600" />
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-900">
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
                                         Cấu hình Check-in/Check-out
                                     </h2>
-                                    <p className="text-sm text-gray-500 mt-1">{eventTitle}</p>
+                                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{eventTitle}</p>
                                 </div>
                             </div>
 
                             <button
                                 onClick={onClose}
-                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="p-2 text-gray-400 dark:text-slate-500 hover:text-gray-650 dark:hover:text-slate-350 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -227,8 +227,8 @@ export function EventConfigModal({
 
                             {/* Error */}
                             {error && (
-                                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                                    <p className="text-sm text-red-600">{error}</p>
+                                <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg">
+                                    <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                                 </div>
                             )}
 
@@ -236,25 +236,25 @@ export function EventConfigModal({
                             {!loading && (
                                 <>
                                     {/* Check-in Config */}
-                                    <div className="border border-green-200 bg-green-50/30 rounded-lg p-6">
+                                    <div className="border border-green-200 dark:border-green-950 bg-green-50/30 dark:bg-green-950/10 rounded-lg p-6">
                                         <div className="flex items-center gap-2 mb-2">
                                             <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                            <label className="block text-lg font-semibold text-gray-900">
+                                            <label className="block text-lg font-semibold text-gray-900 dark:text-slate-100">
                                                 Thời gian cho phép Check-in trước sự kiện (phút)
                                             </label>
                                             {/* Badge hiển thị nguồn config */}
                                             {config.source === 'global' ? (
-                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full border border-blue-200">
+                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 rounded-full border border-blue-200 dark:border-blue-900/50">
                                                     📋 Đang dùng mặc định
                                                 </span>
                                             ) : (
-                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full border border-purple-200">
+                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 rounded-full border border-purple-200 dark:border-purple-900/50">
                                                     ⚙️ Cấu hình riêng
                                                 </span>
                                             )}
                                         </div>
 
-                                        <p className="text-sm text-gray-500 mb-4">
+                                        <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
                                             Số phút trước khi sự kiện bắt đầu mà người dùng có thể
                                             check-in. Giá trị từ 0 đến 600 phút (10 giờ).
                                         </p>
@@ -267,14 +267,14 @@ export function EventConfigModal({
                                                 onChange={handleChange}
                                                 min="0"
                                                 max="600"
-                                                className="w-32 px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-center text-lg font-medium"
+                                                className="w-32 px-4 py-2 border border-green-300 dark:border-green-800 bg-white dark:bg-slate-950 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-center text-lg font-medium text-slate-900 dark:text-slate-100"
                                             />
-                                            <span className="text-gray-600">phút trước khi bắt đầu</span>
+                                            <span className="text-gray-600 dark:text-slate-400">phút trước khi bắt đầu</span>
                                         </div>
 
                                         {/* Quick Suggestions */}
                                         <div className="mt-3 flex items-center gap-2">
-                                            <span className="text-xs text-gray-400">Gợi ý:</span>
+                                            <span className="text-xs text-gray-400 dark:text-slate-500">Gợi ý:</span>
                                             {[15, 30, 60, 120].map(val => (
                                                 <button
                                                     key={val}
@@ -287,8 +287,8 @@ export function EventConfigModal({
                                                         }))
                                                     }
                                                     className={`px-3 py-1 text-xs rounded-full transition-colors ${config.checkinAllowedBeforeStartMinutes === val
-                                                        ? 'bg-green-600 text-white'
-                                                        : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-600'
+                                                        ? 'bg-green-600 text-white shadow-md'
+                                                        : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-green-100 dark:hover:bg-green-950/30 hover:text-green-600 dark:hover:text-green-400'
                                                         }`}
                                                 >
                                                     {val} phút
@@ -298,26 +298,26 @@ export function EventConfigModal({
                                     </div>
 
                                     {/* Check-out Config */}
-                                    <div className="border border-purple-200 bg-purple-50/30 rounded-lg p-6">
+                                    <div className="border border-purple-200 dark:border-purple-950 bg-purple-50/30 dark:bg-purple-950/10 rounded-lg p-6">
                                         <div className="flex items-center gap-2 mb-2">
                                             <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                                            <label className="block text-lg font-semibold text-gray-900">
+                                            <label className="block text-lg font-semibold text-gray-900 dark:text-slate-100">
                                                 Thời gian tối thiểu TRƯỚC KHI kết thúc để cho phép Check-out
                                                 (phút)
                                             </label>
                                             {/* Badge hiển thị nguồn config */}
                                             {config.source === 'global' ? (
-                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full border border-blue-200">
+                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 rounded-full border border-blue-200 dark:border-blue-900/50">
                                                     📋 Đang dùng mặc định
                                                 </span>
                                             ) : (
-                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full border border-purple-200">
+                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 rounded-full border border-purple-200 dark:border-purple-900/50">
                                                     ⚙️ Cấu hình riêng
                                                 </span>
                                             )}
                                         </div>
 
-                                        <p className="text-sm text-gray-500 mb-4">
+                                        <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
                                             Số phút trước khi sự kiện kết thúc mà người dùng mới có thể
                                             check-out. Giá trị từ 0 đến 600 phút (10 giờ).
                                         </p>
@@ -330,14 +330,14 @@ export function EventConfigModal({
                                                 onChange={handleChange}
                                                 min="0"
                                                 max="600"
-                                                className="w-32 px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-center text-lg font-medium"
+                                                className="w-32 px-4 py-2 border border-purple-300 dark:border-purple-800 bg-white dark:bg-slate-950 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-center text-lg font-medium text-slate-900 dark:text-slate-100"
                                             />
-                                            <span className="text-gray-600">phút trước khi kết thúc</span>
+                                            <span className="text-gray-600 dark:text-slate-400">phút trước khi kết thúc</span>
                                         </div>
 
                                         {/* Quick Suggestions */}
                                         <div className="mt-3 flex items-center gap-2">
-                                            <span className="text-xs text-gray-400">Gợi ý:</span>
+                                            <span className="text-xs text-gray-400 dark:text-slate-500">Gợi ý:</span>
                                             {[15, 30, 60, 120].map(val => (
                                                 <button
                                                     key={val}
@@ -350,8 +350,8 @@ export function EventConfigModal({
                                                         }))
                                                     }
                                                     className={`px-3 py-1 text-xs rounded-full transition-colors ${config.minMinutesAfterStart === val
-                                                        ? 'bg-purple-600 text-white'
-                                                        : 'bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-600'
+                                                        ? 'bg-purple-600 text-white shadow-md'
+                                                        : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-purple-100 dark:hover:bg-purple-950/30 hover:text-purple-600 dark:hover:text-purple-400'
                                                         }`}
                                                 >
                                                     {val} phút
@@ -361,11 +361,11 @@ export function EventConfigModal({
                                     </div>
 
                                     {/* Info Box */}
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                        <h3 className="font-semibold text-blue-800 mb-2">
+                                    <div className="bg-blue-50 dark:bg-blue-950/10 border border-blue-200 dark:border-blue-900/50 rounded-lg p-4">
+                                        <h3 className="font-semibold text-blue-800 dark:text-blue-400 mb-2">
                                             Hướng dẫn
                                         </h3>
-                                        <ul className="text-sm text-blue-700 space-y-1">
+                                        <ul className="text-sm text-blue-755 dark:text-blue-300 space-y-1">
                                             <li>
                                                 • <strong>Check-in</strong>: Người dùng có thể check-in
                                                 trước thời gian bắt đầu sự kiện theo số phút đã cấu hình
@@ -376,7 +376,7 @@ export function EventConfigModal({
                                                 hình
                                             </li>
                                             {config.source === 'global' && (
-                                                <li className="mt-2 pt-2 border-t border-blue-200">
+                                                <li className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-900/50">
                                                     ℹ️ <strong>Hiện đang dùng cấu hình hệ thống mặc định</strong>. Sau khi lưu, sự kiện này sẽ dùng cấu hình riêng.
                                                 </li>
                                             )}
@@ -387,10 +387,10 @@ export function EventConfigModal({
                         </div>
 
                         {/* Footer */}
-                        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+                        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/40">
                             <button
                                 onClick={onClose}
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                                className="px-4 py-2 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
                             >
                                 Hủy
                             </button>
