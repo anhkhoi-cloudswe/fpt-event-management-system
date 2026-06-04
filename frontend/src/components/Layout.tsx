@@ -369,22 +369,26 @@ export default function Layout() {
                   className="fixed inset-0 z-40 cursor-default"
                 />
 
-                <div className={`absolute right-0 top-full mt-2 w-80 rounded-3xl border shadow-2xl p-5 z-50 animate-fade-in-up ${isDarkMode
+                <div className={`absolute right-0 top-full mt-2 w-[min(calc(100vw-2rem),22rem)] rounded-3xl border shadow-2xl p-5 z-50 animate-fade-in-up ${isDarkMode
                   ? 'bg-slate-900/95 backdrop-blur-md border-slate-700/80 text-slate-200 shadow-slate-950/50'
                   : 'bg-white/95 backdrop-blur-md border-orange-100 shadow-orange-500/10 text-slate-800'
                   }`}>
                   {/* Popover Header */}
-                  <div className="flex items-center gap-3 pb-4 border-b border-slate-200/50 dark:border-slate-800/60">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-600 to-orange-500 flex items-center justify-center text-sm font-black text-white shadow-md">
-                      {user?.fullName?.charAt(0) || 'U'}
+                  <div className="pb-4 border-b border-slate-200/50 dark:border-slate-800/60">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-orange-600 to-orange-500 flex items-center justify-center text-sm font-black text-white shadow-md">
+                        {user?.fullName?.charAt(0) || 'U'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs font-black truncate">{user?.fullName}</h4>
+                        <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-black truncate">{user?.fullName}</h4>
-                      <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
-                    </div>
-                                {/* Theme Toggle option */}
-                    <div className="space-y-1.5">
-                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{currentLanguage === 'en' ? 'SYSTEM THEME' : 'Giao diện hệ thống'}</label>
+                  </div>
+                  <div className="py-4 space-y-4">
+                    {/* Theme Toggle option */}
+                    <div className="space-y-1.5 min-w-0">
+                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider truncate">{currentLanguage === 'en' ? 'SYSTEM THEME' : 'Giao diện hệ thống'}</label>
                       <button
                         type="button"
                         onClick={handleToggleTheme}
@@ -393,26 +397,26 @@ export default function Layout() {
                           : 'bg-slate-50 border-slate-200 hover:border-orange-500/35 text-slate-750'
                           }`}
                       >
-                        <div className="flex items-center gap-2.5 text-xs font-bold">
+                        <div className="flex min-w-0 items-center gap-2.5 text-xs font-bold">
                           {isDarkMode ? <Moon size={16} className="text-orange-400" /> : <Sun size={16} className="text-orange-500" />}
-                          <span>{isDarkMode ? (currentLanguage === 'en' ? 'Dark Mode' : 'Giao diện Tối (Dark)') : (currentLanguage === 'en' ? 'Light Mode' : 'Giao diện Sáng (Light)')}</span>
+                          <span className="truncate">{isDarkMode ? (currentLanguage === 'en' ? 'Dark Mode' : 'Giao diện Tối (Dark)') : (currentLanguage === 'en' ? 'Light Mode' : 'Giao diện Sáng (Light)')}</span>
                         </div>
-                        <div className={`w-8 h-4 rounded-full relative transition-colors ${isDarkMode ? 'bg-orange-500' : 'bg-slate-350'}`}>
+                        <div className={`w-8 h-4 shrink-0 rounded-full relative transition-colors ${isDarkMode ? 'bg-orange-500' : 'bg-slate-350'}`}>
                           <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.25 transition-all ${isDarkMode ? 'right-0.5' : 'left-0.5'}`} />
                         </div>
                       </button>
                     </div>
 
                     {/* Phone Update option */}
-                    <div className="space-y-1.5">
-                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{currentLanguage === 'en' ? 'PHONE NUMBER (OPTIONAL)' : 'Số điện thoại (Không bắt buộc)'}</label>
+                    <div className="space-y-1.5 min-w-0">
+                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider truncate">{currentLanguage === 'en' ? 'PHONE NUMBER (OPTIONAL)' : 'Số điện thoại (Không bắt buộc)'}</label>
                       <div className="flex gap-2">
                         <input
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           placeholder={currentLanguage === 'en' ? 'Not updated' : 'Chưa cập nhật SĐT'}
-                          className={`flex-1 px-3 py-2 text-xs font-semibold rounded-xl border outline-none transition-all ${isDarkMode
+                          className={`min-w-0 flex-1 px-3 py-2 text-xs font-semibold rounded-xl border outline-none transition-all ${isDarkMode
                             ? 'bg-slate-950 border-slate-700 focus:border-orange-500 text-slate-200 placeholder-slate-600'
                             : 'bg-white border-slate-200 focus:border-orange-500 text-slate-800 placeholder-slate-400'
                             }`}
@@ -420,7 +424,7 @@ export default function Layout() {
                         <button
                           type="button"
                           onClick={handleUpdatePhone}
-                          className="px-3.5 py-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow active:scale-95 transition-all"
+                          className="shrink-0 px-3.5 py-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow active:scale-95 transition-all"
                         >
                           {currentLanguage === 'en' ? 'Update' : 'Cập nhật'}
                         </button>
@@ -428,9 +432,9 @@ export default function Layout() {
                     </div>
 
                     {/* Timezone option */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 min-w-0">
                       <div className="flex items-center justify-between">
-                        <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{currentLanguage === 'en' ? 'WORKING TIMEZONE' : 'Múi giờ khu vực'}</label>
+                        <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider truncate">{currentLanguage === 'en' ? 'WORKING TIMEZONE' : 'Múi giờ khu vực'}</label>
                       </div>
                       <TimezoneCombobox
                         value={timezone}
@@ -665,6 +669,3 @@ export default function Layout() {
     </div>
   )
 }
-
-
-
