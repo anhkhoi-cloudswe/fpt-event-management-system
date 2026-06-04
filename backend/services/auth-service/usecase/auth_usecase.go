@@ -47,7 +47,7 @@ func (uc *AuthUseCase) Login(ctx context.Context, req models.LoginRequest) (*mod
 	}
 	// Password validation removed - only check if password is not empty
 	if req.Password == "" {
-		return nil, errors.New("Máº­t kháº©u khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
+		return nil, errors.New("Mật khẩu không được để trống")
 	}
 
 	// Check if email already exists
@@ -58,7 +58,7 @@ func (uc *AuthUseCase) Login(ctx context.Context, req models.LoginRequest) (*mod
 
 	// If email does not exist in DB -> Return standard unauthorized error
 	if !exists {
-		return nil, errors.New("TÃ i khoáº£n khÃ´ng tá»“n táº¡i. Vui lÃ²ng Ä‘Äƒng kÃ½ má»›i.")
+		return nil, errors.New("Tài khoản không tồn tại. Vui lòng đăng ký mới.")
 	}
 
 	// Else email exists -> Proceed with traditional login
@@ -192,21 +192,21 @@ func (uc *AuthUseCase) AdminCreateAccount(ctx context.Context, req models.AdminC
 	return user, nil
 }
 
-// ForgotPassword - Gá»­i OTP qua email
-// KHá»šP Vá»šI Java ForgotPasswordJwtController
+// ForgotPassword - Gửi OTP qua email
+// KHỚP VỚI Java ForgotPasswordJwtController
 func (uc *AuthUseCase) ForgotPassword(ctx context.Context, email string) (string, error) {
 	// Validate email format
 	if err := validator.GetEmailError(email); err != "" {
 		return "", errors.New(err)
 	}
 
-	// Kiá»ƒm tra email tá»“n táº¡i
+	// Kiểm tra email tồn tại
 	user, err := uc.userRepo.FindByEmail(ctx, email)
 	if err != nil {
-		return "", errors.New("lá»—i khi kiá»ƒm tra email")
+		return "", errors.New("lỗi khi kiểm tra email")
 	}
 	if user == nil {
-		return "", errors.New("email khÃ´ng tá»“n táº¡i trong há»‡ thá»‘ng")
+		return "", errors.New("email không tồn tại trong hệ thống")
 	}
 
 	// Sinh OTP
@@ -216,30 +216,30 @@ func (uc *AuthUseCase) ForgotPassword(ctx context.Context, email string) (string
 	}
 	otp := otpManager.GenerateOTP(email)
 
-	// Return OTP (caller sáº½ gá»­i email)
+	// Return OTP (caller sẽ gửi email)
 	return otp, nil
 }
 
-// ResetPassword - XÃ¡c thá»±c OTP vÃ  Ä‘á»•i máº­t kháº©u
-// KHá»šP Vá»šI Java ResetPasswordJwtController
+// ResetPassword - Xác thực OTP và đổi mật khẩu
+// KHỚP VỚI Java ResetPasswordJwtController
 func (uc *AuthUseCase) ResetPassword(ctx context.Context, req models.ResetPasswordRequest) error {
 	// Validate email
 	if err := validator.GetEmailError(req.Email); err != "" {
 		return errors.New(err)
 	}
 
-	// Validate password (tá»‘i thiá»ƒu 6 kÃ½ tá»±)
+	// Validate password (tối thiểu 6 ký tự)
 	if len(req.NewPassword) < 6 {
-		return errors.New("máº­t kháº©u pháº£i cÃ³ Ã­t nháº¥t 6 kÃ½ tá»±")
+		return errors.New("mật khẩu phải có ít nhất 6 ký tự")
 	}
 
-	// Kiá»ƒm tra email tá»“n táº¡i
+	// Kiểm tra email tồn tại
 	user, err := uc.userRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
-		return errors.New("lá»—i khi kiá»ƒm tra email")
+		return errors.New("lỗi khi kiểm tra email")
 	}
 	if user == nil {
-		return errors.New("email khÃ´ng tá»“n táº¡i trong há»‡ thá»‘ng")
+		return errors.New("email không tồn tại trong hệ thống")
 	}
 
 	// Verify OTP
@@ -249,13 +249,13 @@ func (uc *AuthUseCase) ResetPassword(ctx context.Context, req models.ResetPasswo
 		return errors.New(message)
 	}
 
-	// Cáº­p nháº­t máº­t kháº©u
+	// Cập nhật mật khẩu
 	err = uc.userRepo.UpdatePasswordByEmail(ctx, req.Email, req.NewPassword)
 	if err != nil {
-		return errors.New("khÃ´ng thá»ƒ cáº­p nháº­t máº­t kháº©u")
+		return errors.New("không thể cập nhật mật khẩu")
 	}
 
-	// VÃ´ hiá»‡u hÃ³a OTP
+	// Vô hiệu hóa OTP
 	otpManager.Invalidate(req.Email)
 
 	return nil
@@ -263,7 +263,7 @@ func (uc *AuthUseCase) ResetPassword(ctx context.Context, req models.ResetPasswo
 
 // ============================================================
 // Register OTP Flow Methods (for 2-step registration)
-// KHá»šP Vá»šI Java RegisterJwtController
+// KHỚP VỚI Java RegisterJwtController
 // ============================================================
 
 // In-memory storage for pending registrations (should use Redis in production)
@@ -325,7 +325,7 @@ func (uc *AuthUseCase) VerifyRegisterOTP(ctx context.Context, email, otp string)
 	// Check pending registration exists
 	pending, exists := pendingRegistrations[email]
 	if !exists {
-		return nil, errors.New("KhÃ´ng cÃ³ Ä‘Äƒng kÃ½ Ä‘ang chá» cho email nÃ y")
+		return nil, errors.New("Không có đăng ký đang chờ cho email này")
 	}
 
 	// Verify OTP
@@ -338,11 +338,11 @@ func (uc *AuthUseCase) VerifyRegisterOTP(ctx context.Context, email, otp string)
 	// Double-check email doesn't exist (race condition protection)
 	emailExists, err := uc.userRepo.ExistsByEmail(ctx, email)
 	if err != nil {
-		return nil, errors.New("Lá»—i khi kiá»ƒm tra email")
+		return nil, errors.New("Lỗi khi kiểm tra email")
 	}
 	if emailExists {
 		delete(pendingRegistrations, email)
-		return nil, errors.New("Email Ä‘Ã£ tá»“n táº¡i")
+		return nil, errors.New("Email đã tồn tại")
 	}
 
 	// Create user
@@ -356,7 +356,7 @@ func (uc *AuthUseCase) VerifyRegisterOTP(ctx context.Context, email, otp string)
 
 	userID, err := uc.userRepo.CreateUserWithHash(ctx, &user, pending.PasswordHash)
 	if err != nil {
-		return nil, errors.New("KhÃ´ng thá»ƒ táº¡o tÃ i khoáº£n")
+		return nil, errors.New("Không thể tạo tài khoản")
 	}
 
 	// Cleanup
@@ -366,7 +366,7 @@ func (uc *AuthUseCase) VerifyRegisterOTP(ctx context.Context, email, otp string)
 	// Generate JWT
 	token, err := jwt.GenerateToken(userID, user.Email, user.FullName, user.Role)
 	if err != nil {
-		return nil, errors.New("KhÃ´ng thá»ƒ táº¡o token")
+		return nil, errors.New("Không thể tạo token")
 	}
 
 	user.ID = userID
@@ -381,12 +381,12 @@ func (uc *AuthUseCase) VerifyRegisterOTP(ctx context.Context, email, otp string)
 func (uc *AuthUseCase) ResendRegisterOTP(ctx context.Context, email string) (string, error) {
 	pending, exists := pendingRegistrations[email]
 	if !exists {
-		return "", errors.New("KhÃ´ng cÃ³ Ä‘Äƒng kÃ½ Ä‘ang chá» cho email nÃ y")
+		return "", errors.New("Không có đăng ký đang chờ cho email này")
 	}
 
 	pending.Attempts++
 	if pending.Attempts > 5 {
-		return "", errors.New("QuÃ¡ nhiá»u láº§n gá»­i láº¡i")
+		return "", errors.New("Quá nhiều lần gửi lại")
 	}
 
 	otpManager := GetOTPManager()
@@ -400,19 +400,19 @@ func (uc *AuthUseCase) ResendRegisterOTP(ctx context.Context, email string) (str
 
 // ============================================================
 // Admin User Management Methods
-// KHá»šP Vá»šI Java AdminController
+// KHỚP VỚI Java AdminController
 // ============================================================
 
 // AdminUpdateUser updates user by admin
 func (uc *AuthUseCase) AdminUpdateUser(ctx context.Context, req models.AdminUpdateUserRequest) error {
 	// Validate role if provided
 	if req.Role != "" && !validator.IsValidRoleForCreation(req.Role) {
-		return errors.New("Role khÃ´ng há»£p lá»‡")
+		return errors.New("Role không hợp lệ")
 	}
 
 	// Validate status if provided
 	if req.Status != "" && req.Status != "ACTIVE" && req.Status != "INACTIVE" {
-		return errors.New("Status khÃ´ng há»£p lá»‡")
+		return errors.New("Status không hợp lệ")
 	}
 
 	return uc.userRepo.UpdateUser(ctx, req)
@@ -512,16 +512,16 @@ func (uc *AuthUseCase) DirectUpdatePhone(ctx context.Context, email, phone strin
 	// Verify user exists
 	user, err := uc.userRepo.FindByEmail(ctx, email)
 	if err != nil {
-		return errors.New("lá»—i khi kiá»ƒm tra email")
+		return errors.New("lỗi khi kiểm tra email")
 	}
 	if user == nil {
-		return errors.New("email khÃ´ng tá»“n táº¡i trong há»‡ thá»‘ng")
+		return errors.New("email không tồn tại trong hệ thống")
 	}
 
 	// Update phone in database
 	err = uc.userRepo.UpdatePhoneByEmail(ctx, email, phone)
 	if err != nil {
-		return errors.New("khÃ´ng thá»ƒ cáº­p nháº­t sá»‘ Ä‘iá»‡n thoáº¡i")
+		return errors.New("không thể cập nhật số điện thoại")
 	}
 
 	return nil
@@ -577,22 +577,22 @@ func (uc *AuthUseCase) RestoreAccount(ctx context.Context, userID int) error {
 // SetSSOUserPassword sets password for Google authenticated users and removes SSO status
 func (uc *AuthUseCase) SetSSOUserPassword(ctx context.Context, email, password string) error {
 	if len(password) < 6 {
-		return errors.New("máº­t kháº©u pháº£i cÃ³ Ã­t nháº¥t 6 kÃ½ tá»±")
+		return errors.New("mật khẩu phải có ít nhất 6 ký tự")
 	}
 
 	// Verify user exists
 	user, err := uc.userRepo.FindByEmail(ctx, email)
 	if err != nil {
-		return errors.New("lá»—i khi kiá»ƒm tra email")
+		return errors.New("lỗi khi kiểm tra email")
 	}
 	if user == nil {
-		return errors.New("email khÃ´ng tá»“n táº¡i trong há»‡ thá»‘ng")
+		return errors.New("email không tồn tại trong hệ thống")
 	}
 
 	// Update password and clear SSO provider in database
 	err = uc.userRepo.UpdatePasswordAndClearSSO(ctx, email, password)
 	if err != nil {
-		return errors.New("khÃ´ng thá»ƒ cáº­p nháº­t máº­t kháº©u vÃ  sso")
+		return errors.New("không thể cập nhật mật khẩu và sso")
 	}
 
 	return nil
@@ -606,7 +606,7 @@ func (uc *AuthUseCase) HardDeleteExpiredAccounts(ctx context.Context) (int64, er
 // UpdateTheme updates user theme preference in the database
 func (uc *AuthUseCase) UpdateTheme(ctx context.Context, email, theme string) error {
 	if theme != "light" && theme != "dark" {
-		return errors.New("giao diá»‡n khÃ´ng há»£p lá»‡")
+		return errors.New("giao diện không hợp lệ")
 	}
 	return uc.userRepo.UpdateThemeByEmail(ctx, email, theme)
 }
@@ -644,13 +644,13 @@ func (uc *AuthUseCase) GetUserWalletBalance(ctx context.Context, email string) (
 func (uc *AuthUseCase) UpdateFullName(ctx context.Context, email, fullName string) error {
 	fullName = strings.TrimSpace(fullName)
 	if fullName == "" {
-		return errors.New("há» vÃ  tÃªn khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
+		return errors.New("họ và tên không được để trống")
 	}
 	if len(fullName) < 2 {
-		return errors.New("há» vÃ  tÃªn pháº£i cÃ³ Ã­t nháº¥t 2 kÃ½ tá»±")
+		return errors.New("họ và tên phải có ít nhất 2 ký tự")
 	}
 	if len(fullName) > 100 {
-		return errors.New("há» vÃ  tÃªn khÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 100 kÃ½ tá»±")
+		return errors.New("họ và tên không được vượt quá 100 ký tự")
 	}
 	return uc.userRepo.UpdateFullNameByEmail(ctx, email, fullName)
 }
