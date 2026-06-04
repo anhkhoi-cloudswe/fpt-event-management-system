@@ -176,7 +176,9 @@ func (r *EventRepository) GetEventsByStatusV1(
 			va.floor,
 			v.venue_name,
 			v.location,
-			e.created_by
+			e.created_by,
+			(SELECT COALESCE(COUNT(*), 0) FROM Ticket t WHERE t.event_id = e.event_id AND t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN')) AS seats_booked,
+			COALESCE(e.max_seats, 0) AS total_capacity
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
@@ -212,6 +214,8 @@ func (r *EventRepository) GetEventsByStatusV1(
 			venueName     sql.NullString
 			venueLocation sql.NullString
 			organizerID   sql.NullInt64
+			seatsBooked   sql.NullInt64
+			totalCapacity sql.NullInt64
 		)
 
 		err := rows.Scan(
@@ -229,6 +233,8 @@ func (r *EventRepository) GetEventsByStatusV1(
 			&venueName,
 			&venueLocation,
 			&organizerID,
+			&seatsBooked,
+			&totalCapacity,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan event: %w", err)
@@ -238,9 +244,9 @@ func (r *EventRepository) GetEventsByStatusV1(
 			EventID:       eventID,
 			Title:         title,
 			Description:   nullStringToPointer(description),
-		// ✅ FIXED: Use FormatTimeToWallClockRFC3339 - formats wall-clock time directly without conversion
-		StartTime:     utils.FormatTimeToWallClockRFC3339(startTime),
-		EndTime:       utils.FormatTimeToWallClockRFC3339(endTime),
+			// ✅ FIXED: Use FormatTimeToWallClockRFC3339 - formats wall-clock time directly without conversion
+			StartTime:     utils.FormatTimeToWallClockRFC3339(startTime),
+			EndTime:       utils.FormatTimeToWallClockRFC3339(endTime),
 			MaxSeats:      maxSeats,
 			Status:        status,
 			BannerURL:     nullStringToPointer(bannerURL),
@@ -250,6 +256,8 @@ func (r *EventRepository) GetEventsByStatusV1(
 			VenueName:     nullStringToPointer(venueName),
 			VenueLocation: nullStringToPointer(venueLocation),
 			OrganizerID:   nullInt64ToPointer(organizerID),
+			SeatsBooked:   nullInt64ToPointer(seatsBooked),
+			TotalCapacity: nullInt64ToPointer(totalCapacity),
 		}
 
 		events = append(events, event)
@@ -408,7 +416,9 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			va.floor,
 			v.venue_name,
 			v.location,
-			e.created_by
+			e.created_by,
+			(SELECT COALESCE(COUNT(*), 0) FROM Ticket t WHERE t.event_id = e.event_id AND t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN')) AS seats_booked,
+			COALESCE(e.max_seats, 0) AS total_capacity
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
@@ -444,6 +454,8 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			venueName     sql.NullString
 			venueLocation sql.NullString
 			organizerID   sql.NullInt64
+			seatsBooked   sql.NullInt64
+			totalCapacity sql.NullInt64
 		)
 
 		err := rows.Scan(
@@ -461,6 +473,8 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			&venueName,
 			&venueLocation,
 			&organizerID,
+			&seatsBooked,
+			&totalCapacity,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan event: %w", err)
@@ -482,6 +496,8 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			VenueName:     nullStringToPointer(venueName),
 			VenueLocation: nullStringToPointer(venueLocation),
 			OrganizerID:   nullInt64ToPointer(organizerID),
+			SeatsBooked:   nullInt64ToPointer(seatsBooked),
+			TotalCapacity: nullInt64ToPointer(totalCapacity),
 		}
 
 		events = append(events, event)

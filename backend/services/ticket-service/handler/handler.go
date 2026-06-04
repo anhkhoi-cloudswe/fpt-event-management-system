@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -22,7 +23,10 @@ import (
 	"github.com/fpt-event-services/services/ticket-service/usecase"
 )
 
-var log = logger.Default()
+var (
+	log              = logger.Default()
+	idempotencyStore sync.Map
+)
 
 type TicketHandler struct {
 	useCase *usecase.TicketUseCase
@@ -408,6 +412,22 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 		return createMessageResponse(http.StatusBadRequest, "Maximum 4 seats per purchase")
 	}
 
+	// Idempotency check
+	clientKey := getHeaderIgnoreCase(request.Headers, "Idempotency-Key")
+	isDuplicate, idempotencyKey := checkIdempotency(userID, initReq.EventID, initReq.SeatIDs, clientKey)
+	if isDuplicate {
+		body, _ := json.Marshal(map[string]interface{}{
+			"error":   "duplicate_transaction",
+			"message": "Giao dịch đang được xử lý. Vui lòng không gửi yêu cầu trùng lặp!",
+			"key":     idempotencyKey,
+		})
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusConflict,
+			Headers:    defaultHeaders(),
+			Body:       string(body),
+		}, nil
+	}
+
 	// Generate redirect URL
 	redirectURL := os.Getenv("MOMO_REDIRECT_URL")
 	if redirectURL == "" {
@@ -734,6 +754,22 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 	// Limit to 4 seats maximum
 	if len(paymentReq.SeatIDs) > 4 {
 		return createMessageResponse(http.StatusBadRequest, "Maximum 4 seats per purchase")
+	}
+
+	// Idempotency check
+	clientKey := getHeaderIgnoreCase(request.Headers, "Idempotency-Key")
+	isDuplicate, idempotencyKey := checkIdempotency(userID, paymentReq.EventID, paymentReq.SeatIDs, clientKey)
+	if isDuplicate {
+		body, _ := json.Marshal(map[string]interface{}{
+			"error":   "duplicate_transaction",
+			"message": "Giao dịch đang được xử lý. Vui lòng không gửi yêu cầu trùng lặp!",
+			"key":     idempotencyKey,
+		})
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusConflict,
+			Headers:    defaultHeaders(),
+			Body:       string(body),
+		}, nil
 	}
 
 	// Get wallet balance
@@ -1267,4 +1303,45 @@ func (h *TicketHandler) HandleGetActiveOrder(ctx context.Context, request events
 		},
 		Body: string(body),
 	}, nil
+}
+
+// checkIdempotency checks if a transaction is already in progress.
+// It returns true if it's a duplicate, and the generated key.
+func checkIdempotency(userID, eventID int, seatIDs []int, clientKey string) (bool, string) {
+	// Generate key based on user_id, event_id, and sorted seat_ids
+	sortedSeats := make([]int, len(seatIDs))
+	copy(sortedSeats, seatIDs)
+	for i := 0; i < len(sortedSeats); i++ {
+		for j := i + 1; j < len(sortedSeats); j++ {
+			if sortedSeats[i] > sortedSeats[j] {
+				sortedSeats[i], sortedSeats[j] = sortedSeats[j], sortedSeats[i]
+			}
+		}
+	}
+
+	seatsStr := ""
+	for i, id := range sortedSeats {
+		if i > 0 {
+			seatsStr += ","
+		}
+		seatsStr += strconv.Itoa(id)
+	}
+
+	key := fmt.Sprintf("%d:%d:%s", userID, eventID, seatsStr)
+	if clientKey != "" {
+		key = clientKey
+	}
+
+	now := time.Now()
+	if val, ok := idempotencyStore.Load(key); ok {
+		if expireTime, ok := val.(time.Time); ok {
+			if now.Before(expireTime) {
+				return true, key
+			}
+		}
+	}
+
+	// Store key with 5 minutes expiration
+	idempotencyStore.Store(key, now.Add(5*time.Minute))
+	return false, key
 }

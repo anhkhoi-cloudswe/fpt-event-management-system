@@ -98,6 +98,10 @@ type EventListItem struct {
 
 	// ✅ NEW: Organizer ID để filter cho ORGANIZER role
 	OrganizerID *int `json:"organizerId"`
+
+	// ✅ NEW: Sold out check fields
+	SeatsBooked   *int `json:"seatsBooked"`
+	TotalCapacity *int `json:"totalCapacity"`
 }
 
 // ============================================================

@@ -1107,11 +1107,18 @@ func (h *AuthHandler) HandleUpdatePassword(ctx context.Context, request events.A
 		return createStatusResponse(http.StatusBadRequest, "fail", "Máº­t kháº©u khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
 	}
 
-	if req.OldPassword == "" {
+	// Fetch user details to inspect password hash
+	user, err := h.useCase.GetUserByEmail(ctx, email)
+	if err != nil || user == nil {
+		return createStatusResponse(http.StatusNotFound, "fail", "User not found")
+	}
+
+	// Only require old password if user already has a password hash set
+	if user.PasswordHash != "" && req.OldPassword == "" {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Old password is required")
 	}
 
-	err := h.useCase.DirectUpdatePassword(ctx, email, req.OldPassword, req.Password)
+	err = h.useCase.DirectUpdatePassword(ctx, email, req.OldPassword, req.Password)
 	if err != nil {
 		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
 	}

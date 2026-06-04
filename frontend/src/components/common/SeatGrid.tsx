@@ -215,10 +215,6 @@ export function SeatGrid({
   const compactMode = maxColumns >= 10
 
   // ===================== CREATE FULL GRID FOR A ROW =====================
-  // Tạo grid dạng (Seat | null)[] theo số cột maxCols
-  // col từ 1..maxCols:
-  // - nếu tìm thấy ghế đúng col => đưa ghế vào
-  // - nếu không có => null (placeholder)
   const createSeatGrid = (rowSeats: Seat[], maxCols: number) => {
     const grid: (Seat | null)[] = []
     for (let col = 1; col <= maxCols; col++) {
@@ -255,8 +251,10 @@ export function SeatGrid({
       return 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-850 cursor-not-allowed text-transparent'
     }
 
-    // Nếu ghế đang được chọn => highlight xanh dương
-    if (isSelected) return 'border-blue-600 dark:border-blue-500 bg-blue-100 dark:bg-blue-950/40 font-semibold dark:text-blue-300'
+    // Selected/Processing: bg-green-500 animate-pulse text-white
+    if (isSelected) {
+      return 'bg-green-500 animate-pulse text-white border-green-600 font-semibold'
+    }
 
     /**
      * Nếu đã chọn đủ số ghế (maxReached) mà ghế này chưa chọn:
@@ -267,20 +265,20 @@ export function SeatGrid({
       return 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-850 cursor-not-allowed text-transparent'
     }
 
-    // Nếu ghế đã được đặt/chiếm => đỏ, disable
+    // Nếu ghế đã được đặt/chiếm => bg-red-500 text-white cursor-not-allowed
     const seatStatus = normalizeSeatStatus(seat.status)
 
     if (seatStatus === 'BOOKED') {
-      return 'border-red-400 dark:border-red-800 bg-red-100 dark:bg-red-950/40 cursor-not-allowed text-red-800 dark:text-red-300'
+      return 'bg-red-500 text-white cursor-not-allowed border-red-650'
     }
 
     // Nếu ghế đang giữ chỗ / hold => xám, disable
     if (seatStatus === 'PENDING') {
-      return 'border-gray-400 dark:border-slate-700 bg-gray-200 dark:bg-slate-800 cursor-not-allowed text-gray-700 dark:text-slate-400'
+      return 'border-gray-400 dark:border-slate-700 bg-gray-200 dark:bg-slate-800 cursor-not-allowed text-gray-700 dark:text-slate-450'
     }
 
-    // Mặc định xem là ghế trống (AVAILABLE) => xanh lá + hover
-    return 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-950/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-800 dark:text-green-300'
+    // Available: bg-slate-200 dark:bg-slate-800 text-slate-400
+    return 'bg-slate-200 dark:bg-slate-800 border-slate-350 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200'
   }
 
   // ===================== PREPARE CATEGORY SECTIONS FOR RENDERING =====================
@@ -428,16 +426,16 @@ export function SeatGrid({
         <p className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-2">Chú thích:</p>
         <div className="flex flex-wrap gap-3 text-xs">
           <div className="flex items-center">
-            <div className="w-6 h-6 bg-green-50 dark:bg-green-950/20 border-2 border-green-400 dark:border-green-600 rounded mr-1.5"></div>
-            <span className="text-gray-650 dark:text-slate-400">Ghế trống</span>
+            <div className="w-6 h-6 bg-slate-200 dark:bg-slate-800 border-2 border-slate-350 dark:border-slate-700 rounded mr-1.5"></div>
+            <span className="text-gray-650 dark:text-slate-400">Ghế trống (Available)</span>
           </div>
           <div className="flex items-center">
-            <div className="w-6 h-6 bg-gray-200 dark:bg-slate-800 border-2 border-gray-400 dark:border-slate-700 rounded mr-1.5"></div>
-            <span className="text-gray-650 dark:text-slate-400">Đang đặt</span>
+            <div className="w-6 h-6 bg-green-500 animate-pulse border-2 border-green-600 rounded mr-1.5"></div>
+            <span className="text-gray-650 dark:text-slate-400">Đang chọn (Selected)</span>
           </div>
           <div className="flex items-center">
-            <div className="w-6 h-6 bg-red-100 dark:bg-red-950/40 border-2 border-red-400 dark:border-red-800 rounded mr-1.5"></div>
-            <span className="text-gray-650 dark:text-slate-400">Đã đặt</span>
+            <div className="w-6 h-6 bg-red-500 border-2 border-red-650 rounded mr-1.5"></div>
+            <span className="text-gray-650 dark:text-slate-400">Đã đặt (Occupied)</span>
           </div>
         </div>
       </div>

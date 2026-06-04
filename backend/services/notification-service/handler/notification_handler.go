@@ -159,33 +159,39 @@ func (h *NotificationHandler) HandleSendEmail(ctx context.Context, request event
 		return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "recipient email required"})
 	}
 
-	var err error
 	switch req.Type {
 	case "otp":
 		if req.OTP == "" || req.Purpose == "" {
 			return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "otp and purpose required for OTP email"})
 		}
-		err = h.emailService.SendOTPEmail(req.To, req.OTP, req.Purpose)
 	case "generic":
 		if req.HTMLBody == "" {
 			return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "htmlBody required for generic email"})
 		}
-		err = h.emailService.Send(email.EmailMessage{
-			To:       []string{req.To},
-			Subject:  req.Subject,
-			HTMLBody: req.HTMLBody,
-		})
 	default:
 		return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": fmt.Sprintf("unknown email type: %s", req.Type)})
 	}
 
-	if err != nil {
-		h.logger.Warn("[NOTIFICATION] Failed to send email to %s: %v", req.To, err)
-		return createNotifyResponse(http.StatusInternalServerError, map[string]interface{}{"success": false, "error": "failed to send email"})
-	}
+	go func() {
+		var err error
+		switch req.Type {
+		case "otp":
+			err = h.emailService.SendOTPEmail(req.To, req.OTP, req.Purpose)
+		case "generic":
+			err = h.emailService.Send(email.EmailMessage{
+				To:       []string{req.To},
+				Subject:  req.Subject,
+				HTMLBody: req.HTMLBody,
+			})
+		}
+		if err != nil {
+			h.logger.Warn("[NOTIFICATION] Failed to send email to %s: %v", req.To, err)
+		} else {
+			h.logger.Info("[NOTIFICATION] ✅ Email sent: type=%s, to=%s", req.Type, req.To)
+		}
+	}()
 
-	h.logger.Info("[NOTIFICATION] ✅ Email sent: type=%s, to=%s", req.Type, req.To)
-	return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true})
+	return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "email dispatch initiated"})
 }
 
 // ============================================================
@@ -211,7 +217,10 @@ func (h *NotificationHandler) HandleSendTicketPDF(ctx context.Context, request e
 			h.logger.Warn("[ERROR] Email recipient is empty, skipping send")
 			return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "email recipient is empty"})
 		}
-		return h.handleSingleTicketPDF(req.SingleTicket)
+		go func() {
+			_, _ = h.handleSingleTicketPDF(req.SingleTicket)
+		}()
+		return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "ticket email dispatch initiated"})
 	}
 
 	if req.MultipleTickets != nil {
@@ -220,7 +229,10 @@ func (h *NotificationHandler) HandleSendTicketPDF(ctx context.Context, request e
 			h.logger.Warn("[ERROR] Email recipient is empty, skipping send")
 			return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "email recipient is empty"})
 		}
-		return h.handleMultipleTicketsPDF(req.MultipleTickets)
+		go func() {
+			_, _ = h.handleMultipleTicketsPDF(req.MultipleTickets)
+		}()
+		return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "tickets email dispatch initiated"})
 	}
 
 	return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "either singleTicket or multipleTickets required"})
@@ -411,12 +423,10 @@ func (h *NotificationHandler) HandleSendTickets(ctx context.Context, request eve
 	if req.SingleTicket != nil {
 		h.logger.Info("[NOTIFY] 🔍 Payload received - StartTime='%s', EndTime='%s'", req.SingleTicket.StartTime, req.SingleTicket.EndTime)
 		h.logger.Info("[NOTIFY] ✅ send-tickets received single ticket payload for %s (ticketId=%d)", req.SingleTicket.UserEmail, req.SingleTicket.TicketID)
-		resp, err := h.handleSingleTicketPDF(req.SingleTicket)
-		if err != nil {
-			return resp, err
-		}
-		h.logger.Info("[SES_RESULT] Success: Sent Purchase email to %s with 1 tickets", req.SingleTicket.UserEmail)
-		return resp, nil
+		go func() {
+			_, _ = h.handleSingleTicketPDF(req.SingleTicket)
+		}()
+		return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "ticket email dispatch initiated"})
 	}
 
 	if req.MultipleTickets == nil {
@@ -425,14 +435,10 @@ func (h *NotificationHandler) HandleSendTickets(ctx context.Context, request eve
 
 	h.logger.Info("[NOTIFY] ✅ send-tickets received multiple tickets payload for %s (count=%d)", req.MultipleTickets.UserEmail, len(req.MultipleTickets.Tickets))
 
-	resp, err := h.handleMultipleTicketsPDF(req.MultipleTickets)
-	if err != nil {
-		h.logger.Warn("[SES_ERROR] Failed to send Purchase email to %s with %d tickets: %v", req.MultipleTickets.UserEmail, len(req.MultipleTickets.Tickets), err)
-		return resp, err
-	}
-
-	h.logger.Info("[SES_RESULT] Success: Sent Purchase email to %s with %d tickets", req.MultipleTickets.UserEmail, len(req.MultipleTickets.Tickets))
-	return resp, nil
+	go func() {
+		_, _ = h.handleMultipleTicketsPDF(req.MultipleTickets)
+	}()
+	return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "tickets email dispatch initiated"})
 }
 
 // HandleRefundEmail - POST /internal/notify/refund
@@ -463,18 +469,20 @@ func (h *NotificationHandler) HandleRefundEmail(ctx context.Context, request eve
 		strings.Join(ticketIDs, ", "),
 	)
 
-	err := h.emailService.Send(email.EmailMessage{
-		To:       []string{req.UserEmail},
-		Subject:  "[FPT Event] Sự kiện đã bị hủy - Hoàn tiền vé",
-		HTMLBody: htmlBody,
-	})
-	if err != nil {
-		h.logger.Warn("[SES_ERROR] Failed to send Refund email to %s with %d tickets: %v", req.UserEmail, len(req.TicketIDs), err)
-		return createNotifyResponse(http.StatusInternalServerError, map[string]interface{}{"success": false, "error": "failed to send refund email"})
-	}
+	go func() {
+		err := h.emailService.Send(email.EmailMessage{
+			To:       []string{req.UserEmail},
+			Subject:  "[FPT Event] Sự kiện đã bị hủy - Hoàn tiền vé",
+			HTMLBody: htmlBody,
+		})
+		if err != nil {
+			h.logger.Warn("[SES_ERROR] Failed to send Refund email to %s with %d tickets: %v", req.UserEmail, len(req.TicketIDs), err)
+		} else {
+			h.logger.Info("[SES_RESULT] Success: Sent Refund email to %s with %d tickets", req.UserEmail, len(req.TicketIDs))
+		}
+	}()
 
-	h.logger.Info("[SES_RESULT] Success: Sent Refund email to %s with %d tickets", req.UserEmail, len(req.TicketIDs))
-	return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true})
+	return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "refund email dispatch initiated"})
 }
 
 // ============================================================

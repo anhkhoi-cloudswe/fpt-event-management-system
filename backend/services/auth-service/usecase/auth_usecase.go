@@ -511,9 +511,6 @@ func (uc *AuthUseCase) DirectUpdatePhone(ctx context.Context, email, phone strin
 
 // DirectUpdatePassword handles authenticated password updates after old-password verification.
 func (uc *AuthUseCase) DirectUpdatePassword(ctx context.Context, email, oldPassword, newPassword string) error {
-	if oldPassword == "" {
-		return errors.New("old password is required")
-	}
 	if len(newPassword) < 6 {
 		return errors.New("password must be at least 6 characters")
 	}
@@ -525,8 +522,15 @@ func (uc *AuthUseCase) DirectUpdatePassword(ctx context.Context, email, oldPassw
 	if user == nil {
 		return errors.New("user not found")
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(oldPassword)); err != nil {
-		return errors.New("old password is incorrect")
+
+	// If password hash exists in database, verify the old password
+	if user.PasswordHash != "" {
+		if oldPassword == "" {
+			return errors.New("old password is required")
+		}
+		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(oldPassword)); err != nil {
+			return errors.New("old password is incorrect")
+		}
 	}
 
 	err = uc.userRepo.UpdatePasswordByEmail(ctx, email, newPassword)
@@ -608,7 +612,7 @@ func (uc *AuthUseCase) GetUserWalletBalance(ctx context.Context, email string) (
 	}
 
 	// Query dedicated wallets table for balance
-	query := `SELECT COALESCE(balance, 0) FROM wallets WHERE user_id = $1`
+	query := `SELECT COALESCE(balance, 0) FROM wallet WHERE user_id = $1`
 	var balance float64
 	err = uc.userRepo.DB().QueryRowContext(ctx, query, user.ID).Scan(&balance)
 	if err != nil {

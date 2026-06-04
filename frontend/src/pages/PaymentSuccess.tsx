@@ -44,92 +44,116 @@ export default function PaymentSuccess() {
    *   ví dụ: /payment-success?status=success&ticketIds=12,13
    */
   useEffect(() => {
-    // Tạo object URLSearchParams để đọc query string dễ dàng
-    // location.search là phần sau dấu "?" trong URL
-    const params = new URLSearchParams(location.search)
-
-    // Lấy param "status" từ URL (vd: success / failed / pending...)
-    const status = params.get('status')
-
-    /**
-     * Nếu backend redirect về trang success nhưng status lại không phải "success"
-     * -> coi như thất bại và chuyển user sang trang /payment-failed
-     *
-     * navigate('/payment-failed' + location.search):
-     * - giữ nguyên query params để trang failed cũng đọc được thông tin
-     *
-     * { replace: true }:
-     * - thay thế history entry hiện tại
-     * - user bấm Back không quay lại success “bị sai status”
-     */
-    if (status && status !== 'success') {
-      navigate('/payment-failed' + location.search, { replace: true })
-      return // dừng effect
-    }
-
-    /**
-     * Backend hiện tại gửi "ticketIds"
-     * nhưng để tương thích trường hợp cũ hoặc khác backend,
-     * ta fallback về "ticketId" nếu "ticketIds" không có
-     *
-     * Ví dụ:
-     * - ticketIds=12,13,14 (nhiều vé)
-     * - ticketId=12 (1 vé)
-     */
-    const ticketsParam = params.get('ticketIds') ?? params.get('ticketId')
-    const method = params.get('method') ?? 'momo'
-    const emailFailedParam = params.get('emailFailed')
-
-    // Detect MoMo Redirect Query Parameters
-    const resultCode = params.get('resultCode')
-    const momoOrderId = params.get('orderId')
-
-    if (resultCode !== null) {
-      if (resultCode === '0') {
-        setPaymentMethod('momo')
-        setTicketIds(momoOrderId ? `MOMO_${momoOrderId}` : 'MOMO')
-      } else {
-        const errorMsg = params.get('message') || 'Thanh toán MoMo thất bại'
-        navigate(`/dashboard/payment/failed?status=failed&method=momo&reason=${encodeURIComponent(errorMsg)}`, { replace: true })
+    try {
+      if (!location || typeof location.search !== 'string') {
+        setTicketIds(null)
+        setPaymentMethod('vnpay')
         return
       }
-    } else {
-      setTicketIds(ticketsParam)
-      setPaymentMethod(method)
-    }
 
-    if (emailFailedParam === '1') {
-      setEmailFailed(true)
-    }
+      // Tạo object URLSearchParams để đọc query string dễ dàng
+      // location.search là phần sau dấu "?" trong URL
+      const params = new URLSearchParams(location.search)
 
-    // Tắt confetti sau 5 giây
-    const timer = setTimeout(() => setShowConfetti(false), 5000)
-
-    // If backend included newWallet in the redirect query, update local user/wallet immediately
-    const newWalletParam = params.get('newWallet')
-    if (newWalletParam) {
-      const w = Number(newWalletParam)
-      if (!Number.isNaN(w)) {
-        setUser((prev) => {
-          if (!prev) return prev
-          return { ...prev, wallet: w }
-        })
+      const getSafeParam = (name: string): string | null => {
+        try {
+          return params.get(name)
+        } catch (_) {
+          return null
+        }
       }
+
+      // Lấy param "status" từ URL (vd: success / failed / pending...)
+      const status = getSafeParam('status')
+
+      /**
+       * Nếu backend redirect về trang success nhưng status lại không phải "success"
+       * -> coi như thất bại và chuyển user sang trang /payment-failed
+       *
+       * navigate('/payment-failed' + location.search):
+       * - giữ nguyên query params để trang failed cũng đọc được thông tin
+       *
+       * { replace: true }:
+       * - thay thế history entry hiện tại
+       * - user bấm Back không quay lại success “bị sai status”
+       */
+      if (status && status !== 'success') {
+        navigate('/payment-failed' + location.search, { replace: true })
+        return // dừng effect
+      }
+
+      /**
+       * Backend hiện tại gửi "ticketIds"
+       * nhưng để tương thích trường hợp cũ hoặc khác backend,
+       * ta fallback về "ticketId" nếu "ticketIds" không có
+       *
+       * Ví dụ:
+       * - ticketIds=12,13,14 (nhiều vé)
+       * - ticketId=12 (1 vé)
+       */
+      const ticketsParam = getSafeParam('ticketIds') ?? getSafeParam('ticketId')
+      const method = getSafeParam('method') ?? 'momo'
+      const emailFailedParam = getSafeParam('emailFailed')
+
+      // Detect MoMo Redirect Query Parameters
+      const resultCode = getSafeParam('resultCode')
+      const momoOrderId = getSafeParam('orderId')
+
+      if (resultCode !== null) {
+        if (resultCode === '0') {
+          setPaymentMethod('momo')
+          setTicketIds(momoOrderId ? `MOMO_${momoOrderId}` : 'MOMO')
+        } else {
+          const errorMsg = getSafeParam('message') || 'Thanh toán MoMo thất bại'
+          navigate(`/dashboard/payment/failed?status=failed&method=momo&reason=${encodeURIComponent(errorMsg)}`, { replace: true })
+          return
+        }
+      } else {
+        setTicketIds(ticketsParam)
+        setPaymentMethod(method)
+      }
+
+      if (emailFailedParam === '1') {
+        setEmailFailed(true)
+      }
+
+      // Tắt confetti sau 5 giây
+      const timer = setTimeout(() => setShowConfetti(false), 5000)
+
+      // If backend included newWallet in the redirect query, update local user/wallet immediately
+      const newWalletParam = getSafeParam('newWallet')
+      if (newWalletParam) {
+        const w = Number(newWalletParam)
+        if (!Number.isNaN(w)) {
+          setUser((prev) => {
+            if (!prev) return prev
+            return { ...prev, wallet: w }
+          })
+        }
+      }
+
+      // Emit signal để refresh wallet balance khi thanh toán thành công
+      try {
+        emitWalletRefresh()
+      } catch (err) {
+        console.error('Failed to emit wallet refresh:', err)
+      }
+
+      // Mark next event-detail request to bypass caches and force fresh seat statuses.
+      try {
+        const refreshToken = getSafeParam('eventId') || String(Date.now())
+        sessionStorage.setItem('force-event-detail-refresh', refreshToken)
+      } catch (_) {
+        // Ignore storage errors.
+      }
+
+      return () => clearTimeout(timer)
+    } catch (error) {
+      console.error('Critical error in PaymentSuccess query parameter parsing:', error)
+      setTicketIds(null)
+      setPaymentMethod('vnpay')
     }
-
-    // Emit signal để refresh wallet balance khi thanh toán thành công
-    emitWalletRefresh()
-
-  // Mark next event-detail request to bypass caches and force fresh seat statuses.
-  try {
-    const refreshToken = params.get('eventId') || String(Date.now())
-    sessionStorage.setItem('force-event-detail-refresh', refreshToken)
-  } catch (_) {
-    // Ignore storage errors.
-  }
-
-    return () => clearTimeout(timer)
-  }, [location.search, navigate, setUser]) // dependency: chạy lại khi query string hoặc navigate thay đổi
+  }, [location, navigate, setUser]) // dependency: chạy lại khi query string hoặc navigate thay đổi
 
   /**
    * ===================== RENDER UI =====================

@@ -16,6 +16,8 @@ export interface EventListItem {
   floor?: string
   venueName?: string
   venueLocation?: string
+  seatsBooked?: number
+  totalCapacity?: number
 }
 
 // Chi tiết một sự kiện
