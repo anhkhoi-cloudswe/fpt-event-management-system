@@ -31,7 +31,7 @@ import {
 
 // useEffect để gọi API khi component mount / khi dependencies thay đổi
 // useState để quản lý state dữ liệu
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 // Modal xem chi tiết request
 import { EventRequestDetailModal } from '../components/events/EventRequestDetailModal'
@@ -299,14 +299,20 @@ export default function OrganizerEventRequests() {
 
   const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const searchQueryRef = useRef('')
 
-  const fetchActiveRequests = useCallback(async (page: number) => {
+  useEffect(() => {
+    searchQueryRef.current = searchQuery
+  }, [searchQuery])
+
+  const fetchActiveRequests = useCallback(async (page: number, query = searchQueryRef.current) => {
     try {
       setActiveLoading(true)
       const offset = (page - 1) * ITEMS_PER_PAGE
       let url = `/api/event-requests/my/active?limit=${ITEMS_PER_PAGE}&offset=${offset}`
-      if (searchQuery.trim()) {
-        url += `&search=${encodeURIComponent(searchQuery.trim())}`
+      const safeQuery = typeof query === 'string' ? query.trim() : ''
+      if (safeQuery) {
+        url += `&search=${encodeURIComponent(safeQuery)}`
       }
 
       const response = await fetch(url, {
@@ -328,15 +334,16 @@ export default function OrganizerEventRequests() {
     } finally {
       setActiveLoading(false)
     }
-  }, [searchQuery])
+  }, [])
 
-  const fetchArchivedRequests = useCallback(async (page: number) => {
+  const fetchArchivedRequests = useCallback(async (page: number, query = searchQueryRef.current) => {
     try {
       setArchivedLoading(true)
       const offset = (page - 1) * ITEMS_PER_PAGE
       let url = `/api/event-requests/my/archived?limit=${ITEMS_PER_PAGE}&offset=${offset}`
-      if (searchQuery.trim()) {
-        url += `&search=${encodeURIComponent(searchQuery.trim())}`
+      const safeQuery = typeof query === 'string' ? query.trim() : ''
+      if (safeQuery) {
+        url += `&search=${encodeURIComponent(safeQuery)}`
       }
 
       const response = await fetch(url, {
@@ -358,7 +365,7 @@ export default function OrganizerEventRequests() {
     } finally {
       setArchivedLoading(false)
     }
-  }, [searchQuery])
+  }, [])
 
   useEffect(() => {
     void fetchActiveRequests(1)
@@ -486,10 +493,11 @@ export default function OrganizerEventRequests() {
   }
 
   const handleSearchSubmit = () => {
+    const query = searchQueryRef.current
     if (activeTab === 'active') {
-      fetchActiveRequests(1)
+      fetchActiveRequests(1, query)
     } else {
-      fetchArchivedRequests(1)
+      fetchArchivedRequests(1, query)
     }
   }
 

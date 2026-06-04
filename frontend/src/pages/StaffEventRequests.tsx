@@ -119,6 +119,20 @@ const normalizeEventRequestsPayload = (payload: unknown): EventRequest[] => {
     : []
 }
 
+const parseRequestTimestamp = (value: unknown): number | null => {
+  if (typeof value !== 'string' || !value.trim()) {
+    return null
+  }
+
+  const timestamp = Date.parse(value)
+  return Number.isFinite(timestamp) ? timestamp : null
+}
+
+const formatRequestDate = (value: unknown): string => {
+  const timestamp = parseRequestTimestamp(value)
+  return timestamp === null ? 'N/A' : new Date(timestamp).toLocaleDateString('vi-VN')
+}
+
 /**
  * getStatusLabel - Chuyển status code -> text tiếng Việt
  */
@@ -241,8 +255,8 @@ export default function StaffEventRequests() {
       const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)
 
       filtered = filtered.filter((req) => {
-        const createdDate = new Date(req?.createdAt ?? '')
-        return createdDate >= cutoffDate
+        const createdTimestamp = parseRequestTimestamp(req?.createdAt)
+        return createdTimestamp !== null && createdTimestamp >= cutoffDate.getTime()
       })
     }
 
@@ -622,11 +636,11 @@ export default function StaffEventRequests() {
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-4 h-4 text-orange-500" />
-                          <span>Ngày gửi: <strong className="text-slate-700">{req?.createdAt ? new Date(req.createdAt).toLocaleDateString('vi-VN') : 'N/A'}</strong></span>
+                          <span>Ngày gửi: <strong className="text-slate-700">{formatRequestDate(req?.createdAt)}</strong></span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Clock className="w-4 h-4 text-orange-500" />
-                          <span>Tổ chức: <strong className="text-slate-700">{req?.preferredStartTime ? new Date(req.preferredStartTime).toLocaleDateString('vi-VN') : 'N/A'}</strong></span>
+                          <span>Tổ chức: <strong className="text-slate-700">{formatRequestDate(req?.preferredStartTime)}</strong></span>
                         </div>
                       </div>
                     </div>
