@@ -28,13 +28,15 @@ import {
 
 // useEffect để gọi API khi component mount / khi dependencies thay đổi
 // useState để quản lý state dữ liệu
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 // Modal xem chi tiết request
 import { EventRequestDetailModal } from '../components/events/EventRequestDetailModal'
 
 // Modal xử lý request (Approve/Reject + chọn area + note)
 import { ProcessRequestModal } from '../components/events/ProcessRequestModal'
+
+const STAFF_REQUEST_BUCKETS = ['pending', 'approved', 'rejected', 'cancelled', 'updating', 'finished'] as const
 
 /**
  * Enum kiểu trạng thái yêu cầu tổ chức sự kiện
@@ -103,10 +105,9 @@ const sanitizeEventRequest = (value: unknown): EventRequest | null => {
 
 const normalizeEventRequestsPayload = (payload: unknown): EventRequest[] => {
   const source = isRecord(payload) && isRecord(payload.data) ? payload.data : payload
-  const buckets = ['pending', 'approved', 'rejected', 'cancelled', 'updating', 'finished']
 
-  if (isRecord(source) && buckets.some((bucket) => Array.isArray(source[bucket]))) {
-    return buckets
+  if (isRecord(source) && STAFF_REQUEST_BUCKETS.some((bucket) => Array.isArray(source[bucket]))) {
+    return STAFF_REQUEST_BUCKETS
       .flatMap((bucket) => (Array.isArray(source[bucket]) ? source[bucket] : []))
       .map(sanitizeEventRequest)
       .filter((req): req is EventRequest => req !== null)
@@ -171,14 +172,10 @@ export default function StaffEventRequests() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
-    fetchEventRequests()
-  }, [refreshTrigger])
-
-  useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, statusFilter, dateRangeFilter])
 
-  const fetchEventRequests = async () => {
+  const fetchEventRequests = useCallback(async () => {
     setLoading(true)
     try {
       const response = await fetch('/api/staff/event-requests', {
@@ -216,7 +213,11 @@ export default function StaffEventRequests() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void fetchEventRequests()
+  }, [refreshTrigger, fetchEventRequests])
 
   const applyFilters = (requests: EventRequest[]): EventRequest[] => {
     let filtered = Array.isArray(requests) ? requests.filter(Boolean) : []

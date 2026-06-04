@@ -31,12 +31,13 @@ import {
 
 // useEffect để gọi API khi component mount / khi dependencies thay đổi
 // useState để quản lý state dữ liệu
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 // Modal xem chi tiết request
 import { EventRequestDetailModal } from '../components/events/EventRequestDetailModal'
 
 const ITEMS_PER_PAGE = 10
+const ARCHIVED_EVENT_STATUSES = ['OPEN', 'CLOSED', 'CANCELLED', 'FINISHED'] as const
 
 /**
  * Enum kiểu trạng thái yêu cầu tổ chức sự kiện
@@ -245,8 +246,7 @@ const isRequestArchivedTabEligible = (request: EventRequest): boolean => {
     return true
   }
   if (request?.status === 'APPROVED') {
-    const finishedStatuses = ['OPEN', 'CLOSED', 'CANCELLED', 'FINISHED']
-    if (request?.eventStatus && finishedStatuses.includes(request.eventStatus)) {
+    if (request?.eventStatus && ARCHIVED_EVENT_STATUSES.includes(request.eventStatus as typeof ARCHIVED_EVENT_STATUSES[number])) {
       return true
     }
   }
@@ -300,12 +300,7 @@ export default function OrganizerEventRequests() {
   const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
-  useEffect(() => {
-    fetchActiveRequests(1)
-    fetchArchivedRequests(1)
-  }, [refreshTrigger])
-
-  const fetchActiveRequests = async (page: number) => {
+  const fetchActiveRequests = useCallback(async (page: number) => {
     try {
       setActiveLoading(true)
       const offset = (page - 1) * ITEMS_PER_PAGE
@@ -333,9 +328,9 @@ export default function OrganizerEventRequests() {
     } finally {
       setActiveLoading(false)
     }
-  }
+  }, [searchQuery])
 
-  const fetchArchivedRequests = async (page: number) => {
+  const fetchArchivedRequests = useCallback(async (page: number) => {
     try {
       setArchivedLoading(true)
       const offset = (page - 1) * ITEMS_PER_PAGE
@@ -363,7 +358,12 @@ export default function OrganizerEventRequests() {
     } finally {
       setArchivedLoading(false)
     }
-  }
+  }, [searchQuery])
+
+  useEffect(() => {
+    void fetchActiveRequests(1)
+    void fetchArchivedRequests(1)
+  }, [refreshTrigger, fetchActiveRequests, fetchArchivedRequests])
 
   const fetchEventRequestDetail = async (requestId: number) => {
     try {
