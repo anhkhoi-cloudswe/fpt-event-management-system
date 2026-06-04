@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Component, type ErrorInfo, type ReactNode, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -35,7 +35,7 @@ import GuestLanding from './pages/GuestLanding.tsx'
 import SystemPolicy from './pages/SystemPolicy.tsx'
 import Profile from './pages/Profile.tsx'
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth()
 
   if (isLoading) {
@@ -47,29 +47,61 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return user ? <>{children}</> : <Navigate to="/guest" />
 }
 
-function StaffRoute({ children }: { children: React.ReactNode }) {
+function StaffRoute({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   // Only allow role 'STAFF'
   return user && user.role === 'STAFF' ? <>{children}</> : <Navigate to="/dashboard" />
 }
 
+class EventRequestsErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[EventRequestsErrorBoundary]', error, info)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-[60vh] bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-center shadow-sm">
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-orange-500 dark:border-slate-700 dark:border-t-orange-400" />
+            <p className="text-base font-bold text-slate-900 dark:text-slate-100">Dang tai lai trang yeu cau</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Du lieu chua san sang, vui long thu lam moi trang.</p>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
 function AppRoutes() {
   const EventRequestsRouter = () => {
     const { user } = useAuth()
+    const role = user?.role
+    let routeContent: ReactNode
 
-    if (user?.role === 'STAFF') {
-      return <StaffEventRequests />
-    } else if (user?.role === 'ORGANIZER') {
-      return <OrganizerEventRequests />
+    if (role === 'STAFF') {
+      routeContent = <StaffEventRequests />
+    } else if (role === 'ORGANIZER') {
+      routeContent = <OrganizerEventRequests />
     } else {
-      return <Navigate to="/dashboard" />
+      routeContent = <Navigate to="/dashboard" replace />
     }
+
+    return <EventRequestsErrorBoundary>{routeContent}</EventRequestsErrorBoundary>
   }
 
   const PaymentWrapper = () => {
     const location = useLocation()
-    const state = location.state || {}
-    const seatIds = state.seatIds || []
+    const state = location.state && typeof location.state === 'object' ? location.state as { seatIds?: unknown } : {}
+    const seatIds = Array.isArray(state.seatIds) ? state.seatIds : []
     const key = seatIds.map(Number).sort().join('-')
     return <Payment key={key} />
   }
@@ -151,6 +183,7 @@ function AppRoutes() {
 function ThemeRouteIsolation() {
   const { user } = useAuth()
   const location = useLocation()
+  const pathname = typeof location?.pathname === 'string' ? location.pathname : ''
 
   useEffect(() => {
     const isDashboardRoute = (pathname: string) => {
@@ -159,7 +192,7 @@ function ThemeRouteIsolation() {
              pathname.startsWith('/my-tickets')
     }
 
-    if (isDashboardRoute(location.pathname)) {
+    if (isDashboardRoute(pathname)) {
       const savedTheme = user?.id 
         ? localStorage.getItem('theme_user_' + user.id) 
         : localStorage.getItem('theme')
@@ -175,7 +208,7 @@ function ThemeRouteIsolation() {
       document.documentElement.classList.remove('dark')
     }
     window.dispatchEvent(new Event('theme-change'))
-  }, [location.pathname, user])
+  }, [pathname, user])
 
   return null
 }

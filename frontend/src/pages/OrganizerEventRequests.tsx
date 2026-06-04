@@ -534,6 +534,25 @@ export default function OrganizerEventRequests() {
 
     return true
   })
+
+  const canRenderRequestList =
+    Array.isArray(filteredRequests) &&
+    Number.isFinite(currentPage) &&
+    Number.isFinite(currentTotalPages) &&
+    Number.isFinite(currentTotalCount)
+
+  if (!canRenderRequestList) {
+    return (
+      <div className="min-h-[60vh] bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-center shadow-sm">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-orange-500 dark:border-slate-700 dark:border-t-orange-400" />
+          <p className="text-base font-bold text-slate-900 dark:text-slate-100">Dang tai danh sach yeu cau</p>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Du lieu dang duoc khoi tao lai an toan.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen py-4 px-4 sm:px-6 lg:px-8">
       {/* Header Section */}

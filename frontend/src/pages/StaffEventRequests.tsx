@@ -339,6 +339,23 @@ export default function StaffEventRequests() {
 
   const waitingCount = allWaitingRequests.length
   const processedCount = allProcessedRequests.length
+  const canRenderRequestList =
+    Array.isArray(filteredRequests) &&
+    Array.isArray(paginatedRequests) &&
+    Number.isFinite(currentPage) &&
+    Number.isFinite(totalPages)
+
+  if (!canRenderRequestList) {
+    return (
+      <div className="min-h-[60vh] bg-slate-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
+          <p className="text-base font-bold text-slate-900">Dang tai danh sach yeu cau</p>
+          <p className="mt-2 text-sm text-slate-500">Du lieu dang duoc khoi tao lai an toan.</p>
+        </div>
+      </div>
+    )
+  }
 
   const forceRefresh = () => {
     setRefreshTrigger(prev => prev + 1)

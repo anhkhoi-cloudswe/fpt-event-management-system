@@ -40,6 +40,7 @@ export default function Layout() {
   const { showToast } = useToast()
   const navigate = useNavigate()
   const location = useLocation()
+  const currentPathname = typeof location?.pathname === 'string' ? location.pathname : ''
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showLoading, setShowLoading] = useState(false)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
@@ -177,7 +178,7 @@ export default function Layout() {
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [location.pathname])
+  }, [currentPathname])
 
   const handleLogout = () => {
     logout()
@@ -188,8 +189,18 @@ export default function Layout() {
   const isStaff = user?.role === 'STAFF'
   const isAdmin = user?.role === 'ADMIN'
   const showWallet = user?.role !== 'STAFF' && user?.role !== 'ADMIN'
+  const isRouteActive = (path: string) => {
+    const targetPath = typeof path === 'string' && path.trim() ? path.trim() : '/dashboard'
+
+    if (targetPath === '/dashboard') {
+      return currentPathname === targetPath
+    }
+
+    return currentPathname === targetPath || currentPathname.startsWith(`${targetPath}/`)
+  }
+
   const getNavLinkClass = (path: string) => {
-    const isActive = path === '/dashboard' ? location.pathname === path : location.pathname.startsWith(path)
+    const isActive = isRouteActive(path)
     const base = 'flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-extrabold transition-all duration-300 w-full group relative overflow-hidden'
     if (isActive) {
       return isDarkMode
