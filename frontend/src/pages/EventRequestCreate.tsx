@@ -628,7 +628,7 @@ export default function EventRequestCreate() {
           <div className="pt-6 border-t border-gray-100 dark:border-slate-800/80 flex justify-end space-x-4">
             <button
               type="button"
-              onClick={() => navigate('/dashboard/my-event-requests')}
+              onClick={() => navigate('/dashboard/event-requests')}
               className="px-6 py-3 border border-gray-200 dark:border-slate-800 rounded-xl text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900 transition-colors duration-300 font-bold"
               disabled={isSubmitting}
             >
