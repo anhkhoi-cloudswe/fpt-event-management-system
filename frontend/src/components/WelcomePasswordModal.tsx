@@ -93,7 +93,7 @@ export default function WelcomePasswordModal({ isOpen, onClose }: WelcomePasswor
           {/* New Password Input */}
           <div className="space-y-1.5">
             <label className="block text-sm font-bold text-slate-700">Mật khẩu mới</label>
-            <div className="relative">
+            <div className="relative block w-full">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -103,12 +103,13 @@ export default function WelcomePasswordModal({ isOpen, onClose }: WelcomePasswor
                 }}
                 placeholder="Nhập mật khẩu của bạn"
                 required
-                className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
+                className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -119,7 +120,7 @@ export default function WelcomePasswordModal({ isOpen, onClose }: WelcomePasswor
           {/* Confirm Password Input */}
           <div className="space-y-1.5">
             <label className="block text-sm font-bold text-slate-700">Xác nhận mật khẩu mới</label>
-            <div className="relative">
+            <div className="relative block w-full">
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}
@@ -129,12 +130,13 @@ export default function WelcomePasswordModal({ isOpen, onClose }: WelcomePasswor
                 }}
                 placeholder="Nhập lại mật khẩu"
                 required
-                className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
+                className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                aria-label={showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'}
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
               >
                 {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>

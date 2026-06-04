@@ -9,6 +9,7 @@ import (
 	"github.com/fpt-event-services/common/hash"
 	"github.com/fpt-event-services/common/logger"
 	"github.com/fpt-event-services/services/auth-service/models"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var log = logger.Default()
@@ -267,15 +268,14 @@ func (r *UserRepository) UpdatePhoneByEmail(ctx context.Context, email, phone st
 // UpdatePasswordByEmail - Cập nhật mật khẩu theo email
 // KHỚP VỚI Java UsersDAO.updatePasswordByEmail
 func (r *UserRepository) UpdatePasswordByEmail(ctx context.Context, email, newPassword string) error {
-	// Hash password
-	passwordHash, hashErr := hash.HashPassword(newPassword)
+	passwordHash, hashErr := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if hashErr != nil {
 		return fmt.Errorf("failed to hash password: %w", hashErr)
 	}
 
 	query := `UPDATE Users SET password_hash = $1 WHERE email = $2`
 
-	result, err := r.db.ExecContext(ctx, query, passwordHash, email)
+	result, err := r.db.ExecContext(ctx, query, string(passwordHash), email)
 	if err != nil {
 		return fmt.Errorf("failed to update password: %w", err)
 	}
@@ -501,14 +501,14 @@ func (r *UserRepository) RestoreUserAccount(ctx context.Context, userID int) err
 
 // UpdatePasswordAndClearSSO updates password and sets sso_provider to NULL
 func (r *UserRepository) UpdatePasswordAndClearSSO(ctx context.Context, email, newPassword string) error {
-	passwordHash, hashErr := hash.HashPassword(newPassword)
+	passwordHash, hashErr := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if hashErr != nil {
 		return fmt.Errorf("failed to hash password: %w", hashErr)
 	}
 
 	query := `UPDATE Users SET password_hash = $1, sso_provider = NULL WHERE email = $2`
 
-	result, err := r.db.ExecContext(ctx, query, passwordHash, email)
+	result, err := r.db.ExecContext(ctx, query, string(passwordHash), email)
 	if err != nil {
 		return fmt.Errorf("failed to update password and sso: %w", err)
 	}
