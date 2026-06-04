@@ -366,7 +366,7 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 		// Fallback to query parameters
 		eventIDStr := request.QueryStringParameters["eventId"]
 		categoryTicketIDStr := request.QueryStringParameters["categoryTicketId"]
-
+		
 		seatIDStr := request.QueryStringParameters["seatId"]
 		if seatIDStr == "" {
 			seatIDStr = request.QueryStringParameters["seatIds"]
@@ -426,7 +426,7 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 		if strings.Contains(err.Error(), "[E4002]|") {
 			splitErr := strings.Split(err.Error(), "[E4002]|")
 			dataParts := strings.Split(splitErr[1], "|")
-
+			
 			billID := ""
 			seatsStr := ""
 			seatIDsStr := ""
@@ -441,12 +441,12 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 				catIDStr = dataParts[4]
 				remSecsStr = dataParts[5]
 			}
-
+			
 			seats := []string{}
 			if seatsStr != "" {
 				seats = strings.Split(seatsStr, ",")
 			}
-
+			
 			seatIDs := []int{}
 			if seatIDsStr != "" {
 				for _, s := range strings.Split(seatIDsStr, ",") {
@@ -454,11 +454,11 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 					seatIDs = append(seatIDs, id)
 				}
 			}
-
+			
 			evID, _ := strconv.Atoi(eventIDStr)
 			catID, _ := strconv.Atoi(catIDStr)
 			remSecs, _ := strconv.Atoi(remSecsStr)
-
+			
 			body, _ := json.Marshal(map[string]interface{}{
 				"errorCode":        "E4002",
 				"pendingBillId":    billID,
@@ -472,8 +472,8 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 			return events.APIGatewayProxyResponse{
 				StatusCode: http.StatusBadRequest,
 				Headers: map[string]string{
-					"Content-Type": "application/json;charset=UTF-8",
-					"Vary":         "Origin",
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Vary": "Origin",
 				},
 				Body: string(body),
 			}, nil
@@ -493,8 +493,8 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 			return events.APIGatewayProxyResponse{
 				StatusCode: http.StatusBadRequest,
 				Headers: map[string]string{
-					"Content-Type": "application/json;charset=UTF-8",
-					"Vary":         "Origin",
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Vary": "Origin",
 				},
 				Body: string(body),
 			}, nil
@@ -503,8 +503,8 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 			return events.APIGatewayProxyResponse{
 				StatusCode: http.StatusBadRequest,
 				Headers: map[string]string{
-					"Content-Type": "application/json;charset=UTF-8",
-					"Vary":         "Origin",
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Vary": "Origin",
 				},
 				Body: `{"error":"duplicate_seat","message":"Ghế đặt hiện đang nằm trong trạng thái xử lý thanh toán. Vui lòng thử lại sau ít phút hoặc chọn ghế khác!"}`,
 			}, nil
@@ -526,8 +526,8 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusOK,
 			Headers: map[string]string{
-				"Content-Type": "application/json;charset=UTF-8",
-				"Vary":         "Origin",
+				"Content-Type":                "application/json;charset=UTF-8",
+				"Vary": "Origin",
 			},
 			Body: string(body),
 		}, nil
@@ -540,8 +540,8 @@ func (h *TicketHandler) HandleMoMoInit(ctx context.Context, request events.APIGa
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json;charset=UTF-8",
-			"Vary":         "Origin",
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Vary": "Origin",
 		},
 		Body: string(body),
 	}, nil
@@ -582,7 +582,7 @@ func (h *TicketHandler) HandleMoMoWebhook(ctx context.Context, request events.AP
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers:    defaultHeaders(),
-		Body:       string(body),
+		Body: string(body),
 	}, nil
 }
 
@@ -626,8 +626,8 @@ func (h *TicketHandler) HandleGetWalletBalance(ctx context.Context, request even
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json;charset=UTF-8",
-			"Vary":         "Origin",
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Vary": "Origin",
 		},
 		Body: fmt.Sprintf(`{"balance":%.2f}`, balance),
 	}, nil
@@ -754,8 +754,8 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusPaymentRequired, // 402
 			Headers: map[string]string{
-				"Content-Type": "application/json;charset=UTF-8",
-				"Vary":         "Origin",
+				"Content-Type":                "application/json;charset=UTF-8",
+				"Vary": "Origin",
 			},
 			Body: fmt.Sprintf(`{"error":"insufficient_balance","required":%d,"current":%.2f,"shortage":%.2f}`, totalAmount, balance, shortage),
 		}, nil
@@ -767,7 +767,7 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 		if strings.Contains(err.Error(), "[E4002]|") {
 			splitErr := strings.Split(err.Error(), "[E4002]|")
 			dataParts := strings.Split(splitErr[1], "|")
-
+			
 			billID := ""
 			seatsStr := ""
 			seatIDsStr := ""
@@ -782,12 +782,12 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 				catIDStr = dataParts[4]
 				remSecsStr = dataParts[5]
 			}
-
+			
 			seats := []string{}
 			if seatsStr != "" {
 				seats = strings.Split(seatsStr, ",")
 			}
-
+			
 			seatIDs := []int{}
 			if seatIDsStr != "" {
 				for _, s := range strings.Split(seatIDsStr, ",") {
@@ -795,11 +795,11 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 					seatIDs = append(seatIDs, id)
 				}
 			}
-
+			
 			evID, _ := strconv.Atoi(eventIDStr)
 			catID, _ := strconv.Atoi(catIDStr)
 			remSecs, _ := strconv.Atoi(remSecsStr)
-
+			
 			body, _ := json.Marshal(map[string]interface{}{
 				"errorCode":        "E4002",
 				"pendingBillId":    billID,
@@ -813,8 +813,8 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 			return events.APIGatewayProxyResponse{
 				StatusCode: http.StatusBadRequest,
 				Headers: map[string]string{
-					"Content-Type": "application/json;charset=UTF-8",
-					"Vary":         "Origin",
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Vary": "Origin",
 				},
 				Body: string(body),
 			}, nil
@@ -834,8 +834,8 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 			return events.APIGatewayProxyResponse{
 				StatusCode: http.StatusBadRequest,
 				Headers: map[string]string{
-					"Content-Type": "application/json;charset=UTF-8",
-					"Vary":         "Origin",
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Vary": "Origin",
 				},
 				Body: string(body),
 			}, nil
@@ -855,8 +855,8 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 				return events.APIGatewayProxyResponse{
 					StatusCode: http.StatusPaymentRequired, // 402
 					Headers: map[string]string{
-						"Content-Type": "application/json;charset=UTF-8",
-						"Vary":         "Origin",
+						"Content-Type":                "application/json;charset=UTF-8",
+						"Vary": "Origin",
 					},
 					Body: fmt.Sprintf(`{"error":"insufficient_balance","message":"Số dư ví không đủ để hoàn thành giao dịch này","required":%d,"current":%.2f,"shortage":%d}`, totalAmount, currentBalance, shortage),
 				}, nil
@@ -865,8 +865,8 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 			return events.APIGatewayProxyResponse{
 				StatusCode: http.StatusPaymentRequired, // 402
 				Headers: map[string]string{
-					"Content-Type": "application/json;charset=UTF-8",
-					"Vary":         "Origin",
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Vary": "Origin",
 				},
 				Body: fmt.Sprintf(`{"error":"insufficient_balance","message":"Số dư ví không đủ để hoàn thành giao dịch này","required":%d,"current":%.2f}`, totalAmount, balance),
 			}, nil
@@ -877,8 +877,8 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 			return events.APIGatewayProxyResponse{
 				StatusCode: http.StatusBadRequest, // 400
 				Headers: map[string]string{
-					"Content-Type": "application/json;charset=UTF-8",
-					"Vary":         "Origin",
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Vary": "Origin",
 				},
 				Body: `{"error":"duplicate_seat","message":"Ghế đặt hiện đang nằm trong trạng thái xử lý thanh toán. Vui lòng thử lại sau ít phút hoặc chọn ghế khác!"}`,
 			}, nil
@@ -893,8 +893,8 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json;charset=UTF-8",
-			"Vary":         "Origin",
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Vary": "Origin",
 		},
 		Body: fmt.Sprintf(`{"status":"success","ticketIds":"%s","message":"Thanh toán thành công! Vé của bạn đã được đặt."}`, ticketIds),
 	}, nil
@@ -964,7 +964,7 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 		if strings.Contains(err.Error(), "[E4002]|") {
 			splitErr := strings.Split(err.Error(), "[E4002]|")
 			dataParts := strings.Split(splitErr[1], "|")
-
+			
 			billID := ""
 			seatsStr := ""
 			seatIDsStr := ""
@@ -979,12 +979,12 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 				catIDStr = dataParts[4]
 				remSecsStr = dataParts[5]
 			}
-
+			
 			seats := []string{}
 			if seatsStr != "" {
 				seats = strings.Split(seatsStr, ",")
 			}
-
+			
 			seatIDs := []int{}
 			if seatIDsStr != "" {
 				for _, s := range strings.Split(seatIDsStr, ",") {
@@ -992,11 +992,11 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 					seatIDs = append(seatIDs, id)
 				}
 			}
-
+			
 			evID, _ := strconv.Atoi(eventIDStr)
 			catID, _ := strconv.Atoi(catIDStr)
 			remSecs, _ := strconv.Atoi(remSecsStr)
-
+			
 			body, _ := json.Marshal(map[string]interface{}{
 				"errorCode":        "E4002",
 				"pendingBillId":    billID,
@@ -1010,8 +1010,8 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 			return events.APIGatewayProxyResponse{
 				StatusCode: http.StatusBadRequest,
 				Headers: map[string]string{
-					"Content-Type": "application/json;charset=UTF-8",
-					"Vary":         "Origin",
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Vary": "Origin",
 				},
 				Body: string(body),
 			}, nil
@@ -1031,8 +1031,8 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 			return events.APIGatewayProxyResponse{
 				StatusCode: http.StatusBadRequest,
 				Headers: map[string]string{
-					"Content-Type": "application/json;charset=UTF-8",
-					"Vary":         "Origin",
+					"Content-Type":                "application/json;charset=UTF-8",
+					"Vary": "Origin",
 				},
 				Body: string(body),
 			}, nil
@@ -1069,8 +1069,8 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json;charset=UTF-8",
-			"Vary":         "Origin",
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Vary": "Origin",
 		},
 		Body: string(body),
 	}, nil
@@ -1125,7 +1125,7 @@ func (h *TicketHandler) HandleSePayWebhook(ctx context.Context, request events.A
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers:    defaultHeaders(),
-		Body:       string(body),
+		Body: string(body),
 	}, nil
 }
 
@@ -1133,7 +1133,7 @@ func (h *TicketHandler) HandleSePayWebhook(ctx context.Context, request events.A
 func (h *TicketHandler) HandleCheckPaymentStatus(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	path := request.Path
 	orderIDStr := strings.TrimPrefix(path, "/api/payment/check-status/")
-
+	
 	// Fallback to query parameter if not in path
 	if orderIDStr == "" || orderIDStr == path {
 		orderIDStr = request.QueryStringParameters["order_id"]
@@ -1160,8 +1160,8 @@ func (h *TicketHandler) HandleCheckPaymentStatus(ctx context.Context, request ev
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json;charset=UTF-8",
-			"Vary":         "Origin",
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Vary": "Origin",
 		},
 		Body: string(body),
 	}, nil
@@ -1208,8 +1208,8 @@ func (h *TicketHandler) HandleCancelOrder(ctx context.Context, request events.AP
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json;charset=UTF-8",
-			"Vary":         "Origin",
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Vary": "Origin",
 		},
 		Body: string(body),
 	}, nil
@@ -1247,8 +1247,8 @@ func (h *TicketHandler) HandleGetActiveOrder(ctx context.Context, request events
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusOK,
 			Headers: map[string]string{
-				"Content-Type": "application/json;charset=UTF-8",
-				"Vary":         "Origin",
+				"Content-Type":                "application/json;charset=UTF-8",
+				"Vary": "Origin",
 			},
 			Body: string(body),
 		}, nil
@@ -1262,8 +1262,8 @@ func (h *TicketHandler) HandleGetActiveOrder(ctx context.Context, request events
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Content-Type": "application/json;charset=UTF-8",
-			"Vary":         "Origin",
+			"Content-Type":                "application/json;charset=UTF-8",
+			"Vary": "Origin",
 		},
 		Body: string(body),
 	}, nil

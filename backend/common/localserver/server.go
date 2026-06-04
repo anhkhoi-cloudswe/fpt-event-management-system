@@ -13,6 +13,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/jwt"
+	commonresponse "github.com/fpt-event-services/common/response"
 	"github.com/joho/godotenv"
 )
 
@@ -61,11 +62,10 @@ func LoadEnvAndSyncJWT(serviceName string) {
 		log.Printf("[%s] ⚠️  No .env file found — relying on process environment", serviceName)
 	}
 
-	// Re-read JWT_SECRET from environment AFTER .env is loaded.
-	// Package-level var in common/jwt is initialized before init() runs,
-	// so it may hold the hardcoded fallback. This ensures consistency.
+	// Re-read JWT_SECRET after env loading and fail closed if it is missing.
+	// Package-level JWT state is intentionally empty until startup loads env.
 	jwt.ReloadSecret()
-	log.Printf("[%s] 🔑 JWT_SECRET active: %s", serviceName, jwt.GetSecretPreview())
+	log.Printf("[%s] JWT_SECRET configured", serviceName)
 }
 
 // Start runs the Lambda handler as a local HTTP server
@@ -172,30 +172,19 @@ func writeResponse(w http.ResponseWriter, resp events.APIGatewayProxyResponse) {
 
 // getAllowedOrigin returns the appropriate CORS origin based on CORS_ALLOWED_ORIGINS env var
 func getAllowedOrigin(requestOrigin string) string {
-	allowed := os.Getenv("CORS_ALLOWED_ORIGINS")
-	if allowed == "" || allowed == "*" {
-		return "*"
-	}
-	for _, o := range strings.Split(allowed, ",") {
-		if strings.TrimSpace(o) == requestOrigin {
-			return requestOrigin
-		}
-	}
-	// If origin not in list, return first allowed origin (browser will block if mismatch)
-	parts := strings.Split(allowed, ",")
-	if len(parts) > 0 {
-		return strings.TrimSpace(parts[0])
-	}
-	return "*"
+	return commonresponse.TrustedOrigin(requestOrigin)
 }
 
 // corsMiddleware handles CORS preflight using CORS_ALLOWED_ORIGINS from .env
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		w.Header().Set("Access-Control-Allow-Origin", getAllowedOrigin(origin))
+		w.Header().Set("Vary", "Origin")
+		if allowedOrigin := getAllowedOrigin(origin); allowedOrigin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With,X-User-Id,X-User-Role,X-User-Email")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With")
 		w.Header().Set("Access-Control-Expose-Headers", "X-User-Id,X-User-Role,X-User-Email")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Max-Age", "86400")

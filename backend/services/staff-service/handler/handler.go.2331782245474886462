@@ -128,7 +128,7 @@ func createJSONResponse(statusCode int, data interface{}) (events.APIGatewayProx
 			StatusCode: http.StatusInternalServerError,
 			Headers: map[string]string{
 				"Content-Type":                     "application/json;charset=UTF-8",
-				"Vary":                             "Origin",
+				"Vary": "Origin",
 				"Access-Control-Allow-Credentials": "true",
 			},
 			Body: `{"error":"Failed to serialize response"}`,
@@ -139,7 +139,7 @@ func createJSONResponse(statusCode int, data interface{}) (events.APIGatewayProx
 		StatusCode: statusCode,
 		Headers: map[string]string{
 			"Content-Type":                     "application/json;charset=UTF-8",
-			"Vary":                             "Origin",
+			"Vary": "Origin",
 			"Access-Control-Allow-Credentials": "true",
 		},
 		Body: string(body),
@@ -156,7 +156,7 @@ func createErrorResponse(statusCode int, message string) (events.APIGatewayProxy
 		StatusCode: statusCode,
 		Headers: map[string]string{
 			"Content-Type":                     "application/json;charset=UTF-8",
-			"Vary":                             "Origin",
+			"Vary": "Origin",
 			"Access-Control-Allow-Credentials": "true",
 		},
 		Body: string(body),

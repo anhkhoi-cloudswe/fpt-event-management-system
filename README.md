@@ -1,284 +1,183 @@
-# FPT Event Management System
+# FPT University Event Ticket Management System
 
-**⚡ Status (April 2026):** ✅ 100% complete · 0 compile errors · Ready for demo
-
-Production-oriented event management platform for FPT University.
-
-Status snapshot:
-- **Architecture:** Go microservices (6 containerized services) + React frontend
-- **Orchestration:** Amazon ECS (Fargate)
-- **Runtime modes:** Local Docker Compose, AWS ECS Fargate
-- **Core capabilities:** Event approval, wallet + VNPay payment, QR check-in, reporting, S3 media
-- **Database:** Amazon RDS MySQL 8.0 (Multi-AZ)
-- **Security:** JWT + bcrypt (Cost 12) + HMAC-SHA512 + reCAPTCHA v2 + AWS WAF
-
-## 📊 Quick Stats
-
-| Metric | Value |
-|--------|-------|
-| Completion | 100% (Core Features) |
-| Architecture | ECS Fargate (Serverless Containers) |
-| ECS Tasks | 6/6 services running |
-| Cost (Estimate) | ~$109/month |
-| API Latency p95 | < 500ms |
-| Security Audit | Phase 1: Passed ✅ / Phase 2: Pending Fix ⚠️ |
-
-
-
-## 🎯 Demo Flow (5 minutes) — What Works TODAY
-
-```
-1️⃣ User Registration                 → OTP verify → JWT issued                   ✅
-2️⃣ Create Event (Organizer)          → Fill form → Submit request                ✅
-3️⃣ Approve Event (Staff)             → Review → Approve → OPEN                   ✅
-4️⃣ Purchase Ticket (Student)         → Select seat → Wallet Saga → CONFIRM       ✅
-5️⃣ Receive QR Ticket (Student)       → PDF + email + QR                          ✅
-6️⃣ Check-in (Organizer)              → Scan QR → verify → mark USED              ✅
-7️⃣ View Reports (Staff)              → Attendance + Revenue                      ✅
-
-Timeline: ~3 minutes end-to-end ⏱️
-```
-
-## 1) Why this project exists
-1. Organizer submits event request and books venue area.
-2. Staff approves request and opens ticket sales.
-3. Student purchases ticket via Wallet or VNPay.
-4. System issues PDF + QR ticket and sends email notification.
-5. Organizer scans QR at check-in and updates attendance/reports.
-
-Design targets:
-- High data integrity for payment/ticket flows
-- Good concurrency behavior under simultaneous purchases
-- Low storage waste and clear operational ownership
-
-## 2) Current architecture (what is actually in code)
-
-Backend services (6):
-1. Auth service
-2. Event service
-3. Ticket service
-4. Venue service
-5. Staff service
-6. Notification service
-
-Gateway and communication:
-- External traffic enters through gateway (local: port 8080).
-- Gateway routes requests by path prefix to service containers/processes.
-- Internal service calls use InternalClient with:
-  - JWT/context propagation
-  - Exponential backoff retry
-  - Internal token header for service-to-service auth (`X-Internal-Token`)
-
-Data and infrastructure:
-- MySQL 8.0
-- AWS S3 for media upload
-- Terraform IaC for ECS Fargate deployment
-- Structured logging + optional X-Ray integration in AWS runtime
-
-## 3) Important technical patterns
-
-1. Saga-like wallet flow (`reserve -> confirm -> release`) for safer distributed payment handling.
-2. API composition for cross-domain data aggregation instead of direct cross-service coupling.
-3. Row-level lock (`SELECT ... FOR UPDATE`) in payment-sensitive operations.
-4. Background schedulers for cleanup:
-   - Event cleanup
-   - Expired request cleanup
-   - Pending ticket cleanup
-   - Venue release
-5. Feature flags to control migration and fallback behavior.
-
-## 4) Repository structure (reviewer map)
-
-```text
-backend/
-  cmd/
-    gateway/           # reverse proxy entrypoint (route by prefix)
-  common/
-    config/            # feature flags + system config
-    db/                # DB init/pool
-    jwt/               # auth token utilities
-    storage/           # S3 upload helpers
-    scheduler/         # shared scheduler jobs
-    utils/             # internal client, internal auth token checks
-  services/
-    auth-service/
-    event-service/
-    ticket-service/
-    venue-service/
-    staff-service/
-    notification-service/
-
-frontend/
-  src/
-    pages/             # route pages
-    components/        # reusable UI
-    hooks/             # data logic
-    contexts/          # auth context
-    services/          # API clients
-    utils/             # helpers including image upload
-
-Database/
-  initdb.d/            # container bootstrap SQL/scripts
-
-docker-compose.yml     # local 9-container topology
-```
-
-## 5) Run locally (recommended path)
-
-Prerequisites:
-- Docker Desktop (or Docker Engine + Compose)
-
-Steps:
-1. Prepare environment file at repository root:
-   - Create `.env` from your own secure values.
-   - Do not commit `.env`.
-2. Start the stack:
-
-```bash
-docker compose up --build
-```
-
-3. Main endpoints:
-- Frontend: `http://localhost:3000`
-- Gateway: `http://localhost:8080`
-- MySQL host port: `127.0.0.1:3306`
-
-Stop commands:
-
-```bash
-docker compose down
-docker compose down -v   # WARNING: removes DB volume
-```
-
-## 6) Run locally without Docker (developer mode)
-
-Prerequisites:
-- Go 1.25+
-- Node.js 20+
-- MySQL 8.0
-
-Backend (single local API adapter mode):
-
-```bash
-cd backend
-go run ./cmd/local-api
-```
-
-Frontend:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Notes:
-- Frontend talks to `/api/*` and should be proxied to backend gateway/local API as configured.
-- Ensure required env vars exist before running.
-
-## 7) Environment and secret policy
-
-This repository is documented for reviewers, but secret values must never be exposed.
-
-Rules:
-1. Never commit actual credentials, tokens, private keys, or provider secrets.
-2. Keep secrets only in local `.env`, cloud secret manager, or CI secret store.
-3. Use placeholders in docs, for example:
-
-```env
-DB_HOST=<your-db-host>
-DB_USER=<your-db-user>
-DB_PASSWORD=<your-db-password>
-JWT_SECRET=<your-jwt-secret>
-INTERNAL_AUTH_TOKEN=<shared-internal-token>
-AWS_REGION=<aws-region>
-S3_BUCKET=<bucket-name>
-SMTP_USERNAME=<smtp-username>
-SMTP_PASSWORD=<smtp-password>
-VNPAY_TMN_CODE=<vnpay-terminal-code>
-VNPAY_HASH_SECRET=<vnpay-secret>
-```
-
-4. Do not paste real secrets into issues, PR comments, or screenshots.
-5. Rotate any credential immediately if accidental exposure is suspected.
-
-## 8) API overview
-
-Public API groups (via gateway):
-- Auth: login/register/me/logout
-- Event + Event Request workflows
-- Tickets/Registrations/Bills/Wallet
-- Venue/Seat operations
-- Organizer check-in via QR (check-in/check-out) · Staff reports + Student refund requests
-
-Internal endpoints:
-- `/internal/*` routes are for service-to-service calls only.
-- Protected by `X-Internal-Token` validation.
-
-## 9) What reviewers can inspect quickly
-
-Recommended reading order:
-1. `docker-compose.yml` for local topology and dependencies.
-2. `backend/cmd/gateway/main.go` for route mapping and gateway behavior.
-3. `backend/common/utils/internal_client.go` and `backend/common/utils/internal_auth.go` for internal call security.
-4. `backend/services/ticket-service` for wallet/payment and ticket lifecycle logic.
-5. `PENETRATION_TEST_REPORT_PHASE_1.md` and `PENETRATION_TEST_REPORT_PHASE_2.md` for Security Audit details.
-
-## 10) Deployment to AWS (Staging/Production)
-
-Infrastructure is fully managed via **Infrastructure as Code (Terraform)** by our DevOps engineer.
-
-1. **Provision Infrastructure:**
-   ```bash
-   cd terraform/
-   terraform init
-   terraform apply -auto-approve
-   ```
-
-2. **Get Service Endpoints:**
-   ```bash
-   terraform output alb_dns_name
-   ```
-
-3. **CI/CD Pipeline:**
-Upon pushing code to the `main` branch, GitHub Actions will automatically build the Docker Image, push it to **Amazon ECR**, and execute an **ECS Blue/Green Deployment**.
-
-## 11) Production Checklist (Finalized)
-
-✅ 0 compile errors: `go vet ./...` </br>
-✅ All 6 ECS Services deployed (Fargate Tasks) </br>
-✅ Load tested at 100+ concurrent users (Targeted 500 req/s) </br>
-✅ Saga transaction verified (Atomic ticket booking) </br>
-✅ QR code generation & Scan-to-checkin working </br>
-✅ Email delivery verified via Amazon SES </br>
-⚠️ **Security audit (OWASP Top 10)** - Phase 1 Passed, Phase 2 Pending DevOps Remediation - [See Reports](Documents/PENETRATION_TEST_REPORT_PHASE_1.md) </br>
-✅ **Vulnerability Remediation** - Phase 1.5 Completed - [See Remediation Report](Documents/REMEDIATION_REPORT_PHASE_1-5.md) </br>
-- [ ] AWS Secrets Rotation set up in Secrets Manager
-- [ ] Monitoring dashboards finalized (CloudWatch Container Insights)
-
-## 12) Known Boundaries & Next Steps
-
-**Not in MVP (Phase 2+):**
-- Amazon Cognito auth (JWT only for now)
-- WebSocket real-time (polling only)
-- Advanced analytics dashboard
-- Mobile native apps
-- Multi-region failover
-
-**Roadmap (next 12 months):**
-1. Month 1-2: Stabilization + load test to 200 concurrent
-2. Month 3-4: WebSocket real-time · SES email
-3. Month 5-6: Cognito + social login
-4. Month 7-12: Analytics · recommendations · multi-region
-
-## 13) License and usage
-
-Private project for FPT OJT context.
-Unauthorized redistribution or commercial reuse is not allowed.
+An enterprise-grade, high-integrity event ticketing and management platform designed specifically for the FPT University campus ecosystem. The platform enables automated event proposal workflows, secure ticket purchase operations via multiple payment gateways, on-site QR-code verification, and robust operational dashboards.
 
 ---
 
-**Last updated:** April 2026  
-**Maintainer:** FPT OJT Event Management Team  
-**For questions:** Please review this `README.md` and the Penetration Test Reports.
-**More Documents:** [More Documents](./Documents/)
+## 🏗️ System Architecture
+
+The platform is designed around a distributed, containerized microservices architecture to enforce clean domain boundaries, ensure high availability, and support independent scalability.
+
+```mermaid
+graph TD
+    Client[React SPA Frontend] -->|HTTPS| GW[API Gateway / Reverse Proxy]
+    
+    subgraph Microservices Backend
+        GW -->|/api/auth/*| AuthSvc[Auth Service]
+        GW -->|/api/events/*| EventSvc[Event Service]
+        GW -->|/api/tickets/*| TicketSvc[Ticket Service]
+        GW -->|/api/venues/*| VenueSvc[Venue Service]
+        GW -->|/api/staff/*| StaffSvc[Staff Service]
+        GW -->|/api/notifications/*| NotifSvc[Notification Service]
+        
+        AuthSvc <--> AuthzSvc[Authorizer Service]
+        TicketSvc <--> WalletSaga[Wallet Saga Coordinator]
+    end
+
+    subgraph Database Layer
+        AuthSvc & EventSvc & TicketSvc & VenueSvc & StaffSvc & NotifSvc -->|SQL| DB[(Supabase PostgreSQL / MySQL)]
+    end
+    
+    subgraph External Integrations
+        TicketSvc -->|APIs / Webhooks| MoMo[MoMo E-Wallet Sandbox]
+        TicketSvc -->|APIs / Webhooks| VNPay[VNPay Payment Gateway]
+        TicketSvc -->|APIs / Webhooks| SePay[SePay Bank Transfer]
+        NotifSvc -->|SMTP| SES[Amazon SES / Email Service]
+    end
+```
+
+### Technical Stack Breakdown
+
+#### Frontend Workspace
+- **Core Library**: React (v18.2) & TypeScript.
+- **Styling**: Tailwind CSS & Vanilla CSS configurations.
+- **UI Components & Icons**: Lucide React, Recharts (for analytics visualizations).
+- **Security & APIs**: Axios with custom interceptors for session invalidation, integration with Google reCAPTCHA v2 and Google OAuth.
+- **Routing**: React Router DOM (v6).
+
+#### Backend Microservices
+- **Language**: Go 1.25.
+- **Frameworks & Libs**: Gin Gonic (REST APIs), GORM (Object Relational Mapping), Go-JWT, Go-QRCode, gofpdf (PDF generation).
+- **Communication & Gateway**: Reverse proxy API Gateway coordinating routing. Internal microservice-to-microservice traffic is authenticated via an internal token header (`X-Internal-Token`) with context propagation and exponential backoff retry.
+- **Transactional Consistency**: Saga Pattern Orchestrator for wallet transaction handling to ensure atomicity across ticket and billing domains.
+
+#### Database Layer
+- **Relational DBMS**: Supabase PostgreSQL (Production) / MySQL 8.0 (Local Dev).
+- **Security Hardening**: Row-Level Security (RLS) policies enabled in Supabase to restrict table records access.
+- **Optimizations**: Custom indexes on foreign keys (`user_id`, `event_id`, `seat_id`, `bill_id`) and constraints (`price` check constraint ensuring values lie between 0 and 100M VND).
+
+---
+
+## 👥 Core Business Features & Role-Based Permissions
+
+The system exposes specific dashboards and features customized to FPT University user roles:
+
+### 🎓 STUDENT
+- **Event discovery**: Search, filter, and view detailed descriptions, schedules, and speakers of open events.
+- **Interactive Ticket Booking**: Select tickets (Standard/VIP) using an interactive seat map with real-time seat reservation holds.
+- **Instant Checkout**: Execute payments using VNPay, MoMo E-Wallet sandbox, or the integrated internal student E-Wallet.
+- **Ticket Management**: Access personal ticket history, retrieve invoice receipts, and download tickets with dynamically rendered, Base64-encoded QR codes.
+- **Venue Attendance**: Self-check-in and check-out at event venues via scan validations.
+
+### 🏫 ORGANIZER
+- **Event Proposals**: Submit venue allocation requests with requested capacity, preferred times, and speaker details.
+- **Speaker Roster Management**: Edit bios, profile avatars, and contact information for event speakers.
+- **Real-Time Analytics**: View event registration tallies, seat occupancy maps, and ticketing revenue breakdowns.
+- **Attendance Verification**: Scan student QR codes to record check-in and check-out times.
+- **Feedback & Reporting**: Review attendee reports and event surveys.
+
+### 🛡️ STAFF
+- **Event Audit & Approval**: Review pending event hosting requests, approve venue bookings, or reject proposals with structured feedback.
+- **Customer Service Escalations**: Process student refund claims, review report reports, and issue tickets on-site.
+- **Database Oversight**: Verify manual check-ins and process offline registrations.
+
+### 🔑 ADMIN
+- **System Settings**: Set global parameters (such as booking timeouts, holding limits, and system configurations).
+- **Lifecycle Control**: Control global user states (Activate, Deactivate, Block accounts).
+- **Financial Audit**: Review global wallet transactions, invoice logs, and platform revenue stats.
+- **Infrastructure Auditing**: Monitor system resource limits, error logs, and data integrity states.
+
+---
+
+## 🔒 Security Hardening Status
+
+Active production-grade defenses implemented across both frontend and backend codebases:
+
+1. **SQL Injection Mitigation**: Pure prepared statements and parameter bindings are utilized throughout the Go ORM/SQL layers, blocking raw string concatenation in queries.
+2. **Session Hijacking (XSS) Protections**: JWT session tokens are stored exclusively in in-memory React state and `HttpOnly`, `SameSite=Secure` browser cookies. No sensitive auth details exist in JavaScript-accessible storage.
+3. **Multi-Tab Storage Invalidation**: A window storage event listener continuously monitors client-side storage, immediately purging any unauthorized attempts to set user or session keys in `localStorage` or `sessionStorage`.
+4. **Strict Fail-Closed Webhooks**: Inbound payment webhooks (MoMo, SePay, VNPay) are verified via strict cryptographic HMAC-SHA256 signature checking. Discrepancies in signature, transaction amount, or payload immediately trigger a transaction rollback and abort.
+
+---
+
+## 🔄 Technical Migration History
+
+### Wallet Refactoring (users table cleanup)
+During architectural optimization, the legacy `Wallet` decimal column was dropped from the main `users` table. The application now fully relies on a normalized separate `wallet` table relationship model:
+- Mapped as a strict 1-to-1 relationship between `users` and `wallet` tables.
+- Linked via `user_id` foreign key with a `UNIQUE` constraint and Row-Level Security enabled.
+- Ensures distinct accounting boundaries, isolated transactional locking (`SELECT ... FOR UPDATE`), and clean audit logging inside `wallet_transaction`.
+
+---
+
+## ⚙️ Environment Configuration Template
+
+To run this project locally, copy `.env.example` to `.env` at the root and fill in the values. **Do not commit actual credentials to the repository.**
+
+```env
+# Database Settings
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your_secure_db_password
+DB_NAME=fpt_event_db
+
+# Security & JWT
+JWT_SECRET=your_jwt_signing_secret_key
+INTERNAL_AUTH_TOKEN=shared_jwt_gateway_internal_auth_token
+
+# MoMo Integration
+MOMO_PARTNER_CODE=your_momo_partner_code
+MOMO_ACCESS_KEY=your_momo_access_key
+MOMO_SECRET_KEY=your_momo_secret_key
+MOMO_REDIRECT_URL=http://localhost:3000/payment-success
+MOMO_IPN_URL=http://localhost:8080/api/tickets/webhook/momo
+
+# VNPay Integration
+VNPAY_TMN_CODE=your_vnpay_tmn_code
+VNPAY_HASH_SECRET=your_vnpay_hash_secret
+
+# Third-Party Integrations
+AWS_REGION=ap-southeast-1
+S3_BUCKET=fpt-event-media-bucket
+SMTP_USERNAME=your_smtp_username
+SMTP_PASSWORD=your_smtp_password
+```
+
+---
+
+## 🚀 Running Locally
+
+### Option 1: Docker Compose (Recommended)
+Required: Docker Desktop installed.
+
+```bash
+# Start all microservices, frontend, and DB containers
+docker compose up --build
+
+# Shutdown the container network
+docker compose down
+```
+
+### Option 2: Bare Metal Local Execution
+
+#### Backend Setup
+Required: Go 1.25+ installed.
+
+```bash
+cd backend
+# Run local development API adapter mode
+go run ./cmd/local-api
+```
+
+#### Frontend Setup
+Required: Node.js 20+ installed.
+
+```bash
+cd frontend
+# Install package dependencies
+npm install
+
+# Start Vite hot-reload development server
+npm run dev
+```

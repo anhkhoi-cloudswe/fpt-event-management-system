@@ -3,16 +3,54 @@ package response
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	commonutils "github.com/fpt-event-services/common/utils"
 )
 
+var defaultTrustedOrigins = []string{
+	"https://fpt-event.online",
+	"https://fpt-event.vercel.app",
+	"http://localhost:5173",
+	"http://localhost:3000",
+}
+
+func trustedOrigins() []string {
+	raw := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	if raw == "" {
+		return defaultTrustedOrigins
+	}
+	origins := make([]string, 0)
+	for _, part := range strings.Split(raw, ",") {
+		origin := strings.TrimSpace(part)
+		if origin != "" && origin != "*" {
+			origins = append(origins, origin)
+		}
+	}
+	if len(origins) == 0 {
+		return defaultTrustedOrigins
+	}
+	return origins
+}
+
+func TrustedOrigin(requestOrigin string) string {
+	requestOrigin = strings.TrimSpace(requestOrigin)
+	for _, origin := range trustedOrigins() {
+		if requestOrigin == origin {
+			return requestOrigin
+		}
+	}
+	return ""
+}
+
 // CORS Headers for API responses
 var CORSHeaders = map[string]string{
-	"Access-Control-Allow-Origin":  "*",
-	"Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-	"Access-Control-Allow-Headers": "Content-Type,Authorization",
+	"Vary":                             "Origin",
+	"Access-Control-Allow-Credentials": "true",
+	"Access-Control-Allow-Methods":     "GET,POST,PUT,DELETE,OPTIONS,PATCH",
+	"Access-Control-Allow-Headers":     "Content-Type,Authorization,X-Requested-With",
 }
 
 // ============================================================
@@ -23,14 +61,22 @@ var CORSHeaders = map[string]string{
 
 // LambdaHeaders returns standard CORS + JSON headers for all Lambda responses.
 // Centralising here means a single change propagates to every service.
-func LambdaHeaders() map[string]string {
-	return map[string]string{
+func LambdaHeadersForOrigin(origin string) map[string]string {
+	headers := map[string]string{
 		"Content-Type":                     "application/json;charset=UTF-8",
-		"Access-Control-Allow-Origin":      "*",
+		"Vary":                             "Origin",
 		"Access-Control-Allow-Credentials": "true",
 		"Access-Control-Allow-Methods":     "GET,POST,PUT,DELETE,OPTIONS",
-		"Access-Control-Allow-Headers":     "Content-Type,Authorization,X-User-Id,X-User-Role,X-Request-Id",
+		"Access-Control-Allow-Headers":     "Content-Type,Authorization,X-Request-Id",
 	}
+	if allowed := TrustedOrigin(origin); allowed != "" {
+		headers["Access-Control-Allow-Origin"] = allowed
+	}
+	return headers
+}
+
+func LambdaHeaders() map[string]string {
+	return LambdaHeadersForOrigin("")
 }
 
 // LambdaJSON serialises data to JSON and returns an APIGatewayProxyResponse.

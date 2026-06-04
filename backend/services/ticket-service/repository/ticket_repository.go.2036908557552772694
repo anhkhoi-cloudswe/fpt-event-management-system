@@ -1101,7 +1101,7 @@ func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eve
 	momoReq := map[string]interface{}{
 		"partnerCode": partnerCode,
 		"requestId":   requestId,
-		"amount":      int64(totalAmount),
+		"amount":       int64(totalAmount),
 		"orderId":     orderID,
 		"orderInfo":   orderInfo,
 		"redirectUrl": redirectURL,
@@ -1700,7 +1700,7 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 
 	// 3. Kiểm tra số tiền chuyển khoản
 	// Do số tiền trong ví dụ là VNĐ nên ta so sánh chính xác phần số nguyên
-	if math.Abs(billAmount-amount) >= 1.0 {
+	if math.Abs(billAmount - amount) >= 1.0 {
 		return "", fmt.Errorf("sepay amount mismatch: expected %.2f, got %.2f", billAmount, amount)
 	}
 
@@ -1792,8 +1792,8 @@ func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) 
 	var status string
 	var createdAt time.Time
 	var isExpired bool
-	err := r.db.QueryRowContext(ctx,
-		"SELECT payment_status, created_at, (NOW() > created_at + INTERVAL '5 minutes') FROM Bill WHERE bill_id = $1",
+	err := r.db.QueryRowContext(ctx, 
+		"SELECT payment_status, created_at, (NOW() > created_at + INTERVAL '5 minutes') FROM Bill WHERE bill_id = $1", 
 		orderID,
 	).Scan(&status, &createdAt, &isExpired)
 	if err != nil {
@@ -1887,7 +1887,7 @@ func (r *TicketRepository) AutoReleaseExpiredPendingBills(ctx context.Context) {
 	if _, err := r.db.ExecContext(ctx, "DELETE FROM Ticket WHERE status = 'EXPIRED'"); err != nil {
 		log.Warn("AutoReleaseExpiredPendingBills - failed to purge legacy EXPIRED tickets: %v", err)
 	}
-
+	
 	// 1. Tìm các Bill có trạng thái PENDING quá 5 phút kèm user_id để phạt
 	query := `
 		SELECT bill_id, user_id 
@@ -1954,6 +1954,7 @@ func (r *TicketRepository) AutoReleaseExpiredPendingBills(ctx context.Context) {
 		}
 	}
 }
+
 
 // sendTicketEmailAsync gửi email vé điện tử trong goroutine (không block payment response)
 // KHỚP VỚI Java BuyTicketController gọi EmailUtils.sendEmail()
@@ -3065,7 +3066,7 @@ func (r *TicketRepository) generateMoMoURLDirect(ctx context.Context, billID int
 	momoReq := map[string]interface{}{
 		"partnerCode": partnerCode,
 		"requestId":   requestId,
-		"amount":      int64(totalAmount),
+		"amount":       int64(totalAmount),
 		"orderId":     orderID,
 		"orderInfo":   orderInfo,
 		"redirectUrl": redirectURL,
@@ -3268,13 +3269,13 @@ func (r *TicketRepository) ProcessWalletPaymentForExistingBill(ctx context.Conte
 	emailTickets := make([]map[string]interface{}, len(ticketIds))
 	for i := range ticketIds {
 		emailTickets[i] = map[string]interface{}{
-			"ticketId":     ticketIds[i],
-			"ticketType":   ticketTypes[i],
-			"seatCode":     seatCodes[i],
-			"qrCodeValue":  qrValues[i],
-			"categoryName": categoryNames[i],
-			"price":        prices[i],
-			"areaName":     areaNames[i],
+			"ticketId":      ticketIds[i],
+			"ticketType":    ticketTypes[i],
+			"seatCode":      seatCodes[i],
+			"qrCodeValue":   qrValues[i],
+			"categoryName":  categoryNames[i],
+			"price":         prices[i],
+			"areaName":      areaNames[i],
 		}
 	}
 
