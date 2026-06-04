@@ -1,6 +1,6 @@
-# FPT University Event Ticket Management System
+# FPT Event Management System (FEMS)
 
-An enterprise-grade, high-integrity event ticketing and management platform designed specifically for the FPT University campus ecosystem. The platform enables automated event proposal workflows, secure ticket purchase operations via multiple payment gateways, on-site QR-code verification, and robust operational dashboards.
+FEMS is an enterprise-grade, high-integrity event ticketing and management platform designed specifically for the FPT University campus ecosystem. The platform enables automated event proposal workflows, secure ticket purchase operations via multiple payment gateways, on-site QR-code verification, and robust operational dashboards.
 
 ---
 
