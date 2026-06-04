@@ -395,13 +395,13 @@ export default function MyTickets() {
 
   if (error) {
     return (
-      <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-        <div className="text-center py-16 bg-white/70 backdrop-blur-md border border-white/80 rounded-3xl p-8 max-w-md mx-auto my-12 shadow-md">
-          <div className="p-3.5 bg-rose-50 text-rose-500 rounded-2xl w-fit mx-auto mb-4 border border-rose-100/50">
+      <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+        <div className="text-center py-16 bg-white/70 backdrop-blur-md dark:bg-slate-900/70 border border-white/80 dark:border-slate-800 rounded-3xl p-8 max-w-md mx-auto my-12 shadow-md">
+          <div className="p-3.5 bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-350 rounded-2xl w-fit mx-auto mb-4 border border-rose-100/50 dark:border-rose-900/30">
             <XCircle className="w-8 h-8 animate-pulse" />
           </div>
-          <p className="text-slate-800 font-extrabold text-lg">{currentLanguage === 'en' ? 'An error occurred' : 'Đã xảy ra lỗi'}</p>
-          <p className="text-slate-500 text-sm mt-1.5 font-medium leading-relaxed">{error}</p>
+          <p className="text-slate-800 dark:text-white font-extrabold text-lg">{currentLanguage === 'en' ? 'An error occurred' : 'Đã xảy ra lỗi'}</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1.5 font-medium leading-relaxed">{error}</p>
           <div className="mt-6">
             <Link
               to="/dashboard/events"
@@ -419,7 +419,7 @@ export default function MyTickets() {
    * Render danh sách vé với search/filter/pagination
    */
   return (
-    <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 dark:from-slate-950 dark:via-slate-950 dark:to-slate-950 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+    <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
       {/* Tiêu đề trang */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-5">
         <div>
@@ -433,7 +433,7 @@ export default function MyTickets() {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white backdrop-blur-md dark:bg-slate-900 rounded-3xl border border-white/80 dark:border-slate-800 p-5 shadow-md mb-8">
+      <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800/80 p-5 shadow-md mb-8">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search input */}
           <div className="flex-1 relative">
@@ -443,7 +443,7 @@ export default function MyTickets() {
               placeholder={currentLanguage === 'en' ? 'Search by event name...' : 'Tìm kiếm theo tên sự kiện...'}
               value={searchInput}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 dark:text-white font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+              className="w-full pl-11 pr-4 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-850 dark:text-white font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
             />
           </div>
 
@@ -453,7 +453,7 @@ export default function MyTickets() {
             <select
               value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
-              className="w-full pl-11 pr-10 py-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
+              className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
               <option value="">{currentLanguage === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
               <option value="BOOKED">{currentLanguage === 'en' ? 'Not Checked In' : 'Chưa check-in'}</option>
@@ -485,14 +485,14 @@ export default function MyTickets() {
 
       {/* Empty state */}
       {!loading && tickets.length === 0 && (
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-16 text-center shadow-md animate-fade-in-up">
-          <div className="p-4 bg-orange-50 text-orange-500 rounded-full w-fit mx-auto mb-4 border border-orange-100/50">
+        <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800/80 p-16 text-center shadow-md animate-fade-in-up">
+          <div className="p-4 bg-orange-50 dark:bg-orange-950/20 text-orange-500 dark:text-orange-350 rounded-full w-fit mx-auto mb-4 border border-orange-100/50 dark:border-orange-900/30">
             <TicketIcon className="w-12 h-12 animate-pulse" />
           </div>
-          <h3 className="text-lg font-bold text-slate-800">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white">
 {searchQuery || statusFilter ? (currentLanguage === 'en' ? 'No matching tickets found' : 'Không tìm thấy vé phù hợp') : (currentLanguage === 'en' ? "You don't have any tickets yet" : 'Bạn chưa có vé nào')}
           </h3>
-          <p className="text-sm text-slate-400 mt-2 max-w-sm mx-auto font-medium">
+          <p className="text-sm text-slate-400 dark:text-slate-450 mt-2 max-w-sm mx-auto font-medium">
 {searchQuery || statusFilter
               ? (currentLanguage === 'en' ? 'Please try again with a different keyword or clear filters.' : 'Vui lòng thử lại với từ khóa khác hoặc xóa bộ lọc.')
               : (currentLanguage === 'en' ? 'Explore interesting events and register for tickets to join now!' : 'Hãy khám phá các sự kiện thú vị và đăng ký vé tham gia ngay nhé!')}
@@ -697,7 +697,7 @@ export default function MyTickets() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-8 bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-5 shadow-md">
+            <div className="mt-8 bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800/80 p-5 shadow-md">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}

@@ -1064,19 +1064,19 @@ export default function Dashboard() {
 
       {Array.from({ length: 8 }).map((_, idx) => (
 
-        <div key={idx} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-md animate-pulse flex flex-col h-full">
+        <div key={idx} className="bg-white/70 dark:bg-slate-900/70 rounded-2xl border border-slate-100 dark:border-slate-800/80 overflow-hidden shadow-md animate-pulse flex flex-col h-full">
 
-          <div className="w-full h-44 bg-gray-200"></div>
+          <div className="w-full h-44 bg-slate-200 dark:bg-slate-800"></div>
 
           <div className="p-5 flex-1 flex flex-col space-y-3">
 
-            <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div>
 
-            <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-3/4"></div>
 
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/2"></div>
 
-            <div className="h-4 bg-gray-200 rounded w-full mt-auto"></div>
+            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full mt-auto"></div>
 
           </div>
 
@@ -1092,7 +1092,7 @@ export default function Dashboard() {
 
   const renderEmptyState = (title: string, subtitle: string) => (
 
-    <div className="bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-3xl border-2 border-dashed border-gray-200 dark:border-slate-800 p-16 text-center shadow-lg max-w-lg mx-auto my-12 transition-all duration-300 hover:border-orange-300">
+    <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-16 text-center shadow-md max-w-lg mx-auto my-12 animate-fade-in-up transition-all duration-300 hover:border-orange-500">
 
       <div className="flex justify-center mb-6">
 
@@ -1110,9 +1110,9 @@ export default function Dashboard() {
 
       </div>
 
-      <h3 className="text-2xl font-extrabold text-gray-900 dark:text-slate-50 mb-2">{title}</h3>
+      <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-2">{title}</h3>
 
-      <p className="text-gray-500 dark:text-slate-400 text-sm leading-relaxed max-w-xs mx-auto mb-6">{subtitle}</p>
+      <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed max-w-xs mx-auto mb-6">{subtitle}</p>
 
     </div>
 
@@ -1136,7 +1136,7 @@ export default function Dashboard() {
 
           </h1>
 
-          <p className="text-gray-500 mt-2 text-sm md:text-base font-medium">{currentLanguage === 'en' ? 'Discover and register for the most outstanding activities on campus.' : 'Khám phá và đăng ký tham gia các hoạt động nổi bật nhất tại campus.'}</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm md:text-base font-medium">{currentLanguage === 'en' ? 'Discover and register for the most outstanding activities on campus.' : 'Khám phá và đăng ký tham gia các hoạt động nổi bật nhất tại campus.'}</p>
 
         </div>
 
@@ -1158,7 +1158,7 @@ export default function Dashboard() {
 
             onChange={(e) => handleSearchChange(e.target.value)}
 
-            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white/50 backdrop-blur-sm hover:border-orange-300 focus:bg-white text-gray-800 placeholder-gray-400 font-semibold"
+            className="w-full pl-11 pr-4 py-3 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white/50 dark:bg-slate-850/50 backdrop-blur-sm hover:border-orange-300 dark:hover:border-slate-700 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-white placeholder-slate-400 font-semibold"
 
           />
 
@@ -1192,7 +1192,7 @@ export default function Dashboard() {
 
       <div className="mb-8">
 
-        <div className="border-b border-gray-200">
+        <div className="border-b border-slate-200/60 dark:border-slate-800">
 
           <nav className="-mb-px flex space-x-8">
 
@@ -1202,11 +1202,11 @@ export default function Dashboard() {
 
               onClick={() => handleTabChange('open')}
 
-              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-300 relative ${activeTab === 'open'
+              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-305 relative ${activeTab === 'open'
 
-                ? 'border-orange-500 text-orange-600 scale-105'
+                ? 'border-orange-500 text-orange-600 dark:text-orange-500 scale-105'
 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
 
                 }`}
 
@@ -1230,11 +1230,11 @@ export default function Dashboard() {
 
               onClick={() => handleTabChange('upcoming')}
 
-              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-300 relative ${activeTab === 'upcoming'
+              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-305 relative ${activeTab === 'upcoming'
 
-                ? 'border-orange-500 text-orange-600 scale-105'
+                ? 'border-orange-500 text-orange-600 dark:text-orange-500 scale-105'
 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
 
                 }`}
 
@@ -1258,11 +1258,11 @@ export default function Dashboard() {
 
               onClick={() => handleTabChange('closed')}
 
-              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-300 relative ${activeTab === 'closed'
+              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-305 relative ${activeTab === 'closed'
 
-                ? 'border-orange-500 text-orange-600 scale-105'
+                ? 'border-orange-500 text-orange-600 dark:text-orange-500 scale-105'
 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
 
                 }`}
 
@@ -1316,9 +1316,9 @@ export default function Dashboard() {
 
               {/* Results Count */}
 
-              <div className="mb-6 text-sm text-gray-600 font-medium">
+              <div className="mb-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
 
-                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
+                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-550 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
 
               </div>
 
@@ -1350,7 +1350,7 @@ export default function Dashboard() {
 
                       }}
 
-                      className={`relative text-left block rounded-2xl overflow-hidden bg-white dark:bg-slate-900 h-full flex flex-col border-2 ${
+                      className={`relative text-left block rounded-2xl overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-md h-full flex flex-col border-2 ${
 
                         isSoldOut
 
@@ -1550,7 +1550,7 @@ export default function Dashboard() {
 
                     disabled={currentPage <= 1}
 
-                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 
@@ -1586,9 +1586,9 @@ export default function Dashboard() {
 
                           : typeof item === 'number'
 
-                            ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                            ? 'border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800'
 
-                            : 'text-gray-400 cursor-default'
+                            : 'text-slate-400 dark:text-slate-650 cursor-default'
 
                           }`}
 
@@ -1610,7 +1610,7 @@ export default function Dashboard() {
 
                     disabled={currentPage >= totalPages}
 
-                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 
@@ -1658,9 +1658,9 @@ export default function Dashboard() {
 
               {/* Results Count */}
 
-              <div className="mb-6 text-sm text-gray-600 font-medium">
+              <div className="mb-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
 
-                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
+                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-550 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
 
               </div>
 
@@ -1690,7 +1690,7 @@ export default function Dashboard() {
 
                       }}
 
-                      className={`relative text-left block rounded-2xl overflow-hidden bg-white dark:bg-slate-900 h-full flex flex-col border-2 ${
+                      className={`relative text-left block rounded-2xl overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-md h-full flex flex-col border-2 ${
 
                         isSoldOut
 
@@ -1852,7 +1852,7 @@ export default function Dashboard() {
 
                     disabled={currentPage <= 1}
 
-                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 
@@ -1888,9 +1888,9 @@ export default function Dashboard() {
 
                           : typeof item === 'number'
 
-                            ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                            ? 'border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800'
 
-                            : 'text-gray-400 cursor-default'
+                            : 'text-slate-400 dark:text-slate-650 cursor-default'
 
                           }`}
 
@@ -1912,7 +1912,7 @@ export default function Dashboard() {
 
                     disabled={currentPage >= totalPages}
 
-                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 
@@ -1960,9 +1960,9 @@ export default function Dashboard() {
 
               {/* Results Count */}
 
-              <div className="mb-6 text-sm text-gray-600 font-medium">
+              <div className="mb-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
 
-                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
+                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-550 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
 
               </div>
 
@@ -1980,7 +1980,7 @@ export default function Dashboard() {
 
                     onClick={() => openEventDetail(event.eventId)}
 
-                    className="text-left block rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer bg-white dark:bg-slate-900 border border-white/80 dark:border-slate-800/80 shadow-md opacity-85 hover:opacity-100 transition-opacity h-full flex flex-col"
+                    className="text-left block rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/80 dark:border-slate-800/80 shadow-md opacity-85 hover:opacity-100 transition-opacity h-full flex flex-col"
 
                   >
 
@@ -2086,7 +2086,7 @@ export default function Dashboard() {
 
                     disabled={currentPage <= 1}
 
-                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 
@@ -2122,9 +2122,9 @@ export default function Dashboard() {
 
                           : typeof item === 'number'
 
-                            ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                            ? 'border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800'
 
-                            : 'text-gray-400 cursor-default'
+                            : 'text-slate-400 dark:text-slate-650 cursor-default'
 
                           }`}
 
@@ -2146,7 +2146,7 @@ export default function Dashboard() {
 
                     disabled={currentPage >= totalPages}
 
-                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 
