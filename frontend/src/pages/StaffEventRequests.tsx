@@ -378,7 +378,7 @@ export default function StaffEventRequests() {
   }
 
   return (
-    <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+    <div className="w-full min-h-screen p-4 md:p-6 text-white bg-transparent">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 pb-5">
         <div>
@@ -446,13 +446,13 @@ export default function StaffEventRequests() {
           }}
           className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
             activeTab === 'waiting'
-              ? 'bg-white text-orange-600 shadow-md font-extrabold scale-102 border border-slate-100'
+              ? 'bg-white text-orange-600 shadow-md font-extrabold scale-[1.02] border border-slate-100'
               : 'text-slate-500 hover:text-slate-700 hover:bg-white/20'
           }`}
         >
           Hồ sơ chờ xử lý
           <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
-            activeTab === 'waiting' ? 'bg-orange-100 text-orange-850' : 'bg-slate-300/50 text-slate-500'
+            activeTab === 'waiting' ? 'bg-orange-100 text-orange-800' : 'bg-slate-300/50 text-slate-500'
           }`}>
             {waitingCount}
           </span>
@@ -465,13 +465,13 @@ export default function StaffEventRequests() {
           }}
           className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
             activeTab === 'processed'
-              ? 'bg-white text-orange-600 shadow-md font-extrabold scale-102 border border-slate-100'
+              ? 'bg-white text-orange-600 shadow-md font-extrabold scale-[1.02] border border-slate-100'
               : 'text-slate-500 hover:text-slate-700 hover:bg-white/20'
           }`}
         >
           Hồ sơ đã giải quyết
           <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
-            activeTab === 'processed' ? 'bg-orange-100 text-orange-850' : 'bg-slate-300/50 text-slate-500'
+            activeTab === 'processed' ? 'bg-orange-100 text-orange-800' : 'bg-slate-300/50 text-slate-500'
           }`}>
             {processedCount}
           </span>
@@ -571,7 +571,7 @@ export default function StaffEventRequests() {
           ) : (
             <>
               {/* Cards Grid */}
-              <div className="grid grid-cols-1 gap-4 mb-6">
+              <div className="grid w-full grid-cols-1 gap-4 mb-6">
                 {Array.isArray(paginatedRequests) ? paginatedRequests.map((req, index) => (
                   <div
                     key={req?.requestId ?? `request-${index}`}
@@ -584,7 +584,7 @@ export default function StaffEventRequests() {
                       req?.status === 'PENDING' ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.5)]' :
                       req?.status === 'APPROVED' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' :
                       req?.status === 'REJECTED' ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]' :
-                      req?.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-slate-450'
+                      req?.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-slate-400'
                     }`} />
 
                     <div className="flex-1 min-w-0 pl-1.5">
@@ -660,7 +660,7 @@ export default function StaffEventRequests() {
                         </button>
                         <button
                           onClick={() => handleApprove(req)}
-                          className="inline-flex items-center justify-center gap-1.5 px-4.5 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-orange-650 via-orange-600 to-orange-500 border border-transparent rounded-xl hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 active:scale-95 hover:scale-[1.02]"
+                          className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 border border-transparent rounded-xl hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 active:scale-95 hover:scale-[1.02]"
                           title="Duyệt yêu cầu"
                         >
                           <CheckCircle2 className="w-4 h-4" /> Duyệt cấp phép
@@ -682,7 +682,7 @@ export default function StaffEventRequests() {
                     <button
                       onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                       disabled={currentPage === 1}
-                      className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-650 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all duration-300 shadow-sm"
+                      className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all duration-300 shadow-sm"
                     >
                       ← Trước
                     </button>
@@ -695,7 +695,7 @@ export default function StaffEventRequests() {
                           onClick={() => setCurrentPage(page)}
                           className={`w-9 h-9 rounded-xl text-xs font-bold transition-all duration-300 border ${
                             currentPage === page
-                              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white border-transparent shadow-lg shadow-orange-500/20 scale-102 font-extrabold'
+                              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white border-transparent shadow-lg shadow-orange-500/20 scale-[1.02] font-extrabold'
                               : 'border-slate-200 text-slate-600 hover:bg-gray-50'
                           }`}
                         >
@@ -707,7 +707,7 @@ export default function StaffEventRequests() {
                     <button
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-650 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all duration-300 shadow-sm"
+                      className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all duration-300 shadow-sm"
                     >
                       Sau →
                     </button>

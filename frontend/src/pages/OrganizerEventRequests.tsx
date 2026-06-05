@@ -562,7 +562,7 @@ export default function OrganizerEventRequests() {
   }
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen py-4 px-4 sm:px-6 lg:px-8">
+    <div className="w-full min-h-screen p-4 md:p-6 text-white bg-transparent">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-4">
         <div>
@@ -575,7 +575,7 @@ export default function OrganizerEventRequests() {
         <div className="flex gap-2.5 flex-wrap">
           <button
             onClick={forceRefresh}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-orange-605 dark:hover:text-orange-400 border border-slate-200 dark:border-slate-800 hover:border-orange-500 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-300 active:scale-95"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400 border border-slate-200 dark:border-slate-800 hover:border-orange-500 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-300 active:scale-95"
           >
             <RefreshCw className="w-4 h-4 text-orange-500" /> Làm mới
           </button>
@@ -592,7 +592,7 @@ export default function OrganizerEventRequests() {
       {/* Stats Widgets */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-4">
         <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3.5 bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-400 rounded-2xl border border-amber-100/50 dark:border-amber-900/30">
+          <div className="p-3.5 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-2xl border border-amber-100/50 dark:border-amber-900/30">
             <Clock className="w-6 h-6 animate-pulse" />
           </div>
           <div>
@@ -602,7 +602,7 @@ export default function OrganizerEventRequests() {
         </div>
 
         <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3.5 bg-emerald-50 dark:bg-emerald-955/20 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/30">
+          <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/30">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
@@ -612,7 +612,7 @@ export default function OrganizerEventRequests() {
         </div>
 
         <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3.5 bg-orange-50 dark:bg-orange-955/20 text-orange-600 dark:text-orange-400 rounded-2xl border border-orange-100/50 dark:border-orange-900/30">
+          <div className="p-3.5 bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400 rounded-2xl border border-orange-100/50 dark:border-orange-900/30">
             <Inbox className="w-6 h-6" />
           </div>
           <div>
@@ -635,13 +635,13 @@ export default function OrganizerEventRequests() {
           onClick={() => handleTabChange('active')}
           className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
             activeTab === 'active'
-              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-102 border border-slate-100 dark:border-slate-700'
+              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/20 dark:hover:bg-slate-800/40'
           }`}
         >
           Hồ sơ đang chờ duyệt
           <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
-            activeTab === 'active' ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-850 dark:text-orange-405' : 'bg-slate-300/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+            activeTab === 'active' ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-400' : 'bg-slate-300/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
           }`}>
             {activeCount}
           </span>
@@ -651,13 +651,13 @@ export default function OrganizerEventRequests() {
           onClick={() => handleTabChange('archived')}
           className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
             activeTab === 'archived'
-              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-102 border border-slate-100 dark:border-slate-700'
+              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/20 dark:hover:bg-slate-800/40'
           }`}
         >
           Lịch sử đã xử lý
           <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
-            activeTab === 'archived' ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-850 dark:text-orange-405' : 'bg-slate-300/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+            activeTab === 'archived' ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-400' : 'bg-slate-300/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
           }`}>
             {archivedCount}
           </span>
@@ -701,7 +701,7 @@ export default function OrganizerEventRequests() {
                   setArchivedTabStatusFilter(e.target.value as EventRequestStatus | 'ALL')
                 }
               }}
-              className="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-sm text-slate-700 dark:text-slate-205 outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all appearance-none cursor-pointer font-medium shadow-sm"
+              className="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all appearance-none cursor-pointer font-medium shadow-sm"
             >
               <option value="ALL" className="dark:bg-slate-950">Tất cả trạng thái</option>
               {activeTab === 'active' && (
@@ -763,7 +763,7 @@ export default function OrganizerEventRequests() {
           {/* Empty state */}
           {filteredRequests.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center shadow-sm">
-              <div className="p-4 bg-slate-50 dark:bg-slate-950/50 text-slate-300 dark:text-slate-655 rounded-full w-fit mx-auto mb-4">
+              <div className="p-4 bg-slate-50 dark:bg-slate-950/50 text-slate-300 dark:text-slate-400 rounded-full w-fit mx-auto mb-4">
                 <FileClock className="w-12 h-12" />
               </div>
               <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Không tìm thấy yêu cầu nào</h3>
@@ -776,7 +776,7 @@ export default function OrganizerEventRequests() {
           ) : (
             <>
               {/* Cards Grid */}
-              <div className="grid grid-cols-1 gap-4 mb-4">
+              <div className="grid w-full grid-cols-1 gap-4 mb-4">
                 {Array.isArray(filteredRequests) ? filteredRequests.map((req, index) => (
                   <div
                     key={req?.requestId ?? `request-${index}`}
@@ -789,7 +789,7 @@ export default function OrganizerEventRequests() {
                       req?.status === 'PENDING' ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.5)]' :
                       req?.status === 'APPROVED' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(10,185,129,0.5)]' :
                       req?.status === 'REJECTED' ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]' :
-                      req?.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-slate-450'
+                      req?.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-slate-400'
                     }`} />
 
                     <div className="flex-1 min-w-0 pl-1.5">
@@ -805,12 +805,12 @@ export default function OrganizerEventRequests() {
                             Chờ duyệt
                           </span>
                         ) : req?.status === 'APPROVED' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-450 border border-emerald-200/60 dark:border-emerald-900/40 shadow-sm shadow-emerald-500/5">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40 shadow-sm shadow-emerald-500/5">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             Đã duyệt
                           </span>
                         ) : req?.status === 'REJECTED' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-455 border border-rose-200/60 dark:border-rose-900/40 shadow-sm shadow-rose-500/5">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/40 shadow-sm shadow-rose-500/5">
                             <XCircle className="w-3.5 h-3.5" />
                             Từ chối
                           </span>
@@ -820,7 +820,7 @@ export default function OrganizerEventRequests() {
                             Chờ cập nhật
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border border-slate-200/60 dark:border-slate-700">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
                             {getStatusLabel(req?.status ?? 'PENDING')}
                           </span>
                         )}
@@ -882,7 +882,7 @@ export default function OrganizerEventRequests() {
                               className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-extrabold rounded-xl border transition-all duration-300 active:scale-95 ${
                                 eligibility.eligible
                                   ? 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-600 hover:text-white dark:hover:bg-orange-600 dark:hover:text-white border-orange-200 dark:border-orange-900/50 shadow-sm hover:scale-[1.02]'
-                                  : 'text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-850 cursor-not-allowed'
+                                  : 'text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 cursor-not-allowed'
                               }`}
                             >
                               <Edit className="w-4 h-4" /> Cập nhật
@@ -938,7 +938,7 @@ export default function OrganizerEventRequests() {
                         else fetchArchivedRequests(newPage)
                       }}
                       disabled={currentPage === 1}
-                      className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-655 dark:text-slate-350 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-850 transition-all duration-300 shadow-sm"
+                      className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300 shadow-sm"
                     >
                       ← Trước
                     </button>
@@ -954,8 +954,8 @@ export default function OrganizerEventRequests() {
                           }}
                           className={`w-9 h-9 rounded-xl text-xs font-bold transition-all duration-300 border ${
                             currentPage === page
-                              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white border-transparent shadow-lg shadow-orange-500/20 scale-102 font-extrabold'
-                              : 'border-slate-200 dark:border-slate-800 text-slate-655 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-850 bg-white dark:bg-slate-900'
+                              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white border-transparent shadow-lg shadow-orange-500/20 scale-[1.02] font-extrabold'
+                              : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900'
                           }`}
                         >
                           {page}
@@ -970,7 +970,7 @@ export default function OrganizerEventRequests() {
                         else fetchArchivedRequests(newPage)
                       }}
                       disabled={currentPage === currentTotalPages}
-                      className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-655 dark:text-slate-350 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-850 transition-all duration-300 shadow-sm"
+                      className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300 shadow-sm"
                     >
                       Sau →
                     </button>
@@ -995,11 +995,11 @@ export default function OrganizerEventRequests() {
 
       {/* Cancel Confirmation Modal */}
       {showCancelModal && eventToCancel && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-55 p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-150">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-450 rounded-xl">
+                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 rounded-xl">
                   <AlertCircle className="w-6 h-6 animate-bounce" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -1009,7 +1009,7 @@ export default function OrganizerEventRequests() {
                 </h3>
               </div>
 
-              <p className="text-sm text-slate-655 dark:text-slate-300 mb-4 leading-relaxed">
+              <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
                 {eventToCancel?.status === 'PENDING' ||
                 eventToCancel?.status === 'UPDATING' ? (
                   <>
@@ -1049,7 +1049,7 @@ export default function OrganizerEventRequests() {
                     setShowCancelModal(false)
                     setEventToCancel(null)
                   }}
-                  className="px-4.5 py-2.5 border border-slate-200 dark:border-slate-800 text-slate-655 dark:text-slate-350 font-semibold hover:text-slate-800 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-sm"
+                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold hover:text-slate-800 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-sm"
                 >
                   Không, giữ lại
                 </button>
