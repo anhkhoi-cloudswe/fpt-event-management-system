@@ -137,9 +137,24 @@ func adaptRequest(r *http.Request) (events.APIGatewayProxyRequest, error) {
 
 // writeResponse writes APIGatewayProxyResponse to http.ResponseWriter
 func writeResponse(w http.ResponseWriter, resp events.APIGatewayProxyResponse) {
+	multiValueHeaderKeys := make(map[string]struct{}, len(resp.MultiValueHeaders))
+	for key := range resp.MultiValueHeaders {
+		multiValueHeaderKeys[strings.ToLower(key)] = struct{}{}
+	}
 
 	for key, value := range resp.Headers {
+		if _, handledAsMultiValue := multiValueHeaderKeys[strings.ToLower(key)]; handledAsMultiValue {
+			continue
+		}
 		w.Header().Set(key, value)
+	}
+
+	for key, values := range resp.MultiValueHeaders {
+		for _, value := range values {
+			if value != "" {
+				w.Header().Add(key, value)
+			}
+		}
 	}
 
 	// Ensure Content-Type is set
