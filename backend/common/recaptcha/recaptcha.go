@@ -2,6 +2,7 @@ package recaptcha
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"time"
 )
+
+var ErrResourceExhausted = errors.New("recaptcha resource exhausted")
 
 // Config holds reCAPTCHA configuration
 type Config struct {
@@ -113,6 +116,12 @@ func (s *RecaptchaService) Verify(token string, remoteIP string) (*VerifyResult,
 		return result, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		result.Valid = false
+		result.ErrorMessage = "resource exhausted"
+		return result, ErrResourceExhausted
+	}
 
 	// Read response
 	body, err := io.ReadAll(resp.Body)

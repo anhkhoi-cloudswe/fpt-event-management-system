@@ -5,18 +5,19 @@ import "time"
 // User represents a user in the system
 // OPTIMIZED: Wallet field removed - balance is now fetched from dedicated wallets table via GetUserWalletBalance
 type User struct {
-	ID           int        `json:"id" db:"user_id"`
-	FullName     string     `json:"fullName" db:"full_name"`
-	Email        string     `json:"email" db:"email"`
-	Phone        string     `json:"phone" db:"phone"`
-	PasswordHash string     `json:"-" db:"password_hash"`
-	Role         string     `json:"role" db:"role"`
-	Status       string     `json:"status" db:"status"`
-	CreatedAt    time.Time  `json:"createdAt" db:"created_at"`
-	SSOProvider  *string    `json:"ssoProvider" db:"sso_provider"`
-	DeletedAt    *time.Time `json:"deletedAt" db:"deleted_at"`
-	Theme        string     `json:"theme" db:"theme"`
-	Language     string     `json:"language" gorm:"column:language;default:vi" db:"language"`
+	ID             int        `json:"id" db:"user_id"`
+	FullName       string     `json:"fullName" db:"full_name"`
+	Email          string     `json:"email" db:"email"`
+	Phone          string     `json:"phone" db:"phone"`
+	PasswordHash   string     `json:"-" db:"password_hash"`
+	Role           string     `json:"role" db:"role"`
+	Status         string     `json:"status" db:"status"`
+	CreatedAt      time.Time  `json:"createdAt" db:"created_at"`
+	SSOProvider    *string    `json:"ssoProvider" db:"sso_provider"`
+	DeletedAt      *time.Time `json:"deletedAt" db:"deleted_at"`
+	Theme          string     `json:"theme" db:"theme"`
+	Language       string     `json:"language" gorm:"column:language;default:vi" db:"language"`
+	SessionVersion int        `json:"-" db:"session_version"`
 	// Wallet field removed - balance now queried from wallets table for O(1) lookup
 }
 
@@ -48,9 +49,10 @@ type AdminCreateAccountRequest struct {
 
 // AuthResponse represents authentication response
 type AuthResponse struct {
-	Token     string `json:"token"`
-	User      User   `json:"user"`
-	IsNewUser bool   `json:"is_new_user"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"-"`
+	User         User   `json:"user"`
+	IsNewUser    bool   `json:"is_new_user"`
 }
 
 // GoogleCallbackRequest represents the payload from frontend Google sign-in

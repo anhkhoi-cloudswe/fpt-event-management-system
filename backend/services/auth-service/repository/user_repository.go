@@ -39,7 +39,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 	}
 
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi')
+		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi'), COALESCE(session_version, 0)
 		FROM Users
 		WHERE email = $1
 	`
@@ -58,6 +58,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 		&user.DeletedAt,
 		&user.Theme,
 		&user.Language,
+		&user.SessionVersion,
 	)
 
 	if err != nil {
@@ -118,7 +119,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 // OPTIMIZED: Removed Wallet column reference - balance now queried from dedicated wallets table
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi')
+		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi'), COALESCE(session_version, 0)
 		FROM Users
 		WHERE email = $1
 	`
@@ -137,6 +138,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 		&user.DeletedAt,
 		&user.Theme,
 		&user.Language,
+		&user.SessionVersion,
 	)
 
 	if err != nil {
@@ -146,6 +148,38 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 		return nil, fmt.Errorf("failed to query user: %w", err)
 	}
 
+	return &user, nil
+}
+
+func (r *UserRepository) FindByID(ctx context.Context, userID int) (*models.User, error) {
+	query := `
+		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi'), COALESCE(session_version, 0)
+		FROM Users
+		WHERE user_id = $1
+	`
+
+	var user models.User
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
+		&user.ID,
+		&user.FullName,
+		&user.Email,
+		&user.Phone,
+		&user.PasswordHash,
+		&user.Role,
+		&user.Status,
+		&user.CreatedAt,
+		&user.SSOProvider,
+		&user.DeletedAt,
+		&user.Theme,
+		&user.Language,
+		&user.SessionVersion,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to query user: %w", err)
+	}
 	return &user, nil
 }
 
@@ -273,7 +307,7 @@ func (r *UserRepository) UpdatePasswordByEmail(ctx context.Context, email, newPa
 		return fmt.Errorf("failed to hash password: %w", hashErr)
 	}
 
-	query := `UPDATE Users SET password_hash = $1 WHERE email = $2`
+	query := `UPDATE Users SET password_hash = $1, session_version = COALESCE(session_version, 0) + 1 WHERE email = $2`
 
 	result, err := r.db.ExecContext(ctx, query, string(passwordHash), email)
 	if err != nil {
@@ -368,6 +402,7 @@ func (r *UserRepository) UpdateUser(ctx context.Context, req models.AdminUpdateU
 		updates = append(updates, fmt.Sprintf("password_hash = $%d", n))
 		args = append(args, hashedPwd)
 		n++
+		updates = append(updates, "session_version = COALESCE(session_version, 0) + 1")
 	}
 
 	if len(updates) == 0 {
@@ -461,7 +496,7 @@ func (r *UserRepository) FindByRole(ctx context.Context, role string) ([]models.
 
 // SoftDeleteUserWithTimestamp soft deletes user (sets status to PENDING_DELETE and sets deleted_at)
 func (r *UserRepository) SoftDeleteUserWithTimestamp(ctx context.Context, userID int) error {
-	query := `UPDATE Users SET status = 'PENDING_DELETE', deleted_at = CURRENT_TIMESTAMP WHERE user_id = $1`
+	query := `UPDATE Users SET status = 'PENDING_DELETE', deleted_at = CURRENT_TIMESTAMP, session_version = COALESCE(session_version, 0) + 1 WHERE user_id = $1`
 
 	result, err := r.db.ExecContext(ctx, query, userID)
 	if err != nil {
@@ -506,7 +541,7 @@ func (r *UserRepository) UpdatePasswordAndClearSSO(ctx context.Context, email, n
 		return fmt.Errorf("failed to hash password: %w", hashErr)
 	}
 
-	query := `UPDATE Users SET password_hash = $1, sso_provider = NULL WHERE email = $2`
+	query := `UPDATE Users SET password_hash = $1, sso_provider = NULL, session_version = COALESCE(session_version, 0) + 1 WHERE email = $2`
 
 	result, err := r.db.ExecContext(ctx, query, string(passwordHash), email)
 	if err != nil {
@@ -621,6 +656,33 @@ func (r *UserRepository) UpdateFullNameByEmail(ctx context.Context, email, fullN
 		return errors.New("user not found")
 	}
 
+	return nil
+}
+
+func (r *UserRepository) GetSessionVersion(ctx context.Context, userID int) (int, error) {
+	var sessionVersion int
+	err := r.db.QueryRowContext(ctx, `SELECT COALESCE(session_version, 0) FROM Users WHERE user_id = $1`, userID).Scan(&sessionVersion)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, errors.New("user not found")
+		}
+		return 0, fmt.Errorf("failed to get session version: %w", err)
+	}
+	return sessionVersion, nil
+}
+
+func (r *UserRepository) IncrementSessionVersion(ctx context.Context, userID int) error {
+	result, err := r.db.ExecContext(ctx, `UPDATE Users SET session_version = COALESCE(session_version, 0) + 1 WHERE user_id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("failed to increment session version: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+	if rows == 0 {
+		return errors.New("user not found")
+	}
 	return nil
 }
 

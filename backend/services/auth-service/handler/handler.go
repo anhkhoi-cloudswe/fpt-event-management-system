@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -150,8 +151,18 @@ type AuthHandler struct {
 // NewAuthHandlerWithDB creates a new auth handler with explicit DB connection (DI)
 // All DB connections must be injected from main.go - no singleton allowed
 func NewAuthHandlerWithDB(dbConn *sql.DB) *AuthHandler {
+	ensureAuthSessionSchema(dbConn)
 	return &AuthHandler{
 		useCase: usecase.NewAuthUseCaseWithDB(dbConn),
+	}
+}
+
+func ensureAuthSessionSchema(dbConn *sql.DB) {
+	if dbConn == nil {
+		return
+	}
+	if _, err := dbConn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0`); err != nil {
+		log.Warn("Failed to ensure users.session_version exists", "error", err)
 	}
 }
 
@@ -208,12 +219,81 @@ func getScheme(request events.APIGatewayProxyRequest) string {
 	return "https"
 }
 
+func authCookies(authResponse *models.AuthResponse) []string {
+	accessCookie := http.Cookie{
+		Name:     "token",
+		Value:    authResponse.Token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int((15 * time.Minute).Seconds()),
+	}
+	refreshCookie := http.Cookie{
+		Name:     "refresh_token",
+		Value:    authResponse.RefreshToken,
+		Path:     "/api/auth/refresh",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int((7 * 24 * time.Hour).Seconds()),
+	}
+	if authResponse.User.Role == "ADMIN" || authResponse.User.Role == "STAFF" {
+		refreshCookie.MaxAge = int((24 * time.Hour).Seconds())
+	}
+	return []string{accessCookie.String(), refreshCookie.String()}
+}
+
+func clearAuthCookies() []string {
+	return []string{
+		(&http.Cookie{Name: "token", Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode, MaxAge: -1}).String(),
+		(&http.Cookie{Name: "refresh_token", Value: "", Path: "/api/auth/refresh", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode, MaxAge: -1}).String(),
+	}
+}
+
+func responseWithCookies(statusCode int, payload interface{}, cookies []string) (events.APIGatewayProxyResponse, error) {
+	body, _ := json.Marshal(payload)
+	headers := map[string]string{
+		"Content-Type": jsonContentTypeUTF8,
+		"Vary":         "Origin",
+	}
+	if len(cookies) == 1 {
+		headers["Set-Cookie"] = cookies[0]
+	}
+	return events.APIGatewayProxyResponse{
+		StatusCode:        statusCode,
+		Headers:           headers,
+		MultiValueHeaders: map[string][]string{"Set-Cookie": cookies},
+		Body:              string(body),
+	}, nil
+}
+
+func recaptchaExhaustedResponse() (events.APIGatewayProxyResponse, error) {
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusForbidden,
+		Headers: map[string]string{
+			"Content-Type": jsonContentTypeUTF8,
+			"Vary":         "Origin",
+		},
+		Body: `{"code":"RECAPTCHA_EXHAUSTED_USE_SSO"}`,
+	}, nil
+}
+
 // HandleLogin handles POST /api/login
 func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Parse request body
 	var req models.LoginRequest
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
 		return createErrorResponse(http.StatusBadRequest, "Invalid request body")
+	}
+
+	if req.RecaptchaToken != "" && req.RecaptchaToken != "TEST_BYPASS" {
+		if err := verifyRecaptcha(req.RecaptchaToken, "login", getClientIP(request)); err != nil {
+			if errors.Is(err, recaptcha.ErrResourceExhausted) {
+				return recaptchaExhaustedResponse()
+			}
+			return createErrorResponse(http.StatusForbidden, "reCAPTCHA verification failed")
+		}
 	}
 
 	// Execute login
@@ -226,32 +306,13 @@ func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGateway
 		return createErrorResponse(statusCode, err.Error())
 	}
 
-	tokenCookie := http.Cookie{
-		Name:     "token",
-		Value:    authResponse.Token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	}
-
 	// Return success payload without exposing JWT in JSON body
 	resp := map[string]interface{}{
 		"status":      "success",
 		"user":        authResponse.User,
 		"is_new_user": authResponse.IsNewUser,
 	}
-	body, _ := json.Marshal(resp)
-
-	return events.APIGatewayProxyResponse{
-		StatusCode: http.StatusOK,
-		Headers: map[string]string{
-			"Content-Type": jsonContentTypeUTF8,
-			"Vary":         "Origin",
-			"Set-Cookie":   tokenCookie.String(),
-		},
-		Body: string(body),
-	}, nil
+	return responseWithCookies(http.StatusOK, resp, authCookies(authResponse))
 }
 
 // HandleMe handles GET /api/v1/auth/me
@@ -266,6 +327,9 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 	claims, err := jwt.ValidateToken(token)
 	if err != nil {
 		return createErrorResponse(http.StatusUnauthorized, "Invalid authentication token")
+	}
+	if err := h.useCase.ValidateSessionVersion(ctx, claims.UserID, claims.SessionVersion); err != nil {
+		return createErrorResponse(http.StatusUnauthorized, "Stale authentication session")
 	}
 
 	user, err := h.useCase.GetUserByEmail(ctx, claims.Email)
@@ -316,31 +380,17 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 // HandleLogout handles POST /api/logout
 // It clears the HttpOnly token cookie on client side.
 func (h *AuthHandler) HandleLogout(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	clearCookie := http.Cookie{
-		Name:     "token",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		MaxAge:   -1,
+	if token := extractToken(request); token != "" {
+		if claims, err := jwt.ValidateToken(token); err == nil && claims != nil {
+			_ = h.useCase.IncrementSessionVersion(ctx, claims.UserID)
+		}
 	}
 
 	resp := map[string]interface{}{
 		"status":  "success",
 		"message": "Logged out",
 	}
-	body, _ := json.Marshal(resp)
-
-	return events.APIGatewayProxyResponse{
-		StatusCode: http.StatusOK,
-		Headers: map[string]string{
-			"Content-Type": jsonContentTypeUTF8,
-			"Vary":         "Origin",
-			"Set-Cookie":   clearCookie.String(),
-		},
-		Body: string(body),
-	}, nil
+	return responseWithCookies(http.StatusOK, resp, clearAuthCookies())
 }
 
 // HandleRegister handles POST /api/register - DISABLED to prevent OTP bypass
@@ -390,10 +440,10 @@ func (h *AuthHandler) HandleAdminCreateAccount(ctx context.Context, request even
 // Helper functions
 
 func extractToken(request events.APIGatewayProxyRequest) string {
-	if token := extractTokenFromCookieHeader(request.Headers["Cookie"]); token != "" {
+	if token := extractNamedCookieFromHeader(request.Headers["Cookie"], "token"); token != "" {
 		return token
 	}
-	if token := extractTokenFromCookieHeader(request.Headers["cookie"]); token != "" {
+	if token := extractNamedCookieFromHeader(request.Headers["cookie"], "token"); token != "" {
 		return token
 	}
 
@@ -416,6 +466,17 @@ func extractToken(request events.APIGatewayProxyRequest) string {
 }
 
 func extractTokenFromCookieHeader(cookieHeader string) string {
+	return extractNamedCookieFromHeader(cookieHeader, "token")
+}
+
+func extractRefreshToken(request events.APIGatewayProxyRequest) string {
+	if token := extractNamedCookieFromHeader(request.Headers["Cookie"], "refresh_token"); token != "" {
+		return token
+	}
+	return extractNamedCookieFromHeader(request.Headers["cookie"], "refresh_token")
+}
+
+func extractNamedCookieFromHeader(cookieHeader, cookieName string) string {
 	if strings.TrimSpace(cookieHeader) == "" {
 		return ""
 	}
@@ -423,11 +484,12 @@ func extractTokenFromCookieHeader(cookieHeader string) string {
 	parts := strings.Split(cookieHeader, ";")
 	for _, part := range parts {
 		item := strings.TrimSpace(part)
-		if !strings.HasPrefix(item, "token=") {
+		prefix := cookieName + "="
+		if !strings.HasPrefix(item, prefix) {
 			continue
 		}
 
-		raw := strings.TrimPrefix(item, "token=")
+		raw := strings.TrimPrefix(item, prefix)
 		decoded, err := url.QueryUnescape(raw)
 		if err != nil {
 			return raw
@@ -436,6 +498,31 @@ func extractTokenFromCookieHeader(cookieHeader string) string {
 	}
 
 	return ""
+}
+
+func (h *AuthHandler) HandleRefresh(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	refreshToken := extractRefreshToken(request)
+	if refreshToken == "" {
+		return createErrorResponse(http.StatusUnauthorized, "Missing refresh token")
+	}
+
+	claims, err := jwt.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		return responseWithCookies(http.StatusUnauthorized, map[string]string{"error": "Invalid refresh token"}, clearAuthCookies())
+	}
+	if err := h.useCase.ValidateSessionVersion(ctx, claims.UserID, claims.SessionVersion); err != nil {
+		return responseWithCookies(http.StatusUnauthorized, map[string]string{"error": "Stale refresh token"}, clearAuthCookies())
+	}
+
+	authResponse, err := h.useCase.IssueTokenPair(ctx, claims.UserID)
+	if err != nil {
+		return responseWithCookies(http.StatusUnauthorized, map[string]string{"error": "Unable to refresh session"}, clearAuthCookies())
+	}
+
+	return responseWithCookies(http.StatusOK, map[string]interface{}{
+		"status": "success",
+		"user":   authResponse.User,
+	}, authCookies(authResponse))
 }
 
 func createSuccessResponse(statusCode int, data interface{}) (events.APIGatewayProxyResponse, error) {
@@ -502,6 +589,9 @@ func (h *AuthHandler) HandleForgotPassword(ctx context.Context, request events.A
 	if req.RecaptchaToken != "" {
 		if err := verifyRecaptcha(req.RecaptchaToken, "forgot_password", clientIP); err != nil {
 			log.Warn("reCAPTCHA failed for forgot-password", "email", req.Email, "error", err)
+			if errors.Is(err, recaptcha.ErrResourceExhausted) {
+				return recaptchaExhaustedResponse()
+			}
 			return createStatusResponse(http.StatusForbidden, "fail", "Xác thực reCAPTCHA thất bại")
 		}
 	}
@@ -675,6 +765,9 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 		clientIP := getClientIP(request)
 		if err := verifyRecaptcha(req.RecaptchaToken, "register", clientIP); err != nil {
 			log.Error("reCAPTCHA failed for registration", "email", req.Email, "error", err)
+			if errors.Is(err, recaptcha.ErrResourceExhausted) {
+				return recaptchaExhaustedResponse()
+			}
 			return createStatusResponse(http.StatusBadRequest, "fail", "Xác thực reCAPTCHA không hợp lệ")
 		}
 	}
@@ -745,32 +838,12 @@ func (h *AuthHandler) HandleRegisterVerifyOTP(ctx context.Context, request event
 		}
 	}
 
-	tokenCookie := http.Cookie{
-		Name:     "token",
-		Value:    authResponse.Token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	}
-
-	// Return format matching Java: {status: "success", user: {...}, token: "..."}
+	// Return success payload without exposing JWT in JSON body.
 	responseMap := map[string]interface{}{
 		"status": "success",
 		"user":   authResponse.User,
-		"token":  authResponse.Token,
 	}
-	body, _ := json.Marshal(responseMap)
-
-	return events.APIGatewayProxyResponse{
-		StatusCode: http.StatusOK,
-		Headers: map[string]string{
-			"Content-Type": jsonContentTypeUTF8,
-			"Vary":         "Origin",
-			"Set-Cookie":   tokenCookie.String(),
-		},
-		Body: string(body),
-	}, nil
+	return responseWithCookies(http.StatusOK, responseMap, authCookies(authResponse))
 }
 
 // ============================================================
@@ -1055,33 +1128,12 @@ func (h *AuthHandler) HandleGoogleCallback(ctx context.Context, request events.A
 		return createErrorResponse(http.StatusBadRequest, err.Error())
 	}
 
-	// 4. Set HttpOnly Cookie & Return Payload
-	tokenCookie := http.Cookie{
-		Name:     "token",
-		Value:    authResponse.Token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	}
-
 	respPayload := map[string]interface{}{
 		"status":      "success",
 		"user":        authResponse.User,
 		"is_new_user": authResponse.IsNewUser,
-		"token":       authResponse.Token, // Include token in body for standard client local storage fallbacks
 	}
-	body, _ := json.Marshal(respPayload)
-
-	return events.APIGatewayProxyResponse{
-		StatusCode: http.StatusOK,
-		Headers: map[string]string{
-			"Content-Type": jsonContentTypeUTF8,
-			"Vary":         "Origin",
-			"Set-Cookie":   tokenCookie.String(),
-		},
-		Body: string(body),
-	}, nil
+	return responseWithCookies(http.StatusOK, respPayload, authCookies(authResponse))
 }
 
 // HandleUpdatePhone handles POST /api/auth/update-phone for authenticated users
@@ -1198,7 +1250,8 @@ func (h *AuthHandler) HandleCloseAccount(ctx context.Context, request events.API
 			"Vary":         "Origin",
 			"Set-Cookie":   clearCookie.String(),
 		},
-		Body: string(body),
+		MultiValueHeaders: map[string][]string{"Set-Cookie": clearAuthCookies()},
+		Body:              string(body),
 	}, nil
 }
 

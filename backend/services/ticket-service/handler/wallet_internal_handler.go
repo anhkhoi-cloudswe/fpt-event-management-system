@@ -3,11 +3,13 @@ package handler
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -41,10 +43,26 @@ type WalletInternalHandler struct {
 // NewWalletInternalHandlerWithDB creates handler with explicit DB connection (DI)
 // All DB connections must be injected from main.go - no singleton allowed
 func NewWalletInternalHandlerWithDB(dbConn *sql.DB) *WalletInternalHandler {
+	ensureWalletIdempotencySchema(dbConn)
 	return &WalletInternalHandler{
 		db:     dbConn,
 		logger: logger.Default(),
 	}
+}
+
+func ensureWalletIdempotencySchema(dbConn *sql.DB) {
+	if dbConn == nil {
+		return
+	}
+	_, _ = dbConn.Exec(`CREATE TABLE IF NOT EXISTS idempotency_keys (
+		idempotency_key VARCHAR(255) PRIMARY KEY,
+		user_id VARCHAR(255) NOT NULL,
+		request_hash VARCHAR(64) NOT NULL,
+		response_code INT NOT NULL DEFAULT 0,
+		response_body TEXT NOT NULL DEFAULT '',
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+	)`)
+	_, _ = dbConn.Exec(`ALTER TABLE wallet_transaction ADD CONSTRAINT uniq_wallet_tx_reference_id UNIQUE (reference_id)`)
 }
 
 // ============================================================
@@ -183,82 +201,85 @@ func (h *WalletInternalHandler) HandleDebit(ctx context.Context, request events.
 		return createWalletResponse(http.StatusBadRequest, map[string]string{"error": "userId and amount must be positive"})
 	}
 
-	// Start transaction with REPEATABLE READ (same as ProcessWalletPayment)
-	tx, err := h.db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  false,
-	})
-	if err != nil {
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to start transaction"})
-	}
-	defer tx.Rollback()
+	return h.withIdempotency(ctx, request, strconv.Itoa(req.UserID), func() (events.APIGatewayProxyResponse, error) {
 
-	// Ensure wallet record exists (on-demand migration)
-	h.ensureWalletExists(ctx, tx, req.UserID)
-
-	// Lock wallet row and get current balance
-	var walletID int
-	var currentBalance float64
-	lockQuery := `SELECT wallet_id, balance FROM Wallet WHERE user_id = $1 FOR UPDATE`
-	err = tx.QueryRowContext(ctx, lockQuery, req.UserID).Scan(&walletID, &currentBalance)
-	if err != nil {
-		h.logger.Warn("[WALLET_DEBIT] Failed to lock wallet for user %d: %v", req.UserID, err)
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to lock wallet"})
-	}
-
-	// Check sufficient balance
-	if currentBalance < req.Amount {
-		h.logger.Info("[WALLET_DEBIT] Insufficient balance: user=%d, balance=%.2f, amount=%.2f",
-			req.UserID, currentBalance, req.Amount)
-		return createWalletResponse(http.StatusBadRequest, walletModels.WalletTransactionResponse{
-			Success:       false,
-			BalanceBefore: currentBalance,
-			BalanceAfter:  currentBalance,
-			Message:       fmt.Sprintf("insufficient_balance|%d|%.0f", int(req.Amount-currentBalance), currentBalance),
+		// Start transaction with REPEATABLE READ (same as ProcessWalletPayment)
+		tx, err := h.db.BeginTx(ctx, &sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+			ReadOnly:  false,
 		})
-	}
+		if err != nil {
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to start transaction"})
+		}
+		defer tx.Rollback()
 
-	newBalance := currentBalance - req.Amount
+		// Ensure wallet record exists (on-demand migration)
+		h.ensureWalletExists(ctx, tx, req.UserID)
 
-	// Update Wallet table (single source of truth)
-	_, err = tx.ExecContext(ctx, "UPDATE Wallet SET balance = $1 WHERE wallet_id = $2", newBalance, walletID)
-	if err != nil {
-		h.logger.Warn("[WALLET_DEBIT] Failed to update Wallet table: %v", err)
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to debit"})
-	}
+		// Lock wallet row and get current balance
+		var walletID int
+		var currentBalance float64
+		lockQuery := `SELECT wallet_id, balance FROM Wallet WHERE user_id = $1 FOR UPDATE`
+		err = tx.QueryRowContext(ctx, lockQuery, req.UserID).Scan(&walletID, &currentBalance)
+		if err != nil {
+			h.logger.Warn("[WALLET_DEBIT] Failed to lock wallet for user %d: %v", req.UserID, err)
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to lock wallet"})
+		}
 
-	// Log transaction
-	txResult, err := tx.ExecContext(ctx,
-		`INSERT INTO Wallet_Transaction (wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description)
+		// Check sufficient balance
+		if currentBalance < req.Amount {
+			h.logger.Info("[WALLET_DEBIT] Insufficient balance: user=%d, balance=%.2f, amount=%.2f",
+				req.UserID, currentBalance, req.Amount)
+			return createWalletResponse(http.StatusBadRequest, walletModels.WalletTransactionResponse{
+				Success:       false,
+				BalanceBefore: currentBalance,
+				BalanceAfter:  currentBalance,
+				Message:       fmt.Sprintf("insufficient_balance|%d|%.0f", int(req.Amount-currentBalance), currentBalance),
+			})
+		}
+
+		newBalance := currentBalance - req.Amount
+
+		// Update Wallet table (single source of truth)
+		_, err = tx.ExecContext(ctx, "UPDATE Wallet SET balance = $1 WHERE wallet_id = $2", newBalance, walletID)
+		if err != nil {
+			h.logger.Warn("[WALLET_DEBIT] Failed to update Wallet table: %v", err)
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to debit"})
+		}
+
+		// Log transaction
+		txResult, err := tx.ExecContext(ctx,
+			`INSERT INTO Wallet_Transaction (wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description)
 		 VALUES ($1, $2, 'DEBIT', $3, $4, $5, $6, $7, $8)`,
-		walletID, req.UserID, req.Amount, currentBalance, newBalance,
-		req.ReferenceType, req.ReferenceID, req.Description,
-	)
-	if err != nil {
-		h.logger.Warn("[WALLET_DEBIT] Failed to log transaction: %v", err)
-		// Continue - debit succeeded, logging is best-effort
-	}
+			walletID, req.UserID, req.Amount, currentBalance, newBalance,
+			req.ReferenceType, req.ReferenceID, req.Description,
+		)
+		if err != nil {
+			h.logger.Warn("[WALLET_DEBIT] Failed to log transaction: %v", err)
+			// Continue - debit succeeded, logging is best-effort
+		}
 
-	var transactionID int64
-	if txResult != nil {
-		transactionID, _ = txResult.LastInsertId()
-	}
+		var transactionID int64
+		if txResult != nil {
+			transactionID, _ = txResult.LastInsertId()
+		}
 
-	// Commit
-	if err := tx.Commit(); err != nil {
-		h.logger.Warn("[WALLET_DEBIT] Failed to commit: %v", err)
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to commit"})
-	}
+		// Commit
+		if err := tx.Commit(); err != nil {
+			h.logger.Warn("[WALLET_DEBIT] Failed to commit: %v", err)
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to commit"})
+		}
 
-	h.logger.Info("[WALLET_DEBIT] ✅ Debit success: user=%d, amount=%.2f, before=%.2f, after=%.2f, txID=%d",
-		req.UserID, req.Amount, currentBalance, newBalance, transactionID)
+		h.logger.Info("[WALLET_DEBIT] ✅ Debit success: user=%d, amount=%.2f, before=%.2f, after=%.2f, txID=%d",
+			req.UserID, req.Amount, currentBalance, newBalance, transactionID)
 
-	return createWalletResponse(http.StatusOK, walletModels.WalletTransactionResponse{
-		Success:       true,
-		TransactionID: int(transactionID),
-		BalanceBefore: currentBalance,
-		BalanceAfter:  newBalance,
-		Message:       "debit successful",
+		return createWalletResponse(http.StatusOK, walletModels.WalletTransactionResponse{
+			Success:       true,
+			TransactionID: int(transactionID),
+			BalanceBefore: currentBalance,
+			BalanceAfter:  newBalance,
+			Message:       "debit successful",
+		})
 	})
 }
 
@@ -282,69 +303,72 @@ func (h *WalletInternalHandler) HandleCredit(ctx context.Context, request events
 		return createWalletResponse(http.StatusBadRequest, map[string]string{"error": "userId and amount must be positive"})
 	}
 
-	// Start transaction
-	tx, err := h.db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  false,
-	})
-	if err != nil {
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to start transaction"})
-	}
-	defer tx.Rollback()
+	return h.withIdempotency(ctx, request, strconv.Itoa(req.UserID), func() (events.APIGatewayProxyResponse, error) {
 
-	// Ensure wallet record exists (on-demand migration)
-	h.ensureWalletExists(ctx, tx, req.UserID)
+		// Start transaction
+		tx, err := h.db.BeginTx(ctx, &sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+			ReadOnly:  false,
+		})
+		if err != nil {
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to start transaction"})
+		}
+		defer tx.Rollback()
 
-	// Lock wallet row and get current balance
-	var walletID int
-	var currentBalance float64
-	lockQuery := `SELECT wallet_id, balance FROM Wallet WHERE user_id = $1 FOR UPDATE`
-	err = tx.QueryRowContext(ctx, lockQuery, req.UserID).Scan(&walletID, &currentBalance)
-	if err != nil {
-		h.logger.Warn("[WALLET_CREDIT] Failed to lock wallet for user %d: %v", req.UserID, err)
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to lock wallet"})
-	}
+		// Ensure wallet record exists (on-demand migration)
+		h.ensureWalletExists(ctx, tx, req.UserID)
 
-	newBalance := currentBalance + req.Amount
+		// Lock wallet row and get current balance
+		var walletID int
+		var currentBalance float64
+		lockQuery := `SELECT wallet_id, balance FROM Wallet WHERE user_id = $1 FOR UPDATE`
+		err = tx.QueryRowContext(ctx, lockQuery, req.UserID).Scan(&walletID, &currentBalance)
+		if err != nil {
+			h.logger.Warn("[WALLET_CREDIT] Failed to lock wallet for user %d: %v", req.UserID, err)
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to lock wallet"})
+		}
 
-	// Update Wallet table (single source of truth)
-	_, err = tx.ExecContext(ctx, "UPDATE Wallet SET balance = $1 WHERE wallet_id = $2", newBalance, walletID)
-	if err != nil {
-		h.logger.Warn("[WALLET_CREDIT] Failed to update Wallet table: %v", err)
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to credit"})
-	}
+		newBalance := currentBalance + req.Amount
 
-	// Log transaction
-	txResult, err := tx.ExecContext(ctx,
-		`INSERT INTO Wallet_Transaction (wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description)
+		// Update Wallet table (single source of truth)
+		_, err = tx.ExecContext(ctx, "UPDATE Wallet SET balance = $1 WHERE wallet_id = $2", newBalance, walletID)
+		if err != nil {
+			h.logger.Warn("[WALLET_CREDIT] Failed to update Wallet table: %v", err)
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to credit"})
+		}
+
+		// Log transaction
+		txResult, err := tx.ExecContext(ctx,
+			`INSERT INTO Wallet_Transaction (wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description)
 		 VALUES ($1, $2, 'CREDIT', $3, $4, $5, $6, $7, $8)`,
-		walletID, req.UserID, req.Amount, currentBalance, newBalance,
-		req.ReferenceType, req.ReferenceID, req.Description,
-	)
-	if err != nil {
-		h.logger.Warn("[WALLET_CREDIT] Failed to log transaction: %v", err)
-	}
+			walletID, req.UserID, req.Amount, currentBalance, newBalance,
+			req.ReferenceType, req.ReferenceID, req.Description,
+		)
+		if err != nil {
+			h.logger.Warn("[WALLET_CREDIT] Failed to log transaction: %v", err)
+		}
 
-	var transactionID int64
-	if txResult != nil {
-		transactionID, _ = txResult.LastInsertId()
-	}
+		var transactionID int64
+		if txResult != nil {
+			transactionID, _ = txResult.LastInsertId()
+		}
 
-	// Commit
-	if err := tx.Commit(); err != nil {
-		h.logger.Warn("[WALLET_CREDIT] Failed to commit: %v", err)
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to commit"})
-	}
+		// Commit
+		if err := tx.Commit(); err != nil {
+			h.logger.Warn("[WALLET_CREDIT] Failed to commit: %v", err)
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to commit"})
+		}
 
-	h.logger.Info("[WALLET_CREDIT] ✅ Credit success: user=%d, amount=%.2f, before=%.2f, after=%.2f, txID=%d",
-		req.UserID, req.Amount, currentBalance, newBalance, transactionID)
+		h.logger.Info("[WALLET_CREDIT] ✅ Credit success: user=%d, amount=%.2f, before=%.2f, after=%.2f, txID=%d",
+			req.UserID, req.Amount, currentBalance, newBalance, transactionID)
 
-	return createWalletResponse(http.StatusOK, walletModels.WalletTransactionResponse{
-		Success:       true,
-		TransactionID: int(transactionID),
-		BalanceBefore: currentBalance,
-		BalanceAfter:  newBalance,
-		Message:       "credit successful",
+		return createWalletResponse(http.StatusOK, walletModels.WalletTransactionResponse{
+			Success:       true,
+			TransactionID: int(transactionID),
+			BalanceBefore: currentBalance,
+			BalanceAfter:  newBalance,
+			Message:       "credit successful",
+		})
 	})
 }
 
@@ -382,95 +406,98 @@ func (h *WalletInternalHandler) HandleReserve(ctx context.Context, request event
 		return createWalletResponse(http.StatusBadRequest, map[string]string{"error": "userId and amount must be positive"})
 	}
 
-	// Default TTL: 5 phút
-	ttl := 300
-	if req.TTLSeconds > 0 {
-		ttl = req.TTLSeconds
-	}
+	return h.withIdempotency(ctx, request, strconv.Itoa(req.UserID), func() (events.APIGatewayProxyResponse, error) {
 
-	// Generate reservation ID
-	reservationID := generateUUID()
-	expiresAt := timeutil.GetNow().Add(time.Duration(ttl) * time.Second)
+		// Default TTL: 5 phút
+		ttl := 300
+		if req.TTLSeconds > 0 {
+			ttl = req.TTLSeconds
+		}
 
-	h.logger.Info("[SAGA_RESERVE] 🔒 Starting reserve: user=%d, amount=%.2f, reservationId=%s", req.UserID, req.Amount, reservationID)
+		// Generate reservation ID
+		reservationID := generateUUID()
+		expiresAt := timeutil.GetNow().Add(time.Duration(ttl) * time.Second)
 
-	// Start transaction
-	tx, err := h.db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  false,
-	})
-	if err != nil {
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to start transaction"})
-	}
-	defer tx.Rollback()
+		h.logger.Info("[SAGA_RESERVE] 🔒 Starting reserve: user=%d, amount=%.2f, reservationId=%s", req.UserID, req.Amount, reservationID)
 
-	// Ensure wallet record exists
-	h.ensureWalletExists(ctx, tx, req.UserID)
+		// Start transaction
+		tx, err := h.db.BeginTx(ctx, &sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+			ReadOnly:  false,
+		})
+		if err != nil {
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to start transaction"})
+		}
+		defer tx.Rollback()
 
-	// Lock wallet row and get current balance
-	var walletID int
-	var currentBalance float64
-	lockQuery := `SELECT wallet_id, balance FROM Wallet WHERE user_id = $1 FOR UPDATE`
-	err = tx.QueryRowContext(ctx, lockQuery, req.UserID).Scan(&walletID, &currentBalance)
-	if err != nil {
-		h.logger.Warn("[SAGA_RESERVE] Failed to lock wallet for user %d: %v", req.UserID, err)
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to lock wallet"})
-	}
+		// Ensure wallet record exists
+		h.ensureWalletExists(ctx, tx, req.UserID)
 
-	// Check sufficient balance
-	if currentBalance < req.Amount {
-		h.logger.Info("[SAGA_RESERVE] ❌ Insufficient balance: user=%d, balance=%.2f, amount=%.2f",
-			req.UserID, currentBalance, req.Amount)
-		return createWalletResponse(http.StatusBadRequest, walletModels.WalletReserveResponse{
-			Success:       false,
-			ReservationID: "",
+		// Lock wallet row and get current balance
+		var walletID int
+		var currentBalance float64
+		lockQuery := `SELECT wallet_id, balance FROM Wallet WHERE user_id = $1 FOR UPDATE`
+		err = tx.QueryRowContext(ctx, lockQuery, req.UserID).Scan(&walletID, &currentBalance)
+		if err != nil {
+			h.logger.Warn("[SAGA_RESERVE] Failed to lock wallet for user %d: %v", req.UserID, err)
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to lock wallet"})
+		}
+
+		// Check sufficient balance
+		if currentBalance < req.Amount {
+			h.logger.Info("[SAGA_RESERVE] ❌ Insufficient balance: user=%d, balance=%.2f, amount=%.2f",
+				req.UserID, currentBalance, req.Amount)
+			return createWalletResponse(http.StatusBadRequest, walletModels.WalletReserveResponse{
+				Success:       false,
+				ReservationID: "",
+				UserID:        req.UserID,
+				Amount:        req.Amount,
+				BalanceBefore: currentBalance,
+				BalanceAfter:  currentBalance,
+				Message:       fmt.Sprintf("insufficient_balance|%d|%.0f", int(req.Amount-currentBalance), currentBalance),
+			})
+		}
+
+		newBalance := currentBalance - req.Amount
+
+		// Trừ balance tạm thời (reserve = hold money)
+		_, err = tx.ExecContext(ctx, "UPDATE Wallet SET balance = $1 WHERE wallet_id = $2", newBalance, walletID)
+		if err != nil {
+			h.logger.Warn("[SAGA_RESERVE] Failed to update Wallet table: %v", err)
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to reserve"})
+		}
+
+		// Log reservation transaction (type = 'RESERVE', description chứa reservationId + expiresAt)
+		reserveDesc := fmt.Sprintf("RESERVE:%s|expires:%s|%s", reservationID, expiresAt.Format(time.RFC3339), req.Description)
+		_, err = tx.ExecContext(ctx,
+			`INSERT INTO Wallet_Transaction (wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description)
+		 VALUES ($1, $2, 'DEBIT', $3, $4, $5, $6, $7, $8)`,
+			walletID, req.UserID, req.Amount, currentBalance, newBalance,
+			req.ReferenceType, fmt.Sprintf("reserve:%s", reservationID), reserveDesc,
+		)
+		if err != nil {
+			h.logger.Warn("[SAGA_RESERVE] Failed to log transaction: %v", err)
+		}
+
+		// Commit
+		if err := tx.Commit(); err != nil {
+			h.logger.Warn("[SAGA_RESERVE] Failed to commit: %v", err)
+			return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to commit"})
+		}
+
+		h.logger.Info("[SAGA_RESERVE] ✅ Reserve success: user=%d, amount=%.2f, before=%.2f, after=%.2f, reservationId=%s",
+			req.UserID, req.Amount, currentBalance, newBalance, reservationID)
+
+		return createWalletResponse(http.StatusOK, walletModels.WalletReserveResponse{
+			Success:       true,
+			ReservationID: reservationID,
 			UserID:        req.UserID,
 			Amount:        req.Amount,
 			BalanceBefore: currentBalance,
-			BalanceAfter:  currentBalance,
-			Message:       fmt.Sprintf("insufficient_balance|%d|%.0f", int(req.Amount-currentBalance), currentBalance),
+			BalanceAfter:  newBalance,
+			ExpiresAt:     expiresAt.Format(time.RFC3339),
+			Message:       "reserve successful",
 		})
-	}
-
-	newBalance := currentBalance - req.Amount
-
-	// Trừ balance tạm thời (reserve = hold money)
-	_, err = tx.ExecContext(ctx, "UPDATE Wallet SET balance = $1 WHERE wallet_id = $2", newBalance, walletID)
-	if err != nil {
-		h.logger.Warn("[SAGA_RESERVE] Failed to update Wallet table: %v", err)
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to reserve"})
-	}
-
-	// Log reservation transaction (type = 'RESERVE', description chứa reservationId + expiresAt)
-	reserveDesc := fmt.Sprintf("RESERVE:%s|expires:%s|%s", reservationID, expiresAt.Format(time.RFC3339), req.Description)
-	_, err = tx.ExecContext(ctx,
-		`INSERT INTO Wallet_Transaction (wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description)
-		 VALUES ($1, $2, 'DEBIT', $3, $4, $5, $6, $7, $8)`,
-		walletID, req.UserID, req.Amount, currentBalance, newBalance,
-		req.ReferenceType, fmt.Sprintf("reserve:%s", reservationID), reserveDesc,
-	)
-	if err != nil {
-		h.logger.Warn("[SAGA_RESERVE] Failed to log transaction: %v", err)
-	}
-
-	// Commit
-	if err := tx.Commit(); err != nil {
-		h.logger.Warn("[SAGA_RESERVE] Failed to commit: %v", err)
-		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "failed to commit"})
-	}
-
-	h.logger.Info("[SAGA_RESERVE] ✅ Reserve success: user=%d, amount=%.2f, before=%.2f, after=%.2f, reservationId=%s",
-		req.UserID, req.Amount, currentBalance, newBalance, reservationID)
-
-	return createWalletResponse(http.StatusOK, walletModels.WalletReserveResponse{
-		Success:       true,
-		ReservationID: reservationID,
-		UserID:        req.UserID,
-		Amount:        req.Amount,
-		BalanceBefore: currentBalance,
-		BalanceAfter:  newBalance,
-		ExpiresAt:     expiresAt.Format(time.RFC3339),
-		Message:       "reserve successful",
 	})
 }
 
@@ -685,6 +712,73 @@ func isWalletInternalCall(request events.APIGatewayProxyRequest) bool {
 }
 
 // generateUUID tạo UUID v4 sử dụng crypto/rand (không cần external dependency)
+func (h *WalletInternalHandler) withIdempotency(
+	ctx context.Context,
+	request events.APIGatewayProxyRequest,
+	userID string,
+	next func() (events.APIGatewayProxyResponse, error),
+) (events.APIGatewayProxyResponse, error) {
+	key := strings.TrimSpace(headerValue(request.Headers, "Idempotency-Key"))
+	if key == "" {
+		return next()
+	}
+
+	hashBytes := sha256.Sum256([]byte(request.Body))
+	requestHash := fmt.Sprintf("%x", hashBytes[:])
+
+	var storedHash, storedBody string
+	var storedCode int
+	err := h.db.QueryRowContext(ctx,
+		`SELECT request_hash, response_code, response_body FROM idempotency_keys WHERE idempotency_key = $1`,
+		key,
+	).Scan(&storedHash, &storedCode, &storedBody)
+	if err == nil {
+		if storedHash != requestHash {
+			return createWalletResponse(http.StatusConflict, map[string]string{"error": "idempotency key reused with different payload"})
+		}
+		if storedCode > 0 {
+			return events.APIGatewayProxyResponse{
+				StatusCode: storedCode,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       storedBody,
+			}, nil
+		}
+		return createWalletResponse(http.StatusConflict, map[string]string{"error": "idempotency request is already processing"})
+	}
+	if err != sql.ErrNoRows {
+		h.logger.Warn("[IDEMPOTENCY] lookup failed for key %s: %v", key, err)
+		return createWalletResponse(http.StatusInternalServerError, map[string]string{"error": "idempotency lookup failed"})
+	}
+
+	_, err = h.db.ExecContext(ctx,
+		`INSERT INTO idempotency_keys (idempotency_key, user_id, request_hash, response_code, response_body)
+		 VALUES ($1, $2, $3, 0, '')`,
+		key, userID, requestHash,
+	)
+	if err != nil {
+		return h.withIdempotency(ctx, request, userID, next)
+	}
+
+	resp, execErr := next()
+	_, updateErr := h.db.ExecContext(ctx,
+		`UPDATE idempotency_keys SET response_code = $1, response_body = $2 WHERE idempotency_key = $3`,
+		resp.StatusCode, resp.Body, key,
+	)
+	if updateErr != nil {
+		h.logger.Warn("[IDEMPOTENCY] failed to store response for key %s: %v", key, updateErr)
+	}
+	return resp, execErr
+}
+
+func headerValue(headers map[string]string, name string) string {
+	for k, v := range headers {
+		if strings.EqualFold(k, name) {
+			return v
+		}
+	}
+	return ""
+}
+
 func generateUUID() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)

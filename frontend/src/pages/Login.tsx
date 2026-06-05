@@ -238,6 +238,11 @@ export default function Login() {
 
       if (err.response) {
         console.error('Server response data:', err.response.data)
+        if (err.response.data?.code === 'RECAPTCHA_EXHAUSTED_USE_SSO') {
+          showToast('warning', 'reCAPTCHA dang qua tai. Chuyen sang dang nhap Google de tiep tuc an toan.')
+          googleLogin()
+          return
+        }
 
         // Ưu tiên show message từ server nếu có
         const srvMsg = err.response.data?.message || err.response.data?.error || null

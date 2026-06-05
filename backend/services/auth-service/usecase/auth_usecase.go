@@ -68,15 +68,16 @@ func (uc *AuthUseCase) Login(ctx context.Context, req models.LoginRequest) (*mod
 		return nil, err
 	}
 
-	// Generate JWT token
-	token, err := jwt.GenerateToken(user.ID, user.Email, user.FullName, user.Role)
+	// Generate JWT token pair
+	token, refreshToken, err := jwt.GenerateTokenPair(user.ID, user.Email, user.FullName, user.Role, user.SessionVersion)
 	if err != nil {
 		return nil, errors.New("failed to generate token")
 	}
 
 	return &models.AuthResponse{
-		Token: token,
-		User:  *user,
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         *user,
 	}, nil
 }
 
@@ -126,15 +127,16 @@ func (uc *AuthUseCase) Register(ctx context.Context, req models.RegisterRequest)
 		return nil, errors.New("failed to get user")
 	}
 
-	// Generate JWT token
-	token, err := jwt.GenerateToken(userID, createdUser.Email, createdUser.FullName, createdUser.Role)
+	// Generate JWT token pair
+	token, refreshToken, err := jwt.GenerateTokenPair(userID, createdUser.Email, createdUser.FullName, createdUser.Role, createdUser.SessionVersion)
 	if err != nil {
 		return nil, errors.New("failed to generate token")
 	}
 
 	return &models.AuthResponse{
-		Token: token,
-		User:  *createdUser,
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         *createdUser,
 	}, nil
 }
 
@@ -367,8 +369,14 @@ func (uc *AuthUseCase) VerifyRegisterOTP(ctx context.Context, email, otp string)
 	delete(pendingRegistrations, email)
 	otpManager.Invalidate(email)
 
+	sessionVersion, err := uc.userRepo.GetSessionVersion(ctx, userID)
+	if err != nil {
+		return nil, errors.New("KhÃ´ng thá»ƒ táº¡o token")
+	}
+	user.SessionVersion = sessionVersion
+
 	// Generate JWT
-	token, err := jwt.GenerateToken(userID, user.Email, user.FullName, user.Role)
+	token, refreshToken, err := jwt.GenerateTokenPair(userID, user.Email, user.FullName, user.Role, user.SessionVersion)
 	if err != nil {
 		return nil, errors.New("Không thể tạo token")
 	}
@@ -376,8 +384,9 @@ func (uc *AuthUseCase) VerifyRegisterOTP(ctx context.Context, email, otp string)
 	user.ID = userID
 
 	return &models.AuthResponse{
-		Token: token,
-		User:  user,
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         user,
 	}, nil
 }
 
@@ -445,8 +454,6 @@ func (uc *AuthUseCase) GetStaffAndOrganizers(ctx context.Context) (*models.Staff
 	}, nil
 }
 
-
-
 // LoginOrRegisterGoogle handles Google sign-in auth response
 func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name string) (*models.AuthResponse, error) {
 	// Find user by email
@@ -495,15 +502,50 @@ func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name st
 	}
 
 	// Generate JWT
-	token, err := jwt.GenerateToken(userID, user.Email, user.FullName, user.Role)
+	token, refreshToken, err := jwt.GenerateTokenPair(userID, user.Email, user.FullName, user.Role, user.SessionVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
 	return &models.AuthResponse{
-		Token:     token,
-		User:      *user,
-		IsNewUser: isNewUser,
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         *user,
+		IsNewUser:    isNewUser,
+	}, nil
+}
+
+func (uc *AuthUseCase) ValidateSessionVersion(ctx context.Context, userID, tokenSessionVersion int) error {
+	currentVersion, err := uc.userRepo.GetSessionVersion(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if currentVersion != tokenSessionVersion {
+		return errors.New("stale session")
+	}
+	return nil
+}
+
+func (uc *AuthUseCase) IncrementSessionVersion(ctx context.Context, userID int) error {
+	return uc.userRepo.IncrementSessionVersion(ctx, userID)
+}
+
+func (uc *AuthUseCase) IssueTokenPair(ctx context.Context, userID int) (*models.AuthResponse, error) {
+	user, err := uc.userRepo.FindByID(ctx, userID)
+	if err != nil || user == nil {
+		return nil, errors.New("user not found")
+	}
+	if user.Status == "BLOCKED" || user.Status == "PENDING_DELETE" {
+		return nil, errors.New("inactive user")
+	}
+	token, refreshToken, err := jwt.GenerateTokenPair(user.ID, user.Email, user.FullName, user.Role, user.SessionVersion)
+	if err != nil {
+		return nil, errors.New("failed to generate token")
+	}
+	return &models.AuthResponse{
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         *user,
 	}, nil
 }
 
