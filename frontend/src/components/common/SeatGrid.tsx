@@ -7,6 +7,7 @@
 // - Có hỗ trợ: maxReached (đã chọn đủ ghế) và disabled (khóa toàn bộ grid)
 
 import { useState } from 'react'
+import { Lock } from 'lucide-react'
 
 // ===================== TYPE: Seat =====================
 // Kiểu dữ liệu ghế dùng trong toàn app
@@ -248,7 +249,7 @@ export function SeatGrid({
      * -> text-transparent để ẩn seatCode (trông như khóa toàn bộ)
      */
     if (gridDisabled && !isSelected) {
-      return 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 cursor-not-allowed text-transparent'
+      return 'border-slate-200 dark:border-slate-800 bg-white dark:bg-black cursor-not-allowed text-slate-400 dark:text-slate-600'
     }
 
     // Selected/Processing: bg-green-500 animate-pulse text-white
@@ -394,10 +395,13 @@ export function SeatGrid({
                                     : `${seat.seatCode} (${section.key}): ${seat.status}`
                                 }
                               >
-                                {maxReached &&
-                                  !selectedSeats.some((s) => s.seatId === seat.seatId)
-                                  ? ''
-                                  : seat.seatCode}
+                                {disabled ? (
+                                  <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 mx-auto" />
+                                ) : maxReached && !selectedSeats.some((s) => s.seatId === seat.seatId) ? (
+                                  ''
+                                ) : (
+                                  seat.seatCode
+                                )}
                               </button>
                             ) : (
                               // Empty grid cell placeholder

@@ -1121,7 +1121,7 @@ export default function Payment() {
         )}
 
         {/* ========== THÔNG TIN VÉ ========== */}
-        <div className="border dark:border-slate-800 rounded-2xl p-6 mb-6 bg-gray-50 dark:bg-slate-850/60 shadow-inner">
+        <div className="border dark:border-slate-800 rounded-2xl p-6 mb-6 bg-gray-50 dark:bg-slate-900/60 shadow-inner">
           <h2 className="text-lg font-black text-gray-900 dark:text-white mb-4 border-b border-gray-200/60 dark:border-slate-800 pb-2.5">
             Thông tin vé
           </h2>
@@ -1140,7 +1140,7 @@ export default function Payment() {
             {state.ticketBreakdown && state.ticketBreakdown.length > 0 ? (
               <p className="flex justify-between items-center">
                 <span className="text-gray-600 dark:text-slate-350 font-bold text-base">Hạng vé</span>
-                <span className="font-extrabold text-gray-955 dark:text-white text-base">
+                <span className="font-extrabold text-gray-900 dark:text-white text-base">
                   {state.ticketBreakdown.map((t, idx) => (
                     <span key={idx}>
                       {t.name} x{t.count}
@@ -1152,7 +1152,7 @@ export default function Payment() {
             ) : state.ticketName ? (
               <p className="flex justify-between items-center">
                 <span className="text-gray-600 dark:text-slate-350 font-bold text-base">Hạng vé</span>
-                <span className="font-extrabold text-gray-955 dark:text-white text-base">{state.ticketName}</span>
+                <span className="font-extrabold text-gray-900 dark:text-white text-base">{state.ticketName}</span>
               </p>
             ) : null}
 

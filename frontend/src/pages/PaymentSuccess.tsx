@@ -151,7 +151,7 @@ export default function PaymentSuccess() {
       setTicketIds(null)
       setPaymentMethod('vnpay')
     }
-  }, [location, navigate, setUser]) // dependency: chạy lại khi query string hoặc navigate thay đổi
+  }, [location.search, navigate, setUser]) // dependency: chạy lại khi query string hoặc navigate thay đổi
 
   useEffect(() => {
     if (!ticketIds) return;
