@@ -137,8 +137,8 @@ export default function Payment() {
    */
   const state = (location.state || {}) as PaymentState
 
-  // payment method: 'momo' or 'wallet' or 'bank_transfer'
-  const [paymentMethod, setPaymentMethod] = useState<'momo' | 'wallet' | 'bank_transfer'>('momo')
+  // payment method: 'wallet' or 'bank_transfer'
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'bank_transfer'>('bank_transfer')
 
   // State for Bank Transfer modal and polling
   const [showBankTransferModal, setShowBankTransferModal] = useState(false)
@@ -358,9 +358,7 @@ export default function Payment() {
       }
 
       // Successfully canceled old bill, now trigger creation of new bill
-      if (paymentMethod === 'momo') {
-        await handleMoMoPay()
-      } else if (paymentMethod === 'wallet') {
+      if (paymentMethod === 'wallet') {
         await handleWalletPay()
       } else if (paymentMethod === 'bank_transfer') {
         await handleBankTransferPay()
@@ -481,143 +479,7 @@ export default function Payment() {
    * 3) Gọi API backend để lấy VNPay URL
    * 4) Redirect sang VNPay để thanh toán
    */
-  const handleMoMoPay = async () => {
-    // ===== BƯỚC 0: CHECK EVENT STATUS =====
-    if (isEventExpired) {
-      alert('Sự kiện đã bắt đầu hoặc kết thúc. Không thể tiếp tục đặt vé.')
-      return
-    }
 
-    // ===== BƯỚC 1: VALIDATE DỮ LIỆU VÉ =====
-    if (
-      !state.eventId ||
-      !state.categoryTicketId ||
-      !state.seatIds ||
-      state.seatIds.length === 0
-    ) {
-      alert('Thiếu thông tin vé, vui lòng chọn lại vé từ Dashboard.')
-      navigate('/dashboard')
-      return
-    }
-
-    // ===== BƯỚC 2: KIỂM TRA ĐĂNG NHẬP =====
-    const userId = (user as any)?.userId ?? (user as any)?.id
-    if (!userId) {
-      alert('Bạn cần đăng nhập trước khi thanh toán.')
-      navigate('/login')
-      return
-    }
-
-    // ===== BƯỚC 3: GỬI REQUEST MO-MO THANH TOÁN =====
-    const payload = {
-      eventId: Number(state.eventId),
-      categoryTicketId: Number(state.categoryTicketId),
-      seatIds: state.seatIds.map(id => Number(id)),
-    }
-
-    try {
-      const response = await fetch('/api/payment/momo-init', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) {
-        const errorMsgRaw = await response.text()
-        let cleanMsg = 'Không thể tạo link thanh toán MoMo'
-        let errCode = ''
-        let remSecs = 0
-        let pendingBillId = 0
-        let seats: string[] = []
-        let seatIds: number[] = []
-        let eventId = 0
-        let categoryTicketId = 0
-
-        try {
-          const jsonErr = JSON.parse(errorMsgRaw)
-          cleanMsg = jsonErr.message || jsonErr.error || 'Không thể tạo link thanh toán MoMo'
-          errCode = jsonErr.errorCode || ''
-          remSecs = jsonErr.remainingSeconds || 0
-          pendingBillId = Number(jsonErr.pendingBillId) || 0
-          seats = jsonErr.seats || []
-          seatIds = jsonErr.seatIds || []
-          eventId = jsonErr.eventId || 0
-          categoryTicketId = jsonErr.categoryTicketId || 0
-        } catch {
-          if (errorMsgRaw.includes('E4002')) {
-            const index = errorMsgRaw.indexOf('E4002')
-            const dataStr = errorMsgRaw.substring(index)
-            const rawParts = dataStr.split('|')
-            if (rawParts.length >= 7) {
-              errCode = 'E4002'
-              pendingBillId = Number(rawParts[1]) || 0
-              seats = rawParts[2] ? rawParts[2].split(',') : []
-              seatIds = rawParts[3] ? rawParts[3].split(',').map(Number) : []
-              eventId = Number(rawParts[4]) || 0
-              categoryTicketId = Number(rawParts[5]) || 0
-              remSecs = Number(rawParts[6]) || 0
-              cleanMsg = `Bạn đang có một đơn hàng giữ chỗ chưa hoàn tất cho ghế [${rawParts[2]}]. Vui lòng xử lý đơn hàng này trước.`
-            }
-          } else if (errorMsgRaw.includes('E4003')) {
-            const index = errorMsgRaw.indexOf('E4003')
-            const dataStr = errorMsgRaw.substring(index)
-            const rawParts = dataStr.split('|')
-            if (rawParts.length >= 2) {
-              errCode = 'E4003'
-              remSecs = Number(rawParts[1]) || 0
-            }
-          }
-        }
-
-        if (errCode === 'E4002') {
-          setResumeData({
-            pendingBillId,
-            seats,
-            seatIds,
-            eventId,
-            categoryTicketId,
-            remainingSeconds: remSecs
-          })
-          setShowResumeModal(true)
-          return
-        }
-
-        if (errCode === 'E4003' || cleanMsg.includes('E4003')) {
-          const minutes = Math.floor(remSecs / 60)
-          const seconds = remSecs % 60
-          const formattedMinutes = minutes.toString().padStart(2, '0')
-          const formattedSeconds = seconds.toString().padStart(2, '0')
-          cleanMsg = `Tài khoản của bạn đã bị tạm khóa tính năng đặt vé. Vui lòng thử lại sau: ${formattedMinutes} phút ${formattedSeconds} giây do có hành vi giữ chỗ rác liên tục.`
-        }
-        throw new Error(cleanMsg)
-      }
-
-      const data = await response.json()
-
-      // 0đ BYPASS
-      if (data.free === true) {
-        console.log('🎉 [FREE_TICKET] Vé miễn phí! TicketIds:', data.ticketIds)
-        navigate(
-          `/dashboard/payment/success?status=success&method=free&ticketIds=${encodeURIComponent(data.ticketIds || '')}`
-        )
-        return
-      }
-
-      if (!data.paymentUrl) {
-        throw new Error('Backend không trả về payment URL')
-      }
-
-      // Redirect sang cổng thanh toán MoMo Sandbox
-      window.location.replace(data.paymentUrl)
-
-    } catch (error: any) {
-      console.error('MoMo payment error:', error)
-      alert(error.message || 'Có lỗi xảy ra khi tạo thanh toán MoMo. Vui lòng thử lại.')
-    }
-  }
 
   // ======================
   // XỬ LÝ THANH TOÁN BẰNG VÍ (WALLET)
@@ -1375,7 +1237,6 @@ export default function Payment() {
               disabled={isEventExpired || checkingEventTime}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
             >
-              <option value="momo">Ví điện tử MoMo</option>
               <option value="wallet">Wallet (Ví nội bộ)</option>
               <option value="bank_transfer">Chuyển khoản Ngân hàng (VietQR / SePay)</option>
             </select>
@@ -1421,7 +1282,7 @@ export default function Payment() {
                     <p className="mt-1">Thiếu: <span className="font-bold text-amber-900">{insufficientAmount.toLocaleString('vi-VN')} đ</span></p>
                   </div>
                   <p className="mt-3 text-sm text-amber-700">
-                    💡 Vui lòng sử dụng <span className="font-semibold">Ví điện tử MoMo</span> để thanh toán
+                    💡 Vui lòng sử dụng <span className="font-semibold">Chuyển khoản Ngân hàng</span> để thanh toán
                   </p>
                 </div>
               </div>
@@ -1436,11 +1297,9 @@ export default function Payment() {
           <button
             type="button"
             onClick={
-              paymentMethod === 'momo'
-                ? handleMoMoPay
-                : paymentMethod === 'wallet'
-                  ? handleWalletPay
-                  : handleBankTransferPay
+              paymentMethod === 'wallet'
+                ? handleWalletPay
+                : handleBankTransferPay
             }
             disabled={
               (paymentMethod === 'wallet' && isWalletDisabled) ||
@@ -1463,11 +1322,9 @@ export default function Payment() {
                 ? 'Đang xử lý...'
                 : isEventExpired
                   ? 'Ngừng bán vé'
-                  : paymentMethod === 'momo'
-                    ? 'Thanh toán qua ví MoMo'
-                    : paymentMethod === 'wallet'
-                      ? 'Thanh toán bằng Wallet'
-                      : 'Thanh toán chuyển khoản'}
+                  : paymentMethod === 'wallet'
+                    ? 'Thanh toán bằng Wallet'
+                    : 'Thanh toán chuyển khoản'}
           </button>
 
           {/* ----- Ghi chú ----- */}
@@ -1477,8 +1334,6 @@ export default function Payment() {
               <>Sự kiện đã bắt đầu. Vui lòng quay lại trang chủ để xem các sự kiện khác.</>
             ) : checkingEventTime ? (
               <>Đang kiểm tra trạng thái sự kiện...</>
-            ) : paymentMethod === 'momo' ? (
-              <>Khi bấm "Thanh toán qua ví MoMo", bạn sẽ được chuyển sang cổng thanh toán MoMo để hoàn tất giao dịch.</>
             ) : paymentMethod === 'wallet' ? (
               <>Khi bấm "Thanh toán bằng Wallet", hệ thống sẽ trừ tiền trong ví và chuyển bạn tới trang xác nhận.</>
             ) : (
@@ -1509,8 +1364,8 @@ export default function Payment() {
         onClose={() => setShowErrorModal(false)}
         onRetryWithVNPay={() => {
           setShowErrorModal(false)
-          setPaymentMethod('momo')
-          setTimeout(() => handleMoMoPay(), 100)
+          setPaymentMethod('bank_transfer')
+          setTimeout(() => handleBankTransferPay(), 100)
         }}
         onReturnToSeats={() => {
           setShowErrorModal(false)

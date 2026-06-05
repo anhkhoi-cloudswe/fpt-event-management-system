@@ -1,18 +1,12 @@
 package repository
 
 import (
-	"bytes"
 	"context"
-	"crypto/hmac"
 	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math"
-	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -776,580 +770,6 @@ func (r *TicketRepository) GetBillsByUserIDPaginated(ctx context.Context, userID
 	}, nil
 }
 
-// ============================================================
-// MOMO PAYMENT METHODS
-// ============================================================
-
-func computeMoMoSignature(secretKey, accessKey string, amount int64, extraData, ipnUrl, orderId, orderInfo, partnerCode, redirectUrl, requestId, requestType string) string {
-	rawSignature := fmt.Sprintf(
-		"accessKey=%s&amount=%d&extraData=%s&ipnUrl=%s&orderId=%s&orderInfo=%s&partnerCode=%s&redirectUrl=%s&requestId=%s&requestType=%s",
-		accessKey, amount, extraData, ipnUrl, orderId, orderInfo, partnerCode, redirectUrl, requestId, requestType,
-	)
-	fmt.Printf("[MoMo Signature] Raw String: %s\n", rawSignature)
-	h := hmac.New(sha256.New, []byte(secretKey))
-	h.Write([]byte(rawSignature))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-func computeMoMoIPNSignature(secretKey, accessKey string, amount int64, extraData, message, orderId, orderInfo, partnerCode, requestId string, responseTime int64, resultCode int, transId string) string {
-	rawSignature := fmt.Sprintf(
-		"accessKey=%s&amount=%d&extraData=%s&message=%s&orderId=%s&orderInfo=%s&partnerCode=%s&requestId=%s&responseTime=%d&resultCode=%d&transId=%s",
-		accessKey, amount, extraData, message, orderId, orderInfo, partnerCode, requestId, responseTime, resultCode, transId,
-	)
-	h := hmac.New(sha256.New, []byte(secretKey))
-	h.Write([]byte(rawSignature))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-// CreateMoMoPaymentURL - Tạo URL thanh toán MoMo cho nhiều ghế
-func (r *TicketRepository) CreateMoMoPaymentURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, redirectURL, ipnURL string) (string, error) {
-	// Auto release expired bills first (Lazy Expiry Evaluation)
-	r.AutoReleaseExpiredPendingBills(ctx)
-
-	// Rule 2 check: Check if user is locked out due to seat hoarding
-	penaltyMutex.RLock()
-	penalty, exists := userPenalties[userID]
-	if exists && !penalty.LockedUntil.IsZero() && time.Now().Before(penalty.LockedUntil) {
-		remainingSeconds := int(penalty.LockedUntil.Sub(time.Now()).Seconds())
-		penaltyMutex.RUnlock()
-		return "", apperrors.BusinessError(fmt.Sprintf("[E4003]|%d", remainingSeconds))
-	}
-	penaltyMutex.RUnlock()
-
-	// Rule 1 check: Limiting user to max 1 active PENDING bill with Smart Resume Flow
-	var pendingBillID int64
-	var createdAt time.Time
-	pendingErr := r.db.QueryRowContext(ctx, "SELECT bill_id, created_at FROM Bill WHERE user_id = $1 AND payment_status = 'PENDING'", userID).Scan(&pendingBillID, &createdAt)
-	if pendingErr == nil {
-		remainingSeconds := 300 - int(time.Now().Sub(createdAt).Seconds())
-		if remainingSeconds < 0 {
-			remainingSeconds = 0
-		}
-
-		rows, seatErr := r.db.QueryContext(ctx, `
-			SELECT t.event_id, t.category_ticket_id, t.seat_id, s.seat_code 
-			FROM Ticket t
-			JOIN Seat s ON t.seat_id = s.seat_id
-			WHERE t.bill_id = $1 AND t.status = 'PENDING'
-		`, pendingBillID)
-
-		var evID int
-		var catID int
-		var seatIDsList []string
-		var seatCodes []string
-		var pendingSeatIDs []int
-
-		if seatErr == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var eID, cID, seatID int
-				var code string
-				if scanErr := rows.Scan(&eID, &cID, &seatID, &code); scanErr == nil {
-					evID = eID
-					catID = cID
-					seatIDsList = append(seatIDsList, strconv.Itoa(seatID))
-					seatCodes = append(seatCodes, code)
-					pendingSeatIDs = append(pendingSeatIDs, seatID)
-				}
-			}
-		}
-
-		// Check if request seatIDs match the pending bill's seatIDs exactly
-		if equalIntSlices(pendingSeatIDs, seatIDs) {
-			var totalAmount float64
-			err := r.db.QueryRowContext(ctx, "SELECT total_amount FROM Bill WHERE bill_id = $1", pendingBillID).Scan(&totalAmount)
-			if err == nil {
-				return r.generateMoMoURLDirect(ctx, pendingBillID, totalAmount, redirectURL, ipnURL)
-			}
-		}
-
-		seatsStr := strings.Join(seatCodes, ",")
-		seatIDsStr := strings.Join(seatIDsList, ",")
-
-		return "", apperrors.BusinessError(fmt.Sprintf("[E4002]|%d|%s|%s|%d|%d|%d", pendingBillID, seatsStr, seatIDsStr, evID, catID, remainingSeconds))
-	}
-
-	log := logger.Default().WithContext(ctx)
-	fmt.Printf("[CreateMoMoPaymentURL] Called - userID=%d, eventID=%d, seatIDs=%v\n", userID, eventID, seatIDs)
-
-	partnerCode := os.Getenv("MOMO_PARTNER_CODE")
-	accessKey := os.Getenv("MOMO_ACCESS_KEY")
-	secretKey := os.Getenv("MOMO_SECRET_KEY")
-
-	if partnerCode == "" || accessKey == "" || secretKey == "" {
-		return "", apperrors.BusinessError("Chưa cấu hình thông tin tích hợp MoMo (MOMO_PARTNER_CODE, MOMO_ACCESS_KEY, MOMO_SECRET_KEY) trong môi trường hệ thống")
-	}
-
-	if ipnURL == "" {
-		ipnURL = os.Getenv("MOMO_IPN_URL")
-	}
-
-	if len(seatIDs) == 0 {
-		return "", apperrors.BusinessError("Vui lòng chọn ít nhất 1 ghế")
-	}
-	if len(seatIDs) > 4 {
-		return "", apperrors.BusinessError("Chỉ được mua tối đa 4 ghế mỗi lần")
-	}
-
-	var eventTitle string
-	var status string
-	var startTime time.Time
-	err := r.db.QueryRowContext(ctx, "SELECT title, status, start_time FROM Event WHERE event_id = $1", eventID).Scan(&eventTitle, &status, &startTime)
-	if err != nil {
-		return "", apperrors.NotFound("Sự kiện")
-	}
-	if status != "OPEN" {
-		return "", apperrors.BusinessError(fmt.Sprintf("Sự kiện không mở bán vé (trạng thái: %s)", status))
-	}
-
-	now := time.Now()
-	if now.After(startTime) || now.Equal(startTime) {
-		return "", apperrors.BusinessError("Sự kiện đã bắt đầu hoặc kết thúc, không thể đặt vé")
-	}
-
-	var totalAmount float64
-	type categoryInfo struct {
-		Name      string
-		Price     float64
-		MaxQty    int
-		SoldCount int
-		Requested int
-	}
-	categoryMap := make(map[int]*categoryInfo)
-	resolvedCategoryTicketID := categoryTicketID
-
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return "", apperrors.DatabaseError(err)
-	}
-	defer tx.Rollback()
-
-	for _, seatID := range seatIDs {
-		var seatStatus string
-		var seatCategoryTicketID sql.NullInt64
-		var catName sql.NullString
-		var catStatus sql.NullString
-		var pricePerSeat sql.NullFloat64
-		var maxQty sql.NullInt64
-
-		err = tx.QueryRowContext(ctx, `
-			SELECT s.status, s.category_ticket_id, ct.name, ct.status, ct.price, ct.max_quantity
-			FROM Seat s
-			LEFT JOIN Category_Ticket ct ON s.category_ticket_id = ct.category_ticket_id AND ct.event_id = $1
-			WHERE s.seat_id = $2
-		`, eventID, seatID).Scan(&seatStatus, &seatCategoryTicketID, &catName, &catStatus, &pricePerSeat, &maxQty)
-		if err != nil {
-			return "", apperrors.NotFound(fmt.Sprintf("Ghế ID %d", seatID))
-		}
-		if seatStatus != "ACTIVE" {
-			return "", apperrors.BusinessError(fmt.Sprintf("Ghế ID %d không khả dụng", seatID))
-		}
-		if !seatCategoryTicketID.Valid {
-			return "", apperrors.BusinessError(fmt.Sprintf("Ghế ID %d chưa được gán loại vé", seatID))
-		}
-
-		currentCategoryTicketID := int(seatCategoryTicketID.Int64)
-		if resolvedCategoryTicketID == 0 {
-			resolvedCategoryTicketID = currentCategoryTicketID
-		}
-
-		meta, ok := categoryMap[currentCategoryTicketID]
-		if !ok {
-			if !catStatus.Valid || catStatus.String != "ACTIVE" {
-				return "", apperrors.BusinessError(fmt.Sprintf("Loại vé của ghế ID %d không khả dụng", seatID))
-			}
-
-			var soldCount int
-			if queryErr := tx.QueryRowContext(ctx,
-				"SELECT COUNT(*) FROM Ticket WHERE category_ticket_id = $1 AND status IN ('PENDING', 'BOOKED', 'CHECKED_IN')",
-				currentCategoryTicketID,
-			).Scan(&soldCount); queryErr != nil {
-				soldCount = 0
-			}
-
-			meta = &categoryInfo{
-				Name:      catName.String,
-				Price:     pricePerSeat.Float64,
-				MaxQty:    int(maxQty.Int64),
-				SoldCount: soldCount,
-				Requested: 0,
-			}
-			categoryMap[currentCategoryTicketID] = meta
-		}
-
-		meta.Requested++
-		remaining := meta.MaxQty - meta.SoldCount
-		if remaining <= 0 {
-			return "", apperrors.BusinessError(fmt.Sprintf("Ticket Sold Out - Loại vé '%s' đã hết. Còn lại: 0/%d", meta.Name, meta.MaxQty))
-		}
-		if meta.SoldCount+meta.Requested > meta.MaxQty {
-			return "", apperrors.BusinessError(fmt.Sprintf("Không đủ vé cho loại '%s'. Còn lại: %d, Yêu cầu: %d", meta.Name, remaining, meta.Requested))
-		}
-
-		var existingTicketCount int
-		err = tx.QueryRowContext(ctx,
-			`SELECT COUNT(*) FROM Ticket WHERE event_id = $1 AND seat_id = $2 AND status IN ('PENDING', 'BOOKED', 'CHECKED_IN')`,
-			eventID, seatID,
-		).Scan(&existingTicketCount)
-		if err != nil {
-			return "", apperrors.DatabaseError(err)
-		}
-		if existingTicketCount > 0 {
-			return "", apperrors.BusinessError(fmt.Sprintf("Ghế ID %d đã được người khác giữ/đặt", seatID))
-		}
-
-		totalAmount += meta.Price
-	}
-
-	if totalAmount == 0 {
-		var freeBillID int64
-		billErr := tx.QueryRowContext(ctx,
-			`INSERT INTO Bill (user_id, total_amount, payment_method, payment_status, created_at, paid_at)
-			 VALUES ($1, 0, 'FREE', 'PAID', NOW(), NOW()) RETURNING bill_id`,
-			userID,
-		).Scan(&freeBillID)
-		if billErr != nil {
-			return "", apperrors.DatabaseError(billErr)
-		}
-
-		bookedIDsFree := make([]int, 0)
-		for _, seatID := range seatIDs {
-			var seatCategoryTicketID int64
-			tx.QueryRowContext(ctx, "SELECT category_ticket_id FROM Seat WHERE seat_id = $1", seatID).Scan(&seatCategoryTicketID)
-
-			var tid int64
-			err = tx.QueryRowContext(ctx,
-				`INSERT INTO Ticket (user_id, event_id, category_ticket_id, bill_id, seat_id, qr_code_value, status, created_at)
-				 VALUES ($1, $2, $3, $4, $5, 'PENDING_QR', 'BOOKED', NOW()) RETURNING ticket_id`,
-				userID, eventID, seatCategoryTicketID, freeBillID, seatID,
-			).Scan(&tid)
-			if err != nil {
-				return "", apperrors.DatabaseError(err)
-			}
-
-			qrBase64, qrErr := qrcode.GenerateTicketQRBase64(int(tid), 300)
-			if qrErr == nil {
-				tx.ExecContext(ctx, "UPDATE Ticket SET qr_code_value = $1 WHERE ticket_id = $2", qrBase64, tid)
-			}
-			bookedIDsFree = append(bookedIDsFree, int(tid))
-		}
-
-		if err = tx.Commit(); err != nil {
-			return "", apperrors.DatabaseError(err)
-		}
-
-		go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedIDsFree, "0", resolvedCategoryTicketID, int(freeBillID))
-
-		ticketIDsStr := ""
-		for i, tid := range bookedIDsFree {
-			if i > 0 {
-				ticketIDsStr += ","
-			}
-			ticketIDsStr += fmt.Sprintf("%d", tid)
-		}
-		return "FREE:" + ticketIDsStr, nil
-	}
-
-	var billID int64
-	err = tx.QueryRowContext(ctx,
-		`INSERT INTO Bill (user_id, total_amount, currency, payment_method, payment_status, created_at)
-		 VALUES ($1, $2, 'VND', 'MOMO', 'PENDING', NOW()) RETURNING bill_id`,
-		userID, totalAmount,
-	).Scan(&billID)
-	if err != nil {
-		return "", apperrors.DatabaseError(err)
-	}
-
-	pendingTicketIDs := []int64{}
-	for _, seatID := range seatIDs {
-		var seatCategoryTicketID int64
-		err = tx.QueryRowContext(ctx, "SELECT category_ticket_id FROM Seat WHERE seat_id = $1", seatID).Scan(&seatCategoryTicketID)
-		if err != nil {
-			return "", apperrors.DatabaseError(err)
-		}
-
-		var pendingTicketID int64
-		err = tx.QueryRowContext(ctx,
-			`INSERT INTO Ticket (user_id, event_id, category_ticket_id, bill_id, seat_id, qr_code_value, status, created_at) 
-			 VALUES ($1, $2, $3, $4, $5, 'PENDING_QR', 'PENDING', NOW()) RETURNING ticket_id`,
-			userID, eventID, seatCategoryTicketID, billID, seatID,
-		).Scan(&pendingTicketID)
-		if err != nil {
-			if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "ticket_event_id_seat_id_key") {
-				return "", apperrors.BusinessError("Ghế đặt hiện đang nằm trong trạng thái xử lý thanh toán. Vui lòng thử lại sau ít phút hoặc chọn ghế khác!")
-			}
-			return "", apperrors.DatabaseError(err)
-		}
-		pendingTicketIDs = append(pendingTicketIDs, pendingTicketID)
-	}
-
-	if err = tx.Commit(); err != nil {
-		return "", apperrors.DatabaseError(err)
-	}
-
-	orderID := strconv.FormatInt(billID, 10)
-	requestId := orderID + "_" + strconv.FormatInt(time.Now().UnixMilli(), 10)
-	orderInfo := "FPTEventTicketPayment"
-	requestType := "captureWallet"
-	extraData := ""
-
-	if redirectURL == "" {
-		redirectURL = os.Getenv("MOMO_REDIRECT_URL")
-	}
-	if redirectURL == "" {
-		redirectURL = "https://your-frontend.com/payment-success"
-	}
-
-	signature := computeMoMoSignature(
-		secretKey, accessKey, int64(totalAmount), extraData, ipnURL, orderID, orderInfo, partnerCode, redirectURL, requestId, requestType,
-	)
-
-	momoReq := map[string]interface{}{
-		"partnerCode": partnerCode,
-		"requestId":   requestId,
-		"amount":      int64(totalAmount),
-		"orderId":     orderID,
-		"orderInfo":   orderInfo,
-		"redirectUrl": redirectURL,
-		"ipnUrl":      ipnURL,
-		"extraData":   extraData,
-		"requestType": requestType,
-		"signature":   signature,
-		"lang":        "vi",
-	}
-
-	reqBody, err := json.Marshal(momoReq)
-	if err != nil {
-		r.cleanupMoMoPendingOrder(billID)
-		return "", err
-	}
-	fmt.Printf("[MoMo API Request] Body: %s\n", string(reqBody))
-
-	httpClient := &http.Client{Timeout: 10 * time.Second}
-	resp, err := httpClient.Post("https://test-payment.momo.vn/v2/gateway/api/create", "application/json", bytes.NewBuffer(reqBody))
-	if err != nil {
-		log.Error("Failed to request MoMo payment link", "error", err)
-		r.cleanupMoMoPendingOrder(billID)
-		return "", apperrors.BusinessError("Khong the ket noi den cong thanh toan MoMo")
-	}
-	defer resp.Body.Close()
-
-	var momoResp struct {
-		ResultCode int    `json:"resultCode"`
-		Message    string `json:"message"`
-		PayUrl     string `json:"payUrl"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&momoResp); err != nil {
-		r.cleanupMoMoPendingOrder(billID)
-		return "", err
-	}
-
-	if momoResp.ResultCode != 0 {
-		log.Error("MoMo payment gateway returned error", "code", momoResp.ResultCode, "message", momoResp.Message)
-		r.cleanupMoMoPendingOrder(billID)
-		return "", apperrors.BusinessError("Cong thanh toan MoMo tra ve loi: " + momoResp.Message)
-	}
-
-	log.LogEvent(logger.EventLog{
-		Event:    "PAYMENT_INITIATED",
-		UserID:   userID,
-		EntityID: eventID,
-		Entity:   "Event",
-		Action:   "CREATE_MOMO_PAYMENT",
-		Success:  true,
-		Metadata: map[string]interface{}{
-			"amount":             totalAmount,
-			"order_id":           orderID,
-			"seat_count":         len(seatIDs),
-			"pending_ticket_ids": pendingTicketIDs,
-		},
-	})
-
-	return momoResp.PayUrl, nil
-}
-
-func (r *TicketRepository) cleanupMoMoPendingOrder(billID int64) {
-	fmt.Printf("[MoMo Cleanup] Cleaning up pending order after failure for billID: %d\n", billID)
-	r.db.ExecContext(context.Background(), "DELETE FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'", billID)
-	r.db.ExecContext(context.Background(), "DELETE FROM Bill WHERE bill_id = $1 AND payment_status = 'PENDING'", billID)
-}
-
-// ProcessMoMoWebhook - Xử lý webhook từ MoMo gửi về
-func (r *TicketRepository) ProcessMoMoWebhook(ctx context.Context, payload map[string]interface{}) (string, error) {
-	log := logger.Default().WithContext(ctx)
-	log.Info("MoMo Webhook received payload: %v", payload)
-
-	partnerCode, _ := payload["partnerCode"].(string)
-	orderIdStr, _ := payload["orderId"].(string)
-	requestId, _ := payload["requestId"].(string)
-	amountVal := payload["amount"]
-	var amount int64
-	switch v := amountVal.(type) {
-	case float64:
-		amount = int64(v)
-	case int64:
-		amount = v
-	case string:
-		amount, _ = strconv.ParseInt(v, 10, 64)
-	}
-
-	orderInfo, _ := payload["orderInfo"].(string)
-	transIdVal := payload["transId"]
-	var transId string
-	switch v := transIdVal.(type) {
-	case string:
-		transId = v
-	case float64:
-		transId = strconv.FormatFloat(v, 'f', 0, 64)
-	}
-
-	resultCodeVal := payload["resultCode"]
-	var resultCode int
-	switch v := resultCodeVal.(type) {
-	case float64:
-		resultCode = int(v)
-	case int:
-		resultCode = v
-	}
-
-	message, _ := payload["message"].(string)
-	responseTimeVal := payload["responseTime"]
-	var responseTime int64
-	switch v := responseTimeVal.(type) {
-	case float64:
-		responseTime = int64(v)
-	case int64:
-		responseTime = v
-	}
-
-	extraData, _ := payload["extraData"].(string)
-	signature, _ := payload["signature"].(string)
-
-	billID, err := strconv.ParseInt(orderIdStr, 10, 64)
-	if err != nil {
-		return "", fmt.Errorf("invalid orderId: %s", orderIdStr)
-	}
-
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return "", err
-	}
-	defer tx.Rollback()
-
-	var userID int
-	var billAmount float64
-	var paymentStatus string
-	err = tx.QueryRowContext(ctx,
-		"SELECT user_id, total_amount, payment_status FROM Bill WHERE bill_id = $1 FOR UPDATE",
-		billID,
-	).Scan(&userID, &billAmount, &paymentStatus)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			log.Warn("MoMo Webhook: Bill not found", "bill_id", billID)
-			return "", fmt.Errorf("bill not found: %d", billID)
-		}
-		return "", err
-	}
-
-	if paymentStatus == "PAID" {
-		log.Info("MoMo Webhook: Bill already processed (PAID)", "bill_id", billID)
-		return "already_processed", nil
-	}
-
-	accessKey := os.Getenv("MOMO_ACCESS_KEY")
-	secretKey := os.Getenv("MOMO_SECRET_KEY")
-	if accessKey == "" || secretKey == "" {
-		return "", fmt.Errorf("momo webhook keys are not configured")
-	}
-	if strings.TrimSpace(signature) == "" {
-		return "", fmt.Errorf("missing momo webhook signature")
-	}
-	expectedSig := computeMoMoIPNSignature(
-		secretKey, accessKey, amount, extraData, message, orderIdStr, orderInfo, partnerCode, requestId, responseTime, resultCode, transId,
-	)
-	if !hmac.Equal([]byte(expectedSig), []byte(signature)) {
-		return "", fmt.Errorf("invalid momo webhook signature")
-	}
-
-	amountMismatch := math.Abs(billAmount-float64(amount)) >= 1.0
-	if amountMismatch {
-		return "", fmt.Errorf("momo amount mismatch: expected %.2f, got %d", billAmount, amount)
-	}
-
-	if resultCode != 0 {
-		return "", fmt.Errorf("momo transaction failed with resultCode %d", resultCode)
-	}
-
-	_, err = tx.ExecContext(ctx,
-		"UPDATE Bill SET payment_status = 'PAID', paid_at = NOW() WHERE bill_id = $1",
-		billID,
-	)
-	if err != nil {
-		log.Error("MoMo Webhook: Failed to update bill to PAID", "bill_id", billID, "error", err)
-		return "", err
-	}
-
-	rows, err := tx.QueryContext(ctx,
-		"SELECT ticket_id, event_id, category_ticket_id FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'",
-		billID,
-	)
-	if err != nil {
-		return "", err
-	}
-	defer rows.Close()
-
-	type ticketMeta struct {
-		ticketID         int
-		eventID          int
-		categoryTicketID int
-	}
-	var tickets []ticketMeta
-	for rows.Next() {
-		var t ticketMeta
-		if err := rows.Scan(&t.ticketID, &t.eventID, &t.categoryTicketID); err != nil {
-			return "", err
-		}
-		tickets = append(tickets, t)
-	}
-
-	bookedTicketIDs := []int{}
-	var eventID int
-	var categoryTicketID int
-
-	for _, t := range tickets {
-		eventID = t.eventID
-		categoryTicketID = t.categoryTicketID
-
-		qrBase64, err := qrcode.GenerateTicketQRBase64(t.ticketID, 300)
-		if err != nil {
-			log.Error("MoMo Webhook: Failed to generate QR code", "ticket_id", t.ticketID, "error", err)
-			qrBase64 = fmt.Sprintf("MOMO_QR_%d", t.ticketID)
-		}
-
-		_, err = tx.ExecContext(ctx,
-			"UPDATE Ticket SET status = 'BOOKED', qr_code_value = $1 WHERE ticket_id = $2 AND status = 'PENDING'",
-			qrBase64, t.ticketID,
-		)
-		if err != nil {
-			log.Error("MoMo Webhook: Failed to update ticket", "ticket_id", t.ticketID, "error", err)
-			return "", err
-		}
-		bookedTicketIDs = append(bookedTicketIDs, t.ticketID)
-	}
-
-	if err = tx.Commit(); err != nil {
-		return "", err
-	}
-
-	if len(bookedTicketIDs) > 0 {
-		realAmount := fmt.Sprintf("%.0f", billAmount)
-		go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedTicketIDs, realAmount, categoryTicketID, int(billID))
-		log.Info("MoMo Webhook: Successfully booked tickets and triggered email send", "bill_id", billID, "count", len(bookedTicketIDs))
-	}
-
-	return "success", nil
-}
 
 // CreateBankTransferOrder - Tạo đơn hàng thanh toán chuyển khoản ngân hàng (SePay)
 // Trả về order_id (bill_id) và amount
@@ -1562,6 +982,40 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 	}
 
 	if totalAmount == 0 {
+		// 1. Lock/Query user's wallet info (create if missing) to obtain walletID
+		var currentBalance float64
+		var walletID int
+		lockQuery := `SELECT wallet_id, balance FROM Wallet WHERE user_id = $1 FOR UPDATE`
+		walletErr := tx.QueryRowContext(ctx, lockQuery, userID).Scan(&walletID, &currentBalance)
+		if walletErr != nil {
+			if walletErr == sql.ErrNoRows {
+				var walletID64 int64
+				insertErr := tx.QueryRowContext(ctx,
+					"INSERT INTO Wallet (user_id, balance, currency, status) VALUES ($1, 0, 'VND', 'ACTIVE') RETURNING wallet_id", userID).Scan(&walletID64)
+				if insertErr != nil {
+					return 0, 0, apperrors.DatabaseError(insertErr)
+				}
+				walletID = int(walletID64)
+				currentBalance = 0
+			} else {
+				return 0, 0, apperrors.DatabaseError(walletErr)
+			}
+		}
+
+		// 2. Generate deterministic fallback UUID
+		detUUID := generateDeterministicUUID(userID, eventID, seatIDs)
+
+		// 3. Insert transaction log into Wallet_Transaction
+		_, walletTxErr := tx.ExecContext(ctx,
+			`INSERT INTO Wallet_Transaction (wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description)
+			 VALUES ($1, $2, 'DEBIT', 0, $3, $4, 'TICKET_PURCHASE', $5, $6)`,
+			walletID, userID, currentBalance, currentBalance, detUUID, fmt.Sprintf("Mua vé miễn phí event %d", eventID),
+		)
+		if walletTxErr != nil {
+			return 0, 0, apperrors.DatabaseError(walletTxErr)
+		}
+
+		// 4. Create free bill
 		var freeBillID int64
 		billErr := tx.QueryRowContext(ctx,
 			`INSERT INTO Bill (user_id, total_amount, currency, payment_method, payment_status, created_at, paid_at)
@@ -1575,7 +1029,10 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 		bookedIDsFree := make([]int, 0)
 		for _, seatID := range seatIDs {
 			var seatCategoryTicketID int64
-			tx.QueryRowContext(ctx, "SELECT category_ticket_id FROM Seat WHERE seat_id = $1", seatID).Scan(&seatCategoryTicketID)
+			err = tx.QueryRowContext(ctx, "SELECT category_ticket_id FROM Seat WHERE seat_id = $1", seatID).Scan(&seatCategoryTicketID)
+			if err != nil {
+				return 0, 0, apperrors.DatabaseError(err)
+			}
 
 			var tid int64
 			err = tx.QueryRowContext(ctx,
@@ -1588,15 +1045,22 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			}
 
 			qrBase64, qrErr := qrcode.GenerateTicketQRBase64(int(tid), 300)
-			if qrErr == nil {
-				tx.ExecContext(ctx, "UPDATE Ticket SET qr_code_value = $1 WHERE ticket_id = $2", qrBase64, tid)
+			if qrErr != nil {
+				qrBase64 = fmt.Sprintf("PENDING_QR_%d", tid)
+			}
+			_, err = tx.ExecContext(ctx, "UPDATE Ticket SET qr_code_value = $1 WHERE ticket_id = $2", qrBase64, tid)
+			if err != nil {
+				return 0, 0, apperrors.DatabaseError(err)
 			}
 			bookedIDsFree = append(bookedIDsFree, int(tid))
 		}
 
 		// Update seats to BOOKED status
 		for _, seatID := range seatIDs {
-			tx.ExecContext(ctx, "UPDATE Seat SET status = 'BOOKED' WHERE seat_id = $1", seatID)
+			_, err = tx.ExecContext(ctx, "UPDATE Seat SET status = 'BOOKED' WHERE seat_id = $1", seatID)
+			if err != nil {
+				return 0, 0, apperrors.DatabaseError(err)
+			}
 		}
 
 		if err = tx.Commit(); err != nil {
@@ -2664,16 +2128,22 @@ func (r *TicketRepository) ProcessWalletPayment(ctx context.Context, userID, eve
 	fmt.Printf("[PAYMENT_CHECK] ✅ WALLET DEDUCTED - UserID: %d, Amount: %d, New Balance: %.2f\n", userID, amount, newBalance)
 	fmt.Printf("[DEBUG] ProcessWalletPayment: Successfully deducted %d from userID=%d\n", amount, userID)
 
+	refID := fmt.Sprintf("tickets:%s", strings.Join(ticketIds, ","))
+	if amount == 0 {
+		refID = generateDeterministicUUID(userID, eventID, seatIDs)
+	}
+
 	// Log transaction in Wallet_Transaction table
 	_, txErr := tx.ExecContext(ctx,
 		`INSERT INTO Wallet_Transaction (wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description)
 		 VALUES ($1, $2, 'DEBIT', $3, $4, $5, 'TICKET_PURCHASE', $6, $7)`,
 		walletID, userID, float64(amount), currentBalance, newBalance,
-		fmt.Sprintf("tickets:%s", strings.Join(ticketIds, ",")),
+		refID,
 		fmt.Sprintf("Mua vé event %d", eventID),
 	)
 	if txErr != nil {
 		fmt.Printf("[WALLET_TX] ⚠️ Failed to log Wallet_Transaction: %v\n", txErr)
+		return "", fmt.Errorf("giao dịch ví thất bại: %w", txErr)
 	}
 
 	// ===== STEP 3.5: CREATE BILL =====
@@ -3038,88 +2508,6 @@ func equalIntSlices(a, b []int) bool {
 	return true
 }
 
-func (r *TicketRepository) generateMoMoURLDirect(ctx context.Context, billID int64, totalAmount float64, redirectURL, ipnURL string) (string, error) {
-	partnerCode := os.Getenv("MOMO_PARTNER_CODE")
-	accessKey := os.Getenv("MOMO_ACCESS_KEY")
-	secretKey := os.Getenv("MOMO_SECRET_KEY")
-
-	if partnerCode == "" || accessKey == "" || secretKey == "" {
-		return "", apperrors.BusinessError("Chưa cấu hình thông tin tích hợp MoMo (MOMO_PARTNER_CODE, MOMO_ACCESS_KEY, MOMO_SECRET_KEY) trong môi trường hệ thống")
-	}
-
-	if ipnURL == "" {
-		ipnURL = os.Getenv("MOMO_IPN_URL")
-	}
-
-	orderID := strconv.FormatInt(billID, 10)
-	requestId := orderID + "_" + strconv.FormatInt(time.Now().UnixMilli(), 10)
-	orderInfo := "FPTEventTicketPayment"
-	requestType := "captureWallet"
-	extraData := ""
-
-	if redirectURL == "" {
-		redirectURL = os.Getenv("MOMO_REDIRECT_URL")
-	}
-	if redirectURL == "" {
-		redirectURL = "https://your-frontend.com/payment-success"
-	}
-
-	signature := computeMoMoSignature(
-		secretKey, accessKey, int64(totalAmount), extraData, ipnURL, orderID, orderInfo, partnerCode, redirectURL, requestId, requestType,
-	)
-
-	momoReq := map[string]interface{}{
-		"partnerCode": partnerCode,
-		"requestId":   requestId,
-		"amount":      int64(totalAmount),
-		"orderId":     orderID,
-		"orderInfo":   orderInfo,
-		"redirectUrl": redirectURL,
-		"ipnUrl":      ipnURL,
-		"requestType": requestType,
-		"extraData":   extraData,
-		"signature":   signature,
-		"lang":        "vi",
-	}
-
-	reqBody, _ := json.Marshal(momoReq)
-	momoEndpoint := os.Getenv("MOMO_ENDPOINT")
-	if momoEndpoint == "" {
-		momoEndpoint = "https://test-payment.momo.vn/v2/gateway/api/create"
-	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", momoEndpoint, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return "", apperrors.DatabaseError(err)
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return "", apperrors.DatabaseError(err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", apperrors.BusinessError("Không thể kết nối với MoMo")
-	}
-
-	var momoResp map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&momoResp); err != nil {
-		return "", apperrors.DatabaseError(err)
-	}
-
-	payUrlVal, ok := momoResp["payUrl"]
-	if !ok {
-		if msg, hasMsg := momoResp["message"]; hasMsg {
-			return "", apperrors.BusinessError(fmt.Sprintf("Lỗi MoMo: %v", msg))
-		}
-		return "", apperrors.BusinessError("Lỗi kết nối MoMo")
-	}
-
-	return payUrlVal.(string), nil
-}
 
 func (r *TicketRepository) ProcessWalletPaymentForExistingBill(ctx context.Context, userID int, pendingBillID int64, amount int) (string, error) {
 	opts := &sql.TxOptions{
@@ -3325,4 +2713,38 @@ func (r *TicketRepository) GetTicketIDsByBillID(ctx context.Context, billID int6
 		}
 	}
 	return ids, nil
+}
+
+func generateDeterministicUUID(userID, eventID int, seatIDs []int) string {
+	// Sort seatIDs to ensure same seats in any order produce the same UUID
+	sortedSeatIDs := make([]int, len(seatIDs))
+	copy(sortedSeatIDs, seatIDs)
+	for i := 0; i < len(sortedSeatIDs); i++ {
+		for j := i + 1; j < len(sortedSeatIDs); j++ {
+			if sortedSeatIDs[i] > sortedSeatIDs[j] {
+				sortedSeatIDs[i], sortedSeatIDs[j] = sortedSeatIDs[j], sortedSeatIDs[i]
+			}
+		}
+	}
+
+	seatStrParts := make([]string, len(sortedSeatIDs))
+	for i, sid := range sortedSeatIDs {
+		seatStrParts[i] = strconv.Itoa(sid)
+	}
+
+	input := fmt.Sprintf("free_ticket:%d:%d:%s", userID, eventID, strings.Join(seatStrParts, ","))
+	hash := sha256.Sum256([]byte(input))
+	
+	// Create UUID RFC 4122 Variant from SHA-256 hash (v4-like layout)
+	// Modify the version (4) and variant (1) bits:
+	hash[6] = (hash[6] & 0x0f) | 0x40
+	hash[8] = (hash[8] & 0x3f) | 0x80
+
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		hash[0:4],
+		hash[4:6],
+		hash[6:8],
+		hash[8:10],
+		hash[10:16],
+	)
 }

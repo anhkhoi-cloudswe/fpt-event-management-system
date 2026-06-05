@@ -65,19 +65,7 @@ func (uc *TicketUseCase) GetMyBillsPaginated(ctx context.Context, userID, page, 
 	return uc.ticketRepo.GetBillsByUserIDPaginated(ctx, userID, page, limit, search, paymentStatus, paymentMethod)
 }
 
-// ============================================================
-// MOMO PAYMENT METHODS
-// ============================================================
 
-// CreateMoMoPaymentURL - Tạo URL thanh toán MoMo cho nhiều ghế
-func (uc *TicketUseCase) CreateMoMoPaymentURL(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int, redirectURL, ipnURL string) (string, error) {
-	return uc.ticketRepo.CreateMoMoPaymentURL(ctx, userID, eventID, categoryTicketID, seatIDs, redirectURL, ipnURL)
-}
-
-// ProcessMoMoWebhook - Xử lý webhook từ MoMo
-func (uc *TicketUseCase) ProcessMoMoWebhook(ctx context.Context, payload map[string]interface{}) (string, error) {
-	return uc.ticketRepo.ProcessMoMoWebhook(ctx, payload)
-}
 
 // ============================================================
 // WALLET PAYMENT METHODS

@@ -20,7 +20,7 @@ export default function PaymentFailed() {
    * - location.search có dạng: "?vnp_ResponseCode=01&message=..."
    */
   const params = new URLSearchParams(location.search)
-  const paymentMethod = params.get('method') || 'momo'
+  const paymentMethod = params.get('method') || 'bank_transfer'
 
   /**
    * Lấy mã phản hồi từ VNPay
@@ -135,10 +135,15 @@ export default function PaymentFailed() {
                 <Wallet className="w-4 h-4 text-red-600" />
                 <span className="text-sm font-semibold text-red-600">Thanh toán bằng Ví</span>
               </>
+            ) : paymentMethod === 'bank_transfer' ? (
+              <>
+                <span className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white mr-1">B</span>
+                <span className="text-sm font-semibold text-blue-600">Chuyển khoản Ngân hàng</span>
+              </>
             ) : (
               <>
-                <span className="w-4 h-4 rounded bg-pink-600 flex items-center justify-center text-[10px] font-bold text-white mr-1">M</span>
-                <span className="text-sm font-semibold text-pink-600">Ví MoMo</span>
+                <span className="w-4 h-4 rounded bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white mr-1">V</span>
+                <span className="text-sm font-semibold text-indigo-600">Ví VNPay</span>
               </>
             )}
           </div>

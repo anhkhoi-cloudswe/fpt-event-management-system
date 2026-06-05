@@ -145,13 +145,7 @@ services:
         value: ""
       - key: FRONTEND_BASE_URL
         value: ""
-      # ── MoMo ──────────────────────────────────────────────────────────────
-      - key: MOMO_PARTNER_CODE
-        value: ""
-      - key: MOMO_ACCESS_KEY
-        value: ""
-      - key: MOMO_SECRET_KEY
-        value: ""
+
       # ── SMTP (AWS SES hoặc Gmail SMTP) ────────────────────────────────────
       - key: SMTP_HOST
         value: ""

@@ -92,26 +92,11 @@ export default function PaymentSuccess() {
        * - ticketId=12 (1 vé)
        */
       const ticketsParam = getSafeParam('ticketIds') ?? getSafeParam('ticketId')
-      const method = getSafeParam('method') ?? 'momo'
+      const method = getSafeParam('method') ?? 'bank_transfer'
       const emailFailedParam = getSafeParam('emailFailed')
 
-      // Detect MoMo Redirect Query Parameters
-      const resultCode = getSafeParam('resultCode')
-      const momoOrderId = getSafeParam('orderId')
-
-      if (resultCode !== null) {
-        if (resultCode === '0') {
-          setPaymentMethod('momo')
-          setTicketIds(momoOrderId ? `MOMO_${momoOrderId}` : 'MOMO')
-        } else {
-          const errorMsg = getSafeParam('message') || 'Thanh toán MoMo thất bại'
-          navigate(`/dashboard/payment/failed?status=failed&method=momo&reason=${encodeURIComponent(errorMsg)}`, { replace: true })
-          return
-        }
-      } else {
-        setTicketIds(ticketsParam)
-        setPaymentMethod(method)
-      }
+      setTicketIds(ticketsParam)
+      setPaymentMethod(method)
 
       if (emailFailedParam === '1') {
         setEmailFailed(true)
@@ -219,10 +204,15 @@ export default function PaymentSuccess() {
                 </svg>
                 <span className="text-sm font-semibold text-blue-600">Chuyển khoản Ngân hàng</span>
               </>
+            ) : paymentMethod === 'free' ? (
+              <>
+                <PartyPopper className="w-4 h-4 text-emerald-600" />
+                <span className="text-sm font-semibold text-emerald-600">Đặt vé Miễn phí</span>
+              </>
             ) : (
               <>
-                <span className="w-4 h-4 rounded bg-pink-600 flex items-center justify-center text-[10px] font-bold text-white mr-1">M</span>
-                <span className="text-sm font-semibold text-pink-600">Ví điện tử MoMo</span>
+                <span className="w-4 h-4 rounded bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white mr-1">V</span>
+                <span className="text-sm font-semibold text-indigo-600">Ví điện tử VNPay</span>
               </>
             )}
           </div>
@@ -260,14 +250,33 @@ export default function PaymentSuccess() {
         {/* Hiển thị mã vé với box đẹp hơn */}
         {ticketIds && (
           <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 border-2 border-orange-300 rounded-2xl p-6 mb-8 shadow-inner">
-            <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="flex items-center justify-center gap-2 mb-4">
               <Ticket className="w-5 h-5 text-orange-600" />
-              <p className="text-sm font-medium text-gray-600">Mã vé của bạn</p>
+              <p className="text-sm font-medium text-gray-600">Danh sách mã vé của bạn</p>
             </div>
-            <p className="text-2xl font-bold font-mono text-center text-orange-600 tracking-wide">
-              #{ticketIds}
-            </p>
-            <p className="text-xs text-center text-gray-500 mt-2">
+            <div className="flex flex-wrap justify-center gap-2">
+              {(() => {
+                try {
+                  const ticketIdArray = typeof ticketIds === 'string' ? ticketIds.split(',') : [];
+                  return ticketIdArray.map((tid) => {
+                    const trimmedId = String(tid).trim();
+                    if (!trimmedId) return null;
+                    return (
+                      <span
+                        key={trimmedId}
+                        className="px-3 py-1.5 rounded-lg bg-orange-600 text-white font-bold font-mono text-base shadow-sm border border-orange-700"
+                      >
+                        #{trimmedId}
+                      </span>
+                    );
+                  });
+                } catch (err) {
+                  console.error('Error rendering ticket badges:', err);
+                  return <span className="text-orange-600 font-bold">#{ticketIds}</span>;
+                }
+              })()}
+            </div>
+            <p className="text-xs text-center text-gray-500 mt-4">
               Lưu lại mã này để tra cứu vé
             </p>
           </div>

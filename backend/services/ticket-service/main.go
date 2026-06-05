@@ -178,10 +178,7 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return ticketHandler.HandleGetMyBills(ctx, request)
 	case path == "/api/payment/my-bills" && method == "GET":
 		return ticketHandler.HandleGetMyBills(ctx, request)
-	case (path == "/api/payment/momo-init" || path == "/api/payment-ticket") && (method == "POST" || method == "GET"):
-		return ticketHandler.HandleMoMoInit(ctx, request)
-	case path == "/api/payment/momo-webhook" && method == "POST":
-		return ticketHandler.HandleMoMoWebhook(ctx, request)
+
 	case path == "/api/payment/create-order" && method == "POST":
 		return ticketHandler.HandleCreateBankTransferOrder(ctx, request)
 	case (path == "/api/payment/cancel" || path == "/api/payment/cancel-order") && method == "POST":

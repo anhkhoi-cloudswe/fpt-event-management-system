@@ -294,7 +294,6 @@ export default function MyBills() {
               className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
               <option value="">{currentLanguage === 'en' ? 'All Methods' : 'Tất cả phương thức'}</option>
-              <option value="MOMO">{currentLanguage === 'en' ? 'MoMo Wallet' : 'Ví MoMo'}</option>
               <option value="WALLET">{currentLanguage === 'en' ? 'E-wallet' : 'Ví điện tử'}</option>
               <option value="FREE">{currentLanguage === 'en' ? 'Free' : 'Miễn phí'}</option>
             </select>

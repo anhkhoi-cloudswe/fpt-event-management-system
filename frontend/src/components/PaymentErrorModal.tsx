@@ -108,7 +108,7 @@ export default function PaymentErrorModal({
 
                             {/* Help Text */}
                             <p className="text-xs text-gray-500 mt-3">
-                                💡 Vui lòng sử dụng Ví MoMo để thanh toán.
+                                💡 Vui lòng sử dụng Chuyển khoản Ngân hàng để thanh toán.
                             </p>
                         </div>
                     )}
@@ -155,7 +155,7 @@ export default function PaymentErrorModal({
                             className="w-full px-4 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition flex items-center justify-center"
                         >
                             <CreditCard className="w-4 h-4 mr-2" />
-                            Thanh toán bằng ví MoMo
+                            Thanh toán chuyển khoản ngân hàng
                         </button>
                     )}
 
