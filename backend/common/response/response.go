@@ -11,7 +11,6 @@ import (
 )
 
 var defaultTrustedOrigins = []string{
-	"https://fpt-event.online",
 	"https://fpt-event.vercel.app",
 	"http://localhost:5173",
 	"http://localhost:3000",
@@ -50,7 +49,7 @@ var CORSHeaders = map[string]string{
 	"Vary":                             "Origin",
 	"Access-Control-Allow-Credentials": "true",
 	"Access-Control-Allow-Methods":     "GET,POST,PUT,DELETE,OPTIONS,PATCH",
-	"Access-Control-Allow-Headers":     "Content-Type,Authorization,X-Requested-With",
+	"Access-Control-Allow-Headers":     "Content-Type,Authorization,X-Requested-With,Idempotency-Key",
 }
 
 // ============================================================
@@ -67,7 +66,7 @@ func LambdaHeadersForOrigin(origin string) map[string]string {
 		"Vary":                             "Origin",
 		"Access-Control-Allow-Credentials": "true",
 		"Access-Control-Allow-Methods":     "GET,POST,PUT,DELETE,OPTIONS",
-		"Access-Control-Allow-Headers":     "Content-Type,Authorization,X-Request-Id",
+		"Access-Control-Allow-Headers":     "Content-Type,Authorization,X-Request-Id,X-Requested-With,Idempotency-Key",
 	}
 	if allowed := TrustedOrigin(origin); allowed != "" {
 		headers["Access-Control-Allow-Origin"] = allowed

@@ -253,7 +253,7 @@ func stripSpoofableIdentityHeaders(headers http.Header) {
 
 // corsMiddleware adds CORS headers and handles preflight
 func corsMiddleware(next http.Handler) http.Handler {
-	allowedOrigins := parseAllowedOrigins(getEnv("CORS_ALLOWED_ORIGINS", "https://fpt-event.online,https://fpt-event.vercel.app"))
+	allowedOrigins := parseAllowedOrigins(getEnv("CORS_ALLOWED_ORIGINS", "https://fpt-event.vercel.app,http://localhost:5173,http://localhost:3000"))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
@@ -269,7 +269,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 		}
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
-		w.Header().Set("Access-Control-Allow-Headers", "Authorization,Content-Type,X-Requested-With,ngrok-skip-browser-warning")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization,Content-Type,X-Requested-With,Idempotency-Key,ngrok-skip-browser-warning")
 		w.Header().Set("Access-Control-Expose-Headers", "X-User-Id,X-User-Role,X-User-Email")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 
