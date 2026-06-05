@@ -212,7 +212,7 @@ export default function Profile() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { balance: liveBalance } = useWallet()
   const profileWalletBalance = useMemo(() => {
-    return Number(liveBalance ?? user?.balance ?? user?.wallet_balance ?? user?.wallet?.balance ?? 0)
+    return Number(liveBalance ?? user?.balance ?? user?.wallet_balance ?? (user?.wallet as any)?.balance ?? 0)
   }, [user, liveBalance])
 
   // Tab state: profile vs security
@@ -246,6 +246,8 @@ export default function Profile() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordError, setPasswordError] = useState('')
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false)
+  const [showSsoNewPassword, setShowSsoNewPassword] = useState(false)
+  const [showSsoConfirmPassword, setShowSsoConfirmPassword] = useState(false)
 
   // Standard user password change states
   const [oldPassword, setOldPassword] = useState('')
@@ -1131,26 +1133,46 @@ export default function Profile() {
             <form onSubmit={handleSetSSOPassword} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">{t.newPassword}</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder={t.newPasswordPlaceholder}
-                  className={`w-full px-4 py-2.5 text-sm font-semibold rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-orange-500' : 'bg-white border-slate-200 text-slate-800 focus:border-orange-500'
-                    }`}
-                />
+                <div className="relative">
+                  <input
+                    type={showSsoNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder={t.newPasswordPlaceholder}
+                    className={`w-full px-4 pr-11 py-2.5 text-sm font-semibold rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-orange-500' : 'bg-white border-slate-200 text-slate-800 focus:border-orange-500'
+                      }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSsoNewPassword((value) => !value)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-500 transition-colors"
+                    aria-label={showSsoNewPassword ? 'Hide new password' : 'Show new password'}
+                  >
+                    {showSsoNewPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">{t.confirmPassword}</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder={t.confirmPasswordPlaceholder}
-                  className={`w-full px-4 py-2.5 text-sm font-semibold rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-orange-500' : 'bg-white border-slate-200 text-slate-800 focus:border-orange-500'
-                    }`}
-                />
+                <div className="relative">
+                  <input
+                    type={showSsoConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder={t.confirmPasswordPlaceholder}
+                    className={`w-full px-4 pr-11 py-2.5 text-sm font-semibold rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-orange-500' : 'bg-white border-slate-200 text-slate-800 focus:border-orange-500'
+                      }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSsoConfirmPassword((value) => !value)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-500 transition-colors"
+                    aria-label={showSsoConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}
+                  >
+                    {showSsoConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
               </div>
 
               {passwordError && (
@@ -1168,6 +1190,8 @@ export default function Profile() {
                     setNewPassword('')
                     setConfirmPassword('')
                     setPasswordError('')
+                    setShowSsoNewPassword(false)
+                    setShowSsoConfirmPassword(false)
                   }}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}

@@ -541,8 +541,10 @@ func (uc *AuthUseCase) DirectUpdatePassword(ctx context.Context, email, oldPassw
 		return errors.New("user not found")
 	}
 
-	// If password hash exists in database, verify the old password
-	if user.PasswordHash != "" {
+	isSSO := user.SSOProvider != nil && *user.SSOProvider != ""
+
+	// If password hash exists in database and they are not SSO, verify the old password
+	if user.PasswordHash != "" && !isSSO {
 		if oldPassword == "" {
 			return errors.New("old password is required")
 		}
@@ -551,7 +553,11 @@ func (uc *AuthUseCase) DirectUpdatePassword(ctx context.Context, email, oldPassw
 		}
 	}
 
-	err = uc.userRepo.UpdatePasswordByEmail(ctx, email, newPassword)
+	if isSSO {
+		err = uc.userRepo.UpdatePasswordAndClearSSO(ctx, email, newPassword)
+	} else {
+		err = uc.userRepo.UpdatePasswordByEmail(ctx, email, newPassword)
+	}
 	if err != nil {
 		return errors.New("failed to update password")
 	}

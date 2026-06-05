@@ -1143,8 +1143,9 @@ func (h *AuthHandler) HandleUpdatePassword(ctx context.Context, request events.A
 		return createStatusResponse(http.StatusBadRequest, "fail", "Mật khẩu không được để trống")
 	}
 
-	// Only require old password if user already has a password hash set
-	if user.PasswordHash != "" && req.OldPassword == "" {
+	// Only require old password if user already has a password hash set and is not an SSO user
+	isSSO := user.SSOProvider != nil && *user.SSOProvider != ""
+	if user.PasswordHash != "" && !isSSO && req.OldPassword == "" {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Old password is required")
 	}
 

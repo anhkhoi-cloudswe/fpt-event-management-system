@@ -301,6 +301,10 @@ export default function OrganizerEventRequests() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const searchQueryRef = useRef('')
 
+  const forceRefresh = () => {
+    setRefreshTrigger(prev => prev + 1)
+  }
+
   useEffect(() => {
     searchQueryRef.current = searchQuery
   }, [searchQuery])
