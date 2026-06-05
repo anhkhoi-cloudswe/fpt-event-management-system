@@ -24,6 +24,7 @@ export interface User {
 
 interface AuthContextType {
   user: User | null
+  loading: boolean
   isLoading: boolean
   isAuthenticated: boolean
   token: string | null
@@ -41,7 +42,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
   // Keep token state only for compatibility with existing consumers.
   const [token, setToken] = useState<string | null>(null)
   const isLoadingRef = useRef(true)
@@ -63,8 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    isLoadingRef.current = isLoading
-  }, [isLoading])
+    isLoadingRef.current = loading
+  }, [loading])
 
   const login = (_email: string, _password: string, _role: UserRole) => {
     // Compatibility no-op. Actual login is handled in Login.tsx.
@@ -73,7 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUserFromMe = useCallback(async (): Promise<User | null> => {
     for (const endpoint of AUTH_ME_ENDPOINTS) {
       try {
-        const res = await fetch(endpoint, {
+        const separator = endpoint.includes('?') ? '&' : '?'
+        const res = await fetch(`${endpoint}${separator}t=${Date.now()}`, {
           method: 'GET',
           cache: 'no-store',
           credentials: 'include',
@@ -115,9 +117,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const userObj = await fetchUserFromMe()
       setUser(userObj)
+      setIsAuthenticated(Boolean(userObj))
     } catch (err) {
       console.error('refreshUser error:', err)
       setUser(null)
+      setIsAuthenticated(false)
     }
   }, [fetchUserFromMe])
 
@@ -125,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void axios.post('/logout', null, { withCredentials: true }).catch(() => undefined)
     setUser(null)
     setToken(null)
+    setIsAuthenticated(false)
   }, [])
 
   useEffect(() => {
@@ -168,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true
 
     const bootstrapAuth = async () => {
-      setIsLoading(true)
+      setLoading(true)
 
       try {
         const userObj = await fetchUserFromMe()
@@ -178,14 +183,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(userObj)
+        setIsAuthenticated(Boolean(userObj))
       } catch (err) {
         if (isMounted) {
           console.error('bootstrapAuth error:', err)
           setUser(null)
+          setIsAuthenticated(false)
         }
       } finally {
         if (isMounted) {
-          setIsLoading(false)
+          setLoading(false)
         }
       }
     }
@@ -301,7 +308,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated, token, setUser, setToken, login, logout, refreshUser, currentLanguage, changeLanguage }}>
+    <AuthContext.Provider value={{ user, loading, isLoading: loading, isAuthenticated, token, setUser, setToken, login, logout, refreshUser, currentLanguage, changeLanguage }}>
       {children}
     </AuthContext.Provider>
   )

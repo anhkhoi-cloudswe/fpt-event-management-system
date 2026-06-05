@@ -174,6 +174,8 @@ export default function SignUp() {
         email: email,
         password: password,
         recaptchaToken
+      }, {
+        withCredentials: true
       })
 
       if (response.data.status === 'success' || response.data.success === true) {
@@ -231,6 +233,8 @@ export default function SignUp() {
     try {
       const response = await axios.post(`${API_URL}/register/resend-otp`, {
         email: formData.email
+      }, {
+        withCredentials: true
       })
 
       if (response.data.status === 'success' || response.data.success === true) {
@@ -278,6 +282,8 @@ export default function SignUp() {
       const response = await axios.post(`${API_URL}/register/verify-otp`, {
         email: formData.email,
         otp: otpCode
+      }, {
+        withCredentials: true
       })
 
       if (response.data.status === 'success') {

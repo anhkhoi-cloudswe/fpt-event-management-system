@@ -36,11 +36,11 @@ import SystemPolicy from './pages/SystemPolicy.tsx'
 import Profile from './pages/Profile.tsx'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-white" />
+      <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading Auth State...</div>
     )
   }
 
@@ -48,11 +48,11 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 function PublicRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-white" />
+      <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading Auth State...</div>
     )
   }
 
