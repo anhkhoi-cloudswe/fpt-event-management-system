@@ -285,7 +285,7 @@ export default function AdminDashboard() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Quản lý Organizer & Staff</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Quản lý Organizer & Staff</h1>
         <button
           onClick={handleOpenCreateModal}
           className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -295,7 +295,7 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-4 mb-6 border dark:border-slate-800">
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
@@ -305,7 +305,7 @@ export default function AdminDashboard() {
                 placeholder="Tìm kiếm theo tên, username, email..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -315,7 +315,7 @@ export default function AdminDashboard() {
             <select
               value={roleFilter}
               onChange={e => setRoleFilter(e.target.value as 'ALL' | 'ORGANIZER' | 'STAFF')}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="ALL">Tất cả vai trò</option>
               <option value="ORGANIZER">Organizer</option>
@@ -327,7 +327,7 @@ export default function AdminDashboard() {
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="ALL">Tất cả trạng thái</option>
               <option value="ACTIVE">Hoạt động</option>
@@ -338,48 +338,48 @@ export default function AdminDashboard() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <p className="text-gray-500">Đang tải...</p>
+        <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-lg shadow-md p-12 text-center">
+          <p className="text-gray-500 dark:text-slate-400">Đang tải...</p>
         </div>
       ) : error ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <p className="text-red-500">{error}</p>
+        <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-lg shadow-md p-12 text-center">
+          <p className="text-red-500 dark:text-red-400">{error}</p>
         </div>
       ) : filteredUsers.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <p className="text-gray-500 text-lg">Không tìm thấy người dùng</p>
+        <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-lg shadow-md p-12 text-center">
+          <p className="text-gray-500 dark:text-slate-400 text-lg">Không tìm thấy người dùng</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md overflow-hidden border dark:border-slate-800">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
+            <thead className="bg-gray-50 dark:bg-slate-800/60">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Họ và tên</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số điện thoại</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vai trò</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Username</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Họ và tên</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Số điện thoại</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Vai trò</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Trạng thái</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
               {filteredUsers.map(u => (
-                <tr key={u.userId} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.username}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{u.fullName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{u.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{u.phone}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${u.role === 'ORGANIZER' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>{u.role}</span>
+                <tr key={u.userId} className="hover:bg-gray-50 dark:hover:bg-slate-800/40">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{u.username}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{u.fullName}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-slate-300">{u.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-slate-300">{u.phone}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`px-2 py-1 text-xs font-bold rounded-full ${u.role === 'ORGANIZER' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-400' : 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400'}`}>{u.role}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${u.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{u.status === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu hóa'}</span>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`px-2 py-1 text-xs font-bold rounded-full ${u.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-455' : 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400'}`}>{u.status === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu hóa'}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => handleOpenEditModal(u)} className="text-blue-600 hover:text-blue-800" title="Chỉnh sửa"><Edit size={18} /></button>
-                      <button onClick={() => handleDeleteUser(u)} className="text-red-600 hover:text-red-800" title="Xóa"><Trash2 size={18} /></button>
+                    <div className="flex justify-end gap-3.5">
+                      <button onClick={() => handleOpenEditModal(u)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" title="Chỉnh sửa"><Edit size={18} /></button>
+                      <button onClick={() => handleDeleteUser(u)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" title="Xóa"><Trash2 size={18} /></button>
                     </div>
                   </td>
                 </tr>

@@ -120,6 +120,7 @@ export function EventDetailModal({
 
   // Tổng số ghế VIP của khu vực + event (API trả total)
   const [loadingSeats, setLoadingSeats] = useState(false)
+  const [isZoomed, setIsZoomed] = useState(false)
 
   const toNumber = (value: unknown): number | undefined => {
     if (typeof value === 'number' && Number.isFinite(value)) return value
@@ -469,11 +470,20 @@ export function EventDetailModal({
                   {/* ===== BANNER ===== */}
                   {event.bannerUrl && (
                     <div className="mb-6">
-                      <img
-                        src={event.bannerUrl}
-                        alt={event.title}
-                        className="w-full h-40 sm:h-64 object-cover rounded-lg"
-                      />
+                      <div 
+                        onClick={() => setIsZoomed(true)}
+                        className="relative w-full overflow-hidden bg-slate-50 dark:bg-slate-900 border dark:border-slate-800 rounded-2xl flex items-center justify-center p-2 min-h-[160px] sm:min-h-[300px] cursor-zoom-in group transition-all duration-300 hover:border-blue-500/50 dark:hover:border-blue-500/30 shadow-inner"
+                        title="Click để phóng to xem toàn bộ ảnh sơ đồ layout"
+                      >
+                        <img
+                          src={event.bannerUrl}
+                          alt={event.title}
+                          className="w-full max-h-[400px] object-contain rounded-lg transition-transform duration-300 group-hover:scale-[1.01]"
+                        />
+                        <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/60 text-white text-xs font-bold backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center gap-1.5 shadow-md">
+                          <span>🔍 Click để xem cỡ lớn</span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -780,6 +790,36 @@ export function EventDetailModal({
           </div>
         </div>
       </div>
+      {/* Lightbox Zoom Modal for layout image */}
+      {isZoomed && event?.bannerUrl && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-[999] flex flex-col items-center justify-center p-4 cursor-zoom-out animate-fade-in"
+          onClick={() => setIsZoomed(false)}
+        >
+          {/* Close button */}
+          <button
+            onClick={() => setIsZoomed(false)}
+            className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors z-[1000]"
+          >
+            <X className="w-8 h-8" />
+          </button>
+          
+          <div 
+            className="max-w-5xl max-h-[90vh] w-full flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={event.bannerUrl}
+              alt={event.title}
+              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+          
+          <p className="text-slate-300 text-sm mt-3 font-semibold text-center pointer-events-none bg-black/40 px-4 py-1.5 rounded-full">
+            {event.title} - Sơ đồ chi tiết sự kiện
+          </p>
+        </div>
+      )}
     </>
   )
 }

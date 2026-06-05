@@ -42,6 +42,9 @@ export default function PaymentSuccess() {
   // Trạng thái gửi email: true nếu backend báo gửi thất bại (param emailFailed=1)
   const [emailFailed, setEmailFailed] = useState(false)
 
+  const [purchasedTickets, setPurchasedTickets] = useState<PurchasedTicket[]>([])
+  const [loadingDetails, setLoadingDetails] = useState<boolean>(false)
+
   /**
    * useEffect: chạy mỗi khi query string thay đổi (location.search)
    * Mục tiêu:
@@ -168,7 +171,7 @@ export default function PaymentSuccess() {
         
         if (res.ok) {
           const data = await res.json();
-          const allTickets = Array.isArray(data.tickets) ? data.tickets : [];
+          const allTickets = data && Array.isArray(data.tickets) ? data.tickets : [];
           
           const matching: PurchasedTicket[] = [];
           allTickets.forEach((t: any) => {

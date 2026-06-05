@@ -382,13 +382,13 @@ export default function Venues() {
   return (
     <div className="space-y-6 animate-fade-in-up">
       {/* ========== HEADER: TIÊU ĐỀ VÀ NÚT THÊM ĐỊA ĐIỂM ========== */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Building2 className="w-6 h-6 text-orange-655" />
             Quản lý địa điểm
           </h1>
-          <p className="text-xs text-slate-500 font-semibold mt-1">Quản lý các địa điểm tổ chức sự kiện</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">Quản lý các địa điểm tổ chức sự kiện</p>
         </div>
         {/* Nút thêm địa điểm mới - mở modal với editingVenue = null */}
         <button
@@ -409,7 +409,7 @@ export default function Venues() {
           placeholder="Tìm kiếm địa điểm..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-11 pr-4 py-3 bg-white/70 backdrop-blur-md border border-white/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+          className="w-full pl-11 pr-4 py-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/80 dark:border-slate-800/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 dark:text-slate-100 font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
         />
       </div>
 
@@ -417,16 +417,16 @@ export default function Venues() {
       {/* Conditional rendering dựa trên trạng thái loading và dữ liệu */}
       {loading ? (
         // Trường hợp 1: Đang tải dữ liệu -> hiển thị loading spinner
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-12 text-center shadow-md animate-fade-in-up">
+        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 p-12 text-center shadow-md animate-fade-in-up">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-slate-550 font-extrabold text-sm">Đang tải địa điểm...</p>
+          <p className="text-slate-555 dark:text-slate-400 font-extrabold text-sm">Đang tải địa điểm...</p>
         </div>
       ) : filtered.length === 0 ? (
         // Trường hợp 2: Không có dữ liệu -> hiển thị empty state
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-12 text-center shadow-md animate-fade-in-up">
-          <Building2 className="w-12 h-12 text-slate-350 mx-auto mb-3" />
-          <p className="text-slate-500 font-extrabold text-sm">Chưa có địa điểm nào</p>
-          <p className="text-xs text-slate-400 font-bold mt-1">Hãy thêm địa điểm đầu tiên để bắt đầu</p>
+        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 p-12 text-center shadow-md animate-fade-in-up">
+          <Building2 className="w-12 h-12 text-slate-350 dark:text-slate-600 mx-auto mb-3" />
+          <p className="text-slate-500 dark:text-slate-400 font-extrabold text-sm">Chưa có địa điểm nào</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 font-bold mt-1">Hãy thêm địa điểm đầu tiên để bắt đầu</p>
         </div>
       ) : (
         // Trường hợp 3: Có dữ liệu -> hiển thị danh sách địa điểm

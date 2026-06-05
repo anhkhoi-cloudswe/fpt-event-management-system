@@ -36,7 +36,7 @@ import { formatVietnamDateTime } from '../utils/dateFormat'
 // useEffect: Hook để fetch wallet balance khi component mount
 
 // Import icon để trang đẹp hơn
-import { CreditCard, ArrowLeft, Clock, X } from 'lucide-react'
+import { CreditCard, ArrowLeft, Clock, X, Wallet } from 'lucide-react'
 // CreditCard: icon thẻ/ thanh toán
 // ArrowLeft: icon mũi tên quay lại
 // Clock: icon đồng hồ đếm ngược
@@ -1121,69 +1121,53 @@ export default function Payment() {
         )}
 
         {/* ========== THÔNG TIN VÉ ========== */}
-        {/* Box hiển thị thông tin vé để user xác nhận trước khi trả tiền */}
-        <div className="border dark:border-slate-800 rounded-lg p-4 mb-6 bg-gray-50 dark:bg-slate-800/40">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">
+        <div className="border dark:border-slate-800 rounded-2xl p-6 mb-6 bg-gray-50 dark:bg-slate-850/60 shadow-inner">
+          <h2 className="text-lg font-black text-gray-900 dark:text-white mb-4 border-b border-gray-200/60 dark:border-slate-800 pb-2.5">
             Thông tin vé
           </h2>
 
           {/* Danh sách thông tin vé */}
-          <div className="space-y-1 text-sm text-gray-600 dark:text-slate-350">
+          <div className="space-y-4 text-base text-gray-800 dark:text-slate-200">
             {/* ----- Tên sự kiện ----- */}
-            <p>
-              Sự kiện:{' '}
-              <span className="font-medium text-gray-800 dark:text-slate-200">
-                {/* Nếu state.eventTitle không có thì hiển thị fallback */}
+            <p className="flex justify-between items-start gap-4">
+              <span className="text-gray-600 dark:text-slate-350 font-bold text-base">Sự kiện</span>
+              <span className="font-extrabold text-gray-950 dark:text-white text-right text-base sm:text-lg">
                 {state.eventTitle || 'Sự kiện demo (mock)'}
               </span>
             </p>
 
-            {/* ----- Loại vé ----- */}
-            {/* 
-              Conditional rendering:
-              - Nếu có ticketBreakdown (nhiều loại vé) → hiển thị từng loại
-              - Nếu chỉ có ticketName → hiển thị tên 1 loại
-              - Nếu không có gì → không render
-            */}
+            {/* ----- Hạng vé ----- */}
             {state.ticketBreakdown && state.ticketBreakdown.length > 0 ? (
-              <p>
-                Loại vé:{' '}
-                <span className="font-medium text-gray-800 dark:text-slate-200">
-                  {/* Duyệt qua từng loại vé và hiển thị: "Tên x Số lượng" */}
+              <p className="flex justify-between items-center">
+                <span className="text-gray-600 dark:text-slate-350 font-bold text-base">Hạng vé</span>
+                <span className="font-extrabold text-gray-955 dark:text-white text-base">
                   {state.ticketBreakdown.map((t, idx) => (
                     <span key={idx}>
                       {t.name} x{t.count}
-                      {/* Nếu chưa phải item cuối → thêm dấu phẩy */}
                       {idx < state.ticketBreakdown!.length - 1 ? ', ' : ''}
                     </span>
                   ))}
                 </span>
               </p>
             ) : state.ticketName ? (
-              <p>
-                Loại vé:{' '}
-                <span className="font-medium text-gray-800 dark:text-slate-200">{state.ticketName}</span>
+              <p className="flex justify-between items-center">
+                <span className="text-gray-600 dark:text-slate-350 font-bold text-base">Hạng vé</span>
+                <span className="font-extrabold text-gray-955 dark:text-white text-base">{state.ticketName}</span>
               </p>
             ) : null}
 
             {/* ----- Vị trí ghế ----- */}
-            {/* Chỉ hiển thị nếu có rowNo hoặc seatCodes */}
             {(state.rowNo ||
               (state.seatCodes && state.seatCodes.length > 0)) && (
-                <p>
-                  Vị trí ghế:{' '}
-                  <span className="font-medium text-gray-800 dark:text-slate-200">
-                    {/* Nếu có rowNo thì hiển thị "Hàng X" */}
+                <p className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-slate-350 font-bold text-base">Vị trí ghế</span>
+                  <span className="font-extrabold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-0.5 rounded-md border border-orange-100/40 dark:border-orange-900/30 text-base">
                     {state.rowNo ? `Hàng ${state.rowNo}` : ''}
-
-                    {/* Nếu có cả hàng và ghế thì thêm dấu phẩy ngăn cách */}
                     {state.rowNo &&
                       state.seatCodes &&
                       state.seatCodes.length > 0
                       ? ', '
                       : ''}
-
-                    {/* Nếu có seatCodes thì hiển thị "Ghế A1, A2" */}
                     {state.seatCodes && state.seatCodes.length > 0
                       ? `Ghế ${state.seatCodes.join(', ')}`
                       : ''}
@@ -1192,54 +1176,84 @@ export default function Payment() {
               )}
 
             {/* ----- Số tiền ----- */}
-            <p>
-              Số tiền:{' '}
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {/*
-                  toLocaleString('vi-VN'): format số theo chuẩn VN
-                  Ví dụ: 1000000 → "1.000.000"
-                  Fallback: ưu tiên totalAmount, nếu không có thì dùng pricePerTicket, nếu vẫn không có thì 0
-                */}
-                {(state.totalAmount || state.pricePerTicket || 0).toLocaleString(
-                  'vi-VN',
-                )}{' '}
-                đ
-              </span>
-            </p>
-
-            {/* ----- Chi tiết tính tiền (nếu có) ----- */}
-            {/* Nếu có quantity và pricePerTicket → hiển thị "SL x giá" */}
-            {state.quantity && state.pricePerTicket && (
-              <p className="text-xs text-gray-550 dark:text-slate-400">
-                {state.quantity} x {state.pricePerTicket.toLocaleString('vi-VN')}{' '}
-                đ
-              </p>
-            )}
+            <div className="pt-3 border-t border-dashed border-gray-200 dark:border-slate-800 flex justify-between items-end">
+              <span className="text-gray-500 dark:text-slate-400 font-medium">Số tiền</span>
+              <div className="text-right">
+                <span className="font-extrabold text-orange-600 dark:text-orange-400 text-xl">
+                  {(state.totalAmount || state.pricePerTicket || 0).toLocaleString(
+                    'vi-VN',
+                  )}{' '}
+                  đ
+                </span>
+                {state.quantity && state.pricePerTicket && (
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+                    {state.quantity} x {state.pricePerTicket.toLocaleString('vi-VN')} đ
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* ========== PHƯƠNG THỨC THANH TOÁN & NÚT BẤM ========== */}
-        <div className="space-y-4">
+        <div className="space-y-5">
           {/* ----- Dropdown chọn phương thức ----- */}
-          {/* 
-            Hiện tại chỉ có VNPay
-            Dùng <select> để sau này dễ mở rộng (Momo, ZaloPay...)
-          */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-350 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-350 mb-3">
               Phương thức thanh toán
             </label>
 
-            {/* select cho phép chọn VNPay hoặc Wallet */}
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as any)}
-              disabled={isEventExpired || checkingEventTime}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500 dark:disabled:bg-slate-800/50 dark:disabled:text-slate-500"
-            >
-              <option value="wallet">Wallet (Ví nội bộ)</option>
-              <option value="bank_transfer">Chuyển khoản Ngân hàng (VietQR / SePay)</option>
-            </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Option: Bank Transfer */}
+              <button
+                type="button"
+                disabled={isEventExpired || checkingEventTime}
+                onClick={() => setPaymentMethod('bank_transfer')}
+                className={`flex items-start p-4 rounded-xl border text-left transition-all duration-300 ${
+                  paymentMethod === 'bank_transfer'
+                    ? 'border-blue-500 dark:border-blue-500 bg-blue-50/20 dark:bg-blue-950/15 ring-2 ring-blue-500/20'
+                    : 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-750'
+                }`}
+              >
+                <div className={`p-2 rounded-lg mr-3 ${
+                  paymentMethod === 'bank_transfer'
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
+                    : 'bg-gray-100 text-gray-500 dark:bg-slate-750 dark:text-slate-400'
+                }`}>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">Chuyển khoản</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Mã VietQR / SePay</p>
+                </div>
+              </button>
+
+              {/* Option: Wallet */}
+              <button
+                type="button"
+                disabled={isEventExpired || checkingEventTime}
+                onClick={() => setPaymentMethod('wallet')}
+                className={`flex items-start p-4 rounded-xl border text-left transition-all duration-300 ${
+                  paymentMethod === 'wallet'
+                    ? 'border-blue-500 dark:border-blue-500 bg-blue-50/20 dark:bg-blue-950/15 ring-2 ring-blue-500/20'
+                    : 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-750'
+                }`}
+              >
+                <div className={`p-2 rounded-lg mr-3 ${
+                  paymentMethod === 'wallet'
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
+                    : 'bg-gray-100 text-gray-500 dark:bg-slate-750 dark:text-slate-400'
+                }`}>
+                  <Wallet className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">Ví nội bộ (Wallet)</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Số dư ví của bạn</p>
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* ⭐ NEW: Event Expired Warning */}

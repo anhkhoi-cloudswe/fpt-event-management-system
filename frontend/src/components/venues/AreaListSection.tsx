@@ -25,13 +25,13 @@ export default function AreaListSection({
 
   return (
     <div className="mt-8 animate-fade-in-up">
-      <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 sm:p-8 shadow-xl">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100/60">
+      <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/85 p-6 sm:p-8 shadow-xl">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100/60 dark:border-slate-800">
           <div>
-            <h2 className="text-lg sm:text-xl font-black text-slate-900">
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
               Danh sách phòng - {venueName}
             </h2>
-            <p className="text-xs text-slate-500 font-semibold mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">
               📍 {venueAddress}
             </p>
           </div>
@@ -45,7 +45,7 @@ export default function AreaListSection({
             </button>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-orange-600 p-1.5 hover:bg-slate-100/50 rounded-xl transition-all duration-300 active:scale-95"
+              className="text-slate-400 hover:text-orange-600 dark:text-slate-500 dark:hover:text-orange-400 p-1.5 hover:bg-slate-100/50 dark:hover:bg-slate-800 rounded-xl transition-all duration-300 active:scale-95"
             >
               <X className="w-4 h-4" />
             </button>
@@ -57,30 +57,30 @@ export default function AreaListSection({
             {visibleAreas.map((area) => (
               <div
                 key={area.areaId}
-                className="border border-white/80 bg-white/50 backdrop-blur-md rounded-3xl p-5 shadow-sm hover:shadow-2xl hover:shadow-orange-500/5 hover:border-orange-500/50 transition-all duration-500 flex flex-col justify-between"
+                className="border border-white/80 dark:border-slate-800/80 bg-white/50 dark:bg-slate-950/40 backdrop-blur-md rounded-3xl p-5 shadow-sm hover:shadow-2xl hover:shadow-orange-500/5 hover:border-orange-500/50 dark:hover:border-orange-500/40 transition-all duration-500 flex flex-col justify-between"
               >
                 <div>
-                  <h3 className="font-extrabold text-slate-800 text-base mb-4 flex items-center gap-2">
+                  <h3 className="font-extrabold text-slate-800 dark:text-white text-base mb-4 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-orange-500"></span>
                     {area.areaName}
                   </h3>
                   <div className="space-y-2.5 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 font-semibold">Tầng:</span>
-                      <span className="font-extrabold text-slate-800">{area.floor}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-semibold">Tầng:</span>
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200">{area.floor}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 font-semibold">Sức chứa:</span>
-                      <span className="font-extrabold text-slate-800">{area.capacity} chỗ</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-semibold">Sức chứa:</span>
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200">{area.capacity} chỗ</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 font-semibold">Trạng thái:</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-semibold">Trạng thái:</span>
                       <span className={`inline-flex px-2.5 py-1 text-[10px] font-extrabold rounded-full border shadow-sm ${
                         area.status === 'AVAILABLE'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-250/20'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-250/20 dark:border-emerald-900/30'
                           : area.status === 'UNAVAILABLE'
-                            ? 'bg-orange-50 text-orange-700 border-orange-250/20'
-                            : 'bg-slate-50 text-slate-700 border-slate-200'
+                            ? 'bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 border-orange-250/20 dark:border-orange-900/30'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-355 border-slate-200 dark:border-slate-700'
                       }`}>
                         {area.status === 'AVAILABLE'
                           ? '🟢 Sẵn sàng'
@@ -91,16 +91,16 @@ export default function AreaListSection({
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-5 border-t border-slate-100/60 pt-4">
+                <div className="flex gap-2 mt-5 border-t border-slate-100/60 dark:border-slate-800/80 pt-4">
                   <button
                     onClick={() => onEdit(area)}
-                    className="flex-1 px-3 py-2.5 text-xs font-bold text-orange-650 bg-orange-50/50 border border-orange-200/20 rounded-xl hover:bg-orange-100/50 transition-all duration-300 active:scale-95"
+                    className="flex-1 px-3 py-2.5 text-xs font-bold text-orange-650 dark:text-orange-400 bg-orange-50/50 dark:bg-slate-850 border border-orange-200/20 dark:border-slate-700 hover:bg-orange-100/50 dark:hover:bg-slate-800 transition-all duration-300 active:scale-95"
                   >
                     Chỉnh sửa
                   </button>
                   <button
                     onClick={() => onDelete(area.areaId)}
-                    className="flex-1 px-3 py-2.5 text-xs font-bold text-red-650 bg-red-50/50 border border-red-200/20 rounded-xl hover:bg-red-100/50 transition-all duration-300 active:scale-95"
+                    className="flex-1 px-3 py-2.5 text-xs font-bold text-red-650 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 border border-red-200/20 dark:border-slate-700 hover:bg-red-100/50 dark:hover:bg-red-950/40 transition-all duration-300 active:scale-95"
                   >
                     Xóa
                   </button>
@@ -109,9 +109,9 @@ export default function AreaListSection({
             ))}
           </div>
         ) : (
-          <div className="text-center py-10 bg-white/40 border border-slate-150 rounded-3xl shadow-inner">
-            <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500 font-bold text-sm">Chưa có phòng nào</p>
+          <div className="text-center py-10 bg-white/40 dark:bg-slate-900/30 border border-slate-150 dark:border-slate-800 rounded-3xl shadow-inner">
+            <Building2 className="w-10 h-10 text-slate-300 dark:text-slate-655 mx-auto mb-3" />
+            <p className="text-slate-500 dark:text-slate-400 font-bold text-sm">Chưa có phòng nào</p>
           </div>
         )}
       </div>
