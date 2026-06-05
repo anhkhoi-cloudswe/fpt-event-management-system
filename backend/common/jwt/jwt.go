@@ -13,12 +13,11 @@ import (
 
 // Claims represents the signed user identity embedded in application JWTs.
 type Claims struct {
-	UserID         int    `json:"userId"`
-	Email          string `json:"email"`
-	FullName       string `json:"fullName"`
-	Role           string `json:"role"`
-	SessionVersion int    `json:"sessionVersion"`
-	TokenType      string `json:"tokenType"`
+	UserID    int    `json:"userId"`
+	Email     string `json:"email"`
+	FullName  string `json:"fullName"`
+	Role      string `json:"role"`
+	TokenType string `json:"tokenType"`
 	jwtlib.RegisteredClaims
 }
 
@@ -52,34 +51,34 @@ func activeSecret() ([]byte, error) {
 
 // GenerateToken generates a signed access JWT token for a user.
 func GenerateToken(userID int, email, fullName, role string) (string, error) {
-	return GenerateAccessToken(userID, email, fullName, role, 0)
+	return GenerateAccessToken(userID, email, fullName, role)
 }
 
-func GenerateAccessToken(userID int, email, fullName, role string, sessionVersion int) (string, error) {
-	return generateToken(userID, email, fullName, role, sessionVersion, "access", accessTokenExpiration)
+func GenerateAccessToken(userID int, email, fullName, role string) (string, error) {
+	return generateToken(userID, email, fullName, role, "access", accessTokenExpiration)
 }
 
-func GenerateRefreshToken(userID int, email, fullName, role string, sessionVersion int) (string, error) {
+func GenerateRefreshToken(userID int, email, fullName, role string) (string, error) {
 	expiration := refreshTokenExpiration
 	if role == "ADMIN" || role == "STAFF" {
 		expiration = 24 * time.Hour
 	}
-	return generateToken(userID, email, fullName, role, sessionVersion, "refresh", expiration)
+	return generateToken(userID, email, fullName, role, "refresh", expiration)
 }
 
-func GenerateTokenPair(userID int, email, fullName, role string, sessionVersion int) (string, string, error) {
-	accessToken, err := GenerateAccessToken(userID, email, fullName, role, sessionVersion)
+func GenerateTokenPair(userID int, email, fullName, role string) (string, string, error) {
+	accessToken, err := GenerateAccessToken(userID, email, fullName, role)
 	if err != nil {
 		return "", "", err
 	}
-	refreshToken, err := GenerateRefreshToken(userID, email, fullName, role, sessionVersion)
+	refreshToken, err := GenerateRefreshToken(userID, email, fullName, role)
 	if err != nil {
 		return "", "", err
 	}
 	return accessToken, refreshToken, nil
 }
 
-func generateToken(userID int, email, fullName, role string, sessionVersion int, tokenType string, expiration time.Duration) (string, error) {
+func generateToken(userID int, email, fullName, role string, tokenType string, expiration time.Duration) (string, error) {
 	key, err := activeSecret()
 	if err != nil {
 		return "", err
@@ -87,12 +86,11 @@ func generateToken(userID int, email, fullName, role string, sessionVersion int,
 
 	now := timeutil.GetNow()
 	claims := Claims{
-		UserID:         userID,
-		Email:          email,
-		FullName:       fullName,
-		Role:           role,
-		SessionVersion: sessionVersion,
-		TokenType:      tokenType,
+		UserID:    userID,
+		Email:     email,
+		FullName:  fullName,
+		Role:      role,
+		TokenType: tokenType,
 		RegisteredClaims: jwtlib.RegisteredClaims{
 			IssuedAt:  jwtlib.NewNumericDate(now),
 			ExpiresAt: jwtlib.NewNumericDate(now.Add(expiration)),

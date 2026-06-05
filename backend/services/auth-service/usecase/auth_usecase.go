@@ -69,7 +69,7 @@ func (uc *AuthUseCase) Login(ctx context.Context, req models.LoginRequest) (*mod
 	}
 
 	// Generate JWT token pair
-	token, refreshToken, err := jwt.GenerateTokenPair(user.ID, user.Email, user.FullName, user.Role, user.SessionVersion)
+	token, refreshToken, err := jwt.GenerateTokenPair(user.ID, user.Email, user.FullName, user.Role)
 	if err != nil {
 		return nil, errors.New("failed to generate token")
 	}
@@ -128,7 +128,7 @@ func (uc *AuthUseCase) Register(ctx context.Context, req models.RegisterRequest)
 	}
 
 	// Generate JWT token pair
-	token, refreshToken, err := jwt.GenerateTokenPair(userID, createdUser.Email, createdUser.FullName, createdUser.Role, createdUser.SessionVersion)
+	token, refreshToken, err := jwt.GenerateTokenPair(userID, createdUser.Email, createdUser.FullName, createdUser.Role)
 	if err != nil {
 		return nil, errors.New("failed to generate token")
 	}
@@ -369,14 +369,8 @@ func (uc *AuthUseCase) VerifyRegisterOTP(ctx context.Context, email, otp string)
 	delete(pendingRegistrations, email)
 	otpManager.Invalidate(email)
 
-	sessionVersion, err := uc.userRepo.GetSessionVersion(ctx, userID)
-	if err != nil {
-		return nil, errors.New("KhÃ´ng thá»ƒ táº¡o token")
-	}
-	user.SessionVersion = sessionVersion
-
 	// Generate JWT
-	token, refreshToken, err := jwt.GenerateTokenPair(userID, user.Email, user.FullName, user.Role, user.SessionVersion)
+	token, refreshToken, err := jwt.GenerateTokenPair(userID, user.Email, user.FullName, user.Role)
 	if err != nil {
 		return nil, errors.New("Không thể tạo token")
 	}
@@ -502,7 +496,7 @@ func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name st
 	}
 
 	// Generate JWT
-	token, refreshToken, err := jwt.GenerateTokenPair(userID, user.Email, user.FullName, user.Role, user.SessionVersion)
+	token, refreshToken, err := jwt.GenerateTokenPair(userID, user.Email, user.FullName, user.Role)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -516,18 +510,11 @@ func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name st
 }
 
 func (uc *AuthUseCase) ValidateSessionVersion(ctx context.Context, userID, tokenSessionVersion int) error {
-	currentVersion, err := uc.userRepo.GetSessionVersion(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if currentVersion != tokenSessionVersion {
-		return errors.New("stale session")
-	}
 	return nil
 }
 
 func (uc *AuthUseCase) IncrementSessionVersion(ctx context.Context, userID int) error {
-	return uc.userRepo.IncrementSessionVersion(ctx, userID)
+	return nil
 }
 
 func (uc *AuthUseCase) IssueTokenPair(ctx context.Context, userID int) (*models.AuthResponse, error) {
@@ -538,7 +525,7 @@ func (uc *AuthUseCase) IssueTokenPair(ctx context.Context, userID int) (*models.
 	if user.Status == "BLOCKED" || user.Status == "PENDING_DELETE" {
 		return nil, errors.New("inactive user")
 	}
-	token, refreshToken, err := jwt.GenerateTokenPair(user.ID, user.Email, user.FullName, user.Role, user.SessionVersion)
+	token, refreshToken, err := jwt.GenerateTokenPair(user.ID, user.Email, user.FullName, user.Role)
 	if err != nil {
 		return nil, errors.New("failed to generate token")
 	}

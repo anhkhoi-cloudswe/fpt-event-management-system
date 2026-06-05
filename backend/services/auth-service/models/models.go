@@ -17,7 +17,6 @@ type User struct {
 	DeletedAt      *time.Time `json:"deletedAt" db:"deleted_at"`
 	Theme          string     `json:"theme" db:"theme"`
 	Language       string     `json:"language" gorm:"column:language;default:vi" db:"language"`
-	SessionVersion int        `json:"-" db:"session_version"`
 	// Wallet field removed - balance now queried from wallets table for O(1) lookup
 }
 

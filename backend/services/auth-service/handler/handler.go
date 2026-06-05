@@ -158,12 +158,6 @@ func NewAuthHandlerWithDB(dbConn *sql.DB) *AuthHandler {
 }
 
 func ensureAuthSessionSchema(dbConn *sql.DB) {
-	if dbConn == nil {
-		return
-	}
-	if _, err := dbConn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0`); err != nil {
-		log.Warn("Failed to ensure users.session_version exists", "error", err)
-	}
 }
 
 // verifyRecaptcha verifies reCAPTCHA token if configured
@@ -328,9 +322,6 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 	if err != nil {
 		return createErrorResponse(http.StatusUnauthorized, "Invalid authentication token")
 	}
-	if err := h.useCase.ValidateSessionVersion(ctx, claims.UserID, claims.SessionVersion); err != nil {
-		return createErrorResponse(http.StatusUnauthorized, "Stale authentication session")
-	}
 
 	user, err := h.useCase.GetUserByEmail(ctx, claims.Email)
 	if err != nil || user == nil {
@@ -380,11 +371,6 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 // HandleLogout handles POST /api/logout
 // It clears the HttpOnly token cookie on client side.
 func (h *AuthHandler) HandleLogout(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	if token := extractToken(request); token != "" {
-		if claims, err := jwt.ValidateToken(token); err == nil && claims != nil {
-			_ = h.useCase.IncrementSessionVersion(ctx, claims.UserID)
-		}
-	}
 
 	resp := map[string]interface{}{
 		"status":  "success",
@@ -509,9 +495,6 @@ func (h *AuthHandler) HandleRefresh(ctx context.Context, request events.APIGatew
 	claims, err := jwt.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return responseWithCookies(http.StatusUnauthorized, map[string]string{"error": "Invalid refresh token"}, clearAuthCookies())
-	}
-	if err := h.useCase.ValidateSessionVersion(ctx, claims.UserID, claims.SessionVersion); err != nil {
-		return responseWithCookies(http.StatusUnauthorized, map[string]string{"error": "Stale refresh token"}, clearAuthCookies())
 	}
 
 	authResponse, err := h.useCase.IssueTokenPair(ctx, claims.UserID)
