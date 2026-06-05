@@ -85,6 +85,7 @@ type eventDetailResponse struct {
 	AreaID    *int    `json:"areaId"`
 	Venue     *string `json:"venueName"`
 	AreaName  *string `json:"areaName"`
+	BannerURL *string `json:"bannerUrl"`
 }
 
 // ============================================================
@@ -555,6 +556,9 @@ func (r *TicketRepository) enrichTicketRows(ctx context.Context, client *utils.I
 			}
 			if evt.Venue != nil {
 				ticket.VenueName = evt.Venue
+			}
+			if evt.BannerURL != nil {
+				ticket.BannerURL = evt.BannerURL
 			}
 		}
 

@@ -1071,7 +1071,7 @@ export default function Payment() {
       {/* Link về dashboard, chuyển trang trong SPA, không reload */}
       <Link
         to="/dashboard" // route dashboard
-        className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
+        className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 dark:text-slate-400 dark:hover:text-slate-200"
       >
         {/* Icon mũi tên */}
         <ArrowLeft className="w-4 h-4 mr-2" />
@@ -1081,18 +1081,18 @@ export default function Payment() {
 
       {/* -------------------- CARD CHÍNH -------------------- */}
       {/* Card nền trắng + shadow */}
-      <div className="bg-white rounded-lg shadow-md p-8">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-8 border border-transparent dark:border-slate-800/85">
         {/* ========== HEADER ========== */}
         <div className="flex items-center mb-6">
           {/* Icon tròn xanh nhạt */}
-          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-            <CreditCard className="w-5 h-5 text-blue-600" />
+          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center mr-3">
+            <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
 
           {/* Tiêu đề + mô tả */}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Thanh toán vé</h1>
-            <p className="text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Thanh toán vé</h1>
+            <p className="text-sm text-gray-500 dark:text-slate-400">
               Xác nhận thông tin và tiến hành thanh toán qua VNPay.
             </p>
           </div>
@@ -1100,13 +1100,13 @@ export default function Payment() {
 
         {/* ⏳ Page-Level Countdown Timer & Active Cancel Button */}
         {bankTransferOrder && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center space-x-3 text-red-700 w-full sm:w-auto">
-              <Clock className="w-5 h-5 flex-shrink-0 text-red-600 animate-pulse" />
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center space-x-3 text-red-700 dark:text-red-400 w-full sm:w-auto">
+              <Clock className="w-5 h-5 flex-shrink-0 text-red-600 dark:text-red-450 animate-pulse" />
               <div>
                 <p className="text-sm font-bold">Giao dịch đang được xử lý (Giữ ghế tạm thời)</p>
-                <p className="text-xs text-red-600 mt-0.5">
-                  Thời gian giữ vé còn lại: <span className="font-mono font-bold text-sm bg-red-100 px-2 py-0.5 rounded text-red-800 ml-1">{formatTimeLeft(timeLeft)}</span>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                  Thời gian giữ vé còn lại: <span className="font-mono font-bold text-sm bg-red-100 dark:bg-red-900/50 px-2 py-0.5 rounded text-red-800 dark:text-red-200 ml-1">{formatTimeLeft(timeLeft)}</span>
                 </p>
               </div>
             </div>
@@ -1122,17 +1122,17 @@ export default function Payment() {
 
         {/* ========== THÔNG TIN VÉ ========== */}
         {/* Box hiển thị thông tin vé để user xác nhận trước khi trả tiền */}
-        <div className="border rounded-lg p-4 mb-6 bg-gray-50">
-          <h2 className="text-sm font-semibold text-gray-700 mb-2">
+        <div className="border dark:border-slate-800 rounded-lg p-4 mb-6 bg-gray-50 dark:bg-slate-800/40">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">
             Thông tin vé
           </h2>
 
           {/* Danh sách thông tin vé */}
-          <div className="space-y-1 text-sm text-gray-600">
+          <div className="space-y-1 text-sm text-gray-600 dark:text-slate-350">
             {/* ----- Tên sự kiện ----- */}
             <p>
               Sự kiện:{' '}
-              <span className="font-medium">
+              <span className="font-medium text-gray-800 dark:text-slate-200">
                 {/* Nếu state.eventTitle không có thì hiển thị fallback */}
                 {state.eventTitle || 'Sự kiện demo (mock)'}
               </span>
@@ -1148,7 +1148,7 @@ export default function Payment() {
             {state.ticketBreakdown && state.ticketBreakdown.length > 0 ? (
               <p>
                 Loại vé:{' '}
-                <span className="font-medium">
+                <span className="font-medium text-gray-800 dark:text-slate-200">
                   {/* Duyệt qua từng loại vé và hiển thị: "Tên x Số lượng" */}
                   {state.ticketBreakdown.map((t, idx) => (
                     <span key={idx}>
@@ -1162,7 +1162,7 @@ export default function Payment() {
             ) : state.ticketName ? (
               <p>
                 Loại vé:{' '}
-                <span className="font-medium">{state.ticketName}</span>
+                <span className="font-medium text-gray-800 dark:text-slate-200">{state.ticketName}</span>
               </p>
             ) : null}
 
@@ -1172,7 +1172,7 @@ export default function Payment() {
               (state.seatCodes && state.seatCodes.length > 0)) && (
                 <p>
                   Vị trí ghế:{' '}
-                  <span className="font-medium">
+                  <span className="font-medium text-gray-800 dark:text-slate-200">
                     {/* Nếu có rowNo thì hiển thị "Hàng X" */}
                     {state.rowNo ? `Hàng ${state.rowNo}` : ''}
 
@@ -1194,7 +1194,7 @@ export default function Payment() {
             {/* ----- Số tiền ----- */}
             <p>
               Số tiền:{' '}
-              <span className="font-semibold text-gray-900">
+              <span className="font-semibold text-gray-900 dark:text-white">
                 {/*
                   toLocaleString('vi-VN'): format số theo chuẩn VN
                   Ví dụ: 1000000 → "1.000.000"
@@ -1210,7 +1210,7 @@ export default function Payment() {
             {/* ----- Chi tiết tính tiền (nếu có) ----- */}
             {/* Nếu có quantity và pricePerTicket → hiển thị "SL x giá" */}
             {state.quantity && state.pricePerTicket && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-550 dark:text-slate-400">
                 {state.quantity} x {state.pricePerTicket.toLocaleString('vi-VN')}{' '}
                 đ
               </p>
@@ -1226,7 +1226,7 @@ export default function Payment() {
             Dùng <select> để sau này dễ mở rộng (Momo, ZaloPay...)
           */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-350 mb-2">
               Phương thức thanh toán
             </label>
 
@@ -1235,7 +1235,7 @@ export default function Payment() {
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value as any)}
               disabled={isEventExpired || checkingEventTime}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500 dark:disabled:bg-slate-800/50 dark:disabled:text-slate-500"
             >
               <option value="wallet">Wallet (Ví nội bộ)</option>
               <option value="bank_transfer">Chuyển khoản Ngân hàng (VietQR / SePay)</option>
@@ -1244,7 +1244,7 @@ export default function Payment() {
 
           {/* ⭐ NEW: Event Expired Warning */}
           {isEventExpired && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-lg">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -1252,10 +1252,10 @@ export default function Payment() {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-semibold text-red-800">
+                  <h3 className="text-sm font-semibold text-red-800 dark:text-red-400">
                     Ngừng bán vé
                   </h3>
-                  <div className="mt-2 text-sm text-red-700">
+                  <div className="mt-2 text-sm text-red-700 dark:text-red-300">
                     <p>Cổng bán vé đã đóng vì sự kiện đã bắt đầu hoặc đã kết thúc (vào lúc {eventStartTime ? formatVietnamDateTime(eventStartTime, 'dd/MM/yyyy HH:mm') : 'thời điểm xác định'}). Vui lòng chọn sự kiện khác.</p>
                   </div>
                 </div>
@@ -1265,7 +1265,7 @@ export default function Payment() {
 
           {/* ----- Wallet Balance Warning ----- */}
           {paymentMethod === 'wallet' && isWalletDisabled && !isEventExpired && (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-lg">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
@@ -1273,15 +1273,15 @@ export default function Payment() {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-semibold text-amber-800">
+                  <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-400">
                     Số dư ví không đủ
                   </h3>
-                  <div className="mt-2 text-sm text-amber-700">
+                  <div className="mt-2 text-sm text-amber-700 dark:text-amber-350">
                     <p>Số dư hiện tại: <span className="font-bold">{(walletBalance || 0).toLocaleString('vi-VN')} đ</span></p>
                     <p>Số tiền cần thanh toán: <span className="font-bold">{totalAmount.toLocaleString('vi-VN')} đ</span></p>
-                    <p className="mt-1">Thiếu: <span className="font-bold text-amber-900">{insufficientAmount.toLocaleString('vi-VN')} đ</span></p>
+                    <p className="mt-1">Thiếu: <span className="font-bold text-amber-950 dark:text-amber-200">{(insufficientAmount).toLocaleString('vi-VN')} đ</span></p>
                   </div>
-                  <p className="mt-3 text-sm text-amber-700">
+                  <p className="mt-3 text-sm text-amber-700 dark:text-amber-400">
                     💡 Vui lòng sử dụng <span className="font-semibold">Chuyển khoản Ngân hàng</span> để thanh toán
                   </p>
                 </div>
@@ -1311,8 +1311,8 @@ export default function Payment() {
               isEventExpired ||
               checkingEventTime ||
               creatingOrder
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600'
+              : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
               }`}
           >
             <CreditCard className="w-5 h-5 mr-2" />
@@ -1329,7 +1329,7 @@ export default function Payment() {
 
           {/* ----- Ghi chú ----- */}
           {/* &quot; là HTML entity cho dấu ngoặc kép " để JSX không lỗi */}
-          <p className="text-xs text-gray-400 text-center">
+          <p className="text-xs text-gray-400 dark:text-slate-500 text-center">
             {isEventExpired ? (
               <>Sự kiện đã bắt đầu. Vui lòng quay lại trang chủ để xem các sự kiện khác.</>
             ) : checkingEventTime ? (

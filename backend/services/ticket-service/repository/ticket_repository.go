@@ -86,7 +86,8 @@ func (r *TicketRepository) GetTicketsByUserID(ctx context.Context, userID int) (
 			ct.price AS category_price,
 			s.seat_code,
 			u.full_name AS buyer_name,
-			e.start_time AS purchase_date
+			e.start_time AS purchase_date,
+			e.banner_url
 		FROM Ticket t
 		LEFT JOIN Event e ON t.event_id = e.event_id
 		LEFT JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
@@ -119,6 +120,7 @@ func (r *TicketRepository) GetTicketsByUserID(ctx context.Context, userID int) (
 			seatCode      sql.NullString
 			buyerName     sql.NullString
 			purchaseDate  sql.NullTime
+			bannerURL     sql.NullString
 		)
 
 		err := rows.Scan(
@@ -135,6 +137,7 @@ func (r *TicketRepository) GetTicketsByUserID(ctx context.Context, userID int) (
 			&seatCode,
 			&buyerName,
 			&purchaseDate,
+			&bannerURL,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan ticket: %w", err)
@@ -172,6 +175,9 @@ func (r *TicketRepository) GetTicketsByUserID(ctx context.Context, userID int) (
 		}
 		if purchaseDate.Valid {
 			ticket.PurchaseDate = &purchaseDate.Time
+		}
+		if bannerURL.Valid {
+			ticket.BannerURL = &bannerURL.String
 		}
 
 		tickets = append(tickets, ticket)
@@ -238,7 +244,8 @@ func (r *TicketRepository) GetTicketsByUserIDPaginated(ctx context.Context, user
 			ct.price AS category_price,
 			s.seat_code,
 			u.full_name AS buyer_name,
-			e.start_time AS purchase_date
+			e.start_time AS purchase_date,
+			e.banner_url
 		FROM Ticket t
 		LEFT JOIN Event e ON t.event_id = e.event_id
 		LEFT JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
@@ -273,6 +280,7 @@ func (r *TicketRepository) GetTicketsByUserIDPaginated(ctx context.Context, user
 			seatCode      sql.NullString
 			buyerName     sql.NullString
 			purchaseDate  sql.NullTime
+			bannerURL     sql.NullString
 		)
 
 		err := rows.Scan(
@@ -289,6 +297,7 @@ func (r *TicketRepository) GetTicketsByUserIDPaginated(ctx context.Context, user
 			&seatCode,
 			&buyerName,
 			&purchaseDate,
+			&bannerURL,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan ticket: %w", err)
@@ -326,6 +335,9 @@ func (r *TicketRepository) GetTicketsByUserIDPaginated(ctx context.Context, user
 		}
 		if purchaseDate.Valid {
 			ticket.PurchaseDate = &purchaseDate.Time
+		}
+		if bannerURL.Valid {
+			ticket.BannerURL = &bannerURL.String
 		}
 
 		tickets = append(tickets, ticket)
@@ -1055,13 +1067,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			bookedIDsFree = append(bookedIDsFree, int(tid))
 		}
 
-		// Update seats to BOOKED status
-		for _, seatID := range seatIDs {
-			_, err = tx.ExecContext(ctx, "UPDATE Seat SET status = 'BOOKED' WHERE seat_id = $1", seatID)
-			if err != nil {
-				return 0, 0, apperrors.DatabaseError(err)
-			}
-		}
+
 
 		if err = tx.Commit(); err != nil {
 			return 0, 0, apperrors.DatabaseError(err)
@@ -2642,12 +2648,7 @@ func (r *TicketRepository) ProcessWalletPaymentForExistingBill(ctx context.Conte
 		return "", fmt.Errorf("error updating bill to PAID: %w", err)
 	}
 
-	for _, t := range tickets {
-		_, err = tx.ExecContext(ctx, "UPDATE Seat SET status = 'BOOKED' WHERE seat_id = $1", t.seatID)
-		if err != nil {
-			return "", fmt.Errorf("error updating seat status: %w", err)
-		}
-	}
+
 
 	newBalance := currentBalance - float64(amount)
 	_, err = tx.ExecContext(ctx, "UPDATE Wallet SET balance = $1 WHERE wallet_id = $2", newBalance, walletID)

@@ -23,6 +23,7 @@ type MyTicketResponse struct {
 	BuyerName     *string    `json:"buyerName"`
 	BuyerEmail    *string    `json:"buyerEmail"`
 	PurchaseDate  *time.Time `json:"purchaseDate"`
+	BannerURL     *string    `json:"bannerUrl"`
 }
 
 // ============================================================

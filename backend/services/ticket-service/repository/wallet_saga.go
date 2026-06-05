@@ -727,10 +727,7 @@ func (r *TicketRepository) resumeTicketsInDB(ctx context.Context, userID int, pe
 			return nil, nil, fmt.Errorf("error updating ticket status: %w", err)
 		}
 
-		_, err = tx.ExecContext(ctx, "UPDATE Seat SET status = 'BOOKED' WHERE seat_id = $1", t.seatID)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error updating seat status: %w", err)
-		}
+
 
 		selectQuery := `
 			SELECT 
@@ -818,14 +815,7 @@ func (r *TicketRepository) compensateResumedTickets(ctx context.Context, ticketI
 			log.Error("[COMPENSATION] Failed to reset ticket %d: %v", tid, err)
 		}
 		
-		var seatID int
-		err = r.db.QueryRowContext(ctx, "SELECT seat_id FROM Ticket WHERE ticket_id = $1", tid).Scan(&seatID)
-		if err == nil {
-			_, err = r.db.ExecContext(ctx, "UPDATE Seat SET status = 'ACTIVE' WHERE seat_id = $1", seatID)
-			if err != nil {
-				log.Error("[COMPENSATION] Failed to reset seat %d status: %v", seatID, err)
-			}
-		}
+
 	}
 	
 	_, err := r.db.ExecContext(ctx, "UPDATE Bill SET payment_status = 'PENDING' WHERE bill_id = $1", pendingBillID)

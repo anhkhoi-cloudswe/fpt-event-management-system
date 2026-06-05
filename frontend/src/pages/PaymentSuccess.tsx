@@ -13,6 +13,16 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { emitWalletRefresh } from '../hooks/useWallet'
 
+interface PurchasedTicket {
+  ticketId: number
+  eventName: string
+  venueName: string
+  startTime: string
+  category: string
+  seatCode: string
+  price: number
+}
+
 // Component trang PaymentSuccess: hiển thị khi thanh toán VNPay thành công
 export default function PaymentSuccess() {
   // Lấy thông tin location hiện tại (có location.search = "?status=success&ticketIds=...")
@@ -140,6 +150,75 @@ export default function PaymentSuccess() {
     }
   }, [location, navigate, setUser]) // dependency: chạy lại khi query string hoặc navigate thay đổi
 
+  useEffect(() => {
+    if (!ticketIds) return;
+    
+    const fetchTicketDetails = async () => {
+      setLoadingDetails(true);
+      try {
+        const idList = ticketIds.split(',').map(id => Number(id.trim())).filter(id => !isNaN(id));
+        if (idList.length === 0) {
+          setLoadingDetails(false);
+          return;
+        }
+
+        const res = await fetch(`/api/registrations/my-tickets?page=1&limit=50`, {
+          credentials: 'include',
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          const allTickets = Array.isArray(data.tickets) ? data.tickets : [];
+          
+          const matching: PurchasedTicket[] = [];
+          allTickets.forEach((t: any) => {
+            const id = t.ticketId ?? t.id;
+            if (id && idList.includes(Number(id))) {
+              matching.push({
+                ticketId: Number(id),
+                eventName: t.eventName || t.eventTitle || t.title || 'Sự kiện',
+                venueName: t.venueName || t.location || 'Đang cập nhật địa điểm',
+                startTime: t.startTime || t.eventStartTime || t.startDate || '',
+                category: t.category || 'Vé tiêu chuẩn',
+                seatCode: t.seatCode || t.seatNumber || '',
+                price: t.categoryPrice || 0
+              });
+            }
+          });
+          
+          setPurchasedTickets(matching);
+        }
+      } catch (err) {
+        console.error('Error fetching purchased ticket details:', err);
+      } finally {
+        setLoadingDetails(false);
+      }
+    };
+
+    fetchTicketDetails();
+  }, [ticketIds]);
+
+  const formatTicketTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return '';
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = (d.getMonth() + 1).toString().padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = d.getHours().toString().padStart(2, '0');
+      const minutes = d.getMinutes().toString().padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch (_) {
+      return '';
+    }
+  };
+
+  // Group matching tickets by event name/eventId
+  const firstTicket = purchasedTickets[0];
+  const allSeats = purchasedTickets.map(t => t.seatCode).filter(Boolean);
+  const totalSum = purchasedTickets.reduce((acc, t) => acc + t.price, 0);
+
   /**
    * ===================== RENDER UI =====================
    * Trang này hiển thị:
@@ -153,7 +232,7 @@ export default function PaymentSuccess() {
    */
   return (
     // Wrapper căn giữa cả trang với gradient background đẹp mắt
-    <div className="relative flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 overflow-hidden">
+    <div className="relative flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 overflow-hidden">
       {/* Confetti Animation Background */}
       {showConfetti && (
         <div className="absolute inset-0 pointer-events-none">
@@ -178,7 +257,7 @@ export default function PaymentSuccess() {
       )}
 
       {/* Card với animation và shadow đẹp hơn */}
-      <div className="relative z-10 bg-white rounded-2xl shadow-2xl p-12 max-w-lg w-full mx-4 transform transition-all duration-500 hover:shadow-3xl animate-fade-in-up">
+      <div className="relative z-10 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-12 max-w-lg w-full mx-4 transform transition-all duration-500 hover:shadow-3xl dark:border dark:border-slate-800/85 animate-fade-in-up">
         {/* Icon check xanh với animation pulse */}
         <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full mb-6 mx-auto block animate-bounce-slow shadow-lg">
           <CheckCircle2 className="w-14 h-14 text-white" strokeWidth={3} />
@@ -191,7 +270,7 @@ export default function PaymentSuccess() {
 
         {/* Payment method badge */}
         <div className="flex justify-center mb-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800/60 dark:to-slate-850/60 border border-blue-200 dark:border-slate-800">
             {paymentMethod === 'wallet' ? (
               <>
                 <Wallet className="w-4 h-4 text-purple-600" />
@@ -220,17 +299,17 @@ export default function PaymentSuccess() {
 
         {/* Mô tả với styling đẹp hơn */}
         <div className="space-y-4 mb-8">
-          <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
-            <Ticket className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-gray-700 leading-relaxed">
-              Vé của bạn đã được <span className="font-semibold text-green-700">tạo thành công</span> và sẵn sàng sử dụng!
+          <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-emerald-950/20 dark:to-emerald-950/10 rounded-xl border border-green-200 dark:border-emerald-900/30">
+            <Ticket className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-gray-700 dark:text-slate-350 leading-relaxed">
+              Vé của bạn đã được <span className="font-semibold text-green-700 dark:text-green-400">tạo thành công</span> và sẵn sàng sử dụng!
             </p>
           </div>
 
-          <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
-            <Mail className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-gray-700 leading-relaxed">
-              Email xác nhận với <span className="font-semibold text-blue-700">mã QR check-in</span> và <span className="font-semibold text-blue-700">file PDF</span> đã được gửi đến hộp thư của bạn
+          <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/10 rounded-xl border border-blue-200 dark:border-blue-900/30">
+            <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-gray-700 dark:text-slate-350 leading-relaxed">
+              Email xác nhận với <span className="font-semibold text-blue-700 dark:text-blue-400">mã QR check-in</span> và <span className="font-semibold text-blue-700 dark:text-blue-400">file PDF</span> đã được gửi đến hộp thư của bạn
             </p>
           </div>
 
@@ -240,19 +319,69 @@ export default function PaymentSuccess() {
               <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
-              <p className="text-sm text-yellow-800 font-medium leading-relaxed">
+              <p className="text-sm text-yellow-850 dark:text-yellow-200 font-medium leading-relaxed">
                 ⚠️ Giao dịch thành công nhưng gửi mail gặp sự cố, vui lòng tải vé thủ công từ mục <strong>"Vé của tôi"</strong>.
               </p>
             </div>
           )}
         </div>
 
+        {/* Ticket Details Receipt */}
+        {loadingDetails ? (
+          <div className="my-6 p-6 border border-gray-100 dark:border-slate-800 rounded-2xl bg-gray-50/50 dark:bg-slate-900/40 flex flex-col items-center justify-center gap-2">
+            <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs text-slate-500 dark:text-slate-400">Đang tải thông tin chi tiết vé...</p>
+          </div>
+        ) : purchasedTickets.length > 0 && firstTicket ? (
+          <div className="my-6 p-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/80 dark:bg-slate-900/40 text-left space-y-3.5 relative overflow-hidden">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white dark:bg-slate-900 rounded-full" />
+            
+            <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-200 border-b border-slate-200/60 dark:border-slate-800 pb-2.5 flex items-center justify-between">
+              <span>CHI TIẾT MUA VÉ</span>
+              <span className="text-xs font-mono font-bold text-slate-400">RECEIPT</span>
+            </h3>
+            
+            <div className="space-y-2 text-xs font-bold text-slate-500 dark:text-slate-400">
+              <div className="flex justify-between items-start gap-4">
+                <span className="font-semibold text-slate-450 dark:text-slate-500">Sự kiện</span>
+                <span className="text-slate-850 dark:text-slate-200 text-right">{firstTicket.eventName}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-slate-455 dark:text-slate-500">Thời gian</span>
+                <span className="text-slate-855 dark:text-slate-200">{formatTicketTime(firstTicket.startTime)}</span>
+              </div>
+              <div className="flex justify-between items-start gap-4">
+                <span className="font-semibold text-slate-455 dark:text-slate-500">Địa điểm</span>
+                <span className="text-slate-855 dark:text-slate-200 text-right">{firstTicket.venueName}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-slate-455 dark:text-slate-500">Hạng vé</span>
+                <span className="text-slate-855 dark:text-slate-200">{firstTicket.category}</span>
+              </div>
+              {allSeats.length > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-slate-455 dark:text-slate-500">Ghế ngồi</span>
+                  <span className="text-orange-600 dark:text-orange-400 font-extrabold bg-orange-50 dark:bg-orange-950/30 px-2.5 py-0.5 rounded-md border border-orange-100/40 dark:border-orange-900/30">
+                    {allSeats.join(', ')}
+                  </span>
+                </div>
+              )}
+              <div className="pt-2.5 border-t border-dashed border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <span className="text-sm font-extrabold text-slate-700 dark:text-slate-300">Tổng thanh toán</span>
+                <span className="text-lg font-black text-blue-600 dark:text-blue-400">
+                  {totalSum.toLocaleString('vi-VN')} đ
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {/* Hiển thị mã vé với box đẹp hơn */}
-        {ticketIds && (
-          <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 border-2 border-orange-300 rounded-2xl p-6 mb-8 shadow-inner">
+        {ticketIds && !loadingDetails && purchasedTickets.length === 0 && (
+          <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 dark:from-slate-850/40 dark:via-slate-800/30 dark:to-slate-850/40 border-2 border-orange-300 dark:border-orange-550/40 rounded-2xl p-6 mb-8 shadow-inner">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <Ticket className="w-5 h-5 text-orange-600" />
-              <p className="text-sm font-medium text-gray-600">Danh sách mã vé của bạn</p>
+              <Ticket className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+              <p className="text-sm font-medium text-gray-600 dark:text-slate-350">Danh sách mã vé của bạn</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               {(() => {
@@ -276,7 +405,7 @@ export default function PaymentSuccess() {
                 }
               })()}
             </div>
-            <p className="text-xs text-center text-gray-500 mt-4">
+            <p className="text-xs text-center text-gray-500 dark:text-slate-450 mt-4">
               Lưu lại mã này để tra cứu vé
             </p>
           </div>
@@ -299,15 +428,15 @@ export default function PaymentSuccess() {
           {/* Nút phụ: Về trang chính */}
           <button
             onClick={() => navigate('/')}
-            className="w-full px-6 py-4 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:border-gray-400 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md"
+            className="w-full px-6 py-4 rounded-xl border-2 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 font-semibold hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 dark:hover:from-slate-800 dark:hover:to-slate-850 hover:border-gray-400 dark:hover:border-slate-600 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md"
           >
             🏠 Về trang chính
           </button>
         </div>
 
         {/* Thông tin hữu ích */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-slate-800">
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-slate-450">
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
             </svg>

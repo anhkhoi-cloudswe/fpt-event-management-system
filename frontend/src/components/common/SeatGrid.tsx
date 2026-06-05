@@ -272,9 +272,9 @@ export function SeatGrid({
       return 'bg-red-500 text-white cursor-not-allowed border-red-650'
     }
 
-    // Nếu ghế đang giữ chỗ / hold => xám, disable
+    // Nếu ghế đang giữ chỗ / hold (Đang giao dịch) => bg-amber-500 border-amber-600 text-white cursor-not-allowed
     if (seatStatus === 'PENDING') {
-      return 'border-gray-400 dark:border-slate-700 bg-gray-200 dark:bg-slate-800 cursor-not-allowed text-gray-700 dark:text-slate-450'
+      return 'bg-amber-500 border-amber-600 text-white cursor-not-allowed font-medium'
     }
 
     // Available: bg-slate-200 dark:bg-slate-800 text-slate-400
@@ -432,6 +432,10 @@ export function SeatGrid({
           <div className="flex items-center">
             <div className="w-6 h-6 bg-green-500 animate-pulse border-2 border-green-600 rounded mr-1.5"></div>
             <span className="text-gray-650 dark:text-slate-400">Đang chọn (Selected)</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-6 h-6 bg-amber-500 border-2 border-amber-600 rounded mr-1.5"></div>
+            <span className="text-gray-650 dark:text-slate-400">Đang giao dịch (Pending)</span>
           </div>
           <div className="flex items-center">
             <div className="w-6 h-6 bg-red-500 border-2 border-red-650 rounded mr-1.5"></div>
