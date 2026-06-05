@@ -1,4 +1,4 @@
-import { Building2, PlusCircle, X } from 'lucide-react'
+import { Building2, PlusCircle, X, Edit2, Trash2 } from 'lucide-react'
 import { Area } from '../../services/venueService'
 
 interface AreaListSectionProps {
@@ -91,17 +91,19 @@ export default function AreaListSection({
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-5 border-t border-slate-100/60 dark:border-slate-800/80 pt-4">
+                <div className="flex gap-2.5 mt-5 border-t border-slate-100/60 dark:border-slate-800/80 pt-4">
                   <button
                     onClick={() => onEdit(area)}
-                    className="flex-1 px-3 py-2.5 text-xs font-bold text-orange-650 dark:text-orange-400 bg-orange-50/50 dark:bg-slate-850 border border-orange-200/20 dark:border-slate-700 hover:bg-orange-100/50 dark:hover:bg-slate-800 transition-all duration-300 active:scale-95"
+                    className="flex-1 rounded-xl flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-orange-700 dark:text-orange-400 bg-orange-50 hover:bg-orange-100 border border-orange-200/40 dark:bg-orange-950/20 dark:border-orange-900/30 dark:hover:bg-orange-950/40 transition-all duration-300 active:scale-95"
                   >
+                    <Edit2 className="w-3.5 h-3.5" />
                     Chỉnh sửa
                   </button>
                   <button
                     onClick={() => onDelete(area.areaId)}
-                    className="flex-1 px-3 py-2.5 text-xs font-bold text-red-650 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 border border-red-200/20 dark:border-slate-700 hover:bg-red-100/50 dark:hover:bg-red-950/40 transition-all duration-300 active:scale-95"
+                    className="flex-1 rounded-xl flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-red-700 dark:text-red-450 bg-red-50 hover:bg-red-100 border border-red-200/40 dark:bg-red-950/20 dark:border-red-900/30 dark:hover:bg-red-950/40 transition-all duration-300 active:scale-95"
                   >
+                    <Trash2 className="w-3.5 h-3.5" />
                     Xóa
                   </button>
                 </div>
