@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import axios from 'axios'
 
-const AUTH_ME_ENDPOINTS = ['/api/auth/me', '/api/v1/auth/me'] as const
+const AUTH_ME_ENDPOINTS = ['/api/auth/me'] as const
 
 export type UserRole = 'STUDENT' | 'ORGANIZER' | 'STAFF' | 'ADMIN'
 
@@ -74,8 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUserFromMe = useCallback(async (): Promise<User | null> => {
     for (const endpoint of AUTH_ME_ENDPOINTS) {
       try {
-        const separator = endpoint.includes('?') ? '&' : '?'
-        const res = await fetch(`${endpoint}${separator}t=${Date.now()}`, {
+        const res = await fetch(endpoint, {
           method: 'GET',
           cache: 'no-store',
           credentials: 'include',
@@ -98,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return null
         }
 
-        // Allow fallback to legacy route when primary endpoint is unavailable.
+        // Allow fallback to alternate profile routes when configured.
         if (res.status === 404) {
           continue
         }

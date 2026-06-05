@@ -220,16 +220,16 @@ func authCookies(authResponse *models.AuthResponse) []string {
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteNoneMode,
 		MaxAge:   int((15 * time.Minute).Seconds()),
 	}
 	refreshCookie := http.Cookie{
 		Name:     "refresh_token",
 		Value:    authResponse.RefreshToken,
-		Path:     "/api/auth/refresh",
+		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteNoneMode,
 		MaxAge:   int((7 * 24 * time.Hour).Seconds()),
 	}
 	if authResponse.User.Role == "ADMIN" || authResponse.User.Role == "STAFF" {
@@ -240,8 +240,8 @@ func authCookies(authResponse *models.AuthResponse) []string {
 
 func clearAuthCookies() []string {
 	return []string{
-		(&http.Cookie{Name: "token", Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode, MaxAge: -1}).String(),
-		(&http.Cookie{Name: "refresh_token", Value: "", Path: "/api/auth/refresh", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode, MaxAge: -1}).String(),
+		(&http.Cookie{Name: "token", Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode, MaxAge: -1}).String(),
+		(&http.Cookie{Name: "refresh_token", Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode, MaxAge: -1}).String(),
 	}
 }
 
@@ -1216,7 +1216,7 @@ func (h *AuthHandler) HandleCloseAccount(ctx context.Context, request events.API
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteNoneMode,
 		MaxAge:   -1,
 	}
 
