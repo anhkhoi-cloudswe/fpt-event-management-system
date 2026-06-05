@@ -320,9 +320,7 @@ export default function OrganizerEventRequests() {
       }
 
       const response = await fetch(url, {
-        headers: {
-          credentials: 'include',
-        },
+        credentials: 'include',
       })
 
       if (response.ok) {
@@ -351,9 +349,7 @@ export default function OrganizerEventRequests() {
       }
 
       const response = await fetch(url, {
-        headers: {
-          credentials: 'include',
-        },
+        credentials: 'include',
       })
 
       if (response.ok) {
@@ -372,17 +368,21 @@ export default function OrganizerEventRequests() {
   }, [])
 
   useEffect(() => {
-    void fetchActiveRequests(1)
-    void fetchArchivedRequests(1)
+    const loadInitialRequests = async () => {
+      await Promise.all([
+        fetchActiveRequests(1),
+        fetchArchivedRequests(1),
+      ])
+    }
+
+    void loadInitialRequests()
   }, [refreshTrigger, fetchActiveRequests, fetchArchivedRequests])
 
   const fetchEventRequestDetail = async (requestId: number) => {
     try {
       setIsDetailLoading(true)
       const response = await fetch(`/api/event-requests/${requestId}`, {
-        headers: {
-          credentials: 'include',
-        },
+        credentials: 'include',
       })
 
       if (response.ok) {
@@ -455,9 +455,9 @@ export default function OrganizerEventRequests() {
 
       const response = await fetch('/api/organizer/events/cancel', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          credentials: 'include',
           'X-User-Id': userIdStr || '',
         },
         body: JSON.stringify(payload),
@@ -552,18 +552,6 @@ export default function OrganizerEventRequests() {
     Number.isFinite(currentPage) &&
     Number.isFinite(currentTotalPages) &&
     Number.isFinite(currentTotalCount)
-
-  if (!canRenderRequestList) {
-    return (
-      <div className="min-h-[60vh] bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-center shadow-sm">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-orange-500 dark:border-slate-700 dark:border-t-orange-400" />
-          <p className="text-base font-bold text-slate-900 dark:text-slate-100">Dang tai danh sach yeu cau</p>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Du lieu dang duoc khoi tao lai an toan.</p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="w-full min-h-screen p-4 md:p-6 text-white bg-transparent">
@@ -731,7 +719,17 @@ export default function OrganizerEventRequests() {
       </div>
 
       {/* Loading Block */}
-      {currentLoading && (
+      {!canRenderRequestList && (
+        <div className="min-h-[60vh] bg-transparent flex items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-center shadow-sm">
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-orange-500 dark:border-slate-700 dark:border-t-orange-400" />
+            <p className="text-base font-bold text-slate-900 dark:text-slate-100">Dang tai danh sach yeu cau</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Du lieu dang duoc khoi tao lai an toan.</p>
+          </div>
+        </div>
+      )}
+
+      {canRenderRequestList && currentLoading && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center shadow-sm">
           <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Đang tải hồ sơ của bạn...</p>
@@ -739,7 +737,7 @@ export default function OrganizerEventRequests() {
       )}
 
       {/* Main List */}
-      {!currentLoading && (
+      {canRenderRequestList && !currentLoading && (
         <>
           {/* Metadata */}
           <div className="mb-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex justify-between items-center flex-wrap gap-2">
