@@ -25,6 +25,7 @@ export interface User {
 interface AuthContextType {
   user: User | null
   isLoading: boolean
+  isAuthenticated: boolean
   token: string | null
   setUser: React.Dispatch<React.SetStateAction<User | null>>
   setToken: (token: string | null) => void
@@ -39,10 +40,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   // Keep token state only for compatibility with existing consumers.
   const [token, setToken] = useState<string | null>(null)
   const isLoadingRef = useRef(true)
+
+  useEffect(() => {
+    setIsAuthenticated(!!user)
+  }, [user])
 
   const [currentLanguage, setCurrentLanguage] = useState<'vi' | 'en'>(() => {
     const saved = localStorage.getItem('language') || localStorage.getItem('user_locale')
@@ -142,11 +148,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const requestUrl = String(error.config?.url ?? '')
           const isMeRequest = requestUrl.includes('/api/v1/auth/me') || requestUrl.includes('/api/auth/me')
 
-          if (!isLoadingRef.current && !isMeRequest &&
-            window.location.pathname !== '/login' &&
-            window.location.pathname !== '/signup' &&
-            window.location.pathname !== '/reset-password' &&
-            window.location.pathname !== '/') {
+          const publicPaths = ['/login', '/signup', '/reset-password', '/guest', '/policy', '/payment-success', '/payment-failed', '/']
+          const isPublicPath = publicPaths.some(p => window.location.pathname === p || window.location.pathname.startsWith(p + '/'))
+
+          if (!isLoadingRef.current && !isMeRequest && !isPublicPath) {
             window.location.href = '/login'
           }
         }
@@ -296,7 +301,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, token, setUser, setToken, login, logout, refreshUser, currentLanguage, changeLanguage }}>
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated, token, setUser, setToken, login, logout, refreshUser, currentLanguage, changeLanguage }}>
       {children}
     </AuthContext.Provider>
   )

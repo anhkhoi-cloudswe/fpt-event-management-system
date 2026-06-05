@@ -36,7 +36,7 @@ import SystemPolicy from './pages/SystemPolicy.tsx'
 import Profile from './pages/Profile.tsx'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
     return (
@@ -44,7 +44,19 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
     )
   }
 
-  return user ? <>{children}</> : <Navigate to="/guest" />
+  return isAuthenticated ? <>{children}</> : <Navigate to="/guest" />
+}
+
+function PublicRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white" />
+    )
+  }
+
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <>{children}</>
 }
 
 function StaffRoute({ children }: { children: ReactNode }) {
@@ -108,14 +120,14 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/guest" element={<GuestLanding />} />
+      <Route path="/guest" element={<PublicRoute><GuestLanding /></PublicRoute>} />
       <Route path="/policy" element={<SystemPolicy />} />
       {/* Public payment callback routes for VNPay redirects */}
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/payment-failed" element={<PaymentFailed />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<SignUp />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
+      <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
       <Route path="/events/:id" element={<EventDetail />} />
       <Route
         path="/dashboard"
