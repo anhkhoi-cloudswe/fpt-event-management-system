@@ -40,7 +40,7 @@ jobs:
         run: |
           # Dùng secrets.RENDER_BACKEND_URL để giữ URL không public trong code
           # Nếu chưa set secret, fallback về placeholder (sẽ fail nhưng không crash workflow)
-          TARGET_URL="${RENDER_BACKEND_URL:-https://your-service-name.onrender.com}"
+          TARGET_URL="${RENDER_BACKEND_URL:-https://fpt-event-management-system.onrender.com}"
           HEALTH_URL="${TARGET_URL}/health"
 
           echo "🏓 Pinging: ${HEALTH_URL}"
