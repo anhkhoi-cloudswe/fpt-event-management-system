@@ -42,7 +42,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUserInternal] = useState<User | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
   // Keep token state only for compatibility with existing consumers.
@@ -50,14 +50,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const isLoadingRef = useRef(true)
 
+  const setUser = useCallback((val: React.SetStateAction<User | null>) => {
+    setUserInternal(prev => {
+      const nextUser = typeof val === 'function' ? (val as Function)(prev) : val
+      setIsAuthenticated(!!nextUser)
+      return nextUser
+    })
+  }, [])
+
   const setToken = (t: string | null) => {
     setTokenState(t)
     setInMemoryToken(t)
   }
-
-  useEffect(() => {
-    setIsAuthenticated(!!user)
-  }, [user])
 
   const [currentLanguage, setCurrentLanguage] = useState<'vi' | 'en'>(() => {
     const saved = localStorage.getItem('language') || localStorage.getItem('user_locale')
