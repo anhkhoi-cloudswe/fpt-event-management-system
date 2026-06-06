@@ -14,7 +14,7 @@ import axios from 'axios'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { API_BASE_URL, setAccessToken } from '../config/api'
+import { API_BASE_URL, setAccessToken, setInMemoryToken } from '../config/api'
 import { useGoogleLogin } from '@react-oauth/google'
 
 import fptLogo from '../assets/fpt-logo.png'
@@ -335,7 +335,7 @@ export default function SignUp() {
       if (response.data.status === 'success') {
         const { user, accessToken } = response.data
         if (accessToken) {
-          setAccessToken(accessToken)
+          setInMemoryToken(accessToken)
         }
         setUser(user)
         setToken(null)

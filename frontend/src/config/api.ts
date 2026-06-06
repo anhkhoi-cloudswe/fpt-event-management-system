@@ -19,8 +19,11 @@ export const api = axios
 let accessToken: string | null = null
 
 export const getAccessToken = () => accessToken
-export const setAccessToken = (token: string | null) => {
+export const setInMemoryToken = (token: string | null) => {
 	accessToken = token
+}
+export const setAccessToken = (token: string | null) => {
+	setInMemoryToken(token)
 }
 
 api.defaults.withCredentials = true
@@ -31,15 +34,15 @@ api.interceptors.request.use((config) => {
 	if (config.url?.startsWith('/api')) {
 		config.url = config.url.replace(/^\/api/, '')
 	}
-	const token = getAccessToken()
-	if (token) {
-		config.headers.Authorization = `Bearer ${token}`
+	if (accessToken) {
+		config.headers.Authorization = `Bearer ${accessToken}`
 	}
 	return config
-})
+}, (error) => Promise.reject(error))
 
 type RetriableRequestConfig = InternalAxiosRequestConfig & {
 	_retry?: boolean
+	isBackgroundRequest?: boolean
 }
 
 const refreshClient = axios.create({
@@ -76,6 +79,7 @@ api.interceptors.response.use(
 
 		const originalRequest = error.config as RetriableRequestConfig | undefined
 		const requestUrl = String(originalRequest?.url ?? '')
+		const isBackground = !!originalRequest?.isBackgroundRequest || !!(originalRequest?.headers as any)?.['isBackgroundRequest']
 
 		if (
 			error.response?.status === 401 &&
@@ -84,7 +88,9 @@ api.interceptors.response.use(
 		) {
 			if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/api/auth/refresh') || originalRequest._retry) {
 				accessToken = null
-				window.location.href = '/guest'
+				if (!isBackground) {
+					window.location.href = '/guest'
+				}
 				return Promise.reject(error)
 			}
 
@@ -104,25 +110,29 @@ api.interceptors.response.use(
 
 			originalRequest._retry = true
 			isRefreshing = true
+			window.dispatchEvent(new CustomEvent('auth:refresh-start'))
 
 			return new Promise((resolve, reject) => {
 				refreshClient.post('/auth/refresh')
 					.then((res) => {
 						const token = res.data?.accessToken
-						setAccessToken(token)
+						setInMemoryToken(token)
 						originalRequest.headers.Authorization = `Bearer ${token}`
 						processQueue(null, token)
 						resolve(api(originalRequest))
 					})
 					.catch((refreshError) => {
 						processQueue(refreshError, null)
-						setAccessToken(null)
+						setInMemoryToken(null)
 						window.dispatchEvent(new CustomEvent('auth:session-expired'))
-						window.location.href = '/guest'
+						if (!isBackground) {
+							window.location.href = '/guest'
+						}
 						reject(refreshError)
 					})
 					.finally(() => {
 						isRefreshing = false
+						window.dispatchEvent(new CustomEvent('auth:refresh-end'))
 					})
 			})
 		}

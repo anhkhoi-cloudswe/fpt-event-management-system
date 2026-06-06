@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import axios from 'axios'
-import { getAccessToken, setAccessToken } from '../config/api'
+import { getAccessToken, setAccessToken, setInMemoryToken } from '../config/api'
 
 const AUTH_ME_ENDPOINTS = ['/api/auth/me'] as const
 
@@ -27,13 +27,14 @@ interface AuthContextType {
   user: User | null
   loading: boolean
   isLoading: boolean
+  isRefreshing: boolean
   isAuthenticated: boolean
   token: string | null
   setUser: React.Dispatch<React.SetStateAction<User | null>>
   setToken: (token: string | null) => void
   login: (email: string, password: string, role: UserRole) => void
   logout: () => void
-  refreshUser: () => Promise<void>
+  refreshUser: (isBackground?: boolean) => Promise<void>
   currentLanguage: 'vi' | 'en'
   changeLanguage: (lang: 'vi' | 'en') => void
 }
@@ -46,11 +47,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   // Keep token state only for compatibility with existing consumers.
   const [token, setTokenState] = useState<string | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const isLoadingRef = useRef(true)
 
   const setToken = (t: string | null) => {
     setTokenState(t)
-    setAccessToken(t)
+    setInMemoryToken(t)
   }
 
   useEffect(() => {
@@ -77,11 +79,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Compatibility no-op. Actual login is handled in Login.tsx.
   }
 
-  const fetchUserFromMe = useCallback(async (): Promise<User | null> => {
+  // Listen to session refresh events from api.ts Axios interceptor
+  useEffect(() => {
+    const handleStart = () => setIsRefreshing(true)
+    const handleEnd = () => setIsRefreshing(false)
+    window.addEventListener('auth:refresh-start', handleStart)
+    window.addEventListener('auth:refresh-end', handleEnd)
+    return () => {
+      window.removeEventListener('auth:refresh-start', handleStart)
+      window.removeEventListener('auth:refresh-end', handleEnd)
+    }
+  }, [])
+
+  const fetchUserFromMe = useCallback(async (isBackground = false): Promise<User | null> => {
     for (const endpoint of AUTH_ME_ENDPOINTS) {
       try {
         const res = await axios.get(endpoint, {
           withCredentials: true,
+          ...({ isBackgroundRequest: isBackground } as any)
         })
         const data = res.data
         const userObj = data?.user ?? data
@@ -106,21 +121,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null
   }, [])
 
-  const refreshUser = useCallback(async () => {
+  const refreshUser = useCallback(async (isBackground = false) => {
+    if (isRefreshing) return
     try {
-      const userObj = await fetchUserFromMe()
-      setUser(userObj)
-      setIsAuthenticated(Boolean(userObj))
+      const userObj = await fetchUserFromMe(isBackground)
+      if (userObj) {
+        setUser(userObj)
+        setIsAuthenticated(true)
+      } else {
+        if (!isBackground) {
+          setUser(null)
+          setIsAuthenticated(false)
+        }
+      }
     } catch (err) {
       console.error('refreshUser error:', err)
-      setUser(null)
-      setIsAuthenticated(false)
+      if (!isBackground) {
+        setUser(null)
+        setIsAuthenticated(false)
+      }
     }
-  }, [fetchUserFromMe])
+  }, [fetchUserFromMe, isRefreshing])
 
   const logout = useCallback(() => {
     void axios.post('/auth/logout', null, { withCredentials: true }).catch(() => undefined)
-    setAccessToken(null)
+    setInMemoryToken(null)
     setUser(null)
     setTokenState(null)
     setIsAuthenticated(false)
@@ -156,22 +181,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const bootstrapAuth = async () => {
       setLoading(true)
+      setIsRefreshing(true)
 
       try {
         let activeToken = getAccessToken()
         if (!activeToken) {
           try {
-            const res = await axios.post('/auth/refresh', null, { withCredentials: true })
+            const res = await axios.post('/auth/refresh', null, { 
+              withCredentials: true,
+              ...({ isBackgroundRequest: false } as any)
+            })
             if (res.data && res.data.accessToken) {
               activeToken = res.data.accessToken
-              setAccessToken(activeToken)
+              setInMemoryToken(activeToken)
             }
           } catch (refreshErr) {
             console.warn('Silent refresh failed during bootstrap:', refreshErr)
           }
         }
 
-        const userObj = await fetchUserFromMe()
+        const userObj = await fetchUserFromMe(false)
 
         if (!isMounted) {
           return
@@ -188,6 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } finally {
         if (isMounted) {
           setLoading(false)
+          setIsRefreshing(false)
         }
       }
     }
@@ -279,17 +309,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const refreshOnFocus = () => {
-      void refreshUser()
+      void refreshUser(true)
     }
 
     const refreshOnVisibility = () => {
       if (document.visibilityState === 'visible') {
-        void refreshUser()
+        void refreshUser(true)
       }
     }
 
     const intervalId = window.setInterval(() => {
-      void refreshUser()
+      void refreshUser(true)
     }, 30000)
 
     window.addEventListener('focus', refreshOnFocus)
@@ -303,7 +333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser])
 
   return (
-    <AuthContext.Provider value={{ user, loading, isLoading: loading, isAuthenticated, token, setUser, setToken, login, logout, refreshUser, currentLanguage, changeLanguage }}>
+    <AuthContext.Provider value={{ user, loading, isLoading: loading, isRefreshing, isAuthenticated, token, setUser, setToken, login, logout, refreshUser, currentLanguage, changeLanguage }}>
       {children}
     </AuthContext.Provider>
   )

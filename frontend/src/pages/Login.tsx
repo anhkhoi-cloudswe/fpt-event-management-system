@@ -24,7 +24,7 @@ import ReCAPTCHA from 'react-google-recaptcha'
 // import ảnh/logo để hiển thị UI
 import fptLogo from '../assets/fpt-logo.png'
 import fptCampus from '../assets/dai-hoc-fpt-tp-hcm-1.jpeg'
-import { API_BASE_URL, setAccessToken } from '../config/api'
+import { API_BASE_URL, setAccessToken, setInMemoryToken } from '../config/api'
 import { useGoogleLogin } from '@react-oauth/google'
 
 // ===================== CONFIG API =====================
@@ -183,7 +183,7 @@ export default function Login() {
         if (response.data && response.data.status === 'success') {
           const { user, is_new_user, accessToken } = response.data
           if (accessToken) {
-            setAccessToken(accessToken)
+            setInMemoryToken(accessToken)
           }
           setUser(user)
           setToken(null)
@@ -262,7 +262,7 @@ export default function Login() {
       if (response.data && response.data.status === 'success') {
         const { user, accessToken } = response.data
         if (accessToken) {
-          setAccessToken(accessToken)
+          setInMemoryToken(accessToken)
         }
 
         console.log('User:', user)
