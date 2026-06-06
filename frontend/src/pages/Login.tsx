@@ -479,9 +479,11 @@ export default function Login() {
                   : ''
               }`}
             />
-            {emailError && (
-              <p className="text-red-500 text-xs mt-1 pl-1 font-medium animate-shake">{emailError}</p>
-            )}
+            <div className="min-h-[24px] mt-1 transition-all duration-200 ease-in-out">
+              <span className={`text-xs text-red-500 block pl-1 font-medium transition-opacity duration-200 ${emailError ? 'opacity-100 animate-shake' : 'opacity-0 pointer-events-none'}`}>
+                {emailError || 'Placeholder'}
+              </span>
+            </div>
             {emailCheckLoading && (
               <p className="text-slate-500 text-xs mt-1 pl-1 font-medium">Checking email...</p>
             )}
