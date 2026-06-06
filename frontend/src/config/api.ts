@@ -15,13 +15,25 @@ export const API_BASE_URL = '/api'
 
 export const api = axios
 
+// In-memory access token storage
+let accessToken: string | null = null
+
+export const getAccessToken = () => accessToken
+export const setAccessToken = (token: string | null) => {
+	accessToken = token
+}
+
 api.defaults.withCredentials = true
 api.defaults.baseURL = API_BASE_URL
 
-// 🚧 Request Interceptor: Guard against duplicated /api prefix (Hàng rào bảo vệ)
+// 🚧 Request Interceptor: Guard against duplicated /api prefix & Inject Bearer Token
 api.interceptors.request.use((config) => {
 	if (config.url?.startsWith('/api')) {
 		config.url = config.url.replace(/^\/api/, '')
+	}
+	const token = getAccessToken()
+	if (token) {
+		config.headers.Authorization = `Bearer ${token}`
 	}
 	return config
 })
@@ -35,37 +47,23 @@ const refreshClient = axios.create({
 	withCredentials: true,
 })
 
-let refreshPromise: Promise<unknown> | null = null
+interface FailedRequest {
+	resolve: (token: string | null) => void
+	reject: (error: any) => void
+}
 
-const showSessionExpiredModal = () => {
-	const message = 'Phi\u00ean \u0111\u0103ng nh\u1eadp \u0111\u00e3 h\u1ebft h\u1ea1n, vui l\u00f2ng \u0111\u0103ng nh\u1eadp l\u1ea1i \u0111\u1ec3 b\u1ea3o m\u1eadt d\u1eef li\u1ec7u'
+let isRefreshing = false
+let failedQueue: FailedRequest[] = []
 
-	if (document.getElementById('session-expired-overlay')) {
-		return
-	}
-
-	const overlay = document.createElement('div')
-	overlay.id = 'session-expired-overlay'
-	overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.72);padding:24px'
-
-	const modal = document.createElement('div')
-	modal.style.cssText = 'max-width:420px;width:100%;border-radius:16px;background:#fff;box-shadow:0 24px 80px rgba(15,23,42,0.35);padding:24px;text-align:center;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#0f172a'
-
-	const text = document.createElement('p')
-	text.textContent = message
-	text.style.cssText = 'margin:0 0 18px;font-size:15px;line-height:1.55;font-weight:600'
-
-	const button = document.createElement('button')
-	button.textContent = 'OK'
-	button.style.cssText = 'border:0;border-radius:10px;background:#ea580c;color:#fff;font-weight:700;font-size:14px;padding:10px 18px;cursor:pointer'
-	button.onclick = () => {
-		window.location.href = '/login'
-	}
-
-	modal.appendChild(text)
-	modal.appendChild(button)
-	overlay.appendChild(modal)
-	document.body.appendChild(overlay)
+const processQueue = (error: any, token: string | null = null) => {
+	failedQueue.forEach((prom) => {
+		if (error) {
+			prom.reject(error)
+		} else {
+			prom.resolve(token)
+		}
+	})
+	failedQueue = []
 }
 
 api.interceptors.response.use(
@@ -86,17 +84,43 @@ api.interceptors.response.use(
 			!requestUrl.includes('/auth/refresh') &&
 			!requestUrl.includes('/login')
 		) {
-			originalRequest._retry = true
-			try {
-				refreshPromise ??= refreshClient.post('/auth/refresh')
-				await refreshPromise
-				return api(originalRequest)
-			} catch (refreshError) {
-				showSessionExpiredModal()
-				return Promise.reject(refreshError)
-			} finally {
-				refreshPromise = null
+			if (isRefreshing) {
+				return new Promise((resolve, reject) => {
+					failedQueue.push({
+						resolve: (token) => {
+							originalRequest.headers.Authorization = `Bearer ${token}`
+							resolve(api(originalRequest))
+						},
+						reject: (err) => {
+							reject(err)
+						}
+					})
+				})
 			}
+
+			originalRequest._retry = true
+			isRefreshing = true
+
+			return new Promise((resolve, reject) => {
+				refreshClient.post('/auth/refresh')
+					.then((res) => {
+						const token = res.data?.accessToken
+						setAccessToken(token)
+						originalRequest.headers.Authorization = `Bearer ${token}`
+						processQueue(null, token)
+						resolve(api(originalRequest))
+					})
+					.catch((refreshError) => {
+						processQueue(refreshError, null)
+						setAccessToken(null)
+						window.dispatchEvent(new CustomEvent('auth:session-expired'))
+						window.location.href = '/guest'
+						reject(refreshError)
+					})
+					.finally(() => {
+						isRefreshing = false
+					})
+			})
 		}
 
 		return Promise.reject(error)

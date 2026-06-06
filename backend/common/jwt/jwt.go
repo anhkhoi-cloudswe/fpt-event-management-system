@@ -50,21 +50,34 @@ func activeSecret() ([]byte, error) {
 	return nil, errors.New("JWT_SECRET is not configured")
 }
 
+func GetLifespans(role string) (time.Duration, time.Duration) {
+	switch strings.ToUpper(role) {
+	case "STUDENT":
+		return 60 * time.Minute, 7 * 24 * time.Hour
+	case "ORGANIZER":
+		return 30 * time.Minute, 3 * 24 * time.Hour
+	case "STAFF":
+		return 30 * time.Minute, 24 * time.Hour
+	case "ADMIN":
+		return 15 * time.Minute, 8 * time.Hour
+	default:
+		return 15 * time.Minute, 24 * time.Hour
+	}
+}
+
 // GenerateToken generates a signed access JWT token for a user.
 func GenerateToken(userID int, email, fullName, role string) (string, error) {
 	return GenerateAccessToken(userID, email, fullName, role)
 }
 
 func GenerateAccessToken(userID int, email, fullName, role string) (string, error) {
-	return generateToken(userID, email, fullName, role, "", "access", accessTokenExpiration)
+	accessExp, _ := GetLifespans(role)
+	return generateToken(userID, email, fullName, role, "", "access", accessExp)
 }
 
 func GenerateRefreshToken(userID int, email, fullName, role string) (string, error) {
-	expiration := refreshTokenExpiration
-	if role == "ADMIN" || role == "STAFF" {
-		expiration = 24 * time.Hour
-	}
-	return generateToken(userID, email, fullName, role, "", "refresh", expiration)
+	_, refreshExp := GetLifespans(role)
+	return generateToken(userID, email, fullName, role, "", "refresh", refreshExp)
 }
 
 func GenerateTokenPair(userID int, email, fullName, role string) (string, string, error) {
@@ -72,15 +85,12 @@ func GenerateTokenPair(userID int, email, fullName, role string) (string, string
 }
 
 func GenerateTokenPairWithSessionID(userID int, email, fullName, role, sessionTokenID string) (string, string, error) {
-	accessToken, err := generateToken(userID, email, fullName, role, sessionTokenID, "access", accessTokenExpiration)
+	accessExp, refreshExp := GetLifespans(role)
+	accessToken, err := generateToken(userID, email, fullName, role, sessionTokenID, "access", accessExp)
 	if err != nil {
 		return "", "", err
 	}
-	expiration := refreshTokenExpiration
-	if role == "ADMIN" || role == "STAFF" {
-		expiration = 24 * time.Hour
-	}
-	refreshToken, err := generateToken(userID, email, fullName, role, sessionTokenID, "refresh", expiration)
+	refreshToken, err := generateToken(userID, email, fullName, role, sessionTokenID, "refresh", refreshExp)
 	if err != nil {
 		return "", "", err
 	}

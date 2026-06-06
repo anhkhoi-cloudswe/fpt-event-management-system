@@ -319,34 +319,22 @@ func getScheme(request events.APIGatewayProxyRequest) string {
 }
 
 func authCookies(authResponse *models.AuthResponse) []string {
-	accessCookie := http.Cookie{
-		Name:     "token",
-		Value:    authResponse.Token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteNoneMode,
-		MaxAge:   int((15 * time.Minute).Seconds()),
-	}
+	_, refreshExp := jwt.GetLifespans(authResponse.User.Role)
 	refreshCookie := http.Cookie{
 		Name:     "refresh_token",
 		Value:    authResponse.RefreshToken,
-		Path:     "/",
+		Path:     "/api/auth/refresh",
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteNoneMode,
-		MaxAge:   int((7 * 24 * time.Hour).Seconds()),
+		MaxAge:   int(refreshExp.Seconds()),
 	}
-	if authResponse.User.Role == "ADMIN" || authResponse.User.Role == "STAFF" {
-		refreshCookie.MaxAge = int((24 * time.Hour).Seconds())
-	}
-	return []string{accessCookie.String(), refreshCookie.String()}
+	return []string{refreshCookie.String()}
 }
 
 func clearAuthCookies() []string {
 	return []string{
-		(&http.Cookie{Name: "token", Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode, MaxAge: -1}).String(),
-		(&http.Cookie{Name: "refresh_token", Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode, MaxAge: -1}).String(),
+		(&http.Cookie{Name: "refresh_token", Value: "", Path: "/api/auth/refresh", HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode, MaxAge: -1}).String(),
 	}
 }
 
@@ -467,9 +455,11 @@ func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGateway
 	}
 	loginBruteforceGuard.Clear(loginKey)
 
-	// Return success payload without exposing JWT in JSON body
+	// Return success payload including accessToken in JSON body
 	resp := map[string]interface{}{
+		"success":     true,
 		"status":      "success",
+		"accessToken": authResponse.Token,
 		"user":        authResponse.User,
 		"is_new_user": authResponse.IsNewUser,
 	}
@@ -673,8 +663,10 @@ func (h *AuthHandler) HandleRefresh(ctx context.Context, request events.APIGatew
 	}
 
 	return responseWithCookies(http.StatusOK, map[string]interface{}{
-		"status": "success",
-		"user":   authResponse.User,
+		"success":     true,
+		"status":      "success",
+		"accessToken": authResponse.Token,
+		"user":        authResponse.User,
 	}, authCookies(authResponse))
 }
 
@@ -1016,10 +1008,12 @@ func (h *AuthHandler) HandleRegisterVerifyOTP(ctx context.Context, request event
 		}
 	}
 
-	// Return success payload without exposing JWT in JSON body.
+	// Return success payload including accessToken in JSON body.
 	responseMap := map[string]interface{}{
-		"status": "success",
-		"user":   authResponse.User,
+		"success":     true,
+		"status":      "success",
+		"accessToken": authResponse.Token,
+		"user":        authResponse.User,
 	}
 	return responseWithCookies(http.StatusOK, responseMap, authCookies(authResponse))
 }
@@ -1320,7 +1314,9 @@ func (h *AuthHandler) HandleGoogleCallback(ctx context.Context, request events.A
 	}
 
 	respPayload := map[string]interface{}{
+		"success":     true,
 		"status":      "success",
+		"accessToken": authResponse.Token,
 		"user":        authResponse.User,
 		"is_new_user": authResponse.IsNewUser,
 	}

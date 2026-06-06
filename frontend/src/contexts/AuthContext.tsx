@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import axios from 'axios'
+import { getAccessToken, setAccessToken } from '../config/api'
 
 const AUTH_ME_ENDPOINTS = ['/api/auth/me'] as const
 
@@ -44,8 +45,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
   // Keep token state only for compatibility with existing consumers.
-  const [token, setToken] = useState<string | null>(null)
+  const [token, setTokenState] = useState<string | null>(null)
   const isLoadingRef = useRef(true)
+
+  const setToken = (t: string | null) => {
+    setTokenState(t)
+    setAccessToken(t)
+  }
 
   useEffect(() => {
     setIsAuthenticated(!!user)
@@ -74,38 +80,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUserFromMe = useCallback(async (): Promise<User | null> => {
     for (const endpoint of AUTH_ME_ENDPOINTS) {
       try {
-        const res = await fetch(endpoint, {
-          method: 'GET',
-          cache: 'no-store',
-          credentials: 'include',
+        const res = await axios.get(endpoint, {
+          withCredentials: true,
         })
-
-        if (res.ok) {
-          const data = await res.json()
-          const userObj = data?.user ?? data
-          if (userObj?.language) {
-            const normalized = userObj.language.toLowerCase().startsWith('en') ? 'en' : 'vi'
-            setCurrentLanguage(normalized)
-            localStorage.setItem('language', normalized)
-            localStorage.setItem('user_locale', normalized)
-          }
-          return userObj ?? null
+        const data = res.data
+        const userObj = data?.user ?? data
+        if (userObj?.language) {
+          const normalized = userObj.language.toLowerCase().startsWith('en') ? 'en' : 'vi'
+          setCurrentLanguage(normalized)
+          localStorage.setItem('language', normalized)
+          localStorage.setItem('user_locale', normalized)
         }
-
-        // Session has expired: clear state immediately.
-        if (res.status === 401) {
+        return userObj ?? null
+      } catch (err: any) {
+        if (err.response?.status === 401) {
           return null
         }
-
-        // Allow fallback to alternate profile routes when configured.
-        if (res.status === 404) {
+        if (err.response?.status === 404) {
           continue
         }
-
         return null
-      } catch (err) {
-        // Try next endpoint on network/path errors.
-        continue
       }
     }
 
@@ -125,9 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchUserFromMe])
 
   const logout = useCallback(() => {
-    void axios.post('/logout', null, { withCredentials: true }).catch(() => undefined)
+    void axios.post('/auth/logout', null, { withCredentials: true }).catch(() => undefined)
+    setAccessToken(null)
     setUser(null)
-    setToken(null)
+    setTokenState(null)
     setIsAuthenticated(false)
   }, [])
 
@@ -139,33 +134,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem('user')
   }, [])
 
+  // Listen to session expired events from Axios client config
   useEffect(() => {
-    axios.defaults.withCredentials = true
-
-    const interceptorId = axios.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          setUser(null)
-          setToken(null)
-
-          const requestUrl = String(error.config?.url ?? '')
-          const isMeRequest = requestUrl.includes('/api/v1/auth/me') || requestUrl.includes('/api/auth/me')
-
-          const publicPaths = ['/login', '/signup', '/reset-password', '/guest', '/policy', '/payment-success', '/payment-failed', '/']
-          const isPublicPath = publicPaths.some(p => window.location.pathname === p || window.location.pathname.startsWith(p + '/'))
-
-          if (!isLoadingRef.current && !isMeRequest && !isPublicPath) {
-            window.location.href = '/login'
-          }
-        }
-        return Promise.reject(error)
-      }
-    )
-
-    return () => {
-      axios.interceptors.response.eject(interceptorId)
+    const handleSessionExpired = () => {
+      setUser(null)
+      setTokenState(null)
+      setIsAuthenticated(false)
     }
+    window.addEventListener('auth:session-expired', handleSessionExpired)
+    return () => window.removeEventListener('auth:session-expired', handleSessionExpired)
   }, [])
 
   useEffect(() => {
@@ -175,6 +152,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
 
       try {
+        let activeToken = getAccessToken()
+        if (!activeToken) {
+          try {
+            const res = await axios.post('/auth/refresh', null, { withCredentials: true })
+            if (res.data && res.data.accessToken) {
+              activeToken = res.data.accessToken
+              setAccessToken(activeToken)
+            }
+          } catch (refreshErr) {
+            console.warn('Silent refresh failed during bootstrap:', refreshErr)
+          }
+        }
+
         const userObj = await fetchUserFromMe()
 
         if (!isMounted) {

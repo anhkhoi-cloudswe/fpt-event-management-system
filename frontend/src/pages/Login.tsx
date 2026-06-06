@@ -24,7 +24,7 @@ import ReCAPTCHA from 'react-google-recaptcha'
 // import ảnh/logo để hiển thị UI
 import fptLogo from '../assets/fpt-logo.png'
 import fptCampus from '../assets/dai-hoc-fpt-tp-hcm-1.jpeg'
-import { API_BASE_URL } from '../config/api'
+import { API_BASE_URL, setAccessToken } from '../config/api'
 import { useGoogleLogin } from '@react-oauth/google'
 
 // ===================== CONFIG API =====================
@@ -181,7 +181,10 @@ export default function Login() {
         })
 
         if (response.data && response.data.status === 'success') {
-          const { user, is_new_user } = response.data
+          const { user, is_new_user, accessToken } = response.data
+          if (accessToken) {
+            setAccessToken(accessToken)
+          }
           setUser(user)
           setToken(null)
 
@@ -229,43 +232,23 @@ export default function Login() {
 
   // ===================== HANDLE LOGIN LOGIC =====================
 
-  /**
-   * handleLogin:
-   * - Thực hiện gọi API login bằng axios
-   * - Nếu USE_REAL_RECAPTCHA = true -> bắt buộc có recaptchaToken thật
-   * - Nếu USE_REAL_RECAPTCHA = false -> gửi token giả "TEST_BYPASS" (debug)
-   * - Nếu login thành công:
-   *    + lấy user, token từ response
-   *    + setUser vào AuthContext (lưu trong React state RAM, không localStorage)
-   *    + Cookie HttpOnly tự động được browser quản lý (backend set qua Set-Cookie)
-   *    + reset captcha (optional)
-   *    + navigate('/dashboard')
-   * - Nếu thất bại: throw error để handleSubmit catch
-   */
   const handleLogin = async () => {
     if (!canUseRecaptcha) {
       throw new Error('Please enter a registered allowed email and password before reCAPTCHA.')
     }
 
-    // Nếu dùng reCAPTCHA thật nhưng chưa có token -> không được login
     if (USE_REAL_RECAPTCHA && !recaptchaToken) {
       throw new Error('Vui lòng xác thực reCAPTCHA trước khi đăng nhập.')
     }
 
-    // Token gửi xuống BE:
-    // - dùng token thật nếu USE_REAL_RECAPTCHA = true
-    // - dùng "TEST_BYPASS" nếu đang debug nhanh
     const tokenToSend = USE_REAL_RECAPTCHA ? recaptchaToken : 'TEST_BYPASS'
 
-    // Log token (cắt 40 ký tự) để debug
     console.log(
       'Sending login request. recaptchaToken (first 40 chars):',
       tokenToSend ? tokenToSend.slice(0, 40) : null
     )
 
     try {
-      // Gọi API POST /v1/auth/login
-      // Body gồm: email, password, recaptchaToken
       const response = await axios.post(`${API_URL}/v1/auth/login`, {
         email: formData.email,
         password: formData.password,
@@ -276,41 +259,31 @@ export default function Login() {
 
       console.log('Login Response:', response.data)
 
-      // Nếu BE trả status = success
       if (response.data && response.data.status === 'success') {
-        // Cookie JWT đã được backend set qua Set-Cookie; chỉ cần lấy user hiển thị
-        const { user } = response.data
+        const { user, accessToken } = response.data
+        if (accessToken) {
+          setAccessToken(accessToken)
+        }
 
         console.log('User:', user)
 
-        // Lưu user và đồng bộ lại từ endpoint me để lấy role/user trusted từ server
         setUser(user)
         setToken(null)
         await refreshUser()
 
-        // Reset captcha (optional) để sau này login lại không bị token cũ
         try {
           recaptchaRef.current?.reset()
         } catch (_) { }
 
-        // Điều hướng qua dashboard
         navigate(redirectUrl || '/dashboard')
         return
-
-        // Nếu BE trả status = fail -> show message từ BE
       } else if (response.data && response.data.status === 'fail') {
         const msg = response.data.message || 'Đăng nhập thất bại'
         throw new Error(msg)
-
-        // Nếu response không đúng format mong đợi
       } else {
         throw new Error('Đăng nhập thất bại')
       }
     } catch (err: any) {
-      // Xử lý lỗi axios:
-      // err.response: BE có trả về status code + data
-      // err.request: không connect được server
-      // else: lỗi khác
       console.error('Login error (axios):', err)
 
       if (err.response) {
