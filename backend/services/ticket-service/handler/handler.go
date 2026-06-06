@@ -46,7 +46,7 @@ func (h *TicketHandler) HandleGetMyTickets(ctx context.Context, request events.A
 	ctx = utils.WithRequestHeaders(ctx, request.Headers)
 
 	// Get userId from request attribute (set by JWT middleware)
-	userIDStr := request.Headers["X-User-Id"]
+	userIDStr := extractUserIDFromHeaders(request.Headers)
 	log.Debug("HandleGetMyTickets - X-User-Id header: '%s'", userIDStr)
 
 	if userIDStr == "" {
@@ -105,7 +105,7 @@ func (h *TicketHandler) HandleGetMyTickets(ctx context.Context, request events.A
 func (h *TicketHandler) HandleGetTicketList(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Get role and userId from headers (set by JWT middleware)
 	role := request.Headers["X-User-Role"]
-	userIDStr := request.Headers["X-User-Id"]
+	userIDStr := extractUserIDFromHeaders(request.Headers)
 
 	if role == "" || userIDStr == "" {
 		return createMessageResponse(http.StatusUnauthorized, "Unauthorized")
@@ -176,7 +176,7 @@ func (h *TicketHandler) HandleGetCategoryTickets(ctx context.Context, request ev
 
 // HandleGetMyBills - GET /api/bills/my-bills
 func (h *TicketHandler) HandleGetMyBills(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	userIDStr := request.Headers["X-User-Id"]
+	userIDStr := extractUserIDFromHeaders(request.Headers)
 	if userIDStr == "" {
 		return createMessageResponse(http.StatusUnauthorized, "Unauthorized: missing userId")
 	}
@@ -336,10 +336,7 @@ func isLocalHost(host string) bool {
 // ============================================================
 func (h *TicketHandler) HandleGetWalletBalance(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Priority 1: X-User-Id header injected by Gateway (Trusted Gateway pattern)
-	userIDStr := request.Headers["X-User-Id"]
-	if userIDStr == "" {
-		userIDStr = request.Headers["x-user-id"]
-	}
+	userIDStr := extractUserIDFromHeaders(request.Headers)
 
 	// Priority 2: Query parameter fallback
 	if userIDStr == "" {
@@ -384,7 +381,7 @@ func (h *TicketHandler) HandleGetWalletBalance(ctx context.Context, request even
 // ============================================================
 func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Extract userId from header (set by auth middleware)
-	userIDStr := request.Headers["X-User-Id"]
+	userIDStr := extractUserIDFromHeaders(request.Headers)
 	if userIDStr == "" {
 		return createMessageResponse(http.StatusUnauthorized, "User ID not found")
 	}
@@ -663,10 +660,7 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 // HandleCreateBankTransferOrder - POST /api/payment/create-order
 func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Extract userId from header (set by auth middleware)
-	userIDStr := request.Headers["X-User-Id"]
-	if userIDStr == "" {
-		userIDStr = request.Headers["x-user-id"]
-	}
+	userIDStr := extractUserIDFromHeaders(request.Headers)
 	if userIDStr == "" {
 		return createMessageResponse(http.StatusUnauthorized, "User ID not found")
 	}
@@ -1068,4 +1062,22 @@ func checkIdempotency(userID, eventID int, seatIDs []int, clientKey string) (boo
 	// Store key with 5 minutes expiration
 	idempotencyStore.Store(key, now.Add(5*time.Minute))
 	return false, key
+}
+
+func extractUserIDFromHeaders(headers map[string]string) string {
+	keys := []string{"X-User-Id", "x-user-id", "X-User-ID", "user-id", "User-Id"}
+	for _, key := range keys {
+		if val, ok := headers[key]; ok && val != "" {
+			return val
+		}
+	}
+	// Fallback to case-insensitive check
+	for k, v := range headers {
+		if strings.EqualFold(k, "X-User-Id") || strings.EqualFold(k, "user-id") {
+			if v != "" {
+				return v
+			}
+		}
+	}
+	return ""
 }
