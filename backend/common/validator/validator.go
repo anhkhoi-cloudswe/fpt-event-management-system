@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"errors"
 	"regexp"
 	"strings"
 )
@@ -27,6 +28,37 @@ func IsValidEmail(email string) bool {
 		return false
 	}
 	return EmailPattern.MatchString(email)
+}
+
+// NormalizeAndValidateEmail trims, lowercases, whitelists domains, and canonicalizes Gmail aliases.
+func NormalizeAndValidateEmail(email string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	parts := strings.Split(normalized, "@")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", errors.New("Email không hợp lệ")
+	}
+
+	username := parts[0]
+	domain := parts[1]
+	switch domain {
+	case "gmail.com":
+		if plus := strings.Index(username, "+"); plus >= 0 {
+			username = username[:plus]
+		}
+		username = strings.ReplaceAll(username, ".", "")
+		if username == "" {
+			return "", errors.New("Email không hợp lệ")
+		}
+	case "fpt.edu.vn", "edu.vn":
+	default:
+		return "", errors.New("EMAIL_DOMAIN_NOT_ALLOWED")
+	}
+
+	canonical := username + "@" + domain
+	if !IsValidEmail(canonical) {
+		return "", errors.New("Email không hợp lệ")
+	}
+	return canonical, nil
 }
 
 // IsValidVNPhone validates Vietnamese phone number (khớp ValidationUtil.isValidVNPhone)

@@ -127,6 +127,7 @@ export default function SignUp() {
 
   // Handle Form Inputs
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (rateLimitCountdown > 0) return
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     setError('')
@@ -137,6 +138,8 @@ export default function SignUp() {
   // Handle Send OTP (Step 1)
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (rateLimitCountdown > 0) return
 
     setEmailError('')
     setPasswordError('')
@@ -207,7 +210,11 @@ export default function SignUp() {
         errorMessage = errData.error
       }
 
-      if (isConflict) {
+      if (err.response?.status === 429 && errData?.code === 'RATE_LIMIT_LOCKED') {
+        const seconds = typeof retryAfter === 'number' && retryAfter > 0 ? retryAfter : 300
+        setRateLimitCountdown(seconds)
+        showToast('warning', 'Thao tac OTP dang bi khoa tam thoi. Vui long doi het dem nguoc.')
+      } else if (isConflict) {
         setEmailError(errData?.message || errData?.error || (currentLanguage === 'en' ? 'This email is already registered.' : 'Email này đã được đăng ký trong hệ thống.'))
       } else if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
         setRateLimitCountdown(retryAfter)
@@ -225,7 +232,7 @@ export default function SignUp() {
 
   // Handle Resend OTP
   const handleResendOtp = async () => {
-    if (otpCountdown > 0) return
+    if (otpCountdown > 0 || rateLimitCountdown > 0) return
 
     setLoading(true)
     setError('')
@@ -255,7 +262,12 @@ export default function SignUp() {
       const errData = err.response?.data
       const retryAfter = errData?.retry_after
       const srvMsg = errData?.message || errData?.error || 'Có lỗi xảy ra khi gửi lại OTP.'
-      if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
+      if (err.response?.status === 429 && errData?.code === 'RATE_LIMIT_LOCKED') {
+        const seconds = typeof retryAfter === 'number' && retryAfter > 0 ? retryAfter : 300
+        setRateLimitCountdown(seconds)
+        setOtpCountdown(seconds)
+        showToast('warning', 'Thao tac OTP dang bi khoa tam thoi. Vui long doi het dem nguoc.')
+      } else if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
         setRateLimitCountdown(retryAfter)
         setOtpCountdown(retryAfter)
       } else {
@@ -275,6 +287,8 @@ export default function SignUp() {
 
   // Auto trigger verification once 6th digit is entered
   const triggerOtpVerification = async (otpCode: string) => {
+    if (rateLimitCountdown > 0) return
+
     setLoading(true)
     setError('')
 
@@ -299,6 +313,14 @@ export default function SignUp() {
       }
     } catch (err: any) {
       console.error('Verify OTP error:', err)
+      const errData = err.response?.data
+      if (err.response?.status === 429 && errData?.code === 'RATE_LIMIT_LOCKED') {
+        const seconds = typeof errData?.retry_after === 'number' && errData.retry_after > 0 ? errData.retry_after : 300
+        setRateLimitCountdown(seconds)
+        setOtpCountdown(seconds)
+        showToast('warning', 'Thao tac OTP dang bi khoa tam thoi. Vui long doi het dem nguoc.')
+        return
+      }
       const srvMsg = err.response?.data?.message || err.response?.data?.error
       showToast('error', srvMsg || 'Xác thực OTP thất bại. Vui lòng thử lại.')
     } finally {
@@ -308,6 +330,8 @@ export default function SignUp() {
 
   // Handle digit typing
   const handleOtpChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (rateLimitCountdown > 0) return
+
     const val = e.target.value
     const digitsOnly = val.replace(/\D/g, '')
 
@@ -337,6 +361,8 @@ export default function SignUp() {
 
   // Handle backspace navigation
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (rateLimitCountdown > 0) return
+
     if (e.key === 'Backspace') {
       const val = otpArray[index]
       if (!val) {
@@ -359,6 +385,8 @@ export default function SignUp() {
   // Paste handler
   const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault()
+    if (rateLimitCountdown > 0) return
+
     const pastedText = e.clipboardData.getData('text')
     const digits = pastedText.replace(/\D/g, '').slice(0, otpLength)
     if (digits) {
@@ -383,6 +411,13 @@ export default function SignUp() {
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Quay lại Trang chủ</span>
         </Link>
+
+        {rateLimitCountdown > 0 && (
+          <div className="mb-4 mt-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center">
+            <p className="text-xs font-black uppercase tracking-wide text-amber-700">Dang khoa thao tac OTP tam thoi</p>
+            <p className="mt-1 text-2xl font-black tabular-nums text-amber-800">{formatCountdown(rateLimitCountdown)}</p>
+          </div>
+        )}
 
         {step === 'form' ? (
           <>
@@ -412,7 +447,7 @@ export default function SignUp() {
                   onChange={handleInputChange}
                   placeholder="email@fpt.edu.vn"
                   required
-                  disabled={loading}
+                  disabled={loading || rateLimitCountdown > 0}
                   className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
                     emailError 
                       ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
@@ -440,7 +475,7 @@ export default function SignUp() {
                     onChange={handleInputChange}
                     placeholder="••••••••"
                     required
-                    disabled={loading}
+                    disabled={loading || rateLimitCountdown > 0}
                     className={`w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none outline-none text-slate-900 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
                       passwordError 
                         ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
@@ -450,6 +485,7 @@ export default function SignUp() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    disabled={loading || rateLimitCountdown > 0}
                     className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -509,7 +545,7 @@ export default function SignUp() {
             <button
               type="button"
               onClick={() => googleRegister()}
-              disabled={loading}
+              disabled={loading || rateLimitCountdown > 0}
               className="w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200/85 hover:border-slate-350 text-slate-700 py-3.5 px-4 rounded-2xl hover:bg-slate-50 font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 hover:shadow"
             >
               <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
@@ -573,7 +609,7 @@ export default function SignUp() {
                   onChange={(e) => handleOtpChange(index, e)}
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
                   onPaste={handleOtpPaste}
-                  disabled={loading}
+                  disabled={loading || rateLimitCountdown > 0}
                   className="w-12 h-13 text-center text-xl font-bold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none transition-all text-slate-900 focus:bg-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               ))}
@@ -600,7 +636,7 @@ export default function SignUp() {
                 <button
                   type="button"
                   onClick={handleResendOtp}
-                  disabled={loading}
+                  disabled={loading || rateLimitCountdown > 0}
                   className="text-orange-600 hover:text-orange-700 font-bold transition-colors underline disabled:opacity-50"
                 >
                   Gửi lại mã OTP
@@ -616,7 +652,7 @@ export default function SignUp() {
                 setError('')
                 setOtpValue('')
               }}
-              disabled={loading}
+              disabled={loading || rateLimitCountdown > 0}
               className="mt-6 w-full flex items-center justify-center gap-1.5 py-3.5 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 rounded-2xl text-xs font-bold text-slate-600 transition-all active:scale-98 disabled:opacity-50"
             >
               <ArrowLeft className="w-4 h-4" /> Quay lại nhập thông tin

@@ -2,7 +2,7 @@
 
 // useState: quản lý state trong component (form, loading, error...)
 // useRef: giữ reference đến component ReCAPTCHA để gọi reset() khi cần
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 // useNavigate: điều hướng trang bằng code
 // Link: chuyển trang bằng router (không reload)
@@ -88,11 +88,26 @@ export default function Login() {
   const { showToast } = useToast()
   const [emailError, setEmailError] = useState('')
   const [passwordError, setPasswordError] = useState('')
+  const [lockoutCountdown, setLockoutCountdown] = useState(0)
 
   // navigate: chuyển trang sang dashboard sau khi login
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const redirectUrl = searchParams.get('redirect')
+
+  const formatCountdown = (secs: number): string => {
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+
+  useEffect(() => {
+    let timer: number
+    if (lockoutCountdown > 0) {
+      timer = window.setTimeout(() => setLockoutCountdown(lockoutCountdown - 1), 1000)
+    }
+    return () => clearTimeout(timer)
+  }, [lockoutCountdown])
 
   // Google OAuth Login handler
   const googleLogin = useGoogleLogin({
@@ -147,6 +162,7 @@ export default function Login() {
    * - clear error để UX tốt hơn (nhập lại thì mất thông báo lỗi cũ)
    */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (lockoutCountdown > 0) return
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     setError('')
@@ -238,6 +254,13 @@ export default function Login() {
 
       if (err.response) {
         console.error('Server response data:', err.response.data)
+
+        if (err.response.status === 423 && err.response.data?.code === 'ACCOUNT_BRUTEFORCE_LOCKED') {
+          const retryAfter = typeof err.response.data?.retry_after === 'number' ? err.response.data.retry_after : 300
+          setLockoutCountdown(retryAfter)
+          showToast('warning', 'Tai khoan dang bi khoa tam thoi. Vui long doi het dem nguoc roi thu lai.')
+          throw new Error('ACCOUNT_BRUTEFORCE_LOCKED')
+        }
         if (err.response.data?.code === 'RECAPTCHA_EXHAUSTED_USE_SSO') {
           showToast('warning', 'reCAPTCHA dang qua tai. Chuyen sang dang nhap Google de tiep tuc an toan.')
           googleLogin()
@@ -276,6 +299,10 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (lockoutCountdown > 0) {
+      return
+    }
+
     console.log('recaptchaToken at submit:', recaptchaToken)
 
     // Nếu dùng reCAPTCHA thật nhưng chưa tick -> chặn submit
@@ -304,7 +331,9 @@ export default function Login() {
       setEmailError('')
       setPasswordError('')
 
-      if (err.response && err.response.status === 401) {
+      if (err.message === 'ACCOUNT_BRUTEFORCE_LOCKED') {
+        setPasswordError(`Dang khoa dang nhap tam thoi. Thu lai sau ${formatCountdown(lockoutCountdown)}.`)
+      } else if (err.response && err.response.status === 401) {
         setEmailError('Email không chính xác hoặc chưa đăng ký.')
         setPasswordError('Mật khẩu không chính xác. Vui lòng kiểm tra lại.')
       } else if (errorMessage.toLowerCase().includes('robot') || errorMessage.toLowerCase().includes('recaptcha')) {
@@ -360,6 +389,13 @@ export default function Login() {
           <h2 className="text-lg font-black text-slate-900">Đăng Nhập FPT Event</h2>
         </div>
 
+        {lockoutCountdown > 0 && (
+          <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center">
+            <p className="text-xs font-black uppercase tracking-wide text-amber-700">Dang khoa dang nhap tam thoi</p>
+            <p className="mt-1 text-2xl font-black tabular-nums text-amber-800">{formatCountdown(lockoutCountdown)}</p>
+          </div>
+        )}
+
         {/* Form login */}
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Input Email */}
@@ -375,6 +411,7 @@ export default function Login() {
               onChange={handleInputChange}
               placeholder="email@fpt.edu.vn"
               required
+              disabled={loading || lockoutCountdown > 0}
               className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
                 emailError 
                   ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
@@ -400,6 +437,7 @@ export default function Login() {
                 onChange={handleInputChange}
                 placeholder="Nhập mật khẩu"
                 required
+                disabled={loading || lockoutCountdown > 0}
                 className={`w-full px-4 py-3 pr-10 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
                   passwordError 
                     ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
@@ -409,6 +447,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={loading || lockoutCountdown > 0}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-450 hover:text-slate-700 transition-colors focus:outline-none"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -441,7 +480,7 @@ export default function Login() {
           {/* Button submit */}
           <button
             type="submit"
-            disabled={loading || (USE_REAL_RECAPTCHA && !recaptchaToken)}
+            disabled={loading || lockoutCountdown > 0 || (USE_REAL_RECAPTCHA && !recaptchaToken)}
             className="w-full bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 text-white py-3.5 px-4 rounded-2xl hover:shadow-lg hover:shadow-orange-500/25 focus:outline-none font-extrabold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 shadow-md"
           >
             {loading ? (
@@ -470,7 +509,7 @@ export default function Login() {
           <button
             type="button"
             onClick={() => googleLogin()}
-            disabled={loading}
+            disabled={loading || lockoutCountdown > 0}
             className="!mt-3 w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200 hover:border-slate-350 text-slate-700 py-3.5 px-4 rounded-2xl hover:bg-slate-50 font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 hover:shadow"
           >
             <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">

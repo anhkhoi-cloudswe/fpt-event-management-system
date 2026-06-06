@@ -97,7 +97,8 @@ services:
       # Auto-import schema & create user on first boot (runs only when data volume is empty)
       # 01_schema.sql: Creates tables and database structure
       # 02_create_user.sh: Creates MySQL application user from environment variables (NO hardcoding!)
-      - ./Database/initdb.d:/docker-entrypoint-initdb.d:ro
+      - ./Database/initdb.d/01_fpt_event_full.sql:/docker-entrypoint-initdb.d/01_fpt_event_full.sql:ro
+      - ./Database/initdb.d/02_create_user.sh:/docker-entrypoint-initdb.d/02_create_user.sh:ro
     healthcheck:
       # Use socket-based authentication (no password needed when connected via socket)
       # This avoids hardcoding the MYSQL_ROOT_PASSWORD in the compose file

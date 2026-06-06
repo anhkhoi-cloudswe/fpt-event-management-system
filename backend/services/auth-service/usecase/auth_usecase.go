@@ -40,8 +40,58 @@ func NewAuthUseCaseWithDB(dbConn *sql.DB) *AuthUseCase {
 	}
 }
 
+func newSessionTokenID() (string, error) {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16]), nil
+}
+
+func (uc *AuthUseCase) issueFreshSessionTokenPair(ctx context.Context, user *models.User, isNewUser bool) (*models.AuthResponse, error) {
+	sessionTokenID, err := newSessionTokenID()
+	if err != nil {
+		return nil, errors.New("failed to generate session token")
+	}
+	if err := uc.userRepo.UpdateActiveSessionTokenID(ctx, user.ID, sessionTokenID); err != nil {
+		return nil, err
+	}
+	token, refreshToken, err := jwt.GenerateTokenPairWithSessionID(user.ID, user.Email, user.FullName, user.Role, sessionTokenID)
+	if err != nil {
+		return nil, errors.New("failed to generate token")
+	}
+	return &models.AuthResponse{
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         *user,
+		IsNewUser:    isNewUser,
+	}, nil
+}
+
+func (uc *AuthUseCase) ValidateActiveSessionToken(ctx context.Context, userID int, sessionTokenID string) error {
+	if strings.TrimSpace(sessionTokenID) == "" {
+		return errors.New("missing session token")
+	}
+	activeSessionTokenID, err := uc.userRepo.GetActiveSessionTokenID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if activeSessionTokenID != sessionTokenID {
+		return errors.New("session superseded")
+	}
+	return nil
+}
+
 // Login handles user login with automatic fast registration for new emails
 func (uc *AuthUseCase) Login(ctx context.Context, req models.LoginRequest) (*models.AuthResponse, error) {
+	normalizedEmail, err := validator.NormalizeAndValidateEmail(req.Email)
+	if err != nil {
+		return nil, err
+	}
+	req.Email = normalizedEmail
+
 	// Validate input - only check email format, no password format validation for login
 	if err := validator.GetEmailError(req.Email); err != "" {
 		return nil, errors.New(err)
@@ -68,21 +118,17 @@ func (uc *AuthUseCase) Login(ctx context.Context, req models.LoginRequest) (*mod
 		return nil, err
 	}
 
-	// Generate JWT token pair
-	token, refreshToken, err := jwt.GenerateTokenPair(user.ID, user.Email, user.FullName, user.Role)
-	if err != nil {
-		return nil, errors.New("failed to generate token")
-	}
-
-	return &models.AuthResponse{
-		Token:        token,
-		RefreshToken: refreshToken,
-		User:         *user,
-	}, nil
+	return uc.issueFreshSessionTokenPair(ctx, user, false)
 }
 
 // Register handles user registration
 func (uc *AuthUseCase) Register(ctx context.Context, req models.RegisterRequest) (*models.AuthResponse, error) {
+	normalizedEmail, err := validator.NormalizeAndValidateEmail(req.Email)
+	if err != nil {
+		return nil, err
+	}
+	req.Email = normalizedEmail
+
 	// Validate input
 	if err := validator.GetFullNameError(req.FullName); err != "" {
 		return nil, errors.New(err)
@@ -127,17 +173,8 @@ func (uc *AuthUseCase) Register(ctx context.Context, req models.RegisterRequest)
 		return nil, errors.New("failed to get user")
 	}
 
-	// Generate JWT token pair
-	token, refreshToken, err := jwt.GenerateTokenPair(userID, createdUser.Email, createdUser.FullName, createdUser.Role)
-	if err != nil {
-		return nil, errors.New("failed to generate token")
-	}
-
-	return &models.AuthResponse{
-		Token:        token,
-		RefreshToken: refreshToken,
-		User:         *createdUser,
-	}, nil
+	createdUser.ID = userID
+	return uc.issueFreshSessionTokenPair(ctx, createdUser, false)
 }
 
 // AdminCreateAccount handles admin creating accounts
@@ -274,11 +311,22 @@ var pendingRegistrations = make(map[string]*models.PendingRegistration)
 
 // CheckEmailExists checks if email already exists
 func (uc *AuthUseCase) CheckEmailExists(ctx context.Context, email string) (bool, error) {
+	normalizedEmail, err := validator.NormalizeAndValidateEmail(email)
+	if err != nil {
+		return false, err
+	}
+	email = normalizedEmail
 	return uc.userRepo.ExistsByEmail(ctx, email)
 }
 
 // GenerateRegisterOTP generates OTP for registration
 func (uc *AuthUseCase) GenerateRegisterOTP(ctx context.Context, req models.RegisterRequest) (string, error) {
+	normalizedEmail, err := validator.NormalizeAndValidateEmail(req.Email)
+	if err != nil {
+		return "", err
+	}
+	req.Email = normalizedEmail
+
 	// Automatically extract the prefix of the email string if FullName is empty
 	fullName := req.FullName
 	if strings.TrimSpace(fullName) == "" {
@@ -328,6 +376,12 @@ func (uc *AuthUseCase) GenerateRegisterOTP(ctx context.Context, req models.Regis
 
 // VerifyRegisterOTP verifies OTP and creates user account
 func (uc *AuthUseCase) VerifyRegisterOTP(ctx context.Context, email, otp string) (*models.AuthResponse, error) {
+	normalizedEmail, err := validator.NormalizeAndValidateEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	email = normalizedEmail
+
 	// Check pending registration exists
 	pending, exists := pendingRegistrations[email]
 	if !exists {
@@ -369,23 +423,18 @@ func (uc *AuthUseCase) VerifyRegisterOTP(ctx context.Context, email, otp string)
 	delete(pendingRegistrations, email)
 	otpManager.Invalidate(email)
 
-	// Generate JWT
-	token, refreshToken, err := jwt.GenerateTokenPair(userID, user.Email, user.FullName, user.Role)
-	if err != nil {
-		return nil, errors.New("Không thể tạo token")
-	}
-
 	user.ID = userID
-
-	return &models.AuthResponse{
-		Token:        token,
-		RefreshToken: refreshToken,
-		User:         user,
-	}, nil
+	return uc.issueFreshSessionTokenPair(ctx, &user, false)
 }
 
 // ResendRegisterOTP resends OTP for pending registration
 func (uc *AuthUseCase) ResendRegisterOTP(ctx context.Context, email string) (string, error) {
+	normalizedEmail, err := validator.NormalizeAndValidateEmail(email)
+	if err != nil {
+		return "", err
+	}
+	email = normalizedEmail
+
 	pending, exists := pendingRegistrations[email]
 	if !exists {
 		return "", errors.New("Không có đăng ký đang chờ cho email này")
@@ -450,6 +499,12 @@ func (uc *AuthUseCase) GetStaffAndOrganizers(ctx context.Context) (*models.Staff
 
 // LoginOrRegisterGoogle handles Google sign-in auth response
 func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name string) (*models.AuthResponse, error) {
+	normalizedEmail, err := validator.NormalizeAndValidateEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	email = normalizedEmail
+
 	// Find user by email
 	user, err := uc.userRepo.FindByEmail(ctx, email)
 	if err != nil {
@@ -495,18 +550,8 @@ func (uc *AuthUseCase) LoginOrRegisterGoogle(ctx context.Context, email, name st
 		userID = user.ID
 	}
 
-	// Generate JWT
-	token, refreshToken, err := jwt.GenerateTokenPair(userID, user.Email, user.FullName, user.Role)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate token: %w", err)
-	}
-
-	return &models.AuthResponse{
-		Token:        token,
-		RefreshToken: refreshToken,
-		User:         *user,
-		IsNewUser:    isNewUser,
-	}, nil
+	user.ID = userID
+	return uc.issueFreshSessionTokenPair(ctx, user, isNewUser)
 }
 
 func (uc *AuthUseCase) ValidateSessionVersion(ctx context.Context, userID, tokenSessionVersion int) error {
@@ -525,15 +570,7 @@ func (uc *AuthUseCase) IssueTokenPair(ctx context.Context, userID int) (*models.
 	if user.Status == "BLOCKED" || user.Status == "PENDING_DELETE" {
 		return nil, errors.New("inactive user")
 	}
-	token, refreshToken, err := jwt.GenerateTokenPair(user.ID, user.Email, user.FullName, user.Role)
-	if err != nil {
-		return nil, errors.New("failed to generate token")
-	}
-	return &models.AuthResponse{
-		Token:        token,
-		RefreshToken: refreshToken,
-		User:         *user,
-	}, nil
+	return uc.issueFreshSessionTokenPair(ctx, user, false)
 }
 
 // DirectUpdatePhone updates the user's phone number directly

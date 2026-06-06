@@ -193,6 +193,35 @@ func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool,
 	return count > 0, nil
 }
 
+func (r *UserRepository) UpdateActiveSessionTokenID(ctx context.Context, userID int, sessionTokenID string) error {
+	query := `UPDATE Users SET active_session_token_id = $1 WHERE user_id = $2`
+	result, err := r.db.ExecContext(ctx, query, sessionTokenID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update active session token: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+	if rows == 0 {
+		return errors.New("user not found")
+	}
+	return nil
+}
+
+func (r *UserRepository) GetActiveSessionTokenID(ctx context.Context, userID int) (string, error) {
+	query := `SELECT COALESCE(active_session_token_id, '') FROM Users WHERE user_id = $1`
+	var sessionTokenID string
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&sessionTokenID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", errors.New("user not found")
+		}
+		return "", fmt.Errorf("failed to query active session token: %w", err)
+	}
+	return sessionTokenID, nil
+}
+
 // CreateUser creates a new user (khớp UsersDAO.insertUser)
 func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (int, error) {
 	// Default values

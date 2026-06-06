@@ -31,12 +31,14 @@ import (
 
 // Service instances (singleton)
 var (
-	emailService        *email.EmailService
-	recaptchaService    *recaptcha.RecaptchaService
-	log                 = logger.Default()
-	servicesInitialized bool
-	forgotPasswordGuard = newForgotPasswordLimiter()
-	registerGuard       = newForgotPasswordLimiter() // reuse same struct, independent state
+	emailService         *email.EmailService
+	recaptchaService     *recaptcha.RecaptchaService
+	log                  = logger.Default()
+	servicesInitialized  bool
+	forgotPasswordGuard  = newForgotPasswordLimiter()
+	registerGuard        = newForgotPasswordLimiter() // reuse same struct, independent state
+	registerOTPGuard     = newLockoutGuard(2, 5*time.Minute)
+	loginBruteforceGuard = newLockoutGuard(2, 5*time.Minute)
 )
 
 const jsonContentTypeUTF8 = "application/json; charset=utf-8"
@@ -50,6 +52,103 @@ type forgotPasswordLimiter struct {
 	mu      sync.Mutex
 	byEmail map[string]*rateLimitEntry
 	byIP    map[string]*rateLimitEntry
+}
+
+type lockoutEntry struct {
+	hits     []time.Time
+	lockedAt time.Time
+}
+
+type lockoutGuard struct {
+	mu       sync.Mutex
+	maxHits  int
+	lockFor  time.Duration
+	window   time.Duration
+	attempts map[string]*lockoutEntry
+}
+
+func newLockoutGuard(maxHits int, lockFor time.Duration) *lockoutGuard {
+	return &lockoutGuard{
+		maxHits:  maxHits,
+		lockFor:  lockFor,
+		window:   lockFor,
+		attempts: make(map[string]*lockoutEntry),
+	}
+}
+
+func (g *lockoutGuard) Hit(key string) (bool, int) {
+	now := timeutil.GetNow()
+	key = strings.ToLower(strings.TrimSpace(key))
+	if key == "" {
+		key = "unknown"
+	}
+
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	entry := g.entry(key)
+	if remaining := g.remainingLocked(entry, now); remaining > 0 {
+		return false, remaining
+	}
+
+	cutoff := now.Add(-g.window)
+	filtered := entry.hits[:0]
+	for _, hit := range entry.hits {
+		if hit.After(cutoff) {
+			filtered = append(filtered, hit)
+		}
+	}
+	entry.hits = append(filtered, now)
+	if len(entry.hits) > g.maxHits {
+		entry.lockedAt = now
+		entry.hits = nil
+		return false, int(g.lockFor.Seconds())
+	}
+	return true, 0
+}
+
+func (g *lockoutGuard) Locked(key string) (bool, int) {
+	now := timeutil.GetNow()
+	key = strings.ToLower(strings.TrimSpace(key))
+
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	entry, ok := g.attempts[key]
+	if !ok {
+		return false, 0
+	}
+	if remaining := g.remainingLocked(entry, now); remaining > 0 {
+		return true, remaining
+	}
+	return false, 0
+}
+
+func (g *lockoutGuard) Clear(key string) {
+	key = strings.ToLower(strings.TrimSpace(key))
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	delete(g.attempts, key)
+}
+
+func (g *lockoutGuard) entry(key string) *lockoutEntry {
+	entry, ok := g.attempts[key]
+	if !ok {
+		entry = &lockoutEntry{}
+		g.attempts[key] = entry
+	}
+	return entry
+}
+
+func (g *lockoutGuard) remainingLocked(entry *lockoutEntry, now time.Time) int {
+	if entry.lockedAt.IsZero() {
+		return 0
+	}
+	until := entry.lockedAt.Add(g.lockFor)
+	if !now.Before(until) {
+		entry.lockedAt = time.Time{}
+		entry.hits = nil
+		return 0
+	}
+	return int(until.Sub(now).Seconds()) + 1
 }
 
 func newForgotPasswordLimiter() *forgotPasswordLimiter {
@@ -158,6 +257,12 @@ func NewAuthHandlerWithDB(dbConn *sql.DB) *AuthHandler {
 }
 
 func ensureAuthSessionSchema(dbConn *sql.DB) {
+	if dbConn == nil {
+		return
+	}
+	if _, err := dbConn.Exec(`ALTER TABLE Users ADD COLUMN IF NOT EXISTS active_session_token_id VARCHAR(255) DEFAULT NULL`); err != nil {
+		log.Warn("Failed to ensure active_session_token_id column", "error", err)
+	}
 }
 
 // verifyRecaptcha verifies reCAPTCHA token if configured
@@ -273,12 +378,37 @@ func recaptchaExhaustedResponse() (events.APIGatewayProxyResponse, error) {
 	}, nil
 }
 
+func lockoutKey(ip, email, context string) string {
+	return strings.ToLower(strings.TrimSpace(ip)) + "|" + strings.ToLower(strings.TrimSpace(email)) + "|" + context
+}
+
+func codedJSONResponse(statusCode int, code string, retryAfter int, cookies []string) (events.APIGatewayProxyResponse, error) {
+	payload := map[string]interface{}{"code": code}
+	if retryAfter > 0 {
+		payload["retry_after"] = retryAfter
+	}
+	return responseWithCookies(statusCode, payload, cookies)
+}
+
 // HandleLogin handles POST /api/login
 func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Parse request body
 	var req models.LoginRequest
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
 		return createErrorResponse(http.StatusBadRequest, "Invalid request body")
+	}
+
+	normalizedEmail, err := validator.NormalizeAndValidateEmail(req.Email)
+	if err != nil {
+		if err.Error() == "EMAIL_DOMAIN_NOT_ALLOWED" {
+			return codedJSONResponse(http.StatusBadRequest, "EMAIL_DOMAIN_NOT_ALLOWED", 0, nil)
+		}
+		return createErrorResponse(http.StatusBadRequest, err.Error())
+	}
+	req.Email = normalizedEmail
+	loginKey := lockoutKey(getClientIP(request), req.Email, "login")
+	if locked, retryAfter := loginBruteforceGuard.Locked(loginKey); locked {
+		return codedJSONResponse(http.StatusLocked, "ACCOUNT_BRUTEFORCE_LOCKED", retryAfter, nil)
 	}
 
 	if req.RecaptchaToken != "" && req.RecaptchaToken != "TEST_BYPASS" {
@@ -297,8 +427,14 @@ func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGateway
 		if err.Error() == "user is blocked" {
 			statusCode = http.StatusForbidden
 		}
+		if statusCode == http.StatusUnauthorized {
+			if allowed, retryAfter := loginBruteforceGuard.Hit(loginKey); !allowed {
+				return codedJSONResponse(http.StatusLocked, "ACCOUNT_BRUTEFORCE_LOCKED", retryAfter, nil)
+			}
+		}
 		return createErrorResponse(statusCode, err.Error())
 	}
+	loginBruteforceGuard.Clear(loginKey)
 
 	// Return success payload without exposing JWT in JSON body
 	resp := map[string]interface{}{
@@ -321,6 +457,9 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 	claims, err := jwt.ValidateToken(token)
 	if err != nil {
 		return createErrorResponse(http.StatusUnauthorized, "Invalid authentication token")
+	}
+	if err := h.useCase.ValidateActiveSessionToken(ctx, claims.UserID, claims.SessionTokenID); err != nil {
+		return codedJSONResponse(http.StatusUnauthorized, "SESSION_SUPERSEDED", 0, clearAuthCookies())
 	}
 
 	user, err := h.useCase.GetUserByEmail(ctx, claims.Email)
@@ -722,6 +861,19 @@ func (h *AuthHandler) HandleRegisterSendOTP(ctx context.Context, request events.
 	if req.Email == "" || req.Password == "" {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Vui lòng điền đầy đủ thông tin")
 	}
+	normalizedEmail, normalizeErr := validator.NormalizeAndValidateEmail(req.Email)
+	if normalizeErr != nil {
+		if normalizeErr.Error() == "EMAIL_DOMAIN_NOT_ALLOWED" {
+			return codedJSONResponse(http.StatusBadRequest, "EMAIL_DOMAIN_NOT_ALLOWED", 0, nil)
+		}
+		return createStatusResponse(http.StatusBadRequest, "fail", normalizeErr.Error())
+	}
+	req.Email = normalizedEmail
+
+	registerKey := lockoutKey(getClientIP(request), req.Email, "register_otp")
+	if allowed, retryAfter := registerOTPGuard.Hit(registerKey); !allowed {
+		return codedJSONResponse(http.StatusTooManyRequests, "RATE_LIMIT_LOCKED", retryAfter, nil)
+	}
 	if strings.TrimSpace(req.FullName) == "" {
 		parts := strings.Split(req.Email, "@")
 		if len(parts) > 0 {
@@ -807,6 +959,18 @@ func (h *AuthHandler) HandleRegisterVerifyOTP(ctx context.Context, request event
 		return createStatusResponse(http.StatusBadRequest, "fail", "Email và OTP không được để trống")
 	}
 
+	normalizedEmail, normalizeErr := validator.NormalizeAndValidateEmail(req.Email)
+	if normalizeErr != nil {
+		if normalizeErr.Error() == "EMAIL_DOMAIN_NOT_ALLOWED" {
+			return codedJSONResponse(http.StatusBadRequest, "EMAIL_DOMAIN_NOT_ALLOWED", 0, nil)
+		}
+		return createStatusResponse(http.StatusBadRequest, "fail", normalizeErr.Error())
+	}
+	req.Email = normalizedEmail
+	if locked, retryAfter := registerOTPGuard.Locked(lockoutKey(getClientIP(request), req.Email, "register_otp")); locked {
+		return codedJSONResponse(http.StatusTooManyRequests, "RATE_LIMIT_LOCKED", retryAfter, nil)
+	}
+
 	// Verify OTP and create user
 	authResponse, err := h.useCase.VerifyRegisterOTP(ctx, req.Email, req.OTP)
 	if err != nil {
@@ -842,6 +1006,19 @@ func (h *AuthHandler) HandleRegisterResendOTP(ctx context.Context, request event
 
 	if req.Email == "" {
 		return createStatusResponse(http.StatusBadRequest, "fail", "Email không được để trống")
+	}
+
+	normalizedEmail, normalizeErr := validator.NormalizeAndValidateEmail(req.Email)
+	if normalizeErr != nil {
+		if normalizeErr.Error() == "EMAIL_DOMAIN_NOT_ALLOWED" {
+			return codedJSONResponse(http.StatusBadRequest, "EMAIL_DOMAIN_NOT_ALLOWED", 0, nil)
+		}
+		return createStatusResponse(http.StatusBadRequest, "fail", normalizeErr.Error())
+	}
+	req.Email = normalizedEmail
+	registerKey := lockoutKey(getClientIP(request), req.Email, "register_otp")
+	if allowed, retryAfter := registerOTPGuard.Hit(registerKey); !allowed {
+		return codedJSONResponse(http.StatusTooManyRequests, "RATE_LIMIT_LOCKED", retryAfter, nil)
 	}
 
 	// Resend OTP
