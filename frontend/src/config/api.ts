@@ -142,3 +142,39 @@ api.interceptors.response.use(
 )
 
 console.log('🚀 Ferrari BaseURL:', api.defaults.baseURL)
+
+// =============================================================================
+// Global Fetch Interceptor Strategy:
+//
+//   Since access tokens are stored strictly in-memory, raw browser fetch() calls
+//   (used extensively in legacy pages) would fail with 401. This monkey-patches
+//   window.fetch to inject the Authorization Bearer header to any relative or
+//   API-bound requests when an access token is active in memory.
+// =============================================================================
+
+const originalFetch = window.fetch
+window.fetch = async function (input, init) {
+	const token = getAccessToken()
+	if (token) {
+		let url = ''
+		if (typeof input === 'string') {
+			url = input
+		} else if (input instanceof URL) {
+			url = input.toString()
+		} else if (input && typeof input === 'object' && 'url' in input) {
+			url = (input as Request).url
+		}
+
+		// Inject only for relative API paths or explicit API endpoints on the same origin
+		const isApiRequest = url.startsWith('/') || url.includes('/api/')
+		if (isApiRequest) {
+			init = init || {}
+			const headers = new Headers(init.headers || {})
+			if (!headers.has('Authorization')) {
+				headers.set('Authorization', `Bearer ${token}`)
+			}
+			init.headers = headers
+		}
+	}
+	return originalFetch.call(this, input, init)
+}

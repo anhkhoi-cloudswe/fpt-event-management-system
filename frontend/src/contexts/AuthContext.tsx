@@ -308,18 +308,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user])
 
   useEffect(() => {
+    const isPublicRoute = (pathname: string) => {
+      return pathname === '/guest' || 
+             pathname === '/login' || 
+             pathname === '/signup' || 
+             pathname === '/reset-password'
+    }
+
     const refreshOnFocus = () => {
-      void refreshUser(true)
+      if (isAuthenticated && !isPublicRoute(window.location.pathname)) {
+        void refreshUser(true)
+      }
     }
 
     const refreshOnVisibility = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && isAuthenticated && !isPublicRoute(window.location.pathname)) {
         void refreshUser(true)
       }
     }
 
     const intervalId = window.setInterval(() => {
-      void refreshUser(true)
+      if (isAuthenticated && !isPublicRoute(window.location.pathname)) {
+        void refreshUser(true)
+      }
     }, 30000)
 
     window.addEventListener('focus', refreshOnFocus)
@@ -330,7 +341,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('focus', refreshOnFocus)
       document.removeEventListener('visibilitychange', refreshOnVisibility)
     }
-  }, [refreshUser])
+  }, [refreshUser, isAuthenticated])
 
   return (
     <AuthContext.Provider value={{ user, loading, isLoading: loading, isRefreshing, isAuthenticated, token, setUser, setToken, login, logout, refreshUser, currentLanguage, changeLanguage }}>
