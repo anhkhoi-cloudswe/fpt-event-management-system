@@ -2,15 +2,12 @@ package email
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
-	"net"
 	"net/http"
-	"net/smtp"
 	"net/url"
 	"os"
 	"strings"
@@ -240,10 +237,9 @@ func stripHTML(html string) string { return strings.ReplaceAll(html, "<br>", "\n
 type ProviderType string
 
 const (
-	ProviderResend    ProviderType = "resend"
-	ProviderBrevo     ProviderType = "brevo"
-	ProviderMailjet   ProviderType = "mailjet"
-	ProviderGmailSMTP ProviderType = "gmail_smtp"
+	ProviderResend  ProviderType = "resend"
+	ProviderBrevo   ProviderType = "brevo"
+	ProviderMailjet ProviderType = "mailjet"
 )
 
 type EmailProvider interface {
@@ -440,25 +436,28 @@ func (p *BrevoProvider) Send(msg EmailMessage) error {
 
 // ── MAILJET PROVIDER ───────────────────────────────────────────────────────
 
-type MailjetRecipient struct {
+type MailjetUser struct {
 	Email string `json:"Email"`
 	Name  string `json:"Name,omitempty"`
 }
 
 type MailjetAttachment struct {
-	ContentType string `json:"ContentType"`
-	Filename    string `json:"Filename"`
-	Content     string `json:"Content"` // Base64
+	ContentType   string `json:"ContentType"`
+	Filename      string `json:"Filename"`
+	Base64Content string `json:"Base64Content"`
+}
+
+type MailjetMessage struct {
+	From        MailjetUser         `json:"From"`
+	To          []MailjetUser       `json:"To"`
+	Subject     string              `json:"Subject"`
+	TextPart    string              `json:"TextPart,omitempty"`
+	HTMLPart    string              `json:"HTMLPart,omitempty"`
+	Attachments []MailjetAttachment `json:"Attachments,omitempty"`
 }
 
 type MailjetEmailPayload struct {
-	FromName    string              `json:"FromName,omitempty"`
-	FromEmail   string              `json:"FromEmail"`
-	Subject     string              `json:"Subject"`
-	TextPart    string              `json:"Text-part,omitempty"`
-	HTMLPart    string              `json:"Html-part,omitempty"`
-	Recipients  []MailjetRecipient  `json:"Recipients"`
-	Attachments []MailjetAttachment `json:"Attachments,omitempty"`
+	Messages []MailjetMessage `json:"Messages"`
 }
 
 type MailjetProvider struct {
@@ -485,28 +484,34 @@ func (p *MailjetProvider) Send(msg EmailMessage) error {
 		fromAddress = "evbatteryswap.system@gmail.com"
 	}
 
-	var mailjetTo []MailjetRecipient
+	var mailjetTo []MailjetUser
 	for _, to := range msg.To {
-		mailjetTo = append(mailjetTo, MailjetRecipient{Email: to})
+		mailjetTo = append(mailjetTo, MailjetUser{Email: to})
 	}
 
 	var mailjetAttachments []MailjetAttachment
 	for _, att := range msg.Attachments {
 		mailjetAttachments = append(mailjetAttachments, MailjetAttachment{
-			ContentType: att.MimeType,
-			Filename:    att.Filename,
-			Content:     base64.StdEncoding.EncodeToString(att.Data),
+			ContentType:   att.MimeType,
+			Filename:      att.Filename,
+			Base64Content: base64.StdEncoding.EncodeToString(att.Data),
 		})
 	}
 
 	payload := MailjetEmailPayload{
-		FromName:    p.fromName,
-		FromEmail:   fromAddress,
-		Subject:     msg.Subject,
-		TextPart:    msg.Body,
-		HTMLPart:    msg.HTMLBody,
-		Recipients:  mailjetTo,
-		Attachments: mailjetAttachments,
+		Messages: []MailjetMessage{
+			{
+				From: MailjetUser{
+					Email: fromAddress,
+					Name:  p.fromName,
+				},
+				To:          mailjetTo,
+				Subject:     msg.Subject,
+				TextPart:    msg.Body,
+				HTMLPart:    msg.HTMLBody,
+				Attachments: mailjetAttachments,
+			},
+		},
 	}
 
 	payloadBytes, err := json.Marshal(payload)
@@ -514,7 +519,7 @@ func (p *MailjetProvider) Send(msg EmailMessage) error {
 		return fmt.Errorf("mailjet marshal error: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://api.mailjet.com/v3/send", bytes.NewBuffer(payloadBytes))
+	req, err := http.NewRequest("POST", "https://api.mailjet.com/v3.1/send", bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		return fmt.Errorf("mailjet http request error: %w", err)
 	}
@@ -532,150 +537,6 @@ func (p *MailjetProvider) Send(msg EmailMessage) error {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("mailjet api error status %d: %s", resp.StatusCode, string(respBody))
 	}
-	return nil
-}
-
-// ── GMAIL SMTP PROVIDER ────────────────────────────────────────────────────
-
-type GmailSMTPProvider struct {
-	username   string
-	password   string
-	fromName   string
-	skipVerify bool
-}
-
-func NewGmailSMTPProvider(username, password, fromName string, skipVerify bool) *GmailSMTPProvider {
-	return &GmailSMTPProvider{
-		username:   username,
-		password:   password,
-		fromName:   fromName,
-		skipVerify: skipVerify,
-	}
-}
-
-func (p *GmailSMTPProvider) Name() string {
-	return "GmailSMTP"
-}
-
-func formatSMTPMessage(msg EmailMessage, fromName, fromAddress string) []byte {
-	var body bytes.Buffer
-
-	if len(msg.Attachments) == 0 {
-		body.WriteString(fmt.Sprintf("From: %s <%s>\r\n", fromName, fromAddress))
-		body.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
-		body.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
-		body.WriteString("MIME-Version: 1.0\r\n")
-		if msg.HTMLBody != "" {
-			body.WriteString("Content-Type: text/html; charset=UTF-8\r\n\r\n")
-			body.WriteString(msg.HTMLBody)
-		} else {
-			body.WriteString("Content-Type: text/plain; charset=UTF-8\r\n\r\n")
-			body.WriteString(msg.Body)
-		}
-		return body.Bytes()
-	}
-
-	boundary := "MyMultiPartBoundary"
-	body.WriteString(fmt.Sprintf("From: %s <%s>\r\n", fromName, fromAddress))
-	body.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
-	body.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
-	body.WriteString("MIME-Version: 1.0\r\n")
-	body.WriteString(fmt.Sprintf("Content-Type: multipart/mixed; boundary=%s\r\n\r\n", boundary))
-
-	body.WriteString(fmt.Sprintf("--%s\r\n", boundary))
-	if msg.HTMLBody != "" {
-		body.WriteString("Content-Type: text/html; charset=UTF-8\r\n\r\n")
-		body.WriteString(msg.HTMLBody)
-		body.WriteString("\r\n")
-	} else {
-		body.WriteString("Content-Type: text/plain; charset=UTF-8\r\n\r\n")
-		body.WriteString(msg.Body)
-		body.WriteString("\r\n")
-	}
-
-	for _, att := range msg.Attachments {
-		body.WriteString(fmt.Sprintf("--%s\r\n", boundary))
-		contentType := att.MimeType
-		if contentType == "" {
-			contentType = "application/octet-stream"
-		}
-		body.WriteString(fmt.Sprintf("Content-Type: %s; name=\"%s\"\r\n", contentType, att.Filename))
-		body.WriteString("Content-Transfer-Encoding: base64\r\n")
-		body.WriteString(fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\r\n\r\n", att.Filename))
-
-		encoded := base64.StdEncoding.EncodeToString(att.Data)
-		for i := 0; i < len(encoded); i += 76 {
-			end := i + 76
-			if end > len(encoded) {
-				end = len(encoded)
-			}
-			body.WriteString(encoded[i:end] + "\r\n")
-		}
-	}
-
-	body.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
-	return body.Bytes()
-}
-
-func (p *GmailSMTPProvider) Send(msg EmailMessage) error {
-	host := "smtp.gmail.com"
-	port := "587"
-	addr := fmt.Sprintf("%s:%s", host, port)
-
-	conn, err := net.DialTimeout("tcp", addr, 15*time.Second)
-	if err != nil {
-		return fmt.Errorf("gmail smtp dial failed: %w", err)
-	}
-	defer conn.Close()
-
-	client, err := smtp.NewClient(conn, host)
-	if err != nil {
-		return fmt.Errorf("gmail smtp client creation failed: %w", err)
-	}
-	defer client.Quit()
-
-	tlsConfig := &tls.Config{
-		ServerName:         host,
-		InsecureSkipVerify: p.skipVerify,
-	}
-
-	if err = client.StartTLS(tlsConfig); err != nil {
-		return fmt.Errorf("gmail smtp starttls failed: %w", err)
-	}
-
-	if p.username != "" && p.password != "" {
-		auth := smtp.PlainAuth("", p.username, p.password, host)
-		if err = client.Auth(auth); err != nil {
-			return fmt.Errorf("gmail smtp auth failed: %w", err)
-		}
-	}
-
-	fromAddress := msg.From
-	if fromAddress == "" {
-		fromAddress = "evbatteryswap.system@gmail.com"
-	}
-
-	if err = client.Mail(fromAddress); err != nil {
-		return fmt.Errorf("gmail smtp mail command failed: %w", err)
-	}
-
-	for _, to := range msg.To {
-		if err = client.Rcpt(to); err != nil {
-			return fmt.Errorf("gmail smtp rcpt command failed for %s: %w", to, err)
-		}
-	}
-
-	wc, err := client.Data()
-	if err != nil {
-		return fmt.Errorf("gmail smtp data command failed: %w", err)
-	}
-	defer wc.Close()
-
-	messageBytes := formatSMTPMessage(msg, p.fromName, fromAddress)
-	if _, err = wc.Write(messageBytes); err != nil {
-		return fmt.Errorf("gmail smtp write failed: %w", err)
-	}
-
 	return nil
 }
 
@@ -719,13 +580,7 @@ func (f *EmailProviderFactory) CreateProvider(pType ProviderType) (EmailProvider
 		}
 		return NewMailjetProvider(apiKey, secretKey, f.config.FromName), nil
 
-	case ProviderGmailSMTP:
-		username := os.Getenv("GMAIL_SMTP_USERNAME")
-		password := os.Getenv("GMAIL_SMTP_PASSWORD")
-		if username == "" || password == "" {
-			return nil, fmt.Errorf("gmail smtp credentials not configured")
-		}
-		return NewGmailSMTPProvider(username, password, f.config.FromName, f.config.SkipVerify), nil
+
 
 	default:
 		return nil, fmt.Errorf("unknown provider type: %s", pType)
@@ -739,11 +594,11 @@ func (s *EmailService) resolveProviderTiers(msg EmailMessage) []ProviderType {
 
 	// OTP Validation logic
 	if purpose == "register" || purpose == "register_otp" || purpose == "forgot_password" || strings.Contains(purpose, "otp") {
-		return []ProviderType{ProviderResend, ProviderMailjet, ProviderGmailSMTP}
+		return []ProviderType{ProviderResend, ProviderMailjet, ProviderBrevo}
 	}
 
 	// Ticket details, refunds, and generic defaults
-	return []ProviderType{ProviderResend, ProviderBrevo, ProviderMailjet, ProviderGmailSMTP}
+	return []ProviderType{ProviderResend, ProviderBrevo, ProviderMailjet}
 }
 
 // ── SEND ROUTER ────────────────────────────────────────────────────────────
