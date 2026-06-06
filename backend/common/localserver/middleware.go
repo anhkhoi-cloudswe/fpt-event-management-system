@@ -25,31 +25,34 @@ func WithJWTAuth(next LambdaHandler) LambdaHandler {
 
 		token := ""
 
-		// 1. Try Cookie
-		cookieHeader := request.Headers["Cookie"]
-		if cookieHeader == "" {
-			cookieHeader = request.Headers["cookie"]
+		// 1. Try Authorization Header
+		authHeader := request.Headers["Authorization"]
+		if authHeader == "" {
+			authHeader = request.Headers["authorization"]
 		}
-		if cookieHeader != "" {
-			for _, part := range strings.Split(cookieHeader, ";") {
-				item := strings.TrimSpace(part)
-				if strings.HasPrefix(item, "token=") {
-					token = strings.TrimPrefix(item, "token=")
-					break
-				}
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			val := strings.TrimSpace(authHeader[7:])
+			if val != "cookie-auth" {
+				token = val
 			}
 		}
 
-		// 2. Try Authorization Header
+		// 2. Try Cookie fallback
 		if token == "" {
-			authHeader := request.Headers["Authorization"]
-			if authHeader == "" {
-				authHeader = request.Headers["authorization"]
+			cookieHeader := request.Headers["Cookie"]
+			if cookieHeader == "" {
+				cookieHeader = request.Headers["cookie"]
 			}
-			if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
-				val := strings.TrimSpace(authHeader[7:])
-				if val != "cookie-auth" {
-					token = val
+			if cookieHeader != "" {
+				for _, part := range strings.Split(cookieHeader, ";") {
+					item := strings.TrimSpace(part)
+					if strings.HasPrefix(item, "token=") {
+						token = strings.TrimPrefix(item, "token=")
+						break
+					} else if strings.HasPrefix(item, "access_token=") {
+						token = strings.TrimPrefix(item, "access_token=")
+						break
+					}
 				}
 			}
 		}

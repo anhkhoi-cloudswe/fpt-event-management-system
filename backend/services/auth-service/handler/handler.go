@@ -586,26 +586,32 @@ func (h *AuthHandler) HandleAdminCreateAccount(ctx context.Context, request even
 // Helper functions
 
 func extractToken(request events.APIGatewayProxyRequest) string {
+	// Try Authorization header first
+	if auth := request.Headers["Authorization"]; auth != "" {
+		if len(auth) > 7 && auth[:7] == "Bearer " {
+			return auth[7:]
+		}
+	}
+
+	// Fallback to lowercase Authorization
+	if auth := request.Headers["authorization"]; auth != "" {
+		if len(auth) > 7 && auth[:7] == "Bearer " {
+			return auth[7:]
+		}
+	}
+
+	// Fallback to cookies
 	if token := extractNamedCookieFromHeader(request.Headers["Cookie"], "token"); token != "" {
 		return token
 	}
 	if token := extractNamedCookieFromHeader(request.Headers["cookie"], "token"); token != "" {
 		return token
 	}
-
-	// Try Authorization header first
-	if auth := request.Headers["Authorization"]; auth != "" {
-		// Remove "Bearer " prefix
-		if len(auth) > 7 && auth[:7] == "Bearer " {
-			return auth[7:]
-		}
+	if token := extractNamedCookieFromHeader(request.Headers["Cookie"], "access_token"); token != "" {
+		return token
 	}
-
-	// Fallback to lowercase
-	if auth := request.Headers["authorization"]; auth != "" {
-		if len(auth) > 7 && auth[:7] == "Bearer " {
-			return auth[7:]
-		}
+	if token := extractNamedCookieFromHeader(request.Headers["cookie"], "access_token"); token != "" {
+		return token
 	}
 
 	return ""

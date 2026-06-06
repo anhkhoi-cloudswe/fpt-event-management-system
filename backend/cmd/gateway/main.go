@@ -222,13 +222,16 @@ func jwtMiddleware(next http.Handler) http.Handler {
 		}
 
 		token := ""
-		if cookie, err := r.Cookie("token"); err == nil && strings.TrimSpace(cookie.Value) != "" {
-			token = cookie.Value
+		authHeader := r.Header.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimSpace(authHeader[7:])
 		}
+
 		if token == "" {
-			authHeader := r.Header.Get("Authorization")
-			if strings.HasPrefix(authHeader, "Bearer ") {
-				token = strings.TrimSpace(authHeader[7:])
+			if cookie, err := r.Cookie("token"); err == nil && strings.TrimSpace(cookie.Value) != "" {
+				token = cookie.Value
+			} else if cookie, err := r.Cookie("access_token"); err == nil && strings.TrimSpace(cookie.Value) != "" {
+				token = cookie.Value
 			}
 		}
 
