@@ -21,6 +21,12 @@ import fptLogo from '../assets/fpt-logo.png'
 import fptCampus from '../assets/dai-hoc-fpt-tp-hcm-1.jpeg'
 
 const API_URL = API_BASE_URL
+const ALLOWED_EMAIL_DOMAINS = ['gmail.com', 'fpt.edu.vn', 'edu.vn']
+
+const isAllowedEmailDomain = (email: string): boolean => {
+  const parts = email.trim().toLowerCase().split('@')
+  return parts.length === 2 && parts[0].length > 0 && ALLOWED_EMAIL_DOMAINS.includes(parts[1])
+}
 
 interface FormData {
   email: string
@@ -45,13 +51,14 @@ export default function SignUp() {
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([])
   const [emailError, setEmailError] = useState('')
   const [passwordError, setPasswordError] = useState('')
+  const [isEmailValid, setIsEmailValid] = useState(false)
 
   const { setUser, setToken, refreshUser, currentLanguage } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
 
   const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
-  const isRecaptchaVerified = !RECAPTCHA_SITE_KEY || !!recaptchaToken
+  const canUseRecaptcha = isEmailValid && formData.password.trim() !== '' && rateLimitCountdown === 0 && !loading
   const otpLength = 6
   const otpArray = otpValue.split('').concat(Array(otpLength).fill('')).slice(0, otpLength)
 
@@ -79,6 +86,26 @@ export default function SignUp() {
     }
     return () => clearTimeout(timer)
   }, [rateLimitCountdown])
+
+  useEffect(() => {
+    recaptchaRef.current?.reset()
+    setRecaptchaToken(null)
+    setIsEmailValid(false)
+
+    const email = formData.email.trim()
+    if (!email) return
+
+    const timer = window.setTimeout(() => {
+      if (isAllowedEmailDomain(email)) {
+        setIsEmailValid(true)
+        setEmailError('')
+      } else {
+        setEmailError('Only gmail.com, fpt.edu.vn, or edu.vn emails are allowed.')
+      }
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [formData.email, formData.password])
 
   // Google OAuth registration
   const googleRegister = useGoogleLogin({
@@ -151,12 +178,17 @@ export default function SignUp() {
       return
     }
 
+    if (!isAllowedEmailDomain(formData.email)) {
+      setEmailError('Only gmail.com, fpt.edu.vn, or edu.vn emails are allowed.')
+      return
+    }
+
     if (formData.password.length < 6) {
       setPasswordError('Mật khẩu phải chứa ít nhất 6 ký tự!')
       return
     }
 
-    if (!recaptchaToken) {
+    if (!canUseRecaptcha || !recaptchaToken) {
       showToast('error', 'Vui lòng xác nhận reCAPTCHA trước khi đăng ký!')
       return
     }
@@ -498,7 +530,10 @@ export default function SignUp() {
 
               {/* reCAPTCHA */}
               {RECAPTCHA_SITE_KEY && (
-                <div className="flex justify-center my-4 overflow-hidden rounded-2xl border border-slate-100">
+                <fieldset
+                  disabled={!canUseRecaptcha}
+                  className={`flex justify-center my-4 overflow-hidden rounded-2xl border border-slate-100 ${canUseRecaptcha ? '' : 'opacity-50 pointer-events-none'}`}
+                >
                   <ReCAPTCHA
                     ref={recaptchaRef}
                     sitekey={RECAPTCHA_SITE_KEY}
@@ -509,13 +544,13 @@ export default function SignUp() {
                     }}
                     onExpired={() => setRecaptchaToken(null)}
                   />
-                </div>
+                </fieldset>
               )}
 
               {/* Submit button */}
               <button
                 type="submit"
-                disabled={!isRecaptchaVerified || loading || rateLimitCountdown > 0}
+                disabled={loading || rateLimitCountdown > 0 || !recaptchaToken}
                 className="w-full py-4 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white rounded-2xl font-bold text-sm shadow-lg shadow-orange-500/20 hover:shadow-orange-500/35 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99"
               >
                 {loading ? (

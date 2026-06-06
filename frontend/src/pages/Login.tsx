@@ -57,6 +57,12 @@ const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 // - false: khi debug nhanh, không cần check token thật -> gửi 'TEST_BYPASS' xuống BE
 // - true: bắt buộc tick checkbox và có token thật trước khi login
 const USE_REAL_RECAPTCHA = true // Đổi thành true khi muốn dùng reCAPTCHA thật trong demo/production
+const ALLOWED_EMAIL_DOMAINS = ['gmail.com', 'fpt.edu.vn', 'edu.vn']
+
+const isAllowedEmailDomain = (email: string): boolean => {
+  const parts = email.trim().toLowerCase().split('@')
+  return parts.length === 2 && parts[0].length > 0 && ALLOWED_EMAIL_DOMAINS.includes(parts[1])
+}
 
 // ===================== MAIN COMPONENT =====================
 
@@ -89,11 +95,14 @@ export default function Login() {
   const [emailError, setEmailError] = useState('')
   const [passwordError, setPasswordError] = useState('')
   const [lockoutCountdown, setLockoutCountdown] = useState(0)
+  const [isEmailValid, setIsEmailValid] = useState(false)
+  const [emailCheckLoading, setEmailCheckLoading] = useState(false)
 
   // navigate: chuyển trang sang dashboard sau khi login
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const redirectUrl = searchParams.get('redirect')
+  const canUseRecaptcha = isEmailValid && formData.password.trim() !== '' && lockoutCountdown === 0 && !loading
 
   const formatCountdown = (secs: number): string => {
     const m = Math.floor(secs / 60)
@@ -108,6 +117,54 @@ export default function Login() {
     }
     return () => clearTimeout(timer)
   }, [lockoutCountdown])
+
+  useEffect(() => {
+    recaptchaRef.current?.reset()
+    setRecaptchaToken(null)
+    setIsEmailValid(false)
+
+    const email = formData.email.trim()
+    if (!email) {
+      setEmailCheckLoading(false)
+      return
+    }
+
+    if (!isAllowedEmailDomain(email)) {
+      setEmailCheckLoading(false)
+      setEmailError('Only gmail.com, fpt.edu.vn, or edu.vn emails are allowed.')
+      return
+    }
+
+    let cancelled = false
+    setEmailCheckLoading(true)
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await axios.post(`${API_URL}/auth/check-email-exists`, { email })
+        if (!cancelled && response.status === 200 && response.data?.exists === true) {
+          setIsEmailValid(true)
+          setEmailError('')
+        }
+      } catch (err: any) {
+        if (cancelled) return
+        if (err.response?.status === 404) {
+          setEmailError('Email not found')
+        } else if (err.response?.data?.code === 'EMAIL_DOMAIN_NOT_ALLOWED') {
+          setEmailError('Only gmail.com, fpt.edu.vn, or edu.vn emails are allowed.')
+        } else {
+          setEmailError(err.response?.data?.message || 'Unable to verify email right now.')
+        }
+      } finally {
+        if (!cancelled) {
+          setEmailCheckLoading(false)
+        }
+      }
+    }, 350)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [formData.email, formData.password])
 
   // Google OAuth Login handler
   const googleLogin = useGoogleLogin({
@@ -186,6 +243,10 @@ export default function Login() {
    * - Nếu thất bại: throw error để handleSubmit catch
    */
   const handleLogin = async () => {
+    if (!canUseRecaptcha) {
+      throw new Error('Please enter a registered allowed email and password before reCAPTCHA.')
+    }
+
     // Nếu dùng reCAPTCHA thật nhưng chưa có token -> không được login
     if (USE_REAL_RECAPTCHA && !recaptchaToken) {
       throw new Error('Vui lòng xác thực reCAPTCHA trước khi đăng nhập.')
@@ -421,6 +482,9 @@ export default function Login() {
             {emailError && (
               <p className="text-red-500 text-xs mt-1 pl-1 font-medium animate-shake">{emailError}</p>
             )}
+            {emailCheckLoading && (
+              <p className="text-slate-500 text-xs mt-1 pl-1 font-medium">Checking email...</p>
+            )}
           </div>
 
           {/* Input Password */}
@@ -460,7 +524,10 @@ export default function Login() {
 
           {/* reCAPTCHA checkbox */}
           {RECAPTCHA_SITE_KEY && (
-            <div className="flex justify-center border border-slate-200 rounded-2xl p-2.5 bg-slate-50">
+            <fieldset
+              disabled={!canUseRecaptcha}
+              className={`flex justify-center border border-slate-200 rounded-2xl p-2.5 bg-slate-50 ${canUseRecaptcha ? '' : 'opacity-50 pointer-events-none'}`}
+            >
               <ReCAPTCHA
                 ref={recaptchaRef}
                 sitekey={RECAPTCHA_SITE_KEY}
@@ -474,13 +541,13 @@ export default function Login() {
                   setRecaptchaToken(null)
                 }}
               />
-            </div>
+            </fieldset>
           )}
 
           {/* Button submit */}
           <button
             type="submit"
-            disabled={loading || lockoutCountdown > 0 || (USE_REAL_RECAPTCHA && !recaptchaToken)}
+            disabled={loading || lockoutCountdown > 0 || !recaptchaToken}
             className="w-full bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 text-white py-3.5 px-4 rounded-2xl hover:shadow-lg hover:shadow-orange-500/25 focus:outline-none font-extrabold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 shadow-md"
           >
             {loading ? (

@@ -390,6 +390,37 @@ func codedJSONResponse(statusCode int, code string, retryAfter int, cookies []st
 	return responseWithCookies(statusCode, payload, cookies)
 }
 
+// HandleCheckEmailExists is a public lightweight email existence probe.
+// It intentionally performs no JWT or reCAPTCHA validation.
+func (h *AuthHandler) HandleCheckEmailExists(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createErrorResponse(http.StatusBadRequest, "Invalid request body")
+	}
+
+	normalizedEmail, err := validator.NormalizeAndValidateEmail(req.Email)
+	if err != nil {
+		if err.Error() == "EMAIL_DOMAIN_NOT_ALLOWED" {
+			return codedJSONResponse(http.StatusBadRequest, "EMAIL_DOMAIN_NOT_ALLOWED", 0, nil)
+		}
+		return createErrorResponse(http.StatusBadRequest, err.Error())
+	}
+
+	exists, err := h.useCase.CheckEmailExists(ctx, normalizedEmail)
+	if err != nil {
+		return createErrorResponse(http.StatusInternalServerError, err.Error())
+	}
+	if !exists {
+		return responseWithCookies(http.StatusNotFound, map[string]interface{}{
+			"exists":  false,
+			"message": "Email not found",
+		}, nil)
+	}
+	return responseWithCookies(http.StatusOK, map[string]interface{}{"exists": true}, nil)
+}
+
 // HandleLogin handles POST /api/login
 func (h *AuthHandler) HandleLogin(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Parse request body

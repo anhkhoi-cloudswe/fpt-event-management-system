@@ -38,6 +38,7 @@ var routes = []Route{
 	{"/api/login", "Auth"},
 	{"/api/logout", "Auth"},
 	{"/api/auth/refresh", "Auth"},
+	{"/api/auth/check-email-exists", "Auth"},
 	{"/api/v1/auth/me", "Auth"},
 	{"/api/auth/me", "Auth"},
 	{"/api/register", "Auth"},

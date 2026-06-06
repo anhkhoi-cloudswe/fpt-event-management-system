@@ -11,6 +11,12 @@ import { API_BASE_URL } from '../config/api'
 import { ArrowLeft } from 'lucide-react'
 
 const API_URL = API_BASE_URL
+const ALLOWED_EMAIL_DOMAINS = ['gmail.com', 'fpt.edu.vn', 'edu.vn']
+
+const isAllowedEmailDomain = (email: string): boolean => {
+  const parts = email.trim().toLowerCase().split('@')
+  return parts.length === 2 && parts[0].length > 0 && ALLOWED_EMAIL_DOMAINS.includes(parts[1])
+}
 
 // Cấu hình trong file .env: VITE_RECAPTCHA_SITE_KEY
 // reCAPTCHA site key được lấy từ environment variable
@@ -43,9 +49,11 @@ export default function ResetPassword() {
   const [otpError, setOtpError] = useState('')
   const [newPasswordError, setNewPasswordError] = useState('')
   const [confirmPasswordError, setConfirmPasswordError] = useState('')
+  const [isEmailValid, setIsEmailValid] = useState(false)
   const recaptchaRef = useRef<ReCAPTCHA | null>(null)
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const canUseRecaptcha = isEmailValid && rateLimitCountdown === 0 && !loading
 
   // Format seconds as MM:SS (always padded)
   const formatCountdown = (secs: number): string => {
@@ -72,6 +80,26 @@ export default function ResetPassword() {
     return () => clearTimeout(timer)
   }, [rateLimitCountdown])
 
+  useEffect(() => {
+    recaptchaRef.current?.reset()
+    setRecaptchaToken(null)
+    setIsEmailValid(false)
+
+    const email = formData.email.trim()
+    if (!email) return
+
+    const timer = window.setTimeout(() => {
+      if (isAllowedEmailDomain(email)) {
+        setIsEmailValid(true)
+        setEmailError('')
+      } else {
+        setEmailError('Only gmail.com, fpt.edu.vn, or edu.vn emails are allowed.')
+      }
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [formData.email])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
@@ -93,7 +121,12 @@ export default function ResetPassword() {
       return
     }
 
-    if (!recaptchaToken) {
+    if (!isAllowedEmailDomain(formData.email)) {
+      setEmailError('Only gmail.com, fpt.edu.vn, or edu.vn emails are allowed.')
+      return
+    }
+
+    if (!canUseRecaptcha || !recaptchaToken) {
       showToast('error', 'Vui lòng xác nhận reCAPTCHA trước khi gửi OTP!')
       return
     }
@@ -303,7 +336,10 @@ export default function ResetPassword() {
         {step === 'email' ? (
           <form onSubmit={handleSendOtp} className="space-y-5">
             {RECAPTCHA_SITE_KEY && (
-              <div className="flex justify-center border border-slate-200 rounded-2xl p-2.5 bg-slate-50 mb-2">
+              <fieldset
+                disabled={!canUseRecaptcha}
+                className={`flex justify-center border border-slate-200 rounded-2xl p-2.5 bg-slate-50 mb-2 ${canUseRecaptcha ? '' : 'opacity-50 pointer-events-none'}`}
+              >
                 <ReCAPTCHA
                   ref={recaptchaRef}
                   sitekey={RECAPTCHA_SITE_KEY}
@@ -315,7 +351,7 @@ export default function ResetPassword() {
                   }}
                   onExpired={() => setRecaptchaToken(null)}
                 />
-              </div>
+              </fieldset>
             )}
 
             <div className="space-y-1.5">
@@ -330,6 +366,7 @@ export default function ResetPassword() {
                 onChange={handleInputChange}
                 placeholder="email@fpt.edu.vn"
                 required
+                disabled={loading || rateLimitCountdown > 0}
                 className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
                   emailError 
                     ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
@@ -348,7 +385,7 @@ export default function ResetPassword() {
 
             <button
               type="submit"
-              disabled={loading || !recaptchaToken || rateLimitCountdown > 0}
+              disabled={loading || rateLimitCountdown > 0 || !recaptchaToken}
               className="w-full bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 text-white py-3.5 px-4 rounded-2xl hover:shadow-lg hover:shadow-orange-500/25 focus:outline-none font-extrabold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 shadow-md"
             >
               {loading
