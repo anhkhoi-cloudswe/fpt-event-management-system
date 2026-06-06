@@ -146,6 +146,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
+    // Strictly FORBID automatic background refresh loops if the client is already standing on the public guest route
+    if (window.location.pathname === '/guest') {
+      setLoading(false) // Instantly release the "Loading Auth State..." screen barrier smoothly
+      return
+    }
+
     let isMounted = true
 
     const bootstrapAuth = async () => {
