@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { Venue } from '../../services/venueService'
 import React from 'react'
+import { createPortal } from 'react-dom'
 
 interface VenueFormModalProps {
   isOpen: boolean
@@ -55,7 +56,7 @@ export default function VenueFormModal({ isOpen, venue, onClose, onSubmit }: Ven
 
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     // ⭐ ABSOLUTE CENTERING: Fixed overlay + centered container
     <div className="fixed inset-0 bg-black/60 z-50 overflow-y-auto backdrop-blur-sm">
       {/* Centering wrapper */}
@@ -122,6 +123,7 @@ export default function VenueFormModal({ isOpen, venue, onClose, onSubmit }: Ven
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -1,5 +1,6 @@
 import React from 'react'
 import { X } from 'lucide-react'
+import { createPortal } from 'react-dom'
 
 interface Props {
   isOpen: boolean
@@ -13,7 +14,7 @@ interface Props {
 export default function ConfirmModal({ isOpen, message, onConfirm, onClose, confirmLabel = 'OK', cancelLabel = 'Huỷ' }: Props) {
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     // ⭐ ABSOLUTE CENTERING: Fixed overlay + centered container
     <div className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 overflow-y-auto">
       {/* Centering wrapper */}
@@ -39,6 +40,7 @@ export default function ConfirmModal({ isOpen, message, onConfirm, onClose, conf
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

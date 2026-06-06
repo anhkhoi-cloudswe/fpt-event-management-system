@@ -1,6 +1,7 @@
 import React from 'react'
 import { X } from 'lucide-react'
 import { Area } from '../../services/venueService'
+import { createPortal } from 'react-dom'
 
 interface AreaFormModalProps {
   isOpen: boolean
@@ -103,7 +104,7 @@ export default function AreaFormModal({ isOpen, area, venueId, onClose, onSubmit
 
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     // ⭐ ABSOLUTE CENTERING: Fixed overlay + centered container
     <div className="fixed inset-0 bg-black/60 z-50 overflow-y-auto backdrop-blur-sm">
       {/* Centering wrapper */}
@@ -216,6 +217,7 @@ export default function AreaFormModal({ isOpen, area, venueId, onClose, onSubmit
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
