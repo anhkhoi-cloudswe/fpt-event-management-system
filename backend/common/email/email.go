@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"net"
 	"net/http"
 	"net/smtp"
 	"net/url"
@@ -618,30 +619,34 @@ func formatSMTPMessage(msg EmailMessage, fromName, fromAddress string) []byte {
 
 func (p *GmailSMTPProvider) Send(msg EmailMessage) error {
 	host := "smtp.gmail.com"
-	port := "465"
+	port := "587"
 	addr := fmt.Sprintf("%s:%s", host, port)
+
+	conn, err := net.DialTimeout("tcp", addr, 15*time.Second)
+	if err != nil {
+		return fmt.Errorf("gmail smtp dial failed: %w", err)
+	}
+	defer conn.Close()
+
+	client, err := smtp.NewClient(conn, host)
+	if err != nil {
+		return fmt.Errorf("gmail smtp client creation failed: %w", err)
+	}
+	defer client.Quit()
 
 	tlsConfig := &tls.Config{
 		ServerName:         host,
 		InsecureSkipVerify: p.skipVerify,
 	}
 
-	conn, err := tls.Dial("tcp", addr, tlsConfig)
-	if err != nil {
-		return fmt.Errorf("gmail smtps dial failed: %w", err)
+	if err = client.StartTLS(tlsConfig); err != nil {
+		return fmt.Errorf("gmail smtp starttls failed: %w", err)
 	}
-	defer conn.Close()
-
-	client, err := smtp.NewClient(conn, host)
-	if err != nil {
-		return fmt.Errorf("gmail smtps client creation failed: %w", err)
-	}
-	defer client.Quit()
 
 	if p.username != "" && p.password != "" {
 		auth := smtp.PlainAuth("", p.username, p.password, host)
 		if err = client.Auth(auth); err != nil {
-			return fmt.Errorf("gmail smtps auth failed: %w", err)
+			return fmt.Errorf("gmail smtp auth failed: %w", err)
 		}
 	}
 
@@ -651,24 +656,24 @@ func (p *GmailSMTPProvider) Send(msg EmailMessage) error {
 	}
 
 	if err = client.Mail(fromAddress); err != nil {
-		return fmt.Errorf("gmail smtps mail command failed: %w", err)
+		return fmt.Errorf("gmail smtp mail command failed: %w", err)
 	}
 
 	for _, to := range msg.To {
 		if err = client.Rcpt(to); err != nil {
-			return fmt.Errorf("gmail smtps rcpt command failed for %s: %w", to, err)
+			return fmt.Errorf("gmail smtp rcpt command failed for %s: %w", to, err)
 		}
 	}
 
 	wc, err := client.Data()
 	if err != nil {
-		return fmt.Errorf("gmail smtps data command failed: %w", err)
+		return fmt.Errorf("gmail smtp data command failed: %w", err)
 	}
 	defer wc.Close()
 
 	messageBytes := formatSMTPMessage(msg, p.fromName, fromAddress)
 	if _, err = wc.Write(messageBytes); err != nil {
-		return fmt.Errorf("gmail smtps write failed: %w", err)
+		return fmt.Errorf("gmail smtp write failed: %w", err)
 	}
 
 	return nil
