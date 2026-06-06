@@ -730,35 +730,15 @@ func (f *EmailProviderFactory) CreateProvider(pType ProviderType) (EmailProvider
 // ── STRATEGY ROUTING RESOLVER ──────────────────────────────────────────────
 
 func (s *EmailService) resolveProviderTiers(msg EmailMessage) []ProviderType {
-	resendTarget := os.Getenv("RESEND_VERIFIED_TARGET")
-	if resendTarget == "" {
-		resendTarget = "ahkhoinguyen169@gmail.com"
-	}
-
-	for _, toEmail := range msg.To {
-		emailClean := strings.ToLower(strings.TrimSpace(toEmail))
-		if emailClean == "ahkhoinguyen169@gmail.com" || emailClean == "nguyenanhkhoi169@gmail.com" || strings.EqualFold(toEmail, resendTarget) {
-			// VIP route: Resend first, then fall back to standard providers if Resend fails
-			return []ProviderType{ProviderResend, ProviderBrevo, ProviderMailjet, ProviderGmailSMTP}
-		}
-	}
-
 	purpose := strings.ToLower(msg.Purpose)
 
-	if purpose == "register" || purpose == "forgot_password" || purpose == "register_otp" || strings.Contains(purpose, "otp") {
-		return []ProviderType{ProviderMailjet, ProviderGmailSMTP}
+	// OTP Validation logic
+	if purpose == "register" || purpose == "register_otp" || purpose == "forgot_password" || strings.Contains(purpose, "otp") {
+		return []ProviderType{ProviderResend, ProviderMailjet, ProviderGmailSMTP}
 	}
 
-	if purpose == "ticket_details" || purpose == "ticket" || strings.Contains(purpose, "ticket") {
-		return []ProviderType{ProviderBrevo, ProviderMailjet, ProviderGmailSMTP}
-	}
-
-	if purpose == "event_cancellation" || strings.Contains(purpose, "cancellation") {
-		return []ProviderType{ProviderBrevo, ProviderMailjet, ProviderGmailSMTP}
-	}
-
-	// Default fallback chain
-	return []ProviderType{ProviderBrevo, ProviderMailjet, ProviderGmailSMTP}
+	// Ticket details, refunds, and generic defaults
+	return []ProviderType{ProviderResend, ProviderBrevo, ProviderMailjet, ProviderGmailSMTP}
 }
 
 // ── SEND ROUTER ────────────────────────────────────────────────────────────
