@@ -80,10 +80,14 @@ api.interceptors.response.use(
 		if (
 			error.response?.status === 401 &&
 			originalRequest &&
-			!originalRequest._retry &&
-			!requestUrl.includes('/auth/refresh') &&
 			!requestUrl.includes('/login')
 		) {
+			if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/api/auth/refresh') || originalRequest._retry) {
+				accessToken = null
+				window.location.href = '/guest'
+				return Promise.reject(error)
+			}
+
 			if (isRefreshing) {
 				return new Promise((resolve, reject) => {
 					failedQueue.push({
