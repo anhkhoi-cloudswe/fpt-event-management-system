@@ -50,6 +50,7 @@ export default function ResetPassword() {
   const [newPasswordError, setNewPasswordError] = useState('')
   const [confirmPasswordError, setConfirmPasswordError] = useState('')
   const [isEmailValid, setIsEmailValid] = useState(false)
+  const [emailCheckLoading, setEmailCheckLoading] = useState(false)
   const recaptchaRef = useRef<ReCAPTCHA | null>(null)
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -86,19 +87,54 @@ export default function ResetPassword() {
     setIsEmailValid(false)
 
     const email = formData.email.trim()
-    if (!email) return
+    if (!email) {
+      setEmailCheckLoading(false)
+      return
+    }
 
-    const timer = window.setTimeout(() => {
-      if (isAllowedEmailDomain(email)) {
-        setIsEmailValid(true)
-        setEmailError('')
-      } else {
-        setEmailError('Only gmail.com, fpt.edu.vn, or edu.vn emails are allowed.')
+    if (!isAllowedEmailDomain(email)) {
+      setEmailCheckLoading(false)
+      setEmailError('Only gmail.com, fpt.edu.vn, or edu.vn emails are allowed.')
+      return
+    }
+
+    let cancelled = false
+    setEmailCheckLoading(true)
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await axios.post(`${API_URL}/auth/check-email-exists`, { email })
+        if (!cancelled && response.status === 200 && response.data?.exists === true) {
+          setIsEmailValid(true)
+          setEmailError('')
+        }
+      } catch (err: any) {
+        if (cancelled) return
+        if (err.response?.status === 404) {
+          setEmailError('Tài khoản này chưa được đăng ký trên hệ thống!')
+        } else if (err.response?.data?.code === 'EMAIL_DOMAIN_NOT_ALLOWED') {
+          setEmailError('Only gmail.com, fpt.edu.vn, or edu.vn emails are allowed.')
+        } else {
+          setEmailError(err.response?.data?.message || 'Unable to verify email right now.')
+        }
+      } finally {
+        if (!cancelled) {
+          setEmailCheckLoading(false)
+        }
       }
-    }, 250)
+    }, 350)
 
-    return () => window.clearTimeout(timer)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
   }, [formData.email])
+
+  useEffect(() => {
+    if (!isEmailValid && recaptchaToken) {
+      recaptchaRef.current?.reset()
+      setRecaptchaToken(null)
+    }
+  }, [isEmailValid, recaptchaToken])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -375,6 +411,9 @@ export default function ResetPassword() {
               />
               {emailError && (
                 <p className="text-red-500 text-xs mt-1 pl-1 font-medium animate-shake">{emailError}</p>
+              )}
+              {emailCheckLoading && (
+                <p className="text-slate-500 text-xs mt-1 pl-1 font-medium">Checking email...</p>
               )}
               {rateLimitCountdown > 0 && (
                 <p className="text-[11px] font-bold text-rose-600 mt-1 pl-1">
