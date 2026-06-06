@@ -256,6 +256,11 @@ func corsMiddleware(next http.Handler) http.Handler {
 	allowedOrigins := parseAllowedOrigins(getEnv("CORS_ALLOWED_ORIGINS", "https://fpt-event.vercel.app,http://localhost:5173,http://localhost:3000"))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/internal/") || strings.HasPrefix(r.URL.Path, "/api/internal/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		origin := r.Header.Get("Origin")
 		w.Header().Set("Vary", "Origin")
 		enforceCredentialHeader(w.Header())

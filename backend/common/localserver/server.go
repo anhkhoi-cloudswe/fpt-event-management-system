@@ -193,6 +193,11 @@ func getAllowedOrigin(requestOrigin string) string {
 // corsMiddleware handles CORS preflight using CORS_ALLOWED_ORIGINS from .env
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/internal/") || strings.HasPrefix(r.URL.Path, "/api/internal/") {
+			next(w, r)
+			return
+		}
+
 		origin := r.Header.Get("Origin")
 		w.Header().Set("Vary", "Origin")
 		if allowedOrigin := getAllowedOrigin(origin); allowedOrigin != "" {

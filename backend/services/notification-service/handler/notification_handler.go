@@ -191,7 +191,7 @@ func (h *NotificationHandler) HandleSendEmail(ctx context.Context, request event
 		}
 	}()
 
-	return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "email dispatch initiated"})
+	return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true, "message": "email dispatch initiated"})
 }
 
 // ============================================================
@@ -220,7 +220,7 @@ func (h *NotificationHandler) HandleSendTicketPDF(ctx context.Context, request e
 		go func() {
 			_, _ = h.handleSingleTicketPDF(req.SingleTicket)
 		}()
-		return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "ticket email dispatch initiated"})
+		return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true, "message": "ticket email dispatch initiated"})
 	}
 
 	if req.MultipleTickets != nil {
@@ -232,7 +232,7 @@ func (h *NotificationHandler) HandleSendTicketPDF(ctx context.Context, request e
 		go func() {
 			_, _ = h.handleMultipleTicketsPDF(req.MultipleTickets)
 		}()
-		return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "tickets email dispatch initiated"})
+		return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true, "message": "tickets email dispatch initiated"})
 	}
 
 	return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "either singleTicket or multipleTickets required"})
@@ -426,7 +426,7 @@ func (h *NotificationHandler) HandleSendTickets(ctx context.Context, request eve
 		go func() {
 			_, _ = h.handleSingleTicketPDF(req.SingleTicket)
 		}()
-		return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "ticket email dispatch initiated"})
+		return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true, "message": "ticket email dispatch initiated"})
 	}
 
 	if req.MultipleTickets == nil {
@@ -438,7 +438,7 @@ func (h *NotificationHandler) HandleSendTickets(ctx context.Context, request eve
 	go func() {
 		_, _ = h.handleMultipleTicketsPDF(req.MultipleTickets)
 	}()
-	return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "tickets email dispatch initiated"})
+	return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true, "message": "tickets email dispatch initiated"})
 }
 
 // HandleRefundEmail - POST /internal/notify/refund
@@ -482,7 +482,7 @@ func (h *NotificationHandler) HandleRefundEmail(ctx context.Context, request eve
 		}
 	}()
 
-	return createNotifyResponse(http.StatusAccepted, map[string]interface{}{"success": true, "message": "refund email dispatch initiated"})
+	return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true, "message": "refund email dispatch initiated"})
 }
 
 // ============================================================
