@@ -383,249 +383,257 @@ export default function PublicEventPage() {
   })
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans relative overflow-x-hidden selection:bg-orange-500/30 pb-20">
-      {/* Automated High-Fidelity Ambient background extractor */}
-      <div className="ambient-bg-glow" style={{ backgroundColor: dominantColor }} />
-
-      {/* Atmospheric gradient mask overlay matching Luma */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-950/80 to-neutral-950 pointer-events-none z-[-1]" />
-
-      {/* Top navigation header */}
-      <div className="max-w-6xl mx-auto px-4 pt-6 pb-2">
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 text-xs font-bold text-neutral-400 hover:text-white transition-colors uppercase tracking-wider group"
-        >
-          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-          Quay lại
-        </button>
+    <div className="min-h-screen text-slate-800 dark:text-neutral-100 font-sans relative overflow-x-hidden selection:bg-orange-500/30 pb-20">
+      {/* Ambient backdrop container that duplicates the event image to stretch and blur as a cinematic halo */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none select-none">
+        <div 
+          className="absolute -top-[10%] -left-[10%] w-[120%] h-[120%] blur-[120px] opacity-25 dark:opacity-20 scale-110 saturate-150 transition-all duration-700"
+          style={{ 
+            backgroundImage: `url(${event.bannerUrl || (event as any).bannerImg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 via-slate-950/80 to-slate-950" />
       </div>
 
-      {/* Asymmetrical Split Column Layout */}
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
-        {/* LEFT COLUMN: Sticky Card (4 cols) */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="sticky top-6 bg-neutral-900/60 backdrop-blur-md border border-neutral-800 rounded-3xl p-5 shadow-2xl space-y-5">
-            {/* Square cover image wrapper */}
-            <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-800 shadow-inner">
-              {event.bannerUrl ? (
-                <img
-                  src={event.bannerUrl}
-                  alt={event.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-neutral-600 text-4xl">🖼️</div>
-              )}
-            </div>
-
-            {/* Hosted By layout */}
-            <div className="flex items-center justify-between p-3.5 bg-neutral-950/40 rounded-2xl border border-neutral-850">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center text-white font-bold shadow-md">
-                  F
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-neutral-500 uppercase tracking-wider">Tổ chức bởi</p>
-                  <p className="text-xs font-bold text-neutral-250 mt-0.5">{event.venueName || 'FPT University'}</p>
-                </div>
-              </div>
-
-              {/* Subscribe Trigger Button */}
-              <button
-                onClick={() => setSubscribed(!subscribed)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                  subscribed
-                    ? 'bg-neutral-800 text-neutral-350 border border-neutral-700'
-                    : 'bg-white text-neutral-950 hover:bg-neutral-100 shadow-sm'
-                }`}
-              >
-                {subscribed ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-green-500" />
-                    Subscribed
-                  </>
-                ) : (
-                  <>
-                    <Bell className="w-3.5 h-3.5" />
-                    Subscribe
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+      <div className="relative z-10">
+        {/* Top navigation header */}
+        <div className="max-w-6xl mx-auto px-4 pt-6">
+          <button 
+            onClick={() => navigate('/dashboard')} 
+            className="flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-white transition-colors mb-6 group"
+          >
+            <span className="group-hover:-translate-x-1 transition-transform">←</span> QUAY LẠI
+          </button>
         </div>
 
-        {/* RIGHT COLUMN: Expansive details (7 cols) */}
-        <div className="lg:col-span-7 space-y-8">
-          {/* Header block */}
-          <div className="space-y-4">
-            <span className="px-2.5 py-1 bg-orange-500/10 text-orange-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-orange-500/20">
-              Sự kiện đặc sắc
-            </span>
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight">
-              {event.title}
-            </h1>
+        {/* Asymmetrical Split Column Layout */}
+        <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+          {/* LEFT COLUMN: Sticky Card (4 cols) */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="sticky top-6 bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl p-5 space-y-5">
+              {/* Square cover image wrapper */}
+              <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-800/40 shadow-inner">
+                {event.bannerUrl ? (
+                  <img
+                    src={event.bannerUrl}
+                    alt={event.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-neutral-600 text-4xl">🖼️</div>
+                )}
+              </div>
+
+              {/* Hosted By layout */}
+              <div className="flex items-center justify-between p-3.5 bg-black/10 dark:bg-slate-950/40 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center text-white font-bold shadow-md">
+                    F
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tổ chức bởi</p>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">{event.venueName || 'FPT University'}</p>
+                  </div>
+                </div>
+
+                {/* Subscribe Trigger Button */}
+                <button
+                  onClick={() => setSubscribed(!subscribed)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                    subscribed
+                      ? 'bg-neutral-800 text-neutral-350 border border-neutral-700'
+                      : 'bg-white text-neutral-950 hover:bg-neutral-100 shadow-sm'
+                  }`}
+                >
+                  {subscribed ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-green-500" />
+                      Subscribed
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="w-3.5 h-3.5" />
+                      Subscribe
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Time/Date & Location Scheduler grids */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Time slot cell */}
-            <div className="flex gap-4 p-4 rounded-2xl bg-neutral-900/40 border border-neutral-850 backdrop-blur-sm">
-              <Calendar className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
-              <div className="text-xs space-y-1">
-                <p className="text-neutral-450 font-black uppercase tracking-wider">Thời gian diễn ra</p>
-                <p className="font-bold text-neutral-200">{formatLumaDate(event.startTime, currentLanguage)}</p>
-                <p className="text-neutral-400 font-medium">{formatLumaTimeRange(event.startTime, event.endTime, currentLanguage)}</p>
+          {/* RIGHT COLUMN: Expansive details (7 cols) */}
+          <div className="lg:col-span-7 space-y-8">
+            {/* Header block */}
+            <div className="space-y-4">
+              <span className="px-2.5 py-1 bg-orange-500/10 text-orange-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-orange-500/20">
+                Sự kiện đặc sắc
+              </span>
+              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                {event.title}
+              </h1>
+            </div>
+
+            {/* Time/Date & Location Scheduler grids */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Time slot cell */}
+              <div className="flex gap-4 p-5 rounded-2xl bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl">
+                <Calendar className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+                <div className="text-xs space-y-1">
+                  <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider">Thời gian diễn ra</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-200">{formatLumaDate(event.startTime, currentLanguage)}</p>
+                  <p className="text-slate-600 dark:text-slate-350 font-medium">{formatLumaTimeRange(event.startTime, event.endTime, currentLanguage)}</p>
+                </div>
+              </div>
+
+              {/* Address Pin cell */}
+              <div className="flex gap-4 p-5 rounded-2xl bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl">
+                <MapPin className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+                <div className="text-xs space-y-1">
+                  <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider">Địa điểm tổ chức</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-200">{event.venueName || 'Địa điểm FPT'}</p>
+                  {event.areaName && (
+                    <p className="text-slate-600 dark:text-slate-350 font-medium">
+                      Khu vực: {event.areaName} {event.floor ? `· Tầng ${event.floor}` : ''}
+                    </p>
+                  )}
+                  {event.location && (
+                    <p className="text-slate-500 font-medium">{event.location}</p>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Address Pin cell */}
-            <div className="flex gap-4 p-4 rounded-2xl bg-neutral-900/40 border border-neutral-850 backdrop-blur-sm">
-              <MapPin className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
-              <div className="text-xs space-y-1">
-                <p className="text-neutral-450 font-black uppercase tracking-wider">Địa điểm tổ chức</p>
-                <p className="font-bold text-neutral-200">{event.venueName || 'Địa điểm FPT'}</p>
-                {event.areaName && (
-                  <p className="text-neutral-400 font-medium">
-                    Khu vực: {event.areaName} {event.floor ? `· Tầng ${event.floor}` : ''}
-                  </p>
-                )}
-                {event.location && (
-                  <p className="text-neutral-500 font-medium">{event.location}</p>
-                )}
-              </div>
-            </div>
-          </div>
+            {/* DYNAMIC REGISTRATION CARD MATRIX */}
+            <div className="bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl p-5 space-y-6">
+              <h3 className="text-base font-black text-slate-900 dark:text-white tracking-wide">Đăng ký tham gia</h3>
 
-          {/* DYNAMIC REGISTRATION CARD MATRIX */}
-          <div className="p-6 rounded-3xl bg-neutral-900/50 border border-neutral-850 backdrop-blur-md space-y-6">
-            <h3 className="text-base font-black text-white tracking-wide">Đăng ký tham gia</h3>
-
-            {eventClosed || eventEnded ? (
-              <div className="bg-amber-950/20 border border-amber-900/50 rounded-2xl p-4 text-xs text-amber-300 leading-relaxed">
-                Sự kiện này đã đóng. Bạn không thể thực hiện đặt vé vào lúc này.
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Tickets list */}
-                {event.tickets && event.tickets.length > 0 && (
-                  <div className="space-y-3">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-neutral-550">Chọn hạng vé</p>
-                    <div className="grid grid-cols-1 gap-2.5">
-                      {event.tickets.map((ticket) => {
-                        const isSelected = selectedTicket?.categoryTicketId === ticket.categoryTicketId
-                        return (
-                          <div
-                            key={ticket.categoryTicketId}
-                            onClick={() => setSelectedTicket(ticket)}
-                            className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                              isSelected
-                                ? 'border-orange-500 bg-orange-500/5'
-                                : 'border-neutral-800 bg-neutral-950/40 hover:bg-neutral-900/40'
-                            }`}
-                          >
-                            <div>
-                              <p className="text-xs font-bold text-white">{ticket.name}</p>
-                              {ticket.description && (
-                                <p className="text-[10px] text-neutral-500 mt-0.5 line-clamp-1">{ticket.description}</p>
-                              )}
-                              <p className="text-[10px] text-neutral-400 mt-1">
-                                Còn lại: <span className="font-bold">{ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} vé</span>
+              {eventClosed || eventEnded ? (
+                <div className="bg-amber-950/20 border border-amber-900/50 rounded-2xl p-4 text-xs text-amber-300 leading-relaxed">
+                  Sự kiện này đã đóng. Bạn không thể thực hiện đặt vé vào lúc này.
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Tickets list */}
+                  {event.tickets && event.tickets.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-455">Chọn hạng vé</p>
+                      <div className="grid grid-cols-1 gap-2.5">
+                        {event.tickets.map((ticket) => {
+                          const isSelected = selectedTicket?.categoryTicketId === ticket.categoryTicketId
+                          return (
+                            <div
+                              key={ticket.categoryTicketId}
+                              onClick={() => setSelectedTicket(ticket)}
+                              className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                                isSelected
+                                  ? 'border-orange-500 bg-orange-500/5 dark:bg-orange-500/10'
+                                  : 'border-white/10 bg-black/10 dark:bg-slate-950/40 hover:bg-black/20 dark:hover:bg-slate-900/40'
+                              }`}
+                            >
+                              <div>
+                                <p className="text-xs font-bold text-slate-900 dark:text-white">{ticket.name}</p>
+                                {ticket.description && (
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">{ticket.description}</p>
+                                )}
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                                  Còn lại: <span className="font-bold">{ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} vé</span>
+                                </p>
+                              </div>
+                              <p className="text-sm font-black text-orange-500 dark:text-orange-400">
+                                {ticket.price.toLocaleString('vi-VN')} đ
                               </p>
                             </div>
-                            <p className="text-sm font-black text-orange-500">
-                              {ticket.price.toLocaleString('vi-VN')} đ
-                            </p>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Seat picker grid if areaId exists */}
-                {event.areaId && (
-                  <div className="space-y-3 pt-2">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-neutral-550">Chọn vị trí ngồi của bạn</p>
-                    <div className="p-4 rounded-2xl bg-neutral-950/40 border border-neutral-850 overflow-hidden">
-                      <SeatGrid
-                        seats={allSeats}
-                        loading={loadingSeats}
-                        selectedSeats={selectedSeats}
-                        onSeatSelect={handleSeatSelect}
-                        maxReached={selectedSeats.length >= 4}
-                        disabled={eventEnded || eventClosed || eventOngoing}
-                        allowSelect={!eventClosed && !eventEnded && !eventOngoing}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Confirm section */}
-                <div className="pt-2 border-t border-neutral-850 space-y-4">
-                  {selectedSeats.length > 0 && (
-                    <div className="flex items-center justify-between text-xs p-3.5 bg-neutral-950/50 rounded-2xl border border-neutral-850">
-                      <div>
-                        <p className="text-neutral-500">Ghế chọn:</p>
-                        <p className="font-bold text-white mt-0.5">{selectedSeats.map(s => s.seatCode).join(', ')}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-neutral-550">Tổng thanh toán:</p>
-                        <p className="text-sm font-black text-orange-500 mt-0.5">{totalAmount.toLocaleString('vi-VN')} đ</p>
+                          )
+                        })}
                       </div>
                     </div>
                   )}
 
-                  <button
-                    onClick={confirmSeats}
-                    disabled={selectedSeats.length === 0}
-                    className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider text-white transition-all shadow-lg active:scale-98 ${
-                      selectedSeats.length > 0
-                        ? 'bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 shadow-orange-950/30'
-                        : 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none border border-neutral-850'
-                    }`}
-                  >
-                    {selectedSeats.length > 0 ? 'Register for Event' : 'Chọn ghế để đăng ký'}
-                  </button>
+                  {/* Seat picker grid if areaId exists */}
+                  {event.areaId && (
+                    <div className="space-y-3 pt-2">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-455">Chọn vị trí ngồi của bạn</p>
+                      <div className="p-4 rounded-2xl bg-black/10 dark:bg-slate-950/40 border border-white/5 overflow-hidden">
+                        <SeatGrid
+                          seats={allSeats}
+                          loading={loadingSeats}
+                          selectedSeats={selectedSeats}
+                          onSeatSelect={handleSeatSelect}
+                          maxReached={selectedSeats.length >= 4}
+                          disabled={eventEnded || eventClosed || eventOngoing}
+                          allowSelect={!eventClosed && !eventEnded && !eventOngoing}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confirm section */}
+                  <div className="pt-2 border-t border-white/10 space-y-4">
+                    {selectedSeats.length > 0 && (
+                      <div className="flex items-center justify-between text-xs p-3.5 bg-black/10 dark:bg-slate-950/50 rounded-2xl border border-white/5">
+                        <div>
+                          <p className="text-slate-500 dark:text-slate-400">Ghế chọn:</p>
+                          <p className="font-bold text-slate-900 dark:text-white mt-0.5">{selectedSeats.map(s => s.seatCode).join(', ')}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-slate-500 dark:text-slate-400">Tổng thanh toán:</p>
+                          <p className="text-sm font-black text-orange-500 dark:text-orange-400 mt-0.5">{totalAmount.toLocaleString('vi-VN')} đ</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={confirmSeats}
+                      disabled={selectedSeats.length === 0}
+                      className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider text-white transition-all shadow-lg active:scale-98 ${
+                        selectedSeats.length > 0
+                          ? 'bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 shadow-orange-950/30'
+                          : 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none border border-neutral-850'
+                      }`}
+                    >
+                      {selectedSeats.length > 0 ? 'Register for Event' : 'Chọn ghế để đăng ký'}
+                    </button>
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* Description breaking section */}
+            <div className="bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl p-5 space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">About Event</h3>
+              <div className="text-sm text-slate-800 dark:text-slate-300 leading-relaxed whitespace-pre-wrap max-w-none">
+                {event.description}
+              </div>
+            </div>
+
+            {/* Speaker segment detail */}
+            {event.speakerName && (
+              <div className="bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-4">
+                  {event.speakerAvatarUrl ? (
+                    <img
+                      src={event.speakerAvatarUrl}
+                      alt={event.speakerName}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-neutral-700 shadow-md"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center text-2xl border border-neutral-700">👤</div>
+                  )}
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-slate-550 tracking-wider">Diễn giả chính</p>
+                    <h4 className="text-lg font-bold text-slate-900 dark:text-white">{event.speakerName}</h4>
+                  </div>
+                </div>
+                {event.speakerBio && (
+                  <p className="text-xs text-slate-750 dark:text-slate-400 leading-relaxed">
+                    {event.speakerBio}
+                  </p>
+                )}
               </div>
             )}
           </div>
-
-          {/* Description breaking section */}
-          <div className="space-y-4 border-t border-neutral-850 pt-8">
-            <h3 className="text-xs font-black uppercase tracking-widest text-neutral-450">About Event</h3>
-            <div className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap prose prose-invert max-w-none">
-              {event.description}
-            </div>
-          </div>
-
-          {/* Speaker segment detail */}
-          {event.speakerName && (
-            <div className="p-6 rounded-3xl bg-neutral-900/30 border border-neutral-850 space-y-4">
-              <div className="flex items-center gap-4">
-                {event.speakerAvatarUrl ? (
-                  <img
-                    src={event.speakerAvatarUrl}
-                    alt={event.speakerName}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-neutral-700 shadow-md"
-                  />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center text-2xl border border-neutral-700">👤</div>
-                )}
-                <div>
-                  <p className="text-[10px] font-black uppercase text-neutral-500 tracking-wider">Diễn giả chính</p>
-                  <h4 className="text-lg font-bold text-white">{event.speakerName}</h4>
-                </div>
-              </div>
-              {event.speakerBio && (
-                <p className="text-xs text-neutral-400 leading-relaxed">
-                  {event.speakerBio}
-                </p>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>
