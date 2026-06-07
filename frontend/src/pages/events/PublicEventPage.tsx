@@ -163,6 +163,58 @@ export default function PublicEventPage() {
   const [allSeats, setAllSeats] = useState<Seat[]>([])
   const [loadingSeats, setLoadingSeats] = useState(false)
 
+  // ── Global Cinema Canvas Override ──────────────────────────────────────────
+  // Injects a <style> tag that forces the entire Layout shell (body, main wrapper,
+  // sidebar, header) to adopt neutral-950 as base, turning the whole viewport into
+  // a unified dark cinema canvas. Cleaned up on unmount so other pages are unaffected.
+  useEffect(() => {
+    const styleId = 'public-event-page-cinema-override'
+    const existing = document.getElementById(styleId)
+    if (!existing) {
+      const style = document.createElement('style')
+      style.id = styleId
+      style.textContent = `
+        /* PublicEventPage – Cinema Canvas Global Override */
+        html.public-event-canvas,
+        html.public-event-canvas body {
+          background-color: #0a0a0a !important;
+        }
+        html.public-event-canvas > body > div,
+        html.public-event-canvas [class*="bg-slate-950"],
+        html.public-event-canvas [class*="bg-gradient-to-br"],
+        html.public-event-canvas main > div {
+          background: transparent !important;
+        }
+        html.public-event-canvas header {
+          background-color: rgba(10,10,10,0.75) !important;
+          border-bottom-color: rgba(255,255,255,0.06) !important;
+          backdrop-filter: blur(16px);
+        }
+        html.public-event-canvas aside {
+          background-color: rgba(10,10,10,0.60) !important;
+          border-right-color: rgba(255,255,255,0.05) !important;
+          backdrop-filter: blur(16px);
+        }
+        html.public-event-canvas main {
+          background: transparent !important;
+        }
+        html.public-event-canvas main > div {
+          padding: 0 !important;
+          max-width: 100% !important;
+        }
+      `
+      document.head.appendChild(style)
+    }
+    document.documentElement.classList.add('public-event-canvas')
+
+    return () => {
+      document.documentElement.classList.remove('public-event-canvas')
+      const el = document.getElementById(styleId)
+      if (el) el.remove()
+    }
+  }, [])
+  // ───────────────────────────────────────────────────────────────────────────
+
   // Fetch Event Detail
   useEffect(() => {
     if (!id) return
@@ -383,36 +435,36 @@ export default function PublicEventPage() {
   })
 
   return (
-    <div className="relative w-full min-h-screen p-6 overflow-x-hidden text-white bg-neutral-950 font-sans selection:bg-orange-500/30 pb-20">
-      {/* Dynamic halo background extractor */}
-      <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
+    <div className="relative w-full min-h-screen overflow-x-hidden text-white font-sans selection:bg-orange-500/30 pb-20">
+      {/* ── Twin-Layer Cinema Ambient Background ── */}
+      <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden bg-neutral-950">
         <div 
-          className="absolute inset-0 opacity-20 blur-[120px] saturate-150 scale-110"
+          className="absolute top-0 left-0 w-full h-full blur-[160px] opacity-30 saturate-200 scale-110 pointer-events-none select-none"
           style={{ 
             backgroundImage: `url(${event.bannerUrl || (event as any).bannerImg})`,
             backgroundSize: 'cover',
-            backgroundPosition: 'center'
+            backgroundPosition: 'top center'
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-neutral-900/60 via-neutral-950/90 to-neutral-950 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/40 via-neutral-950/85 to-neutral-950" />
       </div>
 
       <div className="relative z-10 w-full flex flex-col">
         {/* Top navigation header */}
-        <div className="max-w-6xl mx-auto w-full px-4 pt-6">
+        <div className="max-w-6xl mx-auto w-full px-6 pt-8">
           <button 
             onClick={() => navigate('/dashboard')} 
-            className="flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-white transition-colors mb-6 group"
+            className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-neutral-200 px-3 py-1.5 rounded-lg font-bold tracking-wide transition-all uppercase mb-8"
           >
-            <span className="group-hover:-translate-x-1 transition-transform">←</span> QUAY LẠI
+            <span>←</span> QUAY LẠI
           </button>
         </div>
 
         {/* Asymmetrical Split Column Layout */}
-        <div className="max-w-6xl mx-auto w-full px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+        <div className="max-w-6xl mx-auto w-full px-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* LEFT COLUMN: Sticky Card (4 cols) */}
           <div className="lg:col-span-5 space-y-6">
-            <div className="sticky top-6 bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl space-y-5">
+            <div className="sticky top-6 bg-neutral-900/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl space-y-5 transition-all duration-300">
               {/* Square cover image wrapper */}
               <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-800/20 shadow-inner">
                 {event.bannerUrl ? (
@@ -441,15 +493,15 @@ export default function PublicEventPage() {
                 {/* Subscribe Trigger Button */}
                 <button
                   onClick={() => setSubscribed(!subscribed)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-sm ${
                     subscribed
-                      ? 'bg-neutral-800 text-neutral-350 border border-neutral-700'
-                      : 'bg-white text-neutral-950 hover:bg-neutral-100 shadow-sm'
+                      ? 'bg-green-500/15 border border-green-500/30 text-green-300'
+                      : 'bg-white/10 hover:bg-white/20 border border-white/15 text-white'
                   }`}
                 >
                   {subscribed ? (
                     <>
-                      <Check className="w-3.5 h-3.5 text-green-500" />
+                      <Check className="w-3.5 h-3.5 text-green-400" />
                       Subscribed
                     </>
                   ) : (
@@ -470,7 +522,7 @@ export default function PublicEventPage() {
               <span className="px-2.5 py-1 bg-orange-500/10 text-orange-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-orange-500/20">
                 Sự kiện đặc sắc
               </span>
-              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight mb-4">
                 {event.title}
               </h1>
             </div>
@@ -478,20 +530,20 @@ export default function PublicEventPage() {
             {/* Time/Date & Location Scheduler grids */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Time slot cell */}
-              <div className="flex gap-4 bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl">
+              <div className="flex gap-4 bg-neutral-900/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl transition-all duration-300">
                 <Calendar className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs space-y-1">
-                  <p className="text-neutral-450 font-black uppercase tracking-wider">Thời gian diễn ra</p>
+                  <p className="text-neutral-400 font-black uppercase tracking-wider">Thời gian diễn ra</p>
                   <p className="font-bold text-neutral-100">{formatLumaDate(event.startTime, currentLanguage)}</p>
                   <p className="text-neutral-300 font-medium">{formatLumaTimeRange(event.startTime, event.endTime, currentLanguage)}</p>
                 </div>
               </div>
 
               {/* Address Pin cell */}
-              <div className="flex gap-4 bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl">
+              <div className="flex gap-4 bg-neutral-900/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl transition-all duration-300">
                 <MapPin className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs space-y-1">
-                  <p className="text-neutral-450 font-black uppercase tracking-wider">Địa điểm tổ chức</p>
+                  <p className="text-neutral-400 font-black uppercase tracking-wider">Địa điểm tổ chức</p>
                   <p className="font-bold text-neutral-100">{event.venueName || 'Địa điểm FPT'}</p>
                   {event.areaName && (
                     <p className="text-neutral-300 font-medium">
@@ -499,14 +551,14 @@ export default function PublicEventPage() {
                     </p>
                   )}
                   {event.location && (
-                    <p className="text-neutral-400 font-medium">{event.location}</p>
+                    <p className="text-neutral-300 font-medium">{event.location}</p>
                   )}
                 </div>
               </div>
             </div>
 
             {/* DYNAMIC REGISTRATION CARD MATRIX */}
-            <div className="bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl space-y-6">
+            <div className="bg-neutral-900/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl space-y-6 transition-all duration-300">
               <h3 className="text-base font-black text-neutral-100 tracking-wide">Đăng ký tham gia</h3>
 
               {eventClosed || eventEnded ? (
@@ -601,16 +653,16 @@ export default function PublicEventPage() {
             </div>
 
             {/* Description breaking section */}
-            <div className="bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl space-y-4">
+            <div className="bg-neutral-900/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl space-y-4 transition-all duration-300">
               <h3 className="text-xs font-black uppercase tracking-widest text-neutral-400">About Event</h3>
-              <div className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap max-w-none">
+              <div className="text-neutral-200 text-sm leading-relaxed antialiased font-medium whitespace-pre-wrap max-w-none">
                 {event.description}
               </div>
             </div>
 
             {/* Speaker segment detail */}
             {event.speakerName && (
-              <div className="bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl space-y-4">
+              <div className="bg-neutral-900/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl space-y-4 transition-all duration-300">
                 <div className="flex items-center gap-4">
                   {event.speakerAvatarUrl ? (
                     <img
