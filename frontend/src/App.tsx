@@ -34,6 +34,8 @@ import Layout from './components/Layout.tsx'
 import GuestLanding from './pages/GuestLanding.tsx'
 import SystemPolicy from './pages/SystemPolicy.tsx'
 import Profile from './pages/Profile.tsx'
+import PublicEventPage from './pages/events/PublicEventPage.tsx'
+
 
 import { useState } from 'react'
 
@@ -246,6 +248,8 @@ function AppRoutes() {
       <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
       <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
       <Route path="/events/:id" element={<EventDetail />} />
+      <Route path="/events/:id/page" element={<PublicEventPage />} />
+
       <Route
         path="/dashboard"
         element={
