@@ -44,6 +44,7 @@ export default function SignUp() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [otpCountdown, setOtpCountdown] = useState(0)
+  const [otpAttempts, setOtpAttempts] = useState(1)
   const [showPassword, setShowPassword] = useState(false)
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0)
@@ -74,9 +75,14 @@ export default function SignUp() {
     let timer: number
     if (otpCountdown > 0) {
       timer = window.setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000)
+    } else if (otpCountdown === 0 && otpAttempts >= 2 && step === 'otp') {
+      // If the 2nd send was completed and cooldown reaches 0, lock out resend attempts (5 mins)
+      setRateLimitCountdown(300)
+      setOtpCountdown(300)
+      showToast('warning', 'Thao tac OTP dang bi khoa tam thoi do vuot qua so lan gui. Vui long doi het dem nguoc.')
     }
     return () => clearTimeout(timer)
-  }, [otpCountdown])
+  }, [otpCountdown, otpAttempts, step])
 
   // Rate-limit countdown
   useEffect(() => {
@@ -224,6 +230,7 @@ export default function SignUp() {
           setStep('otp')
           setOtpCountdown(60)
         }
+        setOtpAttempts(1)
         setRecaptchaToken(null)
         recaptchaRef.current?.reset()
       } else {
@@ -285,6 +292,7 @@ export default function SignUp() {
           showToast('success', 'Đã gửi lại mã OTP tới email của bạn!')
           setOtpCountdown(60)
         }
+        setOtpAttempts(prev => prev + 1)
         setOtpValue('')
       } else {
         setError(response.data.message || 'Không thể gửi lại OTP. Vui lòng thử lại.')
