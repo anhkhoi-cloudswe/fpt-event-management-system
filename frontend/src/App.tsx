@@ -248,7 +248,6 @@ function AppRoutes() {
       <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
       <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
       <Route path="/events/:id" element={<EventDetail />} />
-      <Route path="/events/:id/page" element={<PublicEventPage />} />
 
       <Route
         path="/dashboard"
@@ -261,6 +260,7 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="events" element={<Events />} />
         <Route path="events/:id" element={<EventDetail />} />
+        <Route path="events/:id/page" element={<PublicEventPage />} />
         <Route path="events/create" element={<EventRequestCreate />} />
         <Route path="events/:id/edit" element={<EventEdit />} />
         <Route path="my-tickets" element={<MyTickets />} />

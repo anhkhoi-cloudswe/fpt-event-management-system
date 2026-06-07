@@ -312,7 +312,7 @@ export function EventDetailModal({
   const handleCopyLink = () => {
     if (!event) return
     const id = event.eventId || (event as any).id
-    navigator.clipboard.writeText(`${window.location.origin}/events/${id}/page`)
+    navigator.clipboard.writeText(`${window.location.origin}/dashboard/events/${id}/page`)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -370,7 +370,7 @@ export function EventDetailModal({
             </button>
 
             <a
-              href={`/events/${eventId}/page`}
+              href={`/dashboard/events/${eventId}/page`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-250 dark:border-slate-700 text-xs font-semibold text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors active:scale-95 shadow-sm"
@@ -426,13 +426,13 @@ export function EventDetailModal({
 
                 <div className="grid grid-cols-1 gap-3">
                   {/* Time Slot metadata row */}
-                  <div className="flex gap-3 items-start p-3 rounded-xl bg-slate-50 dark:bg-slate-850/50 border border-slate-100 dark:border-slate-800/40">
+                  <div className="flex gap-3 items-start p-3 rounded-xl bg-white dark:bg-slate-800/90 border border-transparent dark:border-slate-700/50 shadow-sm">
                     <Calendar className="w-4 h-4 text-orange-500 mt-0.5" />
                     <div className="text-xs">
-                      <p className="font-bold text-slate-800 dark:text-slate-200">
+                      <p className="text-slate-700 dark:text-slate-100 font-medium">
                         {formatLumaDate(event.startTime, currentLanguage)}
                       </p>
-                      <p className="text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                      <p className="text-slate-700 dark:text-slate-100 font-medium mt-0.5">
                         {formatLumaTimeRange(event.startTime, event.endTime, currentLanguage)}
                       </p>
                     </div>
@@ -440,31 +440,31 @@ export function EventDetailModal({
 
                   {/* Location metadata row */}
                   {event.venueName && (
-                    <div className="flex gap-3 items-start p-3 rounded-xl bg-slate-50 dark:bg-slate-850/50 border border-slate-100 dark:border-slate-800/40">
+                    <div className="flex gap-3 items-start p-3 rounded-xl bg-white dark:bg-slate-800/90 border border-transparent dark:border-slate-700/50 shadow-sm">
                       <MapPin className="w-4 h-4 text-orange-500 mt-0.5" />
                       <div className="text-xs">
-                        <p className="font-bold text-slate-800 dark:text-slate-200">{event.venueName}</p>
+                        <p className="text-slate-700 dark:text-slate-100 font-medium">{event.venueName}</p>
                         {event.areaName && (
-                          <p className="text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                          <p className="text-slate-700 dark:text-slate-100 font-medium mt-0.5">
                             Khu vực: {event.areaName} {event.floor ? `· Tầng ${event.floor}` : ''}
                           </p>
                         )}
                         {event.location && (
-                          <p className="text-slate-400 dark:text-slate-500 font-medium mt-0.5">{event.location}</p>
+                          <p className="text-slate-700 dark:text-slate-100 font-medium mt-0.5">{event.location}</p>
                         )}
                       </div>
                     </div>
                   )}
 
                   {/* Seats Capacity info row */}
-                  <div className="flex gap-3 items-start p-3 rounded-xl bg-slate-50 dark:bg-slate-850/50 border border-slate-100 dark:border-slate-800/40">
+                  <div className="flex gap-3 items-start p-3 rounded-xl bg-white dark:bg-slate-800/90 border border-transparent dark:border-slate-700/50 shadow-sm">
                     <Users className="w-4 h-4 text-orange-500 mt-0.5" />
                     <div className="text-xs">
-                      <p className="font-bold text-slate-800 dark:text-slate-200">
+                      <p className="text-slate-700 dark:text-slate-100 font-medium">
                         Sức chứa: {event.maxSeats} chỗ
                       </p>
                       {event.currentParticipants != null && (
-                        <p className="text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                        <p className="text-slate-700 dark:text-slate-100 font-medium mt-0.5">
                           Đã đăng ký: {event.currentParticipants} người
                         </p>
                       )}

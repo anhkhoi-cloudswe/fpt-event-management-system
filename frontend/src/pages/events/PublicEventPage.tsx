@@ -383,23 +383,23 @@ export default function PublicEventPage() {
   })
 
   return (
-    <div className="min-h-screen text-slate-800 dark:text-neutral-100 font-sans relative overflow-x-hidden selection:bg-orange-500/30 pb-20">
-      {/* Ambient backdrop container that duplicates the event image to stretch and blur as a cinematic halo */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none select-none">
+    <div className="relative w-full min-h-screen p-6 overflow-x-hidden text-white bg-neutral-950 font-sans selection:bg-orange-500/30 pb-20">
+      {/* Dynamic halo background extractor */}
+      <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
         <div 
-          className="absolute -top-[10%] -left-[10%] w-[120%] h-[120%] blur-[120px] opacity-25 dark:opacity-20 scale-110 saturate-150 transition-all duration-700"
+          className="absolute -top-[20%] -left-[10%] w-[120%] h-[140%] blur-[140px] opacity-35 saturate-200 scale-105 select-none pointer-events-none"
           style={{ 
             backgroundImage: `url(${event.bannerUrl || (event as any).bannerImg})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center'
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 via-slate-950/80 to-slate-950" />
+        <div className="absolute inset-0 bg-neutral-950/75 mix-blend-multiply" />
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 w-full flex flex-col">
         {/* Top navigation header */}
-        <div className="max-w-6xl mx-auto px-4 pt-6">
+        <div className="max-w-6xl mx-auto w-full px-4 pt-6">
           <button 
             onClick={() => navigate('/dashboard')} 
             className="flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-white transition-colors mb-6 group"
@@ -409,12 +409,12 @@ export default function PublicEventPage() {
         </div>
 
         {/* Asymmetrical Split Column Layout */}
-        <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+        <div className="max-w-6xl mx-auto w-full px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
           {/* LEFT COLUMN: Sticky Card (4 cols) */}
           <div className="lg:col-span-5 space-y-6">
-            <div className="sticky top-6 bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl p-5 space-y-5">
+            <div className="sticky top-6 bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl space-y-5">
               {/* Square cover image wrapper */}
-              <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-800/40 shadow-inner">
+              <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-800/20 shadow-inner">
                 {event.bannerUrl ? (
                   <img
                     src={event.bannerUrl}
@@ -427,14 +427,14 @@ export default function PublicEventPage() {
               </div>
 
               {/* Hosted By layout */}
-              <div className="flex items-center justify-between p-3.5 bg-black/10 dark:bg-slate-950/40 rounded-2xl border border-white/5">
+              <div className="flex items-center justify-between p-3.5 bg-black/20 rounded-2xl border border-white/5">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center text-white font-bold shadow-md">
                     F
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tổ chức bởi</p>
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">{event.venueName || 'FPT University'}</p>
+                    <p className="text-[10px] font-black text-neutral-450 uppercase tracking-wider">Tổ chức bởi</p>
+                    <p className="text-xs font-bold text-neutral-100 mt-0.5">{event.venueName || 'FPT University'}</p>
                   </div>
                 </div>
 
@@ -470,7 +470,7 @@ export default function PublicEventPage() {
               <span className="px-2.5 py-1 bg-orange-500/10 text-orange-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-orange-500/20">
                 Sự kiện đặc sắc
               </span>
-              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight">
                 {event.title}
               </h1>
             </div>
@@ -478,36 +478,36 @@ export default function PublicEventPage() {
             {/* Time/Date & Location Scheduler grids */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Time slot cell */}
-              <div className="flex gap-4 p-5 rounded-2xl bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl">
+              <div className="flex gap-4 bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl">
                 <Calendar className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs space-y-1">
-                  <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider">Thời gian diễn ra</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-200">{formatLumaDate(event.startTime, currentLanguage)}</p>
-                  <p className="text-slate-600 dark:text-slate-350 font-medium">{formatLumaTimeRange(event.startTime, event.endTime, currentLanguage)}</p>
+                  <p className="text-neutral-450 font-black uppercase tracking-wider">Thời gian diễn ra</p>
+                  <p className="font-bold text-neutral-100">{formatLumaDate(event.startTime, currentLanguage)}</p>
+                  <p className="text-neutral-300 font-medium">{formatLumaTimeRange(event.startTime, event.endTime, currentLanguage)}</p>
                 </div>
               </div>
 
               {/* Address Pin cell */}
-              <div className="flex gap-4 p-5 rounded-2xl bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl">
+              <div className="flex gap-4 bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl">
                 <MapPin className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs space-y-1">
-                  <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider">Địa điểm tổ chức</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-200">{event.venueName || 'Địa điểm FPT'}</p>
+                  <p className="text-neutral-450 font-black uppercase tracking-wider">Địa điểm tổ chức</p>
+                  <p className="font-bold text-neutral-100">{event.venueName || 'Địa điểm FPT'}</p>
                   {event.areaName && (
-                    <p className="text-slate-600 dark:text-slate-350 font-medium">
+                    <p className="text-neutral-300 font-medium">
                       Khu vực: {event.areaName} {event.floor ? `· Tầng ${event.floor}` : ''}
                     </p>
                   )}
                   {event.location && (
-                    <p className="text-slate-500 font-medium">{event.location}</p>
+                    <p className="text-neutral-400 font-medium">{event.location}</p>
                   )}
                 </div>
               </div>
             </div>
 
             {/* DYNAMIC REGISTRATION CARD MATRIX */}
-            <div className="bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl p-5 space-y-6">
-              <h3 className="text-base font-black text-slate-900 dark:text-white tracking-wide">Đăng ký tham gia</h3>
+            <div className="bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl space-y-6">
+              <h3 className="text-base font-black text-neutral-100 tracking-wide">Đăng ký tham gia</h3>
 
               {eventClosed || eventEnded ? (
                 <div className="bg-amber-950/20 border border-amber-900/50 rounded-2xl p-4 text-xs text-amber-300 leading-relaxed">
@@ -518,7 +518,7 @@ export default function PublicEventPage() {
                   {/* Tickets list */}
                   {event.tickets && event.tickets.length > 0 && (
                     <div className="space-y-3">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-455">Chọn hạng vé</p>
+                      <p className="text-[10px] font-black uppercase tracking-wider text-neutral-450">Chọn hạng vé</p>
                       <div className="grid grid-cols-1 gap-2.5">
                         {event.tickets.map((ticket) => {
                           const isSelected = selectedTicket?.categoryTicketId === ticket.categoryTicketId
@@ -528,20 +528,20 @@ export default function PublicEventPage() {
                               onClick={() => setSelectedTicket(ticket)}
                               className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
                                 isSelected
-                                  ? 'border-orange-500 bg-orange-500/5 dark:bg-orange-500/10'
-                                  : 'border-white/10 bg-black/10 dark:bg-slate-950/40 hover:bg-black/20 dark:hover:bg-slate-900/40'
+                                  ? 'border-orange-500 bg-orange-500/10'
+                                  : 'border-white/5 bg-black/25 hover:bg-neutral-900/40'
                               }`}
                             >
                               <div>
-                                <p className="text-xs font-bold text-slate-900 dark:text-white">{ticket.name}</p>
+                                <p className="text-xs font-bold text-neutral-100">{ticket.name}</p>
                                 {ticket.description && (
-                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">{ticket.description}</p>
+                                  <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-1">{ticket.description}</p>
                                 )}
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                                <p className="text-[10px] text-neutral-400 mt-1">
                                   Còn lại: <span className="font-bold">{ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} vé</span>
                                 </p>
                               </div>
-                              <p className="text-sm font-black text-orange-500 dark:text-orange-400">
+                              <p className="text-sm font-black text-orange-400">
                                 {ticket.price.toLocaleString('vi-VN')} đ
                               </p>
                             </div>
@@ -554,8 +554,8 @@ export default function PublicEventPage() {
                   {/* Seat picker grid if areaId exists */}
                   {event.areaId && (
                     <div className="space-y-3 pt-2">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-455">Chọn vị trí ngồi của bạn</p>
-                      <div className="p-4 rounded-2xl bg-black/10 dark:bg-slate-950/40 border border-white/5 overflow-hidden">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-neutral-450">Chọn vị trí ngồi của bạn</p>
+                      <div className="p-4 rounded-2xl bg-black/35 border border-white/5 overflow-hidden">
                         <SeatGrid
                           seats={allSeats}
                           loading={loadingSeats}
@@ -570,16 +570,16 @@ export default function PublicEventPage() {
                   )}
 
                   {/* Confirm section */}
-                  <div className="pt-2 border-t border-white/10 space-y-4">
+                  <div className="pt-2 border-t border-white/5 space-y-4">
                     {selectedSeats.length > 0 && (
-                      <div className="flex items-center justify-between text-xs p-3.5 bg-black/10 dark:bg-slate-950/50 rounded-2xl border border-white/5">
+                      <div className="flex items-center justify-between text-xs p-3.5 bg-black/20 rounded-2xl border border-white/5">
                         <div>
-                          <p className="text-slate-500 dark:text-slate-400">Ghế chọn:</p>
-                          <p className="font-bold text-slate-900 dark:text-white mt-0.5">{selectedSeats.map(s => s.seatCode).join(', ')}</p>
+                          <p className="text-neutral-400">Ghế chọn:</p>
+                          <p className="font-bold text-neutral-100 mt-0.5">{selectedSeats.map(s => s.seatCode).join(', ')}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-slate-500 dark:text-slate-400">Tổng thanh toán:</p>
-                          <p className="text-sm font-black text-orange-500 dark:text-orange-400 mt-0.5">{totalAmount.toLocaleString('vi-VN')} đ</p>
+                          <p className="text-neutral-400">Tổng thanh toán:</p>
+                          <p className="text-sm font-black text-orange-400 mt-0.5">{totalAmount.toLocaleString('vi-VN')} đ</p>
                         </div>
                       </div>
                     )}
@@ -589,7 +589,7 @@ export default function PublicEventPage() {
                       disabled={selectedSeats.length === 0}
                       className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider text-white transition-all shadow-lg active:scale-98 ${
                         selectedSeats.length > 0
-                          ? 'bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 shadow-orange-950/30'
+                          ? 'bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 shadow-orange-950/30 animate-pulse'
                           : 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none border border-neutral-850'
                       }`}
                     >
@@ -601,16 +601,16 @@ export default function PublicEventPage() {
             </div>
 
             {/* Description breaking section */}
-            <div className="bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl p-5 space-y-4">
-              <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">About Event</h3>
-              <div className="text-sm text-slate-800 dark:text-slate-300 leading-relaxed whitespace-pre-wrap max-w-none">
+            <div className="bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-widest text-neutral-400">About Event</h3>
+              <div className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap max-w-none">
                 {event.description}
               </div>
             </div>
 
             {/* Speaker segment detail */}
             {event.speakerName && (
-              <div className="bg-white/5 dark:bg-slate-900/40 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl p-5 space-y-4">
+              <div className="bg-neutral-900/40 backdrop-blur-xl border border-white/5 shadow-2xl p-6 rounded-2xl space-y-4">
                 <div className="flex items-center gap-4">
                   {event.speakerAvatarUrl ? (
                     <img
@@ -622,12 +622,12 @@ export default function PublicEventPage() {
                     <div className="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center text-2xl border border-neutral-700">👤</div>
                   )}
                   <div>
-                    <p className="text-[10px] font-black uppercase text-slate-550 tracking-wider">Diễn giả chính</p>
-                    <h4 className="text-lg font-bold text-slate-900 dark:text-white">{event.speakerName}</h4>
+                    <p className="text-[10px] font-black uppercase text-neutral-450 tracking-wider">Diễn giả chính</p>
+                    <h4 className="text-lg font-bold text-neutral-100">{event.speakerName}</h4>
                   </div>
                 </div>
                 {event.speakerBio && (
-                  <p className="text-xs text-slate-750 dark:text-slate-400 leading-relaxed">
+                  <p className="text-xs text-neutral-300 leading-relaxed">
                     {event.speakerBio}
                   </p>
                 )}
