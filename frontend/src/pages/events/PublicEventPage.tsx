@@ -466,7 +466,14 @@ export default function PublicEventPage() {
         {/* Top navigation header */}
         <div className="max-w-6xl mx-auto w-full px-6 pt-8">
           <button 
-            onClick={() => navigate('/dashboard')} 
+            onClick={() => {
+              // Check if there is valid browser history depth to pop back safely
+              if (window.history.state && window.history.state.idx > 0) {
+                navigate(-1)
+              } else {
+                navigate('/dashboard')
+              }
+            }} 
             className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-neutral-200 px-3 py-1.5 rounded-lg font-bold tracking-wide transition-all uppercase mb-8"
           >
             <span>←</span> QUAY LẠI
