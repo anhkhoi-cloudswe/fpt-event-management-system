@@ -40,6 +40,7 @@ export default function ResetPassword() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [otpCountdown, setOtpCountdown] = useState(0)
+  const [otpAttempts, setOtpAttempts] = useState(1)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [resetToken, setResetToken] = useState('')
@@ -68,9 +69,14 @@ export default function ResetPassword() {
     let timer: number
     if (otpCountdown > 0) {
       timer = window.setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000)
+    } else if (otpCountdown === 0 && otpAttempts >= 2 && step === 'otp') {
+      // If the 2nd send was completed and cooldown reaches 0, lock out resend attempts (5 mins)
+      setRateLimitCountdown(300)
+      setOtpCountdown(300)
+      showToast('warning', 'Thao tac OTP dang bi khoa tam thoi do vuot qua so lan gui. Vui long doi het dem nguoc.')
     }
     return () => clearTimeout(timer)
-  }, [otpCountdown])
+  }, [otpCountdown, otpAttempts, step])
 
   // Rate-limit countdown
   useEffect(() => {
@@ -197,6 +203,7 @@ export default function ResetPassword() {
           setOtpCountdown(60)
           showToast('success', 'Mã OTP đã được gửi đến email của bạn!')
         }
+        setOtpAttempts(1)
         setError('')
         recaptchaRef.current?.reset()
         setRecaptchaToken(null)
@@ -238,6 +245,7 @@ export default function ResetPassword() {
           setOtpCountdown(60)
           showToast('success', 'Mã OTP mới đã được gửi lại!')
         }
+        setOtpAttempts(prev => prev + 1)
         setError('')
       }
     } catch (err: any) {
