@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/smtp"
 	"net/url"
 	"os"
 	"strings"
@@ -566,7 +567,89 @@ func (p *MailjetProvider) Send(msg EmailMessage) error {
 		return nil
 	}
 
-	return fmt.Errorf("all mailjet endpoints failed. Last error: %w", lastErr)
+	log.Warn("[EMAIL] ⚠️ All Mailjet API HTTP endpoints failed. Falling back to SMTP dispatch...")
+	smtpErr := p.sendSMTP(msg)
+	if smtpErr == nil {
+		return nil
+	}
+
+	return fmt.Errorf("all mailjet endpoints and SMTP fallback failed. Last API error: %v, SMTP error: %v", lastErr, smtpErr)
+}
+
+func (p *MailjetProvider) sendSMTP(msg EmailMessage) error {
+	fromAddress := msg.From
+	if fromAddress == "" {
+		fromAddress = "evbatteryswap.system@gmail.com"
+	}
+
+	var doc bytes.Buffer
+	boundary := "mailjet-smtp-boundary-12345"
+
+	doc.WriteString(fmt.Sprintf("From: %s <%s>\r\n", p.fromName, fromAddress))
+	doc.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
+	doc.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
+	doc.WriteString("MIME-Version: 1.0\r\n")
+
+	hasAttachments := len(msg.Attachments) > 0
+	if hasAttachments {
+		doc.WriteString(fmt.Sprintf("Content-Type: multipart/mixed; boundary=%s\r\n", boundary))
+		doc.WriteString("\r\n")
+		doc.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+	}
+
+	if msg.HTMLBody != "" {
+		doc.WriteString("Content-Type: text/html; charset=utf-8\r\n")
+		doc.WriteString("Content-Transfer-Encoding: base64\r\n")
+		doc.WriteString("\r\n")
+		doc.WriteString(base64.StdEncoding.EncodeToString([]byte(msg.HTMLBody)))
+		doc.WriteString("\r\n")
+	} else if msg.Body != "" {
+		doc.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
+		doc.WriteString("Content-Transfer-Encoding: base64\r\n")
+		doc.WriteString("\r\n")
+		doc.WriteString(base64.StdEncoding.EncodeToString([]byte(msg.Body)))
+		doc.WriteString("\r\n")
+	}
+
+	for _, att := range msg.Attachments {
+		doc.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+		doc.WriteString(fmt.Sprintf("Content-Type: %s; name=\"%s\"\r\n", att.MimeType, att.Filename))
+		doc.WriteString("Content-Transfer-Encoding: base64\r\n")
+		doc.WriteString(fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\r\n", att.Filename))
+		doc.WriteString("\r\n")
+
+		encoded := base64.StdEncoding.EncodeToString(att.Data)
+		for i := 0; i < len(encoded); i += 76 {
+			end := i + 76
+			if end > len(encoded) {
+				end = len(encoded)
+			}
+			doc.WriteString(encoded[i:end] + "\r\n")
+		}
+		doc.WriteString("\r\n")
+	}
+
+	if hasAttachments {
+		doc.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
+	}
+
+	ports := []string{"2525", "80", "587"}
+	auth := smtp.PlainAuth("", p.apiKey, p.secretKey, "in-v3.mailjet.com")
+
+	var lastSMTPError error
+	log := logger.Default()
+	for _, port := range ports {
+		addr := "in-v3.mailjet.com:" + port
+		log.Info("[EMAIL] 🚀 [Mailjet SMTP] Attempting send via %s to %v", addr, msg.To)
+		err := smtp.SendMail(addr, auth, fromAddress, msg.To, doc.Bytes())
+		if err == nil {
+			log.Info("[EMAIL] ✅ [Mailjet SMTP] Send successful via %s", addr)
+			return nil
+		}
+		log.Warn("[EMAIL] ⚠️ [Mailjet SMTP] Failed via %s: %v", addr, err)
+		lastSMTPError = err
+	}
+	return fmt.Errorf("all Mailjet SMTP ports failed. Last error: %w", lastSMTPError)
 }
 
 // ── EMAIL PROVIDER FACTORY ─────────────────────────────────────────────────
@@ -623,7 +706,7 @@ func (s *EmailService) resolveProviderTiers(msg EmailMessage) []ProviderType {
 
 	// OTP Validation logic
 	if purpose == "register" || purpose == "register_otp" || purpose == "forgot_password" || strings.Contains(purpose, "otp") {
-		return []ProviderType{ProviderResend, ProviderMailjet, ProviderBrevo}
+		return []ProviderType{ProviderMailjet, ProviderResend, ProviderBrevo}
 	}
 
 	// Ticket details, refunds, and generic defaults
@@ -663,7 +746,14 @@ func (s *EmailService) Send(msg EmailMessage) error {
 	}
 
 	if isVIP {
-		log.Info("[EMAIL] 💎 VIP Bypass Route triggered for target: %s. Forcing ResendProvider.", recipients)
+		log.Info("[EMAIL] 💎 VIP Bypass Route triggered for target: %s. Forcing ResendProvider as Tier 1.", recipients)
+		newTiers := []ProviderType{ProviderResend}
+		for _, t := range tiers {
+			if t != ProviderResend {
+				newTiers = append(newTiers, t)
+			}
+		}
+		tiers = newTiers
 	}
 
 	for idx, providerType := range tiers {
