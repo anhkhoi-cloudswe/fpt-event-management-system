@@ -144,9 +144,10 @@ func forceIPv4InDSN(dsn string) string {
 						}
 					}
 					
-					// Force hostaddr query param
+					// Force hostaddr and binary_parameters query params
 					q := u.Query()
 					q.Set("hostaddr", ipv4)
+					q.Set("binary_parameters", "yes")
 					u.RawQuery = q.Encode()
 					
 					return u.String()
@@ -161,6 +162,9 @@ func forceIPv4InDSN(dsn string) string {
 	// Add or overwrite hostaddr to query params
 	q := u.Query()
 	q.Set("hostaddr", ipv4)
+	if u.Port() == "6543" {
+		q.Set("binary_parameters", "yes")
+	}
 	u.RawQuery = q.Encode()
 
 	return u.String()
