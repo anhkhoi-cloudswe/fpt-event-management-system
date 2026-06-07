@@ -519,25 +519,54 @@ func (p *MailjetProvider) Send(msg EmailMessage) error {
 		return fmt.Errorf("mailjet marshal error: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://api.mailjet.com/v3.1/send", bytes.NewBuffer(payloadBytes))
-	if err != nil {
-		return fmt.Errorf("mailjet http request error: %w", err)
+	// Try primary endpoint, falling back to US and EU endpoints if blocked or failing
+	endpoints := []string{"https://api.mailjet.com/v3.1/send"}
+	if customURL := os.Getenv("MAILJET_API_URL"); customURL != "" {
+		endpoints = []string{customURL}
+	} else {
+		endpoints = append(endpoints, "https://api.us.mailjet.com/v3.1/send", "https://api.eu.mailjet.com/v3.1/send")
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(p.apiKey, p.secretKey)
 
-	httpClient := &http.Client{Timeout: 15 * time.Second}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("mailjet request failed: %w", err)
-	}
-	defer resp.Body.Close()
+	var lastErr error
+	log := logger.Default()
 
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("mailjet api error status %d: %s", resp.StatusCode, string(respBody))
+	for idx, endpoint := range endpoints {
+		log.Info("[EMAIL] 🚀 [Mailjet] Attempting send via endpoint %s (Attempt %d/%d)", endpoint, idx+1, len(endpoints))
+		
+		req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(payloadBytes))
+		if err != nil {
+			lastErr = fmt.Errorf("mailjet http request error for %s: %w", endpoint, err)
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.SetBasicAuth(p.apiKey, p.secretKey)
+
+		// Set req.Close to true to prevent TCP connection reuse (keepalive issues).
+		// This resolves intermittent "connection reset by peer" errors on Render.
+		req.Close = true
+
+		httpClient := &http.Client{Timeout: 15 * time.Second}
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			log.Warn("[EMAIL] ⚠️ [Mailjet] Endpoint %s failed: %v", endpoint, err)
+			lastErr = err
+			continue
+		}
+
+		respBody, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			log.Warn("[EMAIL] ⚠️ [Mailjet] Endpoint %s returned status %d: %s", endpoint, resp.StatusCode, string(respBody))
+			lastErr = fmt.Errorf("mailjet api error status %d: %s", resp.StatusCode, string(respBody))
+			continue
+		}
+
+		log.Info("[EMAIL] ✅ [Mailjet] Send successful via endpoint: %s", endpoint)
+		return nil
 	}
-	return nil
+
+	return fmt.Errorf("all mailjet endpoints failed. Last error: %w", lastErr)
 }
 
 // ── EMAIL PROVIDER FACTORY ─────────────────────────────────────────────────
