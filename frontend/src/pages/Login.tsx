@@ -423,12 +423,7 @@ export default function Login() {
           <h2 className="text-lg font-black text-slate-900">Đăng Nhập FPT Event</h2>
         </div>
 
-        {lockoutCountdown > 0 && (
-          <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center">
-            <p className="text-xs font-black uppercase tracking-wide text-amber-700">Dang khoa dang nhap tam thoi</p>
-            <p className="mt-1 text-2xl font-black tabular-nums text-amber-800">{formatCountdown(lockoutCountdown)}</p>
-          </div>
-        )}
+
 
         {/* Form login */}
         <form onSubmit={handleSubmit} className="space-y-5">
