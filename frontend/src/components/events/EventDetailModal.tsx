@@ -369,15 +369,14 @@ export function EventDetailModal({
               {copied ? 'Copied! ✅' : 'Copy Link'}
             </button>
 
-            <a
-              href={`/dashboard/events/${eventId}/page`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => navigate(`/dashboard/events/${eventId}/page`)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-250 dark:border-slate-700 text-xs font-semibold text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors active:scale-95 shadow-sm"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               Event Page
-            </a>
+            </button>
           </div>
 
           <button
@@ -420,7 +419,7 @@ export function EventDetailModal({
 
               {/* Title & Meta Row details */}
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
+                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-4 leading-tight">
                   {event.title}
                 </h2>
 
@@ -476,7 +475,7 @@ export function EventDetailModal({
               {/* Description Section */}
               <div className="space-y-2">
                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Mô tả sự kiện</h3>
-                <p className="text-sm text-gray-700 dark:text-slate-350 leading-relaxed whitespace-pre-wrap">
+                <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
                   {event.description}
                 </p>
               </div>

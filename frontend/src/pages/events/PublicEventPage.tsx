@@ -387,14 +387,14 @@ export default function PublicEventPage() {
       {/* Dynamic halo background extractor */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
         <div 
-          className="absolute -top-[20%] -left-[10%] w-[120%] h-[140%] blur-[140px] opacity-35 saturate-200 scale-105 select-none pointer-events-none"
+          className="absolute inset-0 opacity-20 blur-[120px] saturate-150 scale-110"
           style={{ 
             backgroundImage: `url(${event.bannerUrl || (event as any).bannerImg})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center'
           }}
         />
-        <div className="absolute inset-0 bg-neutral-950/75 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-b from-neutral-900/60 via-neutral-950/90 to-neutral-950 mix-blend-multiply" />
       </div>
 
       <div className="relative z-10 w-full flex flex-col">
