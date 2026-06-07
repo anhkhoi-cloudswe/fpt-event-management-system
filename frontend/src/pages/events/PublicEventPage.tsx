@@ -414,6 +414,8 @@ export default function PublicEventPage() {
     )
   }
 
+  const eventBannerImg = event.bannerUrl || (event as EventDetail & { bannerImg?: string | null }).bannerImg || ''
+
   const now = new Date().toISOString()
   const { eventOngoing, eventEnded } = compareTimeStringsForEventStatus(now, event.startTime, event.endTime)
   const eventClosed = event.status === 'CLOSED' || (event as any).isClosed === true
@@ -436,18 +438,28 @@ export default function PublicEventPage() {
 
   return (
     <div className="relative w-full min-h-screen overflow-x-hidden text-white font-sans selection:bg-orange-500/30 pb-20">
-      {/* ── Twin-Layer Cinema Ambient Background ── */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none select-none bg-[#0d0d11]">
+      {/* Triple-Layer Enterprise Ambient Background System */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none select-none bg-[#09090b]">
+        {/* Layer 1: High-Intensity Upscaled Color Bleed */}
         <div 
-          className="absolute top-0 left-0 w-full h-[110%] blur-[130px] opacity-55 dark:opacity-50 saturate-[250%] scale-110 origin-top transition-all duration-700 select-none pointer-events-none"
+          className="absolute -top-[15%] left-1/2 -translate-x-1/2 w-[140%] h-[120%] blur-[130px] opacity-60 saturate-[300%] scale-110 origin-top pointer-events-none select-none mix-blend-plus-lighter transition-all duration-700"
           style={{ 
-            backgroundImage: `url(${event.bannerUrl || (event as any).bannerImg})`,
+            backgroundImage: `url(${eventBannerImg})`,
             backgroundSize: 'cover',
             backgroundPosition: 'top center'
           }}
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_transparent_20%,_#0a0a0c_85%)]" />
-        <div className="absolute inset-0 bg-neutral-950/40 mix-blend-multiply" />
+        
+        {/* Layer 2: Precision Architectural Radial Falloff Vignette */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle at 50% 0%, transparent 5%, #09090b 75%)'
+          }}
+        />
+        
+        {/* Layer 3: Soft Linear Depth Mask for Bottom Readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#09090b]/40 to-[#09090b] pointer-events-none" />
       </div>
 
       <div className="relative z-10 w-full flex flex-col">
@@ -465,7 +477,7 @@ export default function PublicEventPage() {
         <div className="max-w-6xl mx-auto w-full px-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* LEFT COLUMN: Sticky Card (4 cols) */}
           <div className="lg:col-span-5 space-y-6">
-            <div className="sticky top-6 bg-neutral-900/60 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl space-y-5 transition-all duration-300">
+            <div className="sticky top-6 bg-neutral-900/40 backdrop-blur-2xl border border-white/15 dark:border-white/5 shadow-[0_12px_40px_0_rgba(0,0,0,0.6)] p-6 rounded-2xl space-y-5 transition-all duration-300">
               {/* Square cover image wrapper */}
               <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-800/20 shadow-inner">
                 {event.bannerUrl ? (
@@ -523,7 +535,7 @@ export default function PublicEventPage() {
               <span className="px-2.5 py-1 bg-orange-500/10 text-orange-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-orange-500/20">
                 Sự kiện đặc sắc
               </span>
-              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight mb-4">
+              <h1 className="text-3xl sm:text-4xl text-white font-black tracking-tight leading-tight mb-4">
                 {event.title}
               </h1>
             </div>
@@ -531,7 +543,7 @@ export default function PublicEventPage() {
             {/* Time/Date & Location Scheduler grids */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Time slot cell */}
-              <div className="flex gap-4 bg-neutral-900/60 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl transition-all duration-300">
+              <div className="flex gap-4 bg-neutral-900/40 backdrop-blur-2xl border border-white/15 dark:border-white/5 shadow-[0_12px_40px_0_rgba(0,0,0,0.6)] p-6 rounded-2xl transition-all duration-300">
                 <Calendar className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs space-y-1">
                   <p className="text-neutral-400 font-black uppercase tracking-wider">Thời gian diễn ra</p>
@@ -541,7 +553,7 @@ export default function PublicEventPage() {
               </div>
 
               {/* Address Pin cell */}
-              <div className="flex gap-4 bg-neutral-900/60 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl transition-all duration-300">
+              <div className="flex gap-4 bg-neutral-900/40 backdrop-blur-2xl border border-white/15 dark:border-white/5 shadow-[0_12px_40px_0_rgba(0,0,0,0.6)] p-6 rounded-2xl transition-all duration-300">
                 <MapPin className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs space-y-1">
                   <p className="text-neutral-400 font-black uppercase tracking-wider">Địa điểm tổ chức</p>
@@ -559,7 +571,7 @@ export default function PublicEventPage() {
             </div>
 
             {/* DYNAMIC REGISTRATION CARD MATRIX */}
-            <div className="bg-neutral-900/60 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl space-y-6 transition-all duration-300">
+            <div className="bg-neutral-900/40 backdrop-blur-2xl border border-white/15 dark:border-white/5 shadow-[0_12px_40px_0_rgba(0,0,0,0.6)] p-6 rounded-2xl space-y-6 transition-all duration-300">
               <h3 className="text-base font-black text-neutral-100 tracking-wide">Đăng ký tham gia</h3>
 
               {eventClosed || eventEnded ? (
@@ -654,7 +666,7 @@ export default function PublicEventPage() {
             </div>
 
             {/* Description breaking section */}
-            <div className="bg-neutral-900/60 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl space-y-4 transition-all duration-300">
+            <div className="bg-neutral-900/40 backdrop-blur-2xl border border-white/15 dark:border-white/5 shadow-[0_12px_40px_0_rgba(0,0,0,0.6)] p-6 rounded-2xl space-y-4 transition-all duration-300">
               <h3 className="text-xs font-black uppercase tracking-widest text-neutral-400">About Event</h3>
               <div className="text-neutral-200 text-sm leading-relaxed antialiased font-medium whitespace-pre-wrap max-w-none">
                 {event.description}
@@ -663,7 +675,7 @@ export default function PublicEventPage() {
 
             {/* Speaker segment detail */}
             {event.speakerName && (
-              <div className="bg-neutral-900/60 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] p-6 rounded-2xl space-y-4 transition-all duration-300">
+              <div className="bg-neutral-900/40 backdrop-blur-2xl border border-white/15 dark:border-white/5 shadow-[0_12px_40px_0_rgba(0,0,0,0.6)] p-6 rounded-2xl space-y-4 transition-all duration-300">
                 <div className="flex items-center gap-4">
                   {event.speakerAvatarUrl ? (
                     <img
