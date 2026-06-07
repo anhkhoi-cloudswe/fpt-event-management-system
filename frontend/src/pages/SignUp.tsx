@@ -447,7 +447,12 @@ export default function SignUp() {
           <span>Quay lại Trang chủ</span>
         </Link>
 
-
+        {rateLimitCountdown > 0 && (
+          <div className="mb-4 mt-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center">
+            <p className="text-xs font-black uppercase tracking-wide text-amber-700">Dang khoa thao tac OTP tam thoi</p>
+            <p className="mt-1 text-2xl font-black tabular-nums text-amber-800">{formatCountdown(rateLimitCountdown)}</p>
+          </div>
+        )}
 
         {step === 'form' ? (
           <>
