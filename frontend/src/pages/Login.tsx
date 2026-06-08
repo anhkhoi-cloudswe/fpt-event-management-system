@@ -32,6 +32,7 @@ import { useGoogleLogin } from '@react-oauth/google'
 // API_URL = '/api' -> dùng proxy của Vite để tránh CORS khi dev
 // Ví dụ: axios gọi /api/login thì Vite proxy sẽ forward sang backend thật
 const API_URL = API_BASE_URL
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '331189456885-v814j259l9p4nd0p6qmo2v8e744j5s1s.apps.googleusercontent.com'
 
 // Cấu hình header mặc định cho axios:
 // - Content-Type: dạng JSON
@@ -212,6 +213,79 @@ export default function Login() {
       setError('Đăng nhập Google không thành công. Vui lòng thử lại.')
     }
   })
+
+  const handleGoogleCredential = async (credential: string) => {
+    setLoading(true)
+    setError('')
+    try {
+      const response = await axios.post(`${API_URL}/auth/google/callback`, {
+        credential
+      }, {
+        withCredentials: true
+      })
+
+      if (response.data && response.data.status === 'success') {
+        const { user, is_new_user, accessToken } = response.data
+        if (accessToken) {
+          setInMemoryToken(accessToken)
+        }
+        setUser(user)
+        setToken(null)
+
+        if (is_new_user) {
+          sessionStorage.setItem('is_new_user', 'true')
+        } else {
+          sessionStorage.removeItem('is_new_user')
+        }
+
+        await refreshUser()
+        navigate(redirectUrl || '/dashboard')
+      } else {
+        setError(response.data?.message || 'Google sign-in failed')
+      }
+    } catch (err: any) {
+      console.error('Google credential callback error:', err)
+      const srvMsg = err.response?.data?.message || err.response?.data?.error
+      setError(srvMsg || 'Google sign-in failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signInWithGoogle = () => {
+    const google = (window as any).google
+    if (!google?.accounts?.id) {
+      googleLogin()
+      return
+    }
+
+    let credentialReturned = false
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      auto_select: true,
+      callback: (response: { credential?: string }) => {
+        if (response?.credential) {
+          credentialReturned = true
+          void handleGoogleCredential(response.credential)
+        }
+      }
+    })
+
+    google.accounts.id.prompt((notification: any) => {
+      const shouldFallback =
+        notification?.isNotDisplayed?.() ||
+        notification?.isSkippedMoment?.() ||
+        notification?.isDismissedMoment?.()
+
+      if (shouldFallback) {
+        window.setTimeout(() => {
+          if (!credentialReturned) {
+            googleLogin()
+          }
+        }, 250)
+      }
+    })
+  }
 
   // ===================== HANDLE INPUT =====================
 
@@ -550,7 +624,7 @@ export default function Login() {
           {/* Nút đăng nhập Google */}
           <button
             type="button"
-            onClick={() => googleLogin()}
+            onClick={signInWithGoogle}
             disabled={loading || lockoutCountdown > 0}
             className="!mt-3 w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200 hover:border-slate-350 text-slate-700 py-3.5 px-4 rounded-2xl hover:bg-slate-50 font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 hover:shadow"
           >
