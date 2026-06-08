@@ -1230,8 +1230,30 @@ func (h *AuthHandler) HandleGoogleCallback(ctx context.Context, request events.A
 		return createErrorResponse(http.StatusBadRequest, "Invalid request body")
 	}
 
-	if req.Code == "" {
-		return createErrorResponse(http.StatusBadRequest, "Code is required")
+	if req.Code == "" && req.Credential == "" {
+		return createErrorResponse(http.StatusBadRequest, "Google credential is required")
+	}
+
+	if req.Credential != "" {
+		googleUser, err := verifyGoogleIDToken(req.Credential, os.Getenv("GOOGLE_CLIENT_ID"))
+		if err != nil {
+			log.Error("Google ID token verification failed: %v", err)
+			return createErrorResponse(http.StatusUnauthorized, "Invalid Google credential")
+		}
+
+		authResponse, err := h.useCase.LoginOrRegisterGoogle(ctx, googleUser.Email, googleUser.Name)
+		if err != nil {
+			return createErrorResponse(http.StatusBadRequest, err.Error())
+		}
+
+		respPayload := map[string]interface{}{
+			"success":     true,
+			"status":      "success",
+			"accessToken": authResponse.Token,
+			"user":        authResponse.User,
+			"is_new_user": authResponse.IsNewUser,
+		}
+		return responseWithCookies(http.StatusOK, respPayload, authCookies(authResponse))
 	}
 
 	// 1. Google OAuth Token Exchange
@@ -1327,6 +1349,64 @@ func (h *AuthHandler) HandleGoogleCallback(ctx context.Context, request events.A
 		"is_new_user": authResponse.IsNewUser,
 	}
 	return responseWithCookies(http.StatusOK, respPayload, authCookies(authResponse))
+}
+
+type googleIDTokenProfile struct {
+	Email string
+	Name  string
+}
+
+func verifyGoogleIDToken(credential string, clientID string) (*googleIDTokenProfile, error) {
+	if clientID == "" {
+		return nil, errors.New("GOOGLE_CLIENT_ID is not configured")
+	}
+
+	tokenInfoURL := "https://oauth2.googleapis.com/tokeninfo?id_token=" + url.QueryEscape(credential)
+	req, err := http.NewRequest(http.MethodGet, tokenInfoURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Google tokeninfo request: %w", err)
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify Google ID token: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read Google tokeninfo response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Google tokeninfo returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var tokenInfo struct {
+		Audience      string `json:"aud"`
+		Email         string `json:"email"`
+		EmailVerified string `json:"email_verified"`
+		Name          string `json:"name"`
+	}
+	if err := json.Unmarshal(body, &tokenInfo); err != nil {
+		return nil, fmt.Errorf("failed to parse Google tokeninfo response: %w", err)
+	}
+
+	if tokenInfo.Audience != clientID {
+		return nil, errors.New("Google ID token audience does not match client ID")
+	}
+	if tokenInfo.Email == "" {
+		return nil, errors.New("Google ID token does not contain email")
+	}
+	if tokenInfo.EmailVerified != "true" {
+		return nil, errors.New("Google email is not verified")
+	}
+
+	return &googleIDTokenProfile{
+		Email: tokenInfo.Email,
+		Name:  tokenInfo.Name,
+	}, nil
 }
 
 // HandleUpdatePhone handles POST /api/auth/update-phone for authenticated users

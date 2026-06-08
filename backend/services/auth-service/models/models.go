@@ -5,18 +5,18 @@ import "time"
 // User represents a user in the system
 // OPTIMIZED: Wallet field removed - balance is now fetched from dedicated wallets table via GetUserWalletBalance
 type User struct {
-	ID             int        `json:"id" db:"user_id"`
-	FullName       string     `json:"fullName" db:"full_name"`
-	Email          string     `json:"email" db:"email"`
-	Phone          string     `json:"phone" db:"phone"`
-	PasswordHash   string     `json:"-" db:"password_hash"`
-	Role           string     `json:"role" db:"role"`
-	Status         string     `json:"status" db:"status"`
-	CreatedAt      time.Time  `json:"createdAt" db:"created_at"`
-	SSOProvider    *string    `json:"ssoProvider" db:"sso_provider"`
-	DeletedAt      *time.Time `json:"deletedAt" db:"deleted_at"`
-	Theme          string     `json:"theme" db:"theme"`
-	Language       string     `json:"language" gorm:"column:language;default:vi" db:"language"`
+	ID           int        `json:"id" db:"user_id"`
+	FullName     string     `json:"fullName" db:"full_name"`
+	Email        string     `json:"email" db:"email"`
+	Phone        string     `json:"phone" db:"phone"`
+	PasswordHash string     `json:"-" db:"password_hash"`
+	Role         string     `json:"role" db:"role"`
+	Status       string     `json:"status" db:"status"`
+	CreatedAt    time.Time  `json:"createdAt" db:"created_at"`
+	SSOProvider  *string    `json:"ssoProvider" db:"sso_provider"`
+	DeletedAt    *time.Time `json:"deletedAt" db:"deleted_at"`
+	Theme        string     `json:"theme" db:"theme"`
+	Language     string     `json:"language" gorm:"column:language;default:vi" db:"language"`
 	// Wallet field removed - balance now queried from wallets table for O(1) lookup
 }
 
@@ -56,7 +56,8 @@ type AuthResponse struct {
 
 // GoogleCallbackRequest represents the payload from frontend Google sign-in
 type GoogleCallbackRequest struct {
-	Code        string `json:"code"`
+	Code        string `json:"code,omitempty"`
+	Credential  string `json:"credential,omitempty"`
 	RedirectURI string `json:"redirectUri,omitempty"`
 }
 

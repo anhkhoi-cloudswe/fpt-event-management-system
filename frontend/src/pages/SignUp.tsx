@@ -15,7 +15,7 @@ import ReCAPTCHA from 'react-google-recaptcha'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { API_BASE_URL, setAccessToken, setInMemoryToken } from '../config/api'
-import { useGoogleLogin } from '@react-oauth/google'
+import { CredentialResponse, GoogleLogin } from '@react-oauth/google'
 
 import fptLogo from '../assets/fpt-logo.png'
 import fptCampus from '../assets/dai-hoc-fpt-tp-hcm-1.jpeg'
@@ -108,54 +108,50 @@ export default function SignUp() {
     return () => window.clearTimeout(timer)
   }, [formData.email, formData.password])
 
-  // Google OAuth registration
-  const googleRegister = useGoogleLogin({
-    flow: 'auth-code',
-    scope: 'openid profile email',
-    ux_mode: 'popup',
-    select_account: true,
-    include_granted_scopes: true,
-    onSuccess: async (codeResponse) => {
-      setLoading(true)
-      setError('')
-      try {
-        console.log('Google Auth Code received for signup:', codeResponse.code)
-        const response = await axios.post(`${API_URL}/auth/google/callback`, {
-          code: codeResponse.code
-        }, {
-          withCredentials: true
-        })
-
-        if (response.data && response.data.status === 'success') {
-          const { user, is_new_user } = response.data
-          setUser(user)
-          setToken(null)
-
-          if (is_new_user) {
-            sessionStorage.setItem('is_new_user', 'true')
-          } else {
-            sessionStorage.removeItem('is_new_user')
-          }
-
-          await refreshUser()
-          showToast('success', 'Đăng ký tài khoản bằng Google thành công!')
-          navigate('/dashboard')
-        } else {
-          setError(response.data?.message || 'Đăng ký Google thất bại')
-        }
-      } catch (err: any) {
-        console.error('Google callback error during signup:', err)
-        const srvMsg = err.response?.data?.message || err.response?.data?.error
-        setError(srvMsg || 'Không thể xác thực tài khoản Google với hệ thống. Vui lòng thử lại.')
-      } finally {
-        setLoading(false)
-      }
-    },
-    onError: (errorResponse) => {
-      console.error('Google Sign-In/Up Error:', errorResponse)
-      setError('Đăng ký bằng Google không thành công. Vui lòng thử lại.')
+  // Google Sign-In registration
+  const handleGoogleCredential = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) {
+      setError('Google sign-in failed. Please try again.')
+      return
     }
-  })
+
+    setLoading(true)
+    setError('')
+    try {
+      const response = await axios.post(`${API_URL}/auth/google/callback`, {
+        credential: credentialResponse.credential
+      }, {
+        withCredentials: true
+      })
+
+      if (response.data && response.data.status === 'success') {
+        const { user, is_new_user, accessToken } = response.data
+        if (accessToken) {
+          setInMemoryToken(accessToken)
+        }
+        setUser(user)
+        setToken(null)
+
+        if (is_new_user) {
+          sessionStorage.setItem('is_new_user', 'true')
+        } else {
+          sessionStorage.removeItem('is_new_user')
+        }
+
+        await refreshUser()
+        showToast('success', 'Google sign-up successful!')
+        navigate('/dashboard')
+      } else {
+        setError(response.data?.message || 'Google sign-in failed. Please try again.')
+      }
+    } catch (err: any) {
+      console.error('Google callback error during signup:', err)
+      const srvMsg = err.response?.data?.message || err.response?.data?.error
+      setError(srvMsg || 'Google sign-in failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Handle Form Inputs
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,7 +175,7 @@ export default function SignUp() {
     // Validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!formData.email || !emailRegex.test(formData.email)) {
-      setEmailError('Vui lòng nhập email hợp lệ!')
+      setEmailError('Vui lÃ²ng nháº­p email há»£p lá»‡!')
       return
     }
 
@@ -189,12 +185,12 @@ export default function SignUp() {
     }
 
     if (formData.password.length < 6) {
-      setPasswordError('Mật khẩu phải chứa ít nhất 6 ký tự!')
+      setPasswordError('Máº­t kháº©u pháº£i chá»©a Ã­t nháº¥t 6 kÃ½ tá»±!')
       return
     }
 
     if (!canUseRecaptcha || !recaptchaToken) {
-      showToast('error', 'Vui lòng xác nhận reCAPTCHA trước khi đăng ký!')
+      showToast('error', 'Vui lÃ²ng xÃ¡c nháº­n reCAPTCHA trÆ°á»›c khi Ä‘Äƒng kÃ½!')
       return
     }
 
@@ -221,11 +217,11 @@ export default function SignUp() {
       if (response.data.status === 'success' || response.data.success === true) {
         const cooldownRemaining = response.data.cooldown_remaining
         if (cooldownRemaining && typeof cooldownRemaining === 'number' && cooldownRemaining > 0) {
-          showToast('success', 'Mã OTP đang hoạt động. Vui lòng kiểm tra email của bạn!')
+          showToast('success', 'MÃ£ OTP Ä‘ang hoáº¡t Ä‘á»™ng. Vui lÃ²ng kiá»ƒm tra email cá»§a báº¡n!')
           setStep('otp')
           setOtpCountdown(cooldownRemaining)
         } else {
-          showToast('success', 'Mã xác thực OTP đã được gửi đến email của bạn!')
+          showToast('success', 'MÃ£ xÃ¡c thá»±c OTP Ä‘Ã£ Ä‘Æ°á»£c gá»­i Ä‘áº¿n email cá»§a báº¡n!')
           setStep('otp')
           setOtpCountdown(60)
         }
@@ -233,7 +229,7 @@ export default function SignUp() {
         setRecaptchaToken(null)
         recaptchaRef.current?.reset()
       } else {
-        setError(response.data.message || 'Gửi OTP thất bại. Vui lòng thử lại.')
+        setError(response.data.message || 'Gá»­i OTP tháº¥t báº¡i. Vui lÃ²ng thá»­ láº¡i.')
       }
     } catch (err: any) {
       console.error('Send OTP error:', err)
@@ -241,7 +237,7 @@ export default function SignUp() {
       const retryAfter = errData?.retry_after
       const isConflict = err.response?.status === 409
       
-      let errorMessage = 'Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.'
+      let errorMessage = 'CÃ³ lá»—i xáº£y ra trong quÃ¡ trÃ¬nh Ä‘Äƒng kÃ½. Vui lÃ²ng thá»­ láº¡i.'
       if (errData?.message) {
         errorMessage = errData.message
       } else if (errData?.error) {
@@ -253,12 +249,12 @@ export default function SignUp() {
         setRateLimitCountdown(seconds)
         showToast('warning', 'Thao tac OTP dang bi khoa tam thoi. Vui long doi het dem nguoc.')
       } else if (isConflict) {
-        setEmailError(errData?.message || errData?.error || (currentLanguage === 'en' ? 'This email is already registered.' : 'Email này đã được đăng ký trong hệ thống.'))
+        setEmailError(errData?.message || errData?.error || (currentLanguage === 'en' ? 'This email is already registered.' : 'Email nÃ y Ä‘Ã£ Ä‘Æ°á»£c Ä‘Äƒng kÃ½ trong há»‡ thá»‘ng.'))
       } else if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
         setRateLimitCountdown(retryAfter)
       } else if (errorMessage.toLowerCase().includes('email')) {
         setEmailError(errorMessage)
-      } else if (errorMessage.toLowerCase().includes('mật khẩu') || errorMessage.toLowerCase().includes('password')) {
+      } else if (errorMessage.toLowerCase().includes('máº­t kháº©u') || errorMessage.toLowerCase().includes('password')) {
         setPasswordError(errorMessage)
       } else {
         showToast('error', errorMessage)
@@ -292,22 +288,22 @@ export default function SignUp() {
       if (response.data.status === 'success' || response.data.success === true) {
         const cooldownRemaining = response.data.cooldown_remaining
         if (cooldownRemaining && typeof cooldownRemaining === 'number' && cooldownRemaining > 0) {
-          showToast('success', 'Mã OTP đang hoạt động. Vui lòng kiểm tra email của bạn!')
+          showToast('success', 'MÃ£ OTP Ä‘ang hoáº¡t Ä‘á»™ng. Vui lÃ²ng kiá»ƒm tra email cá»§a báº¡n!')
           setOtpCountdown(cooldownRemaining)
         } else {
-          showToast('success', 'Đã gửi lại mã OTP tới email của bạn!')
+          showToast('success', 'ÄÃ£ gá»­i láº¡i mÃ£ OTP tá»›i email cá»§a báº¡n!')
           setOtpCountdown(60)
         }
         setOtpAttempts(prev => prev + 1)
         setOtpValue('')
       } else {
-        setError(response.data.message || 'Không thể gửi lại OTP. Vui lòng thử lại.')
+        setError(response.data.message || 'KhÃ´ng thá»ƒ gá»­i láº¡i OTP. Vui lÃ²ng thá»­ láº¡i.')
       }
     } catch (err: any) {
       console.error('Resend OTP error:', err)
       const errData = err.response?.data
       const retryAfter = errData?.retry_after
-      const srvMsg = errData?.message || errData?.error || 'Có lỗi xảy ra khi gửi lại OTP.'
+      const srvMsg = errData?.message || errData?.error || 'CÃ³ lá»—i xáº£y ra khi gá»­i láº¡i OTP.'
       if (err.response?.status === 429 && errData?.code === 'RATE_LIMIT_LOCKED') {
         const seconds = typeof retryAfter === 'number' && retryAfter > 0 ? retryAfter : 300
         setRateLimitCountdown(seconds)
@@ -355,10 +351,10 @@ export default function SignUp() {
         setToken(null)
         await refreshUser()
 
-        showToast('success', 'Đăng ký tài khoản thành công!')
+        showToast('success', 'ÄÄƒng kÃ½ tÃ i khoáº£n thÃ nh cÃ´ng!')
         navigate('/dashboard')
       } else {
-        setError(response.data.message || 'Mã OTP không chính xác hoặc đã hết hạn!')
+        setError(response.data.message || 'MÃ£ OTP khÃ´ng chÃ­nh xÃ¡c hoáº·c Ä‘Ã£ háº¿t háº¡n!')
       }
     } catch (err: any) {
       console.error('Verify OTP error:', err)
@@ -371,7 +367,7 @@ export default function SignUp() {
         return
       }
       const srvMsg = err.response?.data?.message || err.response?.data?.error
-      showToast('error', srvMsg || 'Xác thực OTP thất bại. Vui lòng thử lại.')
+      showToast('error', srvMsg || 'XÃ¡c thá»±c OTP tháº¥t báº¡i. Vui lÃ²ng thá»­ láº¡i.')
     } finally {
       setLoading(false)
     }
@@ -458,7 +454,7 @@ export default function SignUp() {
           className="absolute left-6 top-6 flex items-center gap-1 text-slate-900 hover:text-orange-600 font-extrabold text-[11px] transition-colors duration-200 uppercase tracking-wider"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Quay lại Trang chủ</span>
+          <span>Quay láº¡i Trang chá»§</span>
         </Link>
 
         {step === 'form' ? (
@@ -474,14 +470,14 @@ export default function SignUp() {
                   />
                 </Link>
               </div>
-              <h2 className="text-lg font-black text-slate-900">Đăng Ký FPT Event</h2>
+              <h2 className="text-lg font-black text-slate-900">ÄÄƒng KÃ½ FPT Event</h2>
             </div>
 
             {/* Form */}
             <form onSubmit={handleSendOtp} className="space-y-5">
               {/* Email */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-extrabold text-slate-900 uppercase tracking-wide pl-1">Địa chỉ Email</label>
+                <label className="block text-xs font-extrabold text-slate-900 uppercase tracking-wide pl-1">Äá»‹a chá»‰ Email</label>
                 <input
                   name="email"
                   type="email"
@@ -503,21 +499,21 @@ export default function SignUp() {
                 </div>
                 {rateLimitCountdown > 0 && (
                   <p className="text-[11px] font-bold text-rose-600 mt-1 pl-1">
-                    Tần suất gửi mã quá nhanh. Vui lòng đợi đồng hồ đếm ngược kết thúc.
+                    Táº§n suáº¥t gá»­i mÃ£ quÃ¡ nhanh. Vui lÃ²ng Ä‘á»£i Ä‘á»“ng há»“ Ä‘áº¿m ngÆ°á»£c káº¿t thÃºc.
                   </p>
                 )}
               </div>
 
               {/* Password */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-extrabold text-slate-900 uppercase tracking-wide pl-1">Mật khẩu</label>
+                <label className="block text-xs font-extrabold text-slate-900 uppercase tracking-wide pl-1">Máº­t kháº©u</label>
                 <div className="relative">
                   <input
                     name="password"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={handleInputChange}
-                    placeholder="••••••••"
+                    placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                     required
                     disabled={loading || rateLimitCountdown > 0}
                     className={`w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none outline-none text-slate-900 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
@@ -571,12 +567,12 @@ export default function SignUp() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Đang kết nối...
+                    Äang káº¿t ná»‘i...
                   </span>
                 ) : rateLimitCountdown > 0 ? (
-                  `Thử lại sau ${formatCountdown(rateLimitCountdown)}`
+                  `Thá»­ láº¡i sau ${formatCountdown(rateLimitCountdown)}`
                 ) : (
-                  'Đăng ký tài khoản'
+                  'ÄÄƒng kÃ½ tÃ i khoáº£n'
                 )}
               </button>
             </form>
@@ -584,43 +580,27 @@ export default function SignUp() {
             {/* Separator */}
             <div className="relative flex py-3.5 items-center">
               <div className="flex-grow border-t border-slate-200/60"></div>
-              <span className="flex-shrink mx-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">hoặc</span>
+              <span className="flex-shrink mx-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">hoáº·c</span>
               <div className="flex-grow border-t border-slate-200/60"></div>
             </div>
 
             {/* Google Signup Button BELOW manual signup */}
-            <button
-              type="button"
-              onClick={() => googleRegister()}
-              disabled={loading || rateLimitCountdown > 0}
-              className="w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200/85 hover:border-slate-350 text-slate-700 py-3.5 px-4 rounded-2xl hover:bg-slate-50 font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 hover:shadow"
-            >
-              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-.1.84-2.45 2.4l3.8 2.94c2.22-2.05 3.7-5.07 3.7-9.19z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.8-2.94c-1.08.72-2.45 1.16-4.13 1.16-3.18 0-5.87-2.15-6.83-5.05L1.24 17.3c2.01 4 6.16 6.7 10.76 6.7z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.17 14.26A7.12 7.12 0 0 1 4.8 12c0-.79.13-1.56.37-2.28L1.24 6.64A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.24 5.36l3.93-3.1z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.4 0 3.25 2.7 1.24 6.64l3.93 3.08c.96-2.9 3.65-5.05 6.83-5.05z"
-                />
-              </svg>
-              <span>Đăng ký bằng Google</span>
-            </button>
+            <div className={`flex justify-center ${loading || rateLimitCountdown > 0 ? 'pointer-events-none opacity-50' : ''}`}>
+              <GoogleLogin
+                onSuccess={handleGoogleCredential}
+                onError={() => setError('Google sign-in failed. Please try again.')}
+                text="signup_with"
+                shape="rectangular"
+                size="large"
+                width="360"
+              />
+            </div>
 
             {/* Back to Login link */}
             <div className="text-center pt-3.5 border-t border-slate-200/60 mt-4 text-xs font-semibold text-slate-900">
-              Đã có tài khoản?{' '}
+              ÄÃ£ cÃ³ tÃ i khoáº£n?{' '}
               <Link to="/login" className="text-sm font-black text-slate-900 hover:text-orange-700 transition-colors inline-flex items-center gap-0.5">
-                Quay lại Đăng nhập <LogIn className="w-3.5 h-3.5" />
+                Quay láº¡i ÄÄƒng nháº­p <LogIn className="w-3.5 h-3.5" />
               </Link>
             </div>
           </>
@@ -633,9 +613,9 @@ export default function SignUp() {
                   <Mail className="w-6 h-6 animate-pulse" />
                 </div>
               </div>
-              <h2 className="text-lg font-black text-slate-900">Xác Thực OTP</h2>
+              <h2 className="text-lg font-black text-slate-900">XÃ¡c Thá»±c OTP</h2>
               <p className="text-xs font-semibold text-slate-500 mt-1.5 leading-relaxed">
-                Chúng tôi đã gửi mã xác thực gồm 6 chữ số đến email <span className="text-orange-600 font-bold">{formData.email}</span>. Vui lòng nhập mã để kích hoạt tài khoản.
+                ChÃºng tÃ´i Ä‘Ã£ gá»­i mÃ£ xÃ¡c thá»±c gá»“m 6 chá»¯ sá»‘ Ä‘áº¿n email <span className="text-orange-600 font-bold">{formData.email}</span>. Vui lÃ²ng nháº­p mÃ£ Ä‘á»ƒ kÃ­ch hoáº¡t tÃ i khoáº£n.
               </p>
             </div>
 
@@ -669,7 +649,7 @@ export default function SignUp() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Đang xác thực tài khoản...
+                Äang xÃ¡c thá»±c tÃ i khoáº£n...
               </div>
             )}
 
@@ -677,7 +657,7 @@ export default function SignUp() {
             <div className="text-center pt-2 text-xs font-semibold text-slate-500 font-medium">
               {otpCountdown > 0 ? (
                 <p>
-                  Gửi lại mã OTP sau <span className="text-orange-600 font-bold">{otpCountdown}s</span>
+                  Gá»­i láº¡i mÃ£ OTP sau <span className="text-orange-600 font-bold">{otpCountdown}s</span>
                 </p>
               ) : (
                 <button
@@ -686,7 +666,7 @@ export default function SignUp() {
                   disabled={loading || rateLimitCountdown > 0}
                   className="text-orange-600 hover:text-orange-700 font-bold transition-colors underline disabled:opacity-50"
                 >
-                  Gửi lại mã OTP
+                  Gá»­i láº¡i mÃ£ OTP
                 </button>
               )}
             </div>
@@ -702,7 +682,7 @@ export default function SignUp() {
               disabled={loading || rateLimitCountdown > 0}
               className="mt-6 w-full flex items-center justify-center gap-1.5 py-3.5 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 rounded-2xl text-xs font-bold text-slate-600 transition-all active:scale-98 disabled:opacity-50"
             >
-              <ArrowLeft className="w-4 h-4" /> Quay lại nhập thông tin
+              <ArrowLeft className="w-4 h-4" /> Quay láº¡i nháº­p thÃ´ng tin
             </button>
           </>
         )}
