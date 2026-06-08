@@ -169,6 +169,10 @@ export default function Login() {
   // Google OAuth Login handler
   const googleLogin = useGoogleLogin({
     flow: 'auth-code',
+    scope: 'openid profile email',
+    ux_mode: 'popup',
+    select_account: true,
+    include_granted_scopes: true,
     onSuccess: async (codeResponse) => {
       setLoading(true)
       setError('')
