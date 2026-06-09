@@ -119,6 +119,35 @@ const normalizeEventRequestsPayload = (payload: unknown): EventRequest[] => {
     : []
 }
 
+const fetchEventRequestsFromEndpoint = async (endpoint: string): Promise<EventRequest[] | null> => {
+  const response = await fetch(endpoint, {
+    credentials: 'include',
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!response.ok || !contentType.toLowerCase().includes('application/json')) {
+    console.warn('[StaffEventRequests] Ignoring unusable response', {
+      endpoint,
+      status: response.status,
+      contentType,
+    })
+    return null
+  }
+
+  const payload = await response.json().catch(() => null)
+  const requests = normalizeEventRequestsPayload(payload)
+  console.debug('[StaffEventRequests] Loaded event requests', {
+    endpoint,
+    count: requests.length,
+    payload,
+  })
+  return requests
+}
+
 const parseRequestTimestamp = (value: unknown): number | null => {
   if (typeof value !== 'string' || !value.trim()) {
     return null
@@ -192,37 +221,26 @@ export default function StaffEventRequests() {
   const fetchEventRequests = useCallback(async () => {
     setLoading(true)
     try {
-      let response = await fetch('/api/event-requests/pending', {
-        credentials: 'include',
-      })
+      const allRequests =
+        (await fetchEventRequestsFromEndpoint('/api/event-requests/pending')) ??
+        (await fetchEventRequestsFromEndpoint('/api/staff/event-requests')) ??
+        []
 
-      if (response.status === 404 || response.status === 405) {
-        response = await fetch('/api/staff/event-requests', {
-          credentials: 'include',
-        })
-      }
+      const waiting = (Array.isArray(allRequests) ? allRequests : []).filter(
+        (req) => req?.status === 'PENDING' || req?.status === 'UPDATING',
+      )
 
-      if (response.ok) {
-        const data = await response.json().catch(() => null)
-        const allRequests = normalizeEventRequestsPayload(data)
+      const processed = (Array.isArray(allRequests) ? allRequests : []).filter(
+        (req) =>
+          req?.status === 'APPROVED' ||
+          req?.status === 'REJECTED' ||
+          req?.status === 'CANCELLED' ||
+          req?.status === 'FINISHED',
+      )
 
-        const waiting = (Array.isArray(allRequests) ? allRequests : []).filter(
-          (req) => req?.status === 'PENDING' || req?.status === 'UPDATING',
-        )
-
-        const processed = (Array.isArray(allRequests) ? allRequests : []).filter(
-          (req) =>
-            req?.status === 'APPROVED' ||
-            req?.status === 'REJECTED' ||
-            req?.status === 'CANCELLED' ||
-            req?.status === 'FINISHED',
-        )
-
-        setAllWaitingRequests(waiting)
-        setAllProcessedRequests(processed)
-      } else {
-        throw new Error('Failed to fetch event requests')
-      }
+      setAllWaitingRequests(waiting)
+      setAllProcessedRequests(processed)
+      setError(null)
     } catch (error) {
       console.error('Error fetching event requests:', error)
       setError(
