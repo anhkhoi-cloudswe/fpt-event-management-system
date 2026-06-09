@@ -496,12 +496,12 @@ export default function StaffEventRequests() {
 
   if (user?.role !== 'STAFF') {
     return (
-      <div className="text-center py-16 bg-white border border-slate-100 rounded-2xl p-8 max-w-md mx-auto my-12 shadow-sm">
+      <div className="text-center py-16 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-8 max-w-md mx-auto my-12 shadow-sm">
         <div className="p-3.5 bg-rose-50 text-rose-500 rounded-2xl w-fit mx-auto mb-4">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <p className="text-slate-800 font-bold text-lg">Từ chối truy cập</p>
-        <p className="text-slate-500 text-sm mt-1.5">Bạn không có quyền truy cập chức năng dành cho Nhân viên này.</p>
+        <p className="text-slate-800 dark:text-slate-100 font-bold text-lg">Từ chối truy cập</p>
+        <p className="text-slate-500 dark:text-slate-300 text-sm mt-1.5">Bạn không có quyền truy cập chức năng dành cho Nhân viên này.</p>
       </div>
     )
   }
@@ -520,20 +520,20 @@ export default function StaffEventRequests() {
   }
 
   return (
-    <div className="w-full min-h-screen p-4 md:p-6 text-white bg-transparent">
+    <div className="w-full min-h-screen p-4 md:p-6 text-white bg-transparent dark:bg-slate-950">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-5">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight sm:text-4xl">
             Duyệt Yêu Cầu Sự Kiện
           </h1>
-          <p className="text-sm text-slate-500 mt-1.5 max-w-2xl font-medium">
+          <p className="text-sm text-slate-500 dark:text-slate-300 mt-1.5 max-w-2xl font-medium">
             Hệ thống quản lý, thẩm định hồ sơ và cấp phép tổ chức sự kiện từ Ban tổ chức sinh viên.
           </p>
         </div>
         <button
           onClick={forceRefresh}
-          className="self-start md:self-auto inline-flex items-center gap-2 px-5 py-2.5 bg-white text-slate-700 hover:text-orange-600 border border-slate-200 hover:border-orange-500 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-300 active:scale-95 animate-in fade-in duration-200"
+          className="self-start md:self-auto inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-100 hover:text-orange-600 dark:hover:text-orange-400 border border-slate-200 dark:border-slate-800 hover:border-orange-500 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-300 active:scale-95 animate-in fade-in duration-200"
         >
           <RefreshCw className="w-4 h-4 text-orange-500" /> Làm mới
         </button>
@@ -541,33 +541,33 @@ export default function StaffEventRequests() {
 
       {/* Stats Widgets */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
+        <div className="bg-white/70 dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
           <div className="p-3.5 bg-amber-50 text-amber-600 rounded-2xl border border-amber-100/50">
             <Clock className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Chờ thẩm định</p>
-            <p className="text-3xl font-extrabold text-slate-950 mt-0.5 tracking-tight">{waitingCount}</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Chờ thẩm định</p>
+            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{waitingCount}</p>
           </div>
         </div>
 
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
+        <div className="bg-white/70 dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
           <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100/50">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Đã giải quyết</p>
-            <p className="text-3xl font-extrabold text-slate-950 mt-0.5 tracking-tight">{processedCount}</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Đã giải quyết</p>
+            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{processedCount}</p>
           </div>
         </div>
 
-        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
+        <div className="bg-white/70 dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
           <div className="p-3.5 bg-orange-50 text-orange-600 rounded-2xl border border-orange-100/50">
             <Inbox className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng số hồ sơ</p>
-            <p className="text-3xl font-extrabold text-slate-950 mt-0.5 tracking-tight">{waitingCount + processedCount}</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Tổng số hồ sơ</p>
+            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{waitingCount + processedCount}</p>
           </div>
         </div>
       </div>
@@ -580,7 +580,7 @@ export default function StaffEventRequests() {
       )}
 
       {/* Main Tabs Segmented Floating Control */}
-      <div className="flex bg-slate-200/40 backdrop-blur-sm p-1 rounded-2xl gap-1.5 w-fit mb-8 border border-slate-200/10 shadow-inner">
+      <div className="flex bg-slate-200/40 dark:bg-slate-900 backdrop-blur-sm p-1 rounded-2xl gap-1.5 w-fit mb-8 border border-slate-200/10 dark:border-slate-800 shadow-inner">
         <button
           onClick={() => {
             setActiveTab('waiting')
@@ -588,8 +588,8 @@ export default function StaffEventRequests() {
           }}
           className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
             activeTab === 'waiting'
-              ? 'bg-white text-orange-600 shadow-md font-extrabold scale-[1.02] border border-slate-100'
-              : 'text-slate-500 hover:text-slate-700 hover:bg-white/20'
+              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
+              : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-800'
           }`}
         >
           Hồ sơ chờ xử lý
@@ -607,8 +607,8 @@ export default function StaffEventRequests() {
           }}
           className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
             activeTab === 'processed'
-              ? 'bg-white text-orange-600 shadow-md font-extrabold scale-[1.02] border border-slate-100'
-              : 'text-slate-500 hover:text-slate-700 hover:bg-white/20'
+              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
+              : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-800'
           }`}
         >
           Hồ sơ đã giải quyết
@@ -621,7 +621,7 @@ export default function StaffEventRequests() {
       </div>
 
       {/* Toolbar: Search & Filters */}
-      <div className="mb-6 bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-5 shadow-md">
+      <div className="mb-6 bg-white/70 dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 shadow-md">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
           <div className="md:col-span-2 relative flex items-center">
@@ -631,7 +631,7 @@ export default function StaffEventRequests() {
               placeholder="Tìm theo tiêu đề, ban tổ chức..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200/80 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all font-medium text-slate-800 shadow-sm"
+              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all font-medium text-slate-800 dark:text-slate-100 shadow-sm"
             />
           </div>
 
@@ -640,7 +640,7 @@ export default function StaffEventRequests() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as EventRequestStatus | '')}
-              className="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200/80 rounded-xl text-sm text-slate-700 outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all appearance-none cursor-pointer font-medium shadow-sm"
+              className="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-sm text-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all appearance-none cursor-pointer font-medium shadow-sm"
             >
               <option value="">Tất cả trạng thái</option>
               {activeTab === 'waiting' && (
@@ -668,7 +668,7 @@ export default function StaffEventRequests() {
             <select
               value={dateRangeFilter}
               onChange={(e) => setDateRangeFilter(e.target.value as typeof dateRangeFilter)}
-              className="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200/80 rounded-xl text-sm text-slate-700 outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all appearance-none cursor-pointer font-medium shadow-sm"
+              className="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-sm text-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all appearance-none cursor-pointer font-medium shadow-sm"
             >
               <option value="all">Tất cả thời gian</option>
               <option value="7days">7 ngày qua</option>
@@ -684,37 +684,37 @@ export default function StaffEventRequests() {
       {/* Loading Block */}
       {!canRenderRequestList && (
         <div className="min-h-[60vh] bg-transparent flex items-center justify-center px-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-center shadow-sm">
             <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
-            <p className="text-base font-bold text-slate-900">Dang tai danh sach yeu cau</p>
-            <p className="mt-2 text-sm text-slate-500">Du lieu dang duoc khoi tao lai an toan.</p>
+            <p className="text-base font-bold text-slate-900 dark:text-slate-100">Dang tai danh sach yeu cau</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">Du lieu dang duoc khoi tao lai an toan.</p>
           </div>
         </div>
       )}
 
       {canRenderRequestList && loading && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center shadow-sm">
           <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm font-medium text-slate-500">Đang tải danh sách yêu cầu sự kiện...</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-300">Đang tải danh sách yêu cầu sự kiện...</p>
         </div>
       )}
 
       {/* Main List view */}
       {canRenderRequestList && !loading && (
         <>
-          <div className="mb-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="mb-4 text-xs font-semibold text-slate-500 dark:text-slate-300 uppercase tracking-wider">
             Hiển thị <span className="text-blue-600 font-bold">{paginatedRequests.length}</span> trên{' '}
-            <span className="font-bold text-slate-700">{filteredRequests.length}</span> hồ sơ
+            <span className="font-bold text-slate-700 dark:text-slate-200">{filteredRequests.length}</span> hồ sơ
           </div>
 
           {/* Empty state */}
           {filteredRequests.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
-              <div className="p-4 bg-slate-50 text-slate-300 rounded-full w-fit mx-auto mb-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center shadow-sm">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-500 rounded-full w-fit mx-auto mb-4">
                 <FileClock className="w-12 h-12" />
               </div>
-              <h3 className="text-lg font-bold text-slate-800">Không tìm thấy hồ sơ nào</h3>
-              <p className="text-sm text-slate-400 mt-2 max-w-sm mx-auto">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Không tìm thấy hồ sơ nào</h3>
+              <p className="text-sm text-slate-400 dark:text-slate-400 mt-2 max-w-sm mx-auto">
                 {activeTab === 'waiting'
                   ? 'Tuyệt vời! Hiện không có hồ sơ yêu cầu tổ chức sự kiện nào đang chờ xử lý.'
                   : 'Chưa ghi nhận lịch sử xử lý cấp phép nào.'}
@@ -727,7 +727,7 @@ export default function StaffEventRequests() {
                 {Array.isArray(paginatedRequests) ? paginatedRequests.map((req, index) => (
                   <div
                     key={req?.requestId ?? `request-${index}`}
-                    className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/80 bg-white/70 backdrop-blur-md p-6 shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-5"
+                    className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900 backdrop-blur-md p-6 shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-5"
                     style={{ animationDelay: `${index * 80}ms` }}
                     onClick={() => handleViewDetails(req)}
                   >
@@ -741,7 +741,7 @@ export default function StaffEventRequests() {
 
                     <div className="flex-1 min-w-0 pl-1.5">
                       <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
-                        <h3 className="text-lg font-bold text-slate-900 truncate group-hover:text-orange-600 transition-colors duration-300">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50 truncate group-hover:text-orange-600 transition-colors duration-300">
                           {req?.title || 'Yêu cầu sự kiện'}
                         </h3>
                         
@@ -767,32 +767,32 @@ export default function StaffEventRequests() {
                             Chờ cập nhật
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-50 text-slate-700 border border-slate-200/60">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700">
                             {getStatusLabel(req?.status ?? 'PENDING')}
                           </span>
                         )}
                       </div>
 
-                      <p className="text-sm text-slate-500 line-clamp-2 mb-4 leading-relaxed font-medium">
+                      <p className="text-sm text-slate-500 dark:text-slate-300 line-clamp-2 mb-4 leading-relaxed font-medium">
                         {req?.description || 'N/A'}
                       </p>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-500 font-bold">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-500 dark:text-slate-300 font-bold">
                         <div className="flex items-center gap-1.5">
                           <User className="w-4 h-4 text-orange-500" />
-                          <span>Ban tổ chức: <strong className="text-slate-700">{req?.requesterName || 'N/A'}</strong></span>
+                          <span>Ban tổ chức: <strong className="text-slate-700 dark:text-slate-200">{req?.requesterName || 'N/A'}</strong></span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Users className="w-4 h-4 text-orange-500" />
-                          <span>Dự kiến: <strong className="text-slate-700">{req?.expectedCapacity ?? 0} người</strong></span>
+                          <span>Dự kiến: <strong className="text-slate-700 dark:text-slate-200">{req?.expectedCapacity ?? 0} người</strong></span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-4 h-4 text-orange-500" />
-                          <span>Ngày gửi: <strong className="text-slate-700">{formatRequestDate(req?.createdAt)}</strong></span>
+                          <span>Ngày gửi: <strong className="text-slate-700 dark:text-slate-200">{formatRequestDate(req?.createdAt)}</strong></span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Clock className="w-4 h-4 text-orange-500" />
-                          <span>Tổ chức: <strong className="text-slate-700">{formatRequestDate(req?.preferredStartTime)}</strong></span>
+                          <span>Tổ chức: <strong className="text-slate-700 dark:text-slate-200">{formatRequestDate(req?.preferredStartTime)}</strong></span>
                         </div>
                       </div>
                     </div>
@@ -825,16 +825,16 @@ export default function StaffEventRequests() {
 
               {/* Pagination controls */}
               {totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-5 shadow-md">
-                  <div className="text-sm text-slate-500 font-semibold">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 bg-white/70 dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 shadow-md">
+                  <div className="text-sm text-slate-500 dark:text-slate-300 font-semibold">
                     Trang <span className="text-orange-600 font-extrabold">{currentPage}</span> /{' '}
-                    <span className="text-slate-800 font-extrabold">{totalPages}</span> ({filteredRequests.length} hồ sơ)
+                    <span className="text-slate-800 dark:text-slate-100 font-extrabold">{totalPages}</span> ({filteredRequests.length} hồ sơ)
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                       disabled={currentPage === 1}
-                      className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all duration-300 shadow-sm"
+                      className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300 shadow-sm"
                     >
                       ← Trước
                     </button>
@@ -848,7 +848,7 @@ export default function StaffEventRequests() {
                           className={`w-9 h-9 rounded-xl text-xs font-bold transition-all duration-300 border ${
                             currentPage === page
                               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white border-transparent shadow-lg shadow-orange-500/20 scale-[1.02] font-extrabold'
-                              : 'border-slate-200 text-slate-600 hover:bg-gray-50'
+                              : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800'
                           }`}
                         >
                           {page}
@@ -859,7 +859,7 @@ export default function StaffEventRequests() {
                     <button
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all duration-300 shadow-sm"
+                      className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300 shadow-sm"
                     >
                       Sau →
                     </button>
