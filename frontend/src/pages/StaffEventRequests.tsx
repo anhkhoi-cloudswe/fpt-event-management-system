@@ -594,7 +594,9 @@ export default function StaffEventRequests() {
         >
           Hồ sơ chờ xử lý
           <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
-            activeTab === 'waiting' ? 'bg-orange-100 text-orange-800' : 'bg-slate-300/50 text-slate-500'
+            activeTab === 'waiting'
+              ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200'
+              : 'bg-slate-300/50 text-slate-500 dark:bg-slate-700 dark:text-slate-200'
           }`}>
             {waitingCount}
           </span>
@@ -613,7 +615,9 @@ export default function StaffEventRequests() {
         >
           Hồ sơ đã giải quyết
           <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
-            activeTab === 'processed' ? 'bg-orange-100 text-orange-800' : 'bg-slate-300/50 text-slate-500'
+            activeTab === 'processed'
+              ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200'
+              : 'bg-slate-300/50 text-slate-500 dark:bg-slate-700 dark:text-slate-200'
           }`}>
             {processedCount}
           </span>
@@ -747,22 +751,22 @@ export default function StaffEventRequests() {
                         
                         {/* Status Badges with Custom Styles */}
                         {req?.status === 'PENDING' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/60 shadow-sm shadow-amber-500/5">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/60 shadow-sm shadow-amber-500/5">
                             <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
                             Chờ duyệt
                           </span>
                         ) : req?.status === 'APPROVED' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 shadow-sm shadow-emerald-500/5">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200 border border-emerald-200/60 dark:border-emerald-800/60 shadow-sm shadow-emerald-500/5">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             Đã duyệt
                           </span>
                         ) : req?.status === 'REJECTED' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200/60 shadow-sm shadow-rose-500/5">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200 border border-rose-200/60 dark:border-rose-800/60 shadow-sm shadow-rose-500/5">
                             <XCircle className="w-3.5 h-3.5" />
                             Từ chối
                           </span>
                         ) : req?.status === 'UPDATING' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/60 shadow-sm shadow-blue-500/5">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200 border border-blue-200/60 dark:border-blue-800/60 shadow-sm shadow-blue-500/5">
                             <Clock className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '3s' }} />
                             Chờ cập nhật
                           </span>

@@ -594,17 +594,17 @@ export default function ReportRequests() {
                           {/* Status Badge */}
                           <td className="px-6 py-4">
                             {r.report_status === 'PENDING' ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200 border border-amber-200 dark:border-amber-800/60">
                                 <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
                                 Chờ xử lý
                               </span>
                             ) : r.report_status === 'APPROVED' ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60">
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 Đã duyệt
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60">
                                 <XCircle className="w-3.5 h-3.5" />
                                 Đã từ chối
                               </span>
@@ -696,7 +696,7 @@ export default function ReportRequests() {
           ====================== */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all duration-300">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-slate-100 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-slate-950 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-slate-800/80 animate-in fade-in zoom-in-95 duration-200">
             
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800">

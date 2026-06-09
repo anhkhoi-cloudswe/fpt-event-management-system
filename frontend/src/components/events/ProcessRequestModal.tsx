@@ -302,8 +302,8 @@ export function ProcessRequestModal({
       {/* Centering wrapper */}
       <div className="flex items-center justify-center min-h-screen p-4">
         {/* Modal Card: responsive width + scrollable */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-[90vw] max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center justify-between p-8 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-white to-slate-50 dark:from-slate-900 dark:to-slate-900 sticky top-0 z-10">
+        <div className="bg-slate-950 rounded-2xl shadow-2xl w-full max-w-[90vw] max-h-[90vh] overflow-y-auto border border-slate-800/80">
+          <div className="flex items-center justify-between p-8 border-b border-slate-800/80 bg-slate-950 sticky top-0 z-10">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-50">
               {/* Title đổi theo action */}
               {action === 'APPROVE' ? 'Duyệt yêu cầu' : 'Từ chối yêu cầu'}
@@ -312,7 +312,7 @@ export function ProcessRequestModal({
             {/* Nút đóng */}
             <button
               onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+              className="text-slate-400 hover:text-slate-200 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -325,27 +325,27 @@ export function ProcessRequestModal({
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
                 Sự kiện
               </label>
-              <p className="text-sm text-gray-600 dark:text-slate-300 font-medium">{request.title}</p>
+              <p className="text-sm text-slate-300 font-medium">{request.title}</p>
             </div>
 
             {/* Hiển thị số lượng dự kiến nếu có */}
             {request.expectedCapacity && (
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-slate-900 p-4 rounded-lg border border-blue-200 dark:border-blue-900/60">
+              <div className="bg-slate-900/80 p-4 rounded-lg border border-slate-700/70">
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <p className="text-xs text-blue-600 dark:text-blue-300 font-semibold uppercase tracking-wide mb-1">
+                    <p className="text-xs text-blue-300 font-semibold uppercase tracking-wide mb-1">
                       Sức chứa yêu cầu
                     </p>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold text-blue-700 dark:text-blue-200">
+                      <span className="text-3xl font-bold text-blue-200">
                         {request.expectedCapacity}
                       </span>
-                      <span className="text-sm text-blue-600 dark:text-blue-300">người</span>
+                      <span className="text-sm text-blue-300">người</span>
                     </div>
                   </div>
                   <div className="text-2xl dark:opacity-90">👥</div>
                 </div>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                <p className="text-xs text-blue-200 mt-2">
                   💡 Hệ thống gợi ý phòng có sức chứa ≥ {request.expectedCapacity} người
                 </p>
               </div>
@@ -362,18 +362,18 @@ export function ProcessRequestModal({
               return (
                   <div
                     className={`p-4 rounded-lg border ${isFull
-                    ? 'bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-900/60'
+                    ? 'bg-red-950/30 border-red-900/60'
                     : isLastSlot
-                      ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-900/60'
-                      : 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-900/60'
+                      ? 'bg-yellow-950/30 border-yellow-900/60'
+                      : 'bg-green-950/30 border-green-900/60'
                     }`}
                 >
                   <p
                     className={`text-sm font-semibold ${isFull
-                      ? 'text-red-800 dark:text-red-200'
+                      ? 'text-red-200'
                       : isLastSlot
-                        ? 'text-yellow-700 dark:text-yellow-200'
-                        : 'text-green-700 dark:text-green-200'
+                        ? 'text-yellow-200'
+                        : 'text-green-200'
                       }`}
                   >
                     {isFull ? (
@@ -407,26 +407,26 @@ export function ProcessRequestModal({
 
                 {/* Loading trạng thái */}
                 {loading ? (
-                  <div className="flex items-center gap-2 p-3 bg-gray-100 dark:bg-slate-800 rounded-lg">
+                  <div className="flex items-center gap-2 p-3 bg-slate-800 rounded-lg border border-slate-700/70">
                     <div className="w-4 h-4 bg-blue-500 rounded-full animate-pulse"></div>
-                    <p className="text-sm text-gray-600 dark:text-slate-300">Đang tải danh sách khu vực khả dụng...</p>
+                    <p className="text-sm text-slate-300">Đang tải danh sách khu vực khả dụng...</p>
                   </div>
 
                 ) : error ? (
                   // Nếu lỗi => show error text
-                  <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-900/60">
-                    <p className="text-sm text-red-700 dark:text-red-200">
+                  <div className="p-3 bg-red-950/30 rounded-lg border border-red-900/60">
+                    <p className="text-sm text-red-200">
                       ⚠️ {error}
                     </p>
                   </div>
 
                 ) : areas.length === 0 ? (
                   // Không có area nào phù hợp
-                  <div className="p-4 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-900/60">
-                    <p className="text-sm text-yellow-700 dark:text-yellow-200 font-medium">
+                  <div className="p-4 bg-yellow-950/30 rounded-lg border border-yellow-900/60">
+                    <p className="text-sm text-yellow-200 font-medium">
                       ❌ Không tìm thấy phòng trống phù hợp với {request.expectedCapacity} chỗ ngồi
                     </p>
-                    <p className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">
+                    <p className="text-xs text-yellow-200 mt-1">
                       Vui lòng thay đổi thời gian hoặc số lượng người tham gia
                     </p>
                   </div>
@@ -437,9 +437,9 @@ export function ProcessRequestModal({
                     <button
                       type="button"
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 flex justify-between items-center"
+                      className="w-full px-4 py-2 border border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left bg-slate-900 hover:bg-slate-800 flex justify-between items-center"
                     >
-                      <span className="text-gray-900 dark:text-slate-100 font-medium">
+                      <span className="text-slate-100 font-medium">
                         {selectedAreaId === 0
                           ? '-- Chọn khu vực --'
                           : (() => {
@@ -454,7 +454,7 @@ export function ProcessRequestModal({
 
                     {/* Dropdown menu */}
                     {isDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
                         {areas.map((area: AvailableArea) => {
                           const expectedCap = request?.expectedCapacity ?? 0
                           const capacity = area.capacity ?? 0
@@ -470,25 +470,25 @@ export function ProcessRequestModal({
                                 setSelectedAreaId(area.areaId)
                                 setIsDropdownOpen(false)
                               }}
-                              className={`w-full px-4 py-3 text-left hover:bg-blue-50 dark:hover:bg-slate-800 border-b last:border-b-0 transition-colors ${isSelected ? 'bg-blue-50 dark:bg-slate-800 border-l-4 border-l-blue-500' : ''
+                              className={`w-full px-4 py-3 text-left hover:bg-slate-800 border-b last:border-b-0 border-slate-800 transition-colors ${isSelected ? 'bg-slate-800 border-l-4 border-l-blue-500' : ''
                                 }`}
                             >
                               {/* Row 1: Capacity - Area Name, with warning badge if needed */}
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1">
-                                  <p className="font-semibold text-gray-900 dark:text-slate-100">
+                                  <p className="font-semibold text-slate-100">
                                     [{area.capacity}] - {area.areaName}
                                   </p>
                                 </div>
                                 {isMuchLarger && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-300 whitespace-nowrap">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-950/40 text-orange-300 whitespace-nowrap">
                                     Quá rộng
                                   </span>
                                 )}
                               </div>
 
                               {/* Row 2: Venue name and floor - smaller gray text */}
-                              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                              <p className="text-xs text-slate-400 mt-1">
                                 {truncatedVenue}
                                 {area.floor && ` - Tầng ${area.floor}`}
                               </p>
@@ -511,15 +511,15 @@ export function ProcessRequestModal({
                 {/* Info: Số lượng phòng trống */}
                 {!loading && !error && areas.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-xs text-gray-600 dark:text-slate-300">
-                      📍 Tìm thấy <span className="font-bold text-gray-900 dark:text-slate-100">{areas.length} khu vực</span> phù hợp (sorted by capacity)
+                    <p className="text-xs text-slate-300">
+                      📍 Tìm thấy <span className="font-bold text-slate-100">{areas.length} khu vực</span> phù hợp (sorted by capacity)
                     </p>
                     {areas.some((a: AvailableArea) => {
                       const expectedCap = request?.expectedCapacity ?? 0
                       const capacity = a.capacity ?? 0
                       return expectedCap > 0 && capacity > expectedCap * 3
                     }) && (
-                        <p className="text-xs text-orange-600 dark:text-orange-300 bg-orange-50 dark:bg-orange-950/30 px-2 py-1 rounded">
+                        <p className="text-xs text-orange-200 bg-orange-950/30 px-2 py-1 rounded">
                           ⚠️ Phòng có dấu (Quá rộng) sức chứa {'>'} 3 lần yêu cầu
                         </p>
                       )}
@@ -535,14 +535,14 @@ export function ProcessRequestModal({
 
                   if (isMuchLarger) {
                     return (
-                        <div className="mt-3 p-4 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/60 rounded-lg">
-                        <p className="text-sm font-semibold text-orange-800 dark:text-orange-200 flex items-start gap-2">
+                        <div className="mt-3 p-4 bg-orange-950/30 border border-orange-900/60 rounded-lg">
+                        <p className="text-sm font-semibold text-orange-200 flex items-start gap-2">
                           <span className="text-lg flex-shrink-0">⚠️</span>
                           <span>
                             Hệ thống gợi ý phòng có sức chứa gần với {expectedCap} người hơn để tối ưu tài nguyên
                           </span>
                         </p>
-                        <p className="text-xs text-orange-700 dark:text-orange-300 mt-1 ml-7">
+                        <p className="text-xs text-orange-200 mt-1 ml-7">
                           Phòng được chọn có sức chứa {selectedCapacity}, lớn hơn {Math.floor(selectedCapacity / expectedCap)}x so với yêu cầu.
                         </p>
                       </div>
@@ -556,7 +556,7 @@ export function ProcessRequestModal({
             {/* Lý do từ chối (required khi REJECT) */}
             {action === 'REJECT' && (
               <div>
-                <label htmlFor="rejectReason" className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
+                <label htmlFor="rejectReason" className="block text-sm font-medium text-slate-200 mb-2">
                   Lý do từ chối <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -565,20 +565,20 @@ export function ProcessRequestModal({
                   onChange={(e) => setRejectReason(e.target.value)}
                   rows={3}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-gray-900 dark:text-slate-100 text-sm bg-white dark:bg-slate-950 placeholder:text-gray-400 dark:placeholder:text-slate-500"
+                  className="w-full px-4 py-3 border border-slate-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-slate-100 text-sm bg-slate-950 placeholder:text-slate-500"
                   placeholder="Nhập lý do từ chối (bắt buộc)..."
                 />
 
                 {/* Template suggestions for reject reason */}
                 <div className="mt-3">
-                  <p className="text-xs font-medium text-gray-600 dark:text-slate-300 mb-2">💡 Gợi ý:</p>
+                  <p className="text-xs font-medium text-slate-300 mb-2">💡 Gợi ý:</p>
                   <div className="flex flex-wrap gap-2">
                     {TEMPLATES.reject.map((template, index) => (
                       <button
                         key={index}
                         type="button"
                         onClick={() => setRejectReason(template)}
-                        className="bg-gray-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-950/40 text-gray-700 dark:text-slate-200 hover:text-red-700 dark:hover:text-red-200 text-xs px-3 py-1.5 rounded-full transition-colors border border-gray-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-800 cursor-pointer"
+                        className="bg-slate-800 hover:bg-red-950/40 text-slate-200 hover:text-red-200 text-xs px-3 py-1.5 rounded-full transition-colors border border-slate-700 hover:border-red-800 cursor-pointer"
                         title="Click để điền nội dung"
                       >
                         📝 {template.substring(0, 35)}...
@@ -592,7 +592,7 @@ export function ProcessRequestModal({
             {/* Ghi chú cho organizer (optional, chỉ hiện khi APPROVE) */}
             {action === 'APPROVE' && (
               <div>
-                <label htmlFor="note" className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
+                <label htmlFor="note" className="block text-sm font-medium text-slate-200 mb-2">
                   Ghi chú cho người tổ chức
                 </label>
                 <textarea
@@ -600,20 +600,20 @@ export function ProcessRequestModal({
                   value={organizerNote}
                   onChange={(e) => setOrganizerNote(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900 dark:text-slate-100 text-sm bg-white dark:bg-slate-950 placeholder:text-gray-400 dark:placeholder:text-slate-500"
+                  className="w-full px-4 py-3 border border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-slate-100 text-sm bg-slate-950 placeholder:text-slate-500"
                   placeholder="Nhập ghi chú (không bắt buộc)..."
                 />
 
                 {/* Template suggestions for approval note */}
                 <div className="mt-3">
-                  <p className="text-xs font-medium text-gray-600 dark:text-slate-300 mb-2">💡 Gợi ý:</p>
+                  <p className="text-xs font-medium text-slate-300 mb-2">💡 Gợi ý:</p>
                   <div className="flex flex-wrap gap-2">
                     {TEMPLATES.approve.map((template, index) => (
                       <button
                         key={index}
                         type="button"
                         onClick={() => setOrganizerNote(template)}
-                        className="bg-gray-100 dark:bg-slate-800 hover:bg-green-100 dark:hover:bg-green-950/40 text-gray-700 dark:text-slate-200 hover:text-green-700 dark:hover:text-green-200 text-xs px-3 py-1.5 rounded-full transition-colors border border-gray-200 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-800 cursor-pointer"
+                        className="bg-slate-800 hover:bg-green-950/40 text-slate-200 hover:text-green-200 text-xs px-3 py-1.5 rounded-full transition-colors border border-slate-700 hover:border-green-800 cursor-pointer"
                         title="Click để điền nội dung"
                       >
                         📝 {template.substring(0, 35)}...
@@ -630,7 +630,7 @@ export function ProcessRequestModal({
               <button
                 type="button"
                 onClick={handleClose}
-                className="flex-1 px-4 py-3 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-100 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-medium text-sm"
+                className="flex-1 px-4 py-3 border border-slate-700 text-slate-100 rounded-lg hover:bg-slate-800 transition-colors font-medium text-sm"
               >
                 Hủy
               </button>
@@ -650,7 +650,7 @@ export function ProcessRequestModal({
                     : undefined
                 }
                 className={`flex-1 px-4 py-3 text-white rounded-lg transition-colors font-medium text-sm ${action === 'APPROVE'
-                  ? 'bg-green-600 hover:bg-green-700 dark:disabled:bg-slate-700 disabled:cursor-not-allowed'
+                  ? 'bg-green-600 hover:bg-green-700 disabled:cursor-not-allowed'
                   : 'bg-red-600 hover:bg-red-700'
                   }`}
               >
@@ -660,7 +660,7 @@ export function ProcessRequestModal({
 
             {/* Thông báo khóa cứng khi đã đạt giới hạn 2 sự kiện/ngày */}
             {action === 'APPROVE' && quotaInfo && (quotaInfo.currentCount ?? 0) >= 2 && (
-              <p className="text-xs text-red-600 text-center font-medium bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <p className="text-xs text-red-200 text-center font-medium bg-red-950/30 border border-red-900/60 rounded-lg px-3 py-2">
                 🚫 Vui lòng từ chối đơn này vì đã hết suất trong ngày ({quotaInfo.currentCount}/{quotaInfo.maxAllowed} sự kiện)
               </p>
             )}
