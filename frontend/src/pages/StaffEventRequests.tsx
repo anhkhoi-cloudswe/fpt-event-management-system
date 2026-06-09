@@ -225,6 +225,27 @@ const fetchEventRequestsFromEndpoint = async (endpoint: string): Promise<EventRe
   return requests
 }
 
+const fetchRawEventRequestsFromEndpoint = async (endpoint: string): Promise<EventRequest[] | null> => {
+  const response = await fetch(endpoint, {
+    credentials: 'include',
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    return null
+  }
+
+  const payload = await response.json().catch(() => null)
+  if (!Array.isArray(payload)) {
+    return null
+  }
+
+  return payload as EventRequest[]
+}
+
 const mergeEventRequests = (...sources: Array<EventRequest[] | null>): EventRequest[] => {
   const merged = new Map<number, EventRequest>()
 
@@ -325,11 +346,13 @@ export default function StaffEventRequests() {
   const fetchEventRequests = useCallback(async () => {
     setLoading(true)
     try {
-      const [pendingRequests, legacyStaffRequests] = await Promise.all([
+      const [legacyStaffRequests, pendingRequests] = await Promise.all([
+        fetchRawEventRequestsFromEndpoint('/api/staff/event-requests'),
         fetchEventRequestsFromEndpoint('/api/event-requests/pending'),
-        fetchEventRequestsFromEndpoint('/api/staff/event-requests'),
       ])
-      const allRequests = mergeEventRequests(pendingRequests, legacyStaffRequests)
+      const allRequests = Array.isArray(legacyStaffRequests) && legacyStaffRequests.length > 0
+        ? legacyStaffRequests
+        : mergeEventRequests(pendingRequests)
 
       const waiting = (Array.isArray(allRequests) ? allRequests : []).filter(
         (req) => req?.status === 'PENDING' || req?.status === 'UPDATING',
