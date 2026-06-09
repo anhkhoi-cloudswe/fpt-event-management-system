@@ -4,6 +4,17 @@ import { getAccessToken, setAccessToken, setInMemoryToken } from '../config/api'
 
 const AUTH_ME_ENDPOINTS = ['/api/auth/me'] as const
 
+const isPublicRoutePath = (pathname: string) => {
+  return pathname === '/guest' ||
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname === '/reset-password' ||
+    pathname === '/policy' ||
+    pathname === '/payment-success' ||
+    pathname === '/payment-failed' ||
+    /^\/events\/[^/]+\/page$/.test(pathname)
+}
+
 export type UserRole = 'STUDENT' | 'ORGANIZER' | 'STAFF' | 'ADMIN'
 
 export interface User {
@@ -175,8 +186,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // Strictly FORBID automatic background refresh loops if the client is already standing on the public guest route
-    if (window.location.pathname === '/guest') {
+    // Public pages must be immediately readable for guests, including clean browsers with no auth cookie.
+    if (isPublicRoutePath(window.location.pathname)) {
       setLoading(false) // Instantly release the "Loading Auth State..." screen barrier smoothly
       return
     }
@@ -312,27 +323,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user])
 
   useEffect(() => {
-    const isPublicRoute = (pathname: string) => {
-      return pathname === '/guest' || 
-             pathname === '/login' || 
-             pathname === '/signup' || 
-             pathname === '/reset-password'
-    }
-
     const refreshOnFocus = () => {
-      if (isAuthenticated && !isPublicRoute(window.location.pathname)) {
+      if (isAuthenticated && !isPublicRoutePath(window.location.pathname)) {
         void refreshUser(true)
       }
     }
 
     const refreshOnVisibility = () => {
-      if (document.visibilityState === 'visible' && isAuthenticated && !isPublicRoute(window.location.pathname)) {
+      if (document.visibilityState === 'visible' && isAuthenticated && !isPublicRoutePath(window.location.pathname)) {
         void refreshUser(true)
       }
     }
 
     const intervalId = window.setInterval(() => {
-      if (isAuthenticated && !isPublicRoute(window.location.pathname)) {
+      if (isAuthenticated && !isPublicRoutePath(window.location.pathname)) {
         void refreshUser(true)
       }
     }, 30000)

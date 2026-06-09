@@ -2,8 +2,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import type { EventDetail } from '../../types/event'
-import { Calendar, MapPin, Users, Clock, ArrowLeft, Check, Bell } from 'lucide-react'
-import { formatWallClockDateTimeSimple, compareTimeStringsForEventStatus } from '../../utils/dateFormat'
+import { Calendar, MapPin, Check, Bell } from 'lucide-react'
+import { compareTimeStringsForEventStatus } from '../../utils/dateFormat'
 import { SeatGrid, type Seat } from '../../components/common/SeatGrid'
 
 // ===================== TYPE: Ticket =====================
@@ -152,33 +152,34 @@ export default function PublicEventPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user, currentLanguage } = useAuth()
+  const pageLanguage: 'vi' | 'en' = user ? currentLanguage : 'en'
   const text = {
-    loading: currentLanguage === 'en' ? 'Loading event page...' : 'Dang tai trang su kien...',
-    error: currentLanguage === 'en' ? 'Error' : 'Loi',
-    notFound: currentLanguage === 'en' ? 'Event not found' : 'Khong tim thay su kien',
-    back: currentLanguage === 'en' ? 'Back' : 'Quay lai',
-    hostedBy: currentLanguage === 'en' ? 'Hosted by' : 'To chuc boi',
-    featured: currentLanguage === 'en' ? 'Featured Event' : 'Su kien dac sac',
-    time: currentLanguage === 'en' ? 'Event Time' : 'Thoi gian dien ra',
-    location: currentLanguage === 'en' ? 'Location' : 'Dia diem to chuc',
-    defaultLocation: currentLanguage === 'en' ? 'FPT location' : 'Dia diem FPT',
-    area: currentLanguage === 'en' ? 'Area' : 'Khu vuc',
-    floor: currentLanguage === 'en' ? 'Floor' : 'Tang',
-    registration: currentLanguage === 'en' ? 'Registration' : 'Dang ky tham gia',
-    closedNotice: currentLanguage === 'en'
+    loading: pageLanguage === 'en' ? 'Loading event page...' : 'Đang tải trang sự kiện...',
+    error: pageLanguage === 'en' ? 'Error' : 'Lỗi',
+    notFound: pageLanguage === 'en' ? 'Event not found' : 'Không tìm thấy sự kiện',
+    back: pageLanguage === 'en' ? 'Back' : 'Quay lại',
+    hostedBy: pageLanguage === 'en' ? 'Hosted by' : 'Tổ chức bởi',
+    featured: pageLanguage === 'en' ? 'Featured Event' : 'Sự kiện đặc sắc',
+    time: pageLanguage === 'en' ? 'Event Time' : 'Thời gian diễn ra',
+    location: pageLanguage === 'en' ? 'Location' : 'Địa điểm tổ chức',
+    defaultLocation: pageLanguage === 'en' ? 'FPT location' : 'Địa điểm FPT',
+    area: pageLanguage === 'en' ? 'Area' : 'Khu vực',
+    floor: pageLanguage === 'en' ? 'Floor' : 'Tầng',
+    registration: pageLanguage === 'en' ? 'Registration' : 'Đăng ký tham gia',
+    closedNotice: pageLanguage === 'en'
       ? 'This event is closed. Ticket booking is not available right now.'
-      : 'Su kien nay da dong. Ban khong the thuc hien dat ve vao luc nay.',
-    chooseTicket: currentLanguage === 'en' ? 'Choose ticket tier' : 'Chon hang ve',
-    remaining: currentLanguage === 'en' ? 'Remaining' : 'Con lai',
-    tickets: currentLanguage === 'en' ? 'tickets' : 've',
-    chooseSeat: currentLanguage === 'en' ? 'Choose your seat' : 'Chon vi tri ngoi cua ban',
-    selectedSeats: currentLanguage === 'en' ? 'Selected seats' : 'Ghe chon',
-    totalPayment: currentLanguage === 'en' ? 'Total payment' : 'Tong thanh toan',
-    register: currentLanguage === 'en' ? 'Register for Event' : 'Dang ky su kien',
-    chooseSeatsToRegister: currentLanguage === 'en' ? 'Choose seats to register' : 'Chon ghe de dang ky',
-    about: currentLanguage === 'en' ? 'About Event' : 'Mo ta su kien',
-    mainSpeaker: currentLanguage === 'en' ? 'Main Speaker' : 'Dien gia chinh',
-    noTicket: currentLanguage === 'en' ? 'No matching ticket type found' : 'Khong tim thay loai ve phu hop',
+      : 'Sự kiện này đã đóng. Bạn không thể thực hiện đặt vé vào lúc này.',
+    chooseTicket: pageLanguage === 'en' ? 'Choose ticket tier' : 'Chọn hạng vé',
+    remaining: pageLanguage === 'en' ? 'Remaining' : 'Còn lại',
+    tickets: pageLanguage === 'en' ? 'tickets' : 'vé',
+    chooseSeat: pageLanguage === 'en' ? 'Choose your seat' : 'Chọn vị trí ngồi của bạn',
+    selectedSeats: pageLanguage === 'en' ? 'Selected seats' : 'Ghế chọn',
+    totalPayment: pageLanguage === 'en' ? 'Total payment' : 'Tổng thanh toán',
+    register: pageLanguage === 'en' ? 'Register for Event' : 'Đăng ký sự kiện',
+    chooseSeatsToRegister: pageLanguage === 'en' ? 'Choose seats to register' : 'Chọn ghế để đăng ký',
+    about: pageLanguage === 'en' ? 'About Event' : 'Mô tả sự kiện',
+    mainSpeaker: pageLanguage === 'en' ? 'Main Speaker' : 'Diễn giả chính',
+    noTicket: pageLanguage === 'en' ? 'No matching ticket type found' : 'Không tìm thấy loại vé phù hợp',
   }
 
   const [event, setEvent] = useState<EventDetail | null>(null)
@@ -261,7 +262,7 @@ export default function PublicEventPage() {
         setEvent(data)
       } catch (err: any) {
         console.error(err)
-        setError(err.message || (currentLanguage === 'en' ? 'Unable to load event details' : 'Khong the tai thong tin su kien'))
+        setError(err.message || (pageLanguage === 'en' ? 'Unable to load event details' : 'Không thể tải thông tin sự kiện'))
       } finally {
         setLoading(false)
       }
@@ -474,24 +475,15 @@ export default function PublicEventPage() {
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none select-none bg-[#09090b]">
         {/* Layer 1: High-Intensity Upscaled Color Bleed */}
         <div 
-          className="absolute -top-[15%] left-1/2 -translate-x-1/2 w-[140%] h-[120%] blur-[130px] opacity-60 saturate-[300%] scale-110 origin-top pointer-events-none select-none mix-blend-plus-lighter transition-all duration-700"
+          className="absolute -inset-[18%] blur-[80px] opacity-100 saturate-[260%] scale-110 origin-center pointer-events-none select-none transition-all duration-700"
           style={{ 
             backgroundImage: `url(${eventBannerImg})`,
             backgroundSize: 'cover',
-            backgroundPosition: 'top center'
+            backgroundPosition: 'center'
           }}
         />
-        
-        {/* Layer 2: Precision Architectural Radial Falloff Vignette */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'radial-gradient(circle at 50% 0%, transparent 5%, #09090b 75%)'
-          }}
-        />
-        
-        {/* Layer 3: Soft Linear Depth Mask for Bottom Readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#09090b]/40 to-[#09090b] pointer-events-none" />
+        <div className="absolute inset-0 bg-black/10 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/[0.04] to-black/[0.12] pointer-events-none" />
       </div>
 
       <div className="relative z-10 w-full flex flex-col">
@@ -523,7 +515,7 @@ export default function PublicEventPage() {
                   <img
                     src={event.bannerUrl}
                     alt={event.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-neutral-600 text-4xl">🖼️</div>
@@ -586,8 +578,8 @@ export default function PublicEventPage() {
                 <Calendar className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs space-y-1">
                   <p className="text-neutral-400 font-black uppercase tracking-wider">{text.time}</p>
-                  <p className="font-bold text-neutral-100">{formatLumaDate(event.startTime, currentLanguage)}</p>
-                  <p className="text-neutral-300 font-medium">{formatLumaTimeRange(event.startTime, event.endTime, currentLanguage)}</p>
+                  <p className="font-bold text-neutral-100">{formatLumaDate(event.startTime, pageLanguage)}</p>
+                  <p className="text-neutral-300 font-medium">{formatLumaTimeRange(event.startTime, event.endTime, pageLanguage)}</p>
                 </div>
               </div>
 
