@@ -73,7 +73,7 @@ export default function Layout() {
   useEffect(() => {
     const handleThemeChange = () => {
       if (user?.id) {
-        setIsDarkMode(localStorage.getItem('theme_user_' + user.id) === 'dark')
+        setIsDarkMode((localStorage.getItem('theme_user_' + user.id) || localStorage.getItem('theme')) === 'dark')
       } else {
         setIsDarkMode(localStorage.getItem('theme') === 'dark')
       }
@@ -86,23 +86,21 @@ export default function Layout() {
   useEffect(() => {
     if (user) {
       setPhone(localStorage.getItem('user_phone_' + user.id) || user.phone || '')
-      setIsDarkMode(localStorage.getItem('theme_user_' + user.id) === 'dark')
+      setIsDarkMode((localStorage.getItem('theme_user_' + user.id) || localStorage.getItem('theme')) === 'dark')
     }
   }, [user])
 
   // Sync dark class on document root + notify other components
   useEffect(() => {
+    const currentTheme = isDarkMode ? 'dark' : 'light'
+    document.documentElement.classList.toggle('dark', isDarkMode)
+    localStorage.setItem('theme', currentTheme)
+
     if (user?.id) {
-      const currentTheme = isDarkMode ? 'dark' : 'light'
-      document.documentElement.classList.toggle('dark', isDarkMode)
-      localStorage.setItem('theme', currentTheme)
       localStorage.setItem('theme_user_' + user.id, currentTheme)
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('theme', 'light')
     }
     window.dispatchEvent(new Event('theme-change'))
-  }, [isDarkMode])
+  }, [isDarkMode, user?.id])
 
   // Theme change action call to DB - OPTIMIZED: Async background sync
   const handleToggleTheme = () => {

@@ -115,18 +115,18 @@ export function EventRequestDetailModal({
       <div className="flex min-h-dvh items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
         {/* Modal Card: responsive width + scrollable */}
         <div
-          className="flex w-full max-w-5xl max-h-[calc(100dvh-3rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+          className="flex w-full max-w-5xl max-h-[calc(100dvh-3rem)] flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-950 shadow-2xl"
           onMouseDown={(event) => event.stopPropagation()}
         >
 
           {/* ===================== HEADER ===================== */}
-          <div className="flex flex-shrink-0 items-center justify-between gap-4 border-b border-gray-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6">
-            <h2 className="min-w-0 truncate text-xl font-bold text-gray-900 dark:text-slate-50 sm:text-2xl">{request.title}</h2>
+          <div className="flex flex-shrink-0 items-center justify-between gap-4 border-b border-slate-800/80 bg-slate-950 px-5 py-4 sm:px-6">
+            <h2 className="min-w-0 truncate text-xl font-bold text-slate-50 sm:text-2xl">{request.title}</h2>
 
             {/* Nút đóng modal */}
             <button
               onClick={onClose}
-              className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-slate-100 hover:text-gray-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100"
               aria-label="Dong modal"
             >
               <X className="w-6 h-6" />
@@ -141,7 +141,7 @@ export function EventRequestDetailModal({
               <div className="flex justify-center items-center py-8">
                 <div className="inline-flex items-center gap-3">
                   <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-200 border-t-blue-600"></div>
-                  <span className="text-gray-600 dark:text-slate-400">Đang tải thông tin chi tiết...</span>
+                  <span className="text-slate-400">Đang tải thông tin chi tiết...</span>
                 </div>
               </div>
             )}
@@ -164,7 +164,7 @@ export function EventRequestDetailModal({
                   <FileText className="w-5 h-5 mr-2 text-blue-600" />
                   Mô tả
                 </h3>
-                <p className="text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{request.description}</p>
+                <p className="text-slate-300 whitespace-pre-wrap">{request.description}</p>
               </div>
             )}
 
@@ -225,8 +225,8 @@ export function EventRequestDetailModal({
                   <User className="w-5 h-5 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Người đề xuất</p>
-                  <p className="font-medium text-gray-900 dark:text-slate-200">
+                  <p className="text-sm text-slate-400 mb-1">Người đề xuất</p>
+                  <p className="font-medium text-slate-200">
                     {request.requesterName || 'Không có thông tin'}
                   </p>
                 </div>
@@ -238,8 +238,8 @@ export function EventRequestDetailModal({
                   <Users className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Số lượng dự kiến</p>
-                  <p className="font-medium text-gray-900 dark:text-slate-200">{request.expectedCapacity} người</p>
+                  <p className="text-sm text-slate-400 mb-1">Số lượng dự kiến</p>
+                  <p className="font-medium text-slate-200">{request.expectedCapacity} người</p>
                 </div>
               </div>
 
@@ -249,8 +249,8 @@ export function EventRequestDetailModal({
                   <Calendar className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Thời gian bắt đầu mong muốn</p>
-                  <p className="font-medium text-gray-900 dark:text-slate-200">
+                  <p className="text-sm text-slate-400 mb-1">Thời gian bắt đầu mong muốn</p>
+                  <p className="font-medium text-slate-200">
                     {safeFormatWallClock(request?.preferredStartTime)}
                   </p>
                 </div>
@@ -262,8 +262,8 @@ export function EventRequestDetailModal({
                   <Calendar className="w-5 h-5 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Thời gian kết thúc mong muốn</p>
-                  <p className="font-medium text-gray-900 dark:text-slate-200">
+                  <p className="text-sm text-slate-400 mb-1">Thời gian kết thúc mong muốn</p>
+                  <p className="font-medium text-slate-200">
                     {safeFormatWallClock(request?.preferredEndTime)}
                   </p>
                 </div>
@@ -275,8 +275,8 @@ export function EventRequestDetailModal({
                   <Clock className="w-5 h-5 text-gray-655" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Ngày tạo</p>
-                  <p className="font-medium text-gray-900 dark:text-slate-200">
+                  <p className="text-sm text-slate-400 mb-1">Ngày tạo</p>
+                  <p className="font-medium text-slate-200">
                     {safeFormatWallClock(request?.createdAt)}
                   </p>
                 </div>
@@ -289,8 +289,8 @@ export function EventRequestDetailModal({
                     <Clock className="w-5 h-5 text-gray-655" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Ngày xử lý</p>
-                    <p className="font-medium text-gray-900 dark:text-slate-200">
+                    <p className="text-sm text-slate-400 mb-1">Ngày xử lý</p>
+                    <p className="font-medium text-slate-200">
                       {safeFormatWallClock(request?.processedAt)}
                     </p>
                   </div>
@@ -304,8 +304,8 @@ export function EventRequestDetailModal({
                     <User className="w-5 h-5 text-indigo-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Người xử lý</p>
-                    <p className="font-medium text-gray-900 dark:text-slate-200">{request.processedByName}</p>
+                    <p className="text-sm text-slate-400 mb-1">Người xử lý</p>
+                    <p className="font-medium text-slate-200">{request.processedByName}</p>
                   </div>
                 </div>
               )}
@@ -333,7 +333,7 @@ export function EventRequestDetailModal({
             )}
 
             {/* ===================== ACTION BUTTONS ===================== */}
-            <div className="sticky bottom-0 -mx-5 mt-6 flex justify-end gap-3 border-t border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900 sm:-mx-6 sm:px-6">
+            <div className="sticky bottom-0 -mx-5 mt-6 flex justify-end gap-3 border-t border-slate-800/80 bg-slate-950 px-5 py-4 sm:-mx-6 sm:px-6">
 
               {userRole === 'ORGANIZER' &&
                 request.status === 'UPDATING' &&
@@ -351,7 +351,7 @@ export function EventRequestDetailModal({
               {/* Nút đóng modal */}
               <button
                 onClick={onClose}
-                className="px-4 py-2 bg-gray-200 dark:bg-slate-850 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-750 transition-colors"
+                className="px-4 py-2 border border-slate-700 bg-slate-900 text-slate-100 rounded-lg hover:bg-slate-800 transition-colors"
               >
                 Đóng
               </button>

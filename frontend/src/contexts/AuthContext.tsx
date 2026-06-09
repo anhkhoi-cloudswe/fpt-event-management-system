@@ -331,8 +331,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       window.dispatchEvent(new Event('theme-change'))
     } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('theme', 'light')
+      if (!isDashboardRoute(window.location.pathname)) {
+        document.documentElement.classList.remove('dark')
+      }
       window.dispatchEvent(new Event('theme-change'))
     }
   }, [user])

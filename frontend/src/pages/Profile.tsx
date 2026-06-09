@@ -275,7 +275,7 @@ export default function Profile() {
       setFullName(user.fullName)
     }
     if (user?.id) {
-      setIsDarkMode(localStorage.getItem('theme_user_' + user.id) === 'dark')
+      setIsDarkMode((localStorage.getItem('theme_user_' + user.id) || localStorage.getItem('theme')) === 'dark')
     }
     if (user?.language) {
       const profileLanguage = normalizeLanguage(user.language)
@@ -300,23 +300,21 @@ export default function Profile() {
 
   // Sync theme changes
   useEffect(() => {
+    const currentTheme = isDarkMode ? 'dark' : 'light'
+    document.documentElement.classList.toggle('dark', isDarkMode)
+    localStorage.setItem('theme', currentTheme)
+
     if (user?.id) {
-      const currentTheme = isDarkMode ? 'dark' : 'light'
-      document.documentElement.classList.toggle('dark', isDarkMode)
-      localStorage.setItem('theme', currentTheme)
       localStorage.setItem('theme_user_' + user.id, currentTheme)
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('theme', 'light')
     }
     window.dispatchEvent(new Event('theme-change'))
-  }, [isDarkMode])
+  }, [isDarkMode, user?.id])
 
   // Sync theme changes reactively when updated from header
   useEffect(() => {
     const handleThemeChange = () => {
       if (user?.id) {
-        setIsDarkMode(localStorage.getItem('theme_user_' + user.id) === 'dark')
+        setIsDarkMode((localStorage.getItem('theme_user_' + user.id) || localStorage.getItem('theme')) === 'dark')
       } else {
         setIsDarkMode(localStorage.getItem('theme') === 'dark')
       }
