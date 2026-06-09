@@ -192,9 +192,15 @@ export default function StaffEventRequests() {
   const fetchEventRequests = useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/staff/event-requests', {
+      let response = await fetch('/api/event-requests/pending', {
         credentials: 'include',
       })
+
+      if (response.status === 404 || response.status === 405) {
+        response = await fetch('/api/staff/event-requests', {
+          credentials: 'include',
+        })
+      }
 
       if (response.ok) {
         const data = await response.json().catch(() => null)

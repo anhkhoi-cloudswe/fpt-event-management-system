@@ -105,27 +105,36 @@ export function EventRequestDetailModal({
   if (!isOpen || !request) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-55 overflow-y-auto">
+    <div
+      className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/60 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={onClose}
+    >
       {/* Centering wrapper */}
-      <div className="flex items-center justify-center min-h-screen p-4">
+      <div className="flex min-h-dvh items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
         {/* Modal Card: responsive width + scrollable */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-[90vw] w-full max-h-[90vh] overflow-y-auto border dark:border-slate-800">
+        <div
+          className="flex w-full max-w-5xl max-h-[calc(100dvh-3rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
 
           {/* ===================== HEADER ===================== */}
-          <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center z-10">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-50">{request.title}</h2>
+          <div className="flex flex-shrink-0 items-center justify-between gap-4 border-b border-gray-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+            <h2 className="min-w-0 truncate text-xl font-bold text-gray-900 dark:text-slate-50 sm:text-2xl">{request.title}</h2>
 
             {/* Nút đóng modal */}
             <button
               onClick={onClose}
-              className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
+              className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-slate-100 hover:text-gray-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              aria-label="Dong modal"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
           {/* ===================== CONTENT ===================== */}
-          <div className="px-6 py-4">
+          <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
 
             {/* Loading Spinner */}
             {loading && (
@@ -324,7 +333,7 @@ export function EventRequestDetailModal({
             )}
 
             {/* ===================== ACTION BUTTONS ===================== */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <div className="sticky bottom-0 -mx-5 mt-6 flex justify-end gap-3 border-t border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900 sm:-mx-6 sm:px-6">
 
               {userRole === 'ORGANIZER' &&
                 request.status === 'UPDATING' &&

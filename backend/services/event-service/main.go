@@ -146,6 +146,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return eventHandler.HandleGetMyActiveEventRequests(ctx, request)
 	case path == "/api/event-requests/my/archived" && method == "GET":
 		return eventHandler.HandleGetMyArchivedEventRequests(ctx, request)
+	case path == "/api/event-requests/pending" && method == "GET":
+		return eventHandler.HandleGetPendingEventRequests(ctx, request)
 	case strings.HasPrefix(path, "/api/event-requests/") && method == "GET":
 		return eventHandler.HandleGetEventRequestByID(ctx, request)
 	case path == "/api/staff/event-requests" && method == "GET":
