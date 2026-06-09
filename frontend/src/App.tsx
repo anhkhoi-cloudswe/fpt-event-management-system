@@ -333,10 +333,10 @@ function ThemeRouteIsolation() {
     }
 
     if (isDashboardRoute(pathname)) {
-      const savedTheme = user?.id 
-        ? localStorage.getItem('theme_user_' + user.id) 
+      const savedTheme = user?.id
+        ? localStorage.getItem('theme_user_' + user.id) || localStorage.getItem('theme')
         : localStorage.getItem('theme')
-      
+
       const themeToApply = user?.theme === 'dark' || savedTheme === 'dark' ? 'dark' : 'light'
       
       if (themeToApply === 'dark') {

@@ -1237,14 +1237,15 @@ func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) 
 	query := `
 		SELECT
 			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
-			e.area_id, e.speaker_id
+			e.area_id, e.speaker_id, e.created_by, u.full_name
 		FROM Event e
+		LEFT JOIN Users u ON e.created_by = u.user_id
 		WHERE e.event_id = $1
 	`
 
 	var detail models.EventDetailDto
-	var description, bannerURL sql.NullString
-	var areaID, speakerID sql.NullInt64
+	var description, bannerURL, organizerName sql.NullString
+	var areaID, speakerID, organizerID sql.NullInt64
 	var startTime, endTime time.Time
 	var maxSeats sql.NullInt64
 	var status sql.NullString
@@ -1253,7 +1254,7 @@ func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) 
 	for attempt := 1; attempt <= 3; attempt++ {
 		err = r.db.QueryRowContext(ctx, query, eventID).Scan(
 			&detail.EventID, &detail.Title, &description, &startTime, &endTime, &maxSeats, &status, &bannerURL,
-			&areaID, &speakerID,
+			&areaID, &speakerID, &organizerID, &organizerName,
 		)
 		if err == nil || err == sql.ErrNoRows {
 			break
@@ -1281,6 +1282,13 @@ func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) 
 	}
 	if bannerURL.Valid {
 		detail.BannerURL = &bannerURL.String
+	}
+	if organizerID.Valid {
+		oid := int(organizerID.Int64)
+		detail.OrganizerID = &oid
+	}
+	if organizerName.Valid {
+		detail.OrganizerName = &organizerName.String
 	}
 	detail.Tickets = []models.CategoryTicket{}
 	detail.Seats = []models.SeatResponse{}

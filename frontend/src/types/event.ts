@@ -24,6 +24,8 @@ export interface EventListItem {
 export interface EventDetail extends EventListItem {
   venueName?: string
   location?: string
+  organizerId?: number
+  organizerName?: string
   speakerName?: string
   speakerBio?: string
   speakerAvatarUrl?: string
