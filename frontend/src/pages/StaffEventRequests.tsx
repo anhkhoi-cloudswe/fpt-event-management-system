@@ -80,19 +80,38 @@ const isRecord = (value: unknown): value is Record<string, any> =>
 const sanitizeEventRequest = (value: unknown): EventRequest | null => {
   if (!isRecord(value)) return null
 
-  const requestId = Number(value.requestId ?? value.request_id ?? value.id)
+  const requestId = Number(
+    value.requestId ??
+      value.request_id ??
+      value.eventRequestId ??
+      value.event_request_id ??
+      value.id,
+  )
   if (!Number.isFinite(requestId) || requestId <= 0) return null
+
+  const rawStatus =
+    value.status ??
+    value.requestStatus ??
+    value.request_status ??
+    value.approvalStatus ??
+    value.approval_status ??
+    'PENDING'
 
   return {
     requestId,
     requesterId: Number(value.requesterId ?? value.requester_id ?? 0) || 0,
-    requesterName: value.requesterName ?? value.requester_name ?? value.Organizer?.name,
+    requesterName:
+      value.requesterName ??
+      value.requester_name ??
+      value.organizerName ??
+      value.organizer_name ??
+      value.Organizer?.name,
     title: String(value.title ?? 'Yêu cầu sự kiện'),
     description: String(value.description ?? 'N/A'),
     preferredStartTime: String(value.preferredStartTime ?? value.preferred_start_time ?? ''),
     preferredEndTime: String(value.preferredEndTime ?? value.preferred_end_time ?? ''),
     expectedCapacity: Number(value.expectedCapacity ?? value.expected_capacity ?? 0) || 0,
-    status: String(value.status ?? 'PENDING').toUpperCase() as EventRequestStatus,
+    status: String(rawStatus).toUpperCase() as EventRequestStatus,
     createdAt: String(value.createdAt ?? value.created_at ?? new Date().toISOString()),
     processedBy: Number(value.processedBy ?? value.processed_by ?? 0) || undefined,
     processedByName: value.processedByName ?? value.processed_by_name,
@@ -106,14 +125,46 @@ const sanitizeEventRequest = (value: unknown): EventRequest | null => {
 const normalizeEventRequestsPayload = (payload: unknown): EventRequest[] => {
   const source = isRecord(payload) && isRecord(payload.data) ? payload.data : payload
 
-  if (isRecord(source) && STAFF_REQUEST_BUCKETS.some((bucket) => Array.isArray(source[bucket]))) {
-    return STAFF_REQUEST_BUCKETS
-      .flatMap((bucket) => (Array.isArray(source[bucket]) ? source[bucket] : []))
+  const groupedKeys = [
+    ...STAFF_REQUEST_BUCKETS,
+    'waiting',
+    'processed',
+    'pendingRequests',
+    'approvedRequests',
+    'rejectedRequests',
+    'cancelledRequests',
+    'updatingRequests',
+    'finishedRequests',
+  ] as const
+
+  if (isRecord(source) && groupedKeys.some((key) => Array.isArray(source[key]))) {
+    return groupedKeys
+      .flatMap((key) => {
+        const bucket = source[key]
+        if (!Array.isArray(bucket)) return []
+
+        return bucket.map((item) => {
+          if (!isRecord(item) || item.status || item.requestStatus || item.request_status) {
+            return item
+          }
+
+          const lowerKey = String(key).toLowerCase()
+          if (lowerKey.includes('pending') || lowerKey === 'waiting') return { ...item, status: 'PENDING' }
+          if (lowerKey.includes('updating')) return { ...item, status: 'UPDATING' }
+          if (lowerKey.includes('approved')) return { ...item, status: 'APPROVED' }
+          if (lowerKey.includes('rejected')) return { ...item, status: 'REJECTED' }
+          if (lowerKey.includes('cancelled')) return { ...item, status: 'CANCELLED' }
+          if (lowerKey.includes('finished')) return { ...item, status: 'FINISHED' }
+          return item
+        })
+      })
       .map(sanitizeEventRequest)
       .filter((req): req is EventRequest => req !== null)
   }
 
-  const rawRequests = isRecord(source) ? source.requests ?? source.data ?? source.items : source
+  const rawRequests = isRecord(source)
+    ? source.requests ?? source.eventRequests ?? source.event_requests ?? source.data ?? source.items ?? source.results
+    : source
   return Array.isArray(rawRequests)
     ? rawRequests.map(sanitizeEventRequest).filter((req): req is EventRequest => req !== null)
     : []
