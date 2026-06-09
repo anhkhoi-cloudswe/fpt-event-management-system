@@ -77,48 +77,74 @@ const ITEMS_PER_PAGE = 10
 const isRecord = (value: unknown): value is Record<string, any> =>
   value !== null && typeof value === 'object'
 
+const normalizeRequestStatus = (value: unknown): EventRequestStatus => {
+  const compact = String(value ?? 'PENDING').trim().toUpperCase().replace(/[\s-]+/g, '_')
+
+  if (
+    compact === 'PENDING' ||
+    compact === 'WAITING' ||
+    compact === 'WAITING_APPROVAL' ||
+    compact === 'PENDING_APPROVAL' ||
+    compact === 'WAITING_REVIEW' ||
+    compact === 'CHO_DUYET'
+  ) {
+    return 'PENDING'
+  }
+
+  if (compact === 'UPDATING' || compact === 'WAITING_UPDATE' || compact === 'PENDING_UPDATE') return 'UPDATING'
+  if (compact === 'APPROVE' || compact === 'APPROVED' || compact === 'ACCEPTED') return 'APPROVED'
+  if (compact === 'REJECT' || compact === 'REJECTED' || compact === 'DENIED') return 'REJECTED'
+  if (compact === 'CANCEL' || compact === 'CANCELLED' || compact === 'CANCELED') return 'CANCELLED'
+  if (compact === 'FINISH' || compact === 'FINISHED' || compact === 'DONE' || compact === 'COMPLETED') return 'FINISHED'
+  if (compact === 'EXPIRED') return 'EXPIRED'
+
+  return compact as EventRequestStatus
+}
+
 const sanitizeEventRequest = (value: unknown): EventRequest | null => {
   if (!isRecord(value)) return null
+  const rawValue = value.eventRequest ?? value.event_request ?? value.request ?? value.item ?? value
+  if (!isRecord(rawValue)) return null
 
   const requestId = Number(
-    value.requestId ??
-      value.request_id ??
-      value.eventRequestId ??
-      value.event_request_id ??
-      value.id,
+    rawValue.requestId ??
+      rawValue.request_id ??
+      rawValue.eventRequestId ??
+      rawValue.event_request_id ??
+      rawValue.id,
   )
   if (!Number.isFinite(requestId) || requestId <= 0) return null
 
   const rawStatus =
-    value.status ??
-    value.requestStatus ??
-    value.request_status ??
-    value.approvalStatus ??
-    value.approval_status ??
+    rawValue.status ??
+    rawValue.requestStatus ??
+    rawValue.request_status ??
+    rawValue.approvalStatus ??
+    rawValue.approval_status ??
     'PENDING'
 
   return {
     requestId,
-    requesterId: Number(value.requesterId ?? value.requester_id ?? 0) || 0,
+    requesterId: Number(rawValue.requesterId ?? rawValue.requester_id ?? 0) || 0,
     requesterName:
-      value.requesterName ??
-      value.requester_name ??
-      value.organizerName ??
-      value.organizer_name ??
-      value.Organizer?.name,
+      rawValue.requesterName ??
+      rawValue.requester_name ??
+      rawValue.organizerName ??
+      rawValue.organizer_name ??
+      rawValue.Organizer?.name,
     title: String(value.title ?? 'Yêu cầu sự kiện'),
-    description: String(value.description ?? 'N/A'),
-    preferredStartTime: String(value.preferredStartTime ?? value.preferred_start_time ?? ''),
-    preferredEndTime: String(value.preferredEndTime ?? value.preferred_end_time ?? ''),
-    expectedCapacity: Number(value.expectedCapacity ?? value.expected_capacity ?? 0) || 0,
-    status: String(rawStatus).toUpperCase() as EventRequestStatus,
-    createdAt: String(value.createdAt ?? value.created_at ?? new Date().toISOString()),
-    processedBy: Number(value.processedBy ?? value.processed_by ?? 0) || undefined,
-    processedByName: value.processedByName ?? value.processed_by_name,
-    processedAt: value.processedAt ?? value.processed_at,
-    organizerNote: value.organizerNote ?? value.organizer_note,
-    createdEventId: Number(value.createdEventId ?? value.created_event_id ?? 0) || undefined,
-    bannerUrl: value.bannerUrl ?? value.banner_url,
+    description: String(rawValue.description ?? 'N/A'),
+    preferredStartTime: String(rawValue.preferredStartTime ?? rawValue.preferred_start_time ?? rawValue.startTime ?? rawValue.start_time ?? ''),
+    preferredEndTime: String(rawValue.preferredEndTime ?? rawValue.preferred_end_time ?? rawValue.endTime ?? rawValue.end_time ?? ''),
+    expectedCapacity: Number(rawValue.expectedCapacity ?? rawValue.expected_capacity ?? rawValue.capacity ?? 0) || 0,
+    status: normalizeRequestStatus(rawStatus),
+    createdAt: String(rawValue.createdAt ?? rawValue.created_at ?? new Date().toISOString()),
+    processedBy: Number(rawValue.processedBy ?? rawValue.processed_by ?? 0) || undefined,
+    processedByName: rawValue.processedByName ?? rawValue.processed_by_name,
+    processedAt: rawValue.processedAt ?? rawValue.processed_at,
+    organizerNote: rawValue.organizerNote ?? rawValue.organizer_note,
+    createdEventId: Number(rawValue.createdEventId ?? rawValue.created_event_id ?? 0) || undefined,
+    bannerUrl: rawValue.bannerUrl ?? rawValue.banner_url,
   }
 }
 
