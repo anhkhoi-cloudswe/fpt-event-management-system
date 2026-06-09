@@ -6,6 +6,23 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FPT Event Management System</title>
+  <script>
+    (() => {
+      try {
+        const path = window.location.pathname || '/'
+        const isDashboardRoute = path === '/' || path.startsWith('/dashboard') || path.startsWith('/my-tickets')
+        if (!isDashboardRoute) return
+
+        const storedTheme = localStorage.getItem('theme')
+        const hasDarkTheme = storedTheme === 'dark'
+          || (storedTheme !== 'light' && Object.keys(localStorage).some((key) => key.startsWith('theme_user_') && localStorage.getItem(key) === 'dark'))
+
+        document.documentElement.classList.toggle('dark', Boolean(hasDarkTheme))
+      } catch {
+        document.documentElement.classList.remove('dark')
+      }
+    })()
+  </script>
   <!-- Google reCAPTCHA -->
   <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>

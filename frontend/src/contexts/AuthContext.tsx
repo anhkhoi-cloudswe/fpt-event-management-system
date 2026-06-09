@@ -15,6 +15,22 @@ const isPublicRoutePath = (pathname: string) => {
     /^\/events\/[^/]+\/page$/.test(pathname)
 }
 
+const resolveStoredTheme = (userId: number | null | undefined, userTheme?: string | null) => {
+  const userThemeKey = userId ? `theme_user_${userId}` : ''
+  const storedUserTheme = userThemeKey ? localStorage.getItem(userThemeKey) : null
+  const storedTheme = localStorage.getItem('theme')
+
+  if (storedUserTheme === 'dark' || storedUserTheme === 'light') {
+    return storedUserTheme
+  }
+
+  if (storedTheme === 'dark' || storedTheme === 'light') {
+    return storedTheme
+  }
+
+  return userTheme === 'dark' ? 'dark' : 'light'
+}
+
 export type UserRole = 'STUDENT' | 'ORGANIZER' | 'STAFF' | 'ADMIN'
 
 export interface User {
@@ -153,7 +169,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       isRefreshingRef.current = true
-      setIsRefreshing(true)
+      if (!isBackground) {
+        setIsRefreshing(true)
+      }
       const userObj = await fetchUserFromMe(isBackground)
       if (userObj) {
         setUser(userObj)
@@ -172,7 +190,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } finally {
       isRefreshingRef.current = false
-      setIsRefreshing(false)
+      if (!isBackground) {
+        setIsRefreshing(false)
+      }
     }
   }, [fetchUserFromMe])
 
@@ -298,7 +318,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (user) {
-      const profileTheme = user.theme === 'dark' ? 'dark' : 'light'
+      const profileTheme = resolveStoredTheme(user.id, user.theme)
 
       if (profileTheme === 'dark' && isDashboardRoute(window.location.pathname)) {
         document.documentElement.classList.add('dark')
@@ -324,7 +344,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (user?.id && e.key === `theme_user_${user.id}`) {
-        const newTheme = e.newValue
+        const newTheme = e.newValue === 'dark' ? 'dark' : 'light'
         if (newTheme === 'dark' && isDashboardRoute(window.location.pathname)) {
           document.documentElement.classList.add('dark')
           localStorage.setItem('theme', 'dark')

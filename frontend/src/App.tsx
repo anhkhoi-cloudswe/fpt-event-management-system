@@ -337,8 +337,10 @@ function ThemeRouteIsolation() {
         ? localStorage.getItem('theme_user_' + user.id) || localStorage.getItem('theme')
         : localStorage.getItem('theme')
 
-      const themeToApply = user?.theme === 'dark' || savedTheme === 'dark' ? 'dark' : 'light'
-      
+      const themeToApply = savedTheme === 'dark' || savedTheme === 'light'
+        ? savedTheme
+        : (user?.theme === 'dark' ? 'dark' : 'light')
+
       if (themeToApply === 'dark') {
         document.documentElement.classList.add('dark')
       } else {
