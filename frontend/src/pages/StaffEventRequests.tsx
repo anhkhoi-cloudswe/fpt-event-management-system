@@ -199,6 +199,33 @@ const fetchEventRequestsFromEndpoint = async (endpoint: string): Promise<EventRe
   return requests
 }
 
+const mergeEventRequests = (...sources: Array<EventRequest[] | null>): EventRequest[] => {
+  const merged = new Map<number, EventRequest>()
+
+  sources.forEach((source) => {
+    if (!Array.isArray(source)) return
+
+    source.forEach((request) => {
+      if (!request?.requestId) return
+      const existing = merged.get(request.requestId)
+      merged.set(request.requestId, {
+        ...existing,
+        ...request,
+        requesterName: request.requesterName ?? existing?.requesterName,
+        processedByName: request.processedByName ?? existing?.processedByName,
+        organizerNote: request.organizerNote ?? existing?.organizerNote,
+        bannerUrl: request.bannerUrl ?? existing?.bannerUrl,
+      })
+    })
+  })
+
+  return Array.from(merged.values()).sort((a, b) => {
+    const bTime = parseRequestTimestamp(b.createdAt) ?? 0
+    const aTime = parseRequestTimestamp(a.createdAt) ?? 0
+    return bTime - aTime
+  })
+}
+
 const parseRequestTimestamp = (value: unknown): number | null => {
   if (typeof value !== 'string' || !value.trim()) {
     return null
@@ -272,10 +299,11 @@ export default function StaffEventRequests() {
   const fetchEventRequests = useCallback(async () => {
     setLoading(true)
     try {
-      const allRequests =
-        (await fetchEventRequestsFromEndpoint('/api/event-requests/pending')) ??
-        (await fetchEventRequestsFromEndpoint('/api/staff/event-requests')) ??
-        []
+      const [pendingRequests, legacyStaffRequests] = await Promise.all([
+        fetchEventRequestsFromEndpoint('/api/event-requests/pending'),
+        fetchEventRequestsFromEndpoint('/api/staff/event-requests'),
+      ])
+      const allRequests = mergeEventRequests(pendingRequests, legacyStaffRequests)
 
       const waiting = (Array.isArray(allRequests) ? allRequests : []).filter(
         (req) => req?.status === 'PENDING' || req?.status === 'UPDATING',
