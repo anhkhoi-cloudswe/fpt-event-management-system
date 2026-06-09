@@ -805,7 +805,7 @@ export default function StaffEventRequests() {
                       >
                         <button
                           onClick={() => handleReject(req)}
-                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl hover:bg-rose-600 hover:text-white transition-all duration-300 shadow-sm active:scale-95 hover:scale-[1.02]"
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-800/70 rounded-xl hover:bg-rose-600 dark:hover:bg-rose-600 hover:text-white dark:hover:text-white transition-all duration-300 shadow-sm active:scale-95 hover:scale-[1.02]"
                           title="Từ chối yêu cầu"
                         >
                           <XCircle className="w-4 h-4" /> Từ chối

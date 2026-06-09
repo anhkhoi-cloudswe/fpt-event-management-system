@@ -618,7 +618,7 @@ export default function ReportRequests() {
                           <td className="px-6 py-4 text-right">
                             <button
                               onClick={() => openDetail(r.report_id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:text-white bg-blue-50 hover:bg-blue-600 border border-blue-100 rounded-xl transition-all shadow-sm active:scale-95"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-300 hover:text-white bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-600 dark:hover:bg-blue-600 border border-blue-100 dark:border-blue-800/70 rounded-xl transition-all shadow-sm active:scale-95"
                             >
                               Xem chi tiết
                               <ExternalLink className="w-3 h-3" />
