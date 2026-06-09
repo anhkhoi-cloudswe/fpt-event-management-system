@@ -152,6 +152,34 @@ export default function PublicEventPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user, currentLanguage } = useAuth()
+  const text = {
+    loading: currentLanguage === 'en' ? 'Loading event page...' : 'Dang tai trang su kien...',
+    error: currentLanguage === 'en' ? 'Error' : 'Loi',
+    notFound: currentLanguage === 'en' ? 'Event not found' : 'Khong tim thay su kien',
+    back: currentLanguage === 'en' ? 'Back' : 'Quay lai',
+    hostedBy: currentLanguage === 'en' ? 'Hosted by' : 'To chuc boi',
+    featured: currentLanguage === 'en' ? 'Featured Event' : 'Su kien dac sac',
+    time: currentLanguage === 'en' ? 'Event Time' : 'Thoi gian dien ra',
+    location: currentLanguage === 'en' ? 'Location' : 'Dia diem to chuc',
+    defaultLocation: currentLanguage === 'en' ? 'FPT location' : 'Dia diem FPT',
+    area: currentLanguage === 'en' ? 'Area' : 'Khu vuc',
+    floor: currentLanguage === 'en' ? 'Floor' : 'Tang',
+    registration: currentLanguage === 'en' ? 'Registration' : 'Dang ky tham gia',
+    closedNotice: currentLanguage === 'en'
+      ? 'This event is closed. Ticket booking is not available right now.'
+      : 'Su kien nay da dong. Ban khong the thuc hien dat ve vao luc nay.',
+    chooseTicket: currentLanguage === 'en' ? 'Choose ticket tier' : 'Chon hang ve',
+    remaining: currentLanguage === 'en' ? 'Remaining' : 'Con lai',
+    tickets: currentLanguage === 'en' ? 'tickets' : 've',
+    chooseSeat: currentLanguage === 'en' ? 'Choose your seat' : 'Chon vi tri ngoi cua ban',
+    selectedSeats: currentLanguage === 'en' ? 'Selected seats' : 'Ghe chon',
+    totalPayment: currentLanguage === 'en' ? 'Total payment' : 'Tong thanh toan',
+    register: currentLanguage === 'en' ? 'Register for Event' : 'Dang ky su kien',
+    chooseSeatsToRegister: currentLanguage === 'en' ? 'Choose seats to register' : 'Chon ghe de dang ky',
+    about: currentLanguage === 'en' ? 'About Event' : 'Mo ta su kien',
+    mainSpeaker: currentLanguage === 'en' ? 'Main Speaker' : 'Dien gia chinh',
+    noTicket: currentLanguage === 'en' ? 'No matching ticket type found' : 'Khong tim thay loai ve phu hop',
+  }
 
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -221,8 +249,8 @@ export default function PublicEventPage() {
     const fetchEvent = async () => {
       setLoading(true)
       setError(null)
-      try {
-        const res = await fetch(`/api/events/detail?id=${id}`, {
+    try {
+      const res = await fetch(`/api/events/detail?id=${id}`, {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' }
         })
@@ -233,7 +261,7 @@ export default function PublicEventPage() {
         setEvent(data)
       } catch (err: any) {
         console.error(err)
-        setError(err.message || 'Không thể tải thông tin sự kiện')
+        setError(err.message || (currentLanguage === 'en' ? 'Unable to load event details' : 'Khong the tai thong tin su kien'))
       } finally {
         setLoading(false)
       }
@@ -300,6 +328,10 @@ export default function PublicEventPage() {
 
   const handleSeatSelect = (seat: Seat) => {
     if (!event) return
+    if (!user) {
+      navigate(`/login?redirect=${encodeURIComponent(`/events/${event.eventId}/page`)}`)
+      return
+    }
     if (!isSeatAvailableForSelect(seat)) return
 
     setSelectedSeats((prev) => {
@@ -316,7 +348,7 @@ export default function PublicEventPage() {
     if (!event || selectedSeats.length === 0) return
 
     if (!user) {
-      navigate(`/login?redirect=/events/${event.eventId}/page`)
+      navigate(`/login?redirect=${encodeURIComponent(`/events/${event.eventId}/page`)}`)
       return
     }
 
@@ -353,7 +385,7 @@ export default function PublicEventPage() {
       (selectedSeats[0]?.seatType === 'VIP' ? vipTicket : standardTicket)
 
     if (!ticketToUse) {
-      alert('Không tìm thấy loại vé phù hợp')
+      alert(text.noTicket)
       return
     }
 
@@ -395,7 +427,7 @@ export default function PublicEventPage() {
     return (
       <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center">
         <div className="w-12 h-12 rounded-full border-2 border-neutral-800 border-t-orange-500 animate-spin"></div>
-        <p className="text-xs font-bold text-neutral-400 mt-4 uppercase tracking-wider">Đang tải trang sự kiện...</p>
+        <p className="text-xs font-bold text-neutral-400 mt-4 uppercase tracking-wider">{text.loading}</p>
       </div>
     )
   }
@@ -403,12 +435,12 @@ export default function PublicEventPage() {
   if (error || !event) {
     return (
       <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center p-4">
-        <p className="text-red-500 text-sm font-bold">Lỗi: {error || 'Không tìm thấy sự kiện'}</p>
+        <p className="text-red-500 text-sm font-bold">{text.error}: {error || text.notFound}</p>
         <button
           onClick={() => navigate(-1)}
           className="mt-6 px-4 py-2 border border-neutral-800 rounded-xl text-xs font-bold hover:bg-neutral-900 transition-colors"
         >
-          Quay lại
+          {text.back}
         </button>
       </div>
     )
@@ -471,12 +503,12 @@ export default function PublicEventPage() {
               if (window.history.state && window.history.state.idx > 0) {
                 navigate(-1)
               } else {
-                navigate('/dashboard')
+                navigate(user ? '/dashboard' : '/guest')
               }
             }} 
             className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-neutral-200 px-3 py-1.5 rounded-lg font-bold tracking-wide transition-all uppercase mb-8"
           >
-            <span>←</span> QUAY LẠI
+            <span>←</span> {text.back}
           </button>
         </div>
 
@@ -505,7 +537,7 @@ export default function PublicEventPage() {
                     F
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-neutral-450 uppercase tracking-wider">Tổ chức bởi</p>
+                    <p className="text-[10px] font-black text-neutral-450 uppercase tracking-wider">{text.hostedBy}</p>
                     <p className="text-xs font-bold text-neutral-100 mt-0.5">{event.venueName || 'FPT University'}</p>
                   </div>
                 </div>
@@ -540,7 +572,7 @@ export default function PublicEventPage() {
             {/* Header block */}
             <div className="space-y-4">
               <span className="px-2.5 py-1 bg-orange-500/10 text-orange-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-orange-500/20">
-                Sự kiện đặc sắc
+                {text.featured}
               </span>
               <h1 className="text-3xl sm:text-4xl text-white font-black tracking-tight leading-tight mb-4">
                 {event.title}
@@ -553,7 +585,7 @@ export default function PublicEventPage() {
               <div className="flex gap-4 bg-neutral-900/40 backdrop-blur-2xl border border-white/15 dark:border-white/5 shadow-[0_12px_40px_0_rgba(0,0,0,0.6)] p-6 rounded-2xl transition-all duration-300">
                 <Calendar className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs space-y-1">
-                  <p className="text-neutral-400 font-black uppercase tracking-wider">Thời gian diễn ra</p>
+                  <p className="text-neutral-400 font-black uppercase tracking-wider">{text.time}</p>
                   <p className="font-bold text-neutral-100">{formatLumaDate(event.startTime, currentLanguage)}</p>
                   <p className="text-neutral-300 font-medium">{formatLumaTimeRange(event.startTime, event.endTime, currentLanguage)}</p>
                 </div>
@@ -563,11 +595,11 @@ export default function PublicEventPage() {
               <div className="flex gap-4 bg-neutral-900/40 backdrop-blur-2xl border border-white/15 dark:border-white/5 shadow-[0_12px_40px_0_rgba(0,0,0,0.6)] p-6 rounded-2xl transition-all duration-300">
                 <MapPin className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs space-y-1">
-                  <p className="text-neutral-400 font-black uppercase tracking-wider">Địa điểm tổ chức</p>
-                  <p className="font-bold text-neutral-100">{event.venueName || 'Địa điểm FPT'}</p>
+                  <p className="text-neutral-400 font-black uppercase tracking-wider">{text.location}</p>
+                  <p className="font-bold text-neutral-100">{event.venueName || text.defaultLocation}</p>
                   {event.areaName && (
                     <p className="text-neutral-300 font-medium">
-                      Khu vực: {event.areaName} {event.floor ? `· Tầng ${event.floor}` : ''}
+                      {text.area}: {event.areaName} {event.floor ? `· ${text.floor} ${event.floor}` : ''}
                     </p>
                   )}
                   {event.location && (
@@ -579,18 +611,18 @@ export default function PublicEventPage() {
 
             {/* DYNAMIC REGISTRATION CARD MATRIX */}
             <div className="bg-neutral-900/40 backdrop-blur-2xl border border-white/15 dark:border-white/5 shadow-[0_12px_40px_0_rgba(0,0,0,0.6)] p-6 rounded-2xl space-y-6 transition-all duration-300">
-              <h3 className="text-base font-black text-neutral-100 tracking-wide">Đăng ký tham gia</h3>
+              <h3 className="text-base font-black text-neutral-100 tracking-wide">{text.registration}</h3>
 
               {eventClosed || eventEnded ? (
                 <div className="bg-amber-950/20 border border-amber-900/50 rounded-2xl p-4 text-xs text-amber-300 leading-relaxed">
-                  Sự kiện này đã đóng. Bạn không thể thực hiện đặt vé vào lúc này.
+                  {text.closedNotice}
                 </div>
               ) : (
                 <div className="space-y-6">
                   {/* Tickets list */}
                   {event.tickets && event.tickets.length > 0 && (
                     <div className="space-y-3">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-neutral-450">Chọn hạng vé</p>
+                      <p className="text-[10px] font-black uppercase tracking-wider text-neutral-450">{text.chooseTicket}</p>
                       <div className="grid grid-cols-1 gap-2.5">
                         {event.tickets.map((ticket) => {
                           const isSelected = selectedTicket?.categoryTicketId === ticket.categoryTicketId
@@ -610,7 +642,7 @@ export default function PublicEventPage() {
                                   <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-1">{ticket.description}</p>
                                 )}
                                 <p className="text-[10px] text-neutral-400 mt-1">
-                                  Còn lại: <span className="font-bold">{ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} vé</span>
+                                  {text.remaining}: <span className="font-bold">{ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} {text.tickets}</span>
                                 </p>
                               </div>
                               <p className="text-sm font-black text-orange-400">
@@ -626,7 +658,7 @@ export default function PublicEventPage() {
                   {/* Seat picker grid if areaId exists */}
                   {event.areaId && (
                     <div className="space-y-3 pt-2">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-neutral-450">Chọn vị trí ngồi của bạn</p>
+                      <p className="text-[10px] font-black uppercase tracking-wider text-neutral-450">{text.chooseSeat}</p>
                       <div className="p-4 rounded-2xl bg-black/35 border border-white/5 overflow-hidden">
                         <SeatGrid
                           seats={allSeats}
@@ -646,11 +678,11 @@ export default function PublicEventPage() {
                     {selectedSeats.length > 0 && (
                       <div className="flex items-center justify-between text-xs p-3.5 bg-black/20 rounded-2xl border border-white/5">
                         <div>
-                          <p className="text-neutral-400">Ghế chọn:</p>
+                          <p className="text-neutral-400">{text.selectedSeats}:</p>
                           <p className="font-bold text-neutral-100 mt-0.5">{selectedSeats.map(s => s.seatCode).join(', ')}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-neutral-400">Tổng thanh toán:</p>
+                          <p className="text-neutral-400">{text.totalPayment}:</p>
                           <p className="text-sm font-black text-orange-400 mt-0.5">{totalAmount.toLocaleString('vi-VN')} đ</p>
                         </div>
                       </div>
@@ -665,7 +697,7 @@ export default function PublicEventPage() {
                           : 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none border border-neutral-850'
                       }`}
                     >
-                      {selectedSeats.length > 0 ? 'Register for Event' : 'Chọn ghế để đăng ký'}
+                      {selectedSeats.length > 0 ? text.register : text.chooseSeatsToRegister}
                     </button>
                   </div>
                 </div>
@@ -674,7 +706,7 @@ export default function PublicEventPage() {
 
             {/* Description breaking section */}
             <div className="bg-neutral-900/40 backdrop-blur-2xl border border-white/15 dark:border-white/5 shadow-[0_12px_40px_0_rgba(0,0,0,0.6)] p-6 rounded-2xl space-y-4 transition-all duration-300">
-              <h3 className="text-xs font-black uppercase tracking-widest text-neutral-400">About Event</h3>
+              <h3 className="text-xs font-black uppercase tracking-widest text-neutral-400">{text.about}</h3>
               <div className="text-neutral-200 text-sm leading-relaxed antialiased font-medium whitespace-pre-wrap max-w-none">
                 {event.description}
               </div>
@@ -694,7 +726,7 @@ export default function PublicEventPage() {
                     <div className="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center text-2xl border border-neutral-700">👤</div>
                   )}
                   <div>
-                    <p className="text-[10px] font-black uppercase text-neutral-450 tracking-wider">Diễn giả chính</p>
+                    <p className="text-[10px] font-black uppercase text-neutral-450 tracking-wider">{text.mainSpeaker}</p>
                     <h4 className="text-lg font-bold text-neutral-100">{event.speakerName}</h4>
                   </div>
                 </div>

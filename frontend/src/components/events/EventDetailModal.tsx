@@ -101,6 +101,40 @@ export function EventDetailModal({
 }: EventDetailModalProps) {
   const navigate = useNavigate()
   const { user, currentLanguage } = useAuth()
+  const text = {
+    loading: currentLanguage === 'en' ? 'Loading event details...' : 'Dang tai chi tiet...',
+    error: currentLanguage === 'en' ? 'Error' : 'Loi',
+    copied: currentLanguage === 'en' ? 'Copied' : 'Da copy',
+    copyLink: currentLanguage === 'en' ? 'Copy Link' : 'Copy Link',
+    eventPage: currentLanguage === 'en' ? 'Event Page' : 'Trang su kien',
+    fullSize: currentLanguage === 'en' ? 'View full size' : 'Xem kich thuoc day du',
+    area: currentLanguage === 'en' ? 'Area' : 'Khu vuc',
+    floor: currentLanguage === 'en' ? 'Floor' : 'Tang',
+    capacity: currentLanguage === 'en' ? 'Capacity' : 'Suc chua',
+    seats: currentLanguage === 'en' ? 'seats' : 'cho',
+    registered: currentLanguage === 'en' ? 'Registered' : 'Da dang ky',
+    people: currentLanguage === 'en' ? 'people' : 'nguoi',
+    description: currentLanguage === 'en' ? 'Event Description' : 'Mo ta su kien',
+    speaker: currentLanguage === 'en' ? 'Speaker' : 'Dien gia',
+    ticketsSeats: currentLanguage === 'en' ? 'Tickets & Seats' : 'Ve & Dat Ghe',
+    closedNotice: currentLanguage === 'en'
+      ? 'This event is closed. Ticket booking is not available right now.'
+      : 'Su kien nay da dong. Ban khong the thuc hien dat ve vao luc nay.',
+    remaining: currentLanguage === 'en' ? 'Remaining' : 'Con lai',
+    seatMap: currentLanguage === 'en' ? 'Seat Map' : 'So do chon ghe',
+    selectedSeats: currentLanguage === 'en' ? 'Selected seats' : 'Ghe da chon',
+    totalAmount: currentLanguage === 'en' ? 'Total amount' : 'Tong so tien',
+    updateInfo: currentLanguage === 'en' ? 'Update info' : 'Cap nhat thong tin',
+    close: currentLanguage === 'en' ? 'Close' : 'Dong',
+    register: currentLanguage === 'en' ? 'Register for Event' : 'Dang ky su kien',
+    chooseSeats: currentLanguage === 'en' ? 'Choose seats to register' : 'Chon ghe de dang ky',
+    ongoing: currentLanguage === 'en' ? 'Event is ongoing' : 'Su kien dang dien ra',
+    seatPending: (seatCode: string) => currentLanguage === 'en'
+      ? `Seat ${seatCode} is being held for payment. Please choose another seat.`
+      : `Ghe ${seatCode} dang duoc giu cho trong qua trinh thanh toan. Vui long chon ghe khac.`,
+    noTicket: currentLanguage === 'en' ? 'No matching ticket type found' : 'Khong tim thay loai ve phu hop',
+    detailMap: currentLanguage === 'en' ? 'event detail map' : 'so do chi tiet su kien',
+  }
   const [copied, setCopied] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([])
@@ -204,9 +238,13 @@ export function EventDetailModal({
 
   const handleSeatSelect = (seat: Seat) => {
     if (!event) return
+    if (!user) {
+      navigate(`/login?redirect=${encodeURIComponent(`/events/${event.eventId}/page`)}`)
+      return
+    }
     if (!isSeatAvailableForSelect(seat)) {
       if (seat.status === 'PENDING') {
-        alert(`Ghế ${seat.seatCode} đang được giữ chỗ trong quá trình thanh toán. Vui lòng chọn ghế khác.`)
+        alert(text.seatPending(seat.seatCode))
       }
       return
     }
@@ -227,7 +265,7 @@ export function EventDetailModal({
     if (!event || selectedSeats.length === 0) return
 
     if (!user) {
-      navigate(`/login?redirect=/events/${event.eventId}`)
+      navigate(`/login?redirect=${encodeURIComponent(`/events/${event.eventId}/page`)}`)
       return
     }
 
@@ -264,7 +302,7 @@ export function EventDetailModal({
       (selectedSeats[0]?.seatType === 'VIP' ? vipTicket : standardTicket)
 
     if (!ticketToUse) {
-      alert('Không tìm thấy loại vé phù hợp')
+      alert(text.noTicket)
       return
     }
 
@@ -312,7 +350,7 @@ export function EventDetailModal({
   const handleCopyLink = () => {
     if (!event) return
     const id = event.eventId || (event as any).id
-    navigator.clipboard.writeText(`${window.location.origin}/dashboard/events/${id}/page`)
+    navigator.clipboard.writeText(`${window.location.origin}/events/${id}/page`)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -366,16 +404,16 @@ export function EventDetailModal({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-250 dark:border-slate-700 text-xs font-semibold text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors active:scale-95 shadow-sm"
             >
               <Copy className="w-3.5 h-3.5" />
-              {copied ? 'Copied! ✅' : 'Copy Link'}
+              {copied ? text.copied : text.copyLink}
             </button>
 
             <button
               type="button"
-              onClick={() => navigate(`/dashboard/events/${eventId}/page`)}
+              onClick={() => navigate(`/events/${eventId}/page`)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-250 dark:border-slate-700 text-xs font-semibold text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors active:scale-95 shadow-sm"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              Event Page
+              {text.eventPage}
             </button>
           </div>
 
@@ -391,11 +429,11 @@ export function EventDetailModal({
         {/* ===== CONTENT SCROLLABLE ZONE ===== */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
           {loading && (
-            <p className="text-gray-500 text-center py-4">Đang tải chi tiết...</p>
+            <p className="text-gray-500 text-center py-4">{text.loading}</p>
           )}
 
           {error && (
-            <p className="text-red-500 text-center py-4">Lỗi: {error}</p>
+            <p className="text-red-500 text-center py-4">{text.error}: {error}</p>
           )}
 
           {!loading && !error && event && (
@@ -412,7 +450,7 @@ export function EventDetailModal({
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
                   />
                   <div className="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded bg-black/60 text-white text-[10px] font-bold backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    🔍 Xem kích thước đầy đủ
+                    {text.fullSize}
                   </div>
                 </div>
               )}
@@ -445,7 +483,7 @@ export function EventDetailModal({
                         <p className="text-slate-700 dark:text-slate-100 font-medium">{event.venueName}</p>
                         {event.areaName && (
                           <p className="text-slate-700 dark:text-slate-100 font-medium mt-0.5">
-                            Khu vực: {event.areaName} {event.floor ? `· Tầng ${event.floor}` : ''}
+                            {text.area}: {event.areaName} {event.floor ? `· ${text.floor} ${event.floor}` : ''}
                           </p>
                         )}
                         {event.location && (
@@ -460,11 +498,11 @@ export function EventDetailModal({
                     <Users className="w-4 h-4 text-orange-500 mt-0.5" />
                     <div className="text-xs">
                       <p className="text-slate-700 dark:text-slate-100 font-medium">
-                        Sức chứa: {event.maxSeats} chỗ
+                        {text.capacity}: {event.maxSeats} {text.seats}
                       </p>
                       {event.currentParticipants != null && (
                         <p className="text-slate-700 dark:text-slate-100 font-medium mt-0.5">
-                          Đã đăng ký: {event.currentParticipants} người
+                          {text.registered}: {event.currentParticipants} {text.people}
                         </p>
                       )}
                     </div>
@@ -474,7 +512,7 @@ export function EventDetailModal({
 
               {/* Description Section */}
               <div className="space-y-2">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Mô tả sự kiện</h3>
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{text.description}</h3>
                 <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
                   {event.description}
                 </p>
@@ -494,7 +532,7 @@ export function EventDetailModal({
                       <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-xl">👤</div>
                     )}
                     <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Diễn giả</p>
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">{text.speaker}</p>
                       <h4 className="font-bold text-gray-900 dark:text-white">{event.speakerName}</h4>
                     </div>
                   </div>
@@ -521,7 +559,7 @@ export function EventDetailModal({
               {/* Reactive Ticket / Seat Grid selection Zone */}
               <div className="border-t border-gray-200 dark:border-slate-800 pt-6 space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Vé & Đặt Ghế</h3>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">{text.ticketsSeats}</h3>
                   {event.status === 'CLOSED' || eventClosed ? (
                     <span className="px-2 py-0.5 bg-red-100 dark:bg-red-950/30 text-red-650 dark:text-red-450 text-[10px] font-black uppercase tracking-wider rounded-md">Closed</span>
                   ) : (
@@ -531,7 +569,7 @@ export function EventDetailModal({
 
                 {eventClosed || eventEnded ? (
                   <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3 text-sm text-amber-800 dark:text-amber-300">
-                    Sự kiện này đã đóng. Bạn không thể thực hiện đặt vé vào lúc này.
+                    {text.closedNotice}
                   </div>
                 ) : (
                   <>
@@ -581,7 +619,7 @@ export function EventDetailModal({
                                   </p>
                                 )}
                                 <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                                  Còn lại: <span className="font-bold">{availableCount}/{total}</span>
+                                  {text.remaining}: <span className="font-bold">{availableCount}/{total}</span>
                                 </p>
                               </div>
                               <p className="font-black text-sm text-orange-500 whitespace-nowrap">
@@ -596,7 +634,7 @@ export function EventDetailModal({
                     {/* Seat Grid section */}
                     {event.areaId && (
                       <div className="space-y-3 pt-2">
-                        <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">Sơ đồ chọn ghế</h4>
+                        <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">{text.seatMap}</h4>
                         <SeatGrid
                           seats={allSeats}
                           loading={loadingSeats}
@@ -621,11 +659,11 @@ export function EventDetailModal({
             {selectedSeats.length > 0 && (
               <div className="flex items-center justify-between text-xs">
                 <div>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium">Ghế đã chọn:</p>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium">{text.selectedSeats}:</p>
                   <p className="font-bold text-gray-900 dark:text-white mt-0.5">{selectedSeatCodesText}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-slate-500 dark:text-slate-400 font-medium">Tổng số tiền:</p>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium">{text.totalAmount}:</p>
                   <p className="font-black text-sm text-orange-500 mt-0.5">{totalAmount.toLocaleString('vi-VN')} đ</p>
                 </div>
               </div>
@@ -638,7 +676,7 @@ export function EventDetailModal({
                   onClick={onEdit}
                   className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 active:scale-98 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
                 >
-                  Cập nhật thông tin
+                  {text.updateInfo}
                 </button>
               )}
 
@@ -648,7 +686,7 @@ export function EventDetailModal({
                 onClick={handleClose}
                 className="px-4 py-2.5 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
               >
-                Đóng
+                {text.close}
               </button>
 
               {/* Primary Registration Trigger */}
@@ -662,13 +700,13 @@ export function EventDetailModal({
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none border border-slate-200 dark:border-slate-800'
                   }`}
                 >
-                  {selectedSeats.length > 0 ? 'Register for Event' : 'Chọn ghế để đăng ký'}
+                  {selectedSeats.length > 0 ? text.register : text.chooseSeats}
                 </button>
               )}
 
               {eventOngoing && (
                 <div className="flex-1 py-2.5 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-250 dark:border-yellow-900/40 text-yellow-800 dark:text-yellow-350 text-center rounded-xl text-xs font-bold">
-                  Sự kiện đang diễn ra
+                  {text.ongoing}
                 </div>
               )}
             </div>
@@ -692,7 +730,7 @@ export function EventDetailModal({
             <img src={event.bannerUrl} alt={event.title} className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
           </div>
           <p className="text-slate-300 text-sm mt-3 font-semibold text-center pointer-events-none bg-black/40 px-4 py-1.5 rounded-full">
-            {event.title} - Sơ đồ chi tiết sự kiện
+            {event.title} - {text.detailMap}
           </p>
         </div>
       )}

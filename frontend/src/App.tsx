@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { GoogleOAuthProvider } from '@react-oauth/google'
@@ -213,6 +213,11 @@ class EventRequestsErrorBoundary extends Component<{ children: ReactNode }, { ha
 }
 
 function AppRoutes() {
+  const DashboardEventPageRedirect = () => {
+    const { id } = useParams()
+    return <Navigate to={`/events/${id}/page`} replace />
+  }
+
   const EventRequestsRouter = () => {
     const { user } = useAuth()
     const role = user?.role
@@ -248,6 +253,8 @@ function AppRoutes() {
       <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
       <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
       <Route path="/events/:id" element={<EventDetail />} />
+      <Route path="/events/:id/page" element={<PublicEventPage />} />
+      <Route path="/dashboard/events/:id/page" element={<DashboardEventPageRedirect />} />
 
       <Route
         path="/dashboard"
