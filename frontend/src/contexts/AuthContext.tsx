@@ -60,6 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const isLoadingRef = useRef(true)
+  const isRefreshingRef = useRef(false)
+  const lastBackgroundRefreshRef = useRef(0)
 
   const setUser = useCallback((val: React.SetStateAction<User | null>) => {
     setUserInternal(prev => {
@@ -106,6 +108,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  useEffect(() => {
+    isRefreshingRef.current = isRefreshing
+  }, [isRefreshing])
+
   const fetchUserFromMe = useCallback(async (isBackground = false): Promise<User | null> => {
     for (const endpoint of AUTH_ME_ENDPOINTS) {
       try {
@@ -137,8 +143,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const refreshUser = useCallback(async (isBackground = false) => {
-    if (isRefreshing) return
+    if (isRefreshingRef.current) return
+
+    if (isBackground) {
+      const now = Date.now()
+      if (now - lastBackgroundRefreshRef.current < 15000) return
+      lastBackgroundRefreshRef.current = now
+    }
+
     try {
+      isRefreshingRef.current = true
+      setIsRefreshing(true)
       const userObj = await fetchUserFromMe(isBackground)
       if (userObj) {
         setUser(userObj)
@@ -155,8 +170,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null)
         setIsAuthenticated(false)
       }
+    } finally {
+      isRefreshingRef.current = false
+      setIsRefreshing(false)
     }
-  }, [fetchUserFromMe, isRefreshing])
+  }, [fetchUserFromMe])
 
   const logout = useCallback(() => {
     void axios.post('/auth/logout', null, { withCredentials: true }).catch(() => undefined)
@@ -324,7 +342,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const refreshOnFocus = () => {
-      if (isAuthenticated && !isPublicRoutePath(window.location.pathname)) {
+      if (!document.hidden && isAuthenticated && !isPublicRoutePath(window.location.pathname)) {
         void refreshUser(true)
       }
     }
@@ -339,7 +357,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (isAuthenticated && !isPublicRoutePath(window.location.pathname)) {
         void refreshUser(true)
       }
-    }, 30000)
+    }, 120000)
 
     window.addEventListener('focus', refreshOnFocus)
     document.addEventListener('visibilitychange', refreshOnVisibility)
