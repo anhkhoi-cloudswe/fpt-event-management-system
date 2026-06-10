@@ -1,44 +1,44 @@
-// Import router hooks + Link
+﻿// Import router hooks + Link
 import { useParams, useNavigate, Link } from 'react-router-dom'
-// useParams: lÃ¡ÂºÂ¥y param trÃƒÂªn URL (vd /dashboard/event-requests/:id/edit -> lÃ¡ÂºÂ¥y id)
-// useNavigate: Ã„â€˜iÃ¡Â»Âu hÃ†Â°Ã¡Â»â€ºng trang bÃ¡ÂºÂ±ng code
-// Link: chuyÃ¡Â»Æ’n trang SPA khÃƒÂ´ng reload
+// useParams: lấy param trên URL (vd /dashboard/event-requests/:id/edit -> lấy id)
+// useNavigate: điều hướng trang bằng code
+// Link: chuyển trang SPA không reload
 
-// Import icon Ã„â€˜Ã¡Â»Æ’ UI Ã„â€˜Ã¡ÂºÂ¹p hÃ†Â¡n
+// Import icon để UI đẹp hơn
 import { Upload, X, Plus, Trash2, Loader } from 'lucide-react'
-// Upload: icon upload Ã¡ÂºÂ£nh
-// X: icon Ã„â€˜ÃƒÂ³ng / xÃƒÂ³a Ã¡ÂºÂ£nh
-// Plus: icon thÃƒÂªm vÃƒÂ©
-// Trash2: icon xÃƒÂ³a loÃ¡ÂºÂ¡i vÃƒÂ©
+// Upload: icon upload ảnh
+// X: icon đóng / xóa ảnh
+// Plus: icon thêm vé
+// Trash2: icon xóa loại vé
 // Loader: icon loading spinner
 
 // React hooks
 import { useState, useEffect, useRef } from 'react'
-// useState: lÃ†Â°u state form (speaker, tickets, banner, loading...)
-// useEffect: gÃ¡Â»Âi API load dÃ¡Â»Â¯ liÃ¡Â»â€¡u (expectedCapacity, event detail) khi mount
-// useRef: lÃ†Â°u biÃ¡ÂºÂ¿n khÃƒÂ´ng gÃƒÂ¢y re-render (Ã¡Â»Å¸ Ã„â€˜ÃƒÂ¢y dÃƒÂ¹ng Ã„â€˜Ã¡Â»Æ’ chÃ¡ÂºÂ·n spam toast warning)
+// useState: lưu state form (speaker, tickets, banner, loading...)
+// useEffect: gọi API load dữ liệu (expectedCapacity, event detail) khi mount
+// useRef: lưu biến không gây re-render (ở đây dùng để chặn spam toast warning)
 
-// Utils upload Ã¡ÂºÂ£nh
+// Utils upload ảnh
 import { uploadEventBanner, validateImageFile } from '../utils/imageUpload'
-// validateImageFile: validate file Ã¡ÂºÂ£nh (Ã„â€˜uÃƒÂ´i file/size/...)
-// uploadEventBanner: upload Ã¡ÂºÂ£nh lÃƒÂªn server/storage vÃƒÂ  trÃ¡ÂºÂ£ vÃ¡Â»Â URL
+// validateImageFile: validate file ảnh (đuôi file/size/...)
+// uploadEventBanner: upload ảnh lên server/storage và trả về URL
 
-// Toast context Ã„â€˜Ã¡Â»Æ’ hiÃ¡Â»â€¡n thÃƒÂ´ng bÃƒÂ¡o dÃ¡ÂºÂ¡ng toast
+// Toast context để hiện thông báo dạng toast
 import { useToast } from '../contexts/ToastContext'
-// showToast(type, message): hiÃ¡Â»Æ’n thÃ¡Â»â€¹ toast success/error/warning
+// showToast(type, message): hiển thị toast success/error/warning
 
 // ======================= TYPES =======================
 
-// TicketType: chÃ¡Â»â€° cho phÃƒÂ©p 2 loÃ¡ÂºÂ¡i vÃƒÂ© (VIP hoÃ¡ÂºÂ·c STANDARD)
+// TicketType: chỉ cho phép 2 loại vé (VIP hoặc STANDARD)
 type TicketType = 'VIP' | 'STANDARD'
 
-// Ticket: cÃ¡ÂºÂ¥u trÃƒÂºc dÃ¡Â»Â¯ liÃ¡Â»â€¡u 1 loÃ¡ÂºÂ¡i vÃƒÂ© trong form edit
+// Ticket: cấu trúc dữ liệu 1 loại vé trong form edit
 type Ticket = {
     name: TicketType          // VIP / STANDARD
-    description: string       // mÃƒÂ´ tÃ¡ÂºÂ£ loÃ¡ÂºÂ¡i vÃƒÂ©
-    price: number             // giÃƒÂ¡ vÃƒÂ©
-    maxQuantity: number       // sÃ¡Â»â€˜ lÃ†Â°Ã¡Â»Â£ng tÃ¡Â»â€˜i Ã„â€˜a (giÃ¡Â»â€ºi hÃ¡ÂºÂ¡n bÃƒÂ¡n)
-    status: 'ACTIVE'          // trÃ¡ÂºÂ¡ng thÃƒÂ¡i vÃƒÂ© (Ã¡Â»Å¸ Ã„â€˜ÃƒÂ¢y hardcode ACTIVE)
+    description: string       // mô tả loại vé
+    price: number             // giá vé
+    maxQuantity: number       // số lượng tối đa (giới hạn bán)
+    status: 'ACTIVE'          // trạng thái vé (ở đây hardcode ACTIVE)
 }
 
 // Speaker info
@@ -53,7 +53,7 @@ type Speaker = {
 // Event request structure
 type EventRequest = {
     requestId: number
-    createdEventId?: number // Ã¢Å“â€¦ NEW: For APPROVED requests with created event
+    createdEventId?: number // ✅ NEW: For APPROVED requests with created event
     title: string
     description: string
     reason?: string
@@ -66,38 +66,38 @@ type EventRequest = {
 export default function EventRequestEdit() {
     // ======================= ROUTER + CONTEXT =======================
 
-    // LÃ¡ÂºÂ¥y id (requestId) tÃ¡Â»Â« URL param
+    // Lấy id (requestId) từ URL param
     const { id } = useParams<{ id: string }>()
 
-    // navigate: chuyÃ¡Â»Æ’n trang bÃ¡ÂºÂ±ng code
+    // navigate: chuyển trang bằng code
     const navigate = useNavigate()
 
-    // showToast: hiÃ¡Â»Æ’n thÃ¡Â»â€¹ toast message
+    // showToast: hiển thị toast message
     const { showToast } = useToast()
 
     // ======================= STATE CHUNG =======================
 
-    // loading: Ã„â€˜ang load dÃ¡Â»Â¯ liÃ¡Â»â€¡u (fetch event request + event details)
+    // loading: đang load dữ liệu (fetch event request + event details)
     const [loading, setLoading] = useState(false)
 
-    // isSubmitting: trÃ¡ÂºÂ¡ng thÃƒÂ¡i Ã„â€˜ang submit form update (disable nÃƒÂºt)
+    // isSubmitting: trạng thái đang submit form update (disable nút)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    // error: lÃ¡Â»â€”i tÃ¡Â»â€¢ng (validate hoÃ¡ÂºÂ·c API fail)
+    // error: lỗi tổng (validate hoặc API fail)
     const [error, setError] = useState<string | null>(null)
 
-    // Ã¢Å“â€¦ NEW: datetimeValidationError - kiÃ¡Â»Æ’m tra datetime fields cÃƒÂ³ trÃ¡Â»â€˜ng khÃƒÂ´ng
+    // ✅ NEW: datetimeValidationError - kiểm tra datetime fields có trống không
     const [datetimeValidationError, setDatetimeValidationError] = useState<string | null>(null)
 
-    // expectedCapacity: sÃ¡Â»â€˜ lÃ†Â°Ã¡Â»Â£ng dÃ¡Â»Â± kiÃ¡ÂºÂ¿n tÃ¡Â»Â« "event request" (Ã„â€˜Ã¡Â»Æ’ giÃ¡Â»â€ºi hÃ¡ÂºÂ¡n tÃ¡Â»â€¢ng sÃ¡Â»â€˜ vÃƒÂ©)
+    // expectedCapacity: số lượng dự kiến từ "event request" (để giới hạn tổng số vé)
     const [expectedCapacity, setExpectedCapacity] = useState<number>(0)
 
-    // eligibilityError: lÃ¡Â»â€”i tÃ¡Â»Â« kiÃ¡Â»Æ’m tra tÃƒÂ­nh khÃ¡ÂºÂ£ thi cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t
+    // eligibilityError: lỗi từ kiểm tra tính khả thi cập nhật
     const [eligibilityError, setEligibilityError] = useState<string | null>(null)
 
     // ======================= FORM STATE =======================
 
-    // eventRequest: dÃ¡Â»Â¯ liÃ¡Â»â€¡u request (title, description, dates, capacity...)
+    // eventRequest: dữ liệu request (title, description, dates, capacity...)
     const [eventRequest, setEventRequest] = useState<EventRequest>({
         requestId: 0,
         title: '',
@@ -110,7 +110,7 @@ export default function EventRequestEdit() {
 
     // ======================= SPEAKER STATE =======================
 
-    // speaker: thÃƒÂ´ng tin diÃ¡Â»â€¦n giÃ¡ÂºÂ£ nhÃ¡ÂºÂ­p trÃƒÂªn form
+    // speaker: thông tin diễn giả nhập trên form
     const [speaker, setSpeaker] = useState<Speaker>({
         fullName: '',
         bio: '',
@@ -121,8 +121,8 @@ export default function EventRequestEdit() {
 
     // ======================= TICKET STATE =======================
 
-    // tickets: danh sÃƒÂ¡ch loÃ¡ÂºÂ¡i vÃƒÂ©
-    // Default tÃ¡ÂºÂ¡o sÃ¡ÂºÂµn 2 loÃ¡ÂºÂ¡i VIP + STANDARD Ã„â€˜Ã¡Â»Æ’ user nhÃ¡ÂºÂ­p nhanh
+    // tickets: danh sách loại vé
+    // Default tạo sẵn 2 loại VIP + STANDARD để user nhập nhanh
     const [tickets, setTickets] = useState<Ticket[]>([
         { name: 'VIP', description: '', price: 0, maxQuantity: 0, status: 'ACTIVE' },
         { name: 'STANDARD', description: '', price: 0, maxQuantity: 0, status: 'ACTIVE' },
@@ -130,38 +130,38 @@ export default function EventRequestEdit() {
 
     // ======================= BANNER IMAGE STATE =======================
 
-    // bannerUrl: URL banner hiÃ¡Â»â€¡n tÃ¡ÂºÂ¡i (tÃ¡Â»Â« API hoÃ¡ÂºÂ·c sau khi upload)
+    // bannerUrl: URL banner hiện tại (từ API hoặc sau khi upload)
     const [bannerUrl, setBannerUrl] = useState('')
 
-    // selectedImage: file banner user vÃ¡Â»Â«a chÃ¡Â»Ân (Ã„â€˜Ã¡Â»Æ’ upload)
+    // selectedImage: file banner user vừa chọn (để upload)
     const [selectedImage, setSelectedImage] = useState<File | null>(null)
 
-    // imagePreview: preview base64 hoÃ¡ÂºÂ·c url Ã„â€˜Ã¡Â»Æ’ hiÃ¡Â»Æ’n thÃ¡Â»â€¹ Ã¡ÂºÂ£nh trÃ†Â°Ã¡Â»â€ºc khi submit
+    // imagePreview: preview base64 hoặc url để hiển thị ảnh trước khi submit
     const [imagePreview, setImagePreview] = useState<string | null>(null)
 
-    // isDragging: UI trÃ¡ÂºÂ¡ng thÃƒÂ¡i drag-drop banner
+    // isDragging: UI trạng thái drag-drop banner
     const [isDragging, setIsDragging] = useState(false)
 
     // ======================= AVATAR IMAGE STATE =======================
 
-    // selectedAvatarImage: file avatar diÃ¡Â»â€¦n giÃ¡ÂºÂ£ user chÃ¡Â»Ân
+    // selectedAvatarImage: file avatar diễn giả user chọn
     const [selectedAvatarImage, setSelectedAvatarImage] = useState<File | null>(null)
 
-    // avatarPreview: preview Ã¡ÂºÂ£nh avatar
+    // avatarPreview: preview ảnh avatar
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
-    // isDraggingAvatar: UI trÃ¡ÂºÂ¡ng thÃƒÂ¡i drag-drop avatar
+    // isDraggingAvatar: UI trạng thái drag-drop avatar
     const [isDraggingAvatar, setIsDraggingAvatar] = useState(false)
 
     // ======================= CONSTANTS =======================
 
-    // MAX_TICKET_PRICE: Maximum allowed ticket price (100 million VNÃ„Â)
+    // MAX_TICKET_PRICE: Maximum allowed ticket price (100 million VNĐ)
     const MAX_TICKET_PRICE = 100000000
     const MAX_PRICE_DIGITS = 999999999 // Max value for input display (9 digits)
 
-    // ======================= REF CHÃ¡ÂºÂ¶N SPAM TOAST =======================
+    // ======================= REF CHẶN SPAM TOAST =======================
 
-    // hasShownWarningRef: dÃƒÂ¹ng Ã„â€˜Ã¡Â»Æ’ chÃ¡ÂºÂ·n viÃ¡Â»â€¡c toast warning bÃ¡Â»â€¹ spam liÃƒÂªn tÃ¡Â»Â¥c khi user nhÃ¡ÂºÂ­p maxQuantity
+    // hasShownWarningRef: dùng để chặn việc toast warning bị spam liên tục khi user nhập maxQuantity
     const hasShownWarningRef = useRef(false)
 
     // ======================= 1) FETCH EVENT REQUEST DATA =======================
@@ -176,16 +176,16 @@ export default function EventRequestEdit() {
 
     /**
      * fetchEventRequestData:
-     * Ã¢Å“â€¦ UPDATED: SÃ¡Â»Â­ dÃ¡Â»Â¥ng endpoint riÃƒÂªng GET /api/event-requests/{id} Ã„â€˜Ã¡Â»Æ’ lÃ¡ÂºÂ¥y dÃ¡Â»Â¯ liÃ¡Â»â€¡u chi tiÃ¡ÂºÂ¿t
-     * - Endpoint nÃƒÂ y JOIN vÃ¡Â»â€ºi Event, VenueArea, Venue Ã„â€˜Ã¡Â»Æ’ lÃ¡ÂºÂ¥y Ã„â€˜Ã¡ÂºÂ§y Ã„â€˜Ã¡Â»Â§ thÃƒÂ´ng tin datetime
-     * - TrÃƒÂ¡nh lÃ¡Â»â€”i datetime rÃ¡Â»â€”ng khi dÃ¡Â»Â¯ liÃ¡Â»â€¡u tÃ¡Â»Â« list endpoint khÃƒÂ´ng Ã„â€˜Ã¡ÂºÂ§y Ã„â€˜Ã¡Â»Â§
+     * ✅ UPDATED: Sử dụng endpoint riêng GET /api/event-requests/{id} để lấy dữ liệu chi tiết
+     * - Endpoint này JOIN với Event, VenueArea, Venue để lấy đầy đủ thông tin datetime
+     * - Tránh lỗi datetime rỗng khi dữ liệu từ list endpoint không đầy đủ
      */
     const fetchEventRequestData = async () => {
         try {
 
 
-            // Ã¢Å“â€¦ NEW: GÃ¡Â»Âi API chi tiÃ¡ÂºÂ¿t request (thay vÃƒÂ¬ dÃƒÂ¹ng list vÃƒÂ  tÃƒÂ¬m)
-            // Endpoint nÃƒÂ y trÃ¡ÂºÂ£ vÃ¡Â»Â dÃ¡Â»Â¯ liÃ¡Â»â€¡u Ã„â€˜Ã¡ÂºÂ§y Ã„â€˜Ã¡Â»Â§ vÃ¡Â»â€ºi datetime fields Ã„â€˜Ã†Â°Ã¡Â»Â£c JOIN tÃ¡Â»Â« Event
+            // ✅ NEW: Gọi API chi tiết request (thay vì dùng list và tìm)
+            // Endpoint này trả về dữ liệu đầy đủ với datetime fields được JOIN từ Event
             const detailResponse = await fetch(`/api/event-requests/${id}`, {
                 headers: {
                     credentials: 'include',
@@ -200,11 +200,11 @@ export default function EventRequestEdit() {
             console.log('[EventRequestEdit] Data from GET /api/event-requests/:id:', JSON.stringify(detailedRequest, null, 2))
             console.log('[EventRequestEdit] Speaker object:', detailedRequest.speaker)
 
-            // Pre-fill form data tÃ¡Â»Â« request chi tiÃ¡ÂºÂ¿t
-            // Ã¢Å“â€¦ Ã„ÂÃ¡ÂºÂ£m bÃ¡ÂºÂ£o preferredStartTime + preferredEndTime khÃƒÂ´ng rÃ¡Â»â€”ng
+            // Pre-fill form data từ request chi tiết
+            // ✅ Đảm bảo preferredStartTime + preferredEndTime không rỗng
             setEventRequest({
                 requestId: detailedRequest.requestId,
-                createdEventId: detailedRequest.createdEventId, // Ã¢Å“â€¦ NEW: Capture for backend update
+                createdEventId: detailedRequest.createdEventId, // ✅ NEW: Capture for backend update
                 title: detailedRequest.title || '',
                 description: detailedRequest.description || '',
                 preferredStartTime: detailedRequest.preferredStartTime || '',
@@ -213,14 +213,14 @@ export default function EventRequestEdit() {
                 status: detailedRequest.status || 'APPROVED',
             })
 
-            // Ã¢Å“â€¦ NEW: Validate datetime fields
+            // ✅ NEW: Validate datetime fields
             if (!detailedRequest.preferredStartTime || !detailedRequest.preferredEndTime) {
-                setDatetimeValidationError('ThÃƒÂ´ng tin thÃ¡Â»Âi gian khÃƒÂ´ng Ã„â€˜Ã¡ÂºÂ§y Ã„â€˜Ã¡Â»Â§. Vui lÃƒÂ²ng liÃƒÂªn hÃ¡Â»â€¡ bÃ¡Â»â„¢ phÃ¡ÂºÂ­n hÃ¡Â»â€” trÃ¡Â»Â£.')
+                setDatetimeValidationError('Thông tin thời gian không đầy đủ. Vui lòng liên hệ bộ phận hỗ trợ.')
             }
 
             const matchingRequest = detailedRequest
 
-            // LÃ†Â°u expectedCapacity cho validation
+            // Lưu expectedCapacity cho validation
             setExpectedCapacity(matchingRequest.expectedCapacity || 0)
 
             // ===== PRE-FILL FROM DETAILED REQUEST =====
@@ -265,10 +265,10 @@ export default function EventRequestEdit() {
             }
 
             // ===== ELIGIBILITY CHECK =====
-            // KiÃ¡Â»Æ’m tra xem sÃ¡Â»Â± kiÃ¡Â»â€¡n cÃƒÂ³ thÃ¡Â»Æ’ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t Ã„â€˜Ã†Â°Ã¡Â»Â£c khÃƒÂ´ng
+            // Kiểm tra xem sự kiện có thể cập nhật được không
             if (matchingRequest.createdEventId) {
                 try {
-                    // KiÃ¡Â»Æ’m tra tÃƒÂ­nh khÃ¡ÂºÂ£ thi: status vÃƒÂ  thÃ¡Â»Âi gian
+                    // Kiểm tra tính khả thi: status và thời gian
                     const finishedStatuses = ['CLOSED', 'CANCELLED', 'FINISHED']
 
                     const eventResponse = await fetch(`/api/events/detail?id=${matchingRequest.createdEventId}`, {
@@ -282,7 +282,7 @@ export default function EventRequestEdit() {
 
                         // Check 1: Event status
                         if (eventData.status && finishedStatuses.includes(eventData.status.toUpperCase())) {
-                            setEligibilityError('SÃ¡Â»Â± kiÃ¡Â»â€¡n Ã„â€˜ÃƒÂ£ kÃ¡ÂºÂ¿t thÃƒÂºc hoÃ¡ÂºÂ·c bÃ¡Â»â€¹ hÃ¡Â»Â§y, khÃƒÂ´ng thÃ¡Â»Æ’ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t')
+                            setEligibilityError('Sự kiện đã kết thúc hoặc bị hủy, không thể cập nhật')
                             setLoading(false)
                             return
                         }
@@ -294,7 +294,7 @@ export default function EventRequestEdit() {
                             const hoursUntilStart = (startTime.getTime() - now.getTime()) / (1000 * 60 * 60)
 
                             if (hoursUntilStart < 24) {
-                                setEligibilityError('ChÃ¡Â»â€° Ã„â€˜Ã†Â°Ã¡Â»Â£c phÃƒÂ©p cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t thÃƒÂ´ng tin sÃ¡Â»Â± kiÃ¡Â»â€¡n trÃ†Â°Ã¡Â»â€ºc khi bÃ¡ÂºÂ¯t Ã„â€˜Ã¡ÂºÂ§u ÃƒÂ­t nhÃ¡ÂºÂ¥t 24 tiÃ¡ÂºÂ¿ng')
+                                setEligibilityError('Chỉ được phép cập nhật thông tin sự kiện trước khi bắt đầu ít nhất 24 tiếng')
                                 setLoading(false)
                                 return
                             }
@@ -309,7 +309,7 @@ export default function EventRequestEdit() {
                 }
             }
 
-            // BÃ†Â°Ã¡Â»â€ºc 2 (tiÃ¡ÂºÂ¿p tÃ¡Â»Â¥c): NÃ¡ÂºÂ¿u request cÃƒÂ³ createdEventId, gÃ¡Â»Âi API chi tiÃ¡ÂºÂ¿t event Ã„â€˜Ã¡Â»Æ’ pre-fill data
+            // Bước 2 (tiếp tục): Nếu request có createdEventId, gọi API chi tiết event để pre-fill data
             if (matchingRequest.createdEventId) {
                 try {
                     const eventResponse = await fetch(`/api/events/detail?id=${matchingRequest.createdEventId}`, {
@@ -335,8 +335,8 @@ export default function EventRequestEdit() {
                             setImagePreview(eventData.bannerUrl)
                         }
 
-                        // Ã¢Å“â€¦ FIX: Map Ã„â€˜ÃƒÂºng tÃƒÂªn field tÃ¡Â»Â« Backend JSON
-                        // Backend trÃ¡ÂºÂ£ vÃ¡Â»Â: speakerName, speakerBio, speakerEmail, speakerPhone, speakerAvatarUrl
+                        // ✅ FIX: Map đúng tên field từ Backend JSON
+                        // Backend trả về: speakerName, speakerBio, speakerEmail, speakerPhone, speakerAvatarUrl
                         const speakerFromApi = {
                             fullName: eventData.speakerName || '',
                             bio: eventData.speakerBio || '',
@@ -361,7 +361,7 @@ export default function EventRequestEdit() {
                             console.warn('[EventRequestEdit] No valid speaker data found in event response')
                         }
 
-                        // Pre-fill tickets nÃ¡ÂºÂ¿u cÃƒÂ³
+                        // Pre-fill tickets nếu có
                         if (Array.isArray(eventData.tickets) && eventData.tickets.length > 0) {
                             // Only overwrite tickets if they weren't already loaded from the request
                             if (!ticketsLoaded) {
@@ -379,13 +379,13 @@ export default function EventRequestEdit() {
                     }
                 } catch (eventError) {
                     console.error('Error fetching event details:', eventError)
-                    // KhÃƒÂ´ng fail whole page, chÃ¡Â»â€° warn user
-                    showToast('warning', 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i chi tiÃ¡ÂºÂ¿t sÃ¡Â»Â± kiÃ¡Â»â€¡n. Vui lÃƒÂ²ng Ã„â€˜iÃ¡Â»Ân thÃƒÂ´ng tin thÃ¡Â»Â§ cÃƒÂ´ng.')
+                    // Không fail whole page, chỉ warn user
+                    showToast('warning', 'Không thể tải chi tiết sự kiện. Vui lòng điền thông tin thủ công.')
                 }
             }
         } catch (error) {
             console.error('Error fetching event request:', error)
-            setError(error instanceof Error ? error.message : 'Ã„ÂÃƒÂ£ xÃ¡ÂºÂ£y ra lÃ¡Â»â€”i khi tÃ¡ÂºÂ£i dÃ¡Â»Â¯ liÃ¡Â»â€¡u')
+            setError(error instanceof Error ? error.message : 'Đã xảy ra lỗi khi tải dữ liệu')
         } finally {
             setLoading(false)
         }
@@ -393,10 +393,10 @@ export default function EventRequestEdit() {
 
     // ======================= HANDLERS: EVENT REQUEST =======================
 
-    // handleRequestChange: cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t field cÃ¡Â»Â§a event request
+    // handleRequestChange: cập nhật field của event request
     const handleRequestChange = (field: keyof EventRequest, value: string | number) => {
         setEventRequest((prev) => ({ ...prev, [field]: value }))
-        // Ã¢Å“â€¦ NEW: Reset datetime validation error khi user thay Ã„â€˜Ã¡Â»â€¢i field
+        // ✅ NEW: Reset datetime validation error khi user thay đổi field
         if (field === 'preferredStartTime' || field === 'preferredEndTime') {
             setDatetimeValidationError(null)
         }
@@ -404,14 +404,14 @@ export default function EventRequestEdit() {
 
     // ======================= HANDLERS: SPEAKER =======================
 
-    // handleSpeakerChange: cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t tÃ¡Â»Â«ng field cÃ¡Â»Â§a speaker
+    // handleSpeakerChange: cập nhật từng field của speaker
     const handleSpeakerChange = (field: keyof Speaker, value: string) => {
         setSpeaker((prev) => ({ ...prev, [field]: value }))
     }
 
     // ======================= HANDLERS: TICKET =======================
 
-    // handleTicketChange: cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t field cÃ¡Â»Â§a 1 ticket theo index
+    // handleTicketChange: cập nhật field của 1 ticket theo index
     const handleTicketChange = (
         index: number,
         field: keyof Ticket,
@@ -420,7 +420,7 @@ export default function EventRequestEdit() {
         setTickets((prev) => {
             const updated = [...prev]
 
-            // NÃ¡ÂºÂ¿u field lÃƒÂ  price/maxQuantity -> convert sang number
+            // Nếu field là price/maxQuantity -> convert sang number
             const convertedValue =
                 field === 'price' || field === 'maxQuantity'
                     ? value === ''
@@ -428,7 +428,7 @@ export default function EventRequestEdit() {
                         : Number(value)
                     : value
 
-            // Ã¢Å“â€¦ NEW: Validate ticket price
+            // ✅ NEW: Validate ticket price
             if (field === 'price') {
                 let numValue = convertedValue as number
 
@@ -441,17 +441,17 @@ export default function EventRequestEdit() {
                 if (numValue > MAX_TICKET_PRICE) {
                     showToast(
                         'error',
-                        `Ã¢Å¡Â Ã¯Â¸Â GiÃƒÂ¡ vÃƒÂ© khÃƒÂ´ng Ã„â€˜Ã†Â°Ã¡Â»Â£c vÃ†Â°Ã¡Â»Â£t quÃƒÂ¡ ${MAX_TICKET_PRICE.toLocaleString('vi-VN')} VNÃ„Â (100 triÃ¡Â»â€¡u)`
+                        `⚠️ Giá vé không được vượt quá ${MAX_TICKET_PRICE.toLocaleString('vi-VN')} VNĐ (100 triệu)`
                     )
                 }
 
                 updated[index] = { ...updated[index], price: numValue }
             } else {
-                // cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t ticket tÃ¡ÂºÂ¡i index
+                // cập nhật ticket tại index
                 updated[index] = { ...updated[index], [field]: convertedValue }
             }
 
-            // Validate capacity khi Ã„â€˜Ã¡Â»â€¢i maxQuantity
+            // Validate capacity khi đổi maxQuantity
             if (field === 'maxQuantity' && expectedCapacity > 0) {
                 let numValue = typeof value === 'string' ? parseInt(value, 10) : value
 
@@ -467,7 +467,7 @@ export default function EventRequestEdit() {
                     if (!hasShownWarningRef.current) {
                         showToast(
                             'warning',
-                            `TÃ¡Â»â€¢ng sÃ¡Â»â€˜ lÃ†Â°Ã¡Â»Â£ng tÃ¡Â»â€˜i Ã„â€˜a cÃ¡Â»Â§a tÃ¡ÂºÂ¥t cÃ¡ÂºÂ£ vÃƒÂ© (${totalMaxQuantity}) khÃƒÂ´ng Ã„â€˜Ã†Â°Ã¡Â»Â£c vÃ†Â°Ã¡Â»Â£t quÃƒÂ¡ ${expectedCapacity} (sÃ¡Â»â€˜ lÃ†Â°Ã¡Â»Â£ng dÃ¡Â»Â± kiÃ¡ÂºÂ¿n tÃ¡Â»Â« yÃƒÂªu cÃ¡ÂºÂ§u)`,
+                            `Tổng số lượng tối đa của tất cả vé (${totalMaxQuantity}) không được vượt quá ${expectedCapacity} (số lượng dự kiến từ yêu cầu)`,
                         )
                         hasShownWarningRef.current = true
 
@@ -487,10 +487,10 @@ export default function EventRequestEdit() {
 
     const MAX_TICKETS = 2
 
-    // handleAddTicket: thÃƒÂªm 1 loÃ¡ÂºÂ¡i vÃƒÂ© mÃ¡Â»â€ºi
+    // handleAddTicket: thêm 1 loại vé mới
     const handleAddTicket = () => {
         if (tickets.length >= MAX_TICKETS) {
-            showToast('warning', `TÃ¡Â»â€˜i Ã„â€˜a chÃ¡Â»â€° Ã„â€˜Ã†Â°Ã¡Â»Â£c thÃƒÂªm ${MAX_TICKETS} loÃ¡ÂºÂ¡i vÃƒÂ©`)
+            showToast('warning', `Tối đa chỉ được thêm ${MAX_TICKETS} loại vé`)
             return
         }
 
@@ -511,22 +511,22 @@ export default function EventRequestEdit() {
         ])
     }
 
-    // handleRemoveTicket: xÃƒÂ³a loÃ¡ÂºÂ¡i vÃƒÂ© theo index
+    // handleRemoveTicket: xóa loại vé theo index
     const handleRemoveTicket = (index: number) => {
         if (tickets.length <= 1) {
-            setError('PhÃ¡ÂºÂ£i cÃƒÂ³ ÃƒÂ­t nhÃ¡ÂºÂ¥t 1 loÃ¡ÂºÂ¡i vÃƒÂ©')
+            setError('Phải có ít nhất 1 loại vé')
             return
         }
         setTickets((prev) => prev.filter((_, i) => i !== index))
     }
 
-    // handleTicketTypeChange: Ã„â€˜Ã¡Â»â€¢i name VIP/STANDARD cho ticket
+    // handleTicketTypeChange: đổi name VIP/STANDARD cho ticket
     const handleTicketTypeChange = (index: number, newType: TicketType) => {
         setTickets((prev) => {
             const isDuplicate = prev.some((ticket, i) => i !== index && ticket.name === newType)
 
             if (isDuplicate) {
-                showToast('warning', `LoÃ¡ÂºÂ¡i vÃƒÂ© ${newType} Ã„â€˜ÃƒÂ£ tÃ¡Â»â€œn tÃ¡ÂºÂ¡i. Vui lÃƒÂ²ng chÃ¡Â»Ân loÃ¡ÂºÂ¡i vÃƒÂ© khÃƒÂ¡c.`)
+                showToast('warning', `Loại vé ${newType} đã tồn tại. Vui lòng chọn loại vé khác.`)
                 return prev
             }
 
@@ -691,18 +691,18 @@ export default function EventRequestEdit() {
     // ======================= SUBMIT FORM =======================
 
     /**
-     * Ã¢Å“â€¦ NEW: 3-Step Atomic Update Flow (Zero-Waste Upload)
-     *
-     * Step 1 (Check):
+     * ✅ NEW: 3-Step Atomic Update Flow (Zero-Waste Upload)
+     * 
+     * Step 1 (Check): 
      *   - Validate form locally
      *   - Call API with dryRun: true
-     *   - If error Ã¢â€ â€™ show error, STOP (no uploads)
-     *   - If OK Ã¢â€ â€™ proceed to Step 2
+     *   - If error → show error, STOP (no uploads)
+     *   - If OK → proceed to Step 2
      *
      * Step 2 (Upload):
      *   - Upload banner to AWS S3 via backend (if new)
      *   - Upload avatar to AWS S3 via backend (if new)
-     *   - If any upload fails Ã¢â€ â€™ show warning, continue with old URLs
+     *   - If any upload fails → show warning, continue with old URLs
      *
      * Step 3 (Commit):
      *   - Call API with dryRun: false + new image URLs
@@ -714,10 +714,10 @@ export default function EventRequestEdit() {
         setIsSubmitting(true)
         setError(null)
 
-        // Ã¢Å“â€¦ NEW: Validate datetime fields trÃ†Â°Ã¡Â»â€ºc khi submit
+        // ✅ NEW: Validate datetime fields trước khi submit
         if (!eventRequest.preferredStartTime || !eventRequest.preferredEndTime) {
-            setError('ThÃ¡Â»Âi gian bÃ¡ÂºÂ¯t Ã„â€˜Ã¡ÂºÂ§u vÃƒÂ  kÃ¡ÂºÂ¿t thÃƒÂºc khÃƒÂ´ng Ã„â€˜Ã†Â°Ã¡Â»Â£c Ã„â€˜Ã¡Â»Æ’ trÃ¡Â»â€˜ng')
-            setDatetimeValidationError('Vui lÃƒÂ²ng chÃ¡ÂºÂ¯c chÃ¡ÂºÂ¯n rÃ¡ÂºÂ±ng dÃ¡Â»Â¯ liÃ¡Â»â€¡u thÃ¡Â»Âi gian Ã„â€˜ÃƒÂ£ Ã„â€˜Ã†Â°Ã¡Â»Â£c tÃ¡ÂºÂ£i Ã„â€˜Ã¡ÂºÂ§y Ã„â€˜Ã¡Â»Â§')
+            setError('Thời gian bắt đầu và kết thúc không được để trống')
+            setDatetimeValidationError('Vui lòng chắc chắn rằng dữ liệu thời gian đã được tải đầy đủ')
             setIsSubmitting(false)
             return
         }
@@ -725,13 +725,13 @@ export default function EventRequestEdit() {
         try {
             // ===== VALIDATE SPEAKER INFO =====
             if (!speaker.fullName || speaker.fullName.trim() === '') {
-                setError('Vui lÃƒÂ²ng nhÃ¡ÂºÂ­p hÃ¡Â»Â tÃƒÂªn diÃ¡Â»â€¦n giÃ¡ÂºÂ£')
+                setError('Vui lòng nhập họ tên diễn giả')
                 setIsSubmitting(false)
                 return
             }
 
             if (!speaker.bio || speaker.bio.trim() === '') {
-                setError('Vui lÃƒÂ²ng nhÃ¡ÂºÂ­p tiÃ¡Â»Æ’u sÃ¡Â»Â­ diÃ¡Â»â€¦n giÃ¡ÂºÂ£')
+                setError('Vui lòng nhập tiểu sử diễn giả')
                 setIsSubmitting(false)
                 return
             }
@@ -739,7 +739,7 @@ export default function EventRequestEdit() {
             // Validate email format
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
             if (!speaker.email || !emailRegex.test(speaker.email)) {
-                setError('Vuii lÃƒÂ²ng nhÃ¡ÂºÂ­p email hÃ¡Â»Â£p lÃ¡Â»â€¡ (vÃƒÂ­ dÃ¡Â»Â¥: nguoi@gmail.com)')
+                setError('Vuii lòng nhập email hợp lệ (ví dụ: nguoi@gmail.com)')
                 setIsSubmitting(false)
                 return
             }
@@ -747,17 +747,17 @@ export default function EventRequestEdit() {
             // Validate phone format (Vietnamese phone: 10 digits starting with 0, or +84)
             const phoneRegex = /^(\+84|0)?[1-9]\d{8,9}$/
             if (!speaker.phone || !phoneRegex.test(speaker.phone.replace(/\s/g, ''))) {
-                setError('Vui lÃƒÂ²ng nhÃ¡ÂºÂ­p sÃ¡Â»â€˜ Ã„â€˜iÃ¡Â»â€¡n thoÃ¡ÂºÂ¡i hÃ¡Â»Â£p lÃ¡Â»â€¡ (vÃƒÂ­ dÃ¡Â»Â¥: 0912345678)')
+                setError('Vui lòng nhập số điện thoại hợp lệ (ví dụ: 0912345678)')
                 setIsSubmitting(false)
                 return
             }
 
-            // Validate: tÃ¡Â»â€¢ng sÃ¡Â»â€˜ vÃƒÂ© khÃƒÂ´ng vÃ†Â°Ã¡Â»Â£t expectedCapacity
+            // Validate: tổng số vé không vượt expectedCapacity
             if (expectedCapacity > 0) {
                 const totalMaxQuantity = tickets.reduce((sum, ticket) => sum + ticket.maxQuantity, 0)
                 if (totalMaxQuantity > expectedCapacity) {
                     setError(
-                        `TÃ¡Â»â€¢ng sÃ¡Â»â€˜ lÃ†Â°Ã¡Â»Â£ng tÃ¡Â»â€˜i Ã„â€˜a cÃ¡Â»Â§a tÃ¡ÂºÂ¥t cÃ¡ÂºÂ£ vÃƒÂ© (${totalMaxQuantity}) khÃƒÂ´ng Ã„â€˜Ã†Â°Ã¡Â»Â£c vÃ†Â°Ã¡Â»Â£t quÃƒÂ¡ sÃ¡Â»â€˜ lÃ†Â°Ã¡Â»Â£ng dÃ¡Â»Â± kiÃ¡ÂºÂ¿n (${expectedCapacity})`,
+                        `Tổng số lượng tối đa của tất cả vé (${totalMaxQuantity}) không được vượt quá số lượng dự kiến (${expectedCapacity})`,
                     )
                     setIsSubmitting(false)
                     return
@@ -767,7 +767,7 @@ export default function EventRequestEdit() {
 
             // ===== STEP 1: DRY RUN - Validate without committing =====
             console.log('[STEP 1] Validating form data...')
-            showToast('info', 'Ã„Âang kiÃ¡Â»Æ’m tra thÃƒÂ´ng tin...')
+            showToast('info', 'Đang kiểm tra thông tin...')
 
             const dryRunRequest: any = {
                 requestId: eventRequest.requestId,
@@ -787,7 +787,7 @@ export default function EventRequestEdit() {
                 })),
                 bannerUrl: bannerUrl, // Use current URL for dry run
                 status: 'UPDATING',
-                dryRun: true, // Ã¢Å“â€¦ NEW: Dry run mode
+                dryRun: true, // ✅ NEW: Dry run mode
             }
 
             if (eventRequest.status === 'APPROVED' && eventRequest.createdEventId) {
@@ -804,17 +804,17 @@ export default function EventRequestEdit() {
             })
 
             if (!dryRunResponse.ok) {
-                // Ã¢ÂÅ’ Dry run failed - validation error, NO uploads happen
+                // ❌ Dry run failed - validation error, NO uploads happen
                 const errorText = await dryRunResponse.text()
                 console.error('[STEP 1] DRY RUN FAILED:', errorText)
-                setError(errorText || 'LÃ¡Â»â€”i kiÃ¡Â»Æ’m tra thÃƒÂ´ng tin: dÃ¡Â»Â¯ liÃ¡Â»â€¡u khÃƒÂ´ng hÃ¡Â»Â£p lÃ¡Â»â€¡')
-                showToast('error', `KiÃ¡Â»Æ’m tra thÃ¡ÂºÂ¥t bÃ¡ÂºÂ¡i: ${errorText || 'dÃ¡Â»Â¯ liÃ¡Â»â€¡u khÃƒÂ´ng hÃ¡Â»Â£p lÃ¡Â»â€¡'}`)
+                setError(errorText || 'Lỗi kiểm tra thông tin: dữ liệu không hợp lệ')
+                showToast('error', `Kiểm tra thất bại: ${errorText || 'dữ liệu không hợp lệ'}`)
                 setIsSubmitting(false)
                 return
             }
 
-            console.log('[STEP 1] Ã¢Å“â€¦ Dry run passed, proceeding to upload images')
-            showToast('success', 'KiÃ¡Â»Æ’m tra thÃƒÂ´ng tin thÃƒÂ nh cÃƒÂ´ng')
+            console.log('[STEP 1] ✅ Dry run passed, proceeding to upload images')
+            showToast('success', 'Kiểm tra thông tin thành công')
 
             // ===== STEP 2: UPLOAD IMAGES =====
             console.log('[STEP 2] Uploading images to Supabase...')
@@ -825,10 +825,10 @@ export default function EventRequestEdit() {
                 try {
                     console.log('[STEP 2] Uploading banner...')
                     finalBannerUrl = await uploadEventBanner(selectedImage)
-                    console.log('[STEP 2] Ã¢Å“â€¦ Banner uploaded:', finalBannerUrl)
+                    console.log('[STEP 2] ✅ Banner uploaded:', finalBannerUrl)
                 } catch (uploadError: any) {
                     console.error('[STEP 2] Banner upload failed:', uploadError)
-                    showToast('warning', 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i Ã¡ÂºÂ£nh banner lÃƒÂªn, sÃ¡ÂºÂ½ giÃ¡Â»Â¯ Ã¡ÂºÂ£nh cÃ…Â©')
+                    showToast('warning', 'Không thể tải ảnh banner lên, sẽ giữ ảnh cũ')
                     finalBannerUrl = bannerUrl
                 }
             }
@@ -837,17 +837,17 @@ export default function EventRequestEdit() {
                 try {
                     console.log('[STEP 2] Uploading avatar...')
                     finalAvatarUrl = await uploadEventBanner(selectedAvatarImage)
-                    console.log('[STEP 2] Ã¢Å“â€¦ Avatar uploaded:', finalAvatarUrl)
+                    console.log('[STEP 2] ✅ Avatar uploaded:', finalAvatarUrl)
                 } catch (uploadError: any) {
                     console.error('[STEP 2] Avatar upload failed:', uploadError)
-                    showToast('warning', 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i Ã¡ÂºÂ£nh avatar lÃƒÂªn, sÃ¡ÂºÂ½ giÃ¡Â»Â¯ Ã¡ÂºÂ£nh cÃ…Â©')
+                    showToast('warning', 'Không thể tải ảnh avatar lên, sẽ giữ ảnh cũ')
                     finalAvatarUrl = speaker.avatarUrl
                 }
             }
 
             // ===== STEP 3: COMMIT - Final API call with images =====
             console.log('[STEP 3] Committing changes to database...')
-            showToast('info', 'Ã„Âang lÃ†Â°u thay Ã„â€˜Ã¡Â»â€¢i...')
+            showToast('info', 'Đang lưu thay đổi...')
 
             const commitRequest: any = {
                 requestId: eventRequest.requestId,
@@ -856,7 +856,7 @@ export default function EventRequestEdit() {
                     bio: speaker.bio,
                     email: speaker.email,
                     phone: speaker.phone,
-                    avatarUrl: finalAvatarUrl, // Ã¢Å“â€¦ Use uploaded URL or old URL
+                    avatarUrl: finalAvatarUrl, // ✅ Use uploaded URL or old URL
                 },
                 tickets: tickets.map((ticket) => ({
                     name: ticket.name,
@@ -865,9 +865,9 @@ export default function EventRequestEdit() {
                     maxQuantity: Number(ticket.maxQuantity),
                     status: 'ACTIVE',
                 })),
-                bannerUrl: finalBannerUrl, // Ã¢Å“â€¦ Use uploaded URL or old URL
+                bannerUrl: finalBannerUrl, // ✅ Use uploaded URL or old URL
                 status: 'UPDATING',
-                dryRun: false, // Ã¢Å“â€¦ Commit to database
+                dryRun: false, // ✅ Commit to database
             }
 
             if (eventRequest.status === 'APPROVED' && eventRequest.createdEventId) {
@@ -887,20 +887,20 @@ export default function EventRequestEdit() {
             console.log('[STEP 3] API Response:', commitResponse.status, commitText)
 
             if (commitResponse.ok) {
-                console.log('[STEP 3] Ã¢Å“â€¦ Commit successful')
-                showToast('success', 'CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t yÃƒÂªu cÃ¡ÂºÂ§u thÃƒÂ nh cÃƒÂ´ng! TrÃ¡ÂºÂ¡ng thÃƒÂ¡i chuyÃ¡Â»Æ’n sang UPDATING.')
+                console.log('[STEP 3] ✅ Commit successful')
+                showToast('success', 'Cập nhật yêu cầu thành công! Trạng thái chuyển sang UPDATING.')
                 await new Promise(resolve => setTimeout(resolve, 500))
                 navigate('/dashboard/event-requests')
             } else {
                 console.error('[STEP 3] Commit failed:', commitText)
-                setError(commitText || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ†Â°u thay Ã„â€˜Ã¡Â»â€¢i')
-                showToast('error', commitText || 'LÃ¡Â»â€”i khi lÃ†Â°u thay Ã„â€˜Ã¡Â»â€¢i')
+                setError(commitText || 'Không thể lưu thay đổi')
+                showToast('error', commitText || 'Lỗi khi lưu thay đổi')
                 throw new Error(commitText || 'Failed to commit changes')
             }
         } catch (error) {
             console.error('Error in update flow:', error)
-            setError(error instanceof Error ? error.message : 'KhÃƒÂ´ng thÃ¡Â»Æ’ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t yÃƒÂªu cÃ¡ÂºÂ§u')
-            showToast('error', error instanceof Error ? error.message : 'LÃ¡Â»â€”i khÃƒÂ´ng xÃƒÂ¡c Ã„â€˜Ã¡Â»â€¹nh')
+            setError(error instanceof Error ? error.message : 'Không thể cập nhật yêu cầu')
+            showToast('error', error instanceof Error ? error.message : 'Lỗi không xác định')
         } finally {
             setIsSubmitting(false)
         }
@@ -911,7 +911,7 @@ export default function EventRequestEdit() {
     if (loading) {
         return (
             <div className="flex justify-center items-center min-h-screen">
-                <p className="text-gray-500 dark:text-slate-400">Ã„Âang tÃ¡ÂºÂ£i...</p>
+                <p className="text-gray-500">Đang tải...</p>
             </div>
         )
     }
@@ -920,22 +920,22 @@ export default function EventRequestEdit() {
     if (eligibilityError) {
         return (
             <div className="flex justify-center">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-md p-8 max-w-4xl w-full text-slate-900 dark:text-slate-100">
+                <div className="bg-white rounded-lg shadow-md p-8 max-w-4xl w-full">
                     <div className="flex justify-center mb-6">
-                        <div className="text-6xl">Ã°Å¸Å¡Â«</div>
+                        <div className="text-6xl">🚫</div>
                     </div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-50 mb-6 text-center">
-                        KhÃƒÂ´ng thÃ¡Â»Æ’ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t yÃƒÂªu cÃ¡ÂºÂ§u
+                    <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+                        Không thể cập nhật yêu cầu
                     </h1>
 
-                    <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/60 rounded-lg p-6 mb-8">
-                        <p className="text-red-800 dark:text-red-300 text-center font-medium text-lg">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
+                        <p className="text-red-800 text-center font-medium text-lg">
                             {eligibilityError}
                         </p>
                     </div>
 
-                    <p className="text-gray-600 dark:text-slate-300 text-center mb-8">
-                        Theo quy Ã„â€˜Ã¡Â»â€¹nh nghiÃ¡Â»â€¡p vÃ¡Â»Â¥, sÃ¡Â»Â± kiÃ¡Â»â€¡n khÃƒÂ´ng Ã„â€˜ÃƒÂ¡p Ã¡Â»Â©ng cÃƒÂ¡c Ã„â€˜iÃ¡Â»Âu kiÃ¡Â»â€¡n cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t.
+                    <p className="text-gray-600 text-center mb-8">
+                        Theo quy định nghiệp vụ, sự kiện không đáp ứng các điều kiện cập nhật.
                     </p>
 
                     <div className="flex justify-center">
@@ -943,7 +943,7 @@ export default function EventRequestEdit() {
                             to="/dashboard/event-requests"
                             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                         >
-                            Ã¢â€ Â Quay lÃ¡ÂºÂ¡i danh sÃƒÂ¡ch yÃƒÂªu cÃ¡ÂºÂ§u
+                            ← Quay lại danh sách yêu cầu
                         </Link>
                     </div>
                 </div>
@@ -953,49 +953,49 @@ export default function EventRequestEdit() {
 
     return (
         <div className="flex justify-center">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-md p-8 max-w-4xl w-full text-slate-900 dark:text-slate-100">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-50 mb-6 text-center">
-                    CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t yÃƒÂªu cÃ¡ÂºÂ§u tÃ¡Â»â€¢ chÃ¡Â»Â©c sÃ¡Â»Â± kiÃ¡Â»â€¡n
+            <div className="bg-white rounded-lg shadow-md p-8 max-w-4xl w-full">
+                <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+                    Cập nhật yêu cầu tổ chức sự kiện
                 </h1>
 
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {/* ================= SPEAKER INFO ================= */}
-                    <div className="border-b border-slate-200 dark:border-slate-800 pb-6">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-50 mb-4">ThÃƒÂ´ng tin diÃ¡Â»â€¦n giÃ¡ÂºÂ£</h2>
+                    <div className="border-b pb-6">
+                        <h2 className="text-xl font-semibold text-gray-900 mb-4">Thông tin diễn giả</h2>
 
                         <div className="space-y-4">
                             {/* fullName */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                                    HÃ¡Â»Â vÃƒÂ  tÃƒÂªn *
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Họ và tên *
                                 </label>
                                 <input
                                     type="text"
                                     value={speaker.fullName}
                                     onChange={(e) => handleSpeakerChange('fullName', e.target.value)}
                                     required
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 />
                             </div>
 
                             {/* bio */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                                    TiÃ¡Â»Æ’u sÃ¡Â»Â­ *
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Tiểu sử *
                                 </label>
                                 <textarea
                                     value={speaker.bio}
                                     onChange={(e) => handleSpeakerChange('bio', e.target.value)}
                                     required
                                     rows={3}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 />
                             </div>
 
                             {/* email + phone */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Email *
                                     </label>
                                     <input
@@ -1003,28 +1003,28 @@ export default function EventRequestEdit() {
                                         value={speaker.email}
                                         onChange={(e) => handleSpeakerChange('email', e.target.value)}
                                         required
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                                        SÃ¡Â»â€˜ Ã„â€˜iÃ¡Â»â€¡n thoÃ¡ÂºÂ¡i *
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Số điện thoại *
                                     </label>
                                     <input
                                         type="tel"
                                         value={speaker.phone}
                                         onChange={(e) => handleSpeakerChange('phone', e.target.value)}
                                         required
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     />
                                 </div>
                             </div>
 
                             {/* avatar upload */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                                    Ã¡ÂºÂ¢nh Ã„â€˜Ã¡ÂºÂ¡i diÃ¡Â»â€¡n diÃ¡Â»â€¦n giÃ¡ÂºÂ£ (tÃƒÂ¹y chÃ¡Â»Ân)
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Ảnh đại diện diễn giả (tùy chọn)
                                 </label>
 
                                 {!avatarPreview ? (
@@ -1032,7 +1032,7 @@ export default function EventRequestEdit() {
                                         onDragOver={handleAvatarDragOver}
                                         onDragLeave={handleAvatarDragLeave}
                                         onDrop={handleAvatarDrop}
-                                        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDraggingAvatar ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' : 'border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/60 hover:border-blue-400'
+                                        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDraggingAvatar ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
                                             }`}
                                     >
                                         <input
@@ -1043,9 +1043,9 @@ export default function EventRequestEdit() {
                                             className="hidden"
                                         />
                                         <label htmlFor="avatar-upload" className="cursor-pointer">
-                                            <Upload className="w-10 h-10 mx-auto text-gray-400 dark:text-slate-500 mb-3" />
-                                            <p className="text-gray-600 dark:text-slate-300 mb-1 text-sm">KÃƒÂ©o thÃ¡ÂºÂ£ Ã¡ÂºÂ£nh hoÃ¡ÂºÂ·c click Ã„â€˜Ã¡Â»Æ’ chÃ¡Â»Ân</p>
-                                            <p className="text-xs text-gray-500 dark:text-slate-400">PNG, JPG, GIF tÃ¡Â»â€˜i Ã„â€˜a 5MB</p>
+                                            <Upload className="w-10 h-10 mx-auto text-gray-400 mb-3" />
+                                            <p className="text-gray-600 mb-1 text-sm">Kéo thả ảnh hoặc click để chọn</p>
+                                            <p className="text-xs text-gray-500">PNG, JPG, GIF tối đa 5MB</p>
                                         </label>
                                     </div>
                                 ) : (
@@ -1053,7 +1053,7 @@ export default function EventRequestEdit() {
                                         <img
                                             src={avatarPreview}
                                             alt="Avatar Preview"
-                                            className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-gray-200 dark:border-slate-700"
+                                            className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-gray-200"
                                         />
                                         <button
                                             type="button"
@@ -1069,9 +1069,9 @@ export default function EventRequestEdit() {
                     </div>
 
                     {/* ================= TICKETS INFO ================= */}
-                    <div className="border-b border-slate-200 dark:border-slate-800 pb-6">
+                    <div className="border-b pb-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-50">ThÃƒÂ´ng tin vÃƒÂ©</h2>
+                            <h2 className="text-xl font-semibold text-gray-900">Thông tin vé</h2>
 
                             <button
                                 type="button"
@@ -1083,21 +1083,21 @@ export default function EventRequestEdit() {
                                     }`}
                             >
                                 <Plus className="w-4 h-4 mr-2" />
-                                ThÃƒÂªm loÃ¡ÂºÂ¡i vÃƒÂ© ({tickets.length}/{MAX_TICKETS})
+                                Thêm loại vé ({tickets.length}/{MAX_TICKETS})
                             </button>
                         </div>
 
                         {tickets.map((ticket, index) => (
-                            <div key={index} className="mb-6 p-4 border border-gray-200 dark:border-slate-800 rounded-lg relative bg-white dark:bg-slate-900/60">
+                            <div key={index} className="mb-6 p-4 border border-gray-200 rounded-lg relative">
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex-1">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                                            LoÃ¡ÂºÂ¡i vÃƒÂ© *
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Loại vé *
                                         </label>
                                         <select
                                             value={ticket.name}
                                             onChange={(e) => handleTicketTypeChange(index, e.target.value as TicketType)}
-                                            className="w-48 px-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-48 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         >
                                             <option value="VIP">VIP</option>
                                             <option value="STANDARD">STANDARD</option>
@@ -1108,7 +1108,7 @@ export default function EventRequestEdit() {
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveTicket(index)}
-                                            className="p-2 rounded-lg text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                            className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
                                         >
                                             <Trash2 className="w-5 h-5" />
                                         </button>
@@ -1118,23 +1118,23 @@ export default function EventRequestEdit() {
                                 <div className="space-y-4">
                                     {/* description */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                                            MÃƒÂ´ tÃ¡ÂºÂ£ *
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Mô tả *
                                         </label>
                                         <textarea
                                             value={ticket.description}
                                             onChange={(e) => handleTicketChange(index, 'description', e.target.value)}
                                             required
                                             rows={2}
-                                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         />
                                     </div>
 
                                     {/* price + maxQuantity */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                                                GiÃƒÂ¡ (VNÃ„Â) *
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Giá (VNĐ) *
                                             </label>
                                             <input
                                                 type="number"
@@ -1145,21 +1145,21 @@ export default function EventRequestEdit() {
                                                 max={MAX_PRICE_DIGITS}
                                                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                                     ticket.price > MAX_TICKET_PRICE
-                                                        ? 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                                                        : 'border-gray-300 dark:border-slate-700'
+                                                        ? 'border-red-500 bg-red-50'
+                                                        : 'border-gray-300'
                                                 }`}
-                                                placeholder="TÃ¡Â»â€˜i Ã„â€˜a 100,000,000 VNÃ„Â"
+                                                placeholder="Tối đa 100,000,000 VNĐ"
                                             />
                                             {ticket.price > MAX_TICKET_PRICE && (
-                                                <p className="text-red-600 dark:text-red-300 text-sm font-medium mt-1">
-                                                    Ã¢Å¡Â Ã¯Â¸Â GiÃƒÂ¡ vÃƒÂ© vÃ†Â°Ã¡Â»Â£t quÃƒÂ¡ hÃ¡ÂºÂ¡n mÃ¡Â»Â©c cho phÃƒÂ©p (100 triÃ¡Â»â€¡u VNÃ„Â)
+                                                <p className="text-red-600 text-sm font-medium mt-1">
+                                                    ⚠️ Giá vé vượt quá hạn mức cho phép (100 triệu VNĐ)
                                                 </p>
                                             )}
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                                                SÃ¡Â»â€˜ lÃ†Â°Ã¡Â»Â£ng tÃ¡Â»â€˜i Ã„â€˜a *
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Số lượng tối đa *
                                             </label>
                                             <input
                                                 type="number"
@@ -1169,7 +1169,7 @@ export default function EventRequestEdit() {
                                                 min="10"
                                                 step="10"
                                                 placeholder="10, 20, 30, ..."
-                                                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             />
                                         </div>
                                     </div>
@@ -1180,8 +1180,8 @@ export default function EventRequestEdit() {
 
                     {/* ================= BANNER UPLOAD ================= */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                            Banner sÃ¡Â»Â± kiÃ¡Â»â€¡n *
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Banner sự kiện *
                         </label>
 
                         {!imagePreview ? (
@@ -1189,7 +1189,7 @@ export default function EventRequestEdit() {
                                 onDragOver={handleDragOver}
                                 onDragLeave={handleDragLeave}
                                 onDrop={handleDrop}
-                                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' : 'border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/60 hover:border-blue-400'
+                                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
                                     }`}
                             >
                                 <input
@@ -1200,14 +1200,14 @@ export default function EventRequestEdit() {
                                     className="hidden"
                                 />
                                 <label htmlFor="banner-upload" className="cursor-pointer">
-                                    <Upload className="w-12 h-12 mx-auto text-gray-400 dark:text-slate-500 mb-4" />
-                                    <p className="text-gray-600 dark:text-slate-300 mb-2">KÃƒÂ©o thÃ¡ÂºÂ£ Ã¡ÂºÂ£nh hoÃ¡ÂºÂ·c click Ã„â€˜Ã¡Â»Æ’ chÃ¡Â»Ân</p>
-                                    <p className="text-sm text-gray-500 dark:text-slate-400">PNG, JPG, GIF tÃ¡Â»â€˜i Ã„â€˜a 5MB</p>
+                                    <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                                    <p className="text-gray-600 mb-2">Kéo thả ảnh hoặc click để chọn</p>
+                                    <p className="text-sm text-gray-500">PNG, JPG, GIF tối đa 5MB</p>
                                 </label>
                             </div>
                         ) : (
                             <div className="relative">
-                                <img src={imagePreview} alt="Preview" className="w-full h-64 object-cover rounded-lg border border-slate-200 dark:border-slate-800" />
+                                <img src={imagePreview} alt="Preview" className="w-full h-64 object-cover rounded-lg" />
                                 <button
                                     type="button"
                                     onClick={handleRemoveImage}
@@ -1221,8 +1221,8 @@ export default function EventRequestEdit() {
 
                     {/* ================= ERROR BOX ================= */}
                     {error && (
-                        <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/60 rounded-lg">
-                            <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-sm text-red-600">{error}</p>
                         </div>
                     )}
 
@@ -1230,9 +1230,9 @@ export default function EventRequestEdit() {
                     <div className="flex justify-end gap-4 pt-4">
                         <Link
                             to="/dashboard/event-requests"
-                            className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            HÃ¡Â»Â§y
+                            Hủy
                         </Link>
 
                         <button
@@ -1244,7 +1244,7 @@ export default function EventRequestEdit() {
                                 }`}
                         >
                             {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}
-                            {isSubmitting ? 'Ã„Âang xÃ¡Â»Â­ lÃƒÂ½...' : 'CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t yÃƒÂªu cÃ¡ÂºÂ§u'}
+                            {isSubmitting ? 'Đang xử lý...' : 'Cập nhật yêu cầu'}
                         </button>
                     </div>
                 </form>
@@ -1252,3 +1252,4 @@ export default function EventRequestEdit() {
         </div>
     )
 }
+
