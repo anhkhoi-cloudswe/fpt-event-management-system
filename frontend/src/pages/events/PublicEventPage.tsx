@@ -267,7 +267,7 @@ export default function PublicEventPage() {
       </div>
 
       <div className="relative z-10 w-full flex flex-col">
-        <div className="max-w-[1200px] mx-auto w-full px-6 sm:px-10 pt-5">
+        <div className="max-w-[1380px] mx-auto w-full px-6 sm:px-10 pt-5">
           <button
             type="button"
             onClick={handleBack}
@@ -277,7 +277,7 @@ export default function PublicEventPage() {
           </button>
         </div>
 
-        <div className="max-w-[1200px] mx-auto w-full px-6 sm:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+        <div className="max-w-[1380px] mx-auto w-full px-6 sm:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
           <div>
             <div className="aspect-video rounded-2xl overflow-hidden bg-black/20 border border-white/10 shadow-[0_18px_52px_rgba(0,0,0,0.4)]">
               {event.bannerUrl ? (
@@ -387,7 +387,7 @@ export default function PublicEventPage() {
           </div>
         </div>
 
-        <div className="max-w-[1200px] mx-auto w-full px-6 sm:px-10 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+        <div className="max-w-[1380px] mx-auto w-full px-6 sm:px-10 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
           {/* Cột trái: Giữ trống để lệch bố cục sang phải như nguyên bản */}
           <div className="hidden lg:block"></div>
 

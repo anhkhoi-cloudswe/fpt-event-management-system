@@ -248,8 +248,8 @@ export default function SignUp() {
         const seconds = typeof retryAfter === 'number' && retryAfter > 0 ? retryAfter : 300
         setRateLimitCountdown(seconds)
         showToast('warning', 'Thao tac OTP dang bi khoa tam thoi. Vui long doi het dem nguoc.')
-      } else if (isConflict) {
-        setEmailError(errData?.message || errData?.error || (currentLanguage === 'en' ? 'This email is already registered.' : 'Email này đã được đăng ký trong hệ thống.'))
+      } else if (isConflict || errorMessage.toLowerCase().includes('already exists') || errorMessage.toLowerCase().includes('đã tồn tại')) {
+        setEmailError(currentLanguage === 'en' ? 'Invalid gmail information.' : 'Thông tin gmail không hợp lệ.')
       } else if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
         setRateLimitCountdown(retryAfter)
       } else if (errorMessage.toLowerCase().includes('email')) {

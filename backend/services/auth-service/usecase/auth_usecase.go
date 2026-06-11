@@ -584,6 +584,13 @@ func (uc *AuthUseCase) DirectUpdatePhone(ctx context.Context, email, phone strin
 		return errors.New("email không tồn tại trong hệ thống")
 	}
 
+	// Check if phone number is already registered by another account
+	var count int
+	err = uc.userRepo.DB().QueryRowContext(ctx, "SELECT COUNT(1) FROM Users WHERE phone = $1 AND email != $2", phone, email).Scan(&count)
+	if err == nil && count > 0 {
+		return errors.New("Số điện thoại này đã được đăng ký bởi tài khoản khác")
+	}
+
 	// Update phone in database
 	err = uc.userRepo.UpdatePhoneByEmail(ctx, email, phone)
 	if err != nil {

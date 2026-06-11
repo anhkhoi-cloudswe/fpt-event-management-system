@@ -602,7 +602,11 @@ export default function PublicEventPayment() {
             await refreshUser()
             setUpdatePhoneProfile(false) // reset update profile flag
           } else {
-            console.error('Failed to update phone number')
+            const errData = await updateRes.json()
+            setAttendeeErrors({
+              phone: errData.message || (pageLanguage === 'en' ? 'This phone number is already registered by another account.' : 'Số điện thoại này đã được đăng ký bởi tài khoản khác.')
+            })
+            return
           }
         } catch (err) {
           console.error('Error updating phone number:', err)
