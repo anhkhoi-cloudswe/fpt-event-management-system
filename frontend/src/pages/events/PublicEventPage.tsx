@@ -78,6 +78,7 @@ export default function PublicEventPage() {
   const [event, setEvent] = useState<EventDetailExtras | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [ticketQuantities, setTicketQuantities] = useState<Record<number, number>>({})
 
   useEffect(() => {
     const styleId = 'public-event-page-cinema-override'
@@ -144,6 +145,14 @@ export default function PublicEventPage() {
     navigate(user ? '/dashboard' : '/guest')
   }
 
+  const updateTicketQuantity = (ticketId: number, delta: number, maxQuantity?: number, remaining?: number) => {
+    const max = Math.max(0, remaining ?? maxQuantity ?? 99)
+    setTicketQuantities((previous) => {
+      const nextQuantity = Math.min(max, Math.max(0, (previous[ticketId] ?? 0) + delta))
+      return { ...previous, [ticketId]: nextQuantity }
+    })
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center">
@@ -176,7 +185,7 @@ export default function PublicEventPage() {
     event.organizerAvatarUrl ||
     event.organizer_avatar ||
     event.organizer_avatar_url ||
-    '/default-avatar.png'
+    ''
   const locationTitle = event.venueName || event.location || t.defaultLocation
   const locationDetail = [
     event.areaName ? `${t.area}: ${event.areaName}` : '',
@@ -222,7 +231,13 @@ export default function PublicEventPage() {
             </div>
 
             <div className="flex items-center gap-3 mt-4 mb-6">
-              <img src={organizerAvatar} className="w-10 h-10 rounded-full border border-white/10 object-cover" alt={organizerName} />
+              {organizerAvatar ? (
+                <img src={organizerAvatar} className="w-10 h-10 rounded-full border border-white/10 object-cover" alt={organizerName} />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white text-sm font-bold shadow-sm select-none">
+                  {organizerName ? organizerName.charAt(0).toUpperCase() : 'F'}
+                </div>
+              )}
               <div>
                 <p className="text-xs text-neutral-400 font-medium">{t.organizedBy}</p>
                 <p className="text-sm font-semibold text-white">{organizerName}</p>
@@ -260,13 +275,16 @@ export default function PublicEventPage() {
               </div>
             </div>
 
-            <div className="bg-neutral-950/70 border border-white/15 rounded-3xl p-7 lg:p-8 backdrop-blur-xl shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
+            <div className="bg-neutral-950/70 border border-white/15 rounded-3xl p-7 lg:p-8 backdrop-blur-xl shadow-[0_24px_70px_rgba(0,0,0,0.42)] space-y-5">
               <h3 className="text-2xl font-black text-neutral-50 tracking-wide mb-6">{t.registration}</h3>
 
               {event.tickets && event.tickets.length > 0 ? (
                 <div className="divide-y divide-white/10">
-                  {(event.tickets as Ticket[]).map((ticket) => (
-                    <div key={ticket.categoryTicketId} className="flex items-center justify-between gap-4 py-4 first:pt-0">
+                  {(event.tickets as Ticket[]).map((ticket) => {
+                    const quantity = ticketQuantities[ticket.categoryTicketId] ?? 0
+                    const maxQuantity = Math.max(0, ticket.remaining ?? ticket.maxQuantity ?? 99)
+                    return (
+                      <div key={ticket.categoryTicketId} className="flex items-center justify-between gap-4 py-5 first:pt-0">
                       <div className="min-w-0">
                         <p className="text-base font-bold text-white truncate">{ticket.name}</p>
                         {ticket.description && <p className="text-xs text-neutral-400 mt-0.5 line-clamp-1">{ticket.description}</p>}
@@ -274,8 +292,30 @@ export default function PublicEventPage() {
                       <p className="text-lg font-black text-neutral-50 whitespace-nowrap">
                         {ticket.price > 0 ? `${ticket.price.toLocaleString('vi-VN')} đ` : 'Free'}
                       </p>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 p-1">
+                          <button
+                            type="button"
+                            onClick={() => updateTicketQuantity(ticket.categoryTicketId, -1, ticket.maxQuantity, ticket.remaining)}
+                            disabled={quantity === 0}
+                            className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-35 disabled:cursor-not-allowed text-lg font-black transition-colors"
+                            aria-label={`Decrease ${ticket.name}`}
+                          >
+                            -
+                          </button>
+                          <span className="w-7 text-center text-base font-black text-white">{quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => updateTicketQuantity(ticket.categoryTicketId, 1, ticket.maxQuantity, ticket.remaining)}
+                            disabled={quantity >= maxQuantity}
+                            className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-35 disabled:cursor-not-allowed text-lg font-black transition-colors"
+                            aria-label={`Increase ${ticket.name}`}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               ) : (
                 <p className="text-neutral-400 text-sm font-medium">{t.noTicket}</p>
@@ -291,7 +331,7 @@ export default function PublicEventPage() {
               ) : (
                 <button
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl mt-6 transition-all text-lg shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] uppercase tracking-wide"
-                  onClick={() => navigate(`/events/${eventId}/payment`)}
+                  onClick={() => navigate(`/events/${eventId}/payment`, { state: { ticketQuantities } })}
                 >
                   {t.register}
                 </button>

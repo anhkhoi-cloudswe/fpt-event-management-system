@@ -104,6 +104,7 @@ export function EventDetailModal({
   const { currentLanguage } = useAuth()
   const [copied, setCopied] = useState(false)
   const [isZoomed, setIsZoomed] = useState(false)
+  const [ticketQuantities, setTicketQuantities] = useState<Record<number, number>>({})
 
   const lang: 'vi' | 'en' = currentLanguage === 'en' ? 'en' : 'vi'
   const text = {
@@ -177,11 +178,23 @@ export function EventDetailModal({
     : []
   const speakersToDisplay = speakers.length > 0 ? speakers : fallbackSpeaker
 
-  const closeThenNavigate = (path: string) => {
+  const closeThenNavigate = (path: string, state?: Record<string, unknown>) => {
     onClose()
     setTimeout(() => {
-      navigate(path)
+      navigate(path, state ? { state } : undefined)
     }, 50)
+  }
+
+  const updateTicketQuantity = (ticketId: number, delta: number, maxQuantity?: number, remaining?: number) => {
+    const max = Math.max(0, remaining ?? maxQuantity ?? 99)
+    setTicketQuantities((previous) => {
+      const nextQuantity = Math.min(max, Math.max(0, (previous[ticketId] ?? 0) + delta))
+      return { ...previous, [ticketId]: nextQuantity }
+    })
+  }
+
+  const handleRegister = () => {
+    closeThenNavigate(eventPaymentPath, { ticketQuantities })
   }
 
   const handleCopyLink = () => {
@@ -261,16 +274,18 @@ export function EventDetailModal({
                   {detail.title}
                 </h1>
 
-                <div className="flex items-center gap-2 mt-3 mb-6">
+                <div className="flex items-center gap-3 mt-3 mb-6">
                   {organizerAvatar ? (
-                    <img src={organizerAvatar} alt={organizerName} className="w-7 h-7 rounded-full object-cover border border-slate-200 dark:border-white/10" />
+                    <img src={organizerAvatar} alt={organizerName} className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-white/10" />
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-[11px] font-black text-white">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white text-sm font-bold shadow-sm select-none">
                       {organizerInitial}
                     </div>
                   )}
-                  <span className="text-sm text-slate-600 dark:text-neutral-400">{text.hostedBy}</span>
-                  <span className="text-sm font-medium text-slate-900 dark:text-white truncate">{organizerName}</span>
+                  <div className="min-w-0">
+                    <p className="text-xs text-slate-500 dark:text-neutral-400 font-medium">{text.hostedBy}</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{organizerName}</p>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -312,16 +327,14 @@ export function EventDetailModal({
               </div>
 
               {detail.tickets && detail.tickets.length > 0 && (
-                <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.tickets}</h2>
-                    <span className="text-xs font-semibold text-slate-600 dark:text-neutral-400">
-                      {detail.tickets.length} {detail.tickets.length === 1 ? 'tier' : 'tiers'}
-                    </span>
-                  </div>
+                <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-5">
+                  <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.tickets}</h2>
                   <div className="divide-y divide-slate-200 dark:divide-white/10">
-                    {detail.tickets.map((ticket) => (
-                      <div key={ticket.categoryTicketId} className="flex items-center justify-between gap-4 py-3 first:pt-0">
+                    {detail.tickets.map((ticket) => {
+                      const quantity = ticketQuantities[ticket.categoryTicketId] ?? 0
+                      const maxQuantity = Math.max(0, ticket.remaining ?? ticket.maxQuantity ?? 99)
+                      return (
+                        <div key={ticket.categoryTicketId} className="flex items-center justify-between gap-4 py-4 first:pt-0">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{ticket.name}</p>
                           {ticket.description && (
@@ -331,13 +344,35 @@ export function EventDetailModal({
                         <p className="text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">
                           {ticket.price > 0 ? `${ticket.price.toLocaleString('vi-VN')} đ` : text.free}
                         </p>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-1">
+                            <button
+                              type="button"
+                              onClick={() => updateTicketQuantity(ticket.categoryTicketId, -1, ticket.maxQuantity, ticket.remaining)}
+                              disabled={quantity === 0}
+                              className="w-8 h-8 rounded-full text-lg font-black text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-white/10 disabled:opacity-35 disabled:cursor-not-allowed transition-colors"
+                              aria-label={`Decrease ${ticket.name}`}
+                            >
+                              -
+                            </button>
+                            <span className="w-6 text-center text-sm font-black text-slate-900 dark:text-white">{quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateTicketQuantity(ticket.categoryTicketId, 1, ticket.maxQuantity, ticket.remaining)}
+                              disabled={quantity >= maxQuantity}
+                              className="w-8 h-8 rounded-full text-lg font-black text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-white/10 disabled:opacity-35 disabled:cursor-not-allowed transition-colors"
+                              aria-label={`Increase ${ticket.name}`}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                   <button
                     type="button"
-                    onClick={() => closeThenNavigate(eventPaymentPath)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all uppercase tracking-wide"
+                    onClick={handleRegister}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-6 transition-all uppercase tracking-wide"
                   >
                     {text.register}
                   </button>

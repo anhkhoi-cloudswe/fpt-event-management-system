@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Calendar, CreditCard, MapPin, ShieldCheck, Ticket as TicketIcon } from 'lucide-react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, Calendar, CreditCard, MapPin, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { SeatGrid, type Seat } from '../../components/common/SeatGrid'
 import type { EventDetail } from '../../types/event'
@@ -100,6 +100,7 @@ const formatDateTime = (value?: string) => {
 export default function PublicEventPayment() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, token, isAuthenticated, loading: authLoading, isRefreshing } = useAuth()
   const [event, setEvent] = useState<EventDetailExtras | null>(null)
   const [loading, setLoading] = useState(true)
@@ -108,8 +109,21 @@ export default function PublicEventPayment() {
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([])
   const [allSeats, setAllSeats] = useState<Seat[]>([])
   const [promoCode, setPromoCode] = useState('')
+  const [currentStep, setCurrentStep] = useState(1)
+  const [attendeeName, setAttendeeName] = useState(user?.fullName || '')
+  const [attendeeEmail, setAttendeeEmail] = useState(user?.email || '')
+  const [attendeePhone, setAttendeePhone] = useState(user?.phone || '')
+  const [paymentMethod, setPaymentMethod] = useState<'vnpay' | 'wallet'>('vnpay')
+  const [confirmationMessage, setConfirmationMessage] = useState('')
+  const routeState = (location.state || {}) as { ticketQuantities?: Record<number, number> }
 
   const hasActiveSession = Boolean(isAuthenticated || user || token || localStorage.getItem('token'))
+
+  useEffect(() => {
+    setAttendeeName(user?.fullName || '')
+    setAttendeeEmail(user?.email || '')
+    setAttendeePhone(user?.phone || '')
+  }, [user])
 
   useEffect(() => {
     if (authLoading || isRefreshing) return
@@ -183,7 +197,18 @@ export default function PublicEventPayment() {
   const discountRate = normalizedPromo === 'FPT20' ? 0.2 : normalizedPromo === 'SAVE10' ? 0.1 : 0
   const discountAmount = Math.round(subtotal * discountRate)
   const totalAmount = Math.max(0, subtotal - discountAmount)
-  const activeStep = selectedSeats.length === 0 ? 1 : promoCode.trim() ? 3 : 2
+
+  const requestedQuantities = useMemo(() => {
+    const quantities = routeState.ticketQuantities ?? {}
+    if (!event?.tickets) return []
+    return (event.tickets as Ticket[])
+      .map((ticket) => ({
+        id: ticket.categoryTicketId,
+        name: ticket.name,
+        quantity: quantities[ticket.categoryTicketId] ?? 0,
+      }))
+      .filter((ticket) => ticket.quantity > 0)
+  }, [event, routeState.ticketQuantities])
 
   const ticketBreakdown = useMemo(() => {
     const map = new Map<number, { name: string; count: number; price: number }>()
@@ -206,20 +231,21 @@ export default function PublicEventPayment() {
     const ticketToUse = firstSeatTicket || selectedTicket
     if (!ticketToUse) return
 
-    navigate('/dashboard/payment', {
-      state: {
-        eventId: event.eventId || event.id || Number(id),
-        categoryTicketId: ticketToUse.categoryTicketId,
-        seatIds: selectedSeats.map((seat) => seat.seatId),
-        seatCodes: selectedSeats.map((seat) => seat.seatCode),
-        eventTitle: event.title,
-        ticketName: ticketToUse.name,
-        ticketBreakdown,
-        pricePerTicket: ticketToUse.price,
-        quantity: selectedSeats.length,
-        totalAmount,
-      },
-    })
+    if (currentStep === 1) {
+      setCurrentStep(2)
+      return
+    }
+
+    if (currentStep === 2) {
+      setCurrentStep(3)
+      return
+    }
+
+    setConfirmationMessage(
+      paymentMethod === 'vnpay'
+        ? 'VNPAY transaction is ready for secure processing.'
+        : 'Internal wallet payment is ready for confirmation.',
+    )
   }
 
   if (authLoading || isRefreshing || loading) {
@@ -234,7 +260,7 @@ export default function PublicEventPayment() {
     return (
       <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center p-4">
         <p className="text-sm font-bold text-red-400">{error || 'Event not found'}</p>
-        <button onClick={() => navigate(`/events/${id}/page`)} className="mt-5 px-4 py-2 rounded-xl border border-white/10">
+        <button onClick={() => navigate(`/events/${id}/page`, { replace: true })} className="mt-5 px-4 py-2 rounded-xl border border-white/10">
           Back to event
         </button>
       </div>
@@ -248,7 +274,8 @@ export default function PublicEventPayment() {
     event.organizerAvatarUrl ||
     event.organizer_avatar ||
     event.organizer_avatar_url ||
-    '/default-avatar.png'
+    ''
+  const organizerName = event.organizerName || 'FPT Organizer'
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white selection:bg-blue-500/30">
@@ -265,7 +292,7 @@ export default function PublicEventPayment() {
       <div className="relative z-10 max-w-[1380px] mx-auto px-5 sm:px-8 py-6">
         <button
           type="button"
-          onClick={() => navigate(`/events/${id}/page`)}
+          onClick={() => navigate(`/events/${id}/page`, { replace: true })}
           className="inline-flex items-center gap-2 text-sm font-bold text-neutral-300 hover:text-white transition-colors mb-8"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -278,7 +305,7 @@ export default function PublicEventPayment() {
               <div className="flex flex-wrap gap-3 mb-6">
                 {['Choose seats', 'Review order', 'Payment'].map((label, index) => {
                   const step = index + 1
-                  const active = activeStep >= step
+                  const active = currentStep >= step
                   return (
                     <div key={label} className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-wide ${
                       active ? 'bg-blue-600 text-white' : 'bg-white/5 text-neutral-400 border border-white/10'
@@ -297,10 +324,16 @@ export default function PublicEventPayment() {
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-black leading-tight mt-5">{event.title}</h1>
                   <div className="flex items-center gap-3 mt-4">
-                    <img src={organizerAvatar} alt={event.organizerName || 'Organizer'} className="w-10 h-10 rounded-full border border-white/10 object-cover" />
+                    {organizerAvatar ? (
+                      <img src={organizerAvatar} alt={organizerName} className="w-10 h-10 rounded-full border border-white/10 object-cover" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white text-sm font-bold shadow-sm select-none">
+                        {organizerName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <p className="text-xs text-neutral-400 font-medium">Organized by</p>
-                      <p className="text-sm font-semibold text-white">{event.organizerName || 'FPT Organizer'}</p>
+                      <p className="text-sm font-semibold text-white">{organizerName}</p>
                     </div>
                   </div>
                   <div className="space-y-3 mt-5 text-sm text-neutral-300">
@@ -310,7 +343,9 @@ export default function PublicEventPayment() {
                 </div>
 
                 <div className="space-y-5">
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  {currentStep >= 1 && (
+                    <>
+                  <div className={`${currentStep === 1 ? '' : 'hidden'} rounded-2xl border border-white/10 bg-black/20 p-4`}>
                     <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">Ticket tiers</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {(event.tickets as Ticket[] | undefined)?.map((ticket) => {
@@ -343,7 +378,72 @@ export default function PublicEventPayment() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4 overflow-hidden">
+                  {currentStep === 2 && (
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-5">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-widest text-neutral-400">Review order</p>
+                        <h2 className="text-2xl font-black mt-2">Attendee information</h2>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label className="block">
+                          <span className="text-xs font-black uppercase tracking-widest text-neutral-500">Full name</span>
+                          <input value={attendeeName} onChange={(event) => setAttendeeName(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white outline-none focus:border-blue-500" />
+                        </label>
+                        <label className="block">
+                          <span className="text-xs font-black uppercase tracking-widest text-neutral-500">Phone</span>
+                          <input value={attendeePhone} onChange={(event) => setAttendeePhone(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white outline-none focus:border-blue-500" />
+                        </label>
+                        <label className="block md:col-span-2">
+                          <span className="text-xs font-black uppercase tracking-widest text-neutral-500">Email</span>
+                          <input value={attendeeEmail} onChange={(event) => setAttendeeEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white outline-none focus:border-blue-500" />
+                        </label>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-xs font-black uppercase tracking-widest text-neutral-500 mb-3">Selected seats</p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedSeats.map((seat) => (
+                            <span key={seat.seatId} className="rounded-full bg-blue-500/15 border border-blue-400/25 px-3 py-1 text-sm font-black text-blue-100">{seat.seatCode}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStep === 3 && (
+                    <div className="rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl p-5">
+                      <div className="mx-auto max-w-xl rounded-3xl bg-white text-slate-950 p-6 sm:p-8 shadow-2xl">
+                        <p className="text-xs font-black uppercase tracking-widest text-blue-600">Payment</p>
+                        <h2 className="text-2xl font-black mt-2">Thanh toán vé</h2>
+                        <p className="text-sm text-slate-500 mt-2">Choose VNPAY or internal wallet to complete this order without leaving the checkout portal.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+                          {[
+                            { id: 'vnpay' as const, label: 'VNPAY', detail: 'ATM, QR, bank card' },
+                            { id: 'wallet' as const, label: 'Ví nội bộ', detail: 'Use wallet balance' },
+                          ].map((method) => (
+                            <button
+                              type="button"
+                              key={method.id}
+                              onClick={() => setPaymentMethod(method.id)}
+                              className={`text-left rounded-2xl border p-4 transition-all ${
+                                paymentMethod === method.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              <p className="font-black">{method.label}</p>
+                              <p className="text-xs text-slate-500 mt-1">{method.detail}</p>
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mt-6 rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-2 text-sm">
+                          <div className="flex justify-between"><span>Tickets</span><span className="font-bold">{selectedSeats.length}</span></div>
+                          <div className="flex justify-between"><span>Discount</span><span className="font-bold">-{discountAmount.toLocaleString('vi-VN')} Ä‘</span></div>
+                          <div className="flex justify-between text-lg font-black pt-2 border-t border-slate-200"><span>Total</span><span>{totalAmount.toLocaleString('vi-VN')} Ä‘</span></div>
+                        </div>
+                        {confirmationMessage && <p className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm font-semibold text-emerald-700">{confirmationMessage}</p>}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={`${currentStep === 1 ? '' : 'hidden'} rounded-2xl border border-white/10 bg-black/20 p-4 overflow-hidden`}>
                     <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">Seat selection</p>
                     <SeatGrid
                       seats={allSeats}
@@ -353,6 +453,8 @@ export default function PublicEventPayment() {
                       allowSelect
                     />
                   </div>
+                    </>
+                  )}
                 </div>
               </div>
             </section>
@@ -372,6 +474,18 @@ export default function PublicEventPayment() {
               <div className="min-h-[44px] rounded-2xl bg-white/5 border border-white/10 p-3 text-neutral-300">
                 {selectedSeats.length > 0 ? selectedSeats.map((seat) => seat.seatCode).join(', ') : 'No seats selected'}
               </div>
+
+              {requestedQuantities.length > 0 && (
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-2">
+                  <p className="text-xs font-black uppercase tracking-widest text-neutral-500">Requested quantities</p>
+                  {requestedQuantities.map((ticket) => (
+                    <div key={ticket.id} className="flex justify-between gap-4 text-neutral-300">
+                      <span>{ticket.name}</span>
+                      <span className="font-bold text-white">x {ticket.quantity}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {ticketBreakdown.length > 0 && (
                 <div className="space-y-2 pt-2">
@@ -419,7 +533,7 @@ export default function PublicEventPayment() {
                   : 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700'
               }`}
             >
-              Continue to payment
+              {currentStep === 1 ? 'Review order' : currentStep === 2 ? 'Continue to payment' : paymentMethod === 'vnpay' ? 'Thanh toán vé via VNPAY' : 'Pay with internal wallet'}
             </button>
 
             <div className="mt-4 flex items-start gap-2 text-xs text-neutral-400">
