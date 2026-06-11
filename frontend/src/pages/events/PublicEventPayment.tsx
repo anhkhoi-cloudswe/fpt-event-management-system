@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { AlertCircle, ArrowLeft, Calendar, CreditCard, MapPin, ShieldCheck, XCircle } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Calendar, Clock, CreditCard, MapPin, ShieldCheck, X, XCircle } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { SeatGrid, type Seat } from '../../components/common/SeatGrid'
 import type { EventDetail } from '../../types/event'
@@ -116,7 +116,26 @@ export default function PublicEventPayment() {
   const { user, token, isAuthenticated, loading: authLoading, isRefreshing, refreshUser, currentLanguage } = useAuth()
   const pageLanguage = currentLanguage || 'en'
 
+  const [pendingOrderDetails, setPendingOrderDetails] = useState<{
+    pendingBillId: number
+    seats: string[]
+    seatIds: number[]
+    eventId: number
+    categoryTicketId: number
+    remainingSeconds: number
+    message: string
+  } | null>(null)
+
   const t = {
+    restoreTitle: pageLanguage === 'en' ? 'Restore payment?' : 'Khôi phục thanh toán?',
+    restoreSubtitle: pageLanguage === 'en' ? 'System detected an incomplete transaction' : 'Hệ thống phát hiện giao dịch đang dở dang',
+    restoreRemaining: pageLanguage === 'en' ? 'Remaining: {0}' : 'Còn lại: {0}',
+    restoreWhatNext: pageLanguage === 'en' ? 'What would you like to do next?' : 'Bạn muốn làm gì tiếp theo?',
+    restoreWarningTitle: pageLanguage === 'en' ? '⚠️ Safety notice:' : '⚠️ Lưu ý an toàn:',
+    restoreWarningDesc: pageLanguage === 'en' ? '• Selecting "Cancel old & book new" will release your old seats and add a penalty point to your failed checkout count.' : '• Nhấn "Hủy đơn cũ & Đặt ghế mới" sẽ giải phóng ghế cũ của bạn và cộng 1 điểm phạt failed checkout count.',
+    btnResumeOld: pageLanguage === 'en' ? 'Continue old payment' : 'Tiếp tục thanh toán đơn cũ',
+    btnCancelAndNew: pageLanguage === 'en' ? 'Cancel old & book new' : 'Hủy bỏ đơn cũ & Đặt ghế mới',
+    btnCloseDialog: pageLanguage === 'en' ? 'Close dialog' : 'Đóng hộp thoại',
     eventDetails: pageLanguage === 'en' ? 'Event details' : 'Chi tiết sự kiện',
     organizedBy: pageLanguage === 'en' ? 'Organized by' : 'Tổ chức bởi',
     ticketTiers: pageLanguage === 'en' ? 'Ticket tiers' : 'Hạng vé',
@@ -257,6 +276,21 @@ export default function PublicEventPayment() {
       }
     }
   }, [pollingIntervalId])
+
+  useEffect(() => {
+    if (!pendingOrderDetails) return
+    const timer = setInterval(() => {
+      setPendingOrderDetails((prev) => {
+        if (!prev) return null
+        if (prev.remainingSeconds <= 1) {
+          clearInterval(timer)
+          return null
+        }
+        return { ...prev, remainingSeconds: prev.remainingSeconds - 1 }
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [pendingOrderDetails])
 
   useEffect(() => {
     if (!bankTransferOrder) return
@@ -477,6 +511,18 @@ export default function PublicEventPayment() {
       }
 
       if (!response.ok) {
+        if (data.errorCode === 'E4002') {
+          setPendingOrderDetails({
+            pendingBillId: Number(data.pendingBillId),
+            seats: Array.isArray(data.seats) ? data.seats : (data.seats ? String(data.seats).split(',') : []),
+            seatIds: Array.isArray(data.seatIds) ? data.seatIds.map(Number) : (data.seatIds ? String(data.seatIds).split(',').map(Number) : []),
+            eventId: Number(data.eventId),
+            categoryTicketId: Number(data.categoryTicketId),
+            remainingSeconds: Number(data.remainingSeconds || data.remaining_seconds || 0),
+            message: data.message
+          })
+          return { errorType: 'E4002' }
+        }
         throw new Error(data.message || data.error || 'Unable to create payment order')
       }
 
@@ -572,6 +618,8 @@ export default function PublicEventPayment() {
       }
       const data = await createBackendOrder()
       if (!data) return
+      if (data.errorType === 'E4002') return
+
       const orderWithSeats = { ...data, seatIds: selectedSeats.map((seat) => seat.seatId) }
       setBankTransferOrder(orderWithSeats)
       markSelectedSeatsPending()
@@ -594,6 +642,132 @@ export default function PublicEventPayment() {
     return (
       <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
         <div className="w-12 h-12 rounded-full border-2 border-neutral-800 border-t-blue-500 animate-spin" />
+      </div>
+    )
+  }
+
+  if (pendingOrderDetails) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Ambient background glows */}
+        <div className="absolute w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] -top-10 -left-10" />
+        <div className="absolute w-[300px] h-[300px] bg-indigo-500/10 rounded-full blur-[80px] -bottom-10 -right-10" />
+
+        <div className="relative z-10 max-w-md w-full bg-neutral-900/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-6 text-white text-center relative">
+            <div className="mx-auto w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-3 animate-pulse">
+              <Clock className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-xl font-bold">{t.restoreTitle}</h3>
+            <p className="text-blue-100 text-xs mt-1 font-medium">{t.restoreSubtitle}</p>
+          </div>
+
+          {/* Body */}
+          <div className="px-6 py-6 space-y-4">
+            <p className="text-neutral-300 text-sm leading-relaxed text-center leading-relaxed font-sans">
+              {pendingOrderDetails.message}
+              <br />
+              <span className="inline-block mt-2 text-xs font-semibold text-neutral-400">
+                {t.restoreRemaining.replace('{0}', '')}
+                <span className="font-semibold text-red-400 font-mono bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded text-sm ml-1">
+                  {formatTimeLeft(pendingOrderDetails.remainingSeconds)}
+                </span>
+              </span>
+            </p>
+
+            <p className="text-neutral-200 text-sm font-semibold text-center mt-2 font-sans">
+              {t.restoreWhatNext}
+            </p>
+
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-200 space-y-1 font-sans">
+              <p className="font-semibold">{t.restoreWarningTitle}</p>
+              <p>{t.restoreWarningDesc}</p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="px-6 pb-6 pt-2 space-y-2.5">
+            {/* Button 1: Resume */}
+            <button
+              type="button"
+              onClick={() => {
+                const isSameEvent = pendingOrderDetails.eventId === Number(id)
+                if (isSameEvent) {
+                  const ticket = event?.tickets ? (event.tickets as Ticket[]).find(tick => tick.categoryTicketId === pendingOrderDetails.categoryTicketId) : undefined
+                  const price = ticket ? ticket.price : 0
+                  const calculatedAmount = price * pendingOrderDetails.seats.length
+
+                  const seatsToSelect = allSeats.filter(s => pendingOrderDetails.seatIds.includes(Number(s.seatId)))
+                  setSelectedSeats(seatsToSelect)
+
+                  const orderObj = {
+                    order_id: pendingOrderDetails.pendingBillId,
+                    amount: calculatedAmount,
+                    expiresAt: new Date(Date.now() + pendingOrderDetails.remainingSeconds * 1000).toISOString(),
+                    seatIds: pendingOrderDetails.seatIds
+                  }
+                  setBankTransferOrder(orderObj)
+                  startPaymentPolling(orderObj)
+                  setPendingOrderDetails(null)
+                  setCurrentStep(3)
+                } else {
+                  navigate(`/events/${pendingOrderDetails.eventId}/payment`, { replace: true })
+                }
+              }}
+              className="w-full px-4 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center text-xs uppercase tracking-wider font-sans"
+            >
+              <CreditCard className="w-4 h-4 mr-2" />
+              {t.btnResumeOld}
+            </button>
+
+            {/* Button 2: Cancel & Reorder */}
+            <button
+              type="button"
+              disabled={processingOrder}
+              onClick={async () => {
+                const authToken = token || localStorage.getItem('token') || ''
+                setProcessingOrder(true)
+                try {
+                  await fetch('/api/payment/cancel', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                    },
+                    body: JSON.stringify({ order_id: pendingOrderDetails.pendingBillId }),
+                  })
+                  setPendingOrderDetails(null)
+                  setTimeout(() => {
+                    void handleContinueToPayment()
+                  }, 100)
+                } catch (err: any) {
+                  setError(err.message || 'Unable to cancel previous order')
+                } finally {
+                  setProcessingOrder(false)
+                }
+              }}
+              className="w-full px-4 py-3.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold rounded-xl transition-all duration-200 flex items-center justify-center text-xs uppercase tracking-wider disabled:opacity-50 font-sans"
+            >
+              <X className="w-4 h-4 mr-2" />
+              {t.btnCancelAndNew}
+            </button>
+
+            {/* Close/Skip option */}
+            <button
+              type="button"
+              onClick={() => {
+                setPendingOrderDetails(null)
+                setSelectedSeats([])
+                setCurrentStep(1)
+              }}
+              className="w-full py-2 text-xs text-neutral-400 hover:text-white transition uppercase font-bold tracking-wider font-sans"
+            >
+              {t.btnBackSeats}
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
