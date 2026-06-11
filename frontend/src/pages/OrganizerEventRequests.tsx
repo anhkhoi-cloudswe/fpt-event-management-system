@@ -1,5 +1,5 @@
-// Import Link để chuyển trang trong SPA, useNavigate để điều hướng bằng code
-import { Link, useNavigate } from 'react-router-dom'
+// Import Link để chuyển trang trong SPA, useNavigate để điều hướng bằng code, useLocation để nhận state
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 
 // Lấy thông tin user đăng nhập (role) từ AuthContext
 import { useAuth } from '../contexts/AuthContext'
@@ -229,6 +229,9 @@ const convertToModalRequest = (request: EventRequest): EventRequestForModal => {
  * isRequestActiveTabEligible - Check if request should appear in "Chờ" (Active) tab
  */
 const isRequestActiveTabEligible = (request: EventRequest): boolean => {
+  if (request?.status === 'EXPIRED') {
+    return false
+  }
   if (request?.status === 'PENDING') {
     return true
   }
@@ -242,7 +245,7 @@ const isRequestActiveTabEligible = (request: EventRequest): boolean => {
  * isRequestArchivedTabEligible - Check if request should appear in "Đã xử lý" (Archived) tab
  */
 const isRequestArchivedTabEligible = (request: EventRequest): boolean => {
-  if (request?.status === 'REJECTED' || request?.status === 'CANCELLED') {
+  if (request?.status === 'REJECTED' || request?.status === 'CANCELLED' || request?.status === 'EXPIRED') {
     return true
   }
   if (request?.status === 'APPROVED') {
@@ -269,6 +272,7 @@ export default function OrganizerEventRequests() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [activeTabPage, setActiveTabPage] = useState(1)
   const [archivedTabPage, setArchivedTabPage] = useState(1)
@@ -366,6 +370,28 @@ export default function OrganizerEventRequests() {
       setArchivedLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    if (location.state && (location.state as any).refetch) {
+      const archivedId = (location.state as any).archivedRequestId
+      if (archivedId) {
+        const archivedStr = localStorage.getItem('client_archived_requests') || '{}'
+        try {
+          const archived = JSON.parse(archivedStr)
+          archived[archivedId] = true
+          localStorage.setItem('client_archived_requests', JSON.stringify(archived))
+        } catch (e) {
+          console.error('Error in state cleanup:', e)
+        }
+      }
+      
+      // Clear location state to prevent endless refresh
+      window.history.replaceState({}, document.title)
+      
+      // Force refresh
+      forceRefresh()
+    }
+  }, [location.state])
 
   useEffect(() => {
     const loadInitialRequests = async () => {
@@ -517,10 +543,43 @@ export default function OrganizerEventRequests() {
     )
   }
 
-  const activeRequests = Array.isArray(activeTabData?.requests) ? activeTabData.requests : []
-  const archivedRequests = Array.isArray(archivedTabData?.requests) ? archivedTabData.requests : []
-  const activeCount = Number.isFinite(Number(activeTabData?.totalCount)) ? Number(activeTabData.totalCount) : activeRequests.length
-  const archivedCount = Number.isFinite(Number(archivedTabData?.totalCount)) ? Number(archivedTabData.totalCount) : archivedRequests.length
+  const rawActiveRequests = Array.isArray(activeTabData?.requests) ? activeTabData.requests : []
+  const rawArchivedRequests = Array.isArray(archivedTabData?.requests) ? archivedTabData.requests : []
+
+  // Check if any request in rawActiveRequests is client-archived
+  const clientArchivedIds = new Set<number>()
+  const archivedStr = localStorage.getItem('client_archived_requests') || '{}'
+  try {
+    const clientArchived = JSON.parse(archivedStr)
+    Object.keys(clientArchived).forEach(id => {
+      if (clientArchived[id]) {
+        clientArchivedIds.add(Number(id))
+      }
+    })
+  } catch (e) {
+    console.error(e)
+  }
+
+  // Active requests are those that are NOT client-archived
+  const activeRequests = rawActiveRequests.filter(req => !clientArchivedIds.has(req.requestId))
+
+  // Archived requests should include rawArchivedRequests AND any requests from rawActiveRequests that are client-archived
+  const movedToArchived = rawActiveRequests.filter(req => clientArchivedIds.has(req.requestId))
+  
+  // Merge, avoiding duplicates
+  const archivedRequests = [...rawArchivedRequests]
+  movedToArchived.forEach(req => {
+    if (!archivedRequests.some(r => r.requestId === req.requestId)) {
+      archivedRequests.push({ ...req, status: 'EXPIRED' })
+    }
+  })
+
+  const rawActiveCount = Number.isFinite(Number(activeTabData?.totalCount)) ? Number(activeTabData.totalCount) : rawActiveRequests.length
+  const rawArchivedCount = Number.isFinite(Number(archivedTabData?.totalCount)) ? Number(archivedTabData.totalCount) : rawArchivedRequests.length
+
+  const activeCount = Math.max(0, rawActiveCount - movedToArchived.length)
+  const archivedCount = rawArchivedCount + movedToArchived.length
+
   const activeTabTotalPages = Math.max(1, Math.ceil(activeCount / ITEMS_PER_PAGE))
   const archivedTabTotalPages = Math.max(1, Math.ceil(archivedCount / ITEMS_PER_PAGE))
   const currentPage = activeTab === 'active' ? activeTabPage : archivedTabPage
@@ -791,7 +850,8 @@ export default function OrganizerEventRequests() {
                       req?.status === 'PENDING' ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.5)]' :
                       req?.status === 'APPROVED' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(10,185,129,0.5)]' :
                       req?.status === 'REJECTED' ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]' :
-                      req?.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-slate-400'
+                      req?.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' :
+                      req?.status === 'EXPIRED' ? 'bg-slate-400 shadow-[0_0_12px_rgba(148,163,184,0.5)]' : 'bg-slate-400'
                     }`} />
 
                     <div className="flex-1 min-w-0 pl-1.5">
@@ -820,6 +880,11 @@ export default function OrganizerEventRequests() {
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40 shadow-sm shadow-blue-500/5">
                             <Clock className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '3s' }} />
                             Chờ cập nhật
+                          </span>
+                        ) : req?.status === 'EXPIRED' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <AlertCircle className="w-3.5 h-3.5" style={{ color: '#94a3b8' }} />
+                            Hết hạn
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">

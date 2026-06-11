@@ -1,4 +1,4 @@
-﻿// Import router hooks + Link
+// Import router hooks + Link
 import { useParams, useNavigate, Link } from 'react-router-dom'
 // useParams: lấy param trên URL (vd /dashboard/event-requests/:id/edit -> lấy id)
 // useNavigate: điều hướng trang bằng code
@@ -906,6 +906,19 @@ export default function EventRequestEdit() {
         }
     }
 
+    // Helper to archive request that is past the update deadline
+    const archivePastDeadlineRequest = (requestId: number) => {
+        console.log(`[archivePastDeadlineRequest] Archiving request ID: ${requestId}`)
+        const archivedStr = localStorage.getItem('client_archived_requests') || '{}'
+        try {
+            const archived = JSON.parse(archivedStr)
+            archived[requestId] = true
+            localStorage.setItem('client_archived_requests', JSON.stringify(archived))
+        } catch (e) {
+            console.error('Error in state cleanup hook:', e)
+        }
+    }
+
     // ======================= RENDER =======================
 
     if (loading) {
@@ -941,6 +954,12 @@ export default function EventRequestEdit() {
                     <div className="flex justify-center">
                         <Link
                             to="/dashboard/event-requests"
+                            onClick={() => {
+                                if (eventRequest.requestId) {
+                                    archivePastDeadlineRequest(eventRequest.requestId)
+                                }
+                            }}
+                            state={{ refetch: true, archivedRequestId: eventRequest.requestId }}
                             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                         >
                             ← Quay lại danh sách yêu cầu
