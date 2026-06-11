@@ -182,7 +182,7 @@ export default function PublicEventPage() {
     event.areaName ? `${t.area}: ${event.areaName}` : '',
     event.floor ? `${t.floor} ${event.floor}` : '',
   ].filter(Boolean).join(' · ')
-  const eventClosed = event.status === 'CLOSED' || (event as any).isClosed === true
+  const eventClosed = event.status !== 'OPEN' || (event as any).isClosed === true
   const eventEnded = new Date(event.endTime).getTime() < Date.now()
 
   return (

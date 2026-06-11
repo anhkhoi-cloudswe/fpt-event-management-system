@@ -132,6 +132,11 @@ export default function PublicEventPayment() {
   const [bankTransferOrder, setBankTransferOrder] = useState<any | null>(null)
   const [timeLeft, setTimeLeft] = useState(0)
   const [pollingIntervalId, setPollingIntervalId] = useState<number | null>(null)
+  const [updatePhoneProfile, setUpdatePhoneProfile] = useState(false)
+
+  const eventClosed = event?.status !== 'OPEN'
+  const eventEnded = event ? new Date(event.endTime).getTime() < Date.now() : false
+  const isLocked = Boolean(event && (eventClosed || eventEnded))
 
   const hasActiveSession = Boolean(isAuthenticated || user || token || localStorage.getItem('token'))
 
@@ -288,8 +293,8 @@ export default function PublicEventPayment() {
 
     if (!typedPhone || !isValidVietnamPhone(typedPhone)) {
       nextErrors.phone = 'Vui lòng nhập số điện thoại Việt Nam hợp lệ.'
-    } else if (accountPhone && typedPhone !== accountPhone) {
-      nextErrors.phone = 'Số điện thoại phải khớp với số đã lưu trên hệ thống.'
+    } else if (accountPhone && typedPhone !== accountPhone && !updatePhoneProfile) {
+      nextErrors.phone = 'mismatch_update'
     }
 
     setAttendeeErrors(nextErrors)
@@ -470,8 +475,9 @@ export default function PublicEventPayment() {
     if (currentStep === 2) {
       if (!validateAttendeeInformation()) return
 
-      // Auto-update phone number in database if user has no phone saved
-      if (!user?.phone && attendeePhone) {
+      // Auto-update phone number in database if user has no phone saved or requested an update
+      const needsPhoneUpdate = !user?.phone || (updatePhoneProfile && attendeePhone.trim() !== user?.phone)
+      if (needsPhoneUpdate && attendeePhone) {
         try {
           const authToken = token || localStorage.getItem('token') || ''
           const updateRes = await fetch('/api/auth/update-phone', {
@@ -484,11 +490,12 @@ export default function PublicEventPayment() {
           })
           if (updateRes.ok) {
             await refreshUser()
+            setUpdatePhoneProfile(false) // reset update profile flag
           } else {
-            console.error('Failed to auto-update phone number')
+            console.error('Failed to update phone number')
           }
         } catch (err) {
-          console.error('Error auto-updating phone number:', err)
+          console.error('Error updating phone number:', err)
         }
       }
 
@@ -575,6 +582,14 @@ export default function PublicEventPayment() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-10">
           <main className="space-y-7">
+            {isLocked && (
+              <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-200">
+                <p className="font-black text-base uppercase text-red-400 mb-1">
+                  {eventClosed ? 'ĐĂNG KÝ ĐÃ ĐÓNG' : 'SỰ KIỆN ĐÃ KẾT THÚC'}
+                </p>
+                Sự kiện này đã kết thúc hoặc đóng cổng đăng ký vé. Bạn chỉ có thể xem sơ đồ ghế ngồi của sự kiện và không thể thực hiện các giao dịch đặt vé mới.
+              </div>
+            )}
             <section className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-5 sm:p-7">
               <div className="flex flex-wrap gap-3 mb-6">
                 {['Choose seats', 'Review order', 'Payment'].map((label, index) => {
@@ -656,7 +671,7 @@ export default function PublicEventPayment() {
                           selectedSeats={selectedSeats}
                           onSeatSelect={(seat) => seat && handleSeatSelect(seat)}
                           maxReached={selectedSeats.length >= 4}
-                          allowSelect
+                          allowSelect={!isLocked}
                         />
                       </div>
                     </>
@@ -674,10 +689,38 @@ export default function PublicEventPayment() {
                           <input value={attendeeName} onChange={(event) => setAttendeeName(event.target.value)} placeholder="Nhập đúng họ tên tài khoản" className={`w-full rounded-xl border ${attendeeErrors.name ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500`} />
                           {attendeeErrors.name && <p className="mt-1.5 text-xs font-semibold text-red-400">{attendeeErrors.name}</p>}
                         </label>
-                        <label className="block">
+                         <label className="block">
                           <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">Phone</span>
-                          <input value={attendeePhone} onChange={(event) => setAttendeePhone(event.target.value)} placeholder="Nhập số điện thoại đã lưu" className={`w-full rounded-xl border ${attendeeErrors.phone ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500`} />
-                          {attendeeErrors.phone && <p className="mt-1.5 text-xs font-semibold text-red-400">{attendeeErrors.phone}</p>}
+                          <input 
+                            value={attendeePhone} 
+                            onChange={(event) => setAttendeePhone(event.target.value)} 
+                            placeholder={user?.phone ? "Nhập số điện thoại đã lưu" : "Nhập số điện thoại mới"} 
+                            className={`w-full rounded-xl border ${attendeeErrors.phone ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500`} 
+                          />
+                          {attendeeErrors.phone && attendeeErrors.phone !== 'mismatch_update' && (
+                            <p className="mt-1.5 text-xs font-semibold text-red-400">{attendeeErrors.phone}</p>
+                          )}
+                          {attendeeErrors.phone === 'mismatch_update' && (
+                            <div className="mt-1.5 space-y-2">
+                              <p className="text-xs font-semibold text-red-400">
+                                Số điện thoại không khớp với số đã lưu ({user?.phone || 'chưa có'}).
+                              </p>
+                              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-400 hover:text-blue-300">
+                                <input 
+                                  type="checkbox" 
+                                  checked={updatePhoneProfile} 
+                                  onChange={(e) => setUpdatePhoneProfile(e.target.checked)} 
+                                  className="rounded border-white/10 bg-white/5 text-blue-600 focus:ring-blue-500" 
+                                />
+                                Cập nhật số điện thoại mới này vào tài khoản của tôi
+                              </label>
+                            </div>
+                          )}
+                          {!user?.phone && !attendeeErrors.phone && (
+                            <p className="mt-1.5 text-xs font-semibold text-amber-400">
+                              💡 Tài khoản chưa đăng ký số điện thoại. Số này sẽ được tự động lưu vào hồ sơ của bạn.
+                            </p>
+                          )}
                         </label>
                         <label className="block md:col-span-2">
                           <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">Email</span>
@@ -685,6 +728,12 @@ export default function PublicEventPayment() {
                           {attendeeErrors.email && <p className="mt-1.5 text-xs font-semibold text-red-400">{attendeeErrors.email}</p>}
                         </label>
                       </div>
+                      {!user?.phone && (
+                        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-300 space-y-1">
+                          <p className="font-bold flex items-center gap-1">💡 Tài khoản chưa cập nhật số điện thoại:</p>
+                          <p>Vui lòng nhập chính xác số điện thoại của bạn ở ô phía trên. Hệ thống sẽ tự động lưu số điện thoại này vào tài khoản để phục vụ liên hệ nhận vé và hỗ trợ sự kiện.</p>
+                        </div>
+                      )}
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <p className="text-xs font-black uppercase tracking-widest text-neutral-500 mb-3">Selected seats</p>
                         <div className="flex flex-wrap gap-2">
@@ -849,14 +898,14 @@ export default function PublicEventPayment() {
             <button
               type="button"
               onClick={handleContinueToPayment}
-              disabled={processingOrder || selectedSeats.length === 0 || (currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)}
+              disabled={isLocked || processingOrder || selectedSeats.length === 0 || (currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)}
               className={`mt-6 w-full rounded-xl py-4 text-sm font-black uppercase tracking-wide transition-all ${
-                !processingOrder && selectedSeats.length > 0 && !(currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)
+                !isLocked && !processingOrder && selectedSeats.length > 0 && !(currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)
                   ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]'
                   : 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700'
               }`}
             >
-              {currentStep === 1 ? 'Review order' : currentStep === 2 ? (totalAmount <= 0 ? 'Hoàn tất đăng ký' : 'Continue to payment') : 'Xác nhận thanh toán'}
+              {isLocked ? (eventClosed ? 'Đăng ký đã đóng' : 'Sự kiện đã kết thúc') : (currentStep === 1 ? 'Review order' : currentStep === 2 ? (totalAmount <= 0 ? 'Hoàn tất đăng ký' : 'Continue to payment') : 'Xác nhận thanh toán')}
             </button>
 
             <div className="mt-4 flex items-start gap-2 text-xs text-neutral-400">
