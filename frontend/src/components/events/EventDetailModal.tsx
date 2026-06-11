@@ -167,7 +167,11 @@ export function EventDetailModal({
     detail?.venue?.location ||
     ''
   const locationDisplayString = detail?.venueArea?.venue?.location || detail?.location || 'HCMC'
-  const mapLocationString = detail?.venueArea?.venue?.location || detail?.location || 'FPT University HCMC'
+  const mapLocationString = [
+    venueName,
+    exactLocationString !== venueName ? exactLocationString : '',
+    exactLocationString === '' && locationDisplayString !== venueName ? locationDisplayString : ''
+  ].filter((val) => val && val.trim() !== '').join(', ') || 'FPT University HCMC'
   const locationRows = [
     venueName,
     areaName ? `${text.area}: ${areaName}` : '',

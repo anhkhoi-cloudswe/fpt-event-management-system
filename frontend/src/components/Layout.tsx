@@ -64,7 +64,13 @@ export default function Layout() {
   // OPTIMIZED: Read theme directly from document class (source of truth), not localStorage
   // localStorage is ONLY used for initial hydration, then DOM class is authoritative
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    return document.documentElement.classList.contains('dark')
+    const savedTheme = user?.id
+      ? localStorage.getItem('theme_user_' + user.id) || localStorage.getItem('theme')
+      : localStorage.getItem('theme')
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      return savedTheme === 'dark'
+    }
+    return user?.theme === 'dark'
   })
   const [timezone, setTimezone] = useState(localStorage.getItem('user_timezone') || 'Asia/Ho_Chi_Minh')
   const [autoDetectTz, setAutoDetectTz] = useState(localStorage.getItem('auto_timezone') !== 'false')

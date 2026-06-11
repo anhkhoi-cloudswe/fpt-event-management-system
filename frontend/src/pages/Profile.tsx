@@ -220,10 +220,15 @@ export default function Profile() {
     return searchParams.get('tab') === 'security' ? 'security' : searchParams.get('tab') === 'language' ? 'language' : 'profile'
   })
 
-  // CRITICAL FIX: Read theme directly from document.documentElement.classList
-  // This is the SOURCE OF TRUTH set by AuthContext, NOT localStorage
+  // CRITICAL FIX: Initialize theme from localStorage / user preference rather than document class to prevent navigation reset bugs
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    return document.documentElement.classList.contains('dark')
+    const savedTheme = user?.id
+      ? localStorage.getItem('theme_user_' + user.id) || localStorage.getItem('theme')
+      : localStorage.getItem('theme')
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      return savedTheme === 'dark'
+    }
+    return user?.theme === 'dark'
   })
 
   // Phone settings

@@ -216,7 +216,11 @@ export default function PublicEventPage() {
     event.venue?.location ||
     ''
   const locationDisplayString = event.venueArea?.venue?.location || event.location || 'HCMC'
-  const mapLocationString = event.venueArea?.venue?.location || event.location || 'FPT University HCMC'
+  const mapLocationString = [
+    venueName,
+    exactLocationString !== venueName ? exactLocationString : '',
+    exactLocationString === '' && locationDisplayString !== venueName ? locationDisplayString : ''
+  ].filter((val) => val && val.trim() !== '').join(', ') || 'FPT University HCMC'
   const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(mapLocationString)}&t=&z=15&ie=UTF-8&iwloc=&output=embed`
 
   const getSpeakerName = (speaker: SpeakerLike) => (
