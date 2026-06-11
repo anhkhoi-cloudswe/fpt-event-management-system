@@ -359,28 +359,28 @@ export default function PublicEventPage() {
           </button>
         </div>
 
-        <div className="max-w-[1480px] mx-auto w-full px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10">
-          <div className="lg:col-span-5">
-            <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-black/20 border border-white/10 shadow-[0_18px_52px_rgba(0,0,0,0.4)]">
+        <div className="max-w-[1480px] mx-auto w-full px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+          <div>
+            <div className="aspect-video rounded-2xl overflow-hidden bg-black/20 border border-white/10 shadow-[0_18px_52px_rgba(0,0,0,0.4)]">
               {event.bannerUrl ? (
                 <img src={event.bannerUrl} alt={event.title} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-neutral-600 text-4xl">Image</div>
               )}
             </div>
-          </div>
 
-          <div className="lg:col-span-7">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md">
+            <div className="mt-6 flex items-center gap-4">
+              <p className="text-xs font-black uppercase tracking-widest text-neutral-400">{t.hostedBy}</p>
+              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-black text-base shadow-md">
                 {hostInitial}
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-black text-neutral-300 uppercase tracking-wider">{t.hostedBy}</p>
-                <p className="text-sm font-bold text-neutral-100 truncate">{hostName}</p>
+                <p className="font-semibold text-lg text-white truncate">{hostName}</p>
               </div>
             </div>
+          </div>
 
+          <div>
             <h1 className="text-4xl sm:text-5xl xl:text-6xl text-white font-black leading-[1.02] mb-7">
               {event.title}
             </h1>
@@ -403,18 +403,18 @@ export default function PublicEventPage() {
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl">
-              <h3 className="text-xl font-black text-neutral-100 tracking-wide mb-5">{t.registration}</h3>
+            <div className="bg-neutral-950/70 border border-white/15 rounded-3xl p-7 lg:p-8 backdrop-blur-xl shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
+              <h3 className="text-2xl font-black text-neutral-50 tracking-wide mb-6">{t.registration}</h3>
 
               {event.tickets && event.tickets.length > 0 ? (
                 <div className="divide-y divide-white/10">
                   {event.tickets.map((ticket) => (
-                    <div key={ticket.categoryTicketId} className="flex items-center justify-between gap-4 py-3 first:pt-0">
+                    <div key={ticket.categoryTicketId} className="flex items-center justify-between gap-4 py-4 first:pt-0">
                       <div className="min-w-0">
-                        <p className="text-base font-bold text-neutral-100 truncate">{ticket.name}</p>
+                        <p className="text-base font-bold text-white truncate">{ticket.name}</p>
                         {ticket.description && <p className="text-xs text-neutral-400 mt-0.5 line-clamp-1">{ticket.description}</p>}
                       </div>
-                      <p className="text-base font-black text-neutral-50 whitespace-nowrap">{ticket.price.toLocaleString('vi-VN')} đ</p>
+                      <p className="text-lg font-black text-neutral-50 whitespace-nowrap">{ticket.price.toLocaleString('vi-VN')} đ</p>
                     </div>
                   ))}
                 </div>
@@ -434,15 +434,15 @@ export default function PublicEventPage() {
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl mt-6 transition-all text-lg shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] uppercase tracking-wide"
                   onClick={() => setIsCheckoutModalOpen(true)}
                 >
-                  Get Tickets / Register Now
+                  Register Now
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        <div className="max-w-[1480px] mx-auto w-full px-5 sm:px-8 mt-10 grid grid-cols-1 lg:grid-cols-12 gap-10">
-          <div className="lg:col-start-6 lg:col-span-7 space-y-6">
+        <div className="max-w-[1480px] mx-auto w-full px-5 sm:px-8 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+          <div className="lg:col-start-2 space-y-6">
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
               <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">{t.about}</h3>
               <div className="text-neutral-100 text-base leading-relaxed antialiased font-medium whitespace-pre-wrap max-w-none">
