@@ -533,6 +533,7 @@ export default function PublicEventPayment() {
   }
 
   if (error || !event) {
+    const isExpiredError = error?.includes('hết hạn') || error?.includes('bị hủy')
     return (
       <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4 relative overflow-hidden">
         {/* Ambient background glows */}
@@ -540,17 +541,21 @@ export default function PublicEventPayment() {
         <div className="absolute w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] -bottom-10 -right-10" />
 
         <div className="relative z-10 max-w-md w-full bg-neutral-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-center space-y-6">
-          <div className="inline-flex p-4 bg-red-500/10 border border-red-500/20 rounded-full text-red-400 animate-bounce">
+          <div className={`inline-flex p-4 rounded-full ${isExpiredError ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400 animate-pulse' : 'bg-red-500/10 border border-red-500/20 text-red-400 animate-bounce'}`}>
             <AlertCircle className="w-10 h-10" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-black tracking-wide text-white">Không thể hoàn tất giao dịch</h2>
+            <h2 className="text-xl font-black tracking-wide text-white">
+              {isExpiredError ? 'Giao dịch hết hạn hoặc bị hủy' : 'Không thể hoàn tất giao dịch'}
+            </h2>
             <p className="text-sm text-neutral-400 leading-relaxed px-2">
-              {error?.includes('[E4001]') 
-                ? 'Ghế bạn chọn hiện tại đã có người khác đang thực hiện thanh toán hoặc đã được đặt thành công. Vui lòng quay lại sơ đồ để chọn ghế khác.'
-                : error || 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.'}
+              {isExpiredError
+                ? 'Phiên giữ ghế của bạn đã hết thời gian giới hạn (5 phút) hoặc đã bị chủ động hủy. Vui lòng quay lại để thực hiện giao dịch mới.'
+                : error?.includes('[E4001]') 
+                  ? 'Ghế bạn chọn hiện tại đã có người khác đang thực hiện thanh toán hoặc đã được đặt thành công. Vui lòng quay lại sơ đồ để chọn ghế khác.'
+                  : error || 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.'}
             </p>
-            {error?.includes('[E4001]') && (
+            {!isExpiredError && error?.includes('[E4001]') && (
               <p className="text-xs font-mono text-neutral-500 bg-black/30 py-1.5 px-3 rounded-lg inline-block select-all">
                 {error}
               </p>
@@ -560,7 +565,7 @@ export default function PublicEventPayment() {
             onClick={() => navigate(`/events/${id}/page`, { replace: true })}
             className="w-full bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] uppercase text-xs tracking-wider"
           >
-            Quay lại chọn ghế
+            {isExpiredError ? 'Quay lại đặt vé mới' : 'Quay lại chọn ghế'}
           </button>
         </div>
       </div>

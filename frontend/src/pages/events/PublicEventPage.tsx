@@ -301,26 +301,30 @@ export default function PublicEventPage() {
               {event.title}
             </h1>
 
-            <div className="flex flex-col gap-4 mb-8">
-              <div className="flex items-start gap-4">
-                <Calendar className="w-6 h-6 text-blue-400 mt-0.5 flex-shrink-0" />
+            <div className="space-y-3.5 mb-8">
+              <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md shadow-sm">
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 flex-shrink-0">
+                  <Calendar className="w-5 h-5" />
+                </div>
                 <div>
-                  <p className="text-neutral-200 text-lg font-bold leading-tight">{formatDate(event.startTime, pageLanguage)}</p>
-                  <p className="text-neutral-300 text-base font-medium mt-1">{formatTimeRange(event.startTime, event.endTime, pageLanguage)}</p>
+                  <p className="text-neutral-100 text-base font-black leading-tight">{formatDate(event.startTime, pageLanguage)}</p>
+                  <p className="text-neutral-400 text-sm font-medium mt-1">{formatTimeRange(event.startTime, event.endTime, pageLanguage)}</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-4">
-                <MapPin className="w-6 h-6 text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md shadow-sm">
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 flex-shrink-0">
+                  <MapPin className="w-5 h-5" />
+                </div>
                 <div>
-                  <p className="text-neutral-200 text-lg font-bold leading-tight">{locationTitle}</p>
-                  {locationDetail && <p className="text-neutral-300 text-base font-medium mt-1">{locationDetail}</p>}
+                  <p className="text-neutral-100 text-base font-black leading-tight">{locationTitle}</p>
+                  {locationDetail && <p className="text-neutral-400 text-sm font-medium mt-1">{locationDetail}</p>}
                 </div>
               </div>
 
-              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
                 <Users className="w-4 h-4 text-blue-400" />
-                <span className="text-sm font-semibold text-neutral-200">
+                <span className="text-xs font-semibold text-neutral-300">
                   {t.capacity}: {event.maxSeats} {t.seats}
                 </span>
               </div>
@@ -367,45 +371,11 @@ export default function PublicEventPage() {
         </div>
 
         <div className="max-w-[1480px] mx-auto w-full px-5 sm:px-8 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
-          {/* Cột trái: Thông tin địa điểm chi tiết & Bản đồ */}
-          <div className="space-y-6">
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
-              <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">
-                {pageLanguage === 'en' ? 'Location' : 'Địa điểm'}
-              </h3>
-              <div className="flex items-start gap-3 text-sm leading-relaxed text-neutral-200">
-                <MapPin className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  {venueName && <p className="font-bold text-neutral-100 text-lg leading-tight">{venueName}</p>}
-                  {areaName && <p className="text-neutral-300 mt-1">{pageLanguage === 'en' ? 'Area' : 'Khu vực'}: {areaName}</p>}
-                  {floor && <p className="text-neutral-300 mt-1">{pageLanguage === 'en' ? 'Floor' : 'Tầng'} {floor}</p>}
-                  <p className="text-neutral-400 mt-1">{locationDisplayString}</p>
-                </div>
-              </div>
-              <iframe
-                title="Event Location Map"
-                width="100%"
-                height="220"
-                style={{ border: 0, borderRadius: '12px' }}
-                src={mapSrc}
-                allowFullScreen
-                loading="lazy"
-                className="mt-2 border border-white/10 shadow-inner"
-              />
-            </div>
-          </div>
+          {/* Cột trái: Giữ trống để lệch bố cục sang phải như nguyên bản */}
+          <div className="hidden lg:block"></div>
 
-          {/* Cột phải: Mô tả & Diễn giả */}
+          {/* Cột phải: Diễn giả -> Về Sự kiện -> Địa điểm */}
           <div className="space-y-6">
-            {event.description && (
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
-                <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">{t.about}</h3>
-                <div className="text-neutral-100 text-base leading-relaxed antialiased font-medium whitespace-pre-wrap max-w-none">
-                  {event.description}
-                </div>
-              </div>
-            )}
-
             {speakersToDisplay.length > 0 && (
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
                 <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">
@@ -438,6 +408,40 @@ export default function PublicEventPage() {
                 </div>
               </div>
             )}
+
+            {event.description && (
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
+                <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">{t.about}</h3>
+                <div className="text-neutral-100 text-base leading-relaxed antialiased font-medium whitespace-pre-wrap max-w-none">
+                  {event.description}
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
+              <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">
+                {pageLanguage === 'en' ? 'Location' : 'Địa điểm'}
+              </h3>
+              <div className="flex items-start gap-3 text-sm leading-relaxed text-neutral-200">
+                <MapPin className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  {venueName && <p className="font-bold text-neutral-100 text-lg leading-tight">{venueName}</p>}
+                  {areaName && <p className="text-neutral-300 mt-1">{pageLanguage === 'en' ? 'Area' : 'Khu vực'}: {areaName}</p>}
+                  {floor && <p className="text-neutral-300 mt-1">{pageLanguage === 'en' ? 'Floor' : 'Tầng'} {floor}</p>}
+                  <p className="text-neutral-400 mt-1">{locationDisplayString}</p>
+                </div>
+              </div>
+              <iframe
+                title="Event Location Map"
+                width="100%"
+                height="220"
+                style={{ border: 0, borderRadius: '12px' }}
+                src={mapSrc}
+                allowFullScreen
+                loading="lazy"
+                className="mt-2 border border-white/10 shadow-inner"
+              />
+            </div>
           </div>
         </div>
       </div>
