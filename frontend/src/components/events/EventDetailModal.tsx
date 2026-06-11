@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Copy, ExternalLink, MapPin, Users, X } from 'lucide-react'
+import { Armchair, Calendar, Copy, ExternalLink, MapPin, Users, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import type { EventDetail } from '../../types/event'
@@ -184,8 +184,10 @@ export function EventDetailModal({
   }
 
   const handleEventPage = () => {
-    navigate(eventPagePath)
     onClose()
+    setTimeout(() => {
+      navigate(eventPagePath)
+    }, 50)
   }
 
   const handleCopyLink = () => {
@@ -377,7 +379,33 @@ export function EventDetailModal({
 
         {!loading && !error && detail && (
           <div className="sticky bottom-0 left-0 w-full bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 p-4 flex justify-between items-center gap-4 z-10">
-            <div className="min-w-0">
+            <div className="grid grid-cols-2 gap-3 min-w-0 flex-1">
+              <div className="flex items-center gap-2 min-w-0 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 px-3 py-2">
+                <Armchair className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-neutral-500">{text.capacity}</p>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    {detail.maxSeats} {text.seats}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end min-w-0 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 px-3 py-2">
+                {lowestTicketPrice > 0 ? (
+                  <div className="text-right min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-neutral-500">{text.from}</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {lowestTicketPrice.toLocaleString('vi-VN')} đ
+                    </p>
+                  </div>
+                ) : (
+                  <span className="px-2.5 py-1 text-xs font-semibold bg-green-500/10 text-green-500 rounded-full border border-green-500/20">
+                    {lang === 'en' ? 'Free' : 'Mien phi'}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="hidden">
               <p className="text-xs font-semibold text-slate-600 dark:text-neutral-400 truncate">
                 {text.capacity}: {detail.maxSeats} {text.seats}
               </p>

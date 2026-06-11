@@ -107,7 +107,7 @@ const normalizeSeat = (rawSeat: ApiSeat, fallbackAreaId?: number): Seat | null =
 export default function PublicEventPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, currentLanguage } = useAuth()
+  const { user, currentLanguage, isAuthenticated, token } = useAuth()
   const pageLanguage: 'vi' | 'en' = user ? currentLanguage : 'en'
   const t = {
     loading: pageLanguage === 'en' ? 'Loading event page...' : 'Dang tai trang su kien...',
@@ -214,6 +214,17 @@ export default function PublicEventPage() {
     navigate(user ? '/dashboard' : '/guest')
   }
 
+  const hasActiveSession = Boolean(isAuthenticated || user || token || localStorage.getItem('token'))
+
+  const handleRegisterClick = () => {
+    if (!event) return
+    if (hasActiveSession) {
+      setIsCheckoutModalOpen(true)
+      return
+    }
+    navigate(`/login?redirect=${encodeURIComponent(`/events/${event.eventId}/page`)}`)
+  }
+
   const isSeatAvailableForSelect = (seat: Seat) => {
     const status = String(seat.status ?? '').toUpperCase()
     return status === 'ACTIVE' || status === 'AVAILABLE'
@@ -221,7 +232,7 @@ export default function PublicEventPage() {
 
   const handleSeatSelect = (seat: Seat) => {
     if (!event) return
-    if (!user) {
+    if (!hasActiveSession) {
       navigate(`/login?redirect=${encodeURIComponent(`/events/${event.eventId}/page`)}`)
       return
     }
@@ -238,7 +249,7 @@ export default function PublicEventPage() {
 
   const confirmSeats = () => {
     if (!event || selectedSeats.length === 0) return
-    if (!user) {
+    if (!hasActiveSession) {
       navigate(`/login?redirect=${encodeURIComponent(`/events/${event.eventId}/page`)}`)
       return
     }
@@ -432,7 +443,7 @@ export default function PublicEventPage() {
               ) : (
                 <button
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl mt-6 transition-all text-lg shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] uppercase tracking-wide"
-                  onClick={() => setIsCheckoutModalOpen(true)}
+                  onClick={handleRegisterClick}
                 >
                   Register Now
                 </button>
