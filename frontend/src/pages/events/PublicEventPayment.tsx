@@ -201,10 +201,15 @@ export default function PublicEventPayment() {
   useEffect(() => {
     if (!bankTransferOrder) return
     const expiresAt = new Date(bankTransferOrder.expiresAt || bankTransferOrder.expire_at).getTime()
+    const createdAt = new Date(bankTransferOrder.createdAt || Date.now()).getTime()
+    const totalDuration = Math.max(0, expiresAt - createdAt)
+    const clientStartTime = Date.now()
+
     if (Number.isNaN(expiresAt)) return
 
     const tick = () => {
-      const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000))
+      const elapsed = Date.now() - clientStartTime
+      const remaining = Math.max(0, Math.floor((totalDuration - elapsed) / 1000))
       setTimeLeft(remaining)
       if (remaining <= 0) {
         setBankTransferOrder(null)
@@ -645,7 +650,10 @@ export default function PublicEventPayment() {
                     {organizerAvatar ? (
                       <img src={organizerAvatar} alt={organizerName} className="w-10 h-10 rounded-full border border-white/10 object-cover" />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white text-sm font-bold shadow-sm select-none">
+                      <div 
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm select-none"
+                        style={{ background: 'linear-gradient(135deg, #f97316, #d97706)' }}
+                      >
                         {organizerName.charAt(0).toUpperCase()}
                       </div>
                     )}

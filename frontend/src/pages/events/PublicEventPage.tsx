@@ -285,7 +285,10 @@ export default function PublicEventPage() {
               {organizerAvatar ? (
                 <img src={organizerAvatar} className="w-10 h-10 rounded-full border border-white/10 object-cover" alt={organizerName} />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white text-sm font-bold shadow-sm select-none">
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm select-none"
+                  style={{ background: 'linear-gradient(135deg, #f97316, #d97706)' }}
+                >
                   {organizerName ? organizerName.charAt(0).toUpperCase() : 'F'}
                 </div>
               )}
@@ -334,17 +337,21 @@ export default function PublicEventPage() {
               <h3 className="text-2xl font-black text-neutral-50 tracking-wide mb-6">{t.registration}</h3>
 
               {event.tickets && event.tickets.length > 0 ? (
-                <div className="divide-y divide-white/10">
+                <div className="space-y-3.5">
                   {(event.tickets as Ticket[]).map((ticket) => (
-                      <div key={ticket.categoryTicketId} className="flex items-center justify-between gap-4 py-5 first:pt-0">
+                    <div key={ticket.categoryTicketId} className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm shadow-sm">
                       <div className="min-w-0">
-                        <p className="text-base font-bold text-white truncate">{ticket.name}</p>
-                        {ticket.description && <p className="text-xs text-neutral-400 mt-0.5 line-clamp-1">{ticket.description}</p>}
+                        <p className="text-base font-black text-neutral-100 truncate">{ticket.name}</p>
+                        {ticket.description ? (
+                          <p className="text-xs text-neutral-400 mt-1 line-clamp-2 leading-relaxed">{ticket.description}</p>
+                        ) : (
+                          <p className="text-xs text-neutral-500 mt-1 italic">{pageLanguage === 'en' ? 'Standard ticket type' : 'Hạng vé tiêu chuẩn'}</p>
+                        )}
                       </div>
-                      <p className="text-lg font-black text-neutral-50 whitespace-nowrap">
+                      <p className="text-lg font-black text-blue-400 whitespace-nowrap">
                         {ticket.price > 0 ? `${ticket.price.toLocaleString('vi-VN')} đ` : 'Free'}
                       </p>
-                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (
