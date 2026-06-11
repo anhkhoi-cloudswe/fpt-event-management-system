@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Calendar, CreditCard, MapPin, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Calendar, CreditCard, MapPin, ShieldCheck, XCircle } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { SeatGrid, type Seat } from '../../components/common/SeatGrid'
 import type { EventDetail } from '../../types/event'
@@ -99,6 +99,10 @@ const formatDateTime = (value?: string) => {
 
 const formatCurrency = (value: number) => `${value.toLocaleString('vi-VN')} đ`
 
+const normalizeText = (value?: string | null) => (value || '').trim().replace(/\s+/g, ' ').toLowerCase()
+const normalizePhone = (value?: string | null) => (value || '').replace(/\D/g, '')
+const isValidVietnamPhone = (value: string) => /^(0[35789])[0-9]{8}$/.test(normalizePhone(value))
+
 const resolveWalletBalance = (user: ReturnType<typeof useAuth>['user']) => {
   if (!user) return 0
   if (typeof user.wallet === 'number') return user.wallet
@@ -118,20 +122,18 @@ export default function PublicEventPayment() {
   const [allSeats, setAllSeats] = useState<Seat[]>([])
   const [promoCode, setPromoCode] = useState('')
   const [currentStep, setCurrentStep] = useState(1)
-  const [attendeeName, setAttendeeName] = useState(user?.fullName || '')
-  const [attendeeEmail, setAttendeeEmail] = useState(user?.email || '')
-  const [attendeePhone, setAttendeePhone] = useState(user?.phone || '')
+  const [attendeeName, setAttendeeName] = useState('')
+  const [attendeeEmail, setAttendeeEmail] = useState('')
+  const [attendeePhone, setAttendeePhone] = useState('')
   const [activeMethod, setActiveMethod] = useState<'qr' | 'wallet'>('qr')
   const [confirmationMessage, setConfirmationMessage] = useState('')
   const [processingOrder, setProcessingOrder] = useState(false)
+  const [attendeeErrors, setAttendeeErrors] = useState<{ name?: string; email?: string; phone?: string }>({})
+  const [bankTransferOrder, setBankTransferOrder] = useState<any | null>(null)
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [pollingIntervalId, setPollingIntervalId] = useState<number | null>(null)
 
   const hasActiveSession = Boolean(isAuthenticated || user || token || localStorage.getItem('token'))
-
-  useEffect(() => {
-    setAttendeeName(user?.fullName || '')
-    setAttendeeEmail(user?.email || '')
-    setAttendeePhone(user?.phone || '')
-  }, [user])
 
   useEffect(() => {
     if (authLoading || isRefreshing) return
@@ -174,6 +176,34 @@ export default function PublicEventPayment() {
       setSelectedTicket(firstAvailable || (event.tickets[0] as Ticket))
     }
   }, [event, loading, selectedTicket])
+
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalId) {
+        window.clearInterval(pollingIntervalId)
+      }
+    }
+  }, [pollingIntervalId])
+
+  useEffect(() => {
+    if (!bankTransferOrder) return
+    const expiresAt = new Date(bankTransferOrder.expiresAt || bankTransferOrder.expire_at).getTime()
+    if (Number.isNaN(expiresAt)) return
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000))
+      setTimeLeft(remaining)
+      if (remaining <= 0) {
+        setBankTransferOrder(null)
+        setCurrentStep(1)
+        setSelectedSeats([])
+      }
+    }
+
+    tick()
+    const timer = window.setInterval(tick, 1000)
+    return () => window.clearInterval(timer)
+  }, [bankTransferOrder])
 
   const isSeatAvailableForSelect = (seat: Seat) => {
     const status = String(seat.status ?? '').toUpperCase()
@@ -221,6 +251,113 @@ export default function PublicEventPayment() {
     })
     return Array.from(map.values())
   }, [selectedSeats, selectedTicket, event])
+
+  const formatTimeLeft = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const validateAttendeeInformation = () => {
+    const nextErrors: { name?: string; email?: string; phone?: string } = {}
+    const accountName = normalizeText(user?.fullName)
+    const accountEmail = normalizeText(user?.email)
+    const accountPhone = normalizePhone(user?.phone)
+    const typedEmail = normalizeText(attendeeEmail)
+    const typedPhone = normalizePhone(attendeePhone)
+
+    if (!normalizeText(attendeeName)) {
+      nextErrors.name = 'Vui lòng nhập họ tên.'
+    } else if (accountName && normalizeText(attendeeName) !== accountName) {
+      nextErrors.name = 'Họ tên phải khớp với tài khoản trên hệ thống.'
+    }
+
+    if (!typedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail)) {
+      nextErrors.email = 'Vui lòng nhập email hợp lệ.'
+    } else if (!accountEmail || typedEmail !== accountEmail) {
+      nextErrors.email = 'Email phải là email đang tồn tại trên tài khoản hệ thống.'
+    }
+
+    if (!typedPhone || !isValidVietnamPhone(typedPhone)) {
+      nextErrors.phone = 'Vui lòng nhập số điện thoại Việt Nam hợp lệ.'
+    } else if (!accountPhone || typedPhone !== accountPhone) {
+      nextErrors.phone = 'Số điện thoại phải khớp với số đã lưu trên hệ thống.'
+    }
+
+    setAttendeeErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
+  }
+
+  const markSelectedSeatsPending = () => {
+    const selectedIds = new Set(selectedSeats.map((seat) => seat.seatId))
+    setAllSeats((prev) => prev.map((seat) => selectedIds.has(seat.seatId) ? { ...seat, status: 'PENDING' } : seat))
+  }
+
+  const startPaymentPolling = (order: any) => {
+    if (!order?.order_id) return
+    if (pollingIntervalId) {
+      window.clearInterval(pollingIntervalId)
+    }
+
+    const authToken = token || localStorage.getItem('token') || ''
+    const intervalId = window.setInterval(async () => {
+      try {
+        const statusRes = await fetch(`/api/payment/check-status/${order.order_id}`, {
+          credentials: 'include',
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        })
+        if (!statusRes.ok) return
+
+        const statusData = await statusRes.json()
+        if (statusData.status === 'PAID') {
+          window.clearInterval(intervalId)
+          setPollingIntervalId(null)
+          const ticketIds = order.ticketIds || order.seatIds?.join(',') || selectedSeats.map((seat) => seat.seatId).join(',')
+          navigate(`/payment-success?status=success&method=bank_transfer&billId=${order.order_id}&ticketIds=${encodeURIComponent(ticketIds)}`, { replace: true })
+        }
+        if (['CANCELED', 'EXPIRED', 'FAILED'].includes(statusData.status)) {
+          window.clearInterval(intervalId)
+          setPollingIntervalId(null)
+          setBankTransferOrder(null)
+          setCurrentStep(1)
+          setSelectedSeats([])
+          setError('Giao dịch đã hết hạn hoặc bị hủy. Ghế đã được giải phóng.')
+        }
+      } catch (err) {
+        console.error('Error checking payment status:', err)
+      }
+    }, 3000)
+
+    setPollingIntervalId(intervalId)
+  }
+
+  const cancelCurrentOrder = async () => {
+    if (!bankTransferOrder?.order_id) return
+    const authToken = token || localStorage.getItem('token') || ''
+    setProcessingOrder(true)
+    try {
+      await fetch('/api/payment/cancel', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify({ order_id: bankTransferOrder.order_id }),
+      })
+    } finally {
+      if (pollingIntervalId) {
+        window.clearInterval(pollingIntervalId)
+        setPollingIntervalId(null)
+      }
+      setBankTransferOrder(null)
+      setSelectedSeats([])
+      const selectedIds = new Set(selectedSeats.map((seat) => seat.seatId))
+      setAllSeats((prev) => prev.map((seat) => selectedIds.has(seat.seatId) ? { ...seat, status: 'ACTIVE' } : seat))
+      setCurrentStep(1)
+      setProcessingOrder(false)
+    }
+  }
 
   const buildPaymentPayload = () => {
     if (!event || selectedSeats.length === 0) return null
@@ -275,6 +412,43 @@ export default function PublicEventPayment() {
     }
   }
 
+  const handleWalletPayment = async () => {
+    const payload = buildPaymentPayload()
+    if (!payload || processingOrder) return
+    const authToken = token || localStorage.getItem('token') || ''
+    setProcessingOrder(true)
+    setError(null)
+    try {
+      const response = await fetch('/api/wallet/pay-ticket', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const rawText = await response.text()
+      let data: any = {}
+      try {
+        data = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        data = { message: rawText }
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Không thể thanh toán bằng ví.')
+      }
+
+      navigate(`/payment-success?status=success&method=wallet&ticketIds=${encodeURIComponent(data.ticketIds || '')}`, { replace: true })
+    } catch (err: any) {
+      setError(err.message || 'Không thể thanh toán bằng ví.')
+    } finally {
+      setProcessingOrder(false)
+    }
+  }
+
   const handleContinueToPayment = async () => {
     if (!event || selectedSeats.length === 0) return
     const firstSeatTicket = ticketForSeat(selectedSeats[0])
@@ -286,6 +460,7 @@ export default function PublicEventPayment() {
     }
 
     if (currentStep === 2) {
+      if (!validateAttendeeInformation()) return
       if (totalAmount <= 0) {
         const data = await createBackendOrder()
         if (data?.free === true) {
@@ -293,11 +468,21 @@ export default function PublicEventPayment() {
         }
         return
       }
+      const data = await createBackendOrder()
+      if (!data) return
+      const orderWithSeats = { ...data, seatIds: selectedSeats.map((seat) => seat.seatId) }
+      setBankTransferOrder(orderWithSeats)
+      markSelectedSeatsPending()
+      startPaymentPolling(orderWithSeats)
       setCurrentStep(3)
       return
     }
 
     if (activeMethod === 'wallet' && !walletCanPay) return
+    if (activeMethod === 'wallet') {
+      await handleWalletPayment()
+      return
+    }
     setConfirmationMessage(activeMethod === 'qr' ? 'Đã ghi nhận yêu cầu xác nhận chuyển khoản SePay.' : 'Đã ghi nhận yêu cầu thanh toán bằng Ví nội bộ FPT.')
   }
 
@@ -331,8 +516,9 @@ export default function PublicEventPayment() {
   const organizerName = event.organizerName || 'FPT Organizer'
   const eventKey = event.eventId || event.id || id || 'event'
   const userId = user?.id || 'GUEST'
-  const transferMessage = `FEMS_${eventKey}_${userId || 'GUEST'}`
-  const vietQrSrc = `https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '2911121319'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${totalAmount}&des=${encodeURIComponent(transferMessage)}`
+  const transferMessage = bankTransferOrder?.order_id ? `FEMS_${eventKey}_HD${bankTransferOrder.order_id}` : `FEMS_${eventKey}_${userId || 'GUEST'}`
+  const paymentAmount = Number(bankTransferOrder?.amount ?? totalAmount)
+  const vietQrSrc = `https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '2911121319'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${paymentAmount}&des=${encodeURIComponent(transferMessage)}`
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white selection:bg-blue-500/30">
@@ -406,17 +592,14 @@ export default function PublicEventPayment() {
                         <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">Ticket tiers</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {(event.tickets as Ticket[] | undefined)?.map((ticket) => {
-                            const selected = selectedTicket?.categoryTicketId === ticket.categoryTicketId
+                            const selected = selectedSeats.some((seat) => seat.categoryTicketId === ticket.categoryTicketId)
                             const soldOut = ticket.remaining === 0 || ticket.status === 'INACTIVE'
                             return (
-                              <button
-                                type="button"
+                              <div
                                 key={ticket.categoryTicketId}
-                                disabled={soldOut}
-                                onClick={() => setSelectedTicket(ticket)}
-                                className={`text-left rounded-2xl border p-4 ${
+                                className={`text-left rounded-2xl border p-4 select-none ${
                                   soldOut
-                                    ? 'border-white/5 bg-white/5 opacity-50 cursor-not-allowed'
+                                    ? 'border-white/5 bg-white/5 opacity-50'
                                     : selected
                                       ? 'border-blue-500 bg-blue-500/15'
                                       : 'border-white/10 bg-white/5'
@@ -429,7 +612,7 @@ export default function PublicEventPayment() {
                                 <p className="text-xs text-neutral-400 mt-1">
                                   {ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} available
                                 </p>
-                              </button>
+                              </div>
                             )
                           })}
                         </div>
@@ -457,15 +640,18 @@ export default function PublicEventPayment() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <label className="block">
                           <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">Full name</span>
-                          <input value={attendeeName} onChange={(event) => setAttendeeName(event.target.value)} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500" />
+                          <input value={attendeeName} onChange={(event) => setAttendeeName(event.target.value)} placeholder="Nhập đúng họ tên tài khoản" className={`w-full rounded-xl border ${attendeeErrors.name ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500`} />
+                          {attendeeErrors.name && <p className="mt-1.5 text-xs font-semibold text-red-400">{attendeeErrors.name}</p>}
                         </label>
                         <label className="block">
                           <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">Phone</span>
-                          <input value={attendeePhone} onChange={(event) => setAttendeePhone(event.target.value)} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500" />
+                          <input value={attendeePhone} onChange={(event) => setAttendeePhone(event.target.value)} placeholder="Nhập số điện thoại đã lưu" className={`w-full rounded-xl border ${attendeeErrors.phone ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500`} />
+                          {attendeeErrors.phone && <p className="mt-1.5 text-xs font-semibold text-red-400">{attendeeErrors.phone}</p>}
                         </label>
                         <label className="block md:col-span-2">
                           <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">Email</span>
-                          <input value={attendeeEmail} onChange={(event) => setAttendeeEmail(event.target.value)} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500" />
+                          <input value={attendeeEmail} onChange={(event) => setAttendeeEmail(event.target.value)} placeholder="Nhập email tài khoản hệ thống" className={`w-full rounded-xl border ${attendeeErrors.email ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500`} />
+                          {attendeeErrors.email && <p className="mt-1.5 text-xs font-semibold text-red-400">{attendeeErrors.email}</p>}
                         </label>
                       </div>
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -486,6 +672,32 @@ export default function PublicEventPayment() {
                         <h2 className="text-2xl font-black mt-2">Thanh toán vé</h2>
                         <p className="text-xs text-neutral-400 mt-1">SePay QR hoặc FPT Wallet</p>
                       </div>
+
+                      {bankTransferOrder && (
+                        <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-black uppercase tracking-widest text-amber-300">Đang giữ ghế</p>
+                              <p className="mt-1 text-sm text-neutral-200">
+                                Mã đơn #{bankTransferOrder.order_id} · {selectedSeats.map((seat) => seat.seatCode).join(', ')}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-neutral-400">Còn lại</p>
+                              <p className="font-mono text-2xl font-black text-amber-200">{formatTimeLeft(timeLeft)}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={cancelCurrentOrder}
+                            disabled={processingOrder}
+                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200 hover:bg-red-500/20 disabled:opacity-50"
+                          >
+                            <XCircle className="h-4 w-4" />
+                            Hủy giao dịch & giải phóng ghế
+                          </button>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-2 rounded-2xl border border-white/10 bg-white/5 p-1 gap-1">
                         <button
@@ -618,7 +830,7 @@ export default function PublicEventPayment() {
 
             <div className="mt-4 flex items-start gap-2 text-xs text-neutral-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-              Seats are reserved only after the final payment step succeeds.
+              Ghế được giữ khi bước thanh toán tạo đơn thành công và tự giải phóng khi hết hạn hoặc hủy giao dịch.
             </div>
           </aside>
         </div>
