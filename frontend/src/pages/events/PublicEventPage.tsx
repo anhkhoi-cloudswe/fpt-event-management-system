@@ -267,7 +267,7 @@ export default function PublicEventPage() {
       </div>
 
       <div className="relative z-10 w-full flex flex-col">
-        <div className="max-w-[1480px] mx-auto w-full px-5 sm:px-8 pt-5">
+        <div className="max-w-[1200px] mx-auto w-full px-6 sm:px-10 pt-5">
           <button
             type="button"
             onClick={handleBack}
@@ -277,7 +277,7 @@ export default function PublicEventPage() {
           </button>
         </div>
 
-        <div className="max-w-[1480px] mx-auto w-full px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+        <div className="max-w-[1200px] mx-auto w-full px-6 sm:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
           <div>
             <div className="aspect-video rounded-2xl overflow-hidden bg-black/20 border border-white/10 shadow-[0_18px_52px_rgba(0,0,0,0.4)]">
               {event.bannerUrl ? (
@@ -310,32 +310,36 @@ export default function PublicEventPage() {
               {event.title}
             </h1>
 
-            <div className="space-y-3.5 mb-8">
-              <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md shadow-sm">
-                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 flex-shrink-0">
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl text-blue-400 flex items-center justify-center flex-shrink-0">
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-neutral-100 text-base font-black leading-tight">{formatDate(event.startTime, pageLanguage)}</p>
-                  <p className="text-neutral-400 text-sm font-medium mt-1">{formatTimeRange(event.startTime, event.endTime, pageLanguage)}</p>
+                  <p className="text-neutral-100 text-sm font-black leading-tight">{formatDate(event.startTime, pageLanguage)}</p>
+                  <p className="text-neutral-450 text-xs mt-0.5">{formatTimeRange(event.startTime, event.endTime, pageLanguage)}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md shadow-sm">
-                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl text-blue-400 flex items-center justify-center flex-shrink-0">
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-neutral-100 text-base font-black leading-tight">{locationTitle}</p>
-                  {locationDetail && <p className="text-neutral-400 text-sm font-medium mt-1">{locationDetail}</p>}
+                  <p className="text-neutral-100 text-sm font-black leading-tight">{locationTitle}</p>
+                  {locationDetail && <p className="text-neutral-450 text-xs mt-0.5">{locationDetail}</p>}
                 </div>
               </div>
 
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                <Users className="w-4 h-4 text-blue-400" />
-                <span className="text-xs font-semibold text-neutral-300">
-                  {t.capacity}: {event.maxSeats} {t.seats}
-                </span>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl text-blue-400 flex items-center justify-center flex-shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-neutral-100 text-sm font-black leading-tight">
+                    {t.capacity}: {event.maxSeats} {t.seats}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -383,7 +387,7 @@ export default function PublicEventPage() {
           </div>
         </div>
 
-        <div className="max-w-[1480px] mx-auto w-full px-5 sm:px-8 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+        <div className="max-w-[1200px] mx-auto w-full px-6 sm:px-10 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
           {/* Cột trái: Giữ trống để lệch bố cục sang phải như nguyên bản */}
           <div className="hidden lg:block"></div>
 

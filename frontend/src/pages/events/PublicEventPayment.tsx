@@ -84,11 +84,11 @@ const normalizeSeat = (rawSeat: ApiSeat, fallbackAreaId?: number): Seat | null =
   }
 }
 
-const formatDateTime = (value?: string) => {
+const formatDateTime = (value?: string, lang?: 'vi' | 'en') => {
   if (!value) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -115,6 +115,65 @@ export default function PublicEventPayment() {
   const navigate = useNavigate()
   const { user, token, isAuthenticated, loading: authLoading, isRefreshing, refreshUser, currentLanguage } = useAuth()
   const pageLanguage = currentLanguage || 'en'
+
+  const t = {
+    eventDetails: pageLanguage === 'en' ? 'Event details' : 'Chi tiết sự kiện',
+    organizedBy: pageLanguage === 'en' ? 'Organized by' : 'Tổ chức bởi',
+    ticketTiers: pageLanguage === 'en' ? 'Ticket tiers' : 'Hạng vé',
+    seatSelection: pageLanguage === 'en' ? 'Seat selection' : 'Chọn vị trí ghế',
+    reviewOrderTitle: pageLanguage === 'en' ? 'Review order' : 'Xác nhận đơn',
+    attendeeInformation: pageLanguage === 'en' ? 'Attendee information' : 'Thông tin người tham dự',
+    fullName: pageLanguage === 'en' ? 'Full name' : 'Họ và tên',
+    fullNamePlaceholder: pageLanguage === 'en' ? 'Enter account full name' : 'Nhập đúng họ tên tài khoản',
+    phone: pageLanguage === 'en' ? 'Phone' : 'Số điện thoại',
+    phonePlaceholderSaved: pageLanguage === 'en' ? 'Enter saved phone number' : 'Nhập số điện thoại đã lưu',
+    phonePlaceholderNew: pageLanguage === 'en' ? 'Enter new phone number' : 'Nhập số điện thoại mới',
+    phoneMismatch: pageLanguage === 'en' ? 'Phone number does not match the saved one.' : 'Số điện thoại không khớp với số đã lưu.',
+    phoneMismatchHint: pageLanguage === 'en' ? '({0} in system)' : '(hệ thống có {0})',
+    updatePhoneCheckbox: pageLanguage === 'en' ? 'Update this new phone number to my account' : 'Cập nhật số điện thoại mới này vào tài khoản của tôi',
+    noPhoneSaved: pageLanguage === 'en' ? '💡 Account has no registered phone number. This number will be automatically saved to your profile.' : '💡 Tài khoản chưa đăng ký số điện thoại. Số này sẽ được tự động lưu vào hồ sơ của bạn.',
+    email: pageLanguage === 'en' ? 'Email' : 'Email',
+    emailPlaceholder: pageLanguage === 'en' ? 'Enter system account email' : 'Nhập email tài khoản hệ thống',
+    selectedSeats: pageLanguage === 'en' ? 'Selected seats' : 'Ghế đã chọn',
+    payment: pageLanguage === 'en' ? 'Payment' : 'Thanh toán',
+    paymentTitleLocalized: pageLanguage === 'en' ? 'Ticket Payment' : 'Thanh toán vé',
+    paymentSubtitle: pageLanguage === 'en' ? 'SePay QR or FPT Wallet' : 'SePay QR hoặc FPT Wallet',
+    transferSyntax: pageLanguage === 'en' ? 'Transfer syntax:' : 'Cú pháp chuyển khoản:',
+    currentBalance: pageLanguage === 'en' ? 'Current balance' : 'Số dư hiện tại',
+    walletSufficient: pageLanguage === 'en' ? 'Wallet has sufficient balance. You can confirm payment now.' : 'Ví đủ số dư. Bạn có thể xác nhận thanh toán ngay.',
+    walletInsufficient: pageLanguage === 'en' ? 'Insufficient account balance' : 'Số dư tài khoản không đủ',
+    orderSummary: pageLanguage === 'en' ? 'Order summary' : 'Thông tin đơn hàng',
+    noSeatsSelected: pageLanguage === 'en' ? 'No seats selected' : 'Chưa chọn ghế',
+    discountCode: pageLanguage === 'en' ? 'Discount code' : 'Mã giảm giá',
+    subtotal: pageLanguage === 'en' ? 'Subtotal' : 'Tạm tính',
+    discount: pageLanguage === 'en' ? 'Discount' : 'Giảm giá',
+    total: pageLanguage === 'en' ? 'Total' : 'Tổng cộng',
+    btnClosed: pageLanguage === 'en' ? 'Registration closed' : 'Đăng ký đã đóng',
+    btnEnded: pageLanguage === 'en' ? 'Event ended' : 'Sự kiện đã kết thúc',
+    btnReviewOrder: pageLanguage === 'en' ? 'Review order' : 'Xác nhận đơn',
+    btnCompleteRegistration: pageLanguage === 'en' ? 'Complete registration' : 'Hoàn tất đăng ký',
+    btnContinueToPayment: pageLanguage === 'en' ? 'Continue to payment' : 'Tiếp tục thanh toán',
+    btnConfirmPayment: pageLanguage === 'en' ? 'Confirm payment' : 'Xác nhận thanh toán',
+    shieldText: pageLanguage === 'en' ? 'Seats are held when the payment step creates an order successfully and automatically released when expired or canceled.' : 'Ghế được giữ khi bước thanh toán tạo đơn thành công và tự giải phóng khi hết hạn hoặc hủy giao dịch.',
+    expiredTitle: pageLanguage === 'en' ? 'Transaction expired or canceled' : 'Giao dịch hết hạn hoặc bị hủy',
+    failedTitle: pageLanguage === 'en' ? 'Unable to complete transaction' : 'Không thể hoàn tất giao dịch',
+    expiredDescription: pageLanguage === 'en' ? 'Your seat-holding session has timed out (5 minutes) or has been actively canceled. Please go back to make a new transaction.' : 'Phiên giữ ghế của bạn đã hết thời gian giới hạn (5 phút) hoặc đã bị chủ động hủy. Vui lòng quay lại để thực hiện giao dịch mới.',
+    e4001Description: pageLanguage === 'en' ? 'The selected seat is currently being paid for by someone else or has been successfully booked. Please return to the seating chart to select another seat.' : 'Ghế bạn chọn hiện tại đã có người khác đang thực hiện thanh toán hoặc đã được đặt thành công. Vui lòng quay lại sơ đồ để chọn ghế khác.',
+    unknownError: pageLanguage === 'en' ? 'An unknown error occurred. Please try again.' : 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.',
+    btnBackNew: pageLanguage === 'en' ? 'Go back to book new tickets' : 'Quay lại đặt vé mới',
+    btnBackSeats: pageLanguage === 'en' ? 'Go back to select seats' : 'Quay lại chọn ghế',
+    registrationClosedUpper: pageLanguage === 'en' ? 'REGISTRATION CLOSED' : 'ĐĂNG KÝ ĐÃ ĐÓNG',
+    eventEndedUpper: pageLanguage === 'en' ? 'EVENT ENDED' : 'SỰ KIỆN ĐÃ KẾT THÚC',
+    lockedBannerDesc: pageLanguage === 'en' ? 'This event has ended or registration has been closed. You can only view the seating chart and cannot make new ticket bookings.' : 'Sự kiện này đã kết thúc hoặc đóng cổng đăng ký vé. Bạn chỉ có thể xem sơ đồ ghế ngồi của sự kiện và không thể thực hiện các giao dịch đặt vé mới.',
+    errNameRequired: pageLanguage === 'en' ? 'Please enter your full name.' : 'Vui lòng nhập họ tên.',
+    errNameMismatch: pageLanguage === 'en' ? 'Full name must match the system account name.' : 'Họ tên phải khớp với tài khoản trên hệ thống.',
+    errEmailInvalid: pageLanguage === 'en' ? 'Please enter a valid email address.' : 'Vui lòng nhập email hợp lệ.',
+    errEmailMismatch: pageLanguage === 'en' ? 'Email must match the system account email.' : 'Email phải là email đang tồn tại trên tài khoản hệ thống.',
+    errPhoneInvalid: pageLanguage === 'en' ? 'Please enter a valid Vietnamese phone number.' : 'Vui lòng nhập số điện thoại Việt Nam hợp lệ.',
+    holdingSeats: pageLanguage === 'en' ? 'Holding {0} · Order #{1}' : 'Đang giữ {0} · Đơn #{1}',
+    free: pageLanguage === 'en' ? 'Free' : 'Miễn phí',
+    cancel: pageLanguage === 'en' ? 'Cancel' : 'Hủy',
+  }
   const [event, setEvent] = useState<EventDetailExtras | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -285,19 +344,19 @@ export default function PublicEventPayment() {
     const typedPhone = normalizePhone(attendeePhone)
 
     if (!normalizeText(attendeeName)) {
-      nextErrors.name = 'Vui lòng nhập họ tên.'
+      nextErrors.name = t.errNameRequired
     } else if (accountName && normalizeText(attendeeName) !== accountName) {
-      nextErrors.name = 'Họ tên phải khớp với tài khoản trên hệ thống.'
+      nextErrors.name = t.errNameMismatch
     }
 
     if (!typedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail)) {
-      nextErrors.email = 'Vui lòng nhập email hợp lệ.'
+      nextErrors.email = t.errEmailInvalid
     } else if (!accountEmail || typedEmail !== accountEmail) {
-      nextErrors.email = 'Email phải là email đang tồn tại trên tài khoản hệ thống.'
+      nextErrors.email = t.errEmailMismatch
     }
 
     if (!typedPhone || !isValidVietnamPhone(typedPhone)) {
-      nextErrors.phone = 'Vui lòng nhập số điện thoại Việt Nam hợp lệ.'
+      nextErrors.phone = t.errPhoneInvalid
     } else if (accountPhone && typedPhone !== accountPhone && !updatePhoneProfile) {
       nextErrors.phone = 'mismatch_update'
     }
@@ -339,7 +398,7 @@ export default function PublicEventPayment() {
           setBankTransferOrder(null)
           setCurrentStep(1)
           setSelectedSeats([])
-          setError('Giao dịch đã hết hạn hoặc bị hủy. Ghế đã được giải phóng.')
+          setError(pageLanguage === 'en' ? 'Transaction has expired or been canceled. Seats have been released.' : 'Giao dịch đã hết hạn hoặc bị hủy. Ghế đã được giải phóng.')
         }
       } catch (err) {
         console.error('Error checking payment status:', err)
@@ -456,12 +515,12 @@ export default function PublicEventPayment() {
       }
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || 'Không thể thanh toán bằng ví.')
+        throw new Error(data.message || data.error || (pageLanguage === 'en' ? 'Unable to pay using wallet.' : 'Không thể thanh toán bằng ví.'))
       }
 
       navigate(`/payment-success?status=success&method=wallet&ticketIds=${encodeURIComponent(data.ticketIds || '')}`, { replace: true })
     } catch (err: any) {
-      setError(err.message || 'Không thể thanh toán bằng ví.')
+      setError(err.message || (pageLanguage === 'en' ? 'Unable to pay using wallet.' : 'Không thể thanh toán bằng ví.'))
     } finally {
       setProcessingOrder(false)
     }
@@ -526,7 +585,9 @@ export default function PublicEventPayment() {
       await handleWalletPayment()
       return
     }
-    setConfirmationMessage(activeMethod === 'qr' ? 'Đã ghi nhận yêu cầu xác nhận chuyển khoản SePay.' : 'Đã ghi nhận yêu cầu thanh toán bằng Ví nội bộ FPT.')
+    setConfirmationMessage(activeMethod === 'qr' 
+      ? (pageLanguage === 'en' ? 'SePay transfer confirmation request recorded.' : 'Đã ghi nhận yêu cầu xác nhận chuyển khoản SePay.') 
+      : (pageLanguage === 'en' ? 'FPT internal wallet payment request recorded.' : 'Đã ghi nhận yêu cầu thanh toán bằng Ví nội bộ FPT.'))
   }
 
   if (authLoading || isRefreshing || loading) {
@@ -551,14 +612,14 @@ export default function PublicEventPayment() {
           </div>
           <div className="space-y-2">
             <h2 className="text-xl font-black tracking-wide text-white">
-              {isExpiredError ? 'Giao dịch hết hạn hoặc bị hủy' : 'Không thể hoàn tất giao dịch'}
+              {isExpiredError ? t.expiredTitle : t.failedTitle}
             </h2>
             <p className="text-sm text-neutral-400 leading-relaxed px-2">
               {isExpiredError
-                ? 'Phiên giữ ghế của bạn đã hết thời gian giới hạn (5 phút) hoặc đã bị chủ động hủy. Vui lòng quay lại để thực hiện giao dịch mới.'
+                ? t.expiredDescription
                 : error?.includes('[E4001]') 
-                  ? 'Ghế bạn chọn hiện tại đã có người khác đang thực hiện thanh toán hoặc đã được đặt thành công. Vui lòng quay lại sơ đồ để chọn ghế khác.'
-                  : error || 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.'}
+                  ? t.e4001Description
+                  : error || t.unknownError}
             </p>
             {!isExpiredError && error?.includes('[E4001]') && (
               <p className="text-xs font-mono text-neutral-500 bg-black/30 py-1.5 px-3 rounded-lg inline-block select-all">
@@ -570,7 +631,7 @@ export default function PublicEventPayment() {
             onClick={() => navigate(`/events/${id}/page`, { replace: true })}
             className="w-full bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] uppercase text-xs tracking-wider"
           >
-            {isExpiredError ? 'Quay lại đặt vé mới' : 'Quay lại chọn ghế'}
+            {isExpiredError ? t.btnBackNew : t.btnBackSeats}
           </button>
         </div>
       </div>
@@ -611,7 +672,7 @@ export default function PublicEventPayment() {
           className="inline-flex items-center gap-2 text-sm font-bold text-neutral-300 hover:text-white transition-colors mb-8"
         >
           <ArrowLeft className="w-4 h-4" />
-          Event details
+          {t.eventDetails}
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-10">
@@ -619,9 +680,9 @@ export default function PublicEventPayment() {
             {isLocked && (
               <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-200">
                 <p className="font-black text-base uppercase text-red-400 mb-1">
-                  {eventClosed ? 'ĐĂNG KÝ ĐÃ ĐÓNG' : 'SỰ KIỆN ĐÃ KẾT THÚC'}
+                  {eventClosed ? t.registrationClosedUpper : t.eventEndedUpper}
                 </p>
-                Sự kiện này đã kết thúc hoặc đóng cổng đăng ký vé. Bạn chỉ có thể xem sơ đồ ghế ngồi của sự kiện và không thể thực hiện các giao dịch đặt vé mới.
+                {t.lockedBannerDesc}
               </div>
             )}
             <section className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-5 sm:p-7">
@@ -696,12 +757,12 @@ export default function PublicEventPayment() {
                       </div>
                     )}
                     <div>
-                      <p className="text-xs text-neutral-400 font-medium">Organized by</p>
+                      <p className="text-xs text-neutral-400 font-medium">{t.organizedBy}</p>
                       <p className="text-sm font-semibold text-white">{organizerName}</p>
                     </div>
                   </div>
                   <div className="space-y-3 mt-5 text-sm text-neutral-300">
-                    <p className="flex items-center gap-2"><Calendar className="w-4 h-4 text-blue-400" /> {formatDateTime(event.startTime)}</p>
+                    <p className="flex items-center gap-2"><Calendar className="w-4 h-4 text-blue-400" /> {formatDateTime(event.startTime, pageLanguage)}</p>
                     <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-blue-400" /> {locationTitle}</p>
                   </div>
                 </div>
@@ -710,7 +771,7 @@ export default function PublicEventPayment() {
                   {currentStep === 1 && (
                     <>
                       <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                        <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">Ticket tiers</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">{t.ticketTiers}</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {(event.tickets as Ticket[] | undefined)?.map((ticket) => {
                             const selected = selectedSeats.some((seat) => seat.categoryTicketId === ticket.categoryTicketId)
@@ -728,10 +789,13 @@ export default function PublicEventPayment() {
                               >
                                 <p className="font-bold text-white">{ticket.name}</p>
                                 <p className="text-sm text-blue-200 font-black mt-1">
-                                  {ticket.price > 0 ? formatCurrency(ticket.price) : 'Free'}
+                                  {ticket.price > 0 ? formatCurrency(ticket.price) : t.free}
                                 </p>
                                 <p className="text-xs text-neutral-400 mt-1">
-                                  {ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} available
+                                  {pageLanguage === 'en' 
+                                    ? `${ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} available` 
+                                    : `Còn lại ${ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity}`
+                                  }
                                 </p>
                               </div>
                             )
@@ -740,7 +804,7 @@ export default function PublicEventPayment() {
                       </div>
 
                       <div className="rounded-2xl border border-white/10 bg-black/20 p-4 overflow-hidden">
-                        <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">Seat selection</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">{t.seatSelection}</p>
                         <SeatGrid
                           seats={allSeats}
                           selectedSeats={selectedSeats}
@@ -755,21 +819,21 @@ export default function PublicEventPayment() {
                   {currentStep === 2 && (
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-6 space-y-6">
                       <div>
-                        <p className="text-xs font-black uppercase tracking-widest text-neutral-400">Review order</p>
-                        <h2 className="text-2xl font-black mt-2">Attendee information</h2>
+                        <p className="text-xs font-black uppercase tracking-widest text-neutral-400">{t.reviewOrderTitle}</p>
+                        <h2 className="text-2xl font-black mt-2">{t.attendeeInformation}</h2>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <label className="block">
-                          <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">Full name</span>
-                          <input value={attendeeName} onChange={(event) => setAttendeeName(event.target.value)} placeholder="Nhập đúng họ tên tài khoản" className={`w-full rounded-xl border ${attendeeErrors.name ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500`} />
+                          <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">{t.fullName}</span>
+                          <input value={attendeeName} onChange={(event) => setAttendeeName(event.target.value)} placeholder={t.fullNamePlaceholder} className={`w-full rounded-xl border ${attendeeErrors.name ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500`} />
                           {attendeeErrors.name && <p className="mt-1.5 text-xs font-semibold text-red-400">{attendeeErrors.name}</p>}
                         </label>
                          <label className="block">
-                          <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">Phone</span>
+                          <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">{t.phone}</span>
                           <input 
                             value={attendeePhone} 
                             onChange={(event) => setAttendeePhone(event.target.value)} 
-                            placeholder={user?.phone ? "Nhập số điện thoại đã lưu" : "Nhập số điện thoại mới"} 
+                            placeholder={user?.phone ? t.phonePlaceholderSaved : t.phonePlaceholderNew} 
                             className={`w-full rounded-xl border ${attendeeErrors.phone ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500`} 
                           />
                           {attendeeErrors.phone && attendeeErrors.phone !== 'mismatch_update' && (
@@ -778,7 +842,7 @@ export default function PublicEventPayment() {
                           {attendeeErrors.phone === 'mismatch_update' && (
                             <div className="mt-1.5 space-y-2">
                               <p className="text-xs font-semibold text-red-400">
-                                Số điện thoại không khớp với số đã lưu ({user?.phone || 'chưa có'}).
+                                {t.phoneMismatch} {t.phoneMismatchHint.replace('{0}', user?.phone || (pageLanguage === 'en' ? 'none' : 'chưa có'))}
                               </p>
                               <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-400 hover:text-blue-300">
                                 <input 
@@ -787,24 +851,24 @@ export default function PublicEventPayment() {
                                   onChange={(e) => setUpdatePhoneProfile(e.target.checked)} 
                                   className="rounded border-white/10 bg-white/5 text-blue-600 focus:ring-blue-500" 
                                 />
-                                Cập nhật số điện thoại mới này vào tài khoản của tôi
+                                {t.updatePhoneCheckbox}
                               </label>
                             </div>
                           )}
                           {!user?.phone && !attendeeErrors.phone && (
                             <p className="mt-1.5 text-xs font-semibold text-amber-400">
-                              💡 Tài khoản chưa đăng ký số điện thoại. Số này sẽ được tự động lưu vào hồ sơ của bạn.
+                              {t.noPhoneSaved}
                             </p>
                           )}
                         </label>
                         <label className="block md:col-span-2">
-                          <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">Email</span>
-                          <input value={attendeeEmail} onChange={(event) => setAttendeeEmail(event.target.value)} placeholder="Nhập email tài khoản hệ thống" className={`w-full rounded-xl border ${attendeeErrors.email ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500`} />
+                          <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">{t.email}</span>
+                          <input value={attendeeEmail} onChange={(event) => setAttendeeEmail(event.target.value)} placeholder={t.emailPlaceholder} className={`w-full rounded-xl border ${attendeeErrors.email ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500`} />
                           {attendeeErrors.email && <p className="mt-1.5 text-xs font-semibold text-red-400">{attendeeErrors.email}</p>}
                         </label>
                       </div>
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <p className="text-xs font-black uppercase tracking-widest text-neutral-500 mb-3">Selected seats</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-neutral-500 mb-3">{t.selectedSeats}</p>
                         <div className="flex flex-wrap gap-2">
                           {selectedSeats.map((seat) => (
                             <span key={seat.seatId} className="rounded-full bg-blue-500/15 border border-blue-400/25 px-3 py-1 text-sm font-black text-blue-100">{seat.seatCode}</span>
@@ -817,9 +881,9 @@ export default function PublicEventPayment() {
                   {currentStep === 3 && (
                     <div className="bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-5 space-y-4 text-white shadow-[0_12px_40px_0_rgba(0,0,0,0.5)]">
                       <div>
-                        <p className="text-xs font-black uppercase tracking-widest text-blue-400">Payment</p>
-                        <h2 className="text-xl font-black mt-1">Thanh toán vé</h2>
-                        <p className="text-xs text-neutral-400 mt-0.5">SePay QR hoặc FPT Wallet</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-blue-400">{t.payment}</p>
+                        <h2 className="text-xl font-black mt-1">{t.paymentTitleLocalized}</h2>
+                        <p className="text-xs text-neutral-400 mt-0.5">{t.paymentSubtitle}</p>
                       </div>
 
                       {bankTransferOrder && (
@@ -827,7 +891,10 @@ export default function PublicEventPayment() {
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
                             <span className="text-neutral-200 truncate">
-                              Đang giữ {selectedSeats.map((seat) => seat.seatCode).join(', ')} · Đơn #{bankTransferOrder.order_id}
+                              {t.holdingSeats
+                                .replace('{0}', selectedSeats.map((seat) => seat.seatCode).join(', '))
+                                .replace('{1}', bankTransferOrder.order_id)
+                              }
                             </span>
                           </div>
                           <div className="flex items-center gap-3 flex-shrink-0">
@@ -838,7 +905,7 @@ export default function PublicEventPayment() {
                               disabled={processingOrder}
                               className="text-red-400 hover:text-red-300 font-bold underline disabled:opacity-50"
                             >
-                              Hủy
+                              {t.cancel}
                             </button>
                           </div>
                         </div>
@@ -875,23 +942,23 @@ export default function PublicEventPayment() {
                             />
                           </div>
                           <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-1.5 flex items-center gap-2 text-xs font-mono text-neutral-300">
-                            <span className="text-neutral-500">Cú pháp chuyển khoản:</span>
+                            <span className="text-neutral-500">{t.transferSyntax}</span>
                             <span className="font-bold text-white select-all">{transferMessage}</span>
                           </div>
                         </div>
                       ) : (
                         <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
                           <div className="flex items-center justify-between gap-4">
-                            <span className="text-xs font-bold text-neutral-400">Số dư hiện tại</span>
+                            <span className="text-xs font-bold text-neutral-400">{t.currentBalance}</span>
                             <span className="text-lg font-black text-white">{formatCurrency(walletBalance)}</span>
                           </div>
                           {walletCanPay ? (
                             <p className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-lg text-xs font-medium">
-                              Ví đủ số dư. Bạn có thể xác nhận thanh toán ngay.
+                              {t.walletSufficient}
                             </p>
                           ) : (
                             <p className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-medium">
-                              Số dư tài khoản không đủ
+                              {t.walletInsufficient}
                             </p>
                           )}
                         </div>
@@ -912,16 +979,16 @@ export default function PublicEventPayment() {
           <aside className="lg:sticky lg:top-6 h-fit rounded-3xl border border-white/10 bg-neutral-950/85 backdrop-blur-xl p-6 shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
             <div className="flex items-center gap-2 mb-5">
               <CreditCard className="w-5 h-5 text-blue-400" />
-              <h2 className="text-xl font-black">Order summary</h2>
+              <h2 className="text-xl font-black">{t.orderSummary}</h2>
             </div>
 
             <div className="space-y-3 text-sm">
               <div className="flex justify-between gap-4 text-neutral-300">
-                <span>Selected seats</span>
+                <span>{t.selectedSeats}</span>
                 <span className="font-bold text-white">{selectedSeats.length || 0}</span>
               </div>
               <div className="min-h-[44px] rounded-2xl bg-white/5 border border-white/10 p-3 text-neutral-300">
-                {selectedSeats.length > 0 ? selectedSeats.map((seat) => seat.seatCode).join(', ') : 'No seats selected'}
+                {selectedSeats.length > 0 ? selectedSeats.map((seat) => seat.seatCode).join(', ') : t.noSeatsSelected}
               </div>
 
               {ticketBreakdown.length > 0 && (
@@ -937,7 +1004,7 @@ export default function PublicEventPayment() {
 
               <div className="pt-4 border-t border-white/10 space-y-3">
                 <label className="block">
-                  <span className="text-xs font-black uppercase tracking-widest text-neutral-500">Discount code</span>
+                  <span className="text-xs font-black uppercase tracking-widest text-neutral-500">{t.discountCode}</span>
                   <input
                     value={promoCode}
                     onChange={(event) => setPromoCode(event.target.value)}
@@ -946,15 +1013,15 @@ export default function PublicEventPayment() {
                   />
                 </label>
                 <div className="flex justify-between gap-4 text-neutral-300">
-                  <span>Subtotal</span>
+                  <span>{t.subtotal}</span>
                   <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between gap-4 text-neutral-300">
-                  <span>Discount</span>
+                  <span>{t.discount}</span>
                   <span>-{formatCurrency(discountAmount)}</span>
                 </div>
                 <div className="flex justify-between gap-4 text-lg font-black text-white">
-                  <span>Total</span>
+                  <span>{t.total}</span>
                   <span>{formatCurrency(totalAmount)}</span>
                 </div>
               </div>
@@ -970,12 +1037,18 @@ export default function PublicEventPayment() {
                   : 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700'
               }`}
             >
-              {isLocked ? (eventClosed ? 'Đăng ký đã đóng' : 'Sự kiện đã kết thúc') : (currentStep === 1 ? 'Review order' : currentStep === 2 ? (totalAmount <= 0 ? 'Hoàn tất đăng ký' : 'Continue to payment') : 'Xác nhận thanh toán')}
+              {isLocked 
+                ? (eventClosed ? t.btnClosed : t.btnEnded) 
+                : (currentStep === 1 
+                  ? t.btnReviewOrder 
+                  : currentStep === 2 
+                    ? (totalAmount <= 0 ? t.btnCompleteRegistration : t.btnContinueToPayment) 
+                    : t.btnConfirmPayment)}
             </button>
 
             <div className="mt-4 flex items-start gap-2 text-xs text-neutral-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-              Ghế được giữ khi bước thanh toán tạo đơn thành công và tự giải phóng khi hết hạn hoặc hủy giao dịch.
+              {t.shieldText}
             </div>
           </aside>
         </div>
