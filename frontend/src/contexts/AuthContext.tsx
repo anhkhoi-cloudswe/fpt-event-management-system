@@ -94,7 +94,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [currentLanguage, setCurrentLanguage] = useState<'vi' | 'en'>(() => {
     const saved = localStorage.getItem('language') || localStorage.getItem('user_locale')
-    return saved?.toLowerCase().startsWith('en') ? 'en' : 'vi'
+    if (saved) {
+      return saved.toLowerCase().startsWith('en') ? 'en' : 'vi'
+    }
+    return 'en'
   })
 
   const changeLanguage = useCallback((lang: 'vi' | 'en') => {

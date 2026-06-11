@@ -83,23 +83,25 @@ export default function PublicEventPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user, currentLanguage } = useAuth()
-  const pageLanguage: 'vi' | 'en' = user ? currentLanguage : 'en'
+  const pageLanguage: 'vi' | 'en' = currentLanguage
   const t = {
-    loading: pageLanguage === 'en' ? 'Loading event page...' : 'Dang tai trang su kien...',
-    error: pageLanguage === 'en' ? 'Error' : 'Loi',
-    notFound: pageLanguage === 'en' ? 'Event not found' : 'Khong tim thay su kien',
-    back: pageLanguage === 'en' ? 'Back' : 'Quay lai',
-    organizedBy: pageLanguage === 'en' ? 'Organized by' : 'To chuc boi',
-    defaultLocation: pageLanguage === 'en' ? 'FPT location' : 'Dia diem FPT',
-    area: pageLanguage === 'en' ? 'Area' : 'Khu vuc',
-    floor: pageLanguage === 'en' ? 'Floor' : 'Tang',
-    registration: pageLanguage === 'en' ? 'Registration' : 'Dang ky tham gia',
-    capacity: pageLanguage === 'en' ? 'Capacity' : 'Suc chua',
-    seats: pageLanguage === 'en' ? 'seats' : 'cho',
-    about: pageLanguage === 'en' ? 'About Event' : 'Mo ta su kien',
-    noTicket: pageLanguage === 'en' ? 'No matching ticket type found' : 'Khong tim thay loai ve phu hop',
-    organizerFallback: pageLanguage === 'en' ? 'FPT Organizer' : 'FPT Organizer',
-    register: pageLanguage === 'en' ? 'Register Now' : 'Dang ky ngay',
+    loading: pageLanguage === 'en' ? 'Loading event page...' : 'Đang tải trang sự kiện...',
+    error: pageLanguage === 'en' ? 'Error' : 'Lỗi',
+    notFound: pageLanguage === 'en' ? 'Event not found' : 'Không tìm thấy sự kiện',
+    back: pageLanguage === 'en' ? 'Back' : 'Quay lại',
+    organizedBy: pageLanguage === 'en' ? 'Organized by' : 'Tổ chức bởi',
+    defaultLocation: pageLanguage === 'en' ? 'FPT location' : 'Địa điểm FPT',
+    area: pageLanguage === 'en' ? 'Area' : 'Khu vực',
+    floor: pageLanguage === 'en' ? 'Floor' : 'Tầng',
+    registration: pageLanguage === 'en' ? 'Registration' : 'Đăng ký tham gia',
+    capacity: pageLanguage === 'en' ? 'Capacity' : 'Sức chứa',
+    seats: pageLanguage === 'en' ? 'seats' : 'chỗ',
+    about: pageLanguage === 'en' ? 'About Event' : 'Mô tả sự kiện',
+    noTicket: pageLanguage === 'en' ? 'No matching ticket type found' : 'Không tìm thấy loại vé phù hợp',
+    organizerFallback: pageLanguage === 'en' ? 'FPT Organizer' : 'Ban tổ chức FPT',
+    register: pageLanguage === 'en' ? 'Register Now' : 'Đăng ký ngay',
+    ended: pageLanguage === 'en' ? 'Event Ended' : 'Sự kiện đã kết thúc',
+    closed: pageLanguage === 'en' ? 'Registration Closed' : 'Đăng ký đã đóng',
   }
 
   const [event, setEvent] = useState<EventDetailExtras | null>(null)
@@ -363,7 +365,7 @@ export default function PublicEventPage() {
                   disabled
                   className="w-full bg-neutral-800 text-neutral-500 font-bold py-4 rounded-xl mt-6 text-lg uppercase tracking-wide cursor-not-allowed border border-neutral-700"
                 >
-                  {pageLanguage === 'en' ? 'Closed' : 'Da dong dang ky'}
+                  {eventEnded ? t.ended : t.closed}
                 </button>
               ) : (
                 <button

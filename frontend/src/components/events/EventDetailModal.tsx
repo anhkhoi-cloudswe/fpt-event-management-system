@@ -107,28 +107,30 @@ export function EventDetailModal({
 
   const lang: 'vi' | 'en' = currentLanguage === 'en' ? 'en' : 'vi'
   const text = {
-    loading: lang === 'en' ? 'Loading event details...' : 'Dang tai chi tiet...',
-    error: lang === 'en' ? 'Error' : 'Loi',
-    copied: lang === 'en' ? 'Copied' : 'Da copy',
-    copyLink: lang === 'en' ? 'Copy Link' : 'Copy Link',
-    eventPage: lang === 'en' ? 'Event Page' : 'Trang su kien',
-    fullSize: lang === 'en' ? 'View full size' : 'Xem anh lon',
-    area: lang === 'en' ? 'Area' : 'Khu vuc',
-    floor: lang === 'en' ? 'Floor' : 'Tang',
-    capacity: lang === 'en' ? 'Capacity' : 'Suc chua',
-    seats: lang === 'en' ? 'seats' : 'cho',
-    registered: lang === 'en' ? 'Registered' : 'Da dang ky',
-    people: lang === 'en' ? 'people' : 'nguoi',
-    hostedBy: lang === 'en' ? 'Hosted By' : 'To chuc boi',
-    speakers: lang === 'en' ? 'Speakers' : 'Dien gia',
-    about: lang === 'en' ? 'About the Event' : 'Mo ta su kien',
-    location: lang === 'en' ? 'Location' : 'Dia diem',
-    free: lang === 'en' ? 'Free' : 'Mien phi',
-    register: lang === 'en' ? 'Register Now' : 'Dang ky ngay',
-    tickets: lang === 'en' ? 'Tickets' : 'Hang ve',
-    updateInfo: lang === 'en' ? 'Update info' : 'Cap nhat thong tin',
-    organizerFallback: lang === 'en' ? 'FPT Organizer' : 'FPT Organizer',
-    detailMap: lang === 'en' ? 'event banner' : 'anh su kien',
+    loading: lang === 'en' ? 'Loading event details...' : 'Đang tải chi tiết...',
+    error: lang === 'en' ? 'Error' : 'Lỗi',
+    copied: lang === 'en' ? 'Copied' : 'Đã sao chép',
+    copyLink: lang === 'en' ? 'Copy Link' : 'Sao chép liên kết',
+    eventPage: lang === 'en' ? 'Event Page' : 'Trang sự kiện',
+    fullSize: lang === 'en' ? 'View full size' : 'Xem ảnh lớn',
+    area: lang === 'en' ? 'Area' : 'Khu vực',
+    floor: lang === 'en' ? 'Floor' : 'Tầng',
+    capacity: lang === 'en' ? 'Capacity' : 'Sức chứa',
+    seats: lang === 'en' ? 'seats' : 'chỗ',
+    registered: lang === 'en' ? 'Registered' : 'Đã đăng ký',
+    people: lang === 'en' ? 'people' : 'người',
+    hostedBy: lang === 'en' ? 'Hosted By' : 'Tổ chức bởi',
+    speakers: lang === 'en' ? 'Speakers' : 'Diễn giả',
+    about: lang === 'en' ? 'About the Event' : 'Mô tả sự kiện',
+    location: lang === 'en' ? 'Location' : 'Địa điểm',
+    free: lang === 'en' ? 'Free' : 'Miễn phí',
+    register: lang === 'en' ? 'Register Now' : 'Đăng ký ngay',
+    tickets: lang === 'en' ? 'Tickets' : 'Hạng vé',
+    updateInfo: lang === 'en' ? 'Update info' : 'Cập nhật thông tin',
+    organizerFallback: lang === 'en' ? 'FPT Organizer' : 'Ban tổ chức FPT',
+    detailMap: lang === 'en' ? 'event banner' : 'ảnh sự kiện',
+    ended: lang === 'en' ? 'Event Ended' : 'Sự kiện đã kết thúc',
+    closed: lang === 'en' ? 'Registration Closed' : 'Đăng ký đã đóng',
   }
 
   useEffect(() => {
@@ -141,6 +143,8 @@ export function EventDetailModal({
   if (!isOpen) return null
 
   const detail = event as EventDetailExtras | null
+  const eventClosed = detail?.status !== 'OPEN'
+  const eventEnded = detail ? new Date(detail.endTime).getTime() < Date.now() : false
   const eventId = detail?.eventId || detail?.id || 0
   const eventPagePath = `/events/${eventId}/page`
   const eventPaymentPath = `/events/${eventId}/payment`
@@ -331,13 +335,23 @@ export function EventDetailModal({
                         </div>
                     ))}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => closeThenNavigate(eventPaymentPath)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-6 transition-all uppercase tracking-wide"
-                  >
-                    {text.register}
-                  </button>
+                  {eventClosed || eventEnded ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full bg-slate-200 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 border border-slate-300 dark:border-neutral-700 font-bold py-3.5 rounded-xl mt-6 transition-all uppercase tracking-wide cursor-not-allowed"
+                    >
+                      {eventEnded ? text.ended : text.closed}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => closeThenNavigate(eventPaymentPath)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-6 transition-all uppercase tracking-wide"
+                    >
+                      {text.register}
+                    </button>
+                  )}
                 </section>
               )}
 

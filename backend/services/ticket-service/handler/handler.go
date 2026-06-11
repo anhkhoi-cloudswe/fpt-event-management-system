@@ -815,6 +815,7 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 		"expire_at":  expireTime.Format(time.RFC3339),
 		"expiresAt":  expireTime.Format(time.RFC3339),
 		"createdAt":  createdAt.Format(time.RFC3339),
+		"serverTime": time.Now().Format(time.RFC3339),
 		"free":       amount == 0,
 		"ticketIds":  ticketIDsStr,
 		"successUrl": fmt.Sprintf("/dashboard/payment/success?status=success&method=free&ticketIds=%s", url.QueryEscape(ticketIDsStr)),

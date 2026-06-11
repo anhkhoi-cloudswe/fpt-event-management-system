@@ -170,9 +170,12 @@ export default function Payment() {
     }
 
     const expireTime = new Date((bankTransferOrder as any).expiresAt || (bankTransferOrder as any).expire_at).getTime()
+    const serverNow = new Date((bankTransferOrder as any).createdAt || (bankTransferOrder as any).serverTime || Date.now()).getTime()
+    const clockOffset = serverNow - Date.now()
 
     const calculateTimeLeft = () => {
-      const difference = expireTime - Date.now()
+      const correctedNow = Date.now() + clockOffset
+      const difference = expireTime - correctedNow
       return Math.max(0, Math.floor(difference / 1000))
     }
 

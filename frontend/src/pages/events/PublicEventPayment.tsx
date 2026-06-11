@@ -200,16 +200,15 @@ export default function PublicEventPayment() {
 
   useEffect(() => {
     if (!bankTransferOrder) return
-    const expiresAt = new Date(bankTransferOrder.expiresAt || bankTransferOrder.expire_at).getTime()
-    const createdAt = new Date(bankTransferOrder.createdAt || Date.now()).getTime()
-    const totalDuration = Math.max(0, expiresAt - createdAt)
-    const clientStartTime = Date.now()
+    const serverExpires = new Date(bankTransferOrder.expiresAt || bankTransferOrder.expire_at).getTime()
+    const serverNow = new Date(bankTransferOrder.createdAt || bankTransferOrder.serverTime || Date.now()).getTime()
+    const clockOffset = serverNow - Date.now()
 
-    if (Number.isNaN(expiresAt)) return
+    if (Number.isNaN(serverExpires)) return
 
     const tick = () => {
-      const elapsed = Date.now() - clientStartTime
-      const remaining = Math.max(0, Math.floor((totalDuration - elapsed) / 1000))
+      const correctedNow = Date.now() + clockOffset
+      const remaining = Math.max(0, Math.floor((serverExpires - correctedNow) / 1000))
       setTimeLeft(remaining)
       if (remaining <= 0) {
         setBankTransferOrder(null)
