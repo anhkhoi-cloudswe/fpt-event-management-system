@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Calendar, CreditCard, MapPin, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { SeatGrid, type Seat } from '../../components/common/SeatGrid'
@@ -97,10 +97,18 @@ const formatDateTime = (value?: string) => {
   })
 }
 
+const formatCurrency = (value: number) => `${value.toLocaleString('vi-VN')} đ`
+
+const resolveWalletBalance = (user: ReturnType<typeof useAuth>['user']) => {
+  if (!user) return 0
+  if (typeof user.wallet === 'number') return user.wallet
+  if (typeof user.wallet?.balance === 'number') return user.wallet.balance
+  return user.balance ?? user.wallet_balance ?? 0
+}
+
 export default function PublicEventPayment() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const location = useLocation()
   const { user, token, isAuthenticated, loading: authLoading, isRefreshing } = useAuth()
   const [event, setEvent] = useState<EventDetailExtras | null>(null)
   const [loading, setLoading] = useState(true)
@@ -113,9 +121,8 @@ export default function PublicEventPayment() {
   const [attendeeName, setAttendeeName] = useState(user?.fullName || '')
   const [attendeeEmail, setAttendeeEmail] = useState(user?.email || '')
   const [attendeePhone, setAttendeePhone] = useState(user?.phone || '')
-  const [paymentMethod, setPaymentMethod] = useState<'vnpay' | 'wallet'>('vnpay')
+  const [activeMethod, setActiveMethod] = useState<'qr' | 'wallet'>('qr')
   const [confirmationMessage, setConfirmationMessage] = useState('')
-  const routeState = (location.state || {}) as { ticketQuantities?: Record<number, number> }
 
   const hasActiveSession = Boolean(isAuthenticated || user || token || localStorage.getItem('token'))
 
@@ -144,8 +151,7 @@ export default function PublicEventPayment() {
           headers: { 'Content-Type': 'application/json' },
         })
         if (!res.ok) throw new Error('Failed to fetch event details')
-        const data = await res.json()
-        setEvent(data)
+        setEvent(await res.json())
       } catch (err: any) {
         setError(err.message || 'Unable to load event details')
       } finally {
@@ -197,18 +203,8 @@ export default function PublicEventPayment() {
   const discountRate = normalizedPromo === 'FPT20' ? 0.2 : normalizedPromo === 'SAVE10' ? 0.1 : 0
   const discountAmount = Math.round(subtotal * discountRate)
   const totalAmount = Math.max(0, subtotal - discountAmount)
-
-  const requestedQuantities = useMemo(() => {
-    const quantities = routeState.ticketQuantities ?? {}
-    if (!event?.tickets) return []
-    return (event.tickets as Ticket[])
-      .map((ticket) => ({
-        id: ticket.categoryTicketId,
-        name: ticket.name,
-        quantity: quantities[ticket.categoryTicketId] ?? 0,
-      }))
-      .filter((ticket) => ticket.quantity > 0)
-  }, [event, routeState.ticketQuantities])
+  const walletBalance = resolveWalletBalance(user)
+  const walletCanPay = walletBalance >= totalAmount
 
   const ticketBreakdown = useMemo(() => {
     const map = new Map<number, { name: string; count: number; price: number }>()
@@ -228,8 +224,7 @@ export default function PublicEventPayment() {
   const handleContinueToPayment = () => {
     if (!event || selectedSeats.length === 0) return
     const firstSeatTicket = ticketForSeat(selectedSeats[0])
-    const ticketToUse = firstSeatTicket || selectedTicket
-    if (!ticketToUse) return
+    if (!firstSeatTicket && !selectedTicket) return
 
     if (currentStep === 1) {
       setCurrentStep(2)
@@ -241,11 +236,8 @@ export default function PublicEventPayment() {
       return
     }
 
-    setConfirmationMessage(
-      paymentMethod === 'vnpay'
-        ? 'VNPAY transaction is ready for secure processing.'
-        : 'Internal wallet payment is ready for confirmation.',
-    )
+    if (activeMethod === 'wallet' && !walletCanPay) return
+    setConfirmationMessage(activeMethod === 'qr' ? 'Đã ghi nhận yêu cầu xác nhận chuyển khoản SePay.' : 'Đã ghi nhận yêu cầu thanh toán bằng Ví nội bộ FPT.')
   }
 
   if (authLoading || isRefreshing || loading) {
@@ -276,6 +268,13 @@ export default function PublicEventPayment() {
     event.organizer_avatar_url ||
     ''
   const organizerName = event.organizerName || 'FPT Organizer'
+  const eventKey = event.eventId || event.id || id || 'event'
+  const userId = user?.id || 'guest'
+  const transferMessage = `${eventKey}_${userId}`
+  const bankName = 'FPT Event SePay'
+  const bankId = 'YOUR_BANK_ID'
+  const accountNumber = 'YOUR_ACCOUNT'
+  const vietQrSrc = `https://img.vietqr.io/image/${bankId}-${accountNumber}-compact2.png?amount=${totalAmount}&addIn=true&text=${encodeURIComponent(transferMessage)}`
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white selection:bg-blue-500/30">
@@ -343,59 +342,72 @@ export default function PublicEventPayment() {
                 </div>
 
                 <div className="space-y-5">
-                  {currentStep >= 1 && (
+                  {currentStep === 1 && (
                     <>
-                  <div className={`${currentStep === 1 ? '' : 'hidden'} rounded-2xl border border-white/10 bg-black/20 p-4`}>
-                    <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">Ticket tiers</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {(event.tickets as Ticket[] | undefined)?.map((ticket) => {
-                        const selected = selectedTicket?.categoryTicketId === ticket.categoryTicketId
-                        const soldOut = ticket.remaining === 0 || ticket.status === 'INACTIVE'
-                        return (
-                          <button
-                            type="button"
-                            key={ticket.categoryTicketId}
-                            disabled={soldOut}
-                            onClick={() => setSelectedTicket(ticket)}
-                            className={`text-left rounded-2xl border p-4 transition-all ${
-                              soldOut
-                                ? 'border-white/5 bg-white/5 opacity-50 cursor-not-allowed'
-                                : selected
-                                  ? 'border-blue-500 bg-blue-500/15'
-                                  : 'border-white/10 bg-white/5 hover:bg-white/10'
-                            }`}
-                          >
-                            <p className="font-bold text-white">{ticket.name}</p>
-                            <p className="text-sm text-blue-200 font-black mt-1">
-                              {ticket.price > 0 ? `${ticket.price.toLocaleString('vi-VN')} đ` : 'Free'}
-                            </p>
-                            <p className="text-xs text-neutral-400 mt-1">
-                              {ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} available
-                            </p>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+                      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">Ticket tiers</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {(event.tickets as Ticket[] | undefined)?.map((ticket) => {
+                            const selected = selectedTicket?.categoryTicketId === ticket.categoryTicketId
+                            const soldOut = ticket.remaining === 0 || ticket.status === 'INACTIVE'
+                            return (
+                              <button
+                                type="button"
+                                key={ticket.categoryTicketId}
+                                disabled={soldOut}
+                                onClick={() => setSelectedTicket(ticket)}
+                                className={`text-left rounded-2xl border p-4 transition-all ${
+                                  soldOut
+                                    ? 'border-white/5 bg-white/5 opacity-50 cursor-not-allowed'
+                                    : selected
+                                      ? 'border-blue-500 bg-blue-500/15'
+                                      : 'border-white/10 bg-white/5 hover:bg-white/10'
+                                }`}
+                              >
+                                <p className="font-bold text-white">{ticket.name}</p>
+                                <p className="text-sm text-blue-200 font-black mt-1">
+                                  {ticket.price > 0 ? formatCurrency(ticket.price) : 'Free'}
+                                </p>
+                                <p className="text-xs text-neutral-400 mt-1">
+                                  {ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} available
+                                </p>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-black/20 p-4 overflow-hidden">
+                        <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">Seat selection</p>
+                        <SeatGrid
+                          seats={allSeats}
+                          selectedSeats={selectedSeats}
+                          onSeatSelect={handleSeatSelect}
+                          maxReached={selectedSeats.length >= 4}
+                          allowSelect
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {currentStep === 2 && (
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-5">
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-6 space-y-6">
                       <div>
                         <p className="text-xs font-black uppercase tracking-widest text-neutral-400">Review order</p>
                         <h2 className="text-2xl font-black mt-2">Attendee information</h2>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <label className="block">
-                          <span className="text-xs font-black uppercase tracking-widest text-neutral-500">Full name</span>
-                          <input value={attendeeName} onChange={(event) => setAttendeeName(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white outline-none focus:border-blue-500" />
+                          <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">Full name</span>
+                          <input value={attendeeName} onChange={(event) => setAttendeeName(event.target.value)} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500" />
                         </label>
                         <label className="block">
-                          <span className="text-xs font-black uppercase tracking-widest text-neutral-500">Phone</span>
-                          <input value={attendeePhone} onChange={(event) => setAttendeePhone(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white outline-none focus:border-blue-500" />
+                          <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">Phone</span>
+                          <input value={attendeePhone} onChange={(event) => setAttendeePhone(event.target.value)} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500" />
                         </label>
                         <label className="block md:col-span-2">
-                          <span className="text-xs font-black uppercase tracking-widest text-neutral-500">Email</span>
-                          <input value={attendeeEmail} onChange={(event) => setAttendeeEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white outline-none focus:border-blue-500" />
+                          <span className="text-xs font-bold tracking-wider text-neutral-400 uppercase mb-2 block">Email</span>
+                          <input value={attendeeEmail} onChange={(event) => setAttendeeEmail(event.target.value)} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500" />
                         </label>
                       </div>
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -411,49 +423,77 @@ export default function PublicEventPayment() {
 
                   {currentStep === 3 && (
                     <div className="rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl p-5">
-                      <div className="mx-auto max-w-xl rounded-3xl bg-white text-slate-950 p-6 sm:p-8 shadow-2xl">
+                      <div className="mx-auto max-w-2xl rounded-3xl bg-white text-slate-950 p-6 sm:p-8 shadow-2xl">
                         <p className="text-xs font-black uppercase tracking-widest text-blue-600">Payment</p>
                         <h2 className="text-2xl font-black mt-2">Thanh toán vé</h2>
-                        <p className="text-sm text-slate-500 mt-2">Choose VNPAY or internal wallet to complete this order without leaving the checkout portal.</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
-                          {[
-                            { id: 'vnpay' as const, label: 'VNPAY', detail: 'ATM, QR, bank card' },
-                            { id: 'wallet' as const, label: 'Ví nội bộ', detail: 'Use wallet balance' },
-                          ].map((method) => (
-                            <button
-                              type="button"
-                              key={method.id}
-                              onClick={() => setPaymentMethod(method.id)}
-                              className={`text-left rounded-2xl border p-4 transition-all ${
-                                paymentMethod === method.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'
-                              }`}
-                            >
-                              <p className="font-black">{method.label}</p>
-                              <p className="text-xs text-slate-500 mt-1">{method.detail}</p>
-                            </button>
-                          ))}
+                        <p className="text-sm text-slate-500 mt-2">Chọn chuyển khoản VietQR qua SePay hoặc thanh toán bằng Ví nội bộ FPT.</p>
+                        <div className="mt-6 grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-100 p-1">
+                          <button
+                            type="button"
+                            onClick={() => setActiveMethod('qr')}
+                            className={`rounded-xl px-3 py-3 text-xs sm:text-sm font-black transition-all ${activeMethod === 'qr' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                          >
+                            Chuyển khoản VietQR (SePay)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveMethod('wallet')}
+                            className={`rounded-xl px-3 py-3 text-xs sm:text-sm font-black transition-all ${activeMethod === 'wallet' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                          >
+                            Ví nội bộ (FPT Wallet)
+                          </button>
                         </div>
+
+                        {activeMethod === 'qr' ? (
+                          <div className="mt-6 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-5 rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                            <div className="rounded-2xl bg-white border border-slate-200 p-3 flex items-center justify-center">
+                              <img src={vietQrSrc} alt="SePay VietQR transfer code" className="w-full max-w-[190px] rounded-xl" />
+                            </div>
+                            <div className="space-y-3 text-sm">
+                              <div className="rounded-xl bg-white border border-slate-200 p-3">
+                                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Bank Name</p>
+                                <p className="font-black mt-1">{bankName}</p>
+                              </div>
+                              <div className="rounded-xl bg-white border border-slate-200 p-3">
+                                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Account Number</p>
+                                <p className="font-black mt-1">{accountNumber}</p>
+                              </div>
+                              <div className="rounded-xl bg-white border border-slate-200 p-3">
+                                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Exact Amount</p>
+                                <p className="font-black mt-1 text-blue-700">{formatCurrency(totalAmount)}</p>
+                              </div>
+                              <div className="rounded-xl bg-blue-50 border border-blue-100 p-3">
+                                <p className="text-xs font-bold uppercase tracking-wider text-blue-500">Transfer Message Syntax</p>
+                                <p className="font-black mt-1 text-blue-800">{transferMessage}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-6 rounded-2xl bg-slate-50 border border-slate-200 p-5 space-y-4">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-sm font-bold text-slate-500">Số dư hiện tại</span>
+                              <span className="text-xl font-black text-slate-950">{formatCurrency(walletBalance)}</span>
+                            </div>
+                            {walletCanPay ? (
+                              <p className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm font-semibold text-emerald-700">
+                                Ví đủ số dư. Bạn có thể xác nhận thanh toán ngay.
+                              </p>
+                            ) : (
+                              <p className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm font-semibold text-red-700">
+                                Số dư tài khoản không đủ
+                              </p>
+                            )}
+                          </div>
+                        )}
+
                         <div className="mt-6 rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-2 text-sm">
                           <div className="flex justify-between"><span>Tickets</span><span className="font-bold">{selectedSeats.length}</span></div>
-                          <div className="flex justify-between"><span>Discount</span><span className="font-bold">-{discountAmount.toLocaleString('vi-VN')} Ä‘</span></div>
-                          <div className="flex justify-between text-lg font-black pt-2 border-t border-slate-200"><span>Total</span><span>{totalAmount.toLocaleString('vi-VN')} Ä‘</span></div>
+                          <div className="flex justify-between"><span>Discount</span><span className="font-bold">-{formatCurrency(discountAmount)}</span></div>
+                          <div className="flex justify-between text-lg font-black pt-2 border-t border-slate-200"><span>Total</span><span>{formatCurrency(totalAmount)}</span></div>
                         </div>
                         {confirmationMessage && <p className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm font-semibold text-emerald-700">{confirmationMessage}</p>}
                       </div>
                     </div>
-                  )}
-
-                  <div className={`${currentStep === 1 ? '' : 'hidden'} rounded-2xl border border-white/10 bg-black/20 p-4 overflow-hidden`}>
-                    <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">Seat selection</p>
-                    <SeatGrid
-                      seats={allSeats}
-                      selectedSeats={selectedSeats}
-                      onSeatSelect={handleSeatSelect}
-                      maxReached={selectedSeats.length >= 4}
-                      allowSelect
-                    />
-                  </div>
-                    </>
                   )}
                 </div>
               </div>
@@ -475,24 +515,12 @@ export default function PublicEventPayment() {
                 {selectedSeats.length > 0 ? selectedSeats.map((seat) => seat.seatCode).join(', ') : 'No seats selected'}
               </div>
 
-              {requestedQuantities.length > 0 && (
-                <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-2">
-                  <p className="text-xs font-black uppercase tracking-widest text-neutral-500">Requested quantities</p>
-                  {requestedQuantities.map((ticket) => (
-                    <div key={ticket.id} className="flex justify-between gap-4 text-neutral-300">
-                      <span>{ticket.name}</span>
-                      <span className="font-bold text-white">x {ticket.quantity}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {ticketBreakdown.length > 0 && (
                 <div className="space-y-2 pt-2">
                   {ticketBreakdown.map((item) => (
                     <div key={item.name} className="flex justify-between gap-4 text-neutral-300">
                       <span>{item.name} x {item.count}</span>
-                      <span className="font-bold text-white">{(item.price * item.count).toLocaleString('vi-VN')} đ</span>
+                      <span className="font-bold text-white">{formatCurrency(item.price * item.count)}</span>
                     </div>
                   ))}
                 </div>
@@ -510,15 +538,15 @@ export default function PublicEventPayment() {
                 </label>
                 <div className="flex justify-between gap-4 text-neutral-300">
                   <span>Subtotal</span>
-                  <span>{subtotal.toLocaleString('vi-VN')} đ</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between gap-4 text-neutral-300">
                   <span>Discount</span>
-                  <span>-{discountAmount.toLocaleString('vi-VN')} đ</span>
+                  <span>-{formatCurrency(discountAmount)}</span>
                 </div>
                 <div className="flex justify-between gap-4 text-lg font-black text-white">
                   <span>Total</span>
-                  <span>{totalAmount.toLocaleString('vi-VN')} đ</span>
+                  <span>{formatCurrency(totalAmount)}</span>
                 </div>
               </div>
             </div>
@@ -526,14 +554,14 @@ export default function PublicEventPayment() {
             <button
               type="button"
               onClick={handleContinueToPayment}
-              disabled={selectedSeats.length === 0}
+              disabled={selectedSeats.length === 0 || (currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)}
               className={`mt-6 w-full rounded-xl py-4 text-sm font-black uppercase tracking-wide transition-all ${
-                selectedSeats.length > 0
+                selectedSeats.length > 0 && !(currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)
                   ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]'
                   : 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700'
               }`}
             >
-              {currentStep === 1 ? 'Review order' : currentStep === 2 ? 'Continue to payment' : paymentMethod === 'vnpay' ? 'Thanh toán vé via VNPAY' : 'Pay with internal wallet'}
+              {currentStep === 1 ? 'Review order' : currentStep === 2 ? 'Continue to payment' : 'Xác nhận thanh toán'}
             </button>
 
             <div className="mt-4 flex items-start gap-2 text-xs text-neutral-400">
