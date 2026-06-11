@@ -15,6 +15,40 @@ interface EventDetailModalProps {
   onEdit?: () => void
 }
 
+type SpeakerLike = {
+  name?: string | null
+  speakerName?: string | null
+  fullName?: string | null
+  avatar?: string | null
+  avatarUrl?: string | null
+  speakerAvatarUrl?: string | null
+}
+
+type EventDetailExtras = EventDetail & {
+  id?: number
+  organizer_id?: number
+  organizerAvatar?: string | null
+  organizerAvatarUrl?: string | null
+  organizer_avatar?: string | null
+  organizer_avatar_url?: string | null
+  speakers?: SpeakerLike[] | null
+  venueLocation?: string | null
+  area_name?: string | null
+  venue?: {
+    location?: string | null
+    venueName?: string | null
+  } | null
+  venueArea?: {
+    areaName?: string | null
+    area_name?: string | null
+    floor?: string | null
+    venue?: {
+      location?: string | null
+      venueName?: string | null
+    } | null
+  } | null
+}
+
 const formatDate = (value: string | undefined, lang: 'vi' | 'en') => {
   if (!value) return ''
   const date = new Date(value)
@@ -42,6 +76,20 @@ const formatTimeRange = (start: string | undefined, end: string | undefined, lan
 
   return `${startDate.toLocaleTimeString(lang === 'en' ? 'en-US' : 'vi-VN', options)} - ${endDate.toLocaleTimeString(lang === 'en' ? 'en-US' : 'vi-VN', options)}`
 }
+
+const getSpeakerName = (speaker: SpeakerLike) => (
+  speaker.name ||
+  speaker.speakerName ||
+  speaker.fullName ||
+  ''
+).trim()
+
+const getSpeakerAvatar = (speaker: SpeakerLike) => (
+  speaker.avatar ||
+  speaker.avatarUrl ||
+  speaker.speakerAvatarUrl ||
+  ''
+).trim()
 
 export function EventDetailModal({
   isOpen,
@@ -72,8 +120,9 @@ export function EventDetailModal({
     registered: lang === 'en' ? 'Registered' : 'Da dang ky',
     people: lang === 'en' ? 'people' : 'nguoi',
     hostedBy: lang === 'en' ? 'Hosted By' : 'To chuc boi',
-    about: lang === 'en' ? 'About Event' : 'Mo ta su kien',
-    map: lang === 'en' ? 'Location' : 'Dia diem',
+    speakers: lang === 'en' ? 'Speakers' : 'Dien gia',
+    about: lang === 'en' ? 'About the Event' : 'Mo ta su kien',
+    location: lang === 'en' ? 'Location' : 'Dia diem',
     from: lang === 'en' ? 'From' : 'Tu',
     free: lang === 'en' ? 'Free' : 'Mien phi',
     register: lang === 'en' ? 'Get Tickets / Register Now' : 'Lay ve / Dang ky ngay',
@@ -91,19 +140,41 @@ export function EventDetailModal({
 
   if (!isOpen) return null
 
-  const eventId = event?.eventId || (event as any)?.id || 0
+  const detail = event as EventDetailExtras | null
+  const eventId = detail?.eventId || detail?.id || 0
   const eventPagePath = `/dashboard/events/${eventId}/page`
-  const organizerId = event?.organizerId ?? (event as any)?.organizer_id
-  const hostName = event?.organizerName || (organizerId ? `${text.organizerFallback} #${organizerId}` : text.organizerFallback)
-  const hostInitial = hostName.trim().charAt(0).toUpperCase() || 'F'
-  const locationDetail = [
-    event?.areaName ? `${text.area}: ${event.areaName}` : '',
-    event?.floor ? `${text.floor} ${event.floor}` : '',
-  ].filter(Boolean).join(' · ')
-  const mapQuery = encodeURIComponent(event?.location || event?.venueName || locationDetail || '')
-  const mapSrc = `https://www.google.com/maps?q=${mapQuery}&output=embed`
-  const lowestTicketPrice = event?.tickets?.length
-    ? Math.min(...event.tickets.map((ticket) => Number(ticket.price) || 0))
+  const organizerId = detail?.organizerId ?? detail?.organizer_id
+  const organizerName = detail?.organizerName || (organizerId ? `${text.organizerFallback} #${organizerId}` : text.organizerFallback)
+  const organizerAvatar =
+    detail?.organizerAvatar ||
+    detail?.organizerAvatarUrl ||
+    detail?.organizer_avatar ||
+    detail?.organizer_avatar_url ||
+    ''
+  const organizerInitial = organizerName.trim().charAt(0).toUpperCase() || 'F'
+  const areaName = detail?.areaName || detail?.area_name || detail?.venueArea?.areaName || detail?.venueArea?.area_name || ''
+  const floor = detail?.floor || detail?.venueArea?.floor || ''
+  const venueName = detail?.venueName || detail?.venue?.venueName || detail?.venueArea?.venue?.venueName || ''
+  const exactLocationString =
+    detail?.location ||
+    detail?.venueLocation ||
+    detail?.venue?.location ||
+    detail?.venueArea?.venue?.location ||
+    ''
+  const locationRows = [
+    venueName,
+    areaName ? `${text.area}: ${areaName}` : '',
+    floor ? `${text.floor} ${floor}` : '',
+    exactLocationString,
+  ].filter(Boolean)
+  const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(exactLocationString)}&output=embed`
+  const speakers = (detail?.speakers ?? []).filter((speaker) => getSpeakerName(speaker))
+  const fallbackSpeaker = detail?.speakerName
+    ? [{ name: detail.speakerName, avatarUrl: detail.speakerAvatarUrl || '' }]
+    : []
+  const speakersToDisplay = speakers.length > 0 ? speakers : fallbackSpeaker
+  const lowestTicketPrice = detail?.tickets?.length
+    ? Math.min(...detail.tickets.map((ticket) => Number(ticket.price) || 0))
     : 0
 
   const handleClose = () => {
@@ -116,7 +187,7 @@ export function EventDetailModal({
   }
 
   const handleCopyLink = () => {
-    if (!event) return
+    if (!detail) return
     navigator.clipboard.writeText(`${window.location.origin}${eventPagePath}`)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -125,16 +196,16 @@ export function EventDetailModal({
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end">
       <div
-        className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm transition-opacity duration-300"
+        className="fixed inset-0 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300"
         onClick={handleClose}
       />
 
-      <div className="relative w-full max-w-lg bg-neutral-950 text-white shadow-2xl flex flex-col h-full z-10 animate-slide-in-right border-l border-white/10">
-        <div className="sticky top-0 bg-neutral-950/95 backdrop-blur-xl border-b border-white/10 px-4 py-3.5 flex items-center justify-between z-20 flex-shrink-0">
+      <div className="relative w-full max-w-lg bg-white dark:bg-neutral-950 text-slate-900 dark:text-white shadow-2xl flex flex-col h-full z-10 animate-slide-in-right border-l border-slate-200 dark:border-white/10">
+        <div className="sticky top-0 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 px-4 py-3.5 flex items-center justify-between z-20 flex-shrink-0">
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopyLink}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs font-semibold text-neutral-200 bg-white/5 hover:bg-white/10 transition-colors active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-neutral-200 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors active:scale-95"
             >
               <Copy className="w-3.5 h-3.5" />
               {copied ? text.copied : text.copyLink}
@@ -143,7 +214,7 @@ export function EventDetailModal({
             <button
               type="button"
               onClick={handleEventPage}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs font-semibold text-neutral-200 bg-white/5 hover:bg-white/10 transition-colors active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-neutral-200 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors active:scale-95"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               {text.eventPage}
@@ -153,32 +224,32 @@ export function EventDetailModal({
           <button
             type="button"
             onClick={handleClose}
-            className="p-1.5 hover:bg-white/10 text-neutral-400 rounded-full transition-colors"
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-neutral-400 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
-          {loading && <p className="text-neutral-400 text-center py-4">{text.loading}</p>}
+        <div className="p-6 overflow-y-auto flex-1 space-y-7">
+          {loading && <p className="text-slate-600 dark:text-neutral-400 text-center py-4">{text.loading}</p>}
 
           {error && (
-            <p className="text-red-400 text-center py-4">
+            <p className="text-red-600 dark:text-red-400 text-center py-4">
               {text.error}: {error}
             </p>
           )}
 
-          {!loading && !error && event && (
+          {!loading && !error && detail && (
             <>
-              {event.bannerUrl && (
+              {detail.bannerUrl && (
                 <button
                   type="button"
                   onClick={() => setIsZoomed(true)}
-                  className="block w-full rounded-2xl overflow-hidden aspect-video relative group cursor-zoom-in bg-neutral-900 border border-white/10"
+                  className="block w-full rounded-2xl overflow-hidden aspect-video relative group cursor-zoom-in bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-white/10"
                 >
                   <img
-                    src={event.bannerUrl}
-                    alt={event.title}
+                    src={detail.bannerUrl}
+                    alt={detail.title}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
                   />
                   <span className="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded bg-black/60 text-white text-[10px] font-bold backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
@@ -187,40 +258,54 @@ export function EventDetailModal({
                 </button>
               )}
 
-              <div className="space-y-4">
-                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
-                  {event.title}
-                </h2>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+                  {detail.title}
+                </h1>
+
+                <div className="flex items-center gap-2 mt-3 mb-6">
+                  {organizerAvatar ? (
+                    <img src={organizerAvatar} alt={organizerName} className="w-7 h-7 rounded-full object-cover border border-slate-200 dark:border-white/10" />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-[11px] font-black text-white">
+                      {organizerInitial}
+                    </div>
+                  )}
+                  <span className="text-sm text-slate-600 dark:text-neutral-400">{text.hostedBy}</span>
+                  <span className="text-sm font-medium text-slate-900 dark:text-white truncate">{organizerName}</span>
+                </div>
 
                 <div className="grid grid-cols-1 gap-3">
                   <div className="flex gap-3 items-start">
-                    <Calendar className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                    <div className="text-xs">
-                      <p className="text-neutral-200 font-medium">{formatDate(event.startTime, lang)}</p>
-                      <p className="text-neutral-300 font-medium mt-0.5">{formatTimeRange(event.startTime, event.endTime, lang)}</p>
+                    <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="text-slate-900 dark:text-white font-medium">{formatDate(detail.startTime, lang)}</p>
+                      <p className="text-slate-600 dark:text-neutral-400 mt-0.5">{formatTimeRange(detail.startTime, detail.endTime, lang)}</p>
                     </div>
                   </div>
 
-                  {(event.venueName || event.location || locationDetail) && (
+                  {locationRows.length > 0 && (
                     <div className="flex gap-3 items-start">
-                      <MapPin className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                      <div className="text-xs">
-                        {event.venueName && <p className="text-neutral-200 font-medium">{event.venueName}</p>}
-                        {locationDetail && <p className="text-neutral-300 font-medium mt-0.5">{locationDetail}</p>}
-                        {event.location && <p className="text-neutral-300 font-medium mt-0.5">{event.location}</p>}
+                      <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm">
+                        {locationRows.slice(0, 3).map((row) => (
+                          <p key={row} className="text-slate-600 dark:text-neutral-400 first:text-slate-900 first:dark:text-white first:font-medium mt-0.5 first:mt-0">
+                            {row}
+                          </p>
+                        ))}
                       </div>
                     </div>
                   )}
 
                   <div className="flex gap-3 items-start">
-                    <Users className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                    <div className="text-xs">
-                      <p className="text-neutral-200 font-medium">
-                        {text.capacity}: {event.maxSeats} {text.seats}
+                    <Users className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="text-slate-900 dark:text-white font-medium">
+                        {text.capacity}: {detail.maxSeats} {text.seats}
                       </p>
-                      {event.currentParticipants != null && (
-                        <p className="text-neutral-300 font-medium mt-0.5">
-                          {text.registered}: {event.currentParticipants} {text.people}
+                      {detail.currentParticipants != null && (
+                        <p className="text-slate-600 dark:text-neutral-400 mt-0.5">
+                          {text.registered}: {detail.currentParticipants} {text.people}
                         </p>
                       )}
                     </div>
@@ -228,57 +313,74 @@ export function EventDetailModal({
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                {event.speakerAvatarUrl ? (
-                  <img src={event.speakerAvatarUrl} alt={hostName} className="w-10 h-10 rounded-full object-cover border border-white/10" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-sm font-black text-white">
-                    {hostInitial}
+              {speakersToDisplay.length > 0 && (
+                <section className="space-y-3">
+                  <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.speakers}</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {speakersToDisplay.map((speaker) => {
+                      const name = getSpeakerName(speaker)
+                      const avatar = getSpeakerAvatar(speaker)
+                      return (
+                        <div
+                          key={`${name}-${avatar}`}
+                          className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2"
+                        >
+                          {avatar ? (
+                            <img src={avatar} alt={name} className="w-6 h-6 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-neutral-800 flex items-center justify-center text-[10px] font-black text-slate-700 dark:text-neutral-200">
+                              {name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-sm font-medium text-slate-800 dark:text-neutral-200">{name}</span>
+                        </div>
+                      )
+                    })}
                   </div>
-                )}
-                <div className="min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-wider text-neutral-500">{text.hostedBy}</p>
-                  <p className="text-sm font-semibold text-white truncate">{hostName}</p>
-                </div>
-              </div>
-
-              {event.description && (
-                <div className="space-y-2">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-neutral-500">{text.about}</h3>
-                  <p className="text-neutral-300 text-sm leading-relaxed whitespace-pre-wrap">{event.description}</p>
-                </div>
+                </section>
               )}
 
-              {(event.location || event.venueName) && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-neutral-500">{text.map}</h3>
-                  <div className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
-                    <iframe
-                      title={`${event.title} map`}
-                      src={mapSrc}
-                      className="w-full h-56 border-0"
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
+              {detail.description && (
+                <section className="space-y-3">
+                  <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.about}</h2>
+                  <p className="text-slate-700 dark:text-neutral-300 text-sm leading-relaxed whitespace-pre-wrap">{detail.description}</p>
+                </section>
+              )}
+
+              {exactLocationString && (
+                <section className="space-y-3">
+                  <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.location}</h2>
+                  <div className="text-sm leading-relaxed">
+                    {venueName && <p className="font-medium text-slate-900 dark:text-white">{venueName}</p>}
+                    {areaName && <p className="text-slate-600 dark:text-neutral-400">{text.area}: {areaName}</p>}
+                    {floor && <p className="text-slate-600 dark:text-neutral-400">{text.floor} {floor}</p>}
+                    <p className="text-slate-700 dark:text-neutral-300">{exactLocationString}</p>
                   </div>
-                </div>
+                  <iframe
+                    title={`${detail.title} map`}
+                    src={mapSrc}
+                    className="rounded-xl w-full h-[200px] border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </section>
               )}
             </>
           )}
         </div>
 
-        {!loading && !error && event && (
-          <div className="sticky bottom-0 left-0 w-full bg-neutral-900/90 backdrop-blur-xl border-t border-white/10 p-4 flex justify-between items-center gap-4 z-10">
+        {!loading && !error && detail && (
+          <div className="sticky bottom-0 left-0 w-full bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 p-4 flex justify-between items-center gap-4 z-10">
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-neutral-400 truncate">
-                {text.capacity}: {event.maxSeats} {text.seats}
+              <p className="text-xs font-semibold text-slate-600 dark:text-neutral-400 truncate">
+                {text.capacity}: {detail.maxSeats} {text.seats}
               </p>
-              <p className="text-sm font-black text-white">
+              <p className="text-sm font-black text-slate-900 dark:text-white">
                 {lowestTicketPrice > 0 ? `${text.from} ${lowestTicketPrice.toLocaleString('vi-VN')} đ` : text.free}
               </p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {userRole === 'ORGANIZER' && event.status === 'APPROVED' && onEdit && (
+              {userRole === 'ORGANIZER' && detail.status === 'APPROVED' && onEdit && (
                 <button
                   onClick={onEdit}
                   className="px-3 py-2.5 bg-green-600 hover:bg-green-700 active:scale-98 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
@@ -299,7 +401,7 @@ export function EventDetailModal({
         )}
       </div>
 
-      {isZoomed && event?.bannerUrl && (
+      {isZoomed && detail?.bannerUrl && (
         <div
           className="fixed inset-0 bg-black/90 z-[9999] flex flex-col items-center justify-center p-4 cursor-zoom-out animate-fade-in"
           onClick={() => setIsZoomed(false)}
@@ -311,10 +413,10 @@ export function EventDetailModal({
             <X className="w-8 h-8" />
           </button>
           <div className="max-w-5xl max-h-[90vh] w-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-            <img src={event.bannerUrl} alt={event.title} className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+            <img src={detail.bannerUrl} alt={detail.title} className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
           </div>
           <p className="text-slate-300 text-sm mt-3 font-semibold text-center pointer-events-none bg-black/40 px-4 py-1.5 rounded-full">
-            {event.title} - {text.detailMap}
+            {detail.title} - {text.detailMap}
           </p>
         </div>
       )}
