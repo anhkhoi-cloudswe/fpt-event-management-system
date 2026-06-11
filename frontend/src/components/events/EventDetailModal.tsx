@@ -142,7 +142,7 @@ export function EventDetailModal({
 
   const detail = event as EventDetailExtras | null
   const eventId = detail?.eventId || detail?.id || 0
-  const eventPagePath = `/dashboard/events/${eventId}/page`
+  const eventPagePath = `/events/${eventId}/page`
   const organizerId = detail?.organizerId ?? detail?.organizer_id
   const organizerName = detail?.organizerName || (organizerId ? `${text.organizerFallback} #${organizerId}` : text.organizerFallback)
   const organizerAvatar =
@@ -156,10 +156,10 @@ export function EventDetailModal({
   const floor = detail?.floor || detail?.venueArea?.floor || ''
   const venueName = detail?.venueName || detail?.venue?.venueName || detail?.venueArea?.venue?.venueName || ''
   const exactLocationString =
+    detail?.venueArea?.venue?.location ||
     detail?.location ||
     detail?.venueLocation ||
     detail?.venue?.location ||
-    detail?.venueArea?.venue?.location ||
     ''
   const locationRows = [
     venueName,
@@ -167,7 +167,7 @@ export function EventDetailModal({
     floor ? `${text.floor} ${floor}` : '',
     exactLocationString,
   ].filter(Boolean)
-  const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(exactLocationString)}&output=embed`
+  const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(detail?.venueArea?.venue?.location || detail?.location || '')}&t=&z=15&ie=UTF-8&iwloc=&output=embed`
   const speakers = (detail?.speakers ?? []).filter((speaker) => getSpeakerName(speaker))
   const fallbackSpeaker = detail?.speakerName
     ? [{ name: detail.speakerName, avatarUrl: detail.speakerAvatarUrl || '' }]
@@ -230,7 +230,7 @@ export function EventDetailModal({
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 space-y-7">
+        <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)] pr-2 flex-1 space-y-7">
           {loading && <p className="text-slate-600 dark:text-neutral-400 text-center py-4">{text.loading}</p>}
 
           {error && (
@@ -359,7 +359,7 @@ export function EventDetailModal({
                   <iframe
                     title={`${detail.title} map`}
                     src={mapSrc}
-                    className="rounded-xl w-full h-[200px] border-0"
+                    className="w-full h-[220px] rounded-xl mt-3 border-0 shadow-sm"
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
                   />
