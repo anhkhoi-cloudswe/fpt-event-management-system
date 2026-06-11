@@ -14,6 +14,17 @@ type Ticket = {
   status: string
 }
 
+type SpeakerLike = {
+  name?: string | null
+  speakerName?: string | null
+  fullName?: string | null
+  avatar?: string | null
+  avatarUrl?: string | null
+  speakerAvatarUrl?: string | null
+  speakerBio?: string | null
+  bio?: string | null
+}
+
 type EventDetailExtras = EventDetail & {
   id?: number
   organizer_id?: number
@@ -22,6 +33,22 @@ type EventDetailExtras = EventDetail & {
   organizer_avatar?: string | null
   organizer_avatar_url?: string | null
   bannerImg?: string | null
+  speakers?: SpeakerLike[] | null
+  venueLocation?: string | null
+  area_name?: string | null
+  venue?: {
+    location?: string | null
+    venueName?: string | null
+  } | null
+  venueArea?: {
+    areaName?: string | null
+    area_name?: string | null
+    floor?: string | null
+    venue?: {
+      location?: string | null
+      venueName?: string | null
+    } | null
+  } | null
 }
 
 const formatDate = (value: string | undefined, lang: 'vi' | 'en') => {
@@ -177,10 +204,43 @@ export default function PublicEventPage() {
     event.organizer_avatar ||
     event.organizer_avatar_url ||
     ''
-  const locationTitle = event.venueName || event.location || t.defaultLocation
+  const areaName = event.areaName || event.area_name || event.venueArea?.areaName || event.venueArea?.area_name || ''
+  const floor = event.floor || event.venueArea?.floor || ''
+  const venueName = event.venueName || event.venue?.venueName || event.venueArea?.venue?.venueName || ''
+  const exactLocationString =
+    event.venueArea?.venue?.location ||
+    event.location ||
+    event.venueLocation ||
+    event.venue?.location ||
+    ''
+  const locationDisplayString = event.venueArea?.venue?.location || event.location || 'HCMC'
+  const mapLocationString = event.venueArea?.venue?.location || event.location || 'FPT University HCMC'
+  const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(mapLocationString)}&t=&z=15&ie=UTF-8&iwloc=&output=embed`
+
+  const getSpeakerName = (speaker: SpeakerLike) => (
+    speaker.name ||
+    speaker.speakerName ||
+    speaker.fullName ||
+    ''
+  ).trim()
+
+  const getSpeakerAvatar = (speaker: SpeakerLike) => (
+    speaker.avatar ||
+    speaker.avatarUrl ||
+    speaker.speakerAvatarUrl ||
+    ''
+  ).trim()
+
+  const speakers: SpeakerLike[] = (event.speakers ?? []).filter((s) => getSpeakerName(s))
+  const fallbackSpeaker: SpeakerLike[] = event.speakerName
+    ? [{ name: event.speakerName, avatarUrl: event.speakerAvatarUrl || '', bio: event.speakerBio || '' }]
+    : []
+  const speakersToDisplay = speakers.length > 0 ? speakers : fallbackSpeaker
+
+  const locationTitle = venueName || event.location || t.defaultLocation
   const locationDetail = [
-    event.areaName ? `${t.area}: ${event.areaName}` : '',
-    event.floor ? `${t.floor} ${event.floor}` : '',
+    areaName ? `${t.area}: ${areaName}` : '',
+    floor ? `${t.floor} ${floor}` : '',
   ].filter(Boolean).join(' · ')
   const eventClosed = event.status !== 'OPEN' || (event as any).isClosed === true
   const eventEnded = new Date(event.endTime).getTime() < Date.now()
@@ -307,28 +367,75 @@ export default function PublicEventPage() {
         </div>
 
         <div className="max-w-[1480px] mx-auto w-full px-5 sm:px-8 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
-          <div className="lg:col-start-2 space-y-6">
+          {/* Cột trái: Thông tin địa điểm chi tiết & Bản đồ */}
+          <div className="space-y-6">
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
-              <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">{t.about}</h3>
-              <div className="text-neutral-100 text-base leading-relaxed antialiased font-medium whitespace-pre-wrap max-w-none">
-                {event.description}
-              </div>
-            </div>
-
-            {event.speakerName && (
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
-                <div className="flex items-center gap-4">
-                  {event.speakerAvatarUrl ? (
-                    <img src={event.speakerAvatarUrl} alt={event.speakerName} className="w-16 h-16 rounded-full object-cover border-2 border-neutral-700 shadow-md" />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center text-2xl border border-neutral-700">S</div>
-                  )}
-                  <div>
-                    <p className="text-xs font-black uppercase text-neutral-300 tracking-wider">{t.organizedBy}</p>
-                    <h4 className="text-xl font-bold text-neutral-100">{event.speakerName}</h4>
-                  </div>
+              <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">
+                {pageLanguage === 'en' ? 'Location' : 'Địa điểm'}
+              </h3>
+              <div className="flex items-start gap-3 text-sm leading-relaxed text-neutral-200">
+                <MapPin className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  {venueName && <p className="font-bold text-neutral-100 text-lg leading-tight">{venueName}</p>}
+                  {areaName && <p className="text-neutral-300 mt-1">{pageLanguage === 'en' ? 'Area' : 'Khu vực'}: {areaName}</p>}
+                  {floor && <p className="text-neutral-300 mt-1">{pageLanguage === 'en' ? 'Floor' : 'Tầng'} {floor}</p>}
+                  <p className="text-neutral-400 mt-1">{locationDisplayString}</p>
                 </div>
-                {event.speakerBio && <p className="text-sm text-neutral-200 leading-relaxed">{event.speakerBio}</p>}
+              </div>
+              <iframe
+                title="Event Location Map"
+                width="100%"
+                height="220"
+                style={{ border: 0, borderRadius: '12px' }}
+                src={mapSrc}
+                allowFullScreen
+                loading="lazy"
+                className="mt-2 border border-white/10 shadow-inner"
+              />
+            </div>
+          </div>
+
+          {/* Cột phải: Mô tả & Diễn giả */}
+          <div className="space-y-6">
+            {event.description && (
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
+                <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">{t.about}</h3>
+                <div className="text-neutral-100 text-base leading-relaxed antialiased font-medium whitespace-pre-wrap max-w-none">
+                  {event.description}
+                </div>
+              </div>
+            )}
+
+            {speakersToDisplay.length > 0 && (
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
+                <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">
+                  {pageLanguage === 'en' ? 'Speakers' : 'Diễn giả'}
+                </h3>
+                <div className="space-y-4 divide-y divide-white/10">
+                  {speakersToDisplay.map((speaker, idx) => {
+                    const name = getSpeakerName(speaker)
+                    const avatar = getSpeakerAvatar(speaker)
+                    const bio = speaker.bio || speaker.speakerBio || ''
+                    return (
+                      <div key={name + '-' + idx} className="pt-4 first:pt-0 space-y-3">
+                        <div className="flex items-center gap-4">
+                          {avatar ? (
+                            <img src={avatar} alt={name} className="w-14 h-14 rounded-full object-cover border border-white/10 shadow-md" />
+                          ) : (
+                            <div className="w-14 h-14 rounded-full bg-neutral-800 flex items-center justify-center text-xl border border-neutral-700 font-bold">
+                              {name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <h4 className="text-lg font-bold text-neutral-100">{name}</h4>
+                            <p className="text-xs text-neutral-400 font-medium">{pageLanguage === 'en' ? 'Speaker' : 'Diễn giả khách mời'}</p>
+                          </div>
+                        </div>
+                        {bio && <p className="text-sm text-neutral-300 leading-relaxed">{bio}</p>}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>

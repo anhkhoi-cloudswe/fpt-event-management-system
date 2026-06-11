@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Calendar, CreditCard, MapPin, ShieldCheck, XCircle } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Calendar, CreditCard, MapPin, ShieldCheck, XCircle } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { SeatGrid, type Seat } from '../../components/common/SeatGrid'
 import type { EventDetail } from '../../types/event'
@@ -534,11 +534,35 @@ export default function PublicEventPayment() {
 
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center p-4">
-        <p className="text-sm font-bold text-red-400">{error || 'Event not found'}</p>
-        <button onClick={() => navigate(`/events/${id}/page`, { replace: true })} className="mt-5 px-4 py-2 rounded-xl border border-white/10">
-          Back to event
-        </button>
+      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Ambient background glows */}
+        <div className="absolute w-[300px] h-[300px] bg-red-500/10 rounded-full blur-[80px] -top-10 -left-10" />
+        <div className="absolute w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] -bottom-10 -right-10" />
+
+        <div className="relative z-10 max-w-md w-full bg-neutral-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-center space-y-6">
+          <div className="inline-flex p-4 bg-red-500/10 border border-red-500/20 rounded-full text-red-400 animate-bounce">
+            <AlertCircle className="w-10 h-10" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-black tracking-wide text-white">Không thể hoàn tất giao dịch</h2>
+            <p className="text-sm text-neutral-400 leading-relaxed px-2">
+              {error?.includes('[E4001]') 
+                ? 'Ghế bạn chọn hiện tại đã có người khác đang thực hiện thanh toán hoặc đã được đặt thành công. Vui lòng quay lại sơ đồ để chọn ghế khác.'
+                : error || 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.'}
+            </p>
+            {error?.includes('[E4001]') && (
+              <p className="text-xs font-mono text-neutral-500 bg-black/30 py-1.5 px-3 rounded-lg inline-block select-all">
+                {error}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => navigate(`/events/${id}/page`, { replace: true })}
+            className="w-full bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] uppercase text-xs tracking-wider"
+          >
+            Quay lại chọn ghế
+          </button>
+        </div>
       </div>
     )
   }
@@ -554,7 +578,7 @@ export default function PublicEventPayment() {
   const organizerName = event.organizerName || 'FPT Organizer'
   const eventKey = event.eventId || event.id || id || 'event'
   const userId = user?.id || 'GUEST'
-  const transferMessage = bankTransferOrder?.order_id ? `FEMS_${eventKey}_HD${bankTransferOrder.order_id}` : `FEMS_${eventKey}_${userId || 'GUEST'}`
+  const transferMessage = bankTransferOrder?.order_id ? `FEMS_${eventKey}_DH${bankTransferOrder.order_id}` : `FEMS_${eventKey}_${userId || 'GUEST'}`
   const paymentAmount = Number(bankTransferOrder?.amount ?? totalAmount)
   const vietQrSrc = `https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '2911121319'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${paymentAmount}&des=${encodeURIComponent(transferMessage)}`
 
@@ -728,12 +752,6 @@ export default function PublicEventPayment() {
                           {attendeeErrors.email && <p className="mt-1.5 text-xs font-semibold text-red-400">{attendeeErrors.email}</p>}
                         </label>
                       </div>
-                      {!user?.phone && (
-                        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-300 space-y-1">
-                          <p className="font-bold flex items-center gap-1">💡 Tài khoản chưa cập nhật số điện thoại:</p>
-                          <p>Vui lòng nhập chính xác số điện thoại của bạn ở ô phía trên. Hệ thống sẽ tự động lưu số điện thoại này vào tài khoản để phục vụ liên hệ nhận vé và hỗ trợ sự kiện.</p>
-                        </div>
-                      )}
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <p className="text-xs font-black uppercase tracking-widest text-neutral-500 mb-3">Selected seats</p>
                         <div className="flex flex-wrap gap-2">
@@ -746,44 +764,40 @@ export default function PublicEventPayment() {
                   )}
 
                   {currentStep === 3 && (
-                    <div className="bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 space-y-6 text-white shadow-[0_12px_40px_0_rgba(0,0,0,0.5)]">
+                    <div className="bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-5 space-y-4 text-white shadow-[0_12px_40px_0_rgba(0,0,0,0.5)]">
                       <div>
                         <p className="text-xs font-black uppercase tracking-widest text-blue-400">Payment</p>
-                        <h2 className="text-2xl font-black mt-2">Thanh toán vé</h2>
-                        <p className="text-xs text-neutral-400 mt-1">SePay QR hoặc FPT Wallet</p>
+                        <h2 className="text-xl font-black mt-1">Thanh toán vé</h2>
+                        <p className="text-xs text-neutral-400 mt-0.5">SePay QR hoặc FPT Wallet</p>
                       </div>
 
                       {bankTransferOrder && (
-                        <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                              <p className="text-xs font-black uppercase tracking-widest text-amber-300">Đang giữ ghế</p>
-                              <p className="mt-1 text-sm text-neutral-200">
-                                Mã đơn #{bankTransferOrder.order_id} · {selectedSeats.map((seat) => seat.seatCode).join(', ')}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs text-neutral-400">Còn lại</p>
-                              <p className="font-mono text-2xl font-black text-amber-200">{formatTimeLeft(timeLeft)}</p>
-                            </div>
+                        <div className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
+                            <span className="text-neutral-200 truncate">
+                              Đang giữ {selectedSeats.map((seat) => seat.seatCode).join(', ')} · Đơn #{bankTransferOrder.order_id}
+                            </span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={cancelCurrentOrder}
-                            disabled={processingOrder}
-                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200 hover:bg-red-500/20 disabled:opacity-50"
-                          >
-                            <XCircle className="h-4 w-4" />
-                            Hủy giao dịch & giải phóng ghế
-                          </button>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className="font-mono font-black text-amber-200 text-sm">{formatTimeLeft(timeLeft)}</span>
+                            <button
+                              type="button"
+                              onClick={cancelCurrentOrder}
+                              disabled={processingOrder}
+                              className="text-red-400 hover:text-red-300 font-bold underline disabled:opacity-50"
+                            >
+                              Hủy
+                            </button>
+                          </div>
                         </div>
                       )}
 
-                      <div className="grid grid-cols-2 rounded-2xl border border-white/10 bg-white/5 p-1 gap-1">
+                      <div className="grid grid-cols-2 rounded-xl border border-white/10 bg-white/5 p-1 gap-1">
                         <button
                           type="button"
                           onClick={() => setActiveMethod('qr')}
-                          className={`rounded-xl px-2 py-2.5 text-[11px] sm:text-xs font-black transition-all whitespace-nowrap ${
+                          className={`rounded-lg px-2 py-2 text-[11px] sm:text-xs font-black transition-all whitespace-nowrap ${
                             activeMethod === 'qr' ? 'bg-white/10 text-white border border-white/10 shadow-sm' : 'text-neutral-400 hover:text-white hover:bg-white/5'
                           }`}
                         >
@@ -792,7 +806,7 @@ export default function PublicEventPayment() {
                         <button
                           type="button"
                           onClick={() => setActiveMethod('wallet')}
-                          className={`rounded-xl px-2 py-2.5 text-[11px] sm:text-xs font-black transition-all whitespace-nowrap ${
+                          className={`rounded-lg px-2 py-2 text-[11px] sm:text-xs font-black transition-all whitespace-nowrap ${
                             activeMethod === 'wallet' ? 'bg-white/10 text-white border border-white/10 shadow-sm' : 'text-neutral-400 hover:text-white hover:bg-white/5'
                           }`}
                         >
@@ -801,31 +815,31 @@ export default function PublicEventPayment() {
                       </div>
 
                       {activeMethod === 'qr' ? (
-                        <div className="flex flex-col items-center justify-center text-center py-2 space-y-4">
-                          <div className="bg-white p-4 rounded-2xl border border-white/20 shadow-lg inline-block transform transition-transform hover:scale-105 duration-300">
+                        <div className="flex flex-col items-center justify-center text-center py-1 space-y-3">
+                          <div className="bg-white p-3 rounded-2xl border border-white/20 shadow-lg inline-block transform transition-transform hover:scale-105 duration-300">
                             <img
                               src={vietQrSrc}
                               alt="VietQR SePay Auto Payment"
-                              className="w-56 h-56 object-contain"
+                              className="w-44 h-44 object-contain"
                             />
                           </div>
-                          <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 flex items-center gap-2 text-xs font-mono text-neutral-300">
-                            <span className="text-neutral-500">Nội dung</span>
-                            <span>{transferMessage}</span>
+                          <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-1.5 flex items-center gap-2 text-xs font-mono text-neutral-300">
+                            <span className="text-neutral-500">Cú pháp chuyển khoản:</span>
+                            <span className="font-bold text-white select-all">{transferMessage}</span>
                           </div>
                         </div>
                       ) : (
-                        <div className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-4">
+                        <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
                           <div className="flex items-center justify-between gap-4">
-                            <span className="text-sm font-bold text-neutral-400">Số dư hiện tại</span>
-                            <span className="text-xl font-black text-white">{formatCurrency(walletBalance)}</span>
+                            <span className="text-xs font-bold text-neutral-400">Số dư hiện tại</span>
+                            <span className="text-lg font-black text-white">{formatCurrency(walletBalance)}</span>
                           </div>
                           {walletCanPay ? (
-                            <p className="bg-green-500/10 border border-green-500/20 text-green-400 p-4 rounded-xl text-sm font-medium">
+                            <p className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-lg text-xs font-medium">
                               Ví đủ số dư. Bạn có thể xác nhận thanh toán ngay.
                             </p>
                           ) : (
-                            <p className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm font-medium">
+                            <p className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-medium">
                               Số dư tài khoản không đủ
                             </p>
                           )}
@@ -833,7 +847,7 @@ export default function PublicEventPayment() {
                       )}
 
                       {confirmationMessage && (
-                        <p className="rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 p-4 text-sm font-medium">
+                        <p className="rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 p-3 text-xs font-medium">
                           {confirmationMessage}
                         </p>
                       )}
