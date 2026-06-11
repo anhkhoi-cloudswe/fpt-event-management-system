@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Armchair, Calendar, Copy, ExternalLink, MapPin, Users, X } from 'lucide-react'
+import { Calendar, Copy, ExternalLink, MapPin, Users, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import type { EventDetail } from '../../types/event'
@@ -112,7 +112,7 @@ export function EventDetailModal({
     copied: lang === 'en' ? 'Copied' : 'Da copy',
     copyLink: lang === 'en' ? 'Copy Link' : 'Copy Link',
     eventPage: lang === 'en' ? 'Event Page' : 'Trang su kien',
-    fullSize: lang === 'en' ? 'View full size' : 'Xem kich thuoc day du',
+    fullSize: lang === 'en' ? 'View full size' : 'Xem anh lon',
     area: lang === 'en' ? 'Area' : 'Khu vuc',
     floor: lang === 'en' ? 'Floor' : 'Tang',
     capacity: lang === 'en' ? 'Capacity' : 'Suc chua',
@@ -123,11 +123,11 @@ export function EventDetailModal({
     speakers: lang === 'en' ? 'Speakers' : 'Dien gia',
     about: lang === 'en' ? 'About the Event' : 'Mo ta su kien',
     location: lang === 'en' ? 'Location' : 'Dia diem',
-    from: lang === 'en' ? 'From' : 'Tu',
     free: lang === 'en' ? 'Free' : 'Mien phi',
-    register: lang === 'en' ? 'Get Tickets / Register Now' : 'Lay ve / Dang ky ngay',
+    register: lang === 'en' ? 'Register Now' : 'Dang ky ngay',
+    tickets: lang === 'en' ? 'Tickets' : 'Hang ve',
     updateInfo: lang === 'en' ? 'Update info' : 'Cap nhat thong tin',
-    organizerFallback: lang === 'en' ? 'Event Organizer' : 'Nguoi to chuc su kien',
+    organizerFallback: lang === 'en' ? 'FPT Organizer' : 'FPT Organizer',
     detailMap: lang === 'en' ? 'event banner' : 'anh su kien',
   }
 
@@ -143,6 +143,7 @@ export function EventDetailModal({
   const detail = event as EventDetailExtras | null
   const eventId = detail?.eventId || detail?.id || 0
   const eventPagePath = `/events/${eventId}/page`
+  const eventPaymentPath = `/events/${eventId}/payment`
   const organizerId = detail?.organizerId ?? detail?.organizer_id
   const organizerName = detail?.organizerName || (organizerId ? `${text.organizerFallback} #${organizerId}` : text.organizerFallback)
   const organizerAvatar =
@@ -175,18 +176,11 @@ export function EventDetailModal({
     ? [{ name: detail.speakerName, avatarUrl: detail.speakerAvatarUrl || '' }]
     : []
   const speakersToDisplay = speakers.length > 0 ? speakers : fallbackSpeaker
-  const lowestTicketPrice = detail?.tickets?.length
-    ? Math.min(...detail.tickets.map((ticket) => Number(ticket.price) || 0))
-    : 0
 
-  const handleClose = () => {
-    onClose()
-  }
-
-  const handleEventPage = () => {
+  const closeThenNavigate = (path: string) => {
     onClose()
     setTimeout(() => {
-      navigate(eventPagePath)
+      navigate(path)
     }, 50)
   }
 
@@ -201,7 +195,7 @@ export function EventDetailModal({
     <div className="fixed inset-0 z-50 flex h-full justify-end">
       <div
         className="fixed inset-0 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300"
-        onClick={handleClose}
+        onClick={onClose}
       />
 
       <div className="relative w-full max-w-lg h-full bg-white dark:bg-neutral-950 text-slate-900 dark:text-white shadow-2xl flex flex-col z-10 animate-slide-in-right border-l border-slate-200 dark:border-white/10">
@@ -217,7 +211,7 @@ export function EventDetailModal({
 
             <button
               type="button"
-              onClick={handleEventPage}
+              onClick={() => closeThenNavigate(eventPagePath)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-neutral-200 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors active:scale-95"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -227,7 +221,7 @@ export function EventDetailModal({
 
           <button
             type="button"
-            onClick={handleClose}
+            onClick={onClose}
             className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-neutral-400 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
@@ -317,6 +311,39 @@ export function EventDetailModal({
                 </div>
               </div>
 
+              {detail.tickets && detail.tickets.length > 0 && (
+                <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.tickets}</h2>
+                    <span className="text-xs font-semibold text-slate-600 dark:text-neutral-400">
+                      {detail.tickets.length} {detail.tickets.length === 1 ? 'tier' : 'tiers'}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-slate-200 dark:divide-white/10">
+                    {detail.tickets.map((ticket) => (
+                      <div key={ticket.categoryTicketId} className="flex items-center justify-between gap-4 py-3 first:pt-0">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{ticket.name}</p>
+                          {ticket.description && (
+                            <p className="text-xs text-slate-500 dark:text-neutral-400 mt-0.5 line-clamp-1">{ticket.description}</p>
+                          )}
+                        </div>
+                        <p className="text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">
+                          {ticket.price > 0 ? `${ticket.price.toLocaleString('vi-VN')} đ` : text.free}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => closeThenNavigate(eventPaymentPath)}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all uppercase tracking-wide"
+                  >
+                    {text.register}
+                  </button>
+                </section>
+              )}
+
               {speakersToDisplay.length > 0 && (
                 <section className="space-y-3">
                   <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.speakers}</h2>
@@ -352,85 +379,39 @@ export function EventDetailModal({
               )}
 
               <section className="space-y-3">
-                  <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.location}</h2>
-                  <div className="flex items-start gap-3 text-sm leading-relaxed">
-                    <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      {venueName && <p className="font-medium text-slate-900 dark:text-white">{venueName}</p>}
-                      {areaName && <p className="text-slate-600 dark:text-neutral-400">{text.area}: {areaName}</p>}
-                      {floor && <p className="text-slate-600 dark:text-neutral-400">{text.floor} {floor}</p>}
-                      <p className="text-slate-700 dark:text-neutral-300">{locationDisplayString}</p>
-                    </div>
+                <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.location}</h2>
+                <div className="flex items-start gap-3 text-sm leading-relaxed">
+                  <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    {venueName && <p className="font-medium text-slate-900 dark:text-white">{venueName}</p>}
+                    {areaName && <p className="text-slate-600 dark:text-neutral-400">{text.area}: {areaName}</p>}
+                    {floor && <p className="text-slate-600 dark:text-neutral-400">{text.floor} {floor}</p>}
+                    <p className="text-slate-700 dark:text-neutral-300">{locationDisplayString}</p>
                   </div>
-                  <iframe
-                    title="Event Location Map"
-                    width="100%"
-                    height="200"
-                    style={{ border: 0, borderRadius: '12px' }}
-                    src={mapSrc}
-                    allowFullScreen
-                    loading="lazy"
-                    className="mt-2 shadow-inner border border-slate-100 dark:border-neutral-800"
-                  />
-                </section>
+                </div>
+                <iframe
+                  title="Event Location Map"
+                  width="100%"
+                  height="200"
+                  style={{ border: 0, borderRadius: '12px' }}
+                  src={mapSrc}
+                  allowFullScreen
+                  loading="lazy"
+                  className="mt-2 shadow-inner border border-slate-100 dark:border-neutral-800"
+                />
+              </section>
             </>
           )}
         </div>
 
-        {!loading && !error && detail && (
-          <div className="sticky bottom-0 left-0 w-full bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 p-4 flex justify-between items-center gap-4 z-10">
-            <div className="grid grid-cols-2 gap-3 min-w-0 flex-1">
-              <div className="flex items-center gap-2 min-w-0 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 px-3 py-2">
-                <Armchair className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-neutral-500">{text.capacity}</p>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                    {detail.maxSeats} {text.seats}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end min-w-0 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 px-3 py-2">
-                {lowestTicketPrice > 0 ? (
-                  <div className="text-right min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-neutral-500">{text.from}</p>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {lowestTicketPrice.toLocaleString('vi-VN')} đ
-                    </p>
-                  </div>
-                ) : (
-                  <span className="px-2.5 py-1 text-xs font-semibold bg-green-500/10 text-green-500 rounded-full border border-green-500/20">
-                    {lang === 'en' ? 'Free' : 'Mien phi'}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="hidden">
-              <p className="text-xs font-semibold text-slate-600 dark:text-neutral-400 truncate">
-                {text.capacity}: {detail.maxSeats} {text.seats}
-              </p>
-              <p className="text-sm font-black text-slate-900 dark:text-white">
-                {lowestTicketPrice > 0 ? `${text.from} ${lowestTicketPrice.toLocaleString('vi-VN')} đ` : text.free}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {userRole === 'ORGANIZER' && detail.status === 'APPROVED' && onEdit && (
-                <button
-                  onClick={onEdit}
-                  className="px-3 py-2.5 bg-green-600 hover:bg-green-700 active:scale-98 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
-                >
-                  {text.updateInfo}
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={handleEventPage}
-                className="px-4 py-3 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]"
-              >
-                {text.register}
-              </button>
-            </div>
+        {!loading && !error && detail && userRole === 'ORGANIZER' && detail.status === 'APPROVED' && onEdit && (
+          <div className="border-t border-slate-200 dark:border-white/10 bg-white/90 dark:bg-neutral-950/90 p-4">
+            <button
+              onClick={onEdit}
+              className="w-full py-2.5 bg-green-600 hover:bg-green-700 active:scale-98 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+            >
+              {text.updateInfo}
+            </button>
           </div>
         )}
       </div>
