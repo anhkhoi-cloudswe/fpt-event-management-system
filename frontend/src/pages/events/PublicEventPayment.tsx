@@ -113,7 +113,8 @@ const resolveWalletBalance = (user: ReturnType<typeof useAuth>['user']) => {
 export default function PublicEventPayment() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, token, isAuthenticated, loading: authLoading, isRefreshing, refreshUser } = useAuth()
+  const { user, token, isAuthenticated, loading: authLoading, isRefreshing, refreshUser, currentLanguage } = useAuth()
+  const pageLanguage = currentLanguage || 'en'
   const [event, setEvent] = useState<EventDetailExtras | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -624,19 +625,57 @@ export default function PublicEventPayment() {
               </div>
             )}
             <section className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-5 sm:p-7">
-              <div className="flex flex-wrap gap-3 mb-6">
-                {['Choose seats', 'Review order', 'Payment'].map((label, index) => {
-                  const step = index + 1
-                  const active = currentStep >= step
-                  return (
-                    <div key={label} className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-wide ${
-                      active ? 'bg-blue-600 text-white' : 'bg-white/5 text-neutral-400 border border-white/10'
-                    }`}>
-                      <span>{step}</span>
-                      {label}
-                    </div>
-                  )
-                })}
+              <div className="w-full max-w-xl mx-auto mb-8 mt-2 px-2">
+                <div className="flex items-center justify-between relative">
+                  {/* Connecting line background */}
+                  <div className="absolute top-5 left-0 right-0 h-[2px] bg-white/10 z-0 rounded-full" />
+                  
+                  {/* Active connecting line fill */}
+                  <div 
+                    className="absolute top-5 left-0 h-[2px] bg-gradient-to-r from-blue-600 to-blue-500 z-0 rounded-full transition-all duration-500 ease-in-out" 
+                    style={{ 
+                      width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' 
+                    }}
+                  />
+
+                  {(pageLanguage === 'en' 
+                    ? ['Choose seats', 'Review order', 'Payment'] 
+                    : ['Chọn ghế', 'Xác nhận đơn', 'Thanh toán']
+                  ).map((label, index) => {
+                    const step = index + 1
+                    const isCompleted = currentStep > step
+                    const isActive = currentStep === step
+
+                    return (
+                      <div key={label} className="flex flex-col items-center relative z-10 flex-1">
+                        <div 
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-500 ${
+                            isCompleted 
+                              ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' 
+                              : isActive 
+                                ? 'bg-blue-500 text-white ring-4 ring-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.5)] scale-105' 
+                                : 'bg-neutral-900 text-neutral-400 border border-white/10'
+                          }`}
+                        >
+                          {isCompleted ? (
+                            <svg className="w-5 h-5 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            step
+                          )}
+                        </div>
+                        <span 
+                          className={`mt-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider text-center transition-colors duration-300 ${
+                            isActive ? 'text-blue-400' : isCompleted ? 'text-neutral-200' : 'text-neutral-500'
+                          }`}
+                        >
+                          {label}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-6">
