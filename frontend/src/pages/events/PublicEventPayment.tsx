@@ -123,6 +123,7 @@ export default function PublicEventPayment() {
   const [attendeePhone, setAttendeePhone] = useState(user?.phone || '')
   const [activeMethod, setActiveMethod] = useState<'qr' | 'wallet'>('qr')
   const [confirmationMessage, setConfirmationMessage] = useState('')
+  const [processingOrder, setProcessingOrder] = useState(false)
 
   const hasActiveSession = Boolean(isAuthenticated || user || token || localStorage.getItem('token'))
 
@@ -221,7 +222,60 @@ export default function PublicEventPayment() {
     return Array.from(map.values())
   }, [selectedSeats, selectedTicket, event])
 
-  const handleContinueToPayment = () => {
+  const buildPaymentPayload = () => {
+    if (!event || selectedSeats.length === 0) return null
+    const firstSeatTicket = ticketForSeat(selectedSeats[0])
+    const categoryTicketId = firstSeatTicket?.categoryTicketId || selectedTicket?.categoryTicketId
+    if (!categoryTicketId) return null
+
+    return {
+      eventId: Number(event.eventId || event.id || id),
+      categoryTicketId: Number(categoryTicketId),
+      seatIds: selectedSeats.map((seat) => Number(seat.seatId)),
+    }
+  }
+
+  const createBackendOrder = async () => {
+    const payload = buildPaymentPayload()
+    if (!payload || processingOrder) return null
+
+    const authToken = token || localStorage.getItem('token') || ''
+    setProcessingOrder(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/payment/create-order', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const rawText = await response.text()
+      let data: any = {}
+      try {
+        data = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        data = { message: rawText }
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Unable to create payment order')
+      }
+
+      return data
+    } catch (err: any) {
+      setError(err.message || 'Unable to create payment order')
+      return null
+    } finally {
+      setProcessingOrder(false)
+    }
+  }
+
+  const handleContinueToPayment = async () => {
     if (!event || selectedSeats.length === 0) return
     const firstSeatTicket = ticketForSeat(selectedSeats[0])
     if (!firstSeatTicket && !selectedTicket) return
@@ -233,8 +287,10 @@ export default function PublicEventPayment() {
 
     if (currentStep === 2) {
       if (totalAmount <= 0) {
-        const seatIdsParam = selectedSeats.map((seat) => seat.seatId).join(',')
-        navigate(`/payment-success?status=success&method=free&ticketIds=${seatIdsParam}`, { replace: true })
+        const data = await createBackendOrder()
+        if (data?.free === true) {
+          navigate(`/payment-success?status=success&method=free&ticketIds=${encodeURIComponent(data.ticketIds || '')}`, { replace: true })
+        }
         return
       }
       setCurrentStep(3)
@@ -358,12 +414,12 @@ export default function PublicEventPayment() {
                                 key={ticket.categoryTicketId}
                                 disabled={soldOut}
                                 onClick={() => setSelectedTicket(ticket)}
-                                className={`text-left rounded-2xl border p-4 transition-all ${
+                                className={`text-left rounded-2xl border p-4 ${
                                   soldOut
                                     ? 'border-white/5 bg-white/5 opacity-50 cursor-not-allowed'
                                     : selected
                                       ? 'border-blue-500 bg-blue-500/15'
-                                      : 'border-white/10 bg-white/5 hover:bg-white/10'
+                                      : 'border-white/10 bg-white/5'
                                 }`}
                               >
                                 <p className="font-bold text-white">{ticket.name}</p>
@@ -550,9 +606,9 @@ export default function PublicEventPayment() {
             <button
               type="button"
               onClick={handleContinueToPayment}
-              disabled={selectedSeats.length === 0 || (currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)}
+              disabled={processingOrder || selectedSeats.length === 0 || (currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)}
               className={`mt-6 w-full rounded-xl py-4 text-sm font-black uppercase tracking-wide transition-all ${
-                selectedSeats.length > 0 && !(currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)
+                !processingOrder && selectedSeats.length > 0 && !(currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)
                   ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]'
                   : 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700'
               }`}
