@@ -232,6 +232,11 @@ export default function PublicEventPayment() {
     }
 
     if (currentStep === 2) {
+      if (totalAmount <= 0) {
+        const seatIdsParam = selectedSeats.map((seat) => seat.seatId).join(',')
+        navigate(`/payment-success?status=success&method=free&ticketIds=${seatIdsParam}`, { replace: true })
+        return
+      }
       setCurrentStep(3)
       return
     }
@@ -271,7 +276,7 @@ export default function PublicEventPayment() {
   const eventKey = event.eventId || event.id || id || 'event'
   const userId = user?.id || 'GUEST'
   const transferMessage = `FEMS_${eventKey}_${userId || 'GUEST'}`
-  const vietQrSrc = `https://img.vietqr.io/image/MB-0331234567-compact2.png?amount=${totalAmount}&addIn=true&text=${encodeURIComponent(transferMessage)}`
+  const vietQrSrc = `https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '2911121319'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${totalAmount}&des=${encodeURIComponent(transferMessage)}`
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white selection:bg-blue-500/30">
@@ -423,35 +428,32 @@ export default function PublicEventPayment() {
                       <div>
                         <p className="text-xs font-black uppercase tracking-widest text-blue-400">Payment</p>
                         <h2 className="text-2xl font-black mt-2">Thanh toán vé</h2>
-                        <p className="text-sm text-neutral-300 mt-2">Chọn SePay VietQR hoặc Ví nội bộ FPT để hoàn tất đơn hàng.</p>
+                        <p className="text-xs text-neutral-400 mt-1">SePay QR hoặc FPT Wallet</p>
                       </div>
 
-                      <div className="grid grid-cols-2 rounded-2xl border border-white/10 bg-white/5 p-1">
+                      <div className="grid grid-cols-2 rounded-2xl border border-white/10 bg-white/5 p-1 gap-1">
                         <button
                           type="button"
                           onClick={() => setActiveMethod('qr')}
-                          className={`rounded-xl px-3 py-3 text-xs sm:text-sm font-black transition-all ${
+                          className={`rounded-xl px-2 py-2.5 text-[11px] sm:text-xs font-black transition-all whitespace-nowrap ${
                             activeMethod === 'qr' ? 'bg-white/10 text-white border border-white/10 shadow-sm' : 'text-neutral-400 hover:text-white hover:bg-white/5'
                           }`}
                         >
-                          Chuyển khoản VietQR (SePay)
+                          VietQR SePay
                         </button>
                         <button
                           type="button"
                           onClick={() => setActiveMethod('wallet')}
-                          className={`rounded-xl px-3 py-3 text-xs sm:text-sm font-black transition-all ${
+                          className={`rounded-xl px-2 py-2.5 text-[11px] sm:text-xs font-black transition-all whitespace-nowrap ${
                             activeMethod === 'wallet' ? 'bg-white/10 text-white border border-white/10 shadow-sm' : 'text-neutral-400 hover:text-white hover:bg-white/5'
                           }`}
                         >
-                          Ví nội bộ (FPT Wallet)
+                          FPT Wallet
                         </button>
                       </div>
 
                       {activeMethod === 'qr' ? (
-                        <div className="flex flex-col items-center justify-center text-center py-4 space-y-4">
-                          <p className="text-sm text-neutral-300">
-                            Dùng ứng dụng ngân hàng quét mã VietQR dưới đây để thanh toán tự động sau 3 giây
-                          </p>
+                        <div className="flex flex-col items-center justify-center text-center py-2 space-y-4">
                           <div className="bg-white p-4 rounded-2xl border border-white/20 shadow-lg inline-block transform transition-transform hover:scale-105 duration-300">
                             <img
                               src={vietQrSrc}
@@ -460,7 +462,7 @@ export default function PublicEventPayment() {
                             />
                           </div>
                           <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 flex items-center gap-2 text-xs font-mono text-neutral-300">
-                            <span className="text-neutral-500">Syntax</span>
+                            <span className="text-neutral-500">Nội dung</span>
                             <span>{transferMessage}</span>
                           </div>
                         </div>
@@ -481,12 +483,6 @@ export default function PublicEventPayment() {
                           )}
                         </div>
                       )}
-
-                      <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-2 text-sm">
-                        <div className="flex justify-between"><span className="text-neutral-300">Tickets</span><span className="font-bold">{selectedSeats.length}</span></div>
-                        <div className="flex justify-between"><span className="text-neutral-300">Discount</span><span className="font-bold">-{formatCurrency(discountAmount)}</span></div>
-                        <div className="flex justify-between text-lg font-black pt-2 border-t border-white/10"><span>Total</span><span>{formatCurrency(totalAmount)}</span></div>
-                      </div>
 
                       {confirmationMessage && (
                         <p className="rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 p-4 text-sm font-medium">
@@ -561,7 +557,7 @@ export default function PublicEventPayment() {
                   : 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700'
               }`}
             >
-              {currentStep === 1 ? 'Review order' : currentStep === 2 ? 'Continue to payment' : 'Xác nhận thanh toán'}
+              {currentStep === 1 ? 'Review order' : currentStep === 2 ? (totalAmount <= 0 ? 'Hoàn tất đăng ký' : 'Continue to payment') : 'Xác nhận thanh toán'}
             </button>
 
             <div className="mt-4 flex items-start gap-2 text-xs text-neutral-400">
