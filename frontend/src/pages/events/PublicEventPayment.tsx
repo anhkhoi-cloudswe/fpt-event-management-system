@@ -113,7 +113,7 @@ const resolveWalletBalance = (user: ReturnType<typeof useAuth>['user']) => {
 export default function PublicEventPayment() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, token, isAuthenticated, loading: authLoading, isRefreshing } = useAuth()
+  const { user, token, isAuthenticated, loading: authLoading, isRefreshing, refreshUser } = useAuth()
   const [event, setEvent] = useState<EventDetailExtras | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -134,6 +134,14 @@ export default function PublicEventPayment() {
   const [pollingIntervalId, setPollingIntervalId] = useState<number | null>(null)
 
   const hasActiveSession = Boolean(isAuthenticated || user || token || localStorage.getItem('token'))
+
+  useEffect(() => {
+    if (user) {
+      if (!attendeeName && user.fullName) setAttendeeName(user.fullName)
+      if (!attendeeEmail && user.email) setAttendeeEmail(user.email)
+      if (!attendeePhone && user.phone) setAttendeePhone(user.phone)
+    }
+  }, [user])
 
   useEffect(() => {
     if (authLoading || isRefreshing) return
@@ -280,7 +288,7 @@ export default function PublicEventPayment() {
 
     if (!typedPhone || !isValidVietnamPhone(typedPhone)) {
       nextErrors.phone = 'Vui lòng nhập số điện thoại Việt Nam hợp lệ.'
-    } else if (!accountPhone || typedPhone !== accountPhone) {
+    } else if (accountPhone && typedPhone !== accountPhone) {
       nextErrors.phone = 'Số điện thoại phải khớp với số đã lưu trên hệ thống.'
     }
 
@@ -461,6 +469,29 @@ export default function PublicEventPayment() {
 
     if (currentStep === 2) {
       if (!validateAttendeeInformation()) return
+
+      // Auto-update phone number in database if user has no phone saved
+      if (!user?.phone && attendeePhone) {
+        try {
+          const authToken = token || localStorage.getItem('token') || ''
+          const updateRes = await fetch('/api/auth/update-phone', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+            },
+            body: JSON.stringify({ phone: attendeePhone.trim() }),
+          })
+          if (updateRes.ok) {
+            await refreshUser()
+          } else {
+            console.error('Failed to auto-update phone number')
+          }
+        } catch (err) {
+          console.error('Error auto-updating phone number:', err)
+        }
+      }
+
       if (totalAmount <= 0) {
         const data = await createBackendOrder()
         if (data?.free === true) {
@@ -623,7 +654,7 @@ export default function PublicEventPayment() {
                         <SeatGrid
                           seats={allSeats}
                           selectedSeats={selectedSeats}
-                          onSeatSelect={handleSeatSelect}
+                          onSeatSelect={(seat) => seat && handleSeatSelect(seat)}
                           maxReached={selectedSeats.length >= 4}
                           allowSelect
                         />

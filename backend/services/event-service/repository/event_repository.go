@@ -1492,7 +1492,10 @@ func (r *EventRepository) GetSeatsByAreaID(ctx context.Context, areaID int, even
 				END AS effective_status
 			FROM Ticket t
 			WHERE t.event_id = $2
-				AND t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN')
+				AND (
+					t.status IN ('BOOKED', 'CHECKED_IN')
+					OR (t.status = 'PENDING' AND t.created_at >= NOW() - INTERVAL '5 minutes')
+				)
 			GROUP BY t.seat_id
 		) ts ON ts.seat_id = s.seat_id
 		WHERE s.area_id = $3
