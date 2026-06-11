@@ -161,13 +161,15 @@ export function EventDetailModal({
     detail?.venueLocation ||
     detail?.venue?.location ||
     ''
+  const locationDisplayString = detail?.venueArea?.venue?.location || detail?.location || 'HCMC'
+  const mapLocationString = detail?.venueArea?.venue?.location || detail?.location || 'FPT University HCMC'
   const locationRows = [
     venueName,
     areaName ? `${text.area}: ${areaName}` : '',
     floor ? `${text.floor} ${floor}` : '',
     exactLocationString,
   ].filter(Boolean)
-  const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(detail?.venueArea?.venue?.location || detail?.location || '')}&t=&z=15&ie=UTF-8&iwloc=&output=embed`
+  const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(mapLocationString)}&t=&z=15&ie=UTF-8&iwloc=&output=embed`
   const speakers = (detail?.speakers ?? []).filter((speaker) => getSpeakerName(speaker))
   const fallbackSpeaker = detail?.speakerName
     ? [{ name: detail.speakerName, avatarUrl: detail.speakerAvatarUrl || '' }]
@@ -194,13 +196,13 @@ export function EventDetailModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex h-full justify-end">
       <div
         className="fixed inset-0 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300"
         onClick={handleClose}
       />
 
-      <div className="relative w-full max-w-lg bg-white dark:bg-neutral-950 text-slate-900 dark:text-white shadow-2xl flex flex-col h-full z-10 animate-slide-in-right border-l border-slate-200 dark:border-white/10">
+      <div className="relative w-full max-w-lg h-full bg-white dark:bg-neutral-950 text-slate-900 dark:text-white shadow-2xl flex flex-col z-10 animate-slide-in-right border-l border-slate-200 dark:border-white/10">
         <div className="sticky top-0 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 px-4 py-3.5 flex items-center justify-between z-20 flex-shrink-0">
           <div className="flex items-center gap-2">
             <button
@@ -230,7 +232,7 @@ export function EventDetailModal({
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)] pr-2 flex-1 space-y-7">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 max-h-[calc(100vh-120px)] custom-scrollbar">
           {loading && <p className="text-slate-600 dark:text-neutral-400 text-center py-4">{text.loading}</p>}
 
           {error && (
@@ -347,24 +349,28 @@ export function EventDetailModal({
                 </section>
               )}
 
-              {exactLocationString && (
-                <section className="space-y-3">
+              <section className="space-y-3">
                   <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.location}</h2>
-                  <div className="text-sm leading-relaxed">
-                    {venueName && <p className="font-medium text-slate-900 dark:text-white">{venueName}</p>}
-                    {areaName && <p className="text-slate-600 dark:text-neutral-400">{text.area}: {areaName}</p>}
-                    {floor && <p className="text-slate-600 dark:text-neutral-400">{text.floor} {floor}</p>}
-                    <p className="text-slate-700 dark:text-neutral-300">{exactLocationString}</p>
+                  <div className="flex items-start gap-3 text-sm leading-relaxed">
+                    <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      {venueName && <p className="font-medium text-slate-900 dark:text-white">{venueName}</p>}
+                      {areaName && <p className="text-slate-600 dark:text-neutral-400">{text.area}: {areaName}</p>}
+                      {floor && <p className="text-slate-600 dark:text-neutral-400">{text.floor} {floor}</p>}
+                      <p className="text-slate-700 dark:text-neutral-300">{locationDisplayString}</p>
+                    </div>
                   </div>
                   <iframe
-                    title={`${detail.title} map`}
+                    title="Event Location Map"
+                    width="100%"
+                    height="200"
+                    style={{ border: 0, borderRadius: '12px' }}
                     src={mapSrc}
-                    className="w-full h-[220px] rounded-xl mt-3 border-0 shadow-sm"
+                    allowFullScreen
                     loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
+                    className="mt-2 shadow-inner border border-slate-100 dark:border-neutral-800"
                   />
                 </section>
-              )}
             </>
           )}
         </div>
