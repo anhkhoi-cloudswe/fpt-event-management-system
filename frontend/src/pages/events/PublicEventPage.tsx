@@ -153,6 +153,7 @@ export default function PublicEventPage() {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([])
   const [allSeats, setAllSeats] = useState<Seat[]>([])
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
 
   useEffect(() => {
     const styleId = 'public-event-page-cinema-override'
@@ -348,7 +349,7 @@ export default function PublicEventPage() {
   }, 0)
 
   return (
-    <div className="relative w-full min-h-screen overflow-x-hidden text-white font-sans selection:bg-orange-500/30 pb-20">
+    <div className="relative w-full min-h-screen overflow-x-hidden text-white font-sans selection:bg-orange-500/30 pb-32">
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none select-none bg-[#09090b]">
         <div
           className="absolute -inset-[18%] blur-[80px] opacity-100 saturate-[260%] scale-110 origin-center pointer-events-none select-none transition-all duration-700"
@@ -428,84 +429,37 @@ export default function PublicEventPage() {
             <div className="bg-neutral-900/25 backdrop-blur-2xl border border-white/15 dark:border-white/5 shadow-[0_12px_40px_0_rgba(0,0,0,0.35)] p-8 rounded-2xl space-y-7 transition-all duration-300">
               <h3 className="text-2xl font-black text-neutral-100 tracking-wide">{t.registration}</h3>
 
-              {eventClosed || eventEnded ? (
-                <div className="bg-amber-950/20 border border-amber-900/50 rounded-2xl p-5 text-base text-amber-200 leading-relaxed">
-                  {t.closedNotice}
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {event.tickets && event.tickets.length > 0 && (
-                    <div className="space-y-3">
-                      <p className="text-xs font-black uppercase tracking-wider text-neutral-300">{t.chooseTicket}</p>
-                      <div className="grid grid-cols-1 gap-2.5">
-                        {event.tickets.map((ticket) => {
-                          const isSelected = selectedTicket?.categoryTicketId === ticket.categoryTicketId
-                          return (
-                            <div
-                              key={ticket.categoryTicketId}
-                              onClick={() => setSelectedTicket(ticket)}
-                              className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                                isSelected ? 'border-orange-500 bg-orange-500/10' : 'border-white/10 bg-black/15 hover:bg-neutral-900/30'
-                              }`}
-                            >
-                              <div>
-                                <p className="text-sm font-bold text-neutral-100">{ticket.name}</p>
-                                {ticket.description && <p className="text-xs text-neutral-300 mt-0.5 line-clamp-1">{ticket.description}</p>}
-                                <p className="text-xs text-neutral-300 mt-1">
-                                  {t.remaining}: <span className="font-bold">{ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} {t.tickets}</span>
-                                </p>
-                              </div>
-                              <p className="text-base font-black text-orange-300">{ticket.price.toLocaleString('vi-VN')} đ</p>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {event.areaId && (
-                    <div className="space-y-3 pt-2">
-                      <p className="text-xs font-black uppercase tracking-wider text-neutral-300">{t.chooseSeat}</p>
-                      <div className="p-4 rounded-2xl bg-black/20 border border-white/10 overflow-hidden">
-                        <SeatGrid
-                          seats={allSeats}
-                          selectedSeats={selectedSeats}
-                          onSeatSelect={handleSeatSelect}
-                          maxReached={selectedSeats.length >= 4}
-                          disabled={eventEnded || eventClosed || eventOngoing}
-                          allowSelect={!eventClosed && !eventEnded && !eventOngoing}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="pt-2 border-t border-white/10 space-y-4">
-                    {selectedSeats.length > 0 && (
-                      <div className="flex items-center justify-between text-sm p-4 bg-black/15 rounded-2xl border border-white/10">
-                        <div>
-                          <p className="text-neutral-300">{t.selectedSeats}:</p>
-                          <p className="font-bold text-neutral-100 mt-0.5">{selectedSeats.map((seat) => seat.seatCode).join(', ')}</p>
+              {event.tickets && event.tickets.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-xs font-black uppercase tracking-wider text-neutral-300">{t.chooseTicket}</p>
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {event.tickets.map((ticket) => {
+                      const isSoldOut = ticket.remaining === 0 || ticket.status === 'INACTIVE'
+                      const availabilityStatus = isSoldOut
+                        ? (pageLanguage === 'en' ? 'Sold Out' : 'Hết vé')
+                        : (pageLanguage === 'en' ? 'Available' : 'Còn vé')
+                      return (
+                        <div
+                          key={ticket.categoryTicketId}
+                          className="bg-white/5 border border-white/10 rounded-xl p-4 flex justify-between items-center"
+                        >
+                          <div>
+                            <p className="text-sm font-bold text-neutral-100">{ticket.name}</p>
+                            {ticket.description && <p className="text-xs text-neutral-400 mt-0.5 line-clamp-1">{ticket.description}</p>}
+                            <span className={`inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded mt-1.5 ${
+                              isSoldOut ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            }`}>
+                              {availabilityStatus}
+                            </span>
+                          </div>
+                          <p className="text-base font-black text-orange-300">{ticket.price.toLocaleString('vi-VN')} đ</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-neutral-300">{t.totalPayment}:</p>
-                          <p className="text-base font-black text-orange-300 mt-0.5">{totalAmount.toLocaleString('vi-VN')} đ</p>
-                        </div>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={confirmSeats}
-                      disabled={selectedSeats.length === 0}
-                      className={`w-full py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-white transition-all shadow-lg active:scale-98 ${
-                        selectedSeats.length > 0
-                          ? 'bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 shadow-orange-950/30'
-                          : 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none border border-neutral-850'
-                      }`}
-                    >
-                      {selectedSeats.length > 0 ? t.register : t.chooseSeatsToRegister}
-                    </button>
+                      )
+                    })}
                   </div>
                 </div>
+              ) : (
+                <p className="text-neutral-400 text-sm font-medium">{t.noTicket}</p>
               )}
             </div>
 
@@ -535,6 +489,141 @@ export default function PublicEventPage() {
           </div>
         </div>
       </div>
+
+      {/* Sticky CTA Action Bar */}
+      <div className="fixed bottom-0 left-0 w-full z-50 bg-neutral-950/80 backdrop-blur-2xl border-t border-white/10 p-4 flex justify-between items-center px-6 md:px-12 transform transition-transform">
+        <div className="hidden sm:block">
+          <p className="text-xs text-neutral-400 font-bold uppercase tracking-wider">{t.time}</p>
+          <p className="text-sm font-bold text-neutral-200">{formatDate(event.startTime, pageLanguage)}</p>
+        </div>
+        <div className="w-full sm:w-auto">
+          {eventClosed || eventEnded ? (
+            <button
+              disabled
+              className="w-full sm:w-auto bg-neutral-800 text-neutral-500 font-bold px-8 py-3 rounded-full border border-neutral-700 cursor-not-allowed text-sm uppercase tracking-wider"
+            >
+              {pageLanguage === 'en' ? 'Closed' : 'Đã đóng đăng ký'}
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsCheckoutModalOpen(true)}
+              className="w-full sm:w-auto bg-white text-black font-bold px-8 py-3 rounded-full hover:bg-gray-200 transition-all text-sm uppercase tracking-wider shadow-lg hover:shadow-xl active:scale-98"
+            >
+              {pageLanguage === 'en' ? 'Get Tickets' : 'Đăng ký ngay'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Checkout Modal */}
+      {isCheckoutModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+          <div className="relative bg-neutral-950 border border-white/10 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 md:p-8 flex flex-col space-y-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setIsCheckoutModalOpen(false)
+                setSelectedSeats([])
+              }}
+              className="absolute top-4 right-4 text-neutral-400 hover:text-white transition-colors text-2xl font-bold p-2"
+            >
+              ✕
+            </button>
+
+            {/* Modal Header */}
+            <div>
+              <h2 className="text-2xl md:text-3xl font-black text-white leading-tight">{event.title}</h2>
+              <p className="text-sm text-neutral-400 mt-1 flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-orange-400" /> {locationTitle} · {locationDetail}
+              </p>
+            </div>
+
+            {/* Modal Body */}
+            <div className="space-y-6">
+              {/* Ticket tier selection inside modal if any */}
+              {event.tickets && event.tickets.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-black uppercase tracking-wider text-neutral-300">{t.chooseTicket}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    {event.tickets.map((ticket) => {
+                      const isSelected = selectedTicket?.categoryTicketId === ticket.categoryTicketId
+                      const isSoldOut = ticket.remaining === 0 || ticket.status === 'INACTIVE'
+                      return (
+                        <div
+                          key={ticket.categoryTicketId}
+                          onClick={() => {
+                            if (!isSoldOut) setSelectedTicket(ticket)
+                          }}
+                          className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${
+                            isSoldOut 
+                              ? 'border-white/5 bg-neutral-900/10 opacity-50 cursor-not-allowed' 
+                              : isSelected 
+                                ? 'border-orange-500 bg-orange-500/10 cursor-pointer' 
+                                : 'border-white/10 bg-black/15 hover:bg-neutral-900/30 cursor-pointer'
+                          }`}
+                        >
+                          <div>
+                            <p className="text-sm font-bold text-neutral-100">{ticket.name}</p>
+                            <p className="text-xs text-neutral-300 mt-1">
+                              {t.remaining}: <span className="font-bold">{ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} {t.tickets}</span>
+                            </p>
+                          </div>
+                          <p className="text-sm font-black text-orange-300">{ticket.price.toLocaleString('vi-VN')} đ</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Seat Selection Map inside modal */}
+              {event.areaId && (
+                <div className="space-y-3">
+                  <p className="text-xs font-black uppercase tracking-wider text-neutral-300">{t.chooseSeat}</p>
+                  <div className="p-4 rounded-2xl bg-black/20 border border-white/10 overflow-hidden">
+                    <SeatGrid
+                      seats={allSeats}
+                      selectedSeats={selectedSeats}
+                      onSeatSelect={handleSeatSelect}
+                      maxReached={selectedSeats.length >= 4}
+                      disabled={eventEnded || eventClosed || eventOngoing}
+                      allowSelect={!eventClosed && !eventEnded && !eventOngoing}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Checkout details & Register CTA button */}
+              <div className="pt-4 border-t border-white/10 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-sm p-4 bg-black/15 rounded-2xl border border-white/10 gap-3">
+                  <div>
+                    <p className="text-neutral-300">{t.selectedSeats}:</p>
+                    <p className="font-bold text-neutral-100 mt-0.5">
+                      {selectedSeats.length > 0 ? selectedSeats.map((seat) => seat.seatCode).join(', ') : '---'}
+                    </p>
+                  </div>
+                  <div className="sm:text-right">
+                    <p className="text-neutral-300">{t.totalPayment}:</p>
+                    <p className="text-lg font-black text-orange-300 mt-0.5">{totalAmount.toLocaleString('vi-VN')} đ</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={confirmSeats}
+                  disabled={selectedSeats.length === 0}
+                  className={`w-full py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-white transition-all shadow-lg active:scale-98 ${
+                    selectedSeats.length > 0
+                      ? 'bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 shadow-orange-950/30'
+                      : 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none border border-neutral-850'
+                  }`}
+                >
+                  {selectedSeats.length > 0 ? t.register : t.chooseSeatsToRegister}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
