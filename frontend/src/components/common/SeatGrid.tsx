@@ -314,9 +314,23 @@ export function SeatGrid({
   // ===================== RENDER UI =====================
   return (
     <div className="mb-6">
-      {/* Hide native scrollbars for seat rows when overflow-x is used */}
-      <style>{`.hide-scrollbar::-webkit-scrollbar{display:none}.hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none;}`
-      }</style>
+      {/* Custom scrollbars for seat rows when overflow-x is used */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          height: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      `}</style>
       {/* ===================== RENDER CATEGORY SECTIONS ===================== */}
       {/* NEW APPROACH: Render each category as separate section */}
       <div className="space-y-6 max-w-4xl mx-auto px-2">
@@ -355,8 +369,8 @@ export function SeatGrid({
                         {/* Seat grid container with category border */}
                         <div
                           className={`flex ${compactMode
-                            ? 'gap-0.5 sm:gap-2 overflow-x-auto hide-scrollbar flex-nowrap py-1'
-                            : 'gap-1 sm:gap-2 overflow-x-auto hide-scrollbar flex-nowrap py-1'
+                            ? 'gap-0.5 sm:gap-2 overflow-x-auto custom-scrollbar flex-nowrap py-1'
+                            : 'gap-1 sm:gap-2 overflow-x-auto custom-scrollbar flex-nowrap py-1'
                             } ${isFirstRow ? 'pt-3' : ''
                             } ${isLastRow ? 'pb-3' : ''
                             } pl-2 pr-2 border-l-4 border-r-4 ${section.borderColor} ${isFirstRow ? 'border-t-4 rounded-t-lg' : ''
