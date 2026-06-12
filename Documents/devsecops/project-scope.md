@@ -6,22 +6,25 @@ FPT Event Management System (FEMS)
 
 ## Deployment Model
 
+- Frontend: React + TypeScript + Vite
+- Backend: Go microservices
+- Local orchestration: Docker Compose
 - Source control: GitHub
 - CI/Security pipeline: GitHub Actions
-- Hosting: Vercel
-- Environments: Local, Preview, Production
+- Frontend hosting: Vercel
 
 ## Core Modules
 
 - Authentication and authorization
-- Event creation and approval
-- Seat reservation
+- Event proposal and approval
+- Seat reservation and booking
 - Ticket generation
 - QR check-in/check-out
-- Payment and wallet
+- Payment gateways and internal wallet
 - Revenue dashboard
-- Email ticket delivery
+- Notification and email delivery
+- CI/CD secrets and deployment configuration
 
 ## DevSecOps Objectives
 
-Integrate security into planning, development, testing, deployment, and operation to reduce risks related to broken access control, IDOR, QR Ticket replay, duplicate check-in, seat booking race conditions, payment manipulation, wallet abuse, and secret leakage.
+Build a risk-driven CI/CD DevSecOps pipeline that detects quality and security issues early, prevents high-risk changes from being merged, validates deployed environments, and feeds security findings back into the project backlog.
