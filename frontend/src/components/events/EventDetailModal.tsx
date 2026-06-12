@@ -116,7 +116,8 @@ export function EventDetailModal({
   onEdit,
 }: EventDetailModalProps) {
   const navigate = useNavigate()
-  const { currentLanguage } = useAuth()
+  const { currentLanguage, user } = useAuth()
+  const activeRole = userRole || user?.role
   const [copied, setCopied] = useState(false)
   const [isZoomed, setIsZoomed] = useState(false)
 
@@ -370,6 +371,21 @@ export function EventDetailModal({
                     >
                       {eventEnded ? text.ended : text.closed}
                     </button>
+                  ) : activeRole && activeRole !== 'STUDENT' ? (
+                    <div className="mt-6 text-center">
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full bg-slate-100 dark:bg-neutral-900/50 text-slate-400 dark:text-neutral-500 border border-slate-200 dark:border-white/5 font-semibold py-3 rounded-xl transition-all uppercase tracking-wide cursor-not-allowed text-xs"
+                      >
+                        {lang === 'en' ? 'Staff/Organizer accounts cannot buy tickets' : 'Tài khoản BTC/Nhân sự không thể đặt vé'}
+                      </button>
+                      <p className="text-[11px] text-slate-500 dark:text-neutral-400 mt-2 font-medium">
+                        {lang === 'en' 
+                          ? '* Please use a Student account to register for events.' 
+                          : '* Vui lòng đăng nhập tài khoản Sinh viên để mua vé tham gia.'}
+                      </p>
+                    </div>
                   ) : (
                     <button
                       type="button"
