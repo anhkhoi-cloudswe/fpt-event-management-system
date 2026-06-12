@@ -85,8 +85,20 @@ export default function EventEdit() {
   })
 
   // ======================= CHOSEN SPEAKERS STATE =======================
-  const [selectedSpeakers, setSelectedSpeakers] = useState<any[]>([])
-  const [allSpeakers, setAllSpeakers] = useState<any[]>([])
+  interface Speaker {
+    speakerId?: number
+    speaker_id?: number
+    fullName?: string
+    full_name?: string
+    bio?: string
+    email?: string
+    phone?: string
+    avatarUrl?: string
+    avatar_url?: string
+  }
+
+  const [selectedSpeakers, setSelectedSpeakers] = useState<Speaker[]>([])
+  const [allSpeakers, setAllSpeakers] = useState<Speaker[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -109,7 +121,16 @@ export default function EventEdit() {
         const response = await fetch('/api/v1/admin/speakers')
         if (response.ok) {
           const data = await response.json()
-          setAllSpeakers(data)
+          const normalized = data.map((sp: any) => ({
+            ...sp,
+            speaker_id: sp.speakerId || sp.speaker_id,
+            speakerId: sp.speakerId || sp.speaker_id,
+            fullName: sp.fullName || sp.full_name || '',
+            full_name: sp.fullName || sp.full_name || '',
+            avatarUrl: sp.avatarUrl || sp.avatar_url || '',
+            avatar_url: sp.avatarUrl || sp.avatar_url || '',
+          }))
+          setAllSpeakers(normalized)
         }
       } catch (err) {
         console.error('Error fetching all speakers:', err)
@@ -120,8 +141,8 @@ export default function EventEdit() {
 
   const filteredSuggestions = allSpeakers.filter(
     (sp) =>
-      sp.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sp.email.toLowerCase().includes(searchQuery.toLowerCase())
+      (sp.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (sp.email || '').toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   // ======================= TICKET STATE =======================
@@ -320,12 +341,15 @@ export default function EventEdit() {
         // ===== PREFILL SPEAKER (luôn luôn hiển thị nếu có) =====
         if (speakerFromApi && (speakerFromApi.fullName || speakerFromApi.bio || speakerFromApi.email)) {
           const loadedSpeaker = {
-            speakerId: data.speakerId || speakerFromApi.speakerId || undefined,
-            fullName: speakerFromApi.fullName || '',
+            speakerId: data.speakerId || speakerFromApi.speakerId || speakerFromApi.speaker_id || undefined,
+            speaker_id: data.speakerId || speakerFromApi.speakerId || speakerFromApi.speaker_id || undefined,
+            fullName: speakerFromApi.fullName || speakerFromApi.full_name || '',
+            full_name: speakerFromApi.fullName || speakerFromApi.full_name || '',
             bio: speakerFromApi.bio || '',
             email: speakerFromApi.email || '',
             phone: speakerFromApi.phone || '',
-            avatarUrl: speakerFromApi.avatarUrl || '',
+            avatarUrl: speakerFromApi.avatarUrl || speakerFromApi.avatar_url || '',
+            avatar_url: speakerFromApi.avatarUrl || speakerFromApi.avatar_url || '',
           }
           setSelectedSpeakers([loadedSpeaker])
         }
@@ -355,11 +379,23 @@ export default function EventEdit() {
   // ======================= HANDLERS: SPEAKER =======================
 
   const handleSelectSpeaker = (sp: any) => {
-    setSelectedSpeakers([sp])
+    const clickedSpeaker = {
+      ...sp,
+      speaker_id: sp.speakerId || sp.speaker_id,
+      speakerId: sp.speakerId || sp.speaker_id,
+      fullName: sp.fullName || sp.full_name || '',
+      full_name: sp.fullName || sp.full_name || '',
+      avatarUrl: sp.avatarUrl || sp.avatar_url || '',
+      avatar_url: sp.avatarUrl || sp.avatar_url || '',
+    }
+    if (!selectedSpeakers.some(s => s.speaker_id === clickedSpeaker.speaker_id)) {
+      setSelectedSpeakers([...selectedSpeakers, clickedSpeaker]);
+    }
+    setSearchQuery('')
   }
 
   const handleRemoveSelectedSpeaker = (speakerId?: number) => {
-    setSelectedSpeakers([])
+    setSelectedSpeakers(selectedSpeakers.filter(s => (s.speakerId !== speakerId && s.speaker_id !== speakerId)))
   }
 
   const handleOpenDrawer = (query: string) => {
@@ -419,9 +455,20 @@ export default function EventEdit() {
 
       if (res.ok) {
         const createdSpeaker = await res.json()
+        const normalizedCreated = {
+          ...createdSpeaker,
+          speaker_id: createdSpeaker.speakerId || createdSpeaker.speaker_id,
+          speakerId: createdSpeaker.speakerId || createdSpeaker.speaker_id,
+          fullName: createdSpeaker.fullName || createdSpeaker.full_name || '',
+          full_name: createdSpeaker.fullName || createdSpeaker.full_name || '',
+          avatarUrl: createdSpeaker.avatarUrl || createdSpeaker.avatar_url || '',
+          avatar_url: createdSpeaker.avatarUrl || createdSpeaker.avatar_url || '',
+        }
         showToast('success', 'Thêm diễn giả thành công')
-        setSelectedSpeakers([createdSpeaker])
-        setAllSpeakers(prev => [createdSpeaker, ...prev])
+        if (!selectedSpeakers.some(s => s.speaker_id === normalizedCreated.speaker_id)) {
+          setSelectedSpeakers([...selectedSpeakers, normalizedCreated]);
+        }
+        setAllSpeakers(prev => [normalizedCreated, ...prev])
         setIsDrawerOpen(false)
       } else {
         const text = await res.text()
@@ -741,14 +788,24 @@ export default function EventEdit() {
         endTime: eventInfo.endTime,
         maxSeats: eventInfo.maxSeats,
         areaId: eventInfo.areaId,
-        speaker: {
-          speakerId: activeSpeaker.speakerId,
-          fullName: activeSpeaker.fullName,
-          bio: activeSpeaker.bio,
-          email: activeSpeaker.email,
-          phone: activeSpeaker.phone,
-          avatarUrl: activeSpeaker.avatarUrl,
-        },
+        speaker: activeSpeaker ? {
+          speakerId: activeSpeaker.speakerId || activeSpeaker.speaker_id,
+          fullName: activeSpeaker.fullName || activeSpeaker.full_name || '',
+          bio: activeSpeaker.bio || '',
+          email: activeSpeaker.email || '',
+          phone: activeSpeaker.phone || '',
+          avatarUrl: activeSpeaker.avatarUrl || activeSpeaker.avatar_url || '',
+        } : null,
+        speakers: selectedSpeakers.map(s => ({
+          speakerId: s.speakerId || s.speaker_id,
+          fullName: s.fullName || s.full_name || '',
+          bio: s.bio || '',
+          email: s.email || '',
+          phone: s.phone || '',
+          avatarUrl: s.avatarUrl || s.avatar_url || '',
+        })),
+        speaker_ids: selectedSpeakers.map(s => s.speaker_id || s.speakerId).filter(Boolean),
+        speakerIds: selectedSpeakers.map(s => s.speakerId || s.speaker_id).filter(Boolean),
         tickets: tickets.map((ticket) => ({
           name: ticket.name,
           description: ticket.description,
@@ -908,35 +965,42 @@ export default function EventEdit() {
 
               {/* Selected speaker chips */}
               <div className="flex flex-wrap gap-2 mt-2">
-                {selectedSpeakers.map((sp) => (
-                  <div
-                    key={sp.speakerId || 'temp'}
-                    className="inline-flex items-center gap-2 bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-full pl-2 pr-3 py-1.5 shadow-md"
-                  >
-                    {sp.avatarUrl ? (
-                      <img
-                        src={sp.avatarUrl}
-                        alt={sp.fullName}
-                        className="w-6 h-6 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-blue-600/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
-                        {sp.fullName.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="text-xs">
-                      <span className="font-semibold">{sp.fullName}</span>
-                      {sp.email && <span className="text-slate-500 dark:text-slate-400 ml-1">({sp.email})</span>}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSelectedSpeaker(sp.speakerId)}
-                      className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                {selectedSpeakers.map((sp) => {
+                  const currentId = sp.speaker_id || sp.speakerId
+                  const avatarUrl = sp.avatar_url || sp.avatarUrl
+                  const fullName = sp.full_name || sp.fullName || ''
+                  const email = sp.email
+
+                  return (
+                    <div
+                      key={currentId || 'temp'}
+                      className="inline-flex items-center gap-2 bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10 text-slate-800 dark:text-slate-100 rounded-full pl-2 pr-3 py-1.5 shadow-md"
                     >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt={fullName}
+                          className="w-6 h-6 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-blue-600/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
+                          {fullName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="text-xs">
+                        <span className="font-semibold">{fullName}</span>
+                        {email && <span className="text-slate-500 dark:text-slate-400 ml-1">({email})</span>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSpeakers(selectedSpeakers.filter(s => s.speaker_id !== currentId))}
+                        className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
