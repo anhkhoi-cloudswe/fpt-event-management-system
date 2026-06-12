@@ -287,6 +287,7 @@ type UpdateEventDetailsRequest struct {
 }
 
 type SpeakerDTO struct {
+	SpeakerID *int    `json:"speakerId,omitempty"`
 	FullName  string  `json:"fullName"`
 	Bio       *string `json:"bio"`
 	Email     *string `json:"email"`

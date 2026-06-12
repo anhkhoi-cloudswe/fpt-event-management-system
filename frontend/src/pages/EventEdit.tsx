@@ -5,7 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 // Link: chuyển trang SPA không reload
 
 // Import icon để UI đẹp hơn
-import { Upload, X, Plus, Trash2 } from 'lucide-react'
+import { Upload, X, Plus, Trash2, Search, Loader, User } from 'lucide-react'
 // Upload: icon upload ảnh
 // X: icon đóng / xóa ảnh
 // Plus: icon thêm vé
@@ -84,16 +84,45 @@ export default function EventEdit() {
     areaId: 0,
   })
 
-  // ======================= SPEAKER STATE =======================
+  // ======================= CHOSEN SPEAKERS STATE =======================
+  const [selectedSpeakers, setSelectedSpeakers] = useState<any[]>([])
+  const [allSpeakers, setAllSpeakers] = useState<any[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
-  // speaker: thông tin diễn giả nhập trên form
-  const [speaker, setSpeaker] = useState({
+  // Drawer state
+  const [drawerFormData, setDrawerFormData] = useState({
     fullName: '',
     bio: '',
     email: '',
     phone: '',
-    avatarUrl: '',
+    avatarUrl: ''
   })
+  const [drawerAvatarPreview, setDrawerAvatarPreview] = useState<string | null>(null)
+  const [drawerAvatarFile, setDrawerAvatarFile] = useState<File | null>(null)
+  const [drawerSubmitting, setDrawerSubmitting] = useState(false)
+
+  useEffect(() => {
+    const fetchAllSpeakers = async () => {
+      try {
+        const response = await fetch('/api/v1/admin/speakers')
+        if (response.ok) {
+          const data = await response.json()
+          setAllSpeakers(data)
+        }
+      } catch (err) {
+        console.error('Error fetching all speakers:', err)
+      }
+    }
+    fetchAllSpeakers()
+  }, [])
+
+  const filteredSuggestions = allSpeakers.filter(
+    (sp) =>
+      sp.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      sp.email.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   // ======================= TICKET STATE =======================
 
@@ -120,16 +149,7 @@ export default function EventEdit() {
   // isDragging: UI trạng thái drag-drop banner
   const [isDragging, setIsDragging] = useState(false)
 
-  // ======================= AVATAR IMAGE STATE =======================
 
-  // selectedAvatarImage: file avatar diễn giả user chọn
-  const [selectedAvatarImage, setSelectedAvatarImage] = useState<File | null>(null)
-
-  // avatarPreview: preview ảnh avatar
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-
-  // isDraggingAvatar: UI trạng thái drag-drop avatar
-  const [isDraggingAvatar, setIsDraggingAvatar] = useState(false)
 
   // ======================= REF CHẶN SPAM TOAST =======================
 
@@ -299,14 +319,15 @@ export default function EventEdit() {
 
         // ===== PREFILL SPEAKER (luôn luôn hiển thị nếu có) =====
         if (speakerFromApi && (speakerFromApi.fullName || speakerFromApi.bio || speakerFromApi.email)) {
-          setSpeaker({
+          const loadedSpeaker = {
+            speakerId: data.speakerId || speakerFromApi.speakerId || undefined,
             fullName: speakerFromApi.fullName || '',
             bio: speakerFromApi.bio || '',
             email: speakerFromApi.email || '',
             phone: speakerFromApi.phone || '',
             avatarUrl: speakerFromApi.avatarUrl || '',
-          })
-          if (speakerFromApi.avatarUrl) setAvatarPreview(speakerFromApi.avatarUrl)
+          }
+          setSelectedSpeakers([loadedSpeaker])
         }
 
         // ===== PREFILL TICKETS (luôn luôn hiển thị nếu có) =====
@@ -333,9 +354,85 @@ export default function EventEdit() {
 
   // ======================= HANDLERS: SPEAKER =======================
 
-  // handleSpeakerChange: cập nhật từng field của speaker (fullName, bio, email, phone...)
-  const handleSpeakerChange = (field: keyof typeof speaker, value: string) => {
-    setSpeaker((prev) => ({ ...prev, [field]: value }))
+  const handleSelectSpeaker = (sp: any) => {
+    setSelectedSpeakers([sp])
+  }
+
+  const handleRemoveSelectedSpeaker = (speakerId?: number) => {
+    setSelectedSpeakers([])
+  }
+
+  const handleOpenDrawer = (query: string) => {
+    setDrawerFormData({
+      fullName: query,
+      bio: '',
+      email: '',
+      phone: '',
+      avatarUrl: ''
+    })
+    setDrawerAvatarPreview(null)
+    setDrawerAvatarFile(null)
+    setIsDrawerOpen(true)
+  }
+
+  const handleDrawerSave = async () => {
+    if (!drawerFormData.fullName.trim()) {
+      showToast('error', 'Họ và tên là bắt buộc')
+      return
+    }
+    if (!drawerFormData.bio.trim()) {
+      showToast('error', 'Tiểu sử là bắt buộc')
+      return
+    }
+    if (!drawerFormData.email.trim()) {
+      showToast('error', 'Email là bắt buộc')
+      return
+    }
+    if (!drawerFormData.phone.trim()) {
+      showToast('error', 'Số điện thoại là bắt buộc')
+      return
+    }
+
+    setDrawerSubmitting(true)
+    try {
+      let avatarUrl = ''
+      if (drawerAvatarFile) {
+        avatarUrl = await uploadEventBanner(drawerAvatarFile)
+      }
+
+      const payload = {
+        fullName: drawerFormData.fullName,
+        bio: drawerFormData.bio,
+        email: drawerFormData.email,
+        phone: drawerFormData.phone,
+        avatarUrl: avatarUrl
+      }
+
+      const res = await fetch('/api/v1/speakers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      })
+
+      if (res.ok) {
+        const createdSpeaker = await res.json()
+        showToast('success', 'Thêm diễn giả thành công')
+        setSelectedSpeakers([createdSpeaker])
+        setAllSpeakers(prev => [createdSpeaker, ...prev])
+        setIsDrawerOpen(false)
+      } else {
+        const text = await res.text()
+        showToast('error', text || 'Lỗi khi tạo diễn giả')
+      }
+    } catch (err) {
+      console.error('Error creating speaker inline:', err)
+      showToast('error', 'Không thể kết nối máy chủ')
+    } finally {
+      setDrawerSubmitting(false)
+    }
   }
 
   // ======================= HANDLERS: TICKET =======================
@@ -570,75 +667,7 @@ export default function EventEdit() {
     reader.readAsDataURL(file)
   }
 
-  // ======================= HANDLERS: AVATAR IMAGE (SELECT + DRAG DROP) =======================
 
-  // handleAvatarSelect: chọn ảnh avatar từ input, validate và preview
-  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    const validation = validateImageFile(file)
-    if (!validation.valid) {
-      setError(validation.error || 'Invalid file')
-      return
-    }
-
-    setSelectedAvatarImage(file)
-    setError(null)
-
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setAvatarPreview(reader.result as string)
-    }
-    reader.readAsDataURL(file)
-  }
-
-  // handleRemoveAvatar: xóa avatar preview + reset avatarUrl trong speaker
-  const handleRemoveAvatar = () => {
-    setSelectedAvatarImage(null)
-    setAvatarPreview(null)
-    setSpeaker((prev) => ({ ...prev, avatarUrl: '' }))
-    setError(null)
-  }
-
-  // Drag over avatar box
-  const handleAvatarDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDraggingAvatar(true)
-  }
-
-  // Drag leave avatar box
-  const handleAvatarDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDraggingAvatar(false)
-  }
-
-  // Drop avatar image
-  const handleAvatarDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDraggingAvatar(false)
-
-    const file = e.dataTransfer.files?.[0]
-    if (!file) return
-
-    const validation = validateImageFile(file)
-    if (!validation.valid) {
-      setError(validation.error || 'Invalid file')
-      return
-    }
-
-    setSelectedAvatarImage(file)
-    setError(null)
-
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setAvatarPreview(reader.result as string)
-    }
-    reader.readAsDataURL(file)
-  }
 
   // ======================= SUBMIT FORM (UPDATE EVENT) =======================
 
@@ -674,6 +703,12 @@ export default function EventEdit() {
         }
       }
 
+      if (selectedSpeakers.length === 0) {
+        setError('Vui lòng chọn hoặc thêm diễn giả')
+        setIsSubmitting(false)
+        return
+      }
+
       // ===== UPLOAD BANNER nếu user chọn ảnh mới =====
       let finalBannerUrl = bannerUrl
       if (selectedImage) {
@@ -683,28 +718,12 @@ export default function EventEdit() {
           console.log('Banner uploaded successfully:', finalBannerUrl)
         } catch (uploadError: any) {
           console.error('Banner upload failed:', uploadError)
-          // Show warning but allow form submission to continue
           showToast('warning', 'Không thể tải ảnh banner lên. Sự kiện sẽ giữ nguyên ảnh cũ.')
-          // Keep the old banner URL if upload fails
           finalBannerUrl = bannerUrl
         }
       }
 
-      // ===== UPLOAD AVATAR nếu user chọn ảnh avatar mới =====
-      let finalAvatarUrl = speaker.avatarUrl
-      if (selectedAvatarImage) {
-        try {
-          console.log('Uploading avatar image...')
-          finalAvatarUrl = await uploadEventBanner(selectedAvatarImage)
-          console.log('Avatar uploaded successfully:', finalAvatarUrl)
-        } catch (uploadError: any) {
-          console.error('Avatar upload failed:', uploadError)
-          // Show warning but allow form submission to continue
-          showToast('warning', 'Không thể tải ảnh avatar lên. Speaker sẽ giữ nguyên ảnh cũ.')
-          // Keep the old avatar URL if upload fails
-          finalAvatarUrl = speaker.avatarUrl
-        }
-      }
+      const activeSpeaker = selectedSpeakers[0]
 
       /**
        * requestBody:
@@ -723,11 +742,12 @@ export default function EventEdit() {
         maxSeats: eventInfo.maxSeats,
         areaId: eventInfo.areaId,
         speaker: {
-          fullName: speaker.fullName,
-          bio: speaker.bio,
-          email: speaker.email,
-          phone: speaker.phone,
-          avatarUrl: finalAvatarUrl,
+          speakerId: activeSpeaker.speakerId,
+          fullName: activeSpeaker.fullName,
+          bio: activeSpeaker.bio,
+          email: activeSpeaker.email,
+          phone: activeSpeaker.phone,
+          avatarUrl: activeSpeaker.avatarUrl,
         },
         tickets: tickets.map((ticket) => ({
           name: ticket.name,
@@ -805,110 +825,118 @@ export default function EventEdit() {
           <div className="border-b pb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Thông tin diễn giả</h2>
 
-            {/* Input speaker fields */}
+            {/* Autocomplete Combobox */}
             <div className="space-y-4">
-              {/* fullName */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Họ và tên *
+                  Chọn diễn giả *
                 </label>
-                <input
-                  type="text"
-                  value={speaker.fullName}
-                  onChange={(e) => handleSpeakerChange('fullName', e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              {/* bio */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tiểu sử *
-                </label>
-                <textarea
-                  value={speaker.bio}
-                  onChange={(e) => handleSpeakerChange('bio', e.target.value)}
-                  required
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              {/* email + phone */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    value={speaker.email}
-                    onChange={(e) => handleSpeakerChange('email', e.target.value)}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Số điện thoại *
-                  </label>
-                  <input
-                    type="tel"
-                    value={speaker.phone}
-                    onChange={(e) => handleSpeakerChange('phone', e.target.value)}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              {/* avatar upload */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ảnh đại diện diễn giả (tùy chọn)
-                </label>
-
-                {/* Nếu chưa có preview -> show drop zone */}
-                {!avatarPreview ? (
-                  <div
-                    onDragOver={handleAvatarDragOver}
-                    onDragLeave={handleAvatarDragLeave}
-                    onDrop={handleAvatarDrop}
-                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDraggingAvatar ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
-                      }`}
-                  >
-                    <input
-                      type="file"
-                      id="avatar-upload"
-                      accept="image/*"
-                      onChange={handleAvatarSelect}
-                      className="hidden"
-                    />
-                    <label htmlFor="avatar-upload" className="cursor-pointer">
-                      <Upload className="w-10 h-10 mx-auto text-gray-400 mb-3" />
-                      <p className="text-gray-600 mb-1 text-sm">Kéo thả ảnh hoặc click để chọn</p>
-                      <p className="text-xs text-gray-500">PNG, JPG, GIF tối đa 5MB</p>
-                    </label>
-                  </div>
-                ) : (
-                  // Nếu đã có preview -> show ảnh + nút xóa
+                
+                <div className="relative">
                   <div className="relative">
-                    <img
-                      src={avatarPreview}
-                      alt="Avatar Preview"
-                      className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-gray-200"
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Gõ tìm diễn giả (ví dụ: Fernando)..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value)
+                        setShowSuggestions(true)
+                      }}
+                      onFocus={() => setShowSuggestions(true)}
+                      className="w-full bg-neutral-950/60 backdrop-blur-md border border-white/10 text-white rounded-xl pl-10 pr-4 py-2.5 outline-none focus:border-blue-500 transition-colors placeholder-gray-500"
                     />
+                  </div>
+
+                  {showSuggestions && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-10" 
+                        onClick={() => setShowSuggestions(false)}
+                      />
+                      <div className="absolute z-20 w-full mt-2 bg-neutral-950/95 backdrop-blur-md border border-white/10 text-white rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
+                        {filteredSuggestions.length > 0 ? (
+                          filteredSuggestions.map((sp) => (
+                            <div
+                              key={sp.speakerId}
+                              onClick={() => {
+                                handleSelectSpeaker(sp)
+                                setShowSuggestions(false)
+                                setSearchQuery('')
+                              }}
+                              className="px-4 py-3 hover:bg-white/5 cursor-pointer flex items-center gap-3 border-b border-white/5 last:border-0"
+                            >
+                              {sp.avatarUrl ? (
+                                <img
+                                  src={sp.avatarUrl}
+                                  alt={sp.fullName}
+                                  className="w-8 h-8 rounded-full object-cover border border-white/10"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-sm border border-blue-500/20">
+                                  {sp.fullName.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-sm font-semibold">{sp.fullName}</p>
+                                <p className="text-xs text-neutral-400">{sp.email || 'Không có email'}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-neutral-400 text-center">
+                            Không tìm thấy diễn giả nào
+                          </div>
+                        )}
+
+                        {searchQuery.trim() !== '' && !allSpeakers.some(s => s.fullName.toLowerCase() === searchQuery.trim().toLowerCase()) && (
+                          <div
+                            onClick={() => {
+                              handleOpenDrawer(searchQuery)
+                              setShowSuggestions(false)
+                            }}
+                            className="px-4 py-3 hover:bg-blue-600/20 text-blue-400 font-semibold cursor-pointer border-t border-white/10 flex items-center"
+                          >
+                            + Thêm mới diễn giả "{searchQuery}"
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Selected speaker chips */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedSpeakers.map((sp) => (
+                  <div
+                    key={sp.speakerId || 'temp'}
+                    className="inline-flex items-center gap-2 bg-neutral-900/80 border border-white/10 text-white rounded-full pl-2 pr-3 py-1.5 shadow-md"
+                  >
+                    {sp.avatarUrl ? (
+                      <img
+                        src={sp.avatarUrl}
+                        alt={sp.fullName}
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-xs">
+                        {sp.fullName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="text-xs">
+                      <span className="font-semibold">{sp.fullName}</span>
+                      {sp.email && <span className="text-neutral-400 ml-1">({sp.email})</span>}
+                    </div>
                     <button
                       type="button"
-                      onClick={handleRemoveAvatar}
-                      className="absolute top-0 right-1/2 translate-x-16 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                      onClick={() => handleRemoveSelectedSpeaker(sp.speakerId)}
+                      className="p-0.5 rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                )}
+                ))}
               </div>
             </div>
           </div>
@@ -1109,6 +1137,165 @@ export default function EventEdit() {
           </div>
         </form>
       </div>
+
+      {isDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-sm transition-opacity">
+          <div className="h-full w-full max-w-md bg-neutral-950/95 border-l border-white/10 p-6 shadow-2xl flex flex-col justify-between text-white overflow-y-auto animate-in slide-in-from-right duration-300">
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-white">Thêm Diễn Giả Mới</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="p-1 rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Họ và tên */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-1">
+                    Họ và tên *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={drawerFormData.fullName}
+                    onChange={(e) => setDrawerFormData(prev => ({ ...prev, fullName: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-blue-500 outline-none transition-colors"
+                    placeholder="Nguyễn Văn A"
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-1">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={drawerFormData.email}
+                    onChange={(e) => setDrawerFormData(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-blue-500 outline-none transition-colors"
+                    placeholder="email@example.com"
+                  />
+                </div>
+
+                {/* Số điện thoại */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-1">
+                    Số điện thoại *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={drawerFormData.phone}
+                    onChange={(e) => setDrawerFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-blue-500 outline-none transition-colors"
+                    placeholder="0912345678"
+                  />
+                </div>
+
+                {/* Tiểu sử */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-1">
+                    Tiểu sử *
+                  </label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={drawerFormData.bio}
+                    onChange={(e) => setDrawerFormData(prev => ({ ...prev, bio: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-blue-500 outline-none transition-colors resize-none"
+                    placeholder="Thông tin giới thiệu về diễn giả..."
+                  />
+                </div>
+
+                {/* Ảnh đại diện */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-1">
+                    Ảnh đại diện
+                  </label>
+                  <div className="flex items-center gap-4 mt-1">
+                    {drawerAvatarPreview ? (
+                      <div className="relative">
+                        <img
+                          src={drawerAvatarPreview}
+                          alt="Avatar Preview"
+                          className="w-16 h-16 rounded-full object-cover border border-white/10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDrawerAvatarFile(null)
+                            setDrawerAvatarPreview(null)
+                          }}
+                          className="absolute -top-1 -right-1 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-500 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-white/5 border border-dashed border-white/10 flex items-center justify-center text-neutral-500">
+                        <User className="w-6 h-6" />
+                      </div>
+                    )}
+                    <div>
+                      <input
+                        type="file"
+                        id="drawer-avatar-upload"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            const validation = validateImageFile(file)
+                            if (!validation.valid) {
+                              showToast('error', validation.error || 'Ảnh không hợp lệ')
+                              return
+                            }
+                            setDrawerAvatarFile(file)
+                            setDrawerAvatarPreview(URL.createObjectURL(file))
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="drawer-avatar-upload"
+                        className="inline-flex items-center px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-white cursor-pointer transition-colors"
+                      >
+                        Tải ảnh lên
+                      </label>
+                      <p className="text-[10px] text-neutral-400 mt-1">PNG, JPG tối đa 5MB</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-6 border-t border-white/5 mt-6">
+              <button
+                type="button"
+                onClick={() => setIsDrawerOpen(false)}
+                className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-semibold text-neutral-300 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleDrawerSave}
+                disabled={drawerSubmitting}
+                className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm font-semibold hover:from-blue-500 hover:to-blue-400 rounded-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                {drawerSubmitting && <Loader className="w-4 h-4 mr-2 animate-spin" />}
+                Lưu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

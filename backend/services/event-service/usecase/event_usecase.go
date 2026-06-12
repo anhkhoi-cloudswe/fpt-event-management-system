@@ -398,3 +398,19 @@ func (uc *EventUseCase) GetEventsByStatusV1(ctx context.Context, status string, 
 func (uc *EventUseCase) GetEventsByStatusV1WithRole(ctx context.Context, status string, search string, page int, limit int, role string, userID int) (*repository.EventListV1Result, error) {
 	return uc.eventRepo.GetEventsByStatusV1WithRole(ctx, status, search, page, limit, role, userID)
 }
+
+func (uc *EventUseCase) GetSpeakers(ctx context.Context) ([]models.SpeakerDTO, error) {
+	return uc.eventRepo.GetSpeakers(ctx)
+}
+
+func (uc *EventUseCase) CreateSpeaker(ctx context.Context, s *models.SpeakerDTO) (int, error) {
+	return uc.eventRepo.CreateSpeaker(ctx, s)
+}
+
+func (uc *EventUseCase) UpdateSpeaker(ctx context.Context, id int, s *models.SpeakerDTO) error {
+	return uc.eventRepo.UpdateSpeaker(ctx, id, s)
+}
+
+func (uc *EventUseCase) DeleteSpeaker(ctx context.Context, id int) error {
+	return uc.eventRepo.DeleteSpeaker(ctx, id)
+}

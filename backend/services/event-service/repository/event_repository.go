@@ -263,6 +263,15 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 			return fmt.Errorf("failed to check existing speaker_id: %w", err)
 		}
 
+		if req.Speaker != nil {
+			if sidVal, ok := req.Speaker["speakerId"]; ok && sidVal != nil {
+				if floatSid, ok := sidVal.(float64); ok && floatSid > 0 {
+					speakerID.Int64 = int64(floatSid)
+					speakerID.Valid = true
+				}
+			}
+		}
+
 		// ✅ LOG CHECK: In ra speaker_id hiện tại sau khi SELECT
 		log.Printf("[CHECK] SpeakerID hien tai cua Event %d: %v (Valid=%v)", eventID, speakerID.Int64, speakerID.Valid)
 		fmt.Printf("[UpdateEventRequest] Current speaker_id for EventID=%d: %v (Valid=%v)\n", eventID, speakerID.Int64, speakerID.Valid)
@@ -2684,6 +2693,11 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 
 	log.Printf("[CHECK] Current speaker_id for Event %d: %v (Valid=%v)", updateReq.EventID, speakerID.Int64, speakerID.Valid)
 
+	if updateReq.Speaker != nil && updateReq.Speaker.SpeakerID != nil && *updateReq.Speaker.SpeakerID > 0 {
+		speakerID.Int64 = int64(*updateReq.Speaker.SpeakerID)
+		speakerID.Valid = true
+	}
+
 	// Process speaker if provided
 	if updateReq.Speaker != nil && strings.TrimSpace(updateReq.Speaker.FullName) != "" {
 		speakerFullName := strings.TrimSpace(updateReq.Speaker.FullName)
@@ -3770,4 +3784,121 @@ func (r *EventRepository) DisableEventByStaff(ctx context.Context, eventID int) 
 	}
 
 	return nil
+}
+
+func (r *EventRepository) GetSpeakers(ctx context.Context) ([]models.SpeakerDTO, error) {
+	query := `
+		SELECT speaker_id, full_name, bio, email, phone, avatar_url
+		FROM Speaker
+		ORDER BY speaker_id DESC
+	`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query speakers: %w", err)
+	}
+	defer rows.Close()
+
+	var speakers []models.SpeakerDTO
+	for rows.Next() {
+		var s models.SpeakerDTO
+		var speakerID int
+		var bio, email, phone, avatarURL sql.NullString
+		err := rows.Scan(&speakerID, &s.FullName, &bio, &email, &phone, &avatarURL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan speaker: %w", err)
+		}
+		s.SpeakerID = &speakerID
+		if bio.Valid {
+			s.Bio = &bio.String
+		}
+		if email.Valid {
+			s.Email = &email.String
+		}
+		if phone.Valid {
+			s.Phone = &phone.String
+		}
+		if avatarURL.Valid {
+			s.AvatarURL = &avatarURL.String
+		}
+		speakers = append(speakers, s)
+	}
+	if speakers == nil {
+		speakers = []models.SpeakerDTO{}
+	}
+	return speakers, nil
+}
+
+func (r *EventRepository) CreateSpeaker(ctx context.Context, s *models.SpeakerDTO) (int, error) {
+	var bio, email, phone, avatarURL string
+	if s.Bio != nil {
+		bio = *s.Bio
+	}
+	if s.Email != nil {
+		email = *s.Email
+	}
+	if s.Phone != nil {
+		phone = *s.Phone
+	}
+	if s.AvatarURL != nil {
+		avatarURL = *s.AvatarURL
+	}
+
+	query := `
+		INSERT INTO Speaker (full_name, bio, email, phone, avatar_url)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING speaker_id
+	`
+	var speakerID int
+	err := r.db.QueryRowContext(ctx, query, s.FullName, bio, email, phone, avatarURL).Scan(&speakerID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert speaker: %w", err)
+	}
+	return speakerID, nil
+}
+
+func (r *EventRepository) UpdateSpeaker(ctx context.Context, id int, s *models.SpeakerDTO) error {
+	var bio, email, phone, avatarURL string
+	if s.Bio != nil {
+		bio = *s.Bio
+	}
+	if s.Email != nil {
+		email = *s.Email
+	}
+	if s.Phone != nil {
+		phone = *s.Phone
+	}
+	if s.AvatarURL != nil {
+		avatarURL = *s.AvatarURL
+	}
+
+	query := `
+		UPDATE Speaker
+		SET full_name = $1, bio = $2, email = $3, phone = $4, avatar_url = $5
+		WHERE speaker_id = $6
+	`
+	_, err := r.db.ExecContext(ctx, query, s.FullName, bio, email, phone, avatarURL, id)
+	if err != nil {
+		return fmt.Errorf("failed to update speaker: %w", err)
+	}
+	return nil
+}
+
+func (r *EventRepository) DeleteSpeaker(ctx context.Context, id int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, `UPDATE Event SET speaker_id = NULL WHERE speaker_id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("failed to unlink speaker from events: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `DELETE FROM Speaker WHERE speaker_id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete speaker: %w", err)
+	}
+
+	return tx.Commit()
 }

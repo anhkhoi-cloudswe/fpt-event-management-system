@@ -130,6 +130,14 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	// ========== Public Routes ==========
 	switch {
+	case (path == "/api/v1/admin/speakers" || path == "/api/v1/speakers") && method == "GET":
+		return eventHandler.HandleGetSpeakers(ctx, request)
+	case path == "/api/v1/speakers" && method == "POST":
+		return eventHandler.HandleCreateSpeaker(ctx, request)
+	case (path == "/api/v1/speakers" || strings.HasPrefix(path, "/api/v1/speakers/")) && method == "PUT":
+		return eventHandler.HandleUpdateSpeaker(ctx, request)
+	case (path == "/api/v1/speakers" || strings.HasPrefix(path, "/api/v1/speakers/")) && method == "DELETE":
+		return eventHandler.HandleDeleteSpeaker(ctx, request)
 	case path == "/api/v1/events" && method == "GET":
 		return eventHandler.HandleGetEventsByStatusV1(ctx, request)
 	case path == "/api/events" && method == "GET":

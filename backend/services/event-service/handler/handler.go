@@ -1341,3 +1341,85 @@ func (h *EventHandler) HandleGetEventsByStatusV1(ctx context.Context, request ev
 func stringPtr(s string) *string {
 	return &s
 }
+
+func (h *EventHandler) HandleGetSpeakers(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	speakersList, err := h.useCase.GetSpeakers(ctx)
+	if err != nil {
+		log.Error("GetSpeakers error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Internal server error loading speakers")
+	}
+	return createJSONResponse(http.StatusOK, speakersList)
+}
+
+func (h *EventHandler) HandleCreateSpeaker(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var req models.SpeakerDTO
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid request body")
+	}
+	if req.FullName == "" {
+		return createMessageResponse(http.StatusBadRequest, "Full name is required")
+	}
+
+	speakerID, err := h.useCase.CreateSpeaker(ctx, &req)
+	if err != nil {
+		log.Error("CreateSpeaker error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Internal server error creating speaker")
+	}
+
+	req.SpeakerID = &speakerID
+	return createJSONResponse(http.StatusOK, req)
+}
+
+func (h *EventHandler) HandleUpdateSpeaker(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	idStr := request.QueryStringParameters["id"]
+	if idStr == "" {
+		// Try path param
+		parts := strings.Split(strings.TrimSuffix(request.Path, "/"), "/")
+		if len(parts) > 0 {
+			idStr = parts[len(parts)-1]
+		}
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		return createMessageResponse(http.StatusBadRequest, "Invalid speaker ID")
+	}
+
+	var req models.SpeakerDTO
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid request body")
+	}
+	if req.FullName == "" {
+		return createMessageResponse(http.StatusBadRequest, "Full name is required")
+	}
+
+	err = h.useCase.UpdateSpeaker(ctx, id, &req)
+	if err != nil {
+		log.Error("UpdateSpeaker error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Internal server error updating speaker")
+	}
+
+	req.SpeakerID = &id
+	return createJSONResponse(http.StatusOK, req)
+}
+
+func (h *EventHandler) HandleDeleteSpeaker(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	idStr := request.QueryStringParameters["id"]
+	if idStr == "" {
+		parts := strings.Split(strings.TrimSuffix(request.Path, "/"), "/")
+		if len(parts) > 0 {
+			idStr = parts[len(parts)-1]
+		}
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		return createMessageResponse(http.StatusBadRequest, "Invalid speaker ID")
+	}
+
+	err = h.useCase.DeleteSpeaker(ctx, id)
+	if err != nil {
+		log.Error("DeleteSpeaker error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Internal server error deleting speaker")
+	}
+
+	return createJSONResponse(http.StatusOK, map[string]string{"message": "Speaker deleted successfully"})
+}

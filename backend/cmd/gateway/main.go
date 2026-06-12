@@ -57,6 +57,8 @@ var routes = []Route{
 	{"/api/users/", "Auth"},
 
 	// ========== Event Service (8082) ==========
+	{"/api/v1/admin/speakers", "Event"},
+	{"/api/v1/speakers", "Event"},
 	{"/api/v1/events", "Event"}, // v1 events API (longest prefix first)
 	{"/api/events", "Event"},
 	{"/api/event/", "Event"}, // singular alias (e.g. /api/event/disable)
