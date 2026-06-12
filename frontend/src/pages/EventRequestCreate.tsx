@@ -77,39 +77,42 @@ function fmtTime(iso: string) {
 const ERC_STYLE_ID = 'erc-cinema-fullpage-style'
 const ERC_CSS = `
   /* Base page background */
-  html.erc-cinema body { background: #050505 !important; }
+  html.erc-cinema body { background: #0b0b0b !important; }
 
-  /* Layout root div (min-h-screen) — make transparent */
+  /* Layout root div (min-h-screen) — make transparent so backdrop shows through */
   html.erc-cinema body > div > div[class*="min-h-screen"],
-  html.erc-cinema body > div[class*="min-h-screen"] { background: transparent !important; }
+  html.erc-cinema body > div[class*="min-h-screen"],
+  html.erc-cinema body > div > div > div[class*="min-h-screen"] { background: transparent !important; }
 
-  /* Header — ultra-transparent frosted glass */
+  /* Header — ghost glass on top of dark backdrop */
   html.erc-cinema header {
-    background: rgba(0, 0, 0, 0.07) !important;
-    backdrop-filter: blur(48px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(48px) saturate(180%) !important;
-    border-bottom-color: rgba(255, 255, 255, 0.04) !important;
+    background: rgba(11, 11, 11, 0.55) !important;
+    backdrop-filter: blur(32px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(140%) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.05) !important;
     box-shadow: none !important;
   }
-  /* Make header text white in both light and dark modes */
+  /* Header text — bright white, readable on very dark */
   html.erc-cinema header,
-  html.erc-cinema header * { color: rgba(255, 255, 255, 0.88) !important; }
-  /* Keep logo images unaffected */
+  html.erc-cinema header * { color: rgba(255, 255, 255, 0.90) !important; }
   html.erc-cinema header img { color: unset !important; }
+  /* Preserve orange accent on logo text */
+  html.erc-cinema header [class*="text-orange"],
+  html.erc-cinema header [class*="text-fpt"] { color: rgba(255, 165, 40, 0.92) !important; }
 
-  /* Desktop Sidebar — ultra-transparent frosted glass */
+  /* Desktop Sidebar — same dark glass */
   html.erc-cinema aside {
-    background: rgba(0, 0, 0, 0.05) !important;
-    backdrop-filter: blur(48px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(48px) saturate(180%) !important;
-    border-right-color: rgba(255, 255, 255, 0.04) !important;
-    border-bottom-color: rgba(255, 255, 255, 0.04) !important;
+    background: rgba(11, 11, 11, 0.50) !important;
+    backdrop-filter: blur(32px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(140%) !important;
+    border-right-color: rgba(255, 255, 255, 0.05) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.05) !important;
     box-shadow: none !important;
   }
-  /* Sidebar text: muted white */
+  /* Sidebar text — comfortably readable muted white */
   html.erc-cinema aside,
-  html.erc-cinema aside * { color: rgba(255, 255, 255, 0.50) !important; }
-  /* Individual sidebar link backgrounds → transparent */
+  html.erc-cinema aside * { color: rgba(255, 255, 255, 0.62) !important; }
+  /* Sidebar links — transparent backgrounds */
   html.erc-cinema aside a,
   html.erc-cinema aside button { background: transparent !important; border-color: transparent !important; }
   html.erc-cinema aside a:hover,
@@ -371,12 +374,12 @@ export default function EventRequestCreate() {
         <>
           {/* ── FIXED cinema backdrop — covers ENTIRE viewport including header & sidebar ── */}
           <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden">
-            {/* Base black */}
-            <div className="absolute inset-0 bg-[#060606]" />
-            {/* Blurred banner image */}
+            {/* Deep base — near-black */}
+            <div className="absolute inset-0 bg-[#0b0b0b]" />
+            {/* Blurred banner — barely-visible color tint, Luma-style */}
             {bannerUrl && (
               <div
-                className="absolute -inset-[22%] opacity-[0.80] saturate-[210%] blur-[85px] scale-110 origin-center transition-all duration-1000"
+                className="absolute -inset-[30%] opacity-[0.14] saturate-[110%] blur-[160px] scale-110 origin-center transition-all duration-1500"
                 style={{
                   backgroundImage: `url(${bannerUrl})`,
                   backgroundSize: 'cover',
@@ -384,10 +387,10 @@ export default function EventRequestCreate() {
                 }}
               />
             )}
-            {/* Overlays for depth */}
-            <div className="absolute inset-0 bg-black/36" />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/8 via-transparent to-black/55" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/18 via-transparent to-black/8" />
+            {/* Heavy dark blanket — owns 84% of the visual; only a whisper of color bleeds through */}
+            <div className="absolute inset-0 bg-black/84" />
+            {/* Very subtle bottom vignette */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/28" />
           </div>
 
           {/* ── Two-column form — sits above backdrop ── */}
@@ -414,8 +417,8 @@ export default function EventRequestCreate() {
 
               {/* Bottom gradient fade */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent pointer-events-none" />
-              {/* Right edge fade → form transition */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/20 pointer-events-none hidden md:block" />
+              {/* Right edge fade → seamless blend into dark form area */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-black/55 pointer-events-none hidden md:block" />
 
               {/* Upload overlay */}
               {isUploading && (
@@ -480,7 +483,7 @@ export default function EventRequestCreate() {
             </div>
 
             {/* ────────────── RIGHT: Form Fields ────────────── */}
-            <div className="flex-1 overflow-y-auto min-h-0 min-w-0">
+            <div className="flex-1 overflow-y-auto min-h-0 min-w-0 bg-black/12">
               <div className="flex flex-col min-h-full px-6 sm:px-8 md:px-10 py-6">
 
                 {/* Back + flow badge */}
@@ -514,7 +517,7 @@ export default function EventRequestCreate() {
                 </div>
 
                 {/* ── START / END — Quickom timeline style ── */}
-                <div className="mb-3 bg-black/22 border border-white/8 rounded-2xl overflow-hidden backdrop-blur-sm flex-shrink-0">
+                <div className="mb-3 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
                   {/* Start row */}
                   <div className="flex items-center gap-3 px-4 py-3">
                     <span className="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0" />
@@ -601,7 +604,7 @@ export default function EventRequestCreate() {
                 </div>
 
                 {/* ── EVENT FORMAT + Location (inline, Quickom-style) ── */}
-                <div className="mb-3 bg-black/22 border border-white/8 rounded-2xl overflow-hidden backdrop-blur-sm flex-shrink-0">
+                <div className="mb-3 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
                   <div className="flex items-center gap-2 px-4 pt-3 pb-2">
                     <MapPin className="w-3.5 h-3.5 text-orange-400/55" />
                     <span className="text-[8px] font-bold text-white/35 uppercase tracking-widest">
@@ -649,7 +652,7 @@ export default function EventRequestCreate() {
                 </div>
 
                 {/* ── DESCRIPTION — expandable like Luma ── */}
-                <div className="mb-3 bg-black/22 border border-white/8 rounded-2xl overflow-hidden backdrop-blur-sm flex-shrink-0">
+                <div className="mb-3 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
                   {!descOpen ? (
                     <button
                       type="button"
@@ -685,7 +688,7 @@ export default function EventRequestCreate() {
                   <p className="text-[8px] font-bold text-white/25 uppercase tracking-[0.2em] mb-2 px-0.5">
                     Cài đặt
                   </p>
-                  <div className="bg-black/22 border border-white/8 rounded-2xl px-4 py-3 flex items-center justify-between backdrop-blur-sm">
+                  <div className="bg-white/[0.05] border border-white/[0.07] rounded-2xl px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <Users className="w-4 h-4 text-white/32" />
                       <span className="text-sm font-semibold text-white/58">Sức chứa tối đa</span>
