@@ -499,6 +499,30 @@ export default function Events() {
                             )}
                           </div>
 
+                          {/* Trạng thái và Countdown */}
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${event.status === 'OPEN'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300'
+                                : event.status === 'CLOSED'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
+                                  : 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-300'
+                              }`}
+                            >
+                              {event.status === 'OPEN'
+                                ? (currentLanguage === 'en' ? 'Open' : 'Đang mở')
+                                : event.status === 'CLOSED'
+                                  ? (currentLanguage === 'en' ? 'Closed' : 'Đã đóng')
+                                  : event.status}
+                            </span>
+
+                            {event.status === 'OPEN' && getCountdownText(event.startTime) && (
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 animate-pulse flex items-center gap-1">
+                                ⏱️ {getCountdownText(event.startTime)}
+                              </span>
+                            )}
+                          </div>
+
                           {/* Mô tả */}
                           <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2 min-h-[2.5rem]">
                             {event.description}
@@ -526,31 +550,8 @@ export default function Events() {
                             </div>
                           </div>
 
-                          {/* Footer: badge trạng thái + nút xem chi tiết */}
-                          <div className="mt-auto">
-                            <div className="flex items-center justify-between mb-4">
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-medium ${event.status === 'OPEN'
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300'
-                                  : event.status === 'CLOSED'
-                                    ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
-                                    : 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-300'
-                                  }`}
-                              >
-                                {event.status === 'OPEN'
-                                  ? (currentLanguage === 'en' ? 'Open' : 'Đang mở')
-                                  : event.status === 'CLOSED'
-                                    ? (currentLanguage === 'en' ? 'Closed' : 'Đã đóng')
-                                    : event.status}
-                              </span>
-
-                              {event.status === 'OPEN' && getCountdownText(event.startTime) && (
-                                <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 animate-pulse flex items-center gap-1">
-                                  ⏱️ {getCountdownText(event.startTime)}
-                                </span>
-                              )}
-                            </div>
-
+                          {/* Footer: nút xem chi tiết */}
+                          <div className="mt-auto pt-2">
                             <button
                               onClick={() => handleEventClick(event)}
                               className="w-full text-center bg-blue-600 dark:bg-orange-600 hover:bg-blue-700 dark:hover:bg-orange-500 text-white py-2 rounded-lg transition-colors font-bold"
