@@ -927,7 +927,7 @@ export default function PublicEventPayment() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,_1fr)] gap-6 min-w-0">
+              <div className="grid grid-cols-1 2xl:grid-cols-[280px_minmax(0,_1fr)] gap-6 min-w-0">
                 <div>
                   <div className="aspect-video rounded-2xl overflow-hidden bg-black/30 border border-white/10">
                     {banner ? <img src={banner} alt={event.title} className="w-full h-full object-cover" /> : null}
