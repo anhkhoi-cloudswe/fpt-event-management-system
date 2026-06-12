@@ -382,8 +382,8 @@ export function SeatGrid({
                                   !allowSelect
                                 }
                                 className={`${compactMode
-                                  ? 'w-6 h-6 sm:w-10 sm:h-8 text-[9px] sm:text-[11px]'
-                                  : 'w-8 h-7 sm:w-12 sm:h-10 text-[10px] sm:text-xs'
+                                  ? 'w-8 h-8 sm:w-10 sm:h-8 text-[10px] sm:text-[11px]'
+                                  : 'w-9 h-8 sm:w-12 sm:h-10 text-[11px] sm:text-xs'
                                   } border-2 rounded-lg font-medium transition-colors flex-shrink-0 ${getSeatColor(
                                     seat,
                                     selectedSeats.some((s) => s.seatId === seat.seatId),
@@ -408,8 +408,8 @@ export function SeatGrid({
                               <div
                                 key={`empty-${row}-${index}`}
                                 className={`${compactMode
-                                  ? 'w-6 h-6 sm:w-10 sm:h-8 flex-shrink-0'
-                                  : 'w-8 h-7 sm:w-12 sm:h-10 flex-shrink-0'
+                                  ? 'w-8 h-8 sm:w-10 sm:h-8 flex-shrink-0'
+                                  : 'w-9 h-8 sm:w-12 sm:h-10 flex-shrink-0'
                                   }`}
                               ></div>
                             ),
