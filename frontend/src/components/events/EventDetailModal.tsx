@@ -91,6 +91,21 @@ const getSpeakerAvatar = (speaker: SpeakerLike) => (
   ''
 ).trim()
 
+const getCalendarParts = (value: string | undefined, lang: 'vi' | 'en') => {
+  if (!value) return { month: '---', day: '--' }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return { month: '---', day: '--' }
+  
+  let month = date.toLocaleDateString(lang === 'en' ? 'en-US' : 'vi-VN', { month: 'short' })
+  if (lang === 'vi') {
+    month = month.replace(/tháng/i, 'THG').replace(/thg/i, 'THG').replace('.', '').trim().toUpperCase()
+  } else {
+    month = month.toUpperCase()
+  }
+  const day = date.getDate().toString()
+  return { month, day }
+}
+
 export function EventDetailModal({
   isOpen,
   onClose,
@@ -184,6 +199,7 @@ export function EventDetailModal({
     ? [{ name: detail.speakerName, avatarUrl: detail.speakerAvatarUrl || '' }]
     : []
   const speakersToDisplay = speakers.length > 0 ? speakers : fallbackSpeaker
+  const { month: calMonth, day: calDay } = getCalendarParts(detail?.startTime, lang)
 
   const closeThenNavigate = (path: string) => {
     onClose()
@@ -284,10 +300,17 @@ export function EventDetailModal({
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
-                  <div className="flex gap-3 items-start">
-                    <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex gap-3 items-center">
+                    <div className="w-10 h-10 bg-slate-100 dark:bg-[#1e1e24] border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden flex flex-col items-center justify-between flex-shrink-0 shadow-sm">
+                      <div className="w-full bg-slate-200 dark:bg-white/10 py-0.5 text-center text-[8px] font-black tracking-wider text-slate-600 dark:text-neutral-300 uppercase leading-none">
+                        {calMonth}
+                      </div>
+                      <div className="w-full flex-1 flex items-center justify-center text-sm font-black text-blue-600 dark:text-blue-400 leading-none pb-0.5">
+                        {calDay}
+                      </div>
+                    </div>
                     <div className="text-sm">
-                      <p className="text-slate-900 dark:text-white font-medium">{formatDate(detail.startTime, lang)}</p>
+                      <p className="text-slate-900 dark:text-white font-semibold">{formatDate(detail.startTime, lang)}</p>
                       <p className="text-slate-600 dark:text-neutral-400 mt-0.5">{formatTimeRange(detail.startTime, detail.endTime, lang)}</p>
                     </div>
                   </div>
