@@ -853,7 +853,7 @@ export default function PublicEventPayment() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-neutral-950/75 to-neutral-950" />
       </div>
 
-      <div className="relative z-10 max-w-[1300px] mx-auto px-5 sm:px-8 py-6">
+      <div className="relative z-10 max-w-[1450px] mx-auto px-5 sm:px-8 py-6">
         <button
           type="button"
           onClick={() => navigate(`/events/${id}/page`, { replace: true })}
