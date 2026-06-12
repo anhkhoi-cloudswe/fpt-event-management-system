@@ -58,11 +58,13 @@ var routes = []Route{
 
 	// ========== Event Service (8082) ==========
 	{"/api/v1/admin/speakers", "Event"},
+	{"/api/v1/admin/sample-banners", "Event"},
 	{"/api/v1/speakers", "Event"},
 	{"/api/v1/events", "Event"}, // v1 events API (longest prefix first)
 	{"/api/events", "Event"},
 	{"/api/event/", "Event"}, // singular alias (e.g. /api/event/disable)
 	{"/api/event-requests", "Event"},
+	{"/api/sample-banners", "Event"},
 	{"/api/staff/event-requests", "Event"}, // Specific: before /api/staff/*
 	{"/api/organizer/", "Event"},
 
@@ -356,8 +358,12 @@ func main() {
 	// The gateway is a native Go HTTP server, so it handles multipart directly.
 	// jwtMiddleware (applied below) already validates JWT and sets X-User-Role.
 	mux.HandleFunc("/api/upload/image", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("[GATEWAY] ↑ UPLOAD %s %s (handled natively)", r.Method, r.URL.Path)
-		storage.HandleImageUpload(w, r)
+		log.Printf("[GATEWAY] IMAGE_API %s %s (handled natively)", r.Method, r.URL.Path)
+		if r.Method == http.MethodDelete {
+			storage.HandleImageDelete(w, r)
+		} else {
+			storage.HandleImageUpload(w, r)
+		}
 	})
 
 	// ── System Health + Time Machine — exposed at /api/health for Frontend ──────────

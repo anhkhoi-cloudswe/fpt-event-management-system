@@ -124,8 +124,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	// In local microservices mode, the gateway handles this directly (see cmd/gateway/main.go).
 	// In AWS Lambda production mode, API Gateway sends binary bodies base64-encoded;
 	// this case reconstructs the http.Request and calls storage.HandleImageUpload.
-	if path == "/api/upload/image" && method == "POST" {
-		return handleUploadImage(ctx, request)
+	if path == "/api/upload/image" && (method == "POST" || method == "DELETE") {
+		return handleImageAPI(ctx, request)
 	}
 
 	// ========== Public Routes ==========
@@ -138,6 +138,14 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return eventHandler.HandleUpdateSpeaker(ctx, request)
 	case (path == "/api/v1/speakers" || strings.HasPrefix(path, "/api/v1/speakers/")) && method == "DELETE":
 		return eventHandler.HandleDeleteSpeaker(ctx, request)
+	case path == "/api/v1/admin/sample-banners" && method == "POST":
+		return eventHandler.HandleCreateSampleBanner(ctx, request)
+	case (path == "/api/v1/admin/sample-banners" || strings.HasPrefix(path, "/api/v1/admin/sample-banners/")) && method == "DELETE":
+		return eventHandler.HandleDeleteSampleBanner(ctx, request)
+	case path == "/api/sample-banners" && method == "GET":
+		return eventHandler.HandleGetSampleBanners(ctx, request)
+	case path == "/api/events/independent" && method == "POST":
+		return eventHandler.HandleCreateIndependentEvent(ctx, request)
 	case path == "/api/v1/events" && method == "GET":
 		return eventHandler.HandleGetEventsByStatusV1(ctx, request)
 	case path == "/api/events" && method == "GET":
@@ -200,11 +208,11 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	}, nil
 }
 
-// handleUploadImage bridges an APIGatewayProxyRequest to storage.HandleImageUpload.
+// handleImageAPI bridges an APIGatewayProxyRequest to storage.HandleImageUpload or storage.HandleImageDelete.
 // In local microservices mode the gateway handles /api/upload/image natively;
 // this function is the production path where API Gateway delivers the binary body
 // as a base64-encoded string (IsBase64Encoded=true).
-func handleUploadImage(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func handleImageAPI(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	var body []byte
 	if request.IsBase64Encoded {
 		decoded, err := base64.StdEncoding.DecodeString(request.Body)
@@ -220,7 +228,7 @@ func handleUploadImage(ctx context.Context, request events.APIGatewayProxyReques
 		body = []byte(request.Body)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "/api/upload/image", bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, request.HTTPMethod, "/api/upload/image", bytes.NewReader(body))
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
@@ -233,7 +241,11 @@ func handleUploadImage(ctx context.Context, request events.APIGatewayProxyReques
 	}
 
 	rec := httptest.NewRecorder()
-	storage.HandleImageUpload(rec, httpReq)
+	if request.HTTPMethod == "DELETE" {
+		storage.HandleImageDelete(rec, httpReq)
+	} else {
+		storage.HandleImageUpload(rec, httpReq)
+	}
 
 	result := rec.Result()
 	respBody, _ := io.ReadAll(result.Body)

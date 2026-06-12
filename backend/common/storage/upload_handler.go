@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	commonresponse "github.com/fpt-event-services/common/response"
 )
@@ -122,4 +123,64 @@ func setJSON(w http.ResponseWriter, r *http.Request) {
 func writeError(w http.ResponseWriter, code int, message string) {
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(map[string]string{"message": message})
+}
+
+// DeleteRequest is the request body for deleting an image from storage.
+type DeleteRequest struct {
+	URL string `json:"url"`
+}
+
+// HandleImageDelete handles HTTP POST /api/upload/image/delete or DELETE /api/upload/image.
+func HandleImageDelete(w http.ResponseWriter, r *http.Request) {
+	setJSON(w, r)
+
+	// ── 1. Kiểm tra role ─────────────────────────────────────────────
+	userRole := r.Header.Get("X-User-Role")
+	allowedRoles := map[string]bool{
+		"ORGANIZER": true,
+		"ADMIN":     true,
+		"STUDENT":   true,
+		"STAFF":     true,
+	}
+	if !allowedRoles[userRole] {
+		log.Warn("[DELETE_IMAGE] Unauthorized role=%s", userRole)
+		writeError(w, http.StatusForbidden, "Access denied: insufficient role")
+		return
+	}
+
+	// Parse body
+	var req DeleteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Warn("[DELETE_IMAGE] Decode body failed: %v", r.Body)
+		writeError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.URL == "" {
+		writeError(w, http.StatusBadRequest, "URL is required")
+		return
+	}
+
+	// Do not delete template/sample images (only delete uploads)
+	if !strings.Contains(req.URL, "/uploads/") {
+		log.Warn("[DELETE_IMAGE] Cannot delete non-upload URL: %s", req.URL)
+		writeError(w, http.StatusBadRequest, "Only uploaded images can be deleted")
+		return
+	}
+
+	s3Client, err := NewS3Client(context.Background())
+	if err != nil {
+		log.Error("[DELETE_IMAGE] S3 client init failed: %v", err)
+		writeError(w, http.StatusInternalServerError, "Storage service unavailable")
+		return
+	}
+
+	if err := s3Client.DeleteFile(context.Background(), req.URL); err != nil {
+		log.Error("[DELETE_IMAGE] DeleteFile failed url=%s: %v", req.URL, err)
+		writeError(w, http.StatusInternalServerError, "Failed to delete file from storage: "+err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "File deleted successfully"})
 }

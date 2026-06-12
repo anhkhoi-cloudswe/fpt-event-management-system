@@ -211,3 +211,24 @@ func DetectContentType(headerContentType, filename string) (string, bool) {
 
 	return "", false
 }
+
+// DeleteFile deletes an object from S3 using its public URL.
+func (c *S3Client) DeleteFile(ctx context.Context, publicURL string) error {
+	prefix := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/", c.bucket, c.region)
+	if !strings.HasPrefix(publicURL, prefix) {
+		return fmt.Errorf("invalid S3 URL for this bucket: %s", publicURL)
+	}
+	key := strings.TrimPrefix(publicURL, prefix)
+	log.Info("[S3] Deleting key=%s bucket=%s", key, c.bucket)
+
+	_, err := c.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(c.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		log.Error("[S3] Delete failed key=%s error=%v", key, err)
+		return fmt.Errorf("AWS S3 Delete: %w", err)
+	}
+	log.Info("[S3] Delete successful key=%s", key)
+	return nil
+}

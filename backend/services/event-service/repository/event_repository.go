@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/fpt-event-services/common/config"
+	"github.com/fpt-event-services/common/storage"
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/event-service/models"
 )
@@ -1246,7 +1247,8 @@ func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) 
 	query := `
 		SELECT
 			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
-			e.area_id, e.speaker_id, e.created_by, u.full_name
+			e.area_id, e.speaker_id, e.created_by, u.full_name,
+			e.event_format, e.custom_venue_name, e.custom_location
 		FROM Event e
 		LEFT JOIN Users u ON e.created_by = u.user_id
 		WHERE e.event_id = $1
@@ -1258,12 +1260,14 @@ func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) 
 	var startTime, endTime time.Time
 	var maxSeats sql.NullInt64
 	var status sql.NullString
+	var eventFormat, customVenueName, customLocation sql.NullString
 
 	var err error
 	for attempt := 1; attempt <= 3; attempt++ {
 		err = r.db.QueryRowContext(ctx, query, eventID).Scan(
 			&detail.EventID, &detail.Title, &description, &startTime, &endTime, &maxSeats, &status, &bannerURL,
 			&areaID, &speakerID, &organizerID, &organizerName,
+			&eventFormat, &customVenueName, &customLocation,
 		)
 		if err == nil || err == sql.ErrNoRows {
 			break
@@ -1298,6 +1302,15 @@ func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) 
 	}
 	if organizerName.Valid {
 		detail.OrganizerName = &organizerName.String
+	}
+	if eventFormat.Valid {
+		detail.EventFormat = &eventFormat.String
+	}
+	if customVenueName.Valid {
+		detail.CustomVenueName = &customVenueName.String
+	}
+	if customLocation.Valid {
+		detail.CustomLocation = &customLocation.String
 	}
 	detail.Tickets = []models.CategoryTicket{}
 	detail.Seats = []models.SeatResponse{}
@@ -1747,8 +1760,8 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 
 	query := `
 		INSERT INTO Event_Request 
-		(requester_id, title, description, preferred_start_time, preferred_end_time, expected_capacity, status, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', NOW())
+		(requester_id, title, description, preferred_start_time, preferred_end_time, expected_capacity, status, created_at, event_format, custom_venue_name, custom_location, banner_url)
+		VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', NOW(), $7, $8, $9, $10)
 		RETURNING request_id
 	`
 
@@ -1760,6 +1773,10 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 		req.PreferredStartTime,
 		req.PreferredEndTime,
 		req.ExpectedCapacity,
+		req.EventFormat,
+		req.CustomVenueName,
+		req.CustomLocation,
+		req.BannerURL,
 	).Scan(&requestID)
 
 	if err != nil {
@@ -2227,7 +2244,8 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 			er.created_at, er.processed_by, u2.full_name as processed_by_name,
 			er.processed_at, er.organizer_note, er.reject_reason,
 			er.created_event_id,
-			v.venue_name, va.area_name, va.floor, va.capacity
+			v.venue_name, va.area_name, va.floor, va.capacity,
+			er.event_format, er.custom_venue_name, er.custom_location, er.banner_url
 		FROM Event_Request er
 		LEFT JOIN Users u ON er.requester_id = u.user_id
 		LEFT JOIN Users u2 ON er.processed_by = u2.user_id
@@ -2247,6 +2265,7 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 	var areaCapacity sql.NullInt64
 	var description, organizerNote, rejectReason sql.NullString
 	var expectedCapacity, createdEventID sql.NullInt64
+	var eventFormat, customVenueName, customLocation, bannerURL sql.NullString
 
 	err := r.db.QueryRowContext(ctx, query, requestID).Scan(
 		&req.RequestID, &req.RequesterID, &requesterName,
@@ -2257,6 +2276,7 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 		&processedAt, &organizerNote, &rejectReason,
 		&createdEventID,
 		&venueName, &areaName, &floor, &areaCapacity,
+		&eventFormat, &customVenueName, &customLocation, &bannerURL,
 	)
 
 	if err != nil {
@@ -2294,6 +2314,19 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 	req.OrganizerNote = stringPointer(organizerNote)
 	req.RejectReason = stringPointer(rejectReason)
 	req.CreatedEventID = intPointer(createdEventID)
+	
+	if eventFormat.Valid {
+		req.EventFormat = &eventFormat.String
+	}
+	if customVenueName.Valid {
+		req.CustomVenueName = &customVenueName.String
+	}
+	if customLocation.Valid {
+		req.CustomLocation = &customLocation.String
+	}
+	if bannerURL.Valid {
+		req.BannerURL = &bannerURL.String
+	}
 
 	// If there is a created event, fetch event detail (banner, speaker, tickets)
 	if req.CreatedEventID != nil {
@@ -2394,6 +2427,9 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 			return fmt.Errorf("reject reason is required when rejecting")
 		}
 
+		var bannerURL sql.NullString
+		tx.QueryRowContext(ctx, `SELECT banner_url FROM Event_Request WHERE request_id = $1`, req.RequestID).Scan(&bannerURL)
+
 		updateQuery := `
 			UPDATE Event_Request 
 			SET status = 'REJECTED', 
@@ -2421,6 +2457,10 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 			return fmt.Errorf("failed to commit transaction: %w", err)
 		}
 
+		if bannerURL.Valid && bannerURL.String != "" {
+			go DeleteImageFromS3IfCustom(context.Background(), bannerURL.String)
+		}
+
 		fmt.Printf("[DB_PROCESS] Successfully REJECTED Request %d\n", req.RequestID)
 		return nil
 	}
@@ -2440,17 +2480,18 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		var requestStartTime, requestEndTime sql.NullTime
 		var requestCapacity int
 		var requesterID int
+		var eventFormat, customVenueName, customLocation, bannerURL sql.NullString
 
 		getRequestQuery := `
 			SELECT title, description, preferred_start_time, preferred_end_time, 
-			       expected_capacity, requester_id
+			       expected_capacity, requester_id, event_format, custom_venue_name, custom_location, banner_url
 			FROM Event_Request 
 			WHERE request_id = $1
 		`
 
 		err := tx.QueryRowContext(ctx, getRequestQuery, req.RequestID).Scan(
 			&requestTitle, &requestDesc, &requestStartTime, &requestEndTime,
-			&requestCapacity, &requesterID,
+			&requestCapacity, &requesterID, &eventFormat, &customVenueName, &customLocation, &bannerURL,
 		)
 		if err != nil {
 			fmt.Printf("[DB_PROCESS] Failed to get request details: %v\n", err)
@@ -2509,8 +2550,9 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		insertEventQuery := `
 			INSERT INTO Event (
 				title, description, start_time, end_time, max_seats, 
-				banner_url, area_id, speaker_id, status, created_by, created_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'UPDATING', $9, NOW())
+				banner_url, area_id, speaker_id, status, created_by, created_at,
+				event_format, custom_venue_name, custom_location
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'UPDATING', $9, NOW(), $10, $11, $12)
 			RETURNING event_id
 		`
 
@@ -2522,12 +2564,20 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		bannerURLValue := sql.NullString{Valid: false}
 		if req.BannerURL != nil && *req.BannerURL != "" {
 			bannerURLValue = sql.NullString{String: *req.BannerURL, Valid: true}
+		} else if bannerURL.Valid && bannerURL.String != "" {
+			bannerURLValue = bannerURL
+		}
+
+		formatVal := "ONSITE"
+		if eventFormat.Valid && eventFormat.String != "" {
+			formatVal = eventFormat.String
 		}
 
 		var eventID int64
 		err = tx.QueryRowContext(ctx, insertEventQuery,
 			requestTitle, requestDesc, startTimeWallClock, endTimeWallClock, requestCapacity,
 			bannerURLValue, *req.AreaID, speakerIDValue, requesterID,
+			formatVal, customVenueName, customLocation,
 		).Scan(&eventID)
 		if err != nil {
 			fmt.Printf("[DB_PROCESS] Failed to create Event: %v\n", err)
@@ -3414,14 +3464,15 @@ func (r *EventRepository) CancelEvent(ctx context.Context, userID, eventID int) 
 	var requestID sql.NullInt64
 	var startTime time.Time
 	var eventTitle string
+	var bannerURL sql.NullString
 
 	checkQuery := `
-		SELECT e.status, e.created_by, e.start_time, e.title,
+		SELECT e.status, e.created_by, e.start_time, e.title, e.banner_url,
 		       (SELECT request_id FROM Event_Request WHERE created_event_id = e.event_id LIMIT 1) as request_id
 		FROM Event e
 		WHERE e.event_id = $1
 	`
-	err := r.db.QueryRowContext(ctx, checkQuery, eventID).Scan(&status, &createdBy, &startTime, &eventTitle, &requestID)
+	err := r.db.QueryRowContext(ctx, checkQuery, eventID).Scan(&status, &createdBy, &startTime, &eventTitle, &bannerURL, &requestID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Printf("[DB_UPDATE] Event ID %d not found", eventID)
@@ -3563,6 +3614,10 @@ func (r *EventRepository) CancelEvent(ctx context.Context, userID, eventID int) 
 		return fmt.Errorf("lỗi commit transaction: %w", err)
 	}
 
+	if bannerURL.Valid && bannerURL.String != "" {
+		go DeleteImageFromS3IfCustom(context.Background(), bannerURL.String)
+	}
+
 	log.Printf("[DB_UPDATE] ✅ Successfully cancelled Event ID: %d (Title: %s, Tickets Sold: %d)", eventID, eventTitle, ticketsSoldCount)
 	return nil
 }
@@ -3578,13 +3633,14 @@ func (r *EventRepository) CancelEventRequest(ctx context.Context, userID, reques
 
 	var status string
 	var requesterID int
+	var bannerURL sql.NullString
 	lockQuery := `
-		SELECT status, requester_id
+		SELECT status, requester_id, banner_url
 		FROM Event_Request
 		WHERE request_id = $1
 		FOR UPDATE
 	`
-	err = tx.QueryRowContext(ctx, lockQuery, requestID).Scan(&status, &requesterID)
+	err = tx.QueryRowContext(ctx, lockQuery, requestID).Scan(&status, &requesterID, &bannerURL)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("yêu cầu không tồn tại")
@@ -3624,6 +3680,10 @@ func (r *EventRepository) CancelEventRequest(ctx context.Context, userID, reques
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("lỗi commit transaction: %w", err)
+	}
+
+	if bannerURL.Valid && bannerURL.String != "" {
+		go DeleteImageFromS3IfCustom(context.Background(), bannerURL.String)
 	}
 
 	log.Printf("[DB_UPDATE] ✅ Cancelled pending request %d", requestID)
@@ -3901,4 +3961,116 @@ func (r *EventRepository) DeleteSpeaker(ctx context.Context, id int) error {
 	}
 
 	return tx.Commit()
+}
+
+func DeleteImageFromS3IfCustom(ctx context.Context, bannerURL string) {
+	if bannerURL == "" || !strings.Contains(bannerURL, "/uploads/") {
+		return
+	}
+	s3Client, err := storage.NewS3Client(ctx)
+	if err != nil {
+		log.Printf("[S3_CLEANUP] Failed to initialize S3 client: %v", err)
+		return
+	}
+	if err := s3Client.DeleteFile(ctx, bannerURL); err != nil {
+		log.Printf("[S3_CLEANUP] Failed to delete file url=%s: %v", bannerURL, err)
+	} else {
+		log.Printf("[S3_CLEANUP] Successfully deleted custom banner from S3: %s", bannerURL)
+	}
+}
+
+func (r *EventRepository) GetSampleBanners(ctx context.Context) ([]models.SampleBanner, error) {
+	query := `SELECT banner_id, title, url, category, created_at FROM sample_banner ORDER BY created_at DESC`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query sample banners: %w", err)
+	}
+	defer rows.Close()
+
+	var banners []models.SampleBanner
+	for rows.Next() {
+		var b models.SampleBanner
+		var category sql.NullString
+		if err := rows.Scan(&b.BannerID, &b.Title, &b.URL, &category, &b.CreatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan sample banner: %w", err)
+		}
+		if category.Valid {
+			b.Category = &category.String
+		}
+		banners = append(banners, b)
+	}
+	return banners, nil
+}
+
+func (r *EventRepository) GetSampleBannerByID(ctx context.Context, bannerID int) (*models.SampleBanner, error) {
+	query := `SELECT banner_id, title, url, category, created_at FROM sample_banner WHERE banner_id = $1`
+	var b models.SampleBanner
+	var category sql.NullString
+	err := r.db.QueryRowContext(ctx, query, bannerID).Scan(&b.BannerID, &b.Title, &b.URL, &category, &b.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to query sample banner by ID: %w", err)
+	}
+	if category.Valid {
+		b.Category = &category.String
+	}
+	return &b, nil
+}
+
+func (r *EventRepository) CreateSampleBanner(ctx context.Context, title, url string, category *string) (int, error) {
+	query := `INSERT INTO sample_banner (title, url, category, created_at) VALUES ($1, $2, $3, NOW()) RETURNING banner_id`
+	var bannerID int
+	var catVal sql.NullString
+	if category != nil {
+		catVal = sql.NullString{String: *category, Valid: true}
+	}
+	err := r.db.QueryRowContext(ctx, query, title, url, catVal).Scan(&bannerID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create sample banner: %w", err)
+	}
+	return bannerID, nil
+}
+
+func (r *EventRepository) DeleteSampleBanner(ctx context.Context, bannerID int) error {
+	query := `DELETE FROM sample_banner WHERE banner_id = $1`
+	_, err := r.db.ExecContext(ctx, query, bannerID)
+	if err != nil {
+		return fmt.Errorf("failed to delete sample banner: %w", err)
+	}
+	return nil
+}
+
+func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int, req *models.CreateEventRequestBody) (int, error) {
+	query := `
+		INSERT INTO Event (
+			title, description, start_time, end_time, max_seats, 
+			banner_url, status, created_by, created_at,
+			event_format, custom_venue_name, custom_location
+		) VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, NOW(), $8, $9, $10)
+		RETURNING event_id
+	`
+	var eventID int
+	var bannerURL sql.NullString
+	if req.BannerURL != nil && *req.BannerURL != "" {
+		bannerURL = sql.NullString{String: *req.BannerURL, Valid: true}
+	}
+	
+	err := r.db.QueryRowContext(ctx, query,
+		req.Title,
+		req.Description,
+		req.PreferredStartTime,
+		req.PreferredEndTime,
+		req.ExpectedCapacity,
+		bannerURL,
+		userID,
+		req.EventFormat,
+		req.CustomVenueName,
+		req.CustomLocation,
+	).Scan(&eventID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create independent event: %w", err)
+	}
+	return eventID, nil
 }
