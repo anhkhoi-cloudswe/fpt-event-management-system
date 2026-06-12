@@ -86,15 +86,15 @@ export default function EventEdit() {
 
   // ======================= CHOSEN SPEAKERS STATE =======================
   interface Speaker {
-    speaker_id: number;
-    speakerId?: number;
-    full_name: string;
-    fullName?: string;
-    email?: string;
-    phone?: string;
-    avatar_url?: string;
-    avatarUrl?: string;
-    bio?: string;
+    speakerId?: number
+    speaker_id?: number
+    fullName?: string
+    full_name?: string
+    bio?: string
+    email?: string
+    phone?: string
+    avatarUrl?: string
+    avatar_url?: string
   }
 
   const [selectedSpeakers, setSelectedSpeakers] = useState<Speaker[]>([])
@@ -379,20 +379,19 @@ export default function EventEdit() {
   // ======================= HANDLERS: SPEAKER =======================
 
   const handleSelectSpeaker = (sp: any) => {
-    const clickedSpeaker: Speaker = {
+    const clickedSpeaker = {
       ...sp,
-      speaker_id: Number(sp.speakerId || sp.speaker_id || 0),
-      speakerId: Number(sp.speakerId || sp.speaker_id || 0),
+      speaker_id: sp.speakerId || sp.speaker_id,
+      speakerId: sp.speakerId || sp.speaker_id,
       fullName: sp.fullName || sp.full_name || '',
       full_name: sp.fullName || sp.full_name || '',
       avatarUrl: sp.avatarUrl || sp.avatar_url || '',
       avatar_url: sp.avatarUrl || sp.avatar_url || '',
     }
-    const targetId = clickedSpeaker.speaker_id || clickedSpeaker.speakerId;
-    if (targetId && !selectedSpeakers.some(s => (s.speaker_id === targetId || s.speakerId === targetId))) {
+    if (!selectedSpeakers.some(s => s.speaker_id === clickedSpeaker.speaker_id)) {
       setSelectedSpeakers([...selectedSpeakers, clickedSpeaker]);
     }
-    setSearchQuery("");
+    setSearchQuery('')
   }
 
   const handleRemoveSelectedSpeaker = (speakerId?: number) => {
@@ -789,10 +788,24 @@ export default function EventEdit() {
         endTime: eventInfo.endTime,
         maxSeats: eventInfo.maxSeats,
         areaId: eventInfo.areaId,
-        speaker: selectedSpeakers[0] || null,
-        speakers: selectedSpeakers,
-        speaker_ids: selectedSpeakers.map(s => s.speaker_id || s.speakerId),
-        speakerIds: selectedSpeakers.map(s => s.speaker_id || s.speakerId),
+        speaker: activeSpeaker ? {
+          speakerId: activeSpeaker.speakerId || activeSpeaker.speaker_id,
+          fullName: activeSpeaker.fullName || activeSpeaker.full_name || '',
+          bio: activeSpeaker.bio || '',
+          email: activeSpeaker.email || '',
+          phone: activeSpeaker.phone || '',
+          avatarUrl: activeSpeaker.avatarUrl || activeSpeaker.avatar_url || '',
+        } : null,
+        speakers: selectedSpeakers.map(s => ({
+          speakerId: s.speakerId || s.speaker_id,
+          fullName: s.fullName || s.full_name || '',
+          bio: s.bio || '',
+          email: s.email || '',
+          phone: s.phone || '',
+          avatarUrl: s.avatarUrl || s.avatar_url || '',
+        })),
+        speaker_ids: selectedSpeakers.map(s => s.speaker_id || s.speakerId).filter(Boolean),
+        speakerIds: selectedSpeakers.map(s => s.speakerId || s.speaker_id).filter(Boolean),
         tickets: tickets.map((ticket) => ({
           name: ticket.name,
           description: ticket.description,
@@ -961,7 +974,7 @@ export default function EventEdit() {
                   return (
                     <div
                       key={currentId || 'temp'}
-                      className="flex items-center gap-3 bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10 rounded-full pl-2 pr-4 py-1.5 transition-all text-white"
+                      className="inline-flex items-center gap-2 bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10 text-slate-800 dark:text-slate-100 rounded-full pl-2 pr-3 py-1.5 shadow-md"
                     >
                       {avatarUrl ? (
                         <img
@@ -970,21 +983,17 @@ export default function EventEdit() {
                           className="w-6 h-6 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center font-bold text-xs text-white">
+                        <div className="w-6 h-6 rounded-full bg-blue-600/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
                           {fullName.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <div className="flex flex-col leading-none">
-                        <span className="text-sm font-semibold">{fullName}</span>
-                        {email && <span className="text-xs text-neutral-400 mt-0.5">{email}</span>}
+                      <div className="text-xs">
+                        <span className="font-semibold">{fullName}</span>
+                        {email && <span className="text-slate-500 dark:text-slate-400 ml-1">({email})</span>}
                       </div>
                       <button
                         type="button"
-                        onClick={() => setSelectedSpeakers(selectedSpeakers.filter(s => {
-                          const sId = s.speaker_id || s.speakerId;
-                          const cId = currentId; // Map currentId to the element being iterated
-                          return sId !== cId;
-                        }))}
+                        onClick={() => setSelectedSpeakers(selectedSpeakers.filter(s => s.speaker_id !== currentId))}
                         className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
                       >
                         <X className="w-3.5 h-3.5" />
