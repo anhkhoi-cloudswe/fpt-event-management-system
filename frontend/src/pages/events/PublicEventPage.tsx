@@ -79,6 +79,21 @@ const formatTimeRange = (start: string | undefined, end: string | undefined, lan
   return `${startDate.toLocaleTimeString(lang === 'en' ? 'en-US' : 'vi-VN', options)} - ${endDate.toLocaleTimeString(lang === 'en' ? 'en-US' : 'vi-VN', options)}`
 }
 
+const getCalendarParts = (value: string | undefined, lang: 'vi' | 'en') => {
+  if (!value) return { month: '---', day: '--' }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return { month: '---', day: '--' }
+  
+  let month = date.toLocaleDateString(lang === 'en' ? 'en-US' : 'vi-VN', { month: 'short' })
+  if (lang === 'vi') {
+    month = month.replace('Thg', 'T.').replace('thg', 'T.').replace('.', '').trim().toUpperCase()
+  } else {
+    month = month.toUpperCase()
+  }
+  const day = date.getDate().toString()
+  return { month, day }
+}
+
 export default function PublicEventPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -250,6 +265,7 @@ export default function PublicEventPage() {
   ].filter(Boolean).join(' · ')
   const eventClosed = event.status !== 'OPEN' || (event as any).isClosed === true
   const eventEnded = new Date(event.endTime).getTime() < Date.now()
+  const { month: calMonth, day: calDay } = getCalendarParts(event.startTime, pageLanguage)
 
   return (
     <div className="relative w-full min-h-screen overflow-x-hidden text-white font-sans selection:bg-blue-500/30 pb-16">
@@ -267,7 +283,7 @@ export default function PublicEventPage() {
       </div>
 
       <div className="relative z-10 w-full flex flex-col">
-        <div className="max-w-[1380px] mx-auto w-full px-6 sm:px-10 pt-5">
+        <div className="max-w-[1720px] mx-auto w-full px-6 sm:px-10 pt-5">
           <button
             type="button"
             onClick={handleBack}
@@ -277,7 +293,7 @@ export default function PublicEventPage() {
           </button>
         </div>
 
-        <div className="max-w-[1380px] mx-auto w-full px-6 sm:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+        <div className="max-w-[1720px] mx-auto w-full px-6 sm:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
           <div>
             <div className="aspect-video rounded-2xl overflow-hidden bg-black/20 border border-white/10 shadow-[0_18px_52px_rgba(0,0,0,0.4)]">
               {event.bannerUrl ? (
@@ -312,8 +328,13 @@ export default function PublicEventPage() {
 
             <div className="space-y-4 mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl text-blue-400 flex items-center justify-center flex-shrink-0">
-                  <Calendar className="w-5 h-5" />
+                <div className="w-10 h-10 bg-[#1e1e24] border border-white/10 rounded-xl overflow-hidden flex flex-col items-center justify-between flex-shrink-0 shadow-md">
+                  <div className="w-full bg-white/10 py-0.5 text-center text-[8px] font-black tracking-wider text-neutral-300 uppercase leading-none">
+                    {calMonth}
+                  </div>
+                  <div className="w-full flex-1 flex items-center justify-center text-sm font-black text-blue-400 leading-none pb-0.5">
+                    {calDay}
+                  </div>
                 </div>
                 <div>
                   <p className="text-neutral-100 text-sm font-black leading-tight">{formatDate(event.startTime, pageLanguage)}</p>
@@ -387,7 +408,7 @@ export default function PublicEventPage() {
           </div>
         </div>
 
-        <div className="max-w-[1380px] mx-auto w-full px-6 sm:px-10 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+        <div className="max-w-[1720px] mx-auto w-full px-6 sm:px-10 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
           {/* Cột trái: Giữ trống để lệch bố cục sang phải như nguyên bản */}
           <div className="hidden lg:block"></div>
 
