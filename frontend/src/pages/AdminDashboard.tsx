@@ -38,6 +38,7 @@ export default function AdminDashboard() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState('')
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null)
+  const [confirmType, setConfirmType] = useState<'danger' | 'warning' | 'info'>('warning')
 
   // Search and Filters
   const [searchTerm, setSearchTerm] = useState('')
@@ -174,6 +175,7 @@ export default function AdminDashboard() {
   }
 
   const handleDeleteUser = (targetUser: any) => {
+    setConfirmType('danger')
     setConfirmMessage(
       `Bạn có chắc chắn muốn xóa người dùng "${targetUser.fullName}" (${targetUser.username})?`
     )
@@ -189,6 +191,47 @@ export default function AdminDashboard() {
           await fetchData()
         } else {
           showToast('error', result?.error || result?.message || 'Xóa người dùng thất bại')
+        }
+      } catch (err: any) {
+        showToast('error', err.message || 'Lỗi hệ thống')
+      } finally {
+        setConfirmOpen(false)
+        setConfirmAction(null)
+      }
+    })
+    setConfirmOpen(true)
+  }
+
+  const handleToggleUserStatus = (targetUser: any) => {
+    const newStatus = targetUser.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
+    const statusText = newStatus === 'ACTIVE' ? 'kích hoạt' : 'vô hiệu hóa'
+    
+    setConfirmType('warning')
+    setConfirmMessage(
+      `Bạn có chắc chắn muốn ${statusText} tài khoản của "${targetUser.fullName}" (${targetUser.email || targetUser.username})?`
+    )
+    setConfirmAction(() => async () => {
+      try {
+        const response = await fetch('/api/admin/create-account', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            id: targetUser.userId,
+            fullName: targetUser.fullName,
+            phone: targetUser.phone,
+            role: targetUser.role,
+            status: newStatus
+          })
+        })
+        const result = await response.json().catch(() => ({}))
+        if (response.ok) {
+          showToast('success', `${newStatus === 'ACTIVE' ? 'Kích hoạt' : 'Vô hiệu hóa'} người dùng thành công`)
+          await fetchData()
+        } else {
+          showToast('error', result?.error || result?.message || 'Cập nhật trạng thái thất bại')
         }
       } catch (err: any) {
         showToast('error', err.message || 'Lỗi hệ thống')
@@ -239,6 +282,7 @@ export default function AdminDashboard() {
   }
 
   const handleDeleteSpeaker = (sp: any) => {
+    setConfirmType('danger')
     setConfirmMessage(`Bạn có chắc chắn muốn xóa diễn giả "${sp.fullName}"?`)
     setConfirmAction(() => async () => {
       try {
@@ -374,7 +418,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Search & Filter Section */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl shadow-sm p-4">
+      <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-2xl shadow-sm p-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="relative w-full md:max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
@@ -442,10 +486,10 @@ export default function AdminDashboard() {
           <p className="text-slate-400 dark:text-slate-500 text-lg font-bold">Không tìm thấy bản ghi phù hợp</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl shadow-md overflow-hidden">
+        <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-2xl shadow-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
-              <thead className="bg-slate-50/70 dark:bg-slate-850">
+              <thead className="bg-slate-50/50 dark:bg-slate-950/40">
                 {activeTab === 'STUDENT' && (
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Họ và tên</th>
@@ -492,14 +536,22 @@ export default function AdminDashboard() {
                         {u.status === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu hóa'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold">
-                      <button
-                        onClick={() => handleDeleteUser(u)}
-                        className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-all"
-                        title="Vô hiệu hóa"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => handleToggleUserStatus(u)}
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-250 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${
+                            u.status === 'ACTIVE' ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-700'
+                          }`}
+                          title={u.status === 'ACTIVE' ? 'Vô hiệu hóa tài khoản' : 'Kích hoạt tài khoản'}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-250 ease-in-out ${
+                              u.status === 'ACTIVE' ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -569,21 +621,28 @@ export default function AdminDashboard() {
                         {u.status === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu hóa'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold">
-                      <div className="flex justify-end gap-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <div className="flex justify-end items-center gap-4">
                         <button
                           onClick={() => handleOpenEditUser(u)}
-                          className="text-blue-500 hover:text-blue-700 p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg transition-all"
-                          title="Sửa"
+                          className="text-blue-500 hover:text-blue-750 p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg transition-all"
+                          title="Sửa thông tin"
                         >
                           <Edit size={16} />
                         </button>
+                        
                         <button
-                          onClick={() => handleDeleteUser(u)}
-                          className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-all"
-                          title="Xóa / Vô hiệu hóa"
+                          onClick={() => handleToggleUserStatus(u)}
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-250 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${
+                            u.status === 'ACTIVE' ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-700'
+                          }`}
+                          title={u.status === 'ACTIVE' ? 'Vô hiệu hóa tài khoản' : 'Kích hoạt tài khoản'}
                         >
-                          <Trash2 size={16} />
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-250 ease-in-out ${
+                              u.status === 'ACTIVE' ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
                         </button>
                       </div>
                     </td>
@@ -623,6 +682,7 @@ export default function AdminDashboard() {
       <ConfirmModal
         isOpen={confirmOpen}
         message={confirmMessage}
+        type={confirmType}
         onConfirm={() => confirmAction && confirmAction()}
         onClose={() => {
           setConfirmOpen(false)
