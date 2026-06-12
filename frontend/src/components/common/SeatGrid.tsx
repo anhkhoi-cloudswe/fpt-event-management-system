@@ -360,22 +360,24 @@ export function SeatGrid({
                   return (
                     <div key={row}>
                       {/* Row display: letter + seat buttons */}
-                      <div className="flex items-center space-x-2 lg:justify-center">
+                      <div className="flex items-center space-x-2 justify-center">
                         {/* Row letter (A/B/C...) */}
-                        <div className="w-5 sm:w-8 text-center font-semibold text-gray-700 dark:text-slate-350 text-xs sm:text-sm">
+                        <div className="w-5 sm:w-8 text-center font-semibold text-gray-700 dark:text-slate-350 text-xs sm:text-sm flex-shrink-0">
                           {row}
                         </div>
 
                         {/* Seat grid container with category border */}
                         <div
-                          className={`flex ${compactMode
-                            ? 'gap-0.5 sm:gap-2 overflow-x-auto custom-scrollbar flex-nowrap py-1'
-                            : 'gap-1 sm:gap-2 overflow-x-auto custom-scrollbar flex-nowrap py-1'
-                            } ${isFirstRow ? 'pt-3' : ''
-                            } ${isLastRow ? 'pb-3' : ''
-                            } pl-2 pr-2 border-l-4 border-r-4 ${section.borderColor} ${isFirstRow ? 'border-t-4 rounded-t-lg' : ''
-                            } ${isLastRow ? 'border-b-4 rounded-b-lg' : ''
-                            } ${section.bgColor}`}
+                          className={`grid w-full max-w-[600px] ${
+                            isFirstRow ? 'pt-3' : ''
+                          } ${isLastRow ? 'pb-3' : ''
+                          } pl-2 pr-2 border-l-4 border-r-4 ${section.borderColor} ${isFirstRow ? 'border-t-4 rounded-t-lg' : ''
+                          } ${isLastRow ? 'border-b-4 rounded-b-lg' : ''
+                          } ${section.bgColor} py-1`}
+                          style={{
+                            gridTemplateColumns: `repeat(${maxColumns}, minmax(0, 1fr))`,
+                            gap: compactMode ? '4px' : '6px',
+                          }}
                         >
                           {/* Render seat buttons */}
                           {seatGrid.map((seat, index) =>
@@ -395,14 +397,11 @@ export function SeatGrid({
                                   normalizeSeatStatus(seat.status) !== 'ACTIVE' ||
                                   !allowSelect
                                 }
-                                className={`${compactMode
-                                  ? 'w-8 h-8 sm:w-10 sm:h-8 text-[10px] sm:text-[11px]'
-                                  : 'w-9 h-8 sm:w-12 sm:h-10 text-[11px] sm:text-xs'
-                                  } border-2 rounded-lg font-medium transition-colors flex-shrink-0 ${getSeatColor(
-                                    seat,
-                                    selectedSeats.some((s) => s.seatId === seat.seatId),
-                                    disabled,
-                                  )}`}
+                                className={`w-full aspect-square text-[10px] sm:text-xs border-2 rounded-lg font-medium transition-colors flex items-center justify-center ${getSeatColor(
+                                  seat,
+                                  selectedSeats.some((s) => s.seatId === seat.seatId),
+                                  disabled,
+                                )}`}
                                 title={
                                   disabled
                                     ? `${seat.seatCode}: sự kiện đã kết thúc`
@@ -421,10 +420,7 @@ export function SeatGrid({
                               // Empty grid cell placeholder
                               <div
                                 key={`empty-${row}-${index}`}
-                                className={`${compactMode
-                                  ? 'w-8 h-8 sm:w-10 sm:h-8 flex-shrink-0'
-                                  : 'w-9 h-8 sm:w-12 sm:h-10 flex-shrink-0'
-                                  }`}
+                                className="w-full aspect-square"
                               ></div>
                             ),
                           )}
