@@ -121,6 +121,7 @@ crash.*.log
 *.log
 *.bak
 *.backup
+Database/
 
 # OS files
 .DS_Store
@@ -130,4 +131,3 @@ INFRASTRUCTURE_REPORT.md
 secrets.tf
 secret.tf
 .env
-
