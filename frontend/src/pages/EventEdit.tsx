@@ -139,11 +139,31 @@ export default function EventEdit() {
     fetchAllSpeakers()
   }, [])
 
-  const filteredSuggestions = allSpeakers.filter(
-    (sp) =>
+  const isDuplicateSpeaker = (s1: Speaker, s2: Speaker) => {
+    const id1 = s1.speakerId || s1.speaker_id
+    const id2 = s2.speakerId || s2.speaker_id
+    if (id1 && id2 && id1 === id2) return true
+
+    const email1 = (s1.email || '').trim().toLowerCase()
+    const email2 = (s2.email || '').trim().toLowerCase()
+    if (email1 && email2 && email1 === email2) return true
+
+    const name1 = (s1.fullName || s1.full_name || '').trim().toLowerCase()
+    const name2 = (s2.fullName || s2.full_name || '').trim().toLowerCase()
+    if (name1 && name2 && name1 === name2) return true
+
+    return false
+  }
+
+  const filteredSuggestions = allSpeakers.filter((sp) => {
+    const isAlreadySelected = selectedSpeakers.some((selected) => isDuplicateSpeaker(selected, sp))
+    if (isAlreadySelected) return false
+
+    return (
       (sp.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (sp.email || '').toLowerCase().includes(searchQuery.toLowerCase())
-  )
+    )
+  })
 
   // ======================= TICKET STATE =======================
 
@@ -388,7 +408,7 @@ export default function EventEdit() {
       avatarUrl: sp.avatarUrl || sp.avatar_url || '',
       avatar_url: sp.avatarUrl || sp.avatar_url || '',
     }
-    if (!selectedSpeakers.some(s => s.speaker_id === clickedSpeaker.speaker_id)) {
+    if (!selectedSpeakers.some(s => isDuplicateSpeaker(s, clickedSpeaker))) {
       setSelectedSpeakers([...selectedSpeakers, clickedSpeaker]);
     }
     setSearchQuery('')
@@ -465,7 +485,7 @@ export default function EventEdit() {
           avatar_url: createdSpeaker.avatarUrl || createdSpeaker.avatar_url || '',
         }
         showToast('success', 'Thêm diễn giả thành công')
-        if (!selectedSpeakers.some(s => s.speaker_id === normalizedCreated.speaker_id)) {
+        if (!selectedSpeakers.some(s => isDuplicateSpeaker(s, normalizedCreated))) {
           setSelectedSpeakers([...selectedSpeakers, normalizedCreated]);
         }
         setAllSpeakers(prev => [normalizedCreated, ...prev])
