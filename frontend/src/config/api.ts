@@ -124,8 +124,8 @@ api.interceptors.response.use(
 					.catch((refreshError) => {
 						processQueue(refreshError, null)
 						setInMemoryToken(null)
-						window.dispatchEvent(new CustomEvent('auth:session-expired'))
 						if (!isBackground) {
+							window.dispatchEvent(new CustomEvent('auth:session-expired'))
 							window.location.href = '/guest'
 						}
 						reject(refreshError)

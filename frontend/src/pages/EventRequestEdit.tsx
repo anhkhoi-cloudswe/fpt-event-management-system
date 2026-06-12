@@ -924,16 +924,16 @@ export default function EventRequestEdit() {
     if (eligibilityError) {
         return (
             <div className="flex justify-center">
-                <div className="bg-white rounded-lg shadow-md p-8 max-w-4xl w-full">
+                <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-md p-8 max-w-4xl w-full">
                     <div className="flex justify-center mb-6">
                         <div className="text-6xl">🚫</div>
                     </div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6 text-center">
                         Không thể cập nhật yêu cầu
                     </h1>
 
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
-                        <p className="text-red-800 text-center font-medium text-lg">
+                    <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg p-6 mb-8">
+                        <p className="text-red-800 dark:text-red-400 text-center font-medium text-lg">
                             {eligibilityError}
                         </p>
                     </div>
@@ -963,20 +963,20 @@ export default function EventRequestEdit() {
 
     return (
         <div className="flex justify-center">
-            <div className="bg-white rounded-lg shadow-md p-8 max-w-4xl w-full">
-                <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+            <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-md p-8 max-w-4xl w-full">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6 text-center">
                     Cập nhật yêu cầu tổ chức sự kiện
                 </h1>
 
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {/* ================= SPEAKER INFO ================= */}
-                    <div className="border-b pb-6">
-                        <h2 className="text-xl font-semibold text-gray-900 mb-4">Thông tin diễn giả</h2>
+                    <div className="border-b border-slate-200 dark:border-slate-800 pb-6">
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Thông tin diễn giả</h2>
 
                         {/* Autocomplete Combobox */}
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                                     Chọn diễn giả *
                                 </label>
                                 
@@ -992,7 +992,7 @@ export default function EventRequestEdit() {
                                                 setShowSuggestions(true)
                                             }}
                                             onFocus={() => setShowSuggestions(true)}
-                                            className="w-full bg-neutral-950/60 backdrop-blur-md border border-white/10 text-white rounded-xl pl-10 pr-4 py-2.5 outline-none focus:border-blue-500 transition-colors placeholder-gray-500"
+                                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl pl-10 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder-slate-400 dark:placeholder-slate-500"
                                         />
                                     </div>
 
@@ -1002,7 +1002,7 @@ export default function EventRequestEdit() {
                                                 className="fixed inset-0 z-10" 
                                                 onClick={() => setShowSuggestions(false)}
                                             />
-                                            <div className="absolute z-20 w-full mt-2 bg-neutral-950/95 backdrop-blur-md border border-white/10 text-white rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
+                                            <div className="absolute z-20 w-full mt-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
                                                 {filteredSuggestions.length > 0 ? (
                                                     filteredSuggestions.map((sp) => (
                                                         <div
@@ -1012,27 +1012,27 @@ export default function EventRequestEdit() {
                                                                 setShowSuggestions(false)
                                                                 setSearchQuery('')
                                                             }}
-                                                            className="px-4 py-3 hover:bg-white/5 cursor-pointer flex items-center gap-3 border-b border-white/5 last:border-0"
+                                                            className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer flex items-center gap-3 border-b border-slate-100 dark:border-white/5 last:border-0"
                                                         >
                                                             {sp.avatarUrl ? (
                                                                 <img
                                                                     src={sp.avatarUrl}
                                                                     alt={sp.fullName}
-                                                                    className="w-8 h-8 rounded-full object-cover border border-white/10"
+                                                                    className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-white/10"
                                                                 />
                                                             ) : (
-                                                                <div className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-sm border border-blue-500/20">
+                                                                <div className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm border border-blue-500/20">
                                                                     {sp.fullName.charAt(0).toUpperCase()}
                                                                 </div>
                                                             )}
                                                             <div>
                                                                 <p className="text-sm font-semibold">{sp.fullName}</p>
-                                                                <p className="text-xs text-neutral-400">{sp.email || 'Không có email'}</p>
+                                                                <p className="text-xs text-slate-500 dark:text-neutral-400">{sp.email || 'Không có email'}</p>
                                                             </div>
                                                         </div>
                                                     ))
                                                 ) : (
-                                                    <div className="px-4 py-3 text-sm text-neutral-400 text-center">
+                                                    <div className="px-4 py-3 text-sm text-slate-500 dark:text-neutral-400 text-center">
                                                         Không tìm thấy diễn giả nào
                                                     </div>
                                                 )}
@@ -1043,7 +1043,7 @@ export default function EventRequestEdit() {
                                                             handleOpenDrawer(searchQuery)
                                                             setShowSuggestions(false)
                                                         }}
-                                                        className="px-4 py-3 hover:bg-blue-600/20 text-blue-400 font-semibold cursor-pointer border-t border-white/10 flex items-center"
+                                                        className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-semibold cursor-pointer border-t border-slate-100 dark:border-white/10 flex items-center"
                                                     >
                                                         + Thêm mới diễn giả "{searchQuery}"
                                                     </div>
@@ -1059,7 +1059,7 @@ export default function EventRequestEdit() {
                                 {selectedSpeakers.map((sp) => (
                                     <div
                                         key={sp.speakerId || 'temp'}
-                                        className="inline-flex items-center gap-2 bg-neutral-900/80 border border-white/10 text-white rounded-full pl-2 pr-3 py-1.5 shadow-md"
+                                        className="inline-flex items-center gap-2 bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-full pl-2 pr-3 py-1.5 shadow-md"
                                     >
                                         {sp.avatarUrl ? (
                                             <img
@@ -1068,18 +1068,18 @@ export default function EventRequestEdit() {
                                                 className="w-6 h-6 rounded-full object-cover"
                                             />
                                         ) : (
-                                            <div className="w-6 h-6 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-xs">
+                                            <div className="w-6 h-6 rounded-full bg-blue-600/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
                                                 {sp.fullName.charAt(0).toUpperCase()}
                                             </div>
                                         )}
                                         <div className="text-xs">
                                             <span className="font-semibold">{sp.fullName}</span>
-                                            {sp.email && <span className="text-neutral-400 ml-1">({sp.email})</span>}
+                                            {sp.email && <span className="text-slate-500 dark:text-neutral-400 ml-1">({sp.email})</span>}
                                         </div>
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveSelectedSpeaker(sp.speakerId)}
-                                            className="p-0.5 rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
+                                            className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
                                         >
                                             <X className="w-3.5 h-3.5" />
                                         </button>
@@ -1090,9 +1090,9 @@ export default function EventRequestEdit() {
                     </div>
 
                     {/* ================= TICKETS INFO ================= */}
-                    <div className="border-b pb-6">
+                    <div className="border-b border-slate-200 dark:border-slate-800 pb-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold text-gray-900">Thông tin vé</h2>
+                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Thông tin vé</h2>
 
                             <button
                                 type="button"
@@ -1109,16 +1109,16 @@ export default function EventRequestEdit() {
                         </div>
 
                         {tickets.map((ticket, index) => (
-                            <div key={index} className="mb-6 p-4 border border-gray-200 rounded-lg relative">
+                            <div key={index} className="mb-6 p-4 border border-gray-200 dark:border-slate-800 rounded-lg relative bg-slate-50/50 dark:bg-slate-900/50">
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex-1">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                                             Loại vé *
                                         </label>
                                         <select
                                             value={ticket.name}
                                             onChange={(e) => handleTicketTypeChange(index, e.target.value as TicketType)}
-                                            className="w-48 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-48 px-4 py-2 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         >
                                             <option value="VIP">VIP</option>
                                             <option value="STANDARD">STANDARD</option>
@@ -1139,7 +1139,7 @@ export default function EventRequestEdit() {
                                 <div className="space-y-4">
                                     {/* description */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                                             Mô tả *
                                         </label>
                                         <textarea
@@ -1147,14 +1147,14 @@ export default function EventRequestEdit() {
                                             onChange={(e) => handleTicketChange(index, 'description', e.target.value)}
                                             required
                                             rows={2}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full px-4 py-2 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         />
                                     </div>
 
                                     {/* price + maxQuantity */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                                                 Giá (VNĐ) *
                                             </label>
                                             <input
@@ -1164,22 +1164,22 @@ export default function EventRequestEdit() {
                                                 required
                                                 min="0"
                                                 max={MAX_PRICE_DIGITS}
-                                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                                className={`w-full px-4 py-2 bg-white dark:bg-slate-950 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                                     ticket.price > MAX_TICKET_PRICE
-                                                        ? 'border-red-500 bg-red-50'
-                                                        : 'border-gray-300'
+                                                        ? 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                                                        : 'border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white'
                                                 }`}
                                                 placeholder="Tối đa 100,000,000 VNĐ"
                                             />
                                             {ticket.price > MAX_TICKET_PRICE && (
-                                                <p className="text-red-600 text-sm font-medium mt-1">
+                                                <p className="text-red-650 text-sm font-medium mt-1">
                                                     ⚠️ Giá vé vượt quá hạn mức cho phép (100 triệu VNĐ)
                                                 </p>
                                             )}
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                                                 Số lượng tối đa *
                                             </label>
                                             <input
@@ -1190,7 +1190,7 @@ export default function EventRequestEdit() {
                                                 min="10"
                                                 step="10"
                                                 placeholder="10, 20, 30, ..."
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full px-4 py-2 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             />
                                         </div>
                                     </div>
@@ -1201,7 +1201,7 @@ export default function EventRequestEdit() {
 
                     {/* ================= BANNER UPLOAD ================= */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                             Banner sự kiện *
                         </label>
 
@@ -1210,7 +1210,7 @@ export default function EventRequestEdit() {
                                 onDragOver={handleDragOver}
                                 onDragLeave={handleDragLeave}
                                 onDrop={handleDrop}
-                                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
+                                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' : 'border-gray-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500'
                                     }`}
                             >
                                 <input
@@ -1222,8 +1222,8 @@ export default function EventRequestEdit() {
                                 />
                                 <label htmlFor="banner-upload" className="cursor-pointer">
                                     <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                                    <p className="text-gray-600 mb-2">Kéo thả ảnh hoặc click để chọn</p>
-                                    <p className="text-sm text-gray-500">PNG, JPG, GIF tối đa 5MB</p>
+                                    <p className="text-gray-600 dark:text-slate-350 mb-2">Kéo thả ảnh hoặc click để chọn</p>
+                                    <p className="text-sm text-gray-500 dark:text-slate-500">PNG, JPG, GIF tối đa 5MB</p>
                                 </label>
                             </div>
                         ) : (
@@ -1251,7 +1251,7 @@ export default function EventRequestEdit() {
                     <div className="flex justify-end gap-4 pt-4">
                         <Link
                             to="/dashboard/event-requests"
-                            className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-2 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
                         >
                             Hủy
                         </Link>
@@ -1273,14 +1273,14 @@ export default function EventRequestEdit() {
 
             {isDrawerOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-sm transition-opacity">
-                    <div className="h-full w-full max-w-md bg-neutral-950/95 border-l border-white/10 p-6 shadow-2xl flex flex-col justify-between text-white overflow-y-auto animate-in slide-in-from-right duration-300">
+                    <div className="h-full w-full max-w-md bg-white dark:bg-neutral-950/95 border-l border-slate-200 dark:border-white/10 p-6 shadow-2xl flex flex-col justify-between text-slate-900 dark:text-white overflow-y-auto animate-in slide-in-from-right duration-300">
                         <div>
                             <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-bold text-white">Thêm Diễn Giả Mới</h3>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Thêm Diễn Giả Mới</h3>
                                 <button
                                     type="button"
                                     onClick={() => setIsDrawerOpen(false)}
-                                    className="p-1 rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
+                                    className="p-1 rounded-full hover:bg-slate-200/50 dark:hover:bg-white/10 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
@@ -1289,7 +1289,7 @@ export default function EventRequestEdit() {
                             <div className="space-y-4">
                                 {/* Họ và tên */}
                                 <div>
-                                    <label className="block text-sm font-medium text-neutral-300 mb-1">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-neutral-300 mb-1">
                                         Họ và tên *
                                     </label>
                                     <input
@@ -1297,14 +1297,14 @@ export default function EventRequestEdit() {
                                         required
                                         value={drawerFormData.fullName}
                                         onChange={(e) => setDrawerFormData(prev => ({ ...prev, fullName: e.target.value }))}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-blue-500 outline-none transition-colors"
+                                        className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:border-blue-500 outline-none transition-colors"
                                         placeholder="Nguyễn Văn A"
                                     />
                                 </div>
 
                                 {/* Email */}
                                 <div>
-                                    <label className="block text-sm font-medium text-neutral-300 mb-1">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-neutral-300 mb-1">
                                         Email *
                                     </label>
                                     <input
@@ -1312,14 +1312,14 @@ export default function EventRequestEdit() {
                                         required
                                         value={drawerFormData.email}
                                         onChange={(e) => setDrawerFormData(prev => ({ ...prev, email: e.target.value }))}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-blue-500 outline-none transition-colors"
+                                        className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:border-blue-500 outline-none transition-colors"
                                         placeholder="email@example.com"
                                     />
                                 </div>
 
                                 {/* Số điện thoại */}
                                 <div>
-                                    <label className="block text-sm font-medium text-neutral-300 mb-1">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-neutral-300 mb-1">
                                         Số điện thoại *
                                     </label>
                                     <input
@@ -1327,14 +1327,14 @@ export default function EventRequestEdit() {
                                         required
                                         value={drawerFormData.phone}
                                         onChange={(e) => setDrawerFormData(prev => ({ ...prev, phone: e.target.value }))}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-blue-500 outline-none transition-colors"
+                                        className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:border-blue-500 outline-none transition-colors"
                                         placeholder="0912345678"
                                     />
                                 </div>
 
                                 {/* Tiểu sử */}
                                 <div>
-                                    <label className="block text-sm font-medium text-neutral-300 mb-1">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-neutral-300 mb-1">
                                         Tiểu sử *
                                     </label>
                                     <textarea
@@ -1342,14 +1342,14 @@ export default function EventRequestEdit() {
                                         rows={4}
                                         value={drawerFormData.bio}
                                         onChange={(e) => setDrawerFormData(prev => ({ ...prev, bio: e.target.value }))}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-blue-500 outline-none transition-colors resize-none"
+                                        className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:border-blue-500 outline-none transition-colors resize-none"
                                         placeholder="Thông tin giới thiệu về diễn giả..."
                                     />
                                 </div>
 
                                 {/* Ảnh đại diện */}
                                 <div>
-                                    <label className="block text-sm font-medium text-neutral-300 mb-1">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-neutral-300 mb-1">
                                         Ảnh đại diện
                                     </label>
                                     <div className="flex items-center gap-4 mt-1">
@@ -1358,7 +1358,7 @@ export default function EventRequestEdit() {
                                                 <img
                                                     src={drawerAvatarPreview}
                                                     alt="Avatar Preview"
-                                                    className="w-16 h-16 rounded-full object-cover border border-white/10"
+                                                    className="w-16 h-16 rounded-full object-cover border border-slate-200 dark:border-white/10"
                                                 />
                                                 <button
                                                     type="button"
@@ -1372,7 +1372,7 @@ export default function EventRequestEdit() {
                                                 </button>
                                             </div>
                                         ) : (
-                                            <div className="w-16 h-16 rounded-full bg-white/5 border border-dashed border-white/10 flex items-center justify-center text-neutral-500">
+                                            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/10 flex items-center justify-center text-gray-400 dark:text-neutral-500">
                                                 <User className="w-6 h-6" />
                                             </div>
                                         )}
@@ -1397,22 +1397,22 @@ export default function EventRequestEdit() {
                                             />
                                             <label
                                                 htmlFor="drawer-avatar-upload"
-                                                className="inline-flex items-center px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-white cursor-pointer transition-colors"
+                                                className="inline-flex items-center px-3 py-1.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-700 dark:text-white cursor-pointer transition-colors"
                                             >
                                                 Tải ảnh lên
                                             </label>
-                                            <p className="text-[10px] text-neutral-400 mt-1">PNG, JPG tối đa 5MB</p>
+                                            <p className="text-[10px] text-slate-500 dark:text-neutral-400 mt-1">PNG, JPG tối đa 5MB</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex gap-3 pt-6 border-t border-white/5 mt-6">
+                        <div className="flex gap-3 pt-6 border-t border-slate-150 dark:border-white/5 mt-6">
                             <button
                                 type="button"
                                 onClick={() => setIsDrawerOpen(false)}
-                                className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-semibold text-neutral-300 transition-colors"
+                                className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold text-slate-700 dark:text-neutral-300 transition-colors"
                             >
                                 Hủy
                             </button>

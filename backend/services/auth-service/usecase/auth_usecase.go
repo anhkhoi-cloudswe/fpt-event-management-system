@@ -491,9 +491,21 @@ func (uc *AuthUseCase) GetStaffAndOrganizers(ctx context.Context) (*models.Staff
 		return nil, err
 	}
 
+	adminList, err := uc.userRepo.FindByRole(ctx, "ADMIN")
+	if err != nil {
+		return nil, err
+	}
+
+	studentList, err := uc.userRepo.FindByRole(ctx, "STUDENT")
+	if err != nil {
+		return nil, err
+	}
+
 	return &models.StaffOrganizerResponse{
 		StaffList:     staffList,
 		OrganizerList: organizerList,
+		AdminList:     adminList,
+		StudentList:   studentList,
 	}, nil
 }
 

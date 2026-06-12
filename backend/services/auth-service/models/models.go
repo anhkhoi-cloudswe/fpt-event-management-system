@@ -92,6 +92,8 @@ type AdminUpdateUserRequest struct {
 type StaffOrganizerResponse struct {
 	StaffList     []User `json:"staffList"`
 	OrganizerList []User `json:"organizerList"`
+	AdminList     []User `json:"adminList"`
+	StudentList   []User `json:"studentList"`
 }
 
 // PendingRegistration represents a pending registration with OTP
