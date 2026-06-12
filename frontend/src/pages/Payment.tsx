@@ -421,6 +421,14 @@ export default function Payment() {
     fetchWalletBalance()
   }, [user, token])
 
+  // Redirect operational accounts (BTC, Staff, Admin) away from the payment page
+  useEffect(() => {
+    if (user && user.role !== 'STUDENT') {
+      alert('Tài khoản Ban tổ chức, Nhân sự, hoặc Quản trị không được phép thực hiện thanh toán vé.')
+      navigate('/dashboard')
+    }
+  }, [user, navigate])
+
   // ⭐ NEW: Check event start time at mount
   useEffect(() => {
     const checkEventStartTime = async () => {
