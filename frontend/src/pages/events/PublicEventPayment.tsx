@@ -235,6 +235,16 @@ export default function PublicEventPayment() {
   }, [authLoading, hasActiveSession, id, isRefreshing, navigate])
 
   useEffect(() => {
+    if (authLoading || isRefreshing) return
+    if (user && user.role !== 'STUDENT') {
+      alert(pageLanguage === 'en'
+        ? 'Operational, staff, or admin accounts are not allowed to purchase event tickets.'
+        : 'Tài khoản Ban tổ chức, Nhân sự, hoặc Quản trị không được phép thực hiện thanh toán vé.')
+      navigate(`/events/${id}/page`, { replace: true })
+    }
+  }, [user, authLoading, isRefreshing, id, navigate, pageLanguage])
+
+  useEffect(() => {
     if (!id || !hasActiveSession) return
 
     const fetchEvent = async () => {
@@ -832,8 +842,8 @@ export default function PublicEventPayment() {
   const vietQrSrc = `https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '2911121319'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${paymentAmount}&des=${encodeURIComponent(transferMessage)}`
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white selection:bg-blue-500/30">
-      <div className="fixed inset-0 pointer-events-none bg-[#09090b]">
+    <div className="relative w-full min-h-screen overflow-x-hidden bg-neutral-950 text-white selection:bg-blue-500/30">
+      <div className="fixed inset-0 pointer-events-none bg-[#09090b] overflow-hidden">
         {banner && (
           <div
             className="absolute -inset-[20%] blur-[90px] opacity-40 saturate-[220%]"
@@ -853,8 +863,8 @@ export default function PublicEventPayment() {
           {t.eventDetails}
         </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-10">
-          <main className="space-y-7">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,_1fr)_420px] gap-10 min-w-0">
+          <main className="space-y-7 min-w-0">
             {isLocked && (
               <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-200">
                 <p className="font-black text-base uppercase text-red-400 mb-1">
@@ -917,7 +927,7 @@ export default function PublicEventPayment() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,_1fr)] gap-6 min-w-0">
                 <div>
                   <div className="aspect-video rounded-2xl overflow-hidden bg-black/30 border border-white/10">
                     {banner ? <img src={banner} alt={event.title} className="w-full h-full object-cover" /> : null}
@@ -945,7 +955,7 @@ export default function PublicEventPayment() {
                   </div>
                 </div>
 
-                <div className="space-y-5">
+                <div className="space-y-5 min-w-0">
                   {currentStep === 1 && (
                     <>
                       <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
