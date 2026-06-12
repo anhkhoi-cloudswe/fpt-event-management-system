@@ -203,6 +203,10 @@ export default function AdminDashboard() {
   }
 
   const handleToggleUserStatus = (targetUser: any) => {
+    if (targetUser.userId === user?.id) {
+      showToast('error', 'Bạn không thể tự vô hiệu hóa tài khoản của chính mình!')
+      return
+    }
     const newStatus = targetUser.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
     const statusText = newStatus === 'ACTIVE' ? 'kích hoạt' : 'vô hiệu hóa'
     
@@ -633,10 +637,21 @@ export default function AdminDashboard() {
                         
                         <button
                           onClick={() => handleToggleUserStatus(u)}
-                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-250 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${
+                          disabled={u.userId === user?.id}
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-250 ease-in-out focus:outline-none ${
                             u.status === 'ACTIVE' ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-700'
+                          } ${
+                            u.userId === user?.id 
+                              ? 'opacity-40 cursor-not-allowed' 
+                              : 'cursor-pointer focus:ring-2 focus:ring-orange-500/20 focus:ring-offset-2 dark:focus:ring-offset-slate-900'
                           }`}
-                          title={u.status === 'ACTIVE' ? 'Vô hiệu hóa tài khoản' : 'Kích hoạt tài khoản'}
+                          title={
+                            u.userId === user?.id 
+                              ? 'Không thể tự thay đổi trạng thái của bản thân' 
+                              : u.status === 'ACTIVE' 
+                              ? 'Vô hiệu hóa tài khoản' 
+                              : 'Kích hoạt tài khoản'
+                          }
                         >
                           <span
                             className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-250 ease-in-out ${
@@ -664,6 +679,7 @@ export default function AdminDashboard() {
         onSubmit={handleUserFormSubmit}
         user={selectedUser}
         mode={userFormMode}
+        isCurrentUser={selectedUser?.userId === user?.id}
       />
 
       {/* Speaker Form Modal */}

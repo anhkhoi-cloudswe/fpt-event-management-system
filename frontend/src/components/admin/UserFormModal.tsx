@@ -16,6 +16,7 @@ interface UserFormModalProps {
   onSubmit: (data: CreateUserRequest | UpdateUserRequest) => Promise<void>
   user?: User | null
   mode: 'create' | 'edit'
+  isCurrentUser?: boolean
 }
 
 /**
@@ -26,7 +27,8 @@ export default function UserFormModal({
   onClose,
   onSubmit,
   user,
-  mode
+  mode,
+  isCurrentUser = false
 }: UserFormModalProps) {
   const { showToast } = useToast()
   const [formData, setFormData] = useState({
@@ -372,12 +374,17 @@ export default function UserFormModal({
                       status: e.target.value as 'ACTIVE' | 'INACTIVE'
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-all duration-205"
-                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-all duration-205 disabled:opacity-60"
+                  disabled={loading || isCurrentUser}
                 >
                   <option value="ACTIVE">Hoạt động</option>
                   <option value="INACTIVE">Vô hiệu hóa</option>
                 </select>
+                {isCurrentUser && (
+                  <p className="text-xs italic text-orange-600 dark:text-orange-400 mt-1.5">
+                    Bạn đang đăng nhập tài khoản này. Không thể tự vô hiệu hóa trạng thái hoạt động.
+                  </p>
+                )}
               </div>
             )}
 
