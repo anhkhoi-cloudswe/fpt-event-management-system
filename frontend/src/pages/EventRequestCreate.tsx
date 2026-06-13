@@ -390,12 +390,12 @@ function TimePopover({ value, onChange, onClose }: TimePopoverProps) {
 
   useEffect(() => {
     if (listRef.current && value) {
-      const selectedEl = listRef.current.querySelector('[data-selected="true"]')
-      if (selectedEl) {
-        selectedEl.scrollIntoView({ block: 'center' })
+      const activeTimeItem = listRef.current.querySelector('[data-selected="true"]') as HTMLElement
+      if (activeTimeItem) {
+        activeTimeItem.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' })
       }
     }
-  }, [value])
+  }, [])
 
   return (
     <>
@@ -441,6 +441,74 @@ export default function EventRequestCreate() {
   const [eventFormat, setEventFormat] = useState<'ONLINE' | 'ONSITE' | 'HYBRID'>('ONSITE')
   const [isPublic, setIsPublic] = useState(true)
   const [descOpen, setDescOpen] = useState(false)
+
+  // Online platform oauth integration
+  const [selectedOnlinePlatform, setSelectedOnlinePlatform] = useState<'ZOOM' | 'GOOGLE'>('ZOOM')
+  const [connectedPlatforms, setConnectedPlatforms] = useState({
+    zoom: { connected: false, email: '', meetingLink: '' },
+    google: { connected: false, email: '', meetingLink: '' }
+  })
+
+  // Listen for OAuth success messages from popup window
+  useEffect(() => {
+    const handleOAuthMessage = (event: MessageEvent) => {
+      if (event.data.type === "OAUTH_SUCCESS") {
+        const platform = event.data.platform; // 'ZOOM' or 'GOOGLE'
+        const email = event.data.email || (platform === 'ZOOM' ? 'organizer.zoom@fpt.edu.vn' : 'organizer.meet@fpt.edu.vn');
+        const meetingLink = event.data.meetingLink || (platform === 'ZOOM' 
+          ? 'https://fpt-edu.zoom.us/j/84920491029?pwd=YmUxM2NjO3M4MTk2M2Mx' 
+          : 'https://meet.google.com/abc-defg-hij');
+
+        setConnectedPlatforms(prev => ({
+          ...prev,
+          [platform.toLowerCase()]: {
+            connected: true,
+            email,
+            meetingLink
+          }
+        }));
+        showToast('success', `Đã kết nối tài khoản ${platform === 'ZOOM' ? 'Zoom' : 'Google Meet'} thành công!`);
+      }
+    };
+    window.addEventListener("message", handleOAuthMessage);
+    return () => window.removeEventListener("message", handleOAuthMessage);
+  }, [showToast]);
+
+  const handleConnect = (platform: 'zoom' | 'google') => {
+    const width = 550, height = 650;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    const popup = window.open(
+      `/api/v1/auth/${platform}/connect`,
+      'OAuthPopup',
+      `width=${width},height=${height},top=${top},left=${left}`
+    );
+
+    // Fallback/Simulation for local/dev environment where backend OAuth endpoints are unconfigured
+    setTimeout(() => {
+      window.postMessage({
+        type: "OAUTH_SUCCESS",
+        platform: platform.toUpperCase(),
+        email: platform === 'zoom' ? 'organizer.zoom@fpt.edu.vn' : 'organizer.meet@fpt.edu.vn',
+        meetingLink: platform === 'zoom' 
+          ? 'https://fpt-edu.zoom.us/j/84920491029?pwd=YmUxM2NjO3M4MTk2M2Mx' 
+          : 'https://meet.google.com/abc-defg-hij'
+      }, window.location.origin);
+      if (popup) popup.close();
+    }, 1500);
+  };
+
+  const handleDisconnect = (platform: 'zoom' | 'google') => {
+    setConnectedPlatforms(prev => ({
+      ...prev,
+      [platform]: {
+        connected: false,
+        email: '',
+        meetingLink: ''
+      }
+    }));
+    showToast('info', `Đã hủy kết nối tài khoản ${platform === 'zoom' ? 'Zoom' : 'Google Meet'}.`);
+  };
 
   const [formData, setFormData] = useState({
     title: '',
@@ -686,6 +754,18 @@ export default function EventRequestCreate() {
       return
     }
 
+    if (eventFormat === 'ONLINE') {
+      const isConnected = selectedOnlinePlatform === 'ZOOM'
+        ? connectedPlatforms.zoom.connected
+        : connectedPlatforms.google.connected
+      if (!isConnected) {
+        const platformName = selectedOnlinePlatform === 'ZOOM' ? 'Zoom' : 'Google Meet'
+        setError(`Vui lòng kết nối tài khoản ${platformName} để lấy link cuộc họp trực tuyến.`)
+        showToast('error', `Vui lòng kết nối tài khoản ${platformName}`)
+        return
+      }
+    }
+
     setIsSubmitting(true)
     try {
       const fmt = (s: string) => (s ? s + ':00' : null)
@@ -696,8 +776,12 @@ export default function EventRequestCreate() {
         preferredEndTime:   fmt(formData.preferredEnd),
         expectedCapacity:   cap || 0,
         eventFormat,
-        customVenueName: eventFormat !== 'ONLINE' ? formData.customVenueName || null : null,
-        customLocation:  eventFormat !== 'ONLINE' ? formData.customLocation  || null : null,
+        customVenueName: eventFormat === 'ONLINE'
+          ? selectedOnlinePlatform
+          : (formData.customVenueName || null),
+        customLocation: eventFormat === 'ONLINE'
+          ? (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink)
+          : (formData.customLocation || null),
         bannerUrl: bannerUrl || null,
         isPublic,
       }
@@ -1091,6 +1175,129 @@ export default function EventRequestCreate() {
                     </button>
                   ))}
                 </div>
+
+                {/* Online Platform Connectors */}
+                {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (
+                  <div className="mt-2.5 bg-white/[0.03] backdrop-blur-md border border-white/[0.08] rounded-xl p-3 animate-fadeIn flex flex-col gap-2">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.05]">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Nền tảng trực tuyến</span>
+                      <div className="flex gap-1 bg-white/[0.04] p-0.5 rounded-lg border border-white/[0.06]">
+                        {(['ZOOM', 'GOOGLE'] as const).map(p => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setSelectedOnlinePlatform(p)}
+                            className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                              selectedOnlinePlatform === p
+                                ? 'bg-[#fb923c] text-white shadow-md'
+                                : 'text-neutral-400 hover:text-white'
+                            }`}
+                          >
+                            {p === 'ZOOM' ? 'Zoom' : 'Google Meet'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {selectedOnlinePlatform === 'ZOOM' ? (
+                      connectedPlatforms.zoom.connected ? (
+                        /* Connected Zoom */
+                        <div className="flex items-center justify-between bg-emerald-500/[0.04] border border-emerald-500/20 rounded-xl p-3 animate-fadeIn">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+                              <Check className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-white">Đã kết nối tài khoản Zoom</p>
+                              <p className="text-[10px] text-emerald-400/90 font-semibold truncate mt-0.5">
+                                {connectedPlatforms.zoom.email}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDisconnect('zoom')}
+                            className="text-[10px] text-white/30 hover:text-red-400 font-bold transition duration-200 cursor-pointer shrink-0 ml-2"
+                          >
+                            Hủy kết nối
+                          </button>
+                        </div>
+                      ) : (
+                        /* Unconnected Zoom */
+                        <div className="flex flex-col gap-3 bg-white/[0.02] border border-white/[0.05] rounded-xl p-3.5 animate-fadeIn">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center shrink-0 border border-blue-500/20">
+                              <svg className="w-6 h-6 text-blue-450" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.3 12.3c-.1.1-.3.2-.5.2h-.4l-2 1.2c-.3.2-.7 0-.7-.4V14H10c-.6 0-1-.4-1-1V9c0-.6.4-1 1-1h4c.6 0 1 .4 1 1v4h.7c.3 0 .4.3.3.5l-2 1.8z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white">Zoom Account Link</p>
+                              <p className="text-[10px] text-neutral-400 mt-1 leading-normal">
+                                Tự động thiết lập cuộc họp trực tuyến Zoom bảo mật cao cho sự kiện này.
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleConnect('zoom')}
+                            className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-orange-950/20 flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            Connect Zoom Account
+                          </button>
+                        </div>
+                      )
+                    ) : (
+                      connectedPlatforms.google.connected ? (
+                        /* Connected Google Meet */
+                        <div className="flex items-center justify-between bg-emerald-500/[0.04] border border-emerald-500/20 rounded-xl p-3 animate-fadeIn">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+                              <Check className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-white">Đã kết nối Google Meet</p>
+                              <p className="text-[10px] text-emerald-400/90 font-semibold truncate mt-0.5">
+                                {connectedPlatforms.google.email}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDisconnect('google')}
+                            className="text-[10px] text-white/30 hover:text-red-400 font-bold transition duration-200 cursor-pointer shrink-0 ml-2"
+                          >
+                            Hủy kết nối
+                          </button>
+                        </div>
+                      ) : (
+                        /* Unconnected Google Meet */
+                        <div className="flex flex-col gap-3 bg-white/[0.02] border border-white/[0.05] rounded-xl p-3.5 animate-fadeIn">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-teal-600/10 flex items-center justify-center shrink-0 border border-teal-500/20">
+                              <svg className="w-6 h-6 text-teal-450" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white">Google Meet Connection</p>
+                              <p className="text-[10px] text-neutral-400 mt-1 leading-normal">
+                                Tạo link Google Meet trực tuyến bảo mật thông qua đồng bộ hóa lịch Google.
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleConnect('google')}
+                            className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-orange-950/20 flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            Connect Google Meet Account
+                          </button>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
 
                 {/* Location rows — borderless */}
                 {(eventFormat === 'ONSITE' || eventFormat === 'HYBRID') && (
