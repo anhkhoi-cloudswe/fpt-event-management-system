@@ -541,6 +541,7 @@ export default function EventRequestCreate() {
     zoom: { connected: false, email: '', meetingLink: '' },
     google: { connected: false, email: '', meetingLink: '' }
   })
+  const [isConnecting, setIsConnecting] = useState(false);
 
   // Listen for OAuth success messages from popup window
   useEffect(() => {
@@ -558,6 +559,7 @@ export default function EventRequestCreate() {
             meetingLink
           }
         }));
+        setIsConnecting(false);
         showToast('success', `Đã kết nối tài khoản ${platform === 'ZOOM' ? 'Zoom' : 'Google Meet'} thành công!`);
       }
     };
@@ -566,6 +568,7 @@ export default function EventRequestCreate() {
   }, [showToast]);
 
   const handleConnect = (platform: 'zoom' | 'google') => {
+    setIsConnecting(true);
     const width = 550, height = 650;
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
@@ -574,11 +577,18 @@ export default function EventRequestCreate() {
     const redirectUri = `http://localhost:8080/api/v1/auth/${platform}/callback`;
     const connectUrl = `/api/v1/auth/${platform}/connect?redirect_uri=${encodeURIComponent(redirectUri)}`;
 
-    window.open(
+    const popup = window.open(
       connectUrl,
       'OAuthPopup',
       `width=${width},height=${height},top=${top},left=${left}`
     );
+
+    const timer = setInterval(() => {
+      if (!popup || popup.closed) {
+        clearInterval(timer);
+        setIsConnecting(false); // Reset any loading animation safely
+      }
+    }, 1000);
   };
 
   const handleDisconnect = (platform: 'zoom' | 'google') => {
@@ -1392,10 +1402,11 @@ export default function EventRequestCreate() {
                           </div>
                           <button
                             type="button"
+                            disabled={isConnecting}
                             onClick={() => handleConnect('zoom')}
-                            className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-orange-950/20 flex items-center justify-center gap-2 cursor-pointer"
+                            className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-orange-950/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Connect Zoom Account
+                            {isConnecting && selectedOnlinePlatform === 'ZOOM' ? 'Connecting Zoom...' : 'Connect Zoom Account'}
                           </button>
                         </div>
                       )
@@ -1440,10 +1451,11 @@ export default function EventRequestCreate() {
                           </div>
                           <button
                             type="button"
+                            disabled={isConnecting}
                             onClick={() => handleConnect('google')}
-                            className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-orange-950/20 flex items-center justify-center gap-2 cursor-pointer"
+                            className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-orange-950/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Connect Google Meet Account
+                            {isConnecting && selectedOnlinePlatform === 'GOOGLE' ? 'Connecting Google Meet...' : 'Connect Google Meet Account'}
                           </button>
                         </div>
                       )
