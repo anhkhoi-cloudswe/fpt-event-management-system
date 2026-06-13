@@ -17,6 +17,7 @@ import {
   AlignLeft,
   RefreshCw,
   Lock,
+  ChevronDown,
 } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
 import { uploadEventBanner, deleteEventBanner, validateImageFile } from '../utils/imageUpload'
@@ -191,14 +192,20 @@ export default function EventRequestCreate() {
 
   const [bannerUrl, setBannerUrl] = useState('')
   const [sampleBanners, setSampleBanners] = useState<any[]>([])
-  const [isBannersModalOpen, setIsBannersModalOpen] = useState(false)
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  
+  // Unified cover modal states
+  const [isCoverModalOpen, setIsCoverModalOpen] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const modalFileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Public/Private dropdown state
+  const [showPublicDropdown, setShowPublicDropdown] = useState(false)
+
   const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [isUploading, setIsUploading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [timeErrors, setTimeErrors] = useState<string[]>([])
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   /* ── Auto-init start time to +30 min from now ── */
   useEffect(() => {
@@ -248,30 +255,64 @@ export default function EventRequestCreate() {
     setBannerUrl(next[Math.floor(Math.random() * next.length)].url)
   }
 
-  /* ── Banner upload ── */
-  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  /* ── Banner Upload Processing ── */
+  const processUploadedFile = async (file: File) => {
     const v = validateImageFile(file)
-    if (!v.valid) { showToast('error', v.error || 'Ảnh không hợp lệ'); return }
+    if (!v.valid) {
+      showToast('error', v.error || 'Ảnh không hợp lệ')
+      return
+    }
     setIsUploading(true)
     try {
-      if (bannerUrl?.includes('/uploads/')) await deleteEventBanner(bannerUrl)
-      setBannerUrl(await uploadEventBanner(file))
+      if (bannerUrl?.includes('/uploads/')) {
+        await deleteEventBanner(bannerUrl)
+      }
+      const newUrl = await uploadEventBanner(file)
+      setBannerUrl(newUrl)
       showToast('success', 'Đã tải lên ảnh bìa!')
+      setIsCoverModalOpen(false)
     } catch (err: any) {
       showToast('error', err.message || 'Lỗi tải ảnh')
-    } finally { setIsUploading(false) }
+    } finally {
+      setIsUploading(false)
+    }
   }
+
+  const handleModalBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    await processUploadedFile(file)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) {
+      await processUploadedFile(file)
+    }
+  }
+
   const handleSelectSampleBanner = async (url: string) => {
     if (bannerUrl?.includes('/uploads/')) await deleteEventBanner(bannerUrl)
     setBannerUrl(url)
-    setIsBannersModalOpen(false)
+    setIsCoverModalOpen(false)
   }
+
   const handleRemoveBanner = async () => {
     if (bannerUrl?.includes('/uploads/')) await deleteEventBanner(bannerUrl)
     setBannerUrl('')
   }
+
   const handleCancel = async () => {
     if (bannerUrl?.includes('/uploads/')) await deleteEventBanner(bannerUrl)
     navigate('/dashboard/event-requests')
@@ -296,7 +337,8 @@ export default function EventRequestCreate() {
 
     const cap = parseInt(formData.expectedParticipants)
     if (formData.expectedParticipants && (isNaN(cap) || cap < 10 || cap % 10 !== 0)) {
-      setError('Số lượng phải tối thiểu 10 và là bội số của 10'); return
+      setError('Số lượng phải tối thiểu 10 và là bội số của 10')
+      return
     }
     const tv = validateEventDateTime(formData.preferredStart, formData.preferredEnd, flowType)
     if (!tv.valid) {
@@ -339,7 +381,7 @@ export default function EventRequestCreate() {
     } finally { setIsSubmitting(false) }
   }
 
-  const categories     = ['ALL', ...Array.from(new Set(sampleBanners.map(b => b.category).filter(Boolean)))]
+  const categories      = ['ALL', ...Array.from(new Set(sampleBanners.map(b => b.category).filter(Boolean)))]
   const filteredBanners = selectedCategory === 'ALL' ? sampleBanners : sampleBanners.filter(b => b.category === selectedCategory)
 
   /* ════════════════════════════════════════════════════════════
@@ -420,13 +462,13 @@ export default function EventRequestCreate() {
           ══════════════════════════════════════════════ */}
           <form
             onSubmit={handleSubmit}
-            className="relative z-10 h-[calc(100vh-64px)] overflow-hidden flex items-center px-8 md:px-16 lg:px-24 gap-10 lg:gap-14 max-w-[1500px] mx-auto w-full"
+            className="relative z-10 h-[calc(100vh-64px)] overflow-hidden flex items-center px-12 lg:px-20 max-w-[1500px] mx-auto gap-16 w-full pt-16 pb-6"
           >
 
             {/* ══════════════════════════════════════════
                 LEFT COLUMN — Square cover + controls
             ══════════════════════════════════════════ */}
-            <div className="w-[300px] md:w-[340px] lg:w-[370px] shrink-0 flex flex-col gap-3">
+            <div className="w-[300px] md:w-[340px] lg:w-[370px] shrink-0 flex flex-col gap-3 overflow-hidden">
 
               {/* ── Square cover image ── */}
               <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-black/70 group">
@@ -435,7 +477,7 @@ export default function EventRequestCreate() {
                 ) : (
                   <div className="w-full h-full bg-white/[0.04] border border-white/[0.07] flex flex-col items-center justify-center gap-2">
                     <ImageIcon className="w-10 h-10 text-white/10" />
-                    <p className="text-[11px] text-white/18 font-medium">Chưa có ảnh bìa</p>
+                    <p className="text-[11px] text-white/20 font-medium">Chưa có ảnh bìa</p>
                   </div>
                 )}
 
@@ -449,45 +491,16 @@ export default function EventRequestCreate() {
                 {/* Subtle bottom vignette */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent pointer-events-none" />
 
-                {/* Camera icon — bottom-right; opens dropdown for both actions */}
+                {/* Camera icon — bottom-right; opens unified modal */}
                 <div className="absolute bottom-3 right-3 z-10">
                   <button
                     type="button"
-                    onClick={() => setIsMenuOpen(v => !v)}
+                    onClick={() => setIsCoverModalOpen(true)}
                     aria-label="Quản lý ảnh bìa"
-                    className="w-9 h-9 rounded-full bg-white/88 backdrop-blur-md text-neutral-800 shadow-xl flex items-center justify-center hover:bg-white hover:scale-105 active:scale-95 transition-all"
+                    className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md text-neutral-800 shadow-xl flex items-center justify-center hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
                   >
                     <Camera className="w-4 h-4" />
                   </button>
-
-                  {isMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)} />
-                      <div className="absolute bottom-11 right-0 z-20 bg-[#141416]/98 backdrop-blur-2xl border border-white/[0.09] rounded-xl overflow-hidden shadow-2xl w-48 py-1">
-                        <button
-                          type="button"
-                          onClick={() => { setIsBannersModalOpen(true); setIsMenuOpen(false) }}
-                          className="w-full text-left px-3.5 py-2.5 text-[11px] font-semibold text-neutral-300 hover:bg-white/[0.07] hover:text-white flex items-center gap-2 transition"
-                        >
-                          <LayoutGrid className="w-3.5 h-3.5 text-orange-400" /> Chọn từ thư viện
-                        </button>
-                        <label className="w-full text-left px-3.5 py-2.5 text-[11px] font-semibold text-neutral-300 hover:bg-white/[0.07] hover:text-white flex items-center gap-2 cursor-pointer transition">
-                          <Upload className="w-3.5 h-3.5 text-orange-400" /> Tải ảnh lên
-                          <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-                            onChange={e => { handleBannerUpload(e); setIsMenuOpen(false) }} />
-                        </label>
-                        {bannerUrl && (
-                          <button
-                            type="button"
-                            onClick={() => { handleRemoveBanner(); setIsMenuOpen(false) }}
-                            className="w-full text-left px-3.5 py-2.5 text-[11px] font-semibold text-red-400 hover:bg-red-500/[0.09] flex items-center gap-2 transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" /> Xoá ảnh
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  )}
                 </div>
               </div>
 
@@ -496,7 +509,7 @@ export default function EventRequestCreate() {
                 type="button"
                 onClick={handleShuffleBanner}
                 disabled={sampleBanners.length === 0}
-                className="flex items-center justify-center gap-2 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/40 hover:text-white/75 hover:bg-white/[0.08] text-[11px] font-semibold transition-all disabled:opacity-25 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.08] text-[11px] font-semibold transition-all disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer"
               >
                 <RefreshCw className="w-3 h-3" />
                 Ảnh ngẫu nhiên
@@ -507,7 +520,7 @@ export default function EventRequestCreate() {
                 <button
                   type="button"
                   onClick={() => { setFlowType(null); setError(null); setTimeErrors([]) }}
-                  className="flex items-center gap-1 text-white/30 hover:text-white/65 text-[11px] font-semibold transition"
+                  className="flex items-center gap-1 text-white/50 hover:text-white text-[11px] font-semibold transition cursor-pointer"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" /> Thay đổi loại hình
                 </button>
@@ -517,33 +530,59 @@ export default function EventRequestCreate() {
             {/* ══════════════════════════════════════════
                 RIGHT COLUMN — Floating form canvas
             ══════════════════════════════════════════ */}
-            <div className="flex-1 flex flex-col justify-between py-4 overflow-y-auto max-h-[calc(100vh-120px)] pr-1 min-w-0">
+            <div className="flex-1 flex flex-col justify-between py-2 overflow-hidden h-full min-w-0">
 
               {/* ── Header metadata row: flow label + visibility toggle ── */}
-              <div className="flex items-center justify-between mb-6 flex-shrink-0">
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black uppercase tracking-[0.22em] text-white/25">
+                  <span className="text-[9px] font-black uppercase tracking-[0.22em] text-white/50">
                     Loại đơn tổ chức:
                   </span>
-                  <span className="text-[9px] font-black uppercase tracking-[0.22em] text-orange-400/75">
+                  <span className="text-[9px] font-black uppercase tracking-[0.22em] text-orange-400/80">
                     {flowType === 'UNIVERSITY' ? 'Trường học' : 'Tự do'}
                   </span>
                 </div>
 
-                {/* Public / Private toggle */}
-                <button
-                  type="button"
-                  onClick={() => setIsPublic(v => !v)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 ${
-                    isPublic
-                      ? 'border-white/[0.12] bg-white/[0.06] text-white/60 hover:bg-white/[0.09]'
-                      : 'border-orange-500/30 bg-orange-500/[0.09] text-orange-400/80'
-                  }`}
-                >
-                  {isPublic
-                    ? <><Globe className="w-3 h-3" /> Công khai</>
-                    : <><Lock  className="w-3 h-3" /> Riêng tư</>}
-                </button>
+                {/* Public / Private Dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowPublicDropdown(v => !v)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-xs font-bold text-white hover:bg-white/[0.08] transition-all duration-200 cursor-pointer"
+                  >
+                    {isPublic ? (
+                      <><Globe className="w-3.5 h-3.5 text-orange-400" /> Công khai</>
+                    ) : (
+                      <><Lock className="w-3.5 h-3.5 text-orange-400" /> Riêng tư</>
+                    )}
+                    <ChevronDown className="w-3 h-3 text-white/50" />
+                  </button>
+                  {showPublicDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-20" onClick={() => setShowPublicDropdown(false)} />
+                      <div className="absolute right-0 mt-1.5 z-30 bg-[#141416] border border-white/10 rounded-xl overflow-hidden shadow-2xl w-32 py-1">
+                        <button
+                          type="button"
+                          onClick={() => { setIsPublic(true); setShowPublicDropdown(false) }}
+                          className={`w-full text-left px-3 py-2 text-[11px] font-semibold flex items-center gap-2 transition cursor-pointer ${
+                            isPublic ? 'text-orange-400 bg-white/[0.04]' : 'text-neutral-400 hover:bg-white/[0.04] hover:text-white'
+                          }`}
+                        >
+                          <Globe className="w-3.5 h-3.5" /> Công khai
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setIsPublic(false); setShowPublicDropdown(false) }}
+                          className={`w-full text-left px-3 py-2 text-[11px] font-semibold flex items-center gap-2 transition cursor-pointer ${
+                            !isPublic ? 'text-orange-400 bg-white/[0.04]' : 'text-neutral-400 hover:bg-white/[0.04] hover:text-white'
+                          }`}
+                        >
+                          <Lock className="w-3.5 h-3.5" /> Riêng tư
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* ── Event name ── */}
@@ -555,16 +594,16 @@ export default function EventRequestCreate() {
                 required
                 autoComplete="off"
                 placeholder="Tên sự kiện..."
-                className="text-3xl md:text-4xl font-bold tracking-tight bg-transparent border-b border-white/[0.09] focus:border-orange-500/55 text-white placeholder-neutral-700 py-3 focus:outline-none w-full mb-6 transition-colors leading-tight flex-shrink-0"
+                className="text-3xl md:text-4xl font-bold tracking-tight bg-transparent border-b border-white/[0.09] focus:border-orange-500/55 text-white placeholder-neutral-500 py-3 focus:outline-none w-full mb-3 transition-colors leading-tight flex-shrink-0"
               />
 
               {/* ── Time — borderless rows ── */}
-              <div className="mb-5 flex-shrink-0">
+              <div className="mb-3 flex-shrink-0">
                 {/* Start */}
-                <div className="flex items-center gap-3 py-3 border-b border-white/[0.07]">
+                <div className="flex items-center gap-3 py-2.5 border-b border-white/[0.07]">
                   <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0 ml-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28 mb-0.5">Bắt đầu</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50 mb-0.5">Bắt đầu</p>
                     {formData.preferredStart ? (
                       <div className="flex items-center gap-2.5">
                         <span className="text-sm font-semibold text-white/90">{fmtDate(formData.preferredStart)}</span>
@@ -578,21 +617,21 @@ export default function EventRequestCreate() {
                   </div>
                   {formData.preferredStart && (
                     <button type="button" onClick={() => setFormData(p => ({ ...p, preferredStart: '' }))}
-                      className="text-white/15 hover:text-white/50 transition flex-shrink-0">
+                      className="text-white/15 hover:text-white/50 transition flex-shrink-0 cursor-pointer">
                       <X className="w-3 h-3" />
                     </button>
                   )}
                 </div>
 
                 {/* End */}
-                <div className="flex items-center gap-3 py-3 border-b border-white/[0.05]">
+                <div className="flex items-center gap-3 py-2.5 border-b border-white/[0.05]">
                   <span className="w-1.5 h-1.5 rounded-full border border-white/22 flex-shrink-0 ml-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28 mb-0.5">Kết thúc</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50 mb-0.5">Kết thúc</p>
                     {formData.preferredEnd ? (
                       <div className="flex items-center gap-2.5">
                         <span className="text-sm font-semibold text-white/90">{fmtDate(formData.preferredEnd)}</span>
-                        <span className="text-sm font-black text-white/45">{fmtTime(formData.preferredEnd)}</span>
+                        <span className="text-sm font-black text-white/50">{fmtTime(formData.preferredEnd)}</span>
                       </div>
                     ) : (
                       <input type="datetime-local" name="preferredEnd" value={formData.preferredEnd}
@@ -602,7 +641,7 @@ export default function EventRequestCreate() {
                   </div>
                   {formData.preferredEnd && (
                     <button type="button" onClick={() => setFormData(p => ({ ...p, preferredEnd: '' }))}
-                      className="text-white/15 hover:text-white/50 transition flex-shrink-0">
+                      className="text-white/15 hover:text-white/50 transition flex-shrink-0 cursor-pointer">
                       <X className="w-3 h-3" />
                     </button>
                   )}
@@ -610,15 +649,15 @@ export default function EventRequestCreate() {
               </div>
 
               {/* ── Event format — translucent pill dock ── */}
-              <div className="mb-5 flex-shrink-0">
-                <div className="flex items-center gap-1.5 mb-2.5">
-                  <MapPin className="w-3 h-3 text-white/22" />
-                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/22">Hình thức</span>
+              <div className="mb-3 flex-shrink-0">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <MapPin className="w-3 h-3 text-white/40" />
+                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50">Hình thức</span>
                 </div>
                 <div className="w-full bg-white/[0.04] backdrop-blur-md border border-white/[0.08] rounded-xl p-1 flex gap-1">
                   {(['ONLINE', 'ONSITE', 'HYBRID'] as const).map(fmt => (
                     <button key={fmt} type="button" onClick={() => setEventFormat(fmt)}
-                      className={`flex-1 text-center py-2 text-xs rounded-lg transition-all duration-200 ${
+                      className={`flex-1 text-center py-2 text-xs rounded-lg transition-all duration-200 cursor-pointer ${
                         eventFormat === fmt
                           ? 'font-semibold text-white bg-white/[0.12] backdrop-blur-lg border border-white/[0.10] shadow-lg'
                           : 'font-medium text-neutral-400 hover:text-white bg-transparent'
@@ -631,61 +670,61 @@ export default function EventRequestCreate() {
 
                 {/* Location rows — borderless */}
                 {(eventFormat === 'ONSITE' || eventFormat === 'HYBRID') && (
-                  <div className="mt-1">
-                    <div className="py-2.5 border-b border-white/[0.07]">
+                  <div className="mt-1 animate-fadeIn">
+                    <div className="py-2 border-b border-white/[0.07]">
                       <input type="text" name="customVenueName" value={formData.customVenueName} onChange={handleChange}
                         placeholder="Tên địa điểm tổ chức..."
-                        className="w-full bg-transparent text-white/85 text-sm font-medium placeholder-white/20 focus:outline-none" />
+                        className="w-full bg-transparent text-white/85 text-sm font-medium placeholder-neutral-500 focus:outline-none" />
                     </div>
-                    <div className="py-2.5 border-b border-white/[0.05]">
+                    <div className="py-2 border-b border-white/[0.05]">
                       <input type="text" name="customLocation" value={formData.customLocation} onChange={handleChange}
                         placeholder="Địa chỉ chi tiết..."
-                        className="w-full bg-transparent text-white/50 text-xs font-medium placeholder-white/18 focus:outline-none" />
+                        className="w-full bg-transparent text-white/60 text-xs font-medium placeholder-neutral-500 focus:outline-none" />
                     </div>
                   </div>
                 )}
               </div>
 
               {/* ── Description — borderless expandable ── */}
-              <div className="mb-4 flex-shrink-0">
+              <div className="mb-3 flex-shrink-0">
                 {!descOpen ? (
                   <button type="button" onClick={() => setDescOpen(true)}
-                    className="w-full flex items-center gap-2.5 py-3 border-b border-white/[0.07] text-white/28 hover:text-white/58 transition-colors text-left">
-                    <AlignLeft className="w-3.5 h-3.5 flex-shrink-0" />
+                    className="w-full flex items-center gap-2.5 py-2.5 border-b border-white/[0.07] text-white/50 hover:text-white/80 transition-colors text-left cursor-pointer">
+                    <AlignLeft className="w-3.5 h-3.5 flex-shrink-0 text-white/40" />
                     <span className="text-sm font-medium">Thêm mô tả sự kiện...</span>
                   </button>
                 ) : (
-                  <div className="py-3 border-b border-white/[0.07]">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <AlignLeft className="w-3 h-3 text-white/22" />
-                      <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/22">Mô tả</span>
+                  <div className="py-2.5 border-b border-white/[0.07]">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <AlignLeft className="w-3 h-3 text-white/40" />
+                      <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50">Mô tả</span>
                     </div>
                     <textarea name="description" value={formData.description} onChange={handleChange}
                       rows={2} autoFocus placeholder="Nội dung, diễn giả, hoạt động nổi bật..."
-                      className="w-full bg-transparent text-white/80 text-sm font-medium placeholder-white/18 focus:outline-none resize-none leading-relaxed" />
+                      className="w-full bg-transparent text-white/80 text-sm font-medium placeholder-neutral-500 focus:outline-none resize-none leading-relaxed" />
                   </div>
                 )}
               </div>
 
               {/* ── Capacity — borderless row ── */}
-              <div className="mb-5 flex items-center justify-between py-3 border-b border-white/[0.07] flex-shrink-0">
-                <div className="flex items-center gap-2.5 text-white/32">
-                  <Users className="w-3.5 h-3.5 flex-shrink-0" />
+              <div className="mb-3 flex items-center justify-between py-2.5 border-b border-white/[0.07] flex-shrink-0">
+                <div className="flex items-center gap-2.5 text-white/50">
+                  <Users className="w-3.5 h-3.5 flex-shrink-0 text-white/40" />
                   <span className="text-sm font-medium">Sức chứa tối đa</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <input type="number" name="expectedParticipants" value={formData.expectedParticipants}
                     onChange={handleChange} min="10" step="10" placeholder="Không giới hạn"
-                    className="w-32 text-right bg-transparent text-white/72 text-sm font-semibold placeholder-white/18 focus:outline-none border-b border-transparent focus:border-orange-500/40 transition-colors pb-0.5" />
+                    className="w-32 text-right bg-transparent text-white/80 text-sm font-semibold placeholder-neutral-500 focus:outline-none border-b border-transparent focus:border-orange-500/40 transition-colors pb-0.5" />
                   {formData.expectedParticipants && (
-                    <span className="text-[10px] text-white/20 font-medium">người</span>
+                    <span className="text-[10px] text-white/40 font-medium">người</span>
                   )}
                 </div>
               </div>
 
               {/* ── Validation errors ── */}
               {(timeErrors.length > 0 || error) && (
-                <div className="mb-3 px-3.5 py-2.5 bg-red-950/30 border border-red-800/22 rounded-xl flex items-start gap-2 flex-shrink-0">
+                <div className="mb-2 px-3.5 py-2 bg-red-950/30 border border-red-800/22 rounded-xl flex items-start gap-2 flex-shrink-0">
                   <AlertCircle className="w-3.5 h-3.5 text-red-400/80 flex-shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
                     {timeErrors.slice(0, 2).map((e, i) => (
@@ -697,14 +736,14 @@ export default function EventRequestCreate() {
               )}
 
               {/* Spacer */}
-              <div className="flex-1 min-h-[8px]" />
+              <div className="flex-1 min-h-[4px]" />
 
               {/* ── Submit bar ── */}
-              <div className="space-y-1.5 pt-3 border-t border-white/[0.06] flex-shrink-0">
+              <div className="space-y-1.5 pt-2 border-t border-white/[0.06] flex-shrink-0">
                 <button
                   type="submit"
                   disabled={isSubmitting || isUploading}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white font-bold text-sm transition-all shadow-lg shadow-orange-950/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white font-bold text-sm transition-all shadow-lg shadow-orange-950/40 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
                   {isSubmitting
@@ -717,7 +756,7 @@ export default function EventRequestCreate() {
                   type="button"
                   onClick={handleCancel}
                   disabled={isSubmitting}
-                  className="w-full py-2 rounded-xl text-white/28 hover:text-white/58 transition-colors font-medium text-sm"
+                  className="w-full py-2 rounded-xl text-white/50 hover:text-white transition-colors font-medium text-sm cursor-pointer"
                 >
                   Hủy và quay lại
                 </button>
@@ -728,60 +767,123 @@ export default function EventRequestCreate() {
       )}
 
       {/* ══════════════════════════════════════════════
-          Sample Banners Gallery Modal
+          Unified Cover Modal (Upload + Sample Grid)
       ══════════════════════════════════════════════ */}
-      {isBannersModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-[#141416] border border-white/[0.09] rounded-2xl w-full max-w-xl max-h-[76vh] flex flex-col shadow-2xl overflow-hidden">
+      {isCoverModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#141416] border border-white/[0.09] rounded-2xl w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+            
+            {/* Modal Header */}
             <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between flex-shrink-0">
               <div>
-                <h3 className="text-sm font-black text-white">Thư viện ảnh bìa</h3>
-                <p className="text-[10px] text-neutral-500 mt-0.5">Chọn hình ảnh phù hợp với sự kiện</p>
+                <h3 className="text-sm font-black text-white">Ảnh bìa sự kiện</h3>
+                <p className="text-[10px] text-neutral-400 mt-0.5">Tải lên từ thiết bị hoặc chọn từ thư viện mẫu</p>
               </div>
-              <button type="button" onClick={() => setIsBannersModalOpen(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-neutral-400 hover:text-white transition">
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                {bannerUrl && (
+                  <button
+                    type="button"
+                    onClick={() => { handleRemoveBanner(); setIsCoverModalOpen(false) }}
+                    className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3" /> Xoá ảnh
+                  </button>
+                )}
+                <button type="button" onClick={() => setIsCoverModalOpen(false)}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-neutral-400 hover:text-white transition cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            {categories.length > 1 && (
-              <div className="px-5 py-2 border-b border-white/[0.05] flex gap-1.5 overflow-x-auto flex-shrink-0">
-                {categories.map(cat => (
-                  <button key={cat} type="button" onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition ${
-                      selectedCategory === cat
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-white/[0.05] text-neutral-400 hover:bg-white/[0.09] hover:text-white'
-                    }`}>
-                    {cat === 'ALL' ? 'Tất cả' : cat}
-                  </button>
-                ))}
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+              
+              {/* Top Area: Drag & Drop Zone */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => modalFileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 ${
+                  isDragging
+                    ? 'border-orange-500 bg-orange-500/5 text-orange-400'
+                    : 'border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04] text-neutral-400 hover:text-white'
+                }`}
+              >
+                <input
+                  ref={modalFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleModalBannerUpload}
+                />
+                <Upload className="w-6 h-6 text-orange-400" />
+                <span className="text-xs font-bold text-white/90">Drag & Drop or Click Here to Upload</span>
+                <span className="text-[10px] text-neutral-500 font-medium">Hỗ trợ JPG, PNG, WEBP (Tối đa 5MB)</span>
               </div>
-            )}
 
-            <div className="flex-1 overflow-y-auto p-4">
-              {filteredBanners.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 gap-2">
-                  <ImageIcon className="w-9 h-9 text-neutral-700" />
-                  <p className="text-xs text-neutral-500">Không có ảnh trong danh mục này</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {filteredBanners.map(banner => (
-                    <div key={banner.bannerId} onClick={() => handleSelectSampleBanner(banner.url)}
-                      className="group relative aspect-[4/3] rounded-xl overflow-hidden cursor-pointer border border-white/[0.07] hover:border-orange-500/60 transition-all duration-200 shadow-sm">
-                      <img src={banner.url} alt={banner.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                        <span className="text-white text-[9px] font-black truncate">{banner.title}</span>
-                      </div>
-                    </div>
+              {/* Divider */}
+              <div className="relative flex items-center justify-center my-2">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/[0.05]"></div></div>
+                <span className="relative px-3 bg-[#141416] text-[9px] font-black uppercase tracking-[0.2em] text-white/25">Hoặc chọn ảnh mẫu</span>
+              </div>
+
+              {/* Category Selector */}
+              {categories.length > 1 && (
+                <div className="flex gap-1.5 overflow-x-auto pb-1 flex-shrink-0 scrollbar-thin">
+                  {categories.map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition cursor-pointer ${
+                        selectedCategory === cat
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-white/[0.05] text-neutral-400 hover:bg-white/[0.09] hover:text-white'
+                      }`}
+                    >
+                      {cat === 'ALL' ? 'Tất cả' : cat}
+                    </button>
                   ))}
                 </div>
               )}
+
+              {/* Bottom Area: Sample Grid (1:1 aspect-square) */}
+              <div className="flex-1 min-h-[200px]">
+                {filteredBanners.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-2">
+                    <ImageIcon className="w-9 h-9 text-neutral-600" />
+                    <p className="text-xs text-neutral-500 font-medium">Không có ảnh trong danh mục này</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {filteredBanners.map(banner => (
+                      <div
+                        key={banner.bannerId}
+                        onClick={() => handleSelectSampleBanner(banner.url)}
+                        className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer border border-white/[0.07] hover:border-orange-500/60 transition-all duration-200 shadow-sm"
+                      >
+                        <img
+                          src={banner.url}
+                          alt={banner.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                          <span className="text-white text-[9px] font-black truncate">{banner.title}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
+
           </div>
         </div>
       )}
     </div>
   )
 }
+
