@@ -305,7 +305,7 @@ function CalendarPopover({ value, onChange, onClose, minDate }: CalendarPopoverP
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 md:left-0 z-50 mt-2 bg-[#18181b] border border-white/[0.08] rounded-2xl p-5 shadow-2xl w-[320px] select-none animate-fadeIn">
+      <div className="absolute left-0 top-full mt-1.5 z-50 origin-top-left bg-[#18181b] border border-white/[0.08] rounded-2xl p-5 shadow-2xl w-[320px] select-none animate-fadeIn">
         {/* Header matching Luma style */}
         <div className="flex items-center justify-between mb-4 px-1">
           <span className="text-sm font-black text-white">
@@ -402,7 +402,7 @@ function TimePopover({ value, onChange, onClose }: TimePopoverProps) {
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
         ref={listRef}
-        className="absolute right-0 z-50 mt-2 bg-[#18181b] border border-white/[0.08] rounded-2xl shadow-2xl w-[130px] max-h-60 overflow-y-auto py-1.5 custom-scrollbar animate-fadeIn"
+        className="absolute left-0 top-full mt-1.5 z-50 origin-top-left bg-[#18181b] border border-white/[0.08] rounded-2xl shadow-2xl w-[130px] max-h-60 overflow-y-auto py-1.5 custom-scrollbar animate-fadeIn"
       >
         {timeSlots.map(t => {
           const isSelected = value === t
@@ -960,46 +960,50 @@ export default function EventRequestCreate() {
                     <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0" />
                     <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Bắt đầu</span>
                   </div>
-                  <div className="flex items-center gap-2 relative">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowStartCalendar(v => !v)
-                        setShowStartTimeList(false)
-                        setShowEndCalendar(false)
-                        setShowEndTimeList(false)
-                      }}
-                      className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
-                    >
-                      {startDate ? formatDateVietnamese(startDate) : 'Chọn ngày'}
-                    </button>
-                    {showStartCalendar && (
-                      <CalendarPopover
-                        value={startDate}
-                        onChange={handleStartDateChange}
-                        onClose={() => setShowStartCalendar(false)}
-                      />
-                    )}
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowStartCalendar(v => !v)
+                          setShowStartTimeList(false)
+                          setShowEndCalendar(false)
+                          setShowEndTimeList(false)
+                        }}
+                        className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                      >
+                        {startDate ? formatDateVietnamese(startDate) : 'Chọn ngày'}
+                      </button>
+                      {showStartCalendar && (
+                        <CalendarPopover
+                          value={startDate}
+                          onChange={handleStartDateChange}
+                          onClose={() => setShowStartCalendar(false)}
+                        />
+                      )}
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowStartTimeList(v => !v)
-                        setShowStartCalendar(false)
-                        setShowEndCalendar(false)
-                        setShowEndTimeList(false)
-                      }}
-                      className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
-                    >
-                      {startTime || 'Chọn giờ'}
-                    </button>
-                    {showStartTimeList && (
-                      <TimePopover
-                        value={startTime}
-                        onChange={handleStartTimeChange}
-                        onClose={() => setShowStartTimeList(false)}
-                      />
-                    )}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowStartTimeList(v => !v)
+                          setShowStartCalendar(false)
+                          setShowEndCalendar(false)
+                          setShowEndTimeList(false)
+                        }}
+                        className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                      >
+                        {startTime || 'Chọn giờ'}
+                      </button>
+                      {showStartTimeList && (
+                        <TimePopover
+                          value={startTime}
+                          onChange={handleStartTimeChange}
+                          onClose={() => setShowStartTimeList(false)}
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1009,47 +1013,51 @@ export default function EventRequestCreate() {
                     <span className="w-1.5 h-1.5 rounded-full border border-white/22 flex-shrink-0" />
                     <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Kết thúc</span>
                   </div>
-                  <div className="flex items-center gap-2 relative">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowEndCalendar(v => !v)
-                        setShowStartCalendar(false)
-                        setShowStartTimeList(false)
-                        setShowEndTimeList(false)
-                      }}
-                      className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
-                    >
-                      {endDate ? formatDateVietnamese(endDate) : 'Chọn ngày'}
-                    </button>
-                    {showEndCalendar && (
-                      <CalendarPopover
-                        value={endDate}
-                        onChange={setEndDate}
-                        onClose={() => setShowEndCalendar(false)}
-                        minDate={startDate}
-                      />
-                    )}
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowEndCalendar(v => !v)
+                          setShowStartCalendar(false)
+                          setShowStartTimeList(false)
+                          setShowEndTimeList(false)
+                        }}
+                        className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                      >
+                        {endDate ? formatDateVietnamese(endDate) : 'Chọn ngày'}
+                      </button>
+                      {showEndCalendar && (
+                        <CalendarPopover
+                          value={endDate}
+                          onChange={setEndDate}
+                          onClose={() => setShowEndCalendar(false)}
+                          minDate={startDate}
+                        />
+                      )}
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowEndTimeList(v => !v)
-                        setShowStartCalendar(false)
-                        setShowStartTimeList(false)
-                        setShowEndCalendar(false)
-                      }}
-                      className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
-                    >
-                      {endTime || 'Chọn giờ'}
-                    </button>
-                    {showEndTimeList && (
-                      <TimePopover
-                        value={endTime}
-                        onChange={setEndTime}
-                        onClose={() => setShowEndTimeList(false)}
-                      />
-                    )}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowEndTimeList(v => !v)
+                          setShowStartCalendar(false)
+                          setShowStartTimeList(false)
+                          setShowEndCalendar(false)
+                        }}
+                        className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                      >
+                        {endTime || 'Chọn giờ'}
+                      </button>
+                      {showEndTimeList && (
+                        <TimePopover
+                          value={endTime}
+                          onChange={setEndTime}
+                          onClose={() => setShowEndTimeList(false)}
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
