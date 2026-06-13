@@ -461,11 +461,15 @@ export default function EventRequestCreate() {
   const [error, setError] = useState<string | null>(null)
   const [timeErrors, setTimeErrors] = useState<string[]>([])
 
-  /* ── Auto-init start time to +30 min and end time to +1 hour ── */
+  /* ── Auto-init suggestions based on flowType ── */
   useEffect(() => {
+    if (!flowType) return
     const now = new Date()
-    const start = new Date(now.getTime() + 30 * 60000)
-    const end = new Date(start.getTime() + 60 * 60000)
+    // For UNIVERSITY, suggest now + 24.5 hours to clear the 24h lead validation safety margin.
+    // For INDEPENDENT, suggest now + 30 minutes.
+    const startOffset = flowType === 'UNIVERSITY' ? (24 * 60 + 30) * 60000 : 30 * 60000
+    const start = new Date(now.getTime() + startOffset)
+    const end = new Date(start.getTime() + 60 * 60000) // start + 1 hour
     
     const sy = start.getFullYear()
     const sm = padZ(start.getMonth() + 1)
@@ -483,7 +487,7 @@ export default function EventRequestCreate() {
     setStartTime(`${sh}:${smin}`)
     setEndDate(`${ey}-${em}-${ed}`)
     setEndTime(`${eh}:${emin}`)
-  }, [])
+  }, [flowType])
 
   /* ── Sync split date/time fields to formData ── */
   useEffect(() => {
@@ -674,7 +678,7 @@ export default function EventRequestCreate() {
           STEP 1 — Flow type selector (native theme)
       ══════════════════════════════════════════════ */}
       {!flowType && (
-        <div className="relative flex items-center justify-center min-h-[calc(100vh-80px)] px-8 py-16 md:py-24 overflow-hidden">
+        <div className="relative flex items-center justify-center h-[calc(100vh-140px)] w-full px-8 py-4 overflow-hidden">
           {/* Vibrant ambient background glow bubbles */}
           <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-orange-500/10 dark:bg-orange-500/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
           <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-amber-500/10 dark:bg-amber-500/5 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }} />
@@ -995,6 +999,16 @@ export default function EventRequestCreate() {
                 </div>
               </div>
 
+              {/* UX suggestion notice about Staff review safety margin */}
+              {flowType === 'UNIVERSITY' && (
+                <div className="mb-2 px-3 py-2 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-start gap-2 flex-shrink-0 animate-fadeIn">
+                  <AlertCircle className="w-3.5 h-3.5 text-orange-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-neutral-350 font-medium leading-normal">
+                    <span className="text-orange-400 font-bold">Khuyên dùng:</span> Sự kiện trường cần Staff duyệt. Hãy cân nhắc đặt cách hiện tại <span className="text-white font-bold">36h - 48h</span> trở lên để Staff kịp tiếp nhận duyệt.
+                  </p>
+                </div>
+              )}
+
               {/* ── Event format — translucent pill dock ── */}
               <div className="mb-2 flex-shrink-0">
                 <div className="flex items-center gap-1.5 mb-1.5">
@@ -1127,15 +1141,6 @@ export default function EventRequestCreate() {
                 <p className="text-[10px] text-neutral-400 mt-0.5">Tải lên từ thiết bị hoặc chọn từ thư viện mẫu</p>
               </div>
               <div className="flex items-center gap-2">
-                {bannerUrl && (
-                  <button
-                    type="button"
-                    onClick={() => { handleRemoveBanner(); setIsCoverModalOpen(false) }}
-                    className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-1 transition cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Xoá ảnh
-                  </button>
-                )}
                 <button type="button" onClick={() => setIsCoverModalOpen(false)}
                   className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-neutral-400 hover:text-white transition cursor-pointer">
                   <X className="w-4 h-4" />
