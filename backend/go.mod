@@ -12,10 +12,10 @@ require (
 	github.com/aws/aws-xray-sdk-go v1.8.5
 	github.com/aws/smithy-go v1.24.2
 	github.com/gin-gonic/gin v1.10.1
-	github.com/lib/pq v1.10.9
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
 	github.com/jung-kurt/gofpdf v1.16.2
+	github.com/lib/pq v1.10.9
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	golang.org/x/crypto v0.49.0
 	golang.org/x/text v0.35.0
@@ -69,6 +69,7 @@ require (
 	github.com/valyala/fasthttp v1.52.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/net v0.51.0 // indirect
+	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/grpc v1.64.1 // indirect

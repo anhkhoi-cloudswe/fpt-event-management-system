@@ -34,6 +34,10 @@ type Route struct {
 // Để tránh xung đột giữa /api/staff/event-requests (Event) và /api/staff/* (Staff)
 var routes = []Route{
 	// ========== Auth Service (8081) ==========
+	{"/api/v1/auth/zoom/connect", "Auth"},
+	{"/api/v1/auth/zoom/callback", "Auth"},
+	{"/api/v1/auth/google/connect", "Auth"},
+	{"/api/v1/auth/google/callback", "Auth"},
 	{"/api/v1/auth/login", "Auth"},
 	{"/api/login", "Auth"},
 	{"/api/logout", "Auth"},
