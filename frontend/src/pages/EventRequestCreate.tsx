@@ -86,21 +86,37 @@ const ERC_CSS = `
 
   /* Header — ghost glass on top of dark backdrop */
   html.erc-cinema header {
-    background: rgba(11, 11, 11, 0.55) !important;
+    background: rgba(11, 11, 11, 0.60) !important;
     backdrop-filter: blur(32px) saturate(140%) !important;
     -webkit-backdrop-filter: blur(32px) saturate(140%) !important;
-    border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.06) !important;
     box-shadow: none !important;
   }
   /* Header text — bright white, readable on very dark */
   html.erc-cinema header,
   html.erc-cinema header * { color: rgba(255, 255, 255, 0.90) !important; }
   html.erc-cinema header img { color: unset !important; }
-  /* Preserve orange accent on logo text */
+
+  /* Header interactive buttons — dark glass so labels/icons are visible */
+  html.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]),
+  html.erc-cinema header select {
+    background-color: rgba(255, 255, 255, 0.10) !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    color: rgba(255, 255, 255, 0.90) !important;
+  }
+  html.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]):hover {
+    background-color: rgba(255, 255, 255, 0.16) !important;
+  }
+  /* Preserve orange gradient avatar buttons */
+  html.erc-cinema header button[class*="from-orange"],
+  html.erc-cinema header button[class*="bg-gradient"] {
+    background: linear-gradient(to bottom right, #ea580c, #f97316) !important;
+  }
+  /* Preserve orange accent text on logo */
   html.erc-cinema header [class*="text-orange"],
   html.erc-cinema header [class*="text-fpt"] { color: rgba(255, 165, 40, 0.92) !important; }
 
-  /* Desktop Sidebar — same dark glass */
+  /* Desktop Sidebar — dark glass */
   html.erc-cinema aside {
     background: rgba(11, 11, 11, 0.50) !important;
     backdrop-filter: blur(32px) saturate(140%) !important;
@@ -112,11 +128,10 @@ const ERC_CSS = `
   /* Sidebar text — comfortably readable muted white */
   html.erc-cinema aside,
   html.erc-cinema aside * { color: rgba(255, 255, 255, 0.62) !important; }
-  /* Sidebar links — transparent backgrounds */
   html.erc-cinema aside a,
   html.erc-cinema aside button { background: transparent !important; border-color: transparent !important; }
   html.erc-cinema aside a:hover,
-  html.erc-cinema aside button:hover { background: rgba(255,255,255,0.06) !important; }
+  html.erc-cinema aside button:hover { background: rgba(255,255,255,0.07) !important; }
   html.erc-cinema aside a:hover *,
   html.erc-cinema aside button:hover * { color: rgba(255, 255, 255, 0.85) !important; }
 
@@ -393,14 +408,15 @@ export default function EventRequestCreate() {
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/28" />
           </div>
 
-          {/* ── Two-column form — sits above backdrop ── */}
+          {/* ── Two-column form — sits above backdrop, padded for breathing room ── */}
           <form
             onSubmit={handleSubmit}
-            className="relative z-10 flex flex-col md:flex-row h-full"
+            className="relative z-10 flex flex-col md:flex-row gap-3 p-3 md:p-4"
+            style={{ height: 'calc(100vh - 64px)' }}
           >
 
             {/* ────────────── LEFT: Banner Image ────────────── */}
-            <div className="relative flex-shrink-0 h-64 w-full md:h-full md:w-[38%] md:max-w-[440px] overflow-hidden">
+            <div className="relative flex-shrink-0 rounded-2xl overflow-hidden h-52 w-full md:h-auto md:w-[36%] md:max-w-[400px]">
               {/* Banner image */}
               {bannerUrl ? (
                 <img
@@ -483,11 +499,11 @@ export default function EventRequestCreate() {
             </div>
 
             {/* ────────────── RIGHT: Form Fields ────────────── */}
-            <div className="flex-1 overflow-y-auto min-h-0 min-w-0 bg-black/12">
-              <div className="flex flex-col min-h-full px-6 sm:px-8 md:px-10 py-6">
+            <div className="flex-1 overflow-y-auto min-h-0 min-w-0 rounded-2xl bg-white/[0.04] border border-white/[0.06]">
+              <div className="flex flex-col min-h-full px-5 md:px-7 py-4">
 
                 {/* Back + flow badge */}
-                <div className="flex justify-between items-center mb-5 flex-shrink-0">
+                <div className="flex justify-between items-center mb-3 flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => { setFlowType(null); setError(null); setTimeErrors([]) }}
@@ -502,7 +518,7 @@ export default function EventRequestCreate() {
                 </div>
 
                 {/* ── EVENT NAME — giant ghost input (Luma-style) ── */}
-                <div className="mb-5 flex-shrink-0">
+                <div className="mb-3 flex-shrink-0">
                   <input
                     type="text"
                     name="title"
@@ -511,15 +527,15 @@ export default function EventRequestCreate() {
                     required
                     autoComplete="off"
                     placeholder="Tên sự kiện..."
-                    className="w-full bg-transparent border-0 text-[1.9rem] leading-tight font-black text-white placeholder-white/18 focus:outline-none"
+                    className="w-full bg-transparent border-0 text-[1.55rem] leading-tight font-black text-white placeholder-white/20 focus:outline-none"
                   />
-                  <div className="h-px mt-2.5 bg-white/8" />
+                  <div className="h-px mt-2 bg-white/8" />
                 </div>
 
                 {/* ── START / END — Quickom timeline style ── */}
-                <div className="mb-3 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
+                <div className="mb-2 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
                   {/* Start row */}
-                  <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex items-center gap-3 px-4 py-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-[8px] font-bold text-white/35 uppercase tracking-widest mb-0.5">
@@ -565,7 +581,7 @@ export default function EventRequestCreate() {
                   </div>
 
                   {/* End row */}
-                  <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex items-center gap-3 px-4 py-2">
                     <span className="w-2.5 h-2.5 rounded-full border-2 border-white/28 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-[8px] font-bold text-white/35 uppercase tracking-widest mb-0.5">
@@ -604,20 +620,20 @@ export default function EventRequestCreate() {
                 </div>
 
                 {/* ── EVENT FORMAT + Location (inline, Quickom-style) ── */}
-                <div className="mb-3 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
-                  <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+                <div className="mb-2 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
+                  <div className="flex items-center gap-2 px-4 pt-2.5 pb-1.5">
                     <MapPin className="w-3.5 h-3.5 text-orange-400/55" />
                     <span className="text-[8px] font-bold text-white/35 uppercase tracking-widest">
                       Hình thức sự kiện
                     </span>
                   </div>
-                  <div className="flex gap-1 px-3 pb-3">
+                  <div className="flex gap-1 px-3 pb-2">
                     {(['ONLINE', 'ONSITE', 'HYBRID'] as const).map((fmt) => (
                       <button
                         key={fmt}
                         type="button"
                         onClick={() => setEventFormat(fmt)}
-                        className={`flex-1 py-2 rounded-xl font-black text-[11px] transition-all duration-200 ${
+                        className={`flex-1 py-1.5 rounded-xl font-black text-[11px] transition-all duration-200 ${
                           eventFormat === fmt
                             ? 'bg-orange-600 text-white shadow-sm shadow-orange-950/50'
                             : 'bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/80'
@@ -630,7 +646,7 @@ export default function EventRequestCreate() {
 
                   {/* Location — slides in when ONSITE or HYBRID */}
                   {(eventFormat === 'ONSITE' || eventFormat === 'HYBRID') && (
-                    <div className="border-t border-white/5 px-4 py-3 space-y-2">
+                    <div className="border-t border-white/5 px-4 py-2 space-y-1.5">
                       <input
                         type="text"
                         name="customVenueName"
@@ -652,12 +668,12 @@ export default function EventRequestCreate() {
                 </div>
 
                 {/* ── DESCRIPTION — expandable like Luma ── */}
-                <div className="mb-3 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
+                <div className="mb-2 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
                   {!descOpen ? (
                     <button
                       type="button"
                       onClick={() => setDescOpen(true)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-white/38 hover:text-white/65 transition text-left group"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-white/38 hover:text-white/65 transition text-left group"
                     >
                       <AlignLeft className="w-4 h-4 flex-shrink-0 group-hover:text-orange-400/70 transition" />
                       <span className="text-sm font-medium">Thêm mô tả sự kiện...</span>
@@ -684,11 +700,11 @@ export default function EventRequestCreate() {
                 </div>
 
                 {/* ── SETTINGS ── */}
-                <div className="mb-3 flex-shrink-0">
-                  <p className="text-[8px] font-bold text-white/25 uppercase tracking-[0.2em] mb-2 px-0.5">
+                <div className="mb-2 flex-shrink-0">
+                  <p className="text-[8px] font-bold text-white/25 uppercase tracking-[0.2em] mb-1.5 px-0.5">
                     Cài đặt
                   </p>
-                  <div className="bg-white/[0.05] border border-white/[0.07] rounded-2xl px-4 py-3 flex items-center justify-between">
+                  <div className="bg-white/[0.05] border border-white/[0.07] rounded-2xl px-4 py-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <Users className="w-4 h-4 text-white/32" />
                       <span className="text-sm font-semibold text-white/58">Sức chứa tối đa</span>
@@ -734,11 +750,11 @@ export default function EventRequestCreate() {
                 <div className="flex-1" />
 
                 {/* ── SUBMIT — full-width like Luma/Quickom ── */}
-                <div className="pt-4 border-t border-white/5 flex flex-col gap-2 flex-shrink-0 mt-3">
+                <div className="pt-3 border-t border-white/5 flex flex-col gap-1.5 flex-shrink-0 mt-2">
                   <button
                     type="submit"
                     disabled={isSubmitting || isUploading}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-black text-sm transition-all shadow-xl shadow-orange-950/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-black text-sm transition-all shadow-xl shadow-orange-950/50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="w-4 h-4" />
                     {isSubmitting
@@ -751,7 +767,7 @@ export default function EventRequestCreate() {
                     type="button"
                     onClick={handleCancel}
                     disabled={isSubmitting}
-                    className="w-full py-2.5 rounded-2xl text-white/38 hover:text-white/65 transition font-semibold text-sm"
+                    className="w-full py-2 rounded-2xl text-white/38 hover:text-white/65 transition font-semibold text-sm"
                   >
                     Hủy và quay lại
                   </button>
