@@ -466,7 +466,7 @@ export default function EventRequestCreate() {
                 RIGHT COLUMN — Floating form on canvas
             ══════════════════════════════════════════ */}
             <div className="flex-1 min-w-0 flex flex-col overflow-y-auto">
-              <div className="flex flex-col flex-1 max-w-2xl w-full mx-auto py-1">
+              <div className="flex flex-col flex-1 max-w-2xl w-full mx-auto pt-8 md:pt-12 pb-2">
 
                 {/* Mobile: back button */}
                 <div className="flex md:hidden items-center justify-between mb-4">
@@ -482,7 +482,7 @@ export default function EventRequestCreate() {
                   </span>
                 </div>
 
-                {/* ── Event Name — large borderless ghost input ── */}
+                {/* ── Event Name — large ghost underline input ── */}
                 <input
                   type="text"
                   name="title"
@@ -491,20 +491,20 @@ export default function EventRequestCreate() {
                   required
                   autoComplete="off"
                   placeholder="Tên sự kiện..."
-                  className="text-[1.75rem] font-bold bg-transparent border-b border-white/[0.08] focus:border-orange-500/60 text-white placeholder-neutral-600 py-2 focus:outline-none w-full mb-5 transition-colors leading-tight"
+                  className="text-3xl md:text-4xl font-bold tracking-tight bg-transparent border-b border-white/[0.09] focus:border-orange-500/55 text-white placeholder-neutral-700 py-3 focus:outline-none w-full mb-7 transition-colors leading-tight"
                 />
 
-                {/* ── Time section — Start / End rows ── */}
-                <div className="mb-3">
+                {/* ── Time — borderless floating rows (Luma/Quickom style) ── */}
+                <div className="mb-5">
                   {/* Start */}
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-t-xl px-4 py-2.5 flex items-center gap-3">
-                    <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
+                  <div className="flex items-center gap-3 py-3 border-b border-white/[0.07] group">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0 ml-0.5" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/30 mb-0.5">Bắt đầu</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28 mb-0.5">Bắt đầu</p>
                       {formData.preferredStart ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-bold text-white">{fmtDate(formData.preferredStart)}</span>
-                          <span className="text-[13px] font-black text-orange-400">{fmtTime(formData.preferredStart)}</span>
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-sm font-semibold text-white/90">{fmtDate(formData.preferredStart)}</span>
+                          <span className="text-sm font-black text-orange-400">{fmtTime(formData.preferredStart)}</span>
                         </div>
                       ) : (
                         <input
@@ -513,29 +513,26 @@ export default function EventRequestCreate() {
                           value={formData.preferredStart}
                           onChange={handleChange}
                           max="9999-12-31T23:59"
-                          className="w-full bg-transparent text-white/55 text-[13px] font-medium focus:outline-none p-0 border-0"
+                          className="w-full bg-transparent text-white/50 text-sm font-medium focus:outline-none p-0 border-0 focus:text-white/80 transition-colors"
                         />
                       )}
                     </div>
                     {formData.preferredStart && (
-                      <button type="button" onClick={() => setFormData(p => ({ ...p, preferredStart: '' }))} className="text-white/18 hover:text-white/55 transition flex-shrink-0">
+                      <button type="button" onClick={() => setFormData(p => ({ ...p, preferredStart: '' }))} className="text-white/15 hover:text-white/50 transition flex-shrink-0">
                         <X className="w-3 h-3" />
                       </button>
                     )}
                   </div>
 
-                  {/* Hairline divider */}
-                  <div className="h-px bg-white/[0.04]" />
-
                   {/* End */}
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-b-xl border-t-0 px-4 py-2.5 flex items-center gap-3">
-                    <span className="w-2 h-2 rounded-full border-2 border-white/22 flex-shrink-0" />
+                  <div className="flex items-center gap-3 py-3 border-b border-white/[0.05] group">
+                    <span className="w-1.5 h-1.5 rounded-full border border-white/20 flex-shrink-0 ml-0.5" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/30 mb-0.5">Kết thúc</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28 mb-0.5">Kết thúc</p>
                       {formData.preferredEnd ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-bold text-white">{fmtDate(formData.preferredEnd)}</span>
-                          <span className="text-[13px] font-black text-white/50">{fmtTime(formData.preferredEnd)}</span>
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-sm font-semibold text-white/90">{fmtDate(formData.preferredEnd)}</span>
+                          <span className="text-sm font-black text-white/45">{fmtTime(formData.preferredEnd)}</span>
                         </div>
                       ) : (
                         <input
@@ -544,34 +541,36 @@ export default function EventRequestCreate() {
                           value={formData.preferredEnd}
                           onChange={handleChange}
                           max="9999-12-31T23:59"
-                          className="w-full bg-transparent text-white/55 text-[13px] font-medium focus:outline-none p-0 border-0"
+                          className="w-full bg-transparent text-white/50 text-sm font-medium focus:outline-none p-0 border-0 focus:text-white/80 transition-colors"
                         />
                       )}
                     </div>
                     {formData.preferredEnd && (
-                      <button type="button" onClick={() => setFormData(p => ({ ...p, preferredEnd: '' }))} className="text-white/18 hover:text-white/55 transition flex-shrink-0">
+                      <button type="button" onClick={() => setFormData(p => ({ ...p, preferredEnd: '' }))} className="text-white/15 hover:text-white/50 transition flex-shrink-0">
                         <X className="w-3 h-3" />
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* ── Event Format — sliding pill dock (Quickom-style) ── */}
-                <div className="mb-3">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <MapPin className="w-3 h-3 text-orange-400/50" />
-                    <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28">Hình thức</span>
+                {/* ── Event Format — translucent pill dock (Quickom-style) ── */}
+                <div className="mb-5">
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    <MapPin className="w-3 h-3 text-white/25" />
+                    <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/25">Hình thức</span>
                   </div>
-                  <div className="bg-neutral-900/60 border border-white/[0.09] rounded-xl p-1 flex w-full">
+
+                  {/* Pill dock */}
+                  <div className="w-full bg-white/[0.04] backdrop-blur-md border border-white/[0.08] rounded-xl p-1 flex gap-1 mb-3">
                     {(['ONLINE', 'ONSITE', 'HYBRID'] as const).map(fmt => (
                       <button
                         key={fmt}
                         type="button"
                         onClick={() => setEventFormat(fmt)}
-                        className={`flex-1 text-center text-xs font-semibold rounded-lg py-1.5 px-2 transition-all duration-200 ${
+                        className={`flex-1 text-center py-2 text-xs rounded-lg transition-all duration-200 ${
                           eventFormat === fmt
-                            ? 'bg-neutral-700/80 text-white shadow-md border border-white/[0.10]'
-                            : 'text-neutral-400 hover:text-neutral-200'
+                            ? 'font-semibold text-white bg-white/[0.12] backdrop-blur-lg border border-white/[0.10] shadow-lg'
+                            : 'font-medium text-neutral-400 hover:text-white bg-transparent'
                         }`}
                       >
                         {fmt === 'ONLINE' ? 'Trực tuyến' : fmt === 'ONSITE' ? 'Tại chỗ' : 'Kết hợp'}
@@ -579,50 +578,49 @@ export default function EventRequestCreate() {
                     ))}
                   </div>
 
-                  {/* Location inputs — appear when onsite/hybrid */}
+                  {/* Location — borderless rows under format dock */}
                   {(eventFormat === 'ONSITE' || eventFormat === 'HYBRID') && (
-                    <div className="mt-2 space-y-0">
-                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-t-xl px-4 py-2.5">
+                    <div>
+                      <div className="py-2.5 border-b border-white/[0.07]">
                         <input
                           type="text"
                           name="customVenueName"
                           value={formData.customVenueName}
                           onChange={handleChange}
                           placeholder="Tên địa điểm tổ chức..."
-                          className="w-full bg-transparent text-white/90 text-sm font-medium placeholder-white/20 focus:outline-none"
+                          className="w-full bg-transparent text-white/85 text-sm font-medium placeholder-white/22 focus:outline-none"
                         />
                       </div>
-                      <div className="h-px bg-white/[0.04]" />
-                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-b-xl border-t-0 px-4 py-2.5">
+                      <div className="py-2.5 border-b border-white/[0.05]">
                         <input
                           type="text"
                           name="customLocation"
                           value={formData.customLocation}
                           onChange={handleChange}
                           placeholder="Địa chỉ chi tiết..."
-                          className="w-full bg-transparent text-white/55 text-xs font-medium placeholder-white/18 focus:outline-none"
+                          className="w-full bg-transparent text-white/50 text-xs font-medium placeholder-white/18 focus:outline-none"
                         />
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* ── Description — expandable row ── */}
-                <div className="mb-3">
+                {/* ── Description — borderless expandable row ── */}
+                <div className="mb-4">
                   {!descOpen ? (
                     <button
                       type="button"
                       onClick={() => setDescOpen(true)}
-                      className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-white/35 hover:text-white/65 hover:bg-white/[0.05] transition-all text-left"
+                      className="w-full flex items-center gap-2.5 py-3 border-b border-white/[0.07] text-white/30 hover:text-white/60 transition-colors text-left group"
                     >
                       <AlignLeft className="w-3.5 h-3.5 flex-shrink-0" />
                       <span className="text-sm font-medium">Thêm mô tả sự kiện...</span>
                     </button>
                   ) : (
-                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3">
+                    <div className="py-3 border-b border-white/[0.07] focus-within:border-orange-500/40 transition-colors">
                       <div className="flex items-center gap-1.5 mb-2">
-                        <AlignLeft className="w-3 h-3 text-orange-400/50" />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28">Mô tả</span>
+                        <AlignLeft className="w-3 h-3 text-white/25" />
+                        <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/25">Mô tả</span>
                       </div>
                       <textarea
                         name="description"
@@ -631,15 +629,15 @@ export default function EventRequestCreate() {
                         rows={3}
                         autoFocus
                         placeholder="Nội dung, diễn giả, hoạt động nổi bật..."
-                        className="w-full bg-transparent text-white/85 text-sm font-medium placeholder-white/18 focus:outline-none resize-none leading-relaxed"
+                        className="w-full bg-transparent text-white/80 text-sm font-medium placeholder-white/18 focus:outline-none resize-none leading-relaxed"
                       />
                     </div>
                   )}
                 </div>
 
-                {/* ── Settings — capacity row ── */}
-                <div className="mb-4 bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5 text-white/45">
+                {/* ── Settings — capacity borderless row ── */}
+                <div className="mb-5 flex items-center justify-between py-3 border-b border-white/[0.07]">
+                  <div className="flex items-center gap-2.5 text-white/35">
                     <Users className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="text-sm font-medium">Sức chứa tối đa</span>
                   </div>
@@ -652,10 +650,10 @@ export default function EventRequestCreate() {
                       min="10"
                       step="10"
                       placeholder="Không giới hạn"
-                      className="w-32 text-right bg-transparent text-white/85 text-sm font-bold placeholder-white/20 focus:outline-none border-b border-transparent focus:border-orange-500/45 transition-colors pb-0.5"
+                      className="w-32 text-right bg-transparent text-white/75 text-sm font-semibold placeholder-white/20 focus:outline-none border-b border-transparent focus:border-orange-500/40 transition-colors pb-0.5"
                     />
                     {formData.expectedParticipants && (
-                      <span className="text-[10px] text-white/25 font-medium">người</span>
+                      <span className="text-[10px] text-white/22 font-medium">người</span>
                     )}
                   </div>
                 </div>
