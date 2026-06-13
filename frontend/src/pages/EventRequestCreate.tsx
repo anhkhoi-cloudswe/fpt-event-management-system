@@ -15,6 +15,7 @@ import {
   Camera,
   Users,
   AlignLeft,
+  Clock,
 } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
 import { uploadEventBanner, deleteEventBanner, validateImageFile } from '../utils/imageUpload'
@@ -53,9 +54,6 @@ function validateEventDateTime(
   return { valid: errors.length === 0, errors }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Format helpers
-───────────────────────────────────────────────────────────── */
 function fmtDate(iso: string) {
   if (!iso) return ''
   const d = new Date(iso + ':00')
@@ -70,72 +68,73 @@ function fmtTime(iso: string) {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Cinema full-page CSS
-   Targets header/aside/main by element type so it works
-   regardless of whether Layout is in light or dark mode.
+   Cinema full-page CSS — makes the entire shell (header,
+   sidebar, main) transparent so the fixed backdrop bleeds
+   through everywhere. Targets HTML element types, works in
+   both light and dark Layout themes.
 ───────────────────────────────────────────────────────────── */
 const ERC_STYLE_ID = 'erc-cinema-fullpage-style'
 const ERC_CSS = `
-  /* Base page background */
-  html.erc-cinema body { background: #0b0b0b !important; }
+  html.erc-cinema body { background: #0c0c0d !important; }
 
-  /* Layout root div (min-h-screen) — make transparent so backdrop shows through */
   html.erc-cinema body > div > div[class*="min-h-screen"],
   html.erc-cinema body > div[class*="min-h-screen"],
-  html.erc-cinema body > div > div > div[class*="min-h-screen"] { background: transparent !important; }
+  html.erc-cinema body > div > div > div[class*="min-h-screen"] {
+    background: transparent !important;
+  }
 
-  /* Header — ghost glass on top of dark backdrop */
+  /* Header — dark frosted glass */
   html.erc-cinema header {
-    background: rgba(11, 11, 11, 0.60) !important;
-    backdrop-filter: blur(32px) saturate(140%) !important;
-    -webkit-backdrop-filter: blur(32px) saturate(140%) !important;
-    border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+    background: rgba(12, 12, 13, 0.72) !important;
+    backdrop-filter: blur(28px) saturate(130%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
+    border-bottom-color: rgba(255,255,255,0.055) !important;
     box-shadow: none !important;
   }
-  /* Header text — bright white, readable on very dark */
   html.erc-cinema header,
-  html.erc-cinema header * { color: rgba(255, 255, 255, 0.90) !important; }
+  html.erc-cinema header * { color: rgba(255,255,255,0.92) !important; }
   html.erc-cinema header img { color: unset !important; }
-
-  /* Header interactive buttons — dark glass so labels/icons are visible */
   html.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]),
   html.erc-cinema header select {
-    background-color: rgba(255, 255, 255, 0.10) !important;
-    border-color: rgba(255, 255, 255, 0.14) !important;
-    color: rgba(255, 255, 255, 0.90) !important;
+    background-color: rgba(255,255,255,0.09) !important;
+    border-color: rgba(255,255,255,0.13) !important;
+    color: rgba(255,255,255,0.92) !important;
   }
   html.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]):hover {
-    background-color: rgba(255, 255, 255, 0.16) !important;
+    background-color: rgba(255,255,255,0.15) !important;
   }
-  /* Preserve orange gradient avatar buttons */
   html.erc-cinema header button[class*="from-orange"],
   html.erc-cinema header button[class*="bg-gradient"] {
     background: linear-gradient(to bottom right, #ea580c, #f97316) !important;
   }
-  /* Preserve orange accent text on logo */
   html.erc-cinema header [class*="text-orange"],
-  html.erc-cinema header [class*="text-fpt"] { color: rgba(255, 165, 40, 0.92) !important; }
+  html.erc-cinema header [class*="text-fpt"] { color: rgba(255,165,40,0.95) !important; }
 
-  /* Desktop Sidebar — dark glass */
+  /* Sidebar — same dark glass */
   html.erc-cinema aside {
-    background: rgba(11, 11, 11, 0.50) !important;
-    backdrop-filter: blur(32px) saturate(140%) !important;
-    -webkit-backdrop-filter: blur(32px) saturate(140%) !important;
-    border-right-color: rgba(255, 255, 255, 0.05) !important;
-    border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+    background: rgba(12, 12, 13, 0.62) !important;
+    backdrop-filter: blur(28px) saturate(130%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
+    border-right-color: rgba(255,255,255,0.055) !important;
     box-shadow: none !important;
   }
-  /* Sidebar text — comfortably readable muted white */
   html.erc-cinema aside,
-  html.erc-cinema aside * { color: rgba(255, 255, 255, 0.62) !important; }
+  html.erc-cinema aside * { color: rgba(255,255,255,0.60) !important; }
   html.erc-cinema aside a,
   html.erc-cinema aside button { background: transparent !important; border-color: transparent !important; }
   html.erc-cinema aside a:hover,
   html.erc-cinema aside button:hover { background: rgba(255,255,255,0.07) !important; }
   html.erc-cinema aside a:hover *,
-  html.erc-cinema aside button:hover * { color: rgba(255, 255, 255, 0.85) !important; }
+  html.erc-cinema aside button:hover * { color: rgba(255,255,255,0.90) !important; }
+  html.erc-cinema aside a[class*="bg-orange"],
+  html.erc-cinema aside a[class*="bg-gradient"] {
+    background: rgba(234,88,12,0.20) !important;
+    border-color: rgba(234,88,12,0.26) !important;
+  }
+  html.erc-cinema aside a[class*="bg-orange"] *,
+  html.erc-cinema aside a[class*="bg-gradient"] * { color: rgba(251,146,60,0.95) !important; }
 
-  /* Main layout — strip the content wrapper constraints */
+  /* Main — strip all constraints */
   html.erc-cinema main { overflow: hidden !important; }
   html.erc-cinema main > div {
     background: transparent !important;
@@ -155,7 +154,6 @@ export default function EventRequestCreate() {
   const [flowType, setFlowType] = useState<'UNIVERSITY' | 'INDEPENDENT' | null>(null)
   const [eventFormat, setEventFormat] = useState<'ONLINE' | 'ONSITE' | 'HYBRID'>('ONSITE')
   const [descOpen, setDescOpen] = useState(false)
-
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -175,13 +173,12 @@ export default function EventRequestCreate() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [timeErrors, setTimeErrors] = useState<string[]>([])
-
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  /* ── Load sample banners on mount ── */
+  /* Load sample banners */
   useEffect(() => {
     fetch('/api/sample-banners')
-      .then((r) => (r.ok ? r.json() : null))
+      .then(r => (r.ok ? r.json() : null))
       .then((data: any[] | null) => {
         if (data?.length) {
           setSampleBanners(data)
@@ -191,19 +188,17 @@ export default function EventRequestCreate() {
       .catch(() => {})
   }, [])
 
-  /* ── Cinema full-page mode: activate when form step is entered ── */
+  /* Cinema mode: inject/remove CSS + html class */
   useEffect(() => {
     if (flowType) {
-      /* Inject CSS */
       if (!document.getElementById(ERC_STYLE_ID)) {
-        const style = document.createElement('style')
-        style.id = ERC_STYLE_ID
-        style.textContent = ERC_CSS
-        document.head.appendChild(style)
+        const s = document.createElement('style')
+        s.id = ERC_STYLE_ID
+        s.textContent = ERC_CSS
+        document.head.appendChild(s)
       }
       document.documentElement.classList.add('erc-cinema')
     } else {
-      /* Remove CSS */
       document.documentElement.classList.remove('erc-cinema')
       document.getElementById(ERC_STYLE_ID)?.remove()
     }
@@ -213,7 +208,7 @@ export default function EventRequestCreate() {
     }
   }, [flowType])
 
-  /* ── Banner handlers ── */
+  /* Banner handlers */
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -226,50 +221,40 @@ export default function EventRequestCreate() {
       showToast('success', 'Đã tải lên ảnh bìa!')
     } catch (err: any) {
       showToast('error', err.message || 'Lỗi tải ảnh')
-    } finally {
-      setIsUploading(false)
-    }
+    } finally { setIsUploading(false) }
   }
-
   const handleSelectSampleBanner = async (url: string) => {
     if (bannerUrl?.includes('/uploads/')) await deleteEventBanner(bannerUrl)
     setBannerUrl(url)
     setIsBannersModalOpen(false)
   }
-
   const handleRemoveBanner = async () => {
     if (bannerUrl?.includes('/uploads/')) await deleteEventBanner(bannerUrl)
     setBannerUrl('')
   }
-
   const handleCancel = async () => {
     if (bannerUrl?.includes('/uploads/')) await deleteEventBanner(bannerUrl)
     navigate('/dashboard/event-requests')
   }
 
-  /* ── Form field handler ── */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setFormData((p) => ({ ...p, [name]: value }))
+    setFormData(p => ({ ...p, [name]: value }))
     if (name === 'preferredStart' || name === 'preferredEnd') {
       const nd = { ...formData, [name]: value }
       setTimeErrors(validateEventDateTime(nd.preferredStart, nd.preferredEnd).errors)
     }
   }
 
-  /* ── Submit ── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-
     const cap = parseInt(formData.expectedParticipants)
     if (formData.expectedParticipants && (isNaN(cap) || cap < 10 || cap % 10 !== 0)) {
-      setError('Số lượng phải tối thiểu 10 và là bội số của 10')
-      return
+      setError('Số lượng phải tối thiểu 10 và là bội số của 10'); return
     }
     const tv = validateEventDateTime(formData.preferredStart, formData.preferredEnd)
     if (!tv.valid) { setError(tv.errors.join(' · ')); return }
-
     setIsSubmitting(true)
     try {
       const fmt = (s: string) => (s ? s + ':00' : null)
@@ -284,8 +269,7 @@ export default function EventRequestCreate() {
         customLocation: eventFormat !== 'ONLINE' ? formData.customLocation || null : null,
         bannerUrl: bannerUrl || null,
       }
-      const url =
-        flowType === 'UNIVERSITY' ? '/api/event-requests' : '/api/events/independent'
+      const url = flowType === 'UNIVERSITY' ? '/api/event-requests' : '/api/events/independent'
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -296,259 +280,231 @@ export default function EventRequestCreate() {
         const ed = await res.json()
         throw new Error(ed.message || ed.error || 'Thất bại')
       }
-      showToast(
-        'success',
-        flowType === 'UNIVERSITY'
-          ? 'Đã gửi đề xuất thành công!'
-          : 'Sự kiện đã được tạo thành công!',
-      )
+      showToast('success', flowType === 'UNIVERSITY' ? 'Đã gửi đề xuất thành công!' : 'Sự kiện đã được tạo thành công!')
       navigate('/dashboard/event-requests')
     } catch (err: any) {
       setError(err.message || 'Có lỗi xảy ra')
       showToast('error', err.message || 'Có lỗi xảy ra')
-    } finally {
-      setIsSubmitting(false)
-    }
+    } finally { setIsSubmitting(false) }
   }
 
-  const categories = [
-    'ALL',
-    ...Array.from(new Set(sampleBanners.map((b) => b.category).filter(Boolean))),
-  ]
-  const filteredBanners =
-    selectedCategory === 'ALL'
-      ? sampleBanners
-      : sampleBanners.filter((b) => b.category === selectedCategory)
+  const categories = ['ALL', ...Array.from(new Set(sampleBanners.map(b => b.category).filter(Boolean)))]
+  const filteredBanners = selectedCategory === 'ALL' ? sampleBanners : sampleBanners.filter(b => b.category === selectedCategory)
 
-  /* ─────────────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════
      RENDER
-  ───────────────────────────────────────────────────────────── */
+  ═══════════════════════════════════════════════════════════ */
   return (
     <div className="h-full">
 
-      {/* ══════════════════════════════════════════════════════════
-          STEP 1 — Option Selector (native light/dark theme)
-      ══════════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════
+          STEP 1 — Flow Type Selector (native theme)
+      ══════════════════════════════════════════════ */}
       {!flowType && (
         <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-4 py-8">
-          <div className="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl p-8 flex flex-col items-center">
-            <h1 className="text-2xl font-black mb-1.5 tracking-tight text-center text-slate-900 dark:text-white">
-              Tạo sự kiện mới
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 text-xs mb-8 text-center font-medium">
-              Chọn loại hình sự kiện để tiếp tục
-            </p>
+          <div className="w-full max-w-lg">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white mb-1.5">
+                Tạo sự kiện mới
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Chọn loại hình sự kiện phù hợp để tiếp tục
+              </p>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mb-8">
+            <div className="grid grid-cols-2 gap-3 mb-6">
               {[
-                {
-                  type: 'UNIVERSITY' as const,
-                  icon: Building2,
-                  label: 'Sự Kiện Trường Học',
-                  sub: 'Cần phê duyệt từ ban quản lý',
-                },
-                {
-                  type: 'INDEPENDENT' as const,
-                  icon: Globe,
-                  label: 'Sự Kiện Tự Do',
-                  sub: 'Tự chọn địa điểm, duyệt ngay',
-                },
+                { type: 'UNIVERSITY' as const, icon: Building2, label: 'Sự Kiện Trường Học', sub: 'Gửi đề xuất, chờ phê duyệt' },
+                { type: 'INDEPENDENT' as const, icon: Globe, label: 'Sự Kiện Tự Do', sub: 'Tự chủ địa điểm & thời gian' },
               ].map(({ type, icon: Icon, label, sub }) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setFlowType(type)}
-                  className="group cursor-pointer p-6 rounded-2xl bg-slate-50 dark:bg-slate-950 hover:bg-orange-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:border-orange-400 dark:hover:border-orange-500/60 shadow-sm transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center gap-3"
+                  className="group cursor-pointer p-5 rounded-2xl bg-white dark:bg-slate-900 hover:bg-orange-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:border-orange-400 dark:hover:border-orange-500/50 shadow-sm transition-all duration-300 hover:-translate-y-0.5 text-center flex flex-col items-center gap-3"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 transition">
-                    <Icon className="w-6 h-6" />
+                  <div className="w-11 h-11 rounded-xl bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform">
+                    <Icon className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-black mb-1 text-slate-800 dark:text-white">{label}</h2>
+                    <p className="text-sm font-black text-slate-800 dark:text-white mb-0.5">{label}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{sub}</p>
                   </div>
                 </button>
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={() => navigate('/dashboard/event-requests')}
-              className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-orange-600 font-bold transition flex items-center gap-1"
-            >
-              <ChevronLeft className="w-4 h-4" /> Quay lại danh sách
-            </button>
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard/event-requests')}
+                className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-orange-500 font-semibold transition"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Quay lại danh sách
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════
-          STEP 2 — Cinema Full-Page Form (Luma / Quickom inspired)
-      ══════════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════
+          STEP 2 — Full Cinema Form
+      ══════════════════════════════════════════════ */}
       {flowType && (
         <>
-          {/* ── FIXED cinema backdrop — covers ENTIRE viewport including header & sidebar ── */}
+          {/* ── Fixed cinema backdrop ── */}
           <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden">
-            {/* Deep base — near-black */}
-            <div className="absolute inset-0 bg-[#0b0b0b]" />
-            {/* Blurred banner — barely-visible color tint, Luma-style */}
+            <div className="absolute inset-0 bg-[#0c0c0d]" />
             {bannerUrl && (
               <div
-                className="absolute -inset-[30%] opacity-[0.14] saturate-[110%] blur-[160px] scale-110 origin-center transition-all duration-1500"
-                style={{
-                  backgroundImage: `url(${bannerUrl})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }}
+                className="absolute -inset-[30%] opacity-[0.13] saturate-[105%] blur-[170px] scale-110 origin-center transition-all duration-[2000ms]"
+                style={{ backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
               />
             )}
-            {/* Heavy dark blanket — owns 84% of the visual; only a whisper of color bleeds through */}
-            <div className="absolute inset-0 bg-black/84" />
-            {/* Very subtle bottom vignette */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/28" />
+            <div className="absolute inset-0 bg-black/85" />
           </div>
 
-          {/* ── Two-column form — sits above backdrop, padded for breathing room ── */}
+          {/* ── Main form — padded container, fixed viewport height ── */}
           <form
             onSubmit={handleSubmit}
-            className="relative z-10 flex flex-col md:flex-row gap-3 p-3 md:p-4"
+            className="relative z-10 flex gap-5 p-4 md:p-5"
             style={{ height: 'calc(100vh - 64px)' }}
           >
 
-            {/* ────────────── LEFT: Banner Image ────────────── */}
-            <div className="relative flex-shrink-0 rounded-2xl overflow-hidden h-52 w-full md:h-auto md:w-[36%] md:max-w-[400px]">
-              {/* Banner image */}
-              {bannerUrl ? (
-                <img
-                  src={bannerUrl}
-                  alt="Event Banner"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              ) : (
-                <div className="absolute inset-0 bg-neutral-900/40 flex flex-col items-center justify-center gap-3">
-                  <ImageIcon className="w-12 h-12 text-white/12" />
-                  <p className="text-xs text-white/25 font-medium">Chưa có ảnh bìa</p>
-                </div>
-              )}
+            {/* ══════════════════════════════════════════
+                LEFT COLUMN — Square image + controls
+            ══════════════════════════════════════════ */}
+            <div className="hidden md:flex flex-col gap-3 w-full max-w-[340px] lg:max-w-[380px] flex-shrink-0">
 
-              {/* Bottom gradient fade */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent pointer-events-none" />
-              {/* Right edge fade → seamless blend into dark form area */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-black/55 pointer-events-none hidden md:block" />
+              {/* Square image preview */}
+              <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-black/60 flex-shrink-0 group">
+                {bannerUrl ? (
+                  <img src={bannerUrl} alt="Event banner" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-white/[0.04] border border-white/[0.07] flex flex-col items-center justify-center gap-2">
+                    <ImageIcon className="w-10 h-10 text-white/10" />
+                    <p className="text-[11px] text-white/20 font-medium">Chưa có ảnh bìa</p>
+                  </div>
+                )}
 
-              {/* Upload overlay */}
-              {isUploading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/55 backdrop-blur-sm z-10">
-                  <div className="w-9 h-9 rounded-full border-2 border-white/20 border-t-orange-400 animate-spin" />
-                </div>
-              )}
+                {/* Upload spinner */}
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-10">
+                    <div className="w-8 h-8 rounded-full border-2 border-white/15 border-t-orange-400 animate-spin" />
+                  </div>
+                )}
 
-              {/* Camera action button — bottom right */}
-              <div className="absolute bottom-5 right-5 z-10">
-                <button
-                  type="button"
-                  aria-label="Quản lý ảnh bìa"
-                  onClick={() => setIsMenuOpen((v) => !v)}
-                  className="w-10 h-10 rounded-full bg-white text-neutral-900 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-                >
-                  <Camera className="w-4 h-4" />
-                </button>
+                {/* Camera button — bottom-right */}
+                <div className="absolute bottom-3 right-3 z-10">
+                  <button
+                    type="button"
+                    onClick={() => setIsMenuOpen(v => !v)}
+                    className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md text-neutral-800 shadow-xl flex items-center justify-center hover:bg-white hover:scale-105 active:scale-95 transition-all"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
 
-                {isMenuOpen && (
-                  <>
-                    {/* Click-away dismiss */}
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setIsMenuOpen(false)}
-                    />
-                    {/* Menu */}
-                    <div className="absolute bottom-12 right-0 z-20 bg-neutral-950/97 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl w-46 py-1">
-                      <button
-                        type="button"
-                        onClick={() => { setIsBannersModalOpen(true); setIsMenuOpen(false) }}
-                        className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-neutral-200 hover:bg-white/8 hover:text-white flex items-center gap-2.5 transition"
-                      >
-                        <LayoutGrid className="w-3.5 h-3.5 text-orange-400" />
-                        Chọn ảnh mẫu
-                      </button>
-                      <label className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-neutral-200 hover:bg-white/8 hover:text-white flex items-center gap-2.5 cursor-pointer transition">
-                        <Upload className="w-3.5 h-3.5 text-orange-400" />
-                        Tải ảnh lên
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => { handleBannerUpload(e); setIsMenuOpen(false) }}
-                        />
-                      </label>
-                      {bannerUrl && (
+                  {isMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)} />
+                      <div className="absolute bottom-11 right-0 z-20 bg-[#141416]/98 backdrop-blur-2xl border border-white/[0.09] rounded-xl overflow-hidden shadow-2xl w-44 py-1">
                         <button
                           type="button"
-                          onClick={() => { handleRemoveBanner(); setIsMenuOpen(false) }}
-                          className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2.5 transition"
+                          onClick={() => { setIsBannersModalOpen(true); setIsMenuOpen(false) }}
+                          className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-neutral-300 hover:bg-white/[0.07] hover:text-white flex items-center gap-2 transition"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Xóa ảnh
+                          <LayoutGrid className="w-3.5 h-3.5 text-orange-400" /> Chọn ảnh mẫu
                         </button>
-                      )}
-                    </div>
-                  </>
-                )}
+                        <label className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-neutral-300 hover:bg-white/[0.07] hover:text-white flex items-center gap-2 cursor-pointer transition">
+                          <Upload className="w-3.5 h-3.5 text-orange-400" /> Tải ảnh lên
+                          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => { handleBannerUpload(e); setIsMenuOpen(false) }} />
+                        </label>
+                        {bannerUrl && (
+                          <button
+                            type="button"
+                            onClick={() => { handleRemoveBanner(); setIsMenuOpen(false) }}
+                            className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-red-400 hover:bg-red-500/[0.09] flex items-center gap-2 transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Xoá ảnh
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Subtle bottom gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+              </div>
+
+              {/* Sample banner toggle bar — below image */}
+              <button
+                type="button"
+                onClick={() => setIsBannersModalOpen(true)}
+                className="bg-white/[0.04] backdrop-blur-md border border-white/[0.09] rounded-xl p-3 text-white/60 hover:text-white/90 hover:bg-white/[0.07] text-xs flex items-center justify-between transition-all duration-200 flex-shrink-0"
+              >
+                <span className="font-medium">Chọn ảnh mẫu từ thư viện</span>
+                <LayoutGrid className="w-3.5 h-3.5 text-orange-400/70" />
+              </button>
+
+              {/* Flow badge */}
+              <div className="flex items-center justify-between flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setFlowType(null); setError(null); setTimeErrors([]) }}
+                  className="flex items-center gap-1 text-white/35 hover:text-white/70 text-[11px] font-semibold transition"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" /> Thay đổi loại hình
+                </button>
+                <span className="text-[9px] font-black uppercase tracking-[0.18em] text-white/25 border border-white/[0.09] px-2 py-0.5 rounded-md">
+                  {flowType === 'UNIVERSITY' ? 'Trường học' : 'Tự do'}
+                </span>
               </div>
             </div>
 
-            {/* ────────────── RIGHT: Form Fields ────────────── */}
-            <div className="flex-1 overflow-y-auto min-h-0 min-w-0 rounded-2xl bg-white/[0.04] border border-white/[0.06]">
-              <div className="flex flex-col min-h-full px-5 md:px-7 py-4">
+            {/* ══════════════════════════════════════════
+                RIGHT COLUMN — Floating form on canvas
+            ══════════════════════════════════════════ */}
+            <div className="flex-1 min-w-0 flex flex-col overflow-y-auto">
+              <div className="flex flex-col flex-1 max-w-2xl w-full mx-auto py-1">
 
-                {/* Back + flow badge */}
-                <div className="flex justify-between items-center mb-3 flex-shrink-0">
+                {/* Mobile: back button */}
+                <div className="flex md:hidden items-center justify-between mb-4">
                   <button
                     type="button"
                     onClick={() => { setFlowType(null); setError(null); setTimeErrors([]) }}
-                    className="flex items-center gap-1 text-white/45 hover:text-white/80 text-[11px] font-bold transition"
+                    className="flex items-center gap-1 text-white/40 hover:text-white/75 text-[11px] font-semibold transition"
                   >
-                    <ChevronLeft className="w-4 h-4" />
-                    Thay đổi loại hình
+                    <ChevronLeft className="w-3.5 h-3.5" /> Thay đổi
                   </button>
-                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white/35 border border-white/10 px-2.5 py-1 rounded-lg">
-                    {flowType === 'UNIVERSITY' ? 'Sự kiện trường học' : 'Sự kiện tự do'}
+                  <span className="text-[9px] font-black uppercase tracking-widest text-white/25 border border-white/[0.09] px-2 py-0.5 rounded-md">
+                    {flowType === 'UNIVERSITY' ? 'Trường học' : 'Tự do'}
                   </span>
                 </div>
 
-                {/* ── EVENT NAME — giant ghost input (Luma-style) ── */}
-                <div className="mb-3 flex-shrink-0">
-                  <input
-                    type="text"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    required
-                    autoComplete="off"
-                    placeholder="Tên sự kiện..."
-                    className="w-full bg-transparent border-0 text-[1.55rem] leading-tight font-black text-white placeholder-white/20 focus:outline-none"
-                  />
-                  <div className="h-px mt-2 bg-white/8" />
-                </div>
+                {/* ── Event Name — large borderless ghost input ── */}
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  required
+                  autoComplete="off"
+                  placeholder="Tên sự kiện..."
+                  className="text-[1.75rem] font-bold bg-transparent border-b border-white/[0.08] focus:border-orange-500/60 text-white placeholder-neutral-600 py-2 focus:outline-none w-full mb-5 transition-colors leading-tight"
+                />
 
-                {/* ── START / END — Quickom timeline style ── */}
-                <div className="mb-2 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
-                  {/* Start row */}
-                  <div className="flex items-center gap-3 px-4 py-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0" />
+                {/* ── Time section — Start / End rows ── */}
+                <div className="mb-3">
+                  {/* Start */}
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-t-xl px-4 py-2.5 flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-[8px] font-bold text-white/35 uppercase tracking-widest mb-0.5">
-                        Bắt đầu
-                      </p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/30 mb-0.5">Bắt đầu</p>
                       {formData.preferredStart ? (
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-sm font-black text-white">
-                            {fmtDate(formData.preferredStart)}
-                          </span>
-                          <span className="text-base font-black text-orange-400">
-                            {fmtTime(formData.preferredStart)}
-                          </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-bold text-white">{fmtDate(formData.preferredStart)}</span>
+                          <span className="text-[13px] font-black text-orange-400">{fmtTime(formData.preferredStart)}</span>
                         </div>
                       ) : (
                         <input
@@ -557,44 +513,29 @@ export default function EventRequestCreate() {
                           value={formData.preferredStart}
                           onChange={handleChange}
                           max="9999-12-31T23:59"
-                          className="w-full bg-transparent border-0 text-white/60 text-sm font-semibold focus:ring-0 outline-none p-0"
+                          className="w-full bg-transparent text-white/55 text-[13px] font-medium focus:outline-none p-0 border-0"
                         />
                       )}
                     </div>
                     {formData.preferredStart && (
-                      <button
-                        type="button"
-                        onClick={() => setFormData((p) => ({ ...p, preferredStart: '' }))}
-                        className="text-white/20 hover:text-white/55 transition flex-shrink-0"
-                      >
+                      <button type="button" onClick={() => setFormData(p => ({ ...p, preferredStart: '' }))} className="text-white/18 hover:text-white/55 transition flex-shrink-0">
                         <X className="w-3 h-3" />
                       </button>
                     )}
                   </div>
 
-                  {/* Connector */}
-                  <div className="flex px-4">
-                    <span className="flex flex-col items-center w-2.5 mr-3 flex-shrink-0">
-                      <div className="w-px h-3 bg-white/10" />
-                    </span>
-                    <div className="flex-1 h-px bg-white/5 mt-1" />
-                  </div>
+                  {/* Hairline divider */}
+                  <div className="h-px bg-white/[0.04]" />
 
-                  {/* End row */}
-                  <div className="flex items-center gap-3 px-4 py-2">
-                    <span className="w-2.5 h-2.5 rounded-full border-2 border-white/28 flex-shrink-0" />
+                  {/* End */}
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-b-xl border-t-0 px-4 py-2.5 flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full border-2 border-white/22 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-[8px] font-bold text-white/35 uppercase tracking-widest mb-0.5">
-                        Kết thúc
-                      </p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/30 mb-0.5">Kết thúc</p>
                       {formData.preferredEnd ? (
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-sm font-black text-white">
-                            {fmtDate(formData.preferredEnd)}
-                          </span>
-                          <span className="text-base font-black text-white/52">
-                            {fmtTime(formData.preferredEnd)}
-                          </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-bold text-white">{fmtDate(formData.preferredEnd)}</span>
+                          <span className="text-[13px] font-black text-white/50">{fmtTime(formData.preferredEnd)}</span>
                         </div>
                       ) : (
                         <input
@@ -603,40 +544,34 @@ export default function EventRequestCreate() {
                           value={formData.preferredEnd}
                           onChange={handleChange}
                           max="9999-12-31T23:59"
-                          className="w-full bg-transparent border-0 text-white/60 text-sm font-semibold focus:ring-0 outline-none p-0"
+                          className="w-full bg-transparent text-white/55 text-[13px] font-medium focus:outline-none p-0 border-0"
                         />
                       )}
                     </div>
                     {formData.preferredEnd && (
-                      <button
-                        type="button"
-                        onClick={() => setFormData((p) => ({ ...p, preferredEnd: '' }))}
-                        className="text-white/20 hover:text-white/55 transition flex-shrink-0"
-                      >
+                      <button type="button" onClick={() => setFormData(p => ({ ...p, preferredEnd: '' }))} className="text-white/18 hover:text-white/55 transition flex-shrink-0">
                         <X className="w-3 h-3" />
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* ── EVENT FORMAT + Location (inline, Quickom-style) ── */}
-                <div className="mb-2 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
-                  <div className="flex items-center gap-2 px-4 pt-2.5 pb-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-orange-400/55" />
-                    <span className="text-[8px] font-bold text-white/35 uppercase tracking-widest">
-                      Hình thức sự kiện
-                    </span>
+                {/* ── Event Format — sliding pill dock (Quickom-style) ── */}
+                <div className="mb-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <MapPin className="w-3 h-3 text-orange-400/50" />
+                    <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28">Hình thức</span>
                   </div>
-                  <div className="flex gap-1 px-3 pb-2">
-                    {(['ONLINE', 'ONSITE', 'HYBRID'] as const).map((fmt) => (
+                  <div className="bg-neutral-900/60 border border-white/[0.09] rounded-xl p-1 flex w-full">
+                    {(['ONLINE', 'ONSITE', 'HYBRID'] as const).map(fmt => (
                       <button
                         key={fmt}
                         type="button"
                         onClick={() => setEventFormat(fmt)}
-                        className={`flex-1 py-1.5 rounded-xl font-black text-[11px] transition-all duration-200 ${
+                        className={`flex-1 text-center text-xs font-semibold rounded-lg py-1.5 px-2 transition-all duration-200 ${
                           eventFormat === fmt
-                            ? 'bg-orange-600 text-white shadow-sm shadow-orange-950/50'
-                            : 'bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/80'
+                            ? 'bg-neutral-700/80 text-white shadow-md border border-white/[0.10]'
+                            : 'text-neutral-400 hover:text-neutral-200'
                         }`}
                       >
                         {fmt === 'ONLINE' ? 'Trực tuyến' : fmt === 'ONSITE' ? 'Tại chỗ' : 'Kết hợp'}
@@ -644,47 +579,50 @@ export default function EventRequestCreate() {
                     ))}
                   </div>
 
-                  {/* Location — slides in when ONSITE or HYBRID */}
+                  {/* Location inputs — appear when onsite/hybrid */}
                   {(eventFormat === 'ONSITE' || eventFormat === 'HYBRID') && (
-                    <div className="border-t border-white/5 px-4 py-2 space-y-1.5">
-                      <input
-                        type="text"
-                        name="customVenueName"
-                        value={formData.customVenueName}
-                        onChange={handleChange}
-                        placeholder="Tên địa điểm tổ chức..."
-                        className="w-full bg-transparent text-white text-sm font-semibold placeholder-white/22 border-b border-white/8 focus:border-orange-500/55 focus:outline-none pb-2 transition-colors"
-                      />
-                      <input
-                        type="text"
-                        name="customLocation"
-                        value={formData.customLocation}
-                        onChange={handleChange}
-                        placeholder="Địa chỉ chi tiết..."
-                        className="w-full bg-transparent text-white/52 text-xs font-medium placeholder-white/18 focus:outline-none"
-                      />
+                    <div className="mt-2 space-y-0">
+                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-t-xl px-4 py-2.5">
+                        <input
+                          type="text"
+                          name="customVenueName"
+                          value={formData.customVenueName}
+                          onChange={handleChange}
+                          placeholder="Tên địa điểm tổ chức..."
+                          className="w-full bg-transparent text-white/90 text-sm font-medium placeholder-white/20 focus:outline-none"
+                        />
+                      </div>
+                      <div className="h-px bg-white/[0.04]" />
+                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-b-xl border-t-0 px-4 py-2.5">
+                        <input
+                          type="text"
+                          name="customLocation"
+                          value={formData.customLocation}
+                          onChange={handleChange}
+                          placeholder="Địa chỉ chi tiết..."
+                          className="w-full bg-transparent text-white/55 text-xs font-medium placeholder-white/18 focus:outline-none"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* ── DESCRIPTION — expandable like Luma ── */}
-                <div className="mb-2 bg-white/[0.05] border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
+                {/* ── Description — expandable row ── */}
+                <div className="mb-3">
                   {!descOpen ? (
                     <button
                       type="button"
                       onClick={() => setDescOpen(true)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-white/38 hover:text-white/65 transition text-left group"
+                      className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-white/35 hover:text-white/65 hover:bg-white/[0.05] transition-all text-left"
                     >
-                      <AlignLeft className="w-4 h-4 flex-shrink-0 group-hover:text-orange-400/70 transition" />
+                      <AlignLeft className="w-3.5 h-3.5 flex-shrink-0" />
                       <span className="text-sm font-medium">Thêm mô tả sự kiện...</span>
                     </button>
                   ) : (
-                    <div className="px-4 py-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <AlignLeft className="w-3.5 h-3.5 text-orange-400/55" />
-                        <span className="text-[8px] font-bold text-white/35 uppercase tracking-widest">
-                          Mô tả
-                        </span>
+                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <AlignLeft className="w-3 h-3 text-orange-400/50" />
+                        <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28">Mô tả</span>
                       </div>
                       <textarea
                         name="description"
@@ -692,69 +630,58 @@ export default function EventRequestCreate() {
                         onChange={handleChange}
                         rows={3}
                         autoFocus
-                        placeholder="Nội dung chính, diễn giả, hoạt động đặc sắc của sự kiện..."
-                        className="w-full bg-transparent text-white text-sm font-medium placeholder-white/18 focus:ring-0 outline-none resize-none leading-relaxed"
+                        placeholder="Nội dung, diễn giả, hoạt động nổi bật..."
+                        className="w-full bg-transparent text-white/85 text-sm font-medium placeholder-white/18 focus:outline-none resize-none leading-relaxed"
                       />
                     </div>
                   )}
                 </div>
 
-                {/* ── SETTINGS ── */}
-                <div className="mb-2 flex-shrink-0">
-                  <p className="text-[8px] font-bold text-white/25 uppercase tracking-[0.2em] mb-1.5 px-0.5">
-                    Cài đặt
-                  </p>
-                  <div className="bg-white/[0.05] border border-white/[0.07] rounded-2xl px-4 py-2.5 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <Users className="w-4 h-4 text-white/32" />
-                      <span className="text-sm font-semibold text-white/58">Sức chứa tối đa</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        name="expectedParticipants"
-                        value={formData.expectedParticipants}
-                        onChange={handleChange}
-                        min="10"
-                        step="10"
-                        placeholder="Không giới hạn"
-                        className="w-28 text-right bg-transparent text-white text-sm font-black placeholder-white/22 focus:outline-none border-b border-transparent focus:border-orange-500/50 transition-colors pb-0.5"
-                      />
-                      {formData.expectedParticipants && (
-                        <span className="text-[10px] text-white/28 font-medium">người</span>
-                      )}
-                    </div>
+                {/* ── Settings — capacity row ── */}
+                <div className="mb-4 bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 text-white/45">
+                    <Users className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="text-sm font-medium">Sức chứa tối đa</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      name="expectedParticipants"
+                      value={formData.expectedParticipants}
+                      onChange={handleChange}
+                      min="10"
+                      step="10"
+                      placeholder="Không giới hạn"
+                      className="w-32 text-right bg-transparent text-white/85 text-sm font-bold placeholder-white/20 focus:outline-none border-b border-transparent focus:border-orange-500/45 transition-colors pb-0.5"
+                    />
+                    {formData.expectedParticipants && (
+                      <span className="text-[10px] text-white/25 font-medium">người</span>
+                    )}
                   </div>
                 </div>
 
-                {/* ── Errors ── */}
+                {/* ── Validation errors ── */}
                 {(timeErrors.length > 0 || error) && (
-                  <div className="mb-3 p-3 bg-red-950/40 border border-red-900/30 rounded-2xl flex items-start gap-2 flex-shrink-0">
-                    <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      {timeErrors.length > 0 && (
-                        <p className="text-[10px] text-red-300 font-medium leading-relaxed">
-                          {timeErrors.slice(0, 2).join(' · ')}
-                        </p>
-                      )}
-                      {error && (
-                        <p className="text-[10px] text-red-300 font-medium leading-relaxed mt-0.5">
-                          {error}
-                        </p>
-                      )}
+                  <div className="mb-3 px-3.5 py-3 bg-red-950/35 border border-red-800/25 rounded-xl flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      {timeErrors.slice(0, 2).map((e, i) => (
+                        <p key={i} className="text-[11px] text-red-300/90 font-medium leading-snug">{e}</p>
+                      ))}
+                      {error && <p className="text-[11px] text-red-300/90 font-medium leading-snug">{error}</p>}
                     </div>
                   </div>
                 )}
 
-                {/* Spacer — pushes submit to bottom */}
+                {/* Push submit to bottom */}
                 <div className="flex-1" />
 
-                {/* ── SUBMIT — full-width like Luma/Quickom ── */}
-                <div className="pt-3 border-t border-white/5 flex flex-col gap-1.5 flex-shrink-0 mt-2">
+                {/* ── Submit action bar ── */}
+                <div className="space-y-2 pt-3 border-t border-white/[0.06]">
                   <button
                     type="submit"
                     disabled={isSubmitting || isUploading}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-black text-sm transition-all shadow-xl shadow-orange-950/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white font-bold text-sm transition-all shadow-lg shadow-orange-950/40 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Send className="w-4 h-4" />
                     {isSubmitting
@@ -767,7 +694,7 @@ export default function EventRequestCreate() {
                     type="button"
                     onClick={handleCancel}
                     disabled={isSubmitting}
-                    className="w-full py-2 rounded-2xl text-white/38 hover:text-white/65 transition font-semibold text-sm"
+                    className="w-full py-2 rounded-xl text-white/30 hover:text-white/60 transition-colors font-medium text-sm"
                   >
                     Hủy và quay lại
                   </button>
@@ -778,41 +705,36 @@ export default function EventRequestCreate() {
         </>
       )}
 
-      {/* ══════════════════════════════════════════════════════════
-          SAMPLE BANNERS GALLERY MODAL
-      ══════════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════
+          Sample Banners Gallery Modal
+      ══════════════════════════════════════════════ */}
       {isBannersModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/72 backdrop-blur-sm p-4">
-          <div className="bg-neutral-900 border border-white/10 rounded-3xl w-full max-w-2xl max-h-[78vh] flex flex-col shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <div className="bg-[#141416] border border-white/[0.09] rounded-2xl w-full max-w-xl max-h-[76vh] flex flex-col shadow-2xl overflow-hidden">
+
             {/* Modal header */}
-            <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+            <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between flex-shrink-0">
               <div>
-                <h3 className="font-black text-sm text-white">Thư viện ảnh bìa</h3>
-                <p className="text-[10px] text-neutral-400 mt-0.5">
-                  Chọn hình ảnh cho sự kiện của bạn
-                </p>
+                <h3 className="text-sm font-black text-white">Thư viện ảnh bìa</h3>
+                <p className="text-[10px] text-neutral-500 mt-0.5">Chọn hình ảnh phù hợp với sự kiện</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsBannersModalOpen(false)}
-                className="p-2 hover:bg-white/10 rounded-xl text-neutral-400 hover:text-white transition"
-              >
+              <button type="button" onClick={() => setIsBannersModalOpen(false)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-neutral-400 hover:text-white transition">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Category filters */}
+            {/* Category pills */}
             {categories.length > 1 && (
-              <div className="px-5 py-2 border-b border-white/8 flex gap-2 overflow-x-auto bg-black/20 flex-shrink-0">
-                {categories.map((cat) => (
+              <div className="px-5 py-2 border-b border-white/[0.05] flex gap-1.5 overflow-x-auto flex-shrink-0">
+                {categories.map(cat => (
                   <button
                     key={cat}
                     type="button"
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1 rounded-lg text-[10px] font-black whitespace-nowrap transition ${
+                    className={`px-3 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition ${
                       selectedCategory === cat
                         ? 'bg-orange-600 text-white'
-                        : 'bg-white/5 text-neutral-300 hover:bg-white/10'
+                        : 'bg-white/[0.05] text-neutral-400 hover:bg-white/[0.09] hover:text-white'
                     }`}
                   >
                     {cat === 'ALL' ? 'Tất cả' : cat}
@@ -821,30 +743,24 @@ export default function EventRequestCreate() {
               </div>
             )}
 
-            {/* Grid */}
-            <div className="flex-1 overflow-y-auto p-5">
+            {/* Image grid */}
+            <div className="flex-1 overflow-y-auto p-4">
               {filteredBanners.length === 0 ? (
-                <div className="text-center py-10">
-                  <ImageIcon className="w-10 h-10 text-neutral-700 mx-auto mb-2" />
-                  <p className="text-xs text-neutral-400">Không có ảnh trong danh mục này</p>
+                <div className="flex flex-col items-center justify-center py-10 gap-2">
+                  <ImageIcon className="w-9 h-9 text-neutral-700" />
+                  <p className="text-xs text-neutral-500">Không có ảnh trong danh mục này</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {filteredBanners.map((banner) => (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {filteredBanners.map(banner => (
                     <div
                       key={banner.bannerId}
                       onClick={() => handleSelectSampleBanner(banner.url)}
-                      className="group relative aspect-[4/3] rounded-2xl overflow-hidden cursor-pointer border border-white/10 hover:border-orange-500 transition duration-300 shadow-sm"
+                      className="group relative aspect-[4/3] rounded-xl overflow-hidden cursor-pointer border border-white/[0.07] hover:border-orange-500/60 transition-all duration-200 shadow-sm"
                     >
-                      <img
-                        src={banner.url}
-                        alt={banner.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition flex items-end p-2.5">
-                        <span className="text-white text-[9px] font-black truncate">
-                          {banner.title}
-                        </span>
+                      <img src={banner.url} alt={banner.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                        <span className="text-white text-[9px] font-black truncate">{banner.title}</span>
                       </div>
                     </div>
                   ))}
