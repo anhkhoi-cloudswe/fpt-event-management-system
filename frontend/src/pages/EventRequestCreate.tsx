@@ -575,7 +575,15 @@ export default function EventRequestCreate() {
     
     // Explicitly append encoded redirect_uri pointing to our backend gateway receiver node
     const redirectUri = `http://localhost:8080/api/v1/auth/${platform}/callback`;
-    const connectUrl = `/api/v1/auth/${platform}/connect?redirect_uri=${encodeURIComponent(redirectUri)}`;
+    
+    let connectUrl = '';
+    if (platform === 'zoom') {
+      const zoomClientId = import.meta.env.VITE_ZOOM_CLIENT_ID || 'mock-zoom-client-id-never-blank';
+      connectUrl = `https://zoom.us/oauth/authorize?client_id=${zoomClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    } else {
+      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '322125152672-bpiub6ajj9bkoec6akto9r1hnljtitt9.apps.googleusercontent.com';
+      connectUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${googleClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}`;
+    }
 
     const popup = window.open(
       connectUrl,
@@ -612,6 +620,45 @@ export default function EventRequestCreate() {
     customVenueName: '',
     customLocation: '',
   })
+
+  const [descBuffer, setDescBuffer] = useState('')
+  const descModalRef = useRef<HTMLDivElement>(null)
+
+  const [capacityPopoverOpen, setCapacityPopoverOpen] = useState(false)
+  const [limitCapacity, setLimitCapacity] = useState(false)
+  const [tempCapacity, setTempCapacity] = useState('50')
+  const [waitlistEnabled, setWaitlistEnabled] = useState(false)
+  const capacityPopoverRef = useRef<HTMLDivElement>(null)
+
+  const handleOpenDescModal = () => {
+    setDescBuffer(formData.description || '');
+    setDescOpen(true);
+  };
+
+  // Sync capacity popover local state with form data when popover opens
+  useEffect(() => {
+    if (capacityPopoverOpen) {
+      if (formData.expectedParticipants) {
+        setLimitCapacity(true);
+        setTempCapacity(formData.expectedParticipants);
+      } else {
+        setLimitCapacity(false);
+      }
+    }
+  }, [capacityPopoverOpen, formData.expectedParticipants]);
+
+  // Click outside listener for Capacity Popover
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (capacityPopoverRef.current && !capacityPopoverRef.current.contains(e.target as Node)) {
+        setCapacityPopoverOpen(false);
+      }
+    };
+    if (capacityPopoverOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [capacityPopoverOpen]);
 
   // Date and Time split fields for easy picker configuration
   const [startDate, setStartDate] = useState('')
@@ -1537,39 +1584,121 @@ export default function EventRequestCreate() {
 
               {/* ── Description — borderless expandable ── */}
               <div className="mb-2 flex-shrink-0">
-                {!descOpen ? (
-                  <button type="button" onClick={() => setDescOpen(true)}
-                    className="w-full flex items-center gap-2.5 py-1.5 border-b border-white/[0.07] text-white/50 hover:text-white/80 transition-colors text-left cursor-pointer">
-                    <AlignLeft className="w-3.5 h-3.5 flex-shrink-0 text-white/40" />
-                    <span className="text-sm font-medium">Thêm mô tả sự kiện...</span>
-                  </button>
-                ) : (
-                  <div className="py-1.5 border-b border-white/[0.07]">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <AlignLeft className="w-3 h-3 text-white/40" />
-                      <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50">Mô tả</span>
-                    </div>
-                    <textarea name="description" value={formData.description} onChange={handleChange}
-                      rows={2} autoFocus placeholder="Nội dung, diễn giả, hoạt động nổi bật..."
-                      className="w-full bg-transparent text-white/80 text-sm font-medium placeholder-neutral-500 focus:outline-none resize-none leading-relaxed" />
+                <button
+                  type="button"
+                  onClick={handleOpenDescModal}
+                  className="w-full flex items-start gap-2.5 py-1.5 border-b border-white/[0.07] text-white/50 hover:text-white/80 transition-colors text-left cursor-pointer"
+                >
+                  <AlignLeft className="w-3.5 h-3.5 flex-shrink-0 text-white/40 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    {formData.description ? (
+                      <p className="text-sm text-white/80 line-clamp-3 whitespace-pre-wrap">{formData.description}</p>
+                    ) : (
+                      <span className="text-sm font-medium">Thêm mô tả sự kiện...</span>
+                    )}
                   </div>
-                )}
+                </button>
               </div>
 
-              {/* ── Capacity — borderless row ── */}
-              <div className="mb-2 flex items-center justify-between py-1.5 border-b border-white/[0.07] flex-shrink-0">
-                <div className="flex items-center gap-2.5 text-white/50">
-                  <Users className="w-3.5 h-3.5 flex-shrink-0 text-white/40" />
-                  <span className="text-sm font-medium">Sức chứa tối đa</span>
+              {/* ── Capacity — borderless row with Popover ── */}
+              <div className="relative mb-2 flex-shrink-0">
+                <div
+                  onClick={() => setCapacityPopoverOpen(v => !v)}
+                  className="flex items-center justify-between py-1.5 border-b border-white/[0.07] hover:bg-white/[0.02] px-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 text-white/50">
+                    <Users className="w-3.5 h-3.5 flex-shrink-0 text-white/40" />
+                    <span className="text-sm font-medium">Sức chứa tối đa</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-white/80 hover:text-white transition-colors">
+                    <span className="text-sm font-semibold">
+                      {formData.expectedParticipants ? `${formData.expectedParticipants} người` : 'Không giới hạn'}
+                    </span>
+                    <svg className="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <input type="number" name="expectedParticipants" value={formData.expectedParticipants}
-                    onChange={handleChange} min="10" step="10" placeholder="Không giới hạn"
-                    className="w-32 text-right bg-transparent text-white/80 text-sm font-semibold placeholder-neutral-500 focus:outline-none border-b border-transparent focus:border-orange-500/40 transition-colors pb-0.5" />
-                  {formData.expectedParticipants && (
-                    <span className="text-[10px] text-white/40 font-medium">người</span>
-                  )}
-                </div>
+
+                {/* Capacity Popover (adjacent to the trigger) */}
+                {capacityPopoverOpen && (
+                  <div
+                    ref={capacityPopoverRef}
+                    className="bg-[#18181b] border border-white/[0.08] rounded-2xl p-4 shadow-2xl z-40 w-72 absolute right-0 bottom-full mb-1.5 animate-fadeIn flex flex-col"
+                  >
+                    {/* Limit Event Capacity Toggle Switch */}
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-bold text-white">Limit Event Capacity</span>
+                      <button
+                        type="button"
+                        onClick={() => setLimitCapacity(!limitCapacity)}
+                        className={`w-9 h-5 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
+                          limitCapacity ? 'bg-orange-600' : 'bg-neutral-800 border border-white/10'
+                        }`}
+                      >
+                        <span
+                          className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 transform ${
+                            limitCapacity ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Subfields (Max Capacity & Waitlist) with smooth transition container */}
+                    <div
+                      className={`overflow-hidden transition-all duration-300 ${
+                        limitCapacity ? 'max-h-40 opacity-100 mb-4' : 'max-h-0 opacity-0 pointer-events-none'
+                      }`}
+                    >
+                      {/* Numeric Max Capacity Input */}
+                      <div className="flex items-center justify-between py-2 border-b border-white/[0.05] mb-3">
+                        <span className="text-xs text-neutral-400 font-semibold">Max Capacity</span>
+                        <input
+                          type="number"
+                          value={tempCapacity}
+                          onChange={(e) => setTempCapacity(e.target.value)}
+                          min="10"
+                          step="10"
+                          className="w-20 text-right bg-transparent text-white font-bold text-sm focus:outline-none border-b border-white/10 focus:border-orange-500/50 pb-0.5"
+                        />
+                      </div>
+
+                      {/* Over-Capacity Waitlist (Danh sách chờ) Toggle */}
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-xs text-neutral-400 font-semibold">Over-Capacity Waitlist</span>
+                        <button
+                          type="button"
+                          onClick={() => setWaitlistEnabled(!waitlistEnabled)}
+                          className={`w-9 h-5 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
+                            waitlistEnabled ? 'bg-orange-600' : 'bg-neutral-800 border border-white/10'
+                          }`}
+                        >
+                          <span
+                            className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 transform ${
+                              waitlistEnabled ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (limitCapacity) {
+                          setFormData(prev => ({ ...prev, expectedParticipants: tempCapacity }));
+                        } else {
+                          setFormData(prev => ({ ...prev, expectedParticipants: '' }));
+                        }
+                        setCapacityPopoverOpen(false);
+                      }}
+                      className="w-full py-2 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* ── Validation errors ── */}
