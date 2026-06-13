@@ -127,7 +127,7 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return venueHandler.HandleUpdateVenue(ctx, request)
 	case path == "/api/venues" && method == "DELETE":
 		return venueHandler.HandleDeleteVenue(ctx, request)
-	case path == "/api/venues/areas" && method == "GET":
+	case (path == "/api/venues/areas" || path == "/api/v1/campuses/areas") && method == "GET":
 		return venueHandler.HandleGetAreas(ctx, request)
 	case path == "/api/venues/areas" && method == "POST":
 		return venueHandler.HandleCreateArea(ctx, request)

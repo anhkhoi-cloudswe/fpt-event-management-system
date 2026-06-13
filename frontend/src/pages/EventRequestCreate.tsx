@@ -108,14 +108,14 @@ const ERC_CSS = `
   }
   
   /* Force dark-mode texts on header items */
-  html.erc-cinema header [class*="text-slate-"],
-  html.erc-cinema header [class*="text-neutral-"] {
+  html.erc-cinema header [class*="text-slate-"]:not([class*="rounded-3xl"] *),
+  html.erc-cinema header [class*="text-neutral-"]:not([class*="rounded-3xl"] *) {
     color: rgba(255,255,255,0.60) !important;
   }
-  html.erc-cinema header p,
-  html.erc-cinema header span:not([class*="bg-"]):not([class*="from-"]),
-  html.erc-cinema header h4,
-  html.erc-cinema header svg {
+  html.erc-cinema header p:not([class*="rounded-3xl"] *),
+  html.erc-cinema header span:not([class*="bg-"]):not([class*="from-"]):not([class*="rounded-3xl"] *),
+  html.erc-cinema header h4:not([class*="rounded-3xl"] *),
+  html.erc-cinema header svg:not([class*="rounded-3xl"] *) {
     color: rgba(255,255,255,0.90) !important;
   }
   
@@ -145,13 +145,13 @@ const ERC_CSS = `
     background-color: rgba(255,255,255,0.07) !important;
   }
 
-  html.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]),
+  html.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]):not([class*="rounded-3xl"] *),
   html.erc-cinema header select {
     background-color: rgba(255,255,255,0.09) !important;
     border-color: rgba(255,255,255,0.13) !important;
     color: rgba(255,255,255,0.92) !important;
   }
-  html.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]):hover {
+  html.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]):not([class*="rounded-3xl"] *):hover {
     background-color: rgba(255,255,255,0.15) !important;
   }
   html.erc-cinema header button[class*="from-orange"],
@@ -191,6 +191,61 @@ const ERC_CSS = `
     max-width: 100% !important;
     height: 100% !important;
   }
+  
+  /* Style profile settings popover card inside cinema mode */
+  html.erc-cinema header div[class*="rounded-3xl"] {
+    background-color: #18181b !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    color: rgba(255,255,255,0.9) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] label {
+    color: rgba(255,255,255,0.5) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] h4 {
+    color: rgba(255,255,255,0.9) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] p {
+    color: rgba(255,255,255,0.5) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] input {
+    background-color: #09090b !important;
+    border-color: rgba(255,255,255,0.15) !important;
+    color: rgba(255,255,255,0.9) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] input::placeholder {
+    color: rgba(255,255,255,0.3) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] button:not([class*="bg-gradient"]) {
+    background-color: rgba(255,255,255,0.06) !important;
+    border-color: rgba(255,255,255,0.12) !important;
+    color: rgba(255,255,255,0.9) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] button:not([class*="bg-gradient"]):hover {
+    background-color: rgba(255,255,255,0.12) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] a,
+  html.erc-cinema header div[class*="rounded-3xl"] button[class*="text-left"] {
+    color: rgba(255,255,255,0.7) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] a:hover,
+  html.erc-cinema header div[class*="rounded-3xl"] button[class*="text-left"]:hover {
+    background-color: rgba(255,255,255,0.06) !important;
+    color: rgba(255,255,255,0.9) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] svg {
+    color: rgba(255,255,255,0.5) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] div[class*="absolute"] {
+    background-color: #09090b !important;
+    border-color: rgba(255,255,255,0.15) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] div[class*="absolute"] button {
+    color: rgba(255,255,255,0.8) !important;
+  }
+  html.erc-cinema header div[class*="rounded-3xl"] div[class*="absolute"] button:hover {
+    background-color: rgba(255,255,255,0.06) !important;
+  }
+  
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px !important;
     height: 6px !important;
@@ -224,6 +279,17 @@ function formatDateVietnamese(dateStr: string) {
   const dayName = days[dateObj.getDay()]
   return `${dayName}, ${d} thg ${m}`
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Fallback Campus Areas data
+───────────────────────────────────────────────────────────── */
+const FALLBACK_CAMPUS_AREAS = [
+  { areaId: 101, areaName: 'Delta Hall', floor: 'Tầng 1', capacity: 150 },
+  { areaId: 102, areaName: 'Library', floor: 'Tầng 2', capacity: 100 },
+  { areaId: 103, areaName: 'Innovation Lab', floor: 'Tầng 3', capacity: 50 },
+  { areaId: 104, areaName: 'Hall A', floor: 'Tầng 1', capacity: 200 },
+  { areaId: 105, areaName: 'Hall B', floor: 'Tầng 1', capacity: 120 }
+]
 
 /* ─────────────────────────────────────────────────────────────
    Custom Date / Time Pickers
@@ -377,9 +443,12 @@ interface TimePopoverProps {
   value: string
   onChange: (time: string) => void
   onClose: () => void
+  showDuration?: boolean
+  startDateTimeStr?: string
+  endDateStr?: string
 }
 
-function TimePopover({ value, onChange, onClose }: TimePopoverProps) {
+function TimePopover({ value, onChange, onClose, showDuration, startDateTimeStr, endDateStr }: TimePopoverProps) {
   const listRef = useRef<HTMLDivElement>(null)
   const timeSlots: string[] = []
   for (let h = 0; h < 24; h++) {
@@ -402,10 +471,33 @@ function TimePopover({ value, onChange, onClose }: TimePopoverProps) {
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
         ref={listRef}
-        className="absolute right-0 top-full mt-1.5 z-50 origin-top-right bg-[#18181b] border border-white/[0.08] rounded-2xl shadow-2xl w-[130px] max-h-60 overflow-y-auto py-1.5 custom-scrollbar animate-fadeIn"
+        className="absolute right-0 top-full mt-1.5 z-50 origin-top-right bg-[#18181b] border border-white/[0.08] rounded-2xl shadow-2xl w-[170px] max-h-60 overflow-y-auto py-1.5 custom-scrollbar animate-fadeIn"
       >
         {timeSlots.map(t => {
           const isSelected = value === t
+          let durationText = ''
+          
+          if (showDuration && startDateTimeStr && endDateStr) {
+            try {
+              const start = new Date(startDateTimeStr)
+              const end = new Date(`${endDateStr}T${t}`)
+              if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                const diffMins = Math.round((end.getTime() - start.getTime()) / 60000)
+                if (diffMins > 0) {
+                  const h = Math.floor(diffMins / 60)
+                  const m = diffMins % 60
+                  if (h > 0 && m > 0) {
+                    durationText = ` ${h}h ${m}m`
+                  } else if (h > 0) {
+                    durationText = ` ${h}h`
+                  } else {
+                    durationText = ` ${m}m`
+                  }
+                }
+              }
+            } catch (e) {}
+          }
+
           return (
             <button
               key={t}
@@ -415,13 +507,14 @@ function TimePopover({ value, onChange, onClose }: TimePopoverProps) {
                 onChange(t)
                 onClose()
               }}
-              className={`w-full text-center py-2.5 text-xs font-bold transition cursor-pointer ${
+              className={`w-full text-center py-2.5 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
                 isSelected
                   ? 'bg-[#fb923c] text-white font-black'
                   : 'text-white/85 hover:bg-white/[0.08]'
               }`}
             >
-              {t}
+              <span>{t}</span>
+              {durationText && <span className="opacity-75 text-[10px] font-normal">{durationText}</span>}
             </button>
           )
         })}
@@ -549,15 +642,77 @@ export default function EventRequestCreate() {
   const [error, setError] = useState<string | null>(null)
   const [timeErrors, setTimeErrors] = useState<string[]>([])
 
-  /* ── Auto-init suggestions based on flowType ── */
+  // Campus Areas States for University Flow
+  const [campusAreas, setCampusAreas] = useState<any[]>([])
+  const [selectedCampusAreaId, setSelectedCampusAreaId] = useState('')
+  const [isLoadingCampusAreas, setIsLoadingCampusAreas] = useState(false)
+
+  const handleCampusAreaFocus = async () => {
+    if (campusAreas.length > 0 || isLoadingCampusAreas) return
+    setIsLoadingCampusAreas(true)
+    try {
+      const res = await fetch('/api/v1/campuses/areas', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data) && data.length > 0) {
+          setCampusAreas(data)
+          setIsLoadingCampusAreas(false)
+          return
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi tải danh sách phòng campus:', err)
+    }
+    
+    // Fallback to static school areas if call fails or returns empty
+    setCampusAreas(FALLBACK_CAMPUS_AREAS)
+    setIsLoadingCampusAreas(false)
+  }
+
+  const handleCampusAreaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const areaId = e.target.value
+    setSelectedCampusAreaId(areaId)
+    const selectedArea = campusAreas.find(a => String(a.areaId) === areaId)
+    if (selectedArea) {
+      setFormData(prev => ({
+        ...prev,
+        customVenueName: selectedArea.areaName,
+        customLocation: `${selectedArea.floor || 'Tầng thường'} - FPT University Campus`,
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        customVenueName: '',
+        customLocation: '',
+      }))
+    }
+  }
+
+  // Wrapper for switching flowType
+  const handleFlowTypeChange = (type: 'UNIVERSITY' | 'INDEPENDENT' | null) => {
+    setFlowType(type)
+    setSelectedCampusAreaId('')
+    setFormData(prev => ({
+      ...prev,
+      customVenueName: '',
+      customLocation: '',
+    }))
+  }
+
+  /* ── Auto-init suggestions based on flowType with 30-min Slot Rounding ── */
   useEffect(() => {
     if (!flowType) return
     const now = new Date()
-    // For UNIVERSITY, suggest now + 24.5 hours to clear the 24h lead validation safety margin.
-    // For INDEPENDENT, suggest now + 30 minutes.
-    const startOffset = flowType === 'UNIVERSITY' ? (24 * 60 + 30) * 60000 : 30 * 60000
-    const start = new Date(now.getTime() + startOffset)
-    const end = new Date(start.getTime() + 60 * 60000) // start + 1 hour
+    
+    // Round current system time UP to the next neat 30-minute block (e.g. 15:47 -> 16:00, 16:05 -> 16:30)
+    const roundedMs = Math.ceil(now.getTime() / (30 * 60000)) * (30 * 60000)
+    
+    // Apply rounded ceiling as default recommended Start Time (INDEPENDENT starts now, UNIVERSITY starts now + 24.5h)
+    const start = flowType === 'INDEPENDENT'
+      ? new Date(roundedMs)
+      : new Date(roundedMs + (24 * 60 + 30) * 60000) // 24.5h ahead to safely clear 24h lead validation
+      
+    const end = new Date(start.getTime() + 60 * 60000) // default 1 hour duration
     
     const sy = start.getFullYear()
     const sm = padZ(start.getMonth() + 1)
@@ -754,7 +909,7 @@ export default function EventRequestCreate() {
       return
     }
 
-    if (eventFormat === 'ONLINE') {
+    if (eventFormat === 'ONLINE' || eventFormat === 'HYBRID') {
       const isConnected = selectedOnlinePlatform === 'ZOOM'
         ? connectedPlatforms.zoom.connected
         : connectedPlatforms.google.connected
@@ -778,9 +933,13 @@ export default function EventRequestCreate() {
         eventFormat,
         customVenueName: eventFormat === 'ONLINE'
           ? selectedOnlinePlatform
+          : eventFormat === 'HYBRID'
+          ? `${formData.customVenueName || ''} & ${selectedOnlinePlatform}`
           : (formData.customVenueName || null),
         customLocation: eventFormat === 'ONLINE'
           ? (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink)
+          : eventFormat === 'HYBRID'
+          ? `${formData.customLocation || ''} (Online: ${selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink})`
           : (formData.customLocation || null),
         bannerUrl: bannerUrl || null,
         isPublic,
@@ -801,7 +960,7 @@ export default function EventRequestCreate() {
     } catch (err: any) {
       setError(err.message || 'Có lỗi xảy ra')
       showToast('error', err.message || 'Có lỗi xảy ra')
-    } finally { setIsSubmitting(false) }
+    } finally { window.scrollTo({ top: 0, behavior: 'smooth' }); setIsSubmitting(false) }
   }
 
   const categories      = ['ALL', ...Array.from(new Set(sampleBanners.map(b => b.category).filter(Boolean)))]
@@ -837,13 +996,13 @@ export default function EventRequestCreate() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
               {[
-                { type: 'UNIVERSITY' as const, icon: Building2, label: 'Sự Kiện Trường Học', sub: 'Gửi đề xuất phê duyệt đến ban giám hiệu nhà trường. Phù hợp cho các sự kiện học thuật, câu lạc bộ, hội thảo chính quy.' },
+                { type: 'UNIVERSITY' as const, icon: Building2, label: 'Sự Kiện Trường Học', sub: 'Gửi đề xuất phê duyệt đến ban giám hiệu nhà trường. Phù hợp cho các sự kiện học thuật, câu luận bộ, hội thảo chính quy.' },
                 { type: 'INDEPENDENT' as const, icon: Globe, label: 'Sự Kiện Tự Do', sub: 'Tự chủ hoàn toàn về thời gian, địa điểm và quy trình phê duyệt. Phù hợp cho hội nhóm, workshop, giao lưu tự phát.' },
               ].map(({ type, icon: Icon, label, sub }) => (
                 <button
                   key={type}
                   type="button"
-                  onClick={() => setFlowType(type)}
+                  onClick={() => handleFlowTypeChange(type)}
                   className="group cursor-pointer p-8 rounded-3xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 hover:border-orange-500/50 dark:hover:border-orange-500/40 shadow-2xl hover:shadow-orange-500/[0.05] hover:bg-white/90 dark:hover:bg-slate-900/90 transition-all duration-500 hover:-translate-y-1 text-center flex flex-col items-center gap-6"
                 >
                   <div className="w-16 h-16 rounded-2xl bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 group-hover:bg-orange-600 group-hover:text-white transition-all duration-550 shadow-md">
@@ -942,7 +1101,7 @@ export default function EventRequestCreate() {
               <div className="flex items-center justify-between mt-1.5 flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => { setFlowType(null); setError(null); setTimeErrors([]) }}
+                  onClick={() => { handleFlowTypeChange(null); setError(null); setTimeErrors([]) }}
                   className="flex items-center gap-1.5 text-white/50 hover:text-white text-[11px] font-bold transition cursor-pointer"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" /> Thay đổi
@@ -1139,6 +1298,9 @@ export default function EventRequestCreate() {
                           value={endTime}
                           onChange={setEndTime}
                           onClose={() => setShowEndTimeList(false)}
+                          showDuration={true}
+                          startDateTimeStr={startDate && startTime ? `${startDate}T${startTime}` : undefined}
+                          endDateStr={endDate}
                         />
                       )}
                     </div>
@@ -1176,7 +1338,7 @@ export default function EventRequestCreate() {
                   ))}
                 </div>
 
-                {/* Online Platform Connectors */}
+                {/* Online Platform Connectors — Visibly rendered for ONLINE and HYBRID formats */}
                 {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (
                   <div className="mt-2.5 bg-white/[0.03] backdrop-blur-md border border-white/[0.08] rounded-xl p-3 animate-fadeIn flex flex-col gap-2">
                     <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.05]">
@@ -1299,19 +1461,74 @@ export default function EventRequestCreate() {
                   </div>
                 )}
 
-                {/* Location rows — borderless */}
+                {/* Location rows — Structured discrimination depending on flowType */}
                 {(eventFormat === 'ONSITE' || eventFormat === 'HYBRID') && (
-                  <div className="mt-1 animate-fadeIn">
-                    <div className="py-1 border-b border-white/[0.07]">
-                      <input type="text" name="customVenueName" value={formData.customVenueName} onChange={handleChange}
-                        placeholder="Tên địa điểm tổ chức..."
-                        className="w-full bg-transparent text-white/85 text-sm font-medium placeholder-neutral-500 focus:outline-none" />
-                    </div>
-                    <div className="py-1 border-b border-white/[0.05]">
-                      <input type="text" name="customLocation" value={formData.customLocation} onChange={handleChange}
-                        placeholder="Địa chỉ chi tiết..."
-                        className="w-full bg-transparent text-white/60 text-xs font-medium placeholder-neutral-500 focus:outline-none" />
-                    </div>
+                  <div className="mt-2.5 animate-fadeIn space-y-3">
+                    {flowType === 'UNIVERSITY' ? (
+                      /* UNIVERSITY (School) flow: Structured dropdown select */
+                      <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.08] rounded-xl p-3.5 flex flex-col gap-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-orange-400" />
+                          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Phòng/Khu vực học đường</span>
+                        </div>
+                        <div className="relative">
+                          <select
+                            value={selectedCampusAreaId}
+                            onFocus={handleCampusAreaFocus}
+                            onChange={handleCampusAreaChange}
+                            className="w-full bg-[#18181b] border border-white/10 text-white rounded-xl p-2.5 pr-10 text-xs font-bold focus:outline-none focus:border-orange-500/50 appearance-none cursor-pointer"
+                          >
+                            <option value="" className="text-neutral-500">-- Chọn phòng / phòng hội thảo chính quy --</option>
+                            {campusAreas.map(area => (
+                              <option key={area.areaId} value={area.areaId} className="text-white">
+                                {area.areaName} ({area.floor || 'Tầng thường'} - Sức chứa: {area.capacity || 'N/A'} người)
+                              </option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white/50">
+                            <ChevronDown className="w-4 h-4" />
+                          </div>
+                        </div>
+                        {selectedCampusAreaId && (
+                          <div className="text-[10px] text-neutral-400 font-medium bg-white/[0.02] border border-white/[0.04] p-2 rounded-lg leading-relaxed">
+                            <span className="text-orange-400 font-bold">Lựa chọn:</span> {formData.customVenueName} &middot; {formData.customLocation}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* INDEPENDENT (Free) flow: Custom text inputs */
+                      <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.08] rounded-xl p-3.5 flex flex-col gap-2">
+                        <div className="flex items-center gap-1.5 pb-1 border-b border-white/[0.05]">
+                          <MapPin className="w-3.5 h-3.5 text-orange-400" />
+                          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Địa điểm tự do</span>
+                        </div>
+                        <div className="py-1 border-b border-white/[0.07]">
+                          <input
+                            type="text"
+                            name="customVenueName"
+                            value={formData.customVenueName}
+                            onChange={handleChange}
+                            required
+                            placeholder="Tên địa điểm tự do (VD: L'Amour Cafe, Khách sạn Rex)..."
+                            className="w-full bg-transparent text-white/85 text-xs font-medium placeholder-neutral-500 focus:outline-none"
+                          />
+                        </div>
+                        <div className="py-1 border-b border-white/[0.05]">
+                          <input
+                            type="text"
+                            name="customLocation"
+                            value={formData.customLocation}
+                            onChange={handleChange}
+                            required
+                            placeholder="Địa chỉ chi tiết địa điểm tự do..."
+                            className="w-full bg-transparent text-white/60 text-xs font-medium placeholder-neutral-500 focus:outline-none"
+                          />
+                        </div>
+                        <p className="text-[10px] text-neutral-400/70 mt-1 font-medium tracking-wide leading-normal italic">
+                          Gợi ý: Nhập địa điểm bên ngoài trường. Organizer chịu trách nhiệm tự liên hệ địa điểm này.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1421,7 +1638,7 @@ export default function EventRequestCreate() {
             {/* Modal Content */}
             <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
               
-              {/* Top Area: Drag & Drop Zone */}
+              {/* Drag & Drop Zone */}
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -1471,7 +1688,7 @@ export default function EventRequestCreate() {
                 </div>
               )}
 
-              {/* Bottom Area: Sample Grid (1:1 aspect-square) */}
+              {/* Sample Grid */}
               <div className="flex-1 min-h-[200px]">
                 {filteredBanners.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 gap-2">

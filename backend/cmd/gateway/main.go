@@ -78,6 +78,7 @@ var routes = []Route{
 	{"/api/wallet/", "Ticket"},
 
 	// ========== Venue Service (8084) ==========
+	{"/api/v1/campuses/areas", "Venue"},
 	{"/api/venues", "Venue"},
 	{"/api/areas/", "Venue"},
 	{"/api/seats", "Venue"},
