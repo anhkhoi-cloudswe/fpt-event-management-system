@@ -305,7 +305,7 @@ function CalendarPopover({ value, onChange, onClose, minDate }: CalendarPopoverP
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute left-0 top-full mt-1.5 z-50 origin-top-left bg-[#18181b] border border-white/[0.08] rounded-2xl p-5 shadow-2xl w-[320px] select-none animate-fadeIn">
+      <div className="absolute right-0 top-full mt-1.5 z-50 origin-top-right bg-[#18181b] border border-white/[0.08] rounded-2xl p-5 shadow-2xl w-[320px] select-none animate-fadeIn">
         {/* Header matching Luma style */}
         <div className="flex items-center justify-between mb-4 px-1">
           <span className="text-sm font-black text-white">
@@ -402,7 +402,7 @@ function TimePopover({ value, onChange, onClose }: TimePopoverProps) {
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
         ref={listRef}
-        className="absolute left-0 top-full mt-1.5 z-50 origin-top-left bg-[#18181b] border border-white/[0.08] rounded-2xl shadow-2xl w-[130px] max-h-60 overflow-y-auto py-1.5 custom-scrollbar animate-fadeIn"
+        className="absolute right-0 top-full mt-1.5 z-50 origin-top-right bg-[#18181b] border border-white/[0.08] rounded-2xl shadow-2xl w-[130px] max-h-60 overflow-y-auto py-1.5 custom-scrollbar animate-fadeIn"
       >
         {timeSlots.map(t => {
           const isSelected = value === t
@@ -1066,8 +1066,8 @@ export default function EventRequestCreate() {
               {flowType === 'UNIVERSITY' && (
                 <div className="mb-2 px-3 py-2 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-start gap-2 flex-shrink-0 animate-fadeIn">
                   <AlertCircle className="w-3.5 h-3.5 text-orange-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-neutral-350 font-medium leading-normal">
-                    <span className="text-orange-400 font-bold">Khuyên dùng:</span> Sự kiện trường cần Staff duyệt. Hãy cân nhắc đặt cách hiện tại <span className="text-white font-bold">36h - 48h</span> trở lên để Staff kịp tiếp nhận duyệt.
+                  <p className="text-[10px] text-orange-200/90 font-medium leading-normal">
+                    <span className="text-orange-400 font-bold">Khuyên dùng:</span> Sự kiện trường cần Staff duyệt. Hãy cân nhắc đặt cách hiện tại <span className="text-orange-400 font-bold">36h - 48h</span> trở lên để Staff kịp tiếp nhận duyệt.
                   </p>
                 </div>
               )}
