@@ -462,7 +462,7 @@ export default function EventRequestCreate() {
           ══════════════════════════════════════════════ */}
           <form
             onSubmit={handleSubmit}
-            className="relative z-10 h-[calc(100vh-64px)] overflow-hidden flex items-center px-12 lg:px-20 max-w-[1500px] mx-auto gap-16 w-full pt-16 pb-6"
+            className="relative z-10 h-full overflow-hidden flex items-center px-12 lg:px-20 max-w-[1500px] mx-auto gap-16 w-full pt-4 pb-4"
           >
 
             {/* ══════════════════════════════════════════
@@ -533,7 +533,7 @@ export default function EventRequestCreate() {
             <div className="flex-1 flex flex-col justify-between py-2 overflow-hidden h-full min-w-0">
 
               {/* ── Header metadata row: flow label + visibility toggle ── */}
-              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+              <div className="flex items-center justify-between mb-2 flex-shrink-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[9px] font-black uppercase tracking-[0.22em] text-white/50">
                     Loại đơn tổ chức:
@@ -594,13 +594,13 @@ export default function EventRequestCreate() {
                 required
                 autoComplete="off"
                 placeholder="Tên sự kiện..."
-                className="text-3xl md:text-4xl font-bold tracking-tight bg-transparent border-b border-white/[0.09] focus:border-orange-500/55 text-white placeholder-neutral-500 py-3 focus:outline-none w-full mb-3 transition-colors leading-tight flex-shrink-0"
+                className="text-3xl md:text-4xl font-bold tracking-tight bg-transparent border-b border-white/[0.09] focus:border-orange-500/55 text-white placeholder-neutral-500 py-2 focus:outline-none w-full mb-2 transition-colors leading-tight flex-shrink-0"
               />
 
               {/* ── Time — borderless rows ── */}
-              <div className="mb-3 flex-shrink-0">
+              <div className="mb-2 flex-shrink-0">
                 {/* Start */}
-                <div className="flex items-center gap-3 py-2.5 border-b border-white/[0.07]">
+                <div className="flex items-center gap-3 py-1.5 border-b border-white/[0.07]">
                   <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0 ml-0.5" />
                   <div className="flex-1 min-w-0">
                     <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50 mb-0.5">Bắt đầu</p>
@@ -624,7 +624,7 @@ export default function EventRequestCreate() {
                 </div>
 
                 {/* End */}
-                <div className="flex items-center gap-3 py-2.5 border-b border-white/[0.05]">
+                <div className="flex items-center gap-3 py-1.5 border-b border-white/[0.05]">
                   <span className="w-1.5 h-1.5 rounded-full border border-white/22 flex-shrink-0 ml-0.5" />
                   <div className="flex-1 min-w-0">
                     <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50 mb-0.5">Kết thúc</p>
@@ -649,8 +649,8 @@ export default function EventRequestCreate() {
               </div>
 
               {/* ── Event format — translucent pill dock ── */}
-              <div className="mb-3 flex-shrink-0">
-                <div className="flex items-center gap-1.5 mb-2">
+              <div className="mb-2 flex-shrink-0">
+                <div className="flex items-center gap-1.5 mb-1.5">
                   <MapPin className="w-3 h-3 text-white/40" />
                   <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50">Hình thức</span>
                 </div>
@@ -671,12 +671,12 @@ export default function EventRequestCreate() {
                 {/* Location rows — borderless */}
                 {(eventFormat === 'ONSITE' || eventFormat === 'HYBRID') && (
                   <div className="mt-1 animate-fadeIn">
-                    <div className="py-2 border-b border-white/[0.07]">
+                    <div className="py-1 border-b border-white/[0.07]">
                       <input type="text" name="customVenueName" value={formData.customVenueName} onChange={handleChange}
                         placeholder="Tên địa điểm tổ chức..."
                         className="w-full bg-transparent text-white/85 text-sm font-medium placeholder-neutral-500 focus:outline-none" />
                     </div>
-                    <div className="py-2 border-b border-white/[0.05]">
+                    <div className="py-1 border-b border-white/[0.05]">
                       <input type="text" name="customLocation" value={formData.customLocation} onChange={handleChange}
                         placeholder="Địa chỉ chi tiết..."
                         className="w-full bg-transparent text-white/60 text-xs font-medium placeholder-neutral-500 focus:outline-none" />
@@ -686,15 +686,15 @@ export default function EventRequestCreate() {
               </div>
 
               {/* ── Description — borderless expandable ── */}
-              <div className="mb-3 flex-shrink-0">
+              <div className="mb-2 flex-shrink-0">
                 {!descOpen ? (
                   <button type="button" onClick={() => setDescOpen(true)}
-                    className="w-full flex items-center gap-2.5 py-2.5 border-b border-white/[0.07] text-white/50 hover:text-white/80 transition-colors text-left cursor-pointer">
+                    className="w-full flex items-center gap-2.5 py-1.5 border-b border-white/[0.07] text-white/50 hover:text-white/80 transition-colors text-left cursor-pointer">
                     <AlignLeft className="w-3.5 h-3.5 flex-shrink-0 text-white/40" />
                     <span className="text-sm font-medium">Thêm mô tả sự kiện...</span>
                   </button>
                 ) : (
-                  <div className="py-2.5 border-b border-white/[0.07]">
+                  <div className="py-1.5 border-b border-white/[0.07]">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <AlignLeft className="w-3 h-3 text-white/40" />
                       <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50">Mô tả</span>
@@ -707,7 +707,7 @@ export default function EventRequestCreate() {
               </div>
 
               {/* ── Capacity — borderless row ── */}
-              <div className="mb-3 flex items-center justify-between py-2.5 border-b border-white/[0.07] flex-shrink-0">
+              <div className="mb-2 flex items-center justify-between py-1.5 border-b border-white/[0.07] flex-shrink-0">
                 <div className="flex items-center gap-2.5 text-white/50">
                   <Users className="w-3.5 h-3.5 flex-shrink-0 text-white/40" />
                   <span className="text-sm font-medium">Sức chứa tối đa</span>
@@ -739,7 +739,7 @@ export default function EventRequestCreate() {
               <div className="flex-1 min-h-[4px]" />
 
               {/* ── Submit bar ── */}
-              <div className="space-y-1.5 pt-2 border-t border-white/[0.06] flex-shrink-0">
+              <div className="space-y-1.5 pt-1.5 border-t border-white/[0.06] flex-shrink-0">
                 <button
                   type="submit"
                   disabled={isSubmitting || isUploading}
