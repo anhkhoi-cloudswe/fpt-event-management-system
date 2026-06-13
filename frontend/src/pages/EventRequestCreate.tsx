@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Lock,
   ChevronDown,
+  Check,
 } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
 import { uploadEventBanner, deleteEventBanner, validateImageFile } from '../utils/imageUpload'
@@ -28,18 +29,6 @@ import { uploadEventBanner, deleteEventBanner, validateImageFile } from '../util
 function padZ(n: number) { return String(n).padStart(2, '0') }
 function toLocalISO(d: Date) {
   return `${d.getFullYear()}-${padZ(d.getMonth()+1)}-${padZ(d.getDate())}T${padZ(d.getHours())}:${padZ(d.getMinutes())}`
-}
-function fmtDate(iso: string) {
-  if (!iso) return ''
-  const d = new Date(iso + ':00')
-  if (isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' })
-}
-function fmtTime(iso: string) {
-  if (!iso) return ''
-  const d = new Date(iso + ':00')
-  if (isNaN(d.getTime())) return ''
-  return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -111,15 +100,51 @@ const ERC_CSS = `
   }
 
   html.erc-cinema header {
-    background: rgba(12,12,13,0.72) !important;
+    background: rgba(12,12,13,0.75) !important;
     backdrop-filter: blur(28px) saturate(130%) !important;
     -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
     border-bottom-color: rgba(255,255,255,0.055) !important;
     box-shadow: none !important;
   }
-  html.erc-cinema header,
-  html.erc-cinema header * { color: rgba(255,255,255,0.92) !important; }
-  html.erc-cinema header img { color: unset !important; }
+  
+  /* Force dark-mode texts on header items */
+  html.erc-cinema header [class*="text-slate-"],
+  html.erc-cinema header [class*="text-neutral-"] {
+    color: rgba(255,255,255,0.60) !important;
+  }
+  html.erc-cinema header p,
+  html.erc-cinema header span:not([class*="bg-"]):not([class*="from-"]),
+  html.erc-cinema header h4,
+  html.erc-cinema header svg {
+    color: rgba(255,255,255,0.90) !important;
+  }
+  
+  /* Style wallet balance specifically to avoid white-on-white text */
+  html.erc-cinema header div.bg-gradient-to-r,
+  html.erc-cinema header div.bg-slate-800,
+  html.erc-cinema header div[class*="bg-gradient-to-r"],
+  html.erc-cinema header div[class*="bg-slate-800"] {
+    background: rgba(255,255,255,0.06) !important;
+    background-image: none !important;
+    border-color: rgba(255,255,255,0.12) !important;
+  }
+  html.erc-cinema header div.bg-gradient-to-r *,
+  html.erc-cinema header div.bg-slate-800 *,
+  html.erc-cinema header div[class*="bg-gradient-to-r"] *,
+  html.erc-cinema header div[class*="bg-slate-800"] * {
+    color: #fb923c !important;
+  }
+  
+  /* Style profile details popover trigger to clear light mode styling */
+  html.erc-cinema header div[class*="hover:bg-orange-55"],
+  html.erc-cinema header div[class*="hover:bg-orange-50"] {
+    color: rgba(255,255,255,0.90) !important;
+  }
+  html.erc-cinema header div[class*="hover:bg-orange-55"]:hover,
+  html.erc-cinema header div[class*="hover:bg-orange-50"]:hover {
+    background-color: rgba(255,255,255,0.07) !important;
+  }
+
   html.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]),
   html.erc-cinema header select {
     background-color: rgba(255,255,255,0.09) !important;
@@ -169,6 +194,223 @@ const ERC_CSS = `
 `
 
 /* ─────────────────────────────────────────────────────────────
+   DateTime Formatter helper
+───────────────────────────────────────────────────────────── */
+function formatDateVietnamese(dateStr: string) {
+  if (!dateStr) return ''
+  const parts = dateStr.split('-')
+  if (parts.length !== 3) return dateStr
+  const y = parts[0]
+  const m = parseInt(parts[1])
+  const d = parseInt(parts[2])
+  
+  const dateObj = new Date(parseInt(y), m - 1, d)
+  const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+  const dayName = days[dateObj.getDay()]
+  return `${dayName}, ${d} thg ${m}`
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Custom Date / Time Pickers
+───────────────────────────────────────────────────────────── */
+interface CalendarPopoverProps {
+  value: string
+  onChange: (date: string) => void
+  onClose: () => void
+  minDate?: string
+}
+
+function CalendarPopover({ value, onChange, onClose, minDate }: CalendarPopoverProps) {
+  const [viewDate, setViewDate] = useState(() => {
+    if (value) {
+      const parts = value.split('-')
+      if (parts.length === 3) {
+        return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1)
+      }
+    }
+    return new Date()
+  })
+
+  const year = viewDate.getFullYear()
+  const month = viewDate.getMonth()
+
+  const monthNames = [
+    'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+    'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+  ]
+
+  const handlePrevMonth = () => {
+    setViewDate(new Date(year, month - 1, 1))
+  }
+  const handleNextMonth = () => {
+    setViewDate(new Date(year, month + 1, 1))
+  }
+
+  const totalDays = new Date(year, month + 1, 0).getDate()
+  const startDay = new Date(year, month, 1).getDay()
+  const prevMonthTotalDays = new Date(year, month, 0).getDate()
+
+  const daysGrid: { day: number; isCurrentMonth: boolean; dateStr: string }[] = []
+
+  // Prev month padding
+  for (let i = startDay - 1; i >= 0; i--) {
+    const d = prevMonthTotalDays - i
+    const prevMonth = month === 0 ? 11 : month - 1
+    const prevYear = month === 0 ? year - 1 : year
+    daysGrid.push({
+      day: d,
+      isCurrentMonth: false,
+      dateStr: `${prevYear}-${padZ(prevMonth + 1)}-${padZ(d)}`
+    })
+  }
+
+  // Current month
+  for (let d = 1; d <= totalDays; d++) {
+    daysGrid.push({
+      day: d,
+      isCurrentMonth: true,
+      dateStr: `${year}-${padZ(month + 1)}-${padZ(d)}`
+    })
+  }
+
+  // Next month padding
+  const remaining = 42 - daysGrid.length
+  for (let d = 1; d <= remaining; d++) {
+    const nextMonth = month === 11 ? 0 : month + 1
+    const nextYear = month === 11 ? year + 1 : year
+    daysGrid.push({
+      day: d,
+      isCurrentMonth: false,
+      dateStr: `${nextYear}-${padZ(nextMonth + 1)}-${padZ(d)}`
+    })
+  }
+
+  const todayStr = toLocalISO(new Date()).split('T')[0]
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="absolute right-0 md:left-0 z-50 mt-2 bg-[#121214] border border-white/10 rounded-2xl p-4 shadow-2xl w-[280px] select-none animate-fadeIn">
+        <div className="flex items-center justify-between mb-3">
+          <button
+            type="button"
+            onClick={handlePrevMonth}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-white/60 hover:text-white transition cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-xs font-black text-white">
+            {monthNames[month]} {year}
+          </span>
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-white/60 hover:text-white transition cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4 rotate-180" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+          {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((wd, idx) => (
+            <span key={wd} className={`text-[9px] font-black tracking-wider uppercase ${idx === 0 ? 'text-red-400' : 'text-neutral-500'}`}>
+              {wd}
+            </span>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-1">
+          {daysGrid.map(({ day, isCurrentMonth, dateStr }, index) => {
+            const isSelected = value === dateStr
+            const isToday = todayStr === dateStr
+            const isBeforeMin = minDate ? dateStr < minDate : false
+            return (
+              <button
+                key={index}
+                type="button"
+                disabled={isBeforeMin}
+                onClick={() => {
+                  onChange(dateStr)
+                  onClose()
+                }}
+                className={`aspect-square text-[11px] font-bold rounded-lg flex items-center justify-center transition cursor-pointer ${
+                  isSelected
+                    ? 'bg-orange-600 text-white shadow-lg shadow-orange-700/30'
+                    : isToday
+                    ? 'bg-white/[0.08] text-orange-400 border border-orange-500/30'
+                    : isCurrentMonth
+                    ? 'text-white/80 hover:bg-white/[0.05]'
+                    : 'text-neutral-600 hover:bg-white/[0.02]'
+                } ${isBeforeMin ? 'opacity-20 cursor-not-allowed hover:bg-transparent text-neutral-600' : ''}`}
+              >
+                {day}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </>
+  )
+}
+
+interface TimePopoverProps {
+  value: string
+  onChange: (time: string) => void
+  onClose: () => void
+}
+
+function TimePopover({ value, onChange, onClose }: TimePopoverProps) {
+  const listRef = useRef<HTMLDivElement>(null)
+  const timeSlots: string[] = []
+  for (let h = 0; h < 24; h++) {
+    const hs = padZ(h)
+    timeSlots.push(`${hs}:00`)
+    timeSlots.push(`${hs}:30`)
+  }
+
+  useEffect(() => {
+    if (listRef.current && value) {
+      const selectedEl = listRef.current.querySelector('[data-selected="true"]')
+      if (selectedEl) {
+        selectedEl.scrollIntoView({ block: 'center' })
+      }
+    }
+  }, [value])
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div
+        ref={listRef}
+        className="absolute right-0 z-50 mt-2 bg-[#121214] border border-white/10 rounded-2xl shadow-2xl w-[120px] max-h-60 overflow-y-auto py-1.5 scrollbar-thin animate-fadeIn"
+      >
+        {timeSlots.map(t => {
+          const isSelected = value === t
+          return (
+            <button
+              key={t}
+              type="button"
+              data-selected={isSelected ? 'true' : 'false'}
+              onClick={() => {
+                onChange(t)
+                onClose()
+              }}
+              className={`w-full text-center py-2 text-xs font-bold transition cursor-pointer ${
+                isSelected
+                  ? 'bg-orange-600 text-white'
+                  : 'text-white/85 hover:bg-white/[0.06]'
+              }`}
+            >
+              {t}
+            </button>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────
    Component
 ───────────────────────────────────────────────────────────── */
 export default function EventRequestCreate() {
@@ -190,6 +432,18 @@ export default function EventRequestCreate() {
     customLocation: '',
   })
 
+  // Date and Time split fields for easy picker configuration
+  const [startDate, setStartDate] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [endTime, setEndTime] = useState('')
+
+  // Date/Time custom popover visibility
+  const [showStartCalendar, setShowStartCalendar] = useState(false)
+  const [showStartTimeList, setShowStartTimeList] = useState(false)
+  const [showEndCalendar, setShowEndCalendar] = useState(false)
+  const [showEndTimeList, setShowEndTimeList] = useState(false)
+
   const [bannerUrl, setBannerUrl] = useState('')
   const [sampleBanners, setSampleBanners] = useState<any[]>([])
   
@@ -207,12 +461,41 @@ export default function EventRequestCreate() {
   const [error, setError] = useState<string | null>(null)
   const [timeErrors, setTimeErrors] = useState<string[]>([])
 
-  /* ── Auto-init start time to +30 min from now ── */
+  /* ── Auto-init start time to +30 min and end time to +1 hour ── */
   useEffect(() => {
-    const d = new Date()
-    d.setMinutes(d.getMinutes() + 30, 0, 0)
-    setFormData(p => ({ ...p, preferredStart: toLocalISO(d) }))
+    const now = new Date()
+    const start = new Date(now.getTime() + 30 * 60000)
+    const end = new Date(start.getTime() + 60 * 60000)
+    
+    const sy = start.getFullYear()
+    const sm = padZ(start.getMonth() + 1)
+    const sd = padZ(start.getDate())
+    const sh = padZ(start.getHours())
+    const smin = padZ(start.getMinutes())
+    
+    const ey = end.getFullYear()
+    const em = padZ(end.getMonth() + 1)
+    const ed = padZ(end.getDate())
+    const eh = padZ(end.getHours())
+    const emin = padZ(end.getMinutes())
+    
+    setStartDate(`${sy}-${sm}-${sd}`)
+    setStartTime(`${sh}:${smin}`)
+    setEndDate(`${ey}-${em}-${ed}`)
+    setEndTime(`${eh}:${emin}`)
   }, [])
+
+  /* ── Sync split date/time fields to formData ── */
+  useEffect(() => {
+    const startStr = startDate && startTime ? `${startDate}T${startTime}` : ''
+    const endStr = endDate && endTime ? `${endDate}T${endTime}` : ''
+    setFormData(p => ({
+      ...p,
+      preferredStart: startStr,
+      preferredEnd: endStr
+    }))
+    setTimeErrors(validateEventDateTime(startStr, endStr, flowType).errors)
+  }, [startDate, startTime, endDate, endTime, flowType])
 
   /* ── Sample banners ── */
   useEffect(() => {
@@ -323,9 +606,6 @@ export default function EventRequestCreate() {
     const { name, value } = e.target
     setFormData(p => {
       const nd = { ...p, [name]: value }
-      if (name === 'preferredStart' || name === 'preferredEnd') {
-        setTimeErrors(validateEventDateTime(nd.preferredStart, nd.preferredEnd, flowType).errors)
-      }
       return nd
     })
   }
@@ -394,34 +674,45 @@ export default function EventRequestCreate() {
           STEP 1 — Flow type selector (native theme)
       ══════════════════════════════════════════════ */}
       {!flowType && (
-        <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-4 py-8">
-          <div className="w-full max-w-lg">
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white mb-1.5">
+        <div className="relative flex items-center justify-center min-h-[calc(100vh-80px)] px-8 py-16 md:py-24 overflow-hidden">
+          {/* Vibrant ambient background glow bubbles */}
+          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-orange-500/10 dark:bg-orange-500/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-amber-500/10 dark:bg-amber-500/5 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }} />
+
+          <div className="relative w-full max-w-3xl z-10">
+            <div className="text-center mb-10">
+              <span className="text-[11px] font-black uppercase tracking-[0.3em] text-orange-500 bg-orange-500/10 px-3 py-1 rounded-full">
+                Bước 1
+              </span>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white mt-4 mb-3">
                 Tạo sự kiện mới
               </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Chọn loại hình sự kiện phù hợp để tiếp tục
+              <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 max-w-lg mx-auto font-medium leading-relaxed">
+                Chọn loại hình sự kiện phù hợp để tiếp tục thiết lập biểu mẫu thông tin chi tiết
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
               {[
-                { type: 'UNIVERSITY' as const, icon: Building2, label: 'Sự Kiện Trường Học', sub: 'Gửi đề xuất, chờ phê duyệt' },
-                { type: 'INDEPENDENT' as const, icon: Globe, label: 'Sự Kiện Tự Do', sub: 'Tự chủ địa điểm & thời gian' },
+                { type: 'UNIVERSITY' as const, icon: Building2, label: 'Sự Kiện Trường Học', sub: 'Gửi đề xuất phê duyệt đến ban giám hiệu nhà trường. Phù hợp cho các sự kiện học thuật, câu lạc bộ, hội thảo chính quy.' },
+                { type: 'INDEPENDENT' as const, icon: Globe, label: 'Sự Kiện Tự Do', sub: 'Tự chủ hoàn toàn về thời gian, địa điểm và quy trình phê duyệt. Phù hợp cho hội nhóm, workshop, giao lưu tự phát.' },
               ].map(({ type, icon: Icon, label, sub }) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setFlowType(type)}
-                  className="group cursor-pointer p-5 rounded-2xl bg-white dark:bg-slate-900 hover:bg-orange-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:border-orange-400 dark:hover:border-orange-500/50 shadow-sm transition-all duration-300 hover:-translate-y-0.5 text-center flex flex-col items-center gap-3"
+                  className="group cursor-pointer p-8 rounded-3xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 hover:border-orange-500/50 dark:hover:border-orange-500/40 shadow-2xl hover:shadow-orange-500/[0.05] hover:bg-white/90 dark:hover:bg-slate-900/90 transition-all duration-500 hover:-translate-y-1 text-center flex flex-col items-center gap-6"
                 >
-                  <div className="w-11 h-11 rounded-xl bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform">
-                    <Icon className="w-5 h-5" />
+                  <div className="w-16 h-16 rounded-2xl bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 group-hover:bg-orange-600 group-hover:text-white transition-all duration-550 shadow-md">
+                    <Icon className="w-7 h-7" />
                   </div>
-                  <div>
-                    <p className="text-sm font-black text-slate-800 dark:text-white mb-0.5">{label}</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{sub}</p>
+                  <div className="space-y-2.5">
+                    <h3 className="text-lg font-black text-slate-800 dark:text-white group-hover:text-orange-500 dark:group-hover:text-orange-400 transition-colors">
+                      {label}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed px-2">
+                      {sub}
+                    </p>
                   </div>
                 </button>
               ))}
@@ -431,9 +722,9 @@ export default function EventRequestCreate() {
               <button
                 type="button"
                 onClick={() => navigate('/dashboard/event-requests')}
-                className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-orange-500 font-semibold transition"
+                className="inline-flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 hover:text-orange-500 dark:hover:text-orange-450 font-black tracking-wider uppercase transition cursor-pointer"
               >
-                <ChevronLeft className="w-3.5 h-3.5" /> Quay lại danh sách
+                <ChevronLeft className="w-4 h-4" /> Quay lại danh sách
               </button>
             </div>
           </div>
@@ -462,13 +753,13 @@ export default function EventRequestCreate() {
           ══════════════════════════════════════════════ */}
           <form
             onSubmit={handleSubmit}
-            className="relative z-10 h-full overflow-hidden flex items-center px-12 lg:px-20 max-w-[1500px] mx-auto gap-16 w-full pt-4 pb-4"
+            className="relative z-10 h-full overflow-hidden flex items-start px-6 md:px-12 lg:px-16 max-w-[950px] mx-auto gap-10 w-full pt-10 pb-4"
           >
 
             {/* ══════════════════════════════════════════
                 LEFT COLUMN — Square cover + controls
             ══════════════════════════════════════════ */}
-            <div className="w-[300px] md:w-[340px] lg:w-[370px] shrink-0 flex flex-col gap-3 overflow-hidden">
+            <div className="w-[300px] md:w-[340px] lg:w-[360px] shrink-0 flex flex-col gap-3 overflow-hidden mt-0 pt-0">
 
               {/* ── Square cover image ── */}
               <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-black/70 group">
@@ -504,25 +795,24 @@ export default function EventRequestCreate() {
                 </div>
               </div>
 
-              {/* ── Shuffle random template button ── */}
-              <button
-                type="button"
-                onClick={handleShuffleBanner}
-                disabled={sampleBanners.length === 0}
-                className="flex items-center justify-center gap-2 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.08] text-[11px] font-semibold transition-all disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <RefreshCw className="w-3 h-3" />
-                Ảnh ngẫu nhiên
-              </button>
-
-              {/* ── Back link + flow badge ── */}
-              <div className="flex items-center justify-between">
+              {/* ── Banner footer controls: Left = Back button, Right = Shuffle icon button ── */}
+              <div className="flex items-center justify-between mt-1.5 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => { setFlowType(null); setError(null); setTimeErrors([]) }}
-                  className="flex items-center gap-1 text-white/50 hover:text-white text-[11px] font-semibold transition cursor-pointer"
+                  className="flex items-center gap-1.5 text-white/50 hover:text-white text-[11px] font-bold transition cursor-pointer"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" /> Thay đổi loại hình
+                  <ChevronLeft className="w-3.5 h-3.5" /> Thay đổi
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleShuffleBanner}
+                  disabled={sampleBanners.length === 0}
+                  aria-label="Ảnh ngẫu nhiên"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.08] transition-all disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -530,7 +820,7 @@ export default function EventRequestCreate() {
             {/* ══════════════════════════════════════════
                 RIGHT COLUMN — Floating form canvas
             ══════════════════════════════════════════ */}
-            <div className="flex-1 flex flex-col justify-between py-2 overflow-hidden h-full min-w-0">
+            <div className="flex-1 flex flex-col justify-between py-0 overflow-hidden h-full min-w-0 mt-0 pt-0">
 
               {/* ── Header metadata row: flow label + visibility toggle ── */}
               <div className="flex items-center justify-between mb-2 flex-shrink-0">
@@ -560,24 +850,30 @@ export default function EventRequestCreate() {
                   {showPublicDropdown && (
                     <>
                       <div className="fixed inset-0 z-20" onClick={() => setShowPublicDropdown(false)} />
-                      <div className="absolute right-0 mt-1.5 z-30 bg-[#141416] border border-white/10 rounded-xl overflow-hidden shadow-2xl w-32 py-1">
+                      <div className="absolute right-0 mt-1.5 z-30 bg-[#141416]/98 backdrop-blur-2xl border border-white/10 rounded-xl overflow-hidden shadow-2xl w-80 py-1.5 animate-fadeIn">
                         <button
                           type="button"
                           onClick={() => { setIsPublic(true); setShowPublicDropdown(false) }}
-                          className={`w-full text-left px-3 py-2 text-[11px] font-semibold flex items-center gap-2 transition cursor-pointer ${
-                            isPublic ? 'text-orange-400 bg-white/[0.04]' : 'text-neutral-400 hover:bg-white/[0.04] hover:text-white'
-                          }`}
+                          className="w-full text-left px-4 py-2.5 hover:bg-white/[0.04] flex items-start gap-3 transition cursor-pointer"
                         >
-                          <Globe className="w-3.5 h-3.5" /> Công khai
+                          <Globe className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-bold ${isPublic ? 'text-white' : 'text-neutral-300'}`}>Công khai</p>
+                            <p className="text-[10px] text-neutral-400 font-medium mt-0.5 leading-normal">Hiển thị trên lịch của bạn và có đủ điều kiện được đề xuất.</p>
+                          </div>
+                          {isPublic && <Check className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />}
                         </button>
                         <button
                           type="button"
                           onClick={() => { setIsPublic(false); setShowPublicDropdown(false) }}
-                          className={`w-full text-left px-3 py-2 text-[11px] font-semibold flex items-center gap-2 transition cursor-pointer ${
-                            !isPublic ? 'text-orange-400 bg-white/[0.04]' : 'text-neutral-400 hover:bg-white/[0.04] hover:text-white'
-                          }`}
+                          className="w-full text-left px-4 py-2.5 hover:bg-white/[0.04] flex items-start gap-3 transition cursor-pointer border-t border-white/[0.05]"
                         >
-                          <Lock className="w-3.5 h-3.5" /> Riêng tư
+                          <Lock className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-bold ${!isPublic ? 'text-white' : 'text-neutral-300'}`}>Riêng tư</p>
+                            <p className="text-[10px] text-neutral-400 font-medium mt-0.5 leading-normal">Không liệt kê. Chỉ những người có liên kết mới có thể đăng ký.</p>
+                          </div>
+                          {!isPublic && <Check className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />}
                         </button>
                       </div>
                     </>
@@ -600,51 +896,102 @@ export default function EventRequestCreate() {
               {/* ── Time — borderless rows ── */}
               <div className="mb-2 flex-shrink-0">
                 {/* Start */}
-                <div className="flex items-center gap-3 py-1.5 border-b border-white/[0.07]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0 ml-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50 mb-0.5">Bắt đầu</p>
-                    {formData.preferredStart ? (
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-sm font-semibold text-white/90">{fmtDate(formData.preferredStart)}</span>
-                        <span className="text-sm font-black text-orange-400">{fmtTime(formData.preferredStart)}</span>
-                      </div>
-                    ) : (
-                      <input type="datetime-local" name="preferredStart" value={formData.preferredStart}
-                        onChange={handleChange} max="9999-12-31T23:59"
-                        className="w-full bg-transparent text-white/50 text-sm font-medium focus:outline-none p-0 border-0 focus:text-white/80 transition-colors" />
+                <div className="flex items-center justify-between py-1.5 border-b border-white/[0.07]">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Bắt đầu</span>
+                  </div>
+                  <div className="flex items-center gap-2 relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowStartCalendar(v => !v)
+                        setShowStartTimeList(false)
+                        setShowEndCalendar(false)
+                        setShowEndTimeList(false)
+                      }}
+                      className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                    >
+                      {startDate ? formatDateVietnamese(startDate) : 'Chọn ngày'}
+                    </button>
+                    {showStartCalendar && (
+                      <CalendarPopover
+                        value={startDate}
+                        onChange={setStartDate}
+                        onClose={() => setShowStartCalendar(false)}
+                      />
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowStartTimeList(v => !v)
+                        setShowStartCalendar(false)
+                        setShowEndCalendar(false)
+                        setShowEndTimeList(false)
+                      }}
+                      className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                    >
+                      {startTime || 'Chọn giờ'}
+                    </button>
+                    {showStartTimeList && (
+                      <TimePopover
+                        value={startTime}
+                        onChange={setStartTime}
+                        onClose={() => setShowStartTimeList(false)}
+                      />
                     )}
                   </div>
-                  {formData.preferredStart && (
-                    <button type="button" onClick={() => setFormData(p => ({ ...p, preferredStart: '' }))}
-                      className="text-white/15 hover:text-white/50 transition flex-shrink-0 cursor-pointer">
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
                 </div>
 
                 {/* End */}
-                <div className="flex items-center gap-3 py-1.5 border-b border-white/[0.05]">
-                  <span className="w-1.5 h-1.5 rounded-full border border-white/22 flex-shrink-0 ml-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50 mb-0.5">Kết thúc</p>
-                    {formData.preferredEnd ? (
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-sm font-semibold text-white/90">{fmtDate(formData.preferredEnd)}</span>
-                        <span className="text-sm font-black text-white/50">{fmtTime(formData.preferredEnd)}</span>
-                      </div>
-                    ) : (
-                      <input type="datetime-local" name="preferredEnd" value={formData.preferredEnd}
-                        onChange={handleChange} max="9999-12-31T23:59"
-                        className="w-full bg-transparent text-white/50 text-sm font-medium focus:outline-none p-0 border-0 focus:text-white/80 transition-colors" />
+                <div className="flex items-center justify-between py-1.5 border-b border-white/[0.05]">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full border border-white/22 flex-shrink-0" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Kết thúc</span>
+                  </div>
+                  <div className="flex items-center gap-2 relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEndCalendar(v => !v)
+                        setShowStartCalendar(false)
+                        setShowStartTimeList(false)
+                        setShowEndTimeList(false)
+                      }}
+                      className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                    >
+                      {endDate ? formatDateVietnamese(endDate) : 'Chọn ngày'}
+                    </button>
+                    {showEndCalendar && (
+                      <CalendarPopover
+                        value={endDate}
+                        onChange={setEndDate}
+                        onClose={() => setShowEndCalendar(false)}
+                        minDate={startDate}
+                      />
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEndTimeList(v => !v)
+                        setShowStartCalendar(false)
+                        setShowStartTimeList(false)
+                        setShowEndCalendar(false)
+                      }}
+                      className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                    >
+                      {endTime || 'Chọn giờ'}
+                    </button>
+                    {showEndTimeList && (
+                      <TimePopover
+                        value={endTime}
+                        onChange={setEndTime}
+                        onClose={() => setShowEndTimeList(false)}
+                      />
                     )}
                   </div>
-                  {formData.preferredEnd && (
-                    <button type="button" onClick={() => setFormData(p => ({ ...p, preferredEnd: '' }))}
-                      className="text-white/15 hover:text-white/50 transition flex-shrink-0 cursor-pointer">
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
                 </div>
               </div>
 
@@ -786,7 +1133,7 @@ export default function EventRequestCreate() {
                     onClick={() => { handleRemoveBanner(); setIsCoverModalOpen(false) }}
                     className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-1 transition cursor-pointer"
                   >
-                    <Trash2 className="w-3 h-3" /> Xoá ảnh
+                    <Trash2 className="w-3.5 h-3.5" /> Xoá ảnh
                   </button>
                 )}
                 <button type="button" onClick={() => setIsCoverModalOpen(false)}
@@ -886,4 +1233,3 @@ export default function EventRequestCreate() {
     </div>
   )
 }
-
