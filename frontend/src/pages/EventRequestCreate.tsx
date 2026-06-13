@@ -696,11 +696,13 @@ export default function EventRequestCreate() {
     const redirectUri = `http://localhost:8080/api/v1/auth/${platform}/callback`;
     
     let connectUrl = '';
+    let isMockMode = false;
     if (platform === 'zoom') {
       const zoomClientId = import.meta.env.VITE_ZOOM_CLIENT_ID || '';
       const isMock = !zoomClientId || zoomClientId.includes('mock');
       if (isMock) {
         connectUrl = redirectUri;
+        isMockMode = true;
       } else {
         connectUrl = `https://zoom.us/oauth/authorize?client_id=${zoomClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}`;
       }
@@ -709,16 +711,63 @@ export default function EventRequestCreate() {
       const isMock = !googleClientId || googleClientId.includes('mock') || googleClientId.startsWith('322125152672');
       if (isMock) {
         connectUrl = redirectUri;
+        isMockMode = true;
       } else {
         connectUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${googleClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}`;
       }
     }
 
     const popup = window.open(
-      connectUrl,
+      isMockMode ? 'about:blank' : connectUrl,
       'OAuthPopup',
       `width=${width},height=${height},top=${top},left=${left}`
     );
+
+    if (isMockMode && popup) {
+      const email = platform === 'zoom' ? 'organizer.zoom@fpt.edu.vn' : 'organizer.meet@fpt.edu.vn';
+      const meetingLink = platform === 'zoom' 
+        ? 'https://fpt-edu.zoom.us/j/84920491029?pwd=YmUxM2NjO3M4MTk2M2Mx'
+        : 'https://meet.google.com/abc-defg-hij';
+      
+      popup.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Authentication Success</title>
+          <meta charset="utf-8" />
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0c0c0d; color: white; -webkit-font-smoothing: antialiased;">
+          <div style="text-align: center; padding: 24px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <h2 style="font-size: 16px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.01em;">Kết nối tài khoản thành công!</h2>
+            <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin: 0 0 16px 0;">Đang đồng bộ hóa dịch vụ...</p>
+            <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.15); border-top-color: #f97316; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+          </div>
+          <style>
+            @keyframes spin { to { transform: rotate(360deg); } }
+          </style>
+          <script>
+            setTimeout(() => {
+              if (window.opener) {
+                window.opener.postMessage({
+                  type: "OAUTH_SUCCESS",
+                  platform: "${platform.toUpperCase()}",
+                  email: "${email}",
+                  meetingLink: "${meetingLink}"
+                }, window.opener.location.origin);
+              }
+              window.close();
+            }, 1000);
+          </script>
+        </body>
+        </html>
+      `);
+      popup.document.close();
+    }
 
     const timer = setInterval(() => {
       if (!popup || popup.closed) {
@@ -1859,13 +1908,21 @@ export default function EventRequestCreate() {
 
               {/* ── Validation errors ── */}
               {(timeErrors.length > 0 || error) && (
-                <div className="mb-2 px-3.5 py-2 bg-red-950/30 border border-red-800/22 rounded-xl flex items-start gap-2 flex-shrink-0">
-                  <AlertCircle className="w-3.5 h-3.5 text-red-400/80 flex-shrink-0 mt-0.5" />
+                <div className={`mb-2 px-3.5 py-2 border rounded-xl flex items-start gap-2 flex-shrink-0 ${
+                  isDarkMode 
+                    ? 'bg-red-950/30 border-red-800/22' 
+                    : 'bg-red-50 border-red-200'
+                }`}>
+                  <AlertCircle className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${isDarkMode ? 'text-red-400/80' : 'text-red-600'}`} />
                   <div className="space-y-0.5">
                     {timeErrors.slice(0, 2).map((e, i) => (
-                      <p key={i} className="text-[11px] text-red-300/80 font-medium leading-snug">{e}</p>
+                      <p key={i} className={`text-[11px] font-medium leading-snug ${
+                        isDarkMode ? 'text-red-300/80' : 'text-red-700'
+                      }`}>{e}</p>
                     ))}
-                    {error && <p className="text-[11px] text-red-300/80 font-medium leading-snug">{error}</p>}
+                    {error && <p className={`text-[11px] font-medium leading-snug ${
+                      isDarkMode ? 'text-red-300/80' : 'text-red-700'
+                    }`}>{error}</p>}
                   </div>
                 </div>
               )}
