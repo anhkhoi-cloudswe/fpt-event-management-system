@@ -21,6 +21,7 @@ import {
   Check,
 } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
+import { useAuth } from '../contexts/AuthContext'
 import { uploadEventBanner, deleteEventBanner, validateImageFile } from '../utils/imageUpload'
 
 /* ─────────────────────────────────────────────────────────────
@@ -638,6 +639,7 @@ function TimePopover({ value, onChange, onClose, showDuration, startDateTimeStr,
 export default function EventRequestCreate() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { user } = useAuth()
 
   const [flowType, setFlowType] = useState<'UNIVERSITY' | 'INDEPENDENT' | null>(null)
   const [eventFormat, setEventFormat] = useState<'ONLINE' | 'ONSITE' | 'HYBRID'>('ONSITE')
@@ -692,82 +694,22 @@ export default function EventRequestCreate() {
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
     
-    // Explicitly append encoded redirect_uri pointing to our backend gateway receiver node
     const redirectUri = `http://localhost:8080/api/v1/auth/${platform}/callback`;
     
     let connectUrl = '';
-    let isMockMode = false;
     if (platform === 'zoom') {
-      const zoomClientId = import.meta.env.VITE_ZOOM_CLIENT_ID || '';
-      const isMock = !zoomClientId || zoomClientId.includes('mock');
-      if (isMock) {
-        connectUrl = redirectUri;
-        isMockMode = true;
-      } else {
-        connectUrl = `https://zoom.us/oauth/authorize?client_id=${zoomClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}`;
-      }
+      const zoomClientId = import.meta.env.VITE_ZOOM_CLIENT_ID || 'mock-zoom-client-id-never-blank';
+      connectUrl = `https://zoom.us/oauth/authorize?client_id=${zoomClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}`;
     } else {
-      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-      const isMock = !googleClientId || googleClientId.includes('mock') || googleClientId.startsWith('322125152672');
-      if (isMock) {
-        connectUrl = redirectUri;
-        isMockMode = true;
-      } else {
-        connectUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${googleClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}`;
-      }
+      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '322125152672-bpiub6ajj9bkoec6akto9r1hnljtitt9.apps.googleusercontent.com';
+      connectUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${googleClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}`;
     }
 
     const popup = window.open(
-      isMockMode ? 'about:blank' : connectUrl,
+      connectUrl,
       'OAuthPopup',
       `width=${width},height=${height},top=${top},left=${left}`
     );
-
-    if (isMockMode && popup) {
-      const email = platform === 'zoom' ? 'organizer.zoom@fpt.edu.vn' : 'organizer.meet@fpt.edu.vn';
-      const meetingLink = platform === 'zoom' 
-        ? 'https://fpt-edu.zoom.us/j/84920491029?pwd=YmUxM2NjO3M4MTk2M2Mx'
-        : 'https://meet.google.com/abc-defg-hij';
-      
-      popup.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Authentication Success</title>
-          <meta charset="utf-8" />
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0c0c0d; color: white; -webkit-font-smoothing: antialiased;">
-          <div style="text-align: center; padding: 24px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </div>
-            <h2 style="font-size: 16px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.01em;">Kết nối tài khoản thành công!</h2>
-            <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin: 0 0 16px 0;">Đang đồng bộ hóa dịch vụ...</p>
-            <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.15); border-top-color: #f97316; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-          </div>
-          <style>
-            @keyframes spin { to { transform: rotate(360deg); } }
-          </style>
-          <script>
-            setTimeout(() => {
-              if (window.opener) {
-                window.opener.postMessage({
-                  type: "OAUTH_SUCCESS",
-                  platform: "${platform.toUpperCase()}",
-                  email: "${email}",
-                  meetingLink: "${meetingLink}"
-                }, window.opener.location.origin);
-              }
-              window.close();
-            }, 1000);
-          </script>
-        </body>
-        </html>
-      `);
-      popup.document.close();
-    }
 
     const timer = setInterval(() => {
       if (!popup || popup.closed) {

@@ -211,10 +211,20 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 		}
 	}
 
-	email := "organizer.zoom@fpt.edu.vn"
+	email := request.Headers["X-User-Email"]
+	if email == "" {
+		email = request.Headers["x-user-email"]
+	}
+	if email == "" {
+		if platform == "google" {
+			email = "organizer.meet@fpt.edu.vn"
+		} else {
+			email = "organizer.zoom@fpt.edu.vn"
+		}
+	}
+
 	meetingLink := "https://fpt-edu.zoom.us/j/84920491029?pwd=YmUxM2NjO3M4MTk2M2Mx"
 	if platform == "google" {
-		email = "organizer.meet@fpt.edu.vn"
 		meetingLink = "https://meet.google.com/abc-defg-hij"
 	}
 
