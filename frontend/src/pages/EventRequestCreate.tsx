@@ -15,45 +15,19 @@ import {
   Camera,
   Users,
   AlignLeft,
-  Clock,
+  RefreshCw,
+  Lock,
 } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
 import { uploadEventBanner, deleteEventBanner, validateImageFile } from '../utils/imageUpload'
 
 /* ─────────────────────────────────────────────────────────────
-   DateTime Validation
+   DateTime format helpers
 ───────────────────────────────────────────────────────────── */
-function validateEventDateTime(
-  startTimeStr: string,
-  endTimeStr: string,
-): { valid: boolean; errors: string[] } {
-  const errors: string[] = []
-  if (!startTimeStr || !endTimeStr) return { valid: true, errors: [] }
-  const startTime = new Date(startTimeStr + ':00')
-  const endTime = new Date(endTimeStr + ':00')
-  if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-    errors.push('Định dạng thời gian không hợp lệ')
-    return { valid: false, errors }
-  }
-  const now = new Date()
-  if (startTime <= now) errors.push('Thời gian bắt đầu không được trong quá khứ')
-  if (endTime <= startTime) errors.push('Thời gian kết thúc phải sau thời gian bắt đầu')
-  const sd = startTime.toLocaleDateString('en-CA')
-  const ed = endTime.toLocaleDateString('en-CA')
-  if (sd !== ed) errors.push('Sự kiện phải diễn ra trong cùng một ngày')
-  const mins = (endTime.getTime() - startTime.getTime()) / 60000
-  if (mins < 60) errors.push('Sự kiện phải kéo dài ít nhất 60 phút')
-  if (mins > 18 * 60) errors.push('Sự kiện không được kéo dài quá 18 giờ')
-  const hoursAway = (startTime.getTime() - now.getTime()) / 3600000
-  if (hoursAway < 24) errors.push('Cần lên lịch trước ít nhất 24 giờ')
-  if (hoursAway > 365 * 24) errors.push('Không được lên lịch quá 365 ngày')
-  const sh = startTime.getHours(), sm = startTime.getMinutes()
-  if (sh < 7 || sh > 21 || (sh === 21 && sm > 0)) errors.push('Giờ bắt đầu: 07:00 – 21:00')
-  const eh = endTime.getHours(), em = endTime.getMinutes()
-  if (eh > 21 || (eh === 21 && em > 0)) errors.push('Cần kết thúc trước 21:00')
-  return { valid: errors.length === 0, errors }
+function padZ(n: number) { return String(n).padStart(2, '0') }
+function toLocalISO(d: Date) {
+  return `${d.getFullYear()}-${padZ(d.getMonth()+1)}-${padZ(d.getDate())}T${padZ(d.getHours())}:${padZ(d.getMinutes())}`
 }
-
 function fmtDate(iso: string) {
   if (!iso) return ''
   const d = new Date(iso + ':00')
@@ -68,10 +42,62 @@ function fmtTime(iso: string) {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Cinema full-page CSS — makes the entire shell (header,
-   sidebar, main) transparent so the fixed backdrop bleeds
-   through everywhere. Targets HTML element types, works in
-   both light and dark Layout themes.
+   Validation — flow-type-aware
+   UNIVERSITY : same-day, 07:00–21:00, min 60 min, max 18 h, 24 h lead
+   INDEPENDENT: flexible hours, max 30-day span, min 60 min
+───────────────────────────────────────────────────────────── */
+function validateEventDateTime(
+  startStr: string,
+  endStr: string,
+  flowType: 'UNIVERSITY' | 'INDEPENDENT' | null,
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = []
+  if (!startStr || !endStr) return { valid: true, errors: [] }
+
+  const start = new Date(startStr + ':00')
+  const end   = new Date(endStr   + ':00')
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    errors.push('Định dạng thời gian không hợp lệ')
+    return { valid: false, errors }
+  }
+
+  const now  = new Date()
+  const mins = (end.getTime() - start.getTime()) / 60000
+
+  if (start <= now) errors.push('Thời gian bắt đầu không được trong quá khứ')
+  if (end   <= start) errors.push('Thời gian kết thúc phải sau thời gian bắt đầu')
+  if (mins  <  60)   errors.push('Sự kiện phải kéo dài ít nhất 60 phút')
+
+  if (flowType === 'UNIVERSITY') {
+    const sd = start.toLocaleDateString('en-CA')
+    const ed = end.toLocaleDateString('en-CA')
+    if (sd !== ed) errors.push('Sự kiện trường học phải diễn ra trong cùng một ngày')
+
+    const sh = start.getHours(), sm = start.getMinutes()
+    if (sh < 7 || sh > 21 || (sh === 21 && sm > 0))
+      errors.push('Giờ bắt đầu: 07:00 – 21:00')
+
+    const eh = end.getHours(), em = end.getMinutes()
+    if (eh > 21 || (eh === 21 && em > 0))
+      errors.push('Cần kết thúc trước 21:00')
+
+    if (mins > 18 * 60) errors.push('Sự kiện không được kéo dài quá 18 giờ')
+
+    const hoursAway = (start.getTime() - now.getTime()) / 3600000
+    if (hoursAway < 24) errors.push('Cần lên lịch trước ít nhất 24 giờ')
+    if (hoursAway > 365 * 24) errors.push('Không được lên lịch quá 365 ngày')
+
+  } else if (flowType === 'INDEPENDENT') {
+    const days = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+    if (days > 30) errors.push('Sự kiện tự do không được kéo dài quá 30 ngày liên tiếp')
+  }
+
+  return { valid: errors.length === 0, errors }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Cinema full-page CSS — transparent shell so backdrop bleeds
+   through header + sidebar regardless of Layout theme mode.
 ───────────────────────────────────────────────────────────── */
 const ERC_STYLE_ID = 'erc-cinema-fullpage-style'
 const ERC_CSS = `
@@ -83,9 +109,8 @@ const ERC_CSS = `
     background: transparent !important;
   }
 
-  /* Header — dark frosted glass */
   html.erc-cinema header {
-    background: rgba(12, 12, 13, 0.72) !important;
+    background: rgba(12,12,13,0.72) !important;
     backdrop-filter: blur(28px) saturate(130%) !important;
     -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
     border-bottom-color: rgba(255,255,255,0.055) !important;
@@ -105,14 +130,13 @@ const ERC_CSS = `
   }
   html.erc-cinema header button[class*="from-orange"],
   html.erc-cinema header button[class*="bg-gradient"] {
-    background: linear-gradient(to bottom right, #ea580c, #f97316) !important;
+    background: linear-gradient(to bottom right,#ea580c,#f97316) !important;
   }
   html.erc-cinema header [class*="text-orange"],
   html.erc-cinema header [class*="text-fpt"] { color: rgba(255,165,40,0.95) !important; }
 
-  /* Sidebar — same dark glass */
   html.erc-cinema aside {
-    background: rgba(12, 12, 13, 0.62) !important;
+    background: rgba(12,12,13,0.62) !important;
     backdrop-filter: blur(28px) saturate(130%) !important;
     -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
     border-right-color: rgba(255,255,255,0.055) !important;
@@ -134,7 +158,6 @@ const ERC_CSS = `
   html.erc-cinema aside a[class*="bg-orange"] *,
   html.erc-cinema aside a[class*="bg-gradient"] * { color: rgba(251,146,60,0.95) !important; }
 
-  /* Main — strip all constraints */
   html.erc-cinema main { overflow: hidden !important; }
   html.erc-cinema main > div {
     background: transparent !important;
@@ -153,7 +176,9 @@ export default function EventRequestCreate() {
 
   const [flowType, setFlowType] = useState<'UNIVERSITY' | 'INDEPENDENT' | null>(null)
   const [eventFormat, setEventFormat] = useState<'ONLINE' | 'ONSITE' | 'HYBRID'>('ONSITE')
+  const [isPublic, setIsPublic] = useState(true)
   const [descOpen, setDescOpen] = useState(false)
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -175,7 +200,14 @@ export default function EventRequestCreate() {
   const [timeErrors, setTimeErrors] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  /* Load sample banners */
+  /* ── Auto-init start time to +30 min from now ── */
+  useEffect(() => {
+    const d = new Date()
+    d.setMinutes(d.getMinutes() + 30, 0, 0)
+    setFormData(p => ({ ...p, preferredStart: toLocalISO(d) }))
+  }, [])
+
+  /* ── Sample banners ── */
   useEffect(() => {
     fetch('/api/sample-banners')
       .then(r => (r.ok ? r.json() : null))
@@ -188,7 +220,7 @@ export default function EventRequestCreate() {
       .catch(() => {})
   }, [])
 
-  /* Cinema mode: inject/remove CSS + html class */
+  /* ── Cinema mode ── */
   useEffect(() => {
     if (flowType) {
       if (!document.getElementById(ERC_STYLE_ID)) {
@@ -208,7 +240,15 @@ export default function EventRequestCreate() {
     }
   }, [flowType])
 
-  /* Banner handlers */
+  /* ── Shuffle banner ── */
+  const handleShuffleBanner = () => {
+    if (sampleBanners.length === 0) return
+    const pool = sampleBanners.filter(b => b.url !== bannerUrl)
+    const next = pool.length > 0 ? pool : sampleBanners
+    setBannerUrl(next[Math.floor(Math.random() * next.length)].url)
+  }
+
+  /* ── Banner upload ── */
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -237,24 +277,34 @@ export default function EventRequestCreate() {
     navigate('/dashboard/event-requests')
   }
 
+  /* ── Field change ── */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setFormData(p => ({ ...p, [name]: value }))
-    if (name === 'preferredStart' || name === 'preferredEnd') {
-      const nd = { ...formData, [name]: value }
-      setTimeErrors(validateEventDateTime(nd.preferredStart, nd.preferredEnd).errors)
-    }
+    setFormData(p => {
+      const nd = { ...p, [name]: value }
+      if (name === 'preferredStart' || name === 'preferredEnd') {
+        setTimeErrors(validateEventDateTime(nd.preferredStart, nd.preferredEnd, flowType).errors)
+      }
+      return nd
+    })
   }
 
+  /* ── Submit ── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
     const cap = parseInt(formData.expectedParticipants)
     if (formData.expectedParticipants && (isNaN(cap) || cap < 10 || cap % 10 !== 0)) {
       setError('Số lượng phải tối thiểu 10 và là bội số của 10'); return
     }
-    const tv = validateEventDateTime(formData.preferredStart, formData.preferredEnd)
-    if (!tv.valid) { setError(tv.errors.join(' · ')); return }
+    const tv = validateEventDateTime(formData.preferredStart, formData.preferredEnd, flowType)
+    if (!tv.valid) {
+      setError(tv.errors.join(' · '))
+      tv.errors.forEach(msg => showToast('error', msg))
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const fmt = (s: string) => (s ? s + ':00' : null)
@@ -262,12 +312,13 @@ export default function EventRequestCreate() {
         title: formData.title,
         description: formData.description || null,
         preferredStartTime: fmt(formData.preferredStart),
-        preferredEndTime: fmt(formData.preferredEnd),
-        expectedCapacity: cap || 0,
+        preferredEndTime:   fmt(formData.preferredEnd),
+        expectedCapacity:   cap || 0,
         eventFormat,
         customVenueName: eventFormat !== 'ONLINE' ? formData.customVenueName || null : null,
-        customLocation: eventFormat !== 'ONLINE' ? formData.customLocation || null : null,
+        customLocation:  eventFormat !== 'ONLINE' ? formData.customLocation  || null : null,
         bannerUrl: bannerUrl || null,
+        isPublic,
       }
       const url = flowType === 'UNIVERSITY' ? '/api/event-requests' : '/api/events/independent'
       const res = await fetch(url, {
@@ -288,17 +339,17 @@ export default function EventRequestCreate() {
     } finally { setIsSubmitting(false) }
   }
 
-  const categories = ['ALL', ...Array.from(new Set(sampleBanners.map(b => b.category).filter(Boolean)))]
+  const categories     = ['ALL', ...Array.from(new Set(sampleBanners.map(b => b.category).filter(Boolean)))]
   const filteredBanners = selectedCategory === 'ALL' ? sampleBanners : sampleBanners.filter(b => b.category === selectedCategory)
 
-  /* ═══════════════════════════════════════════════════════════
+  /* ════════════════════════════════════════════════════════════
      RENDER
-  ═══════════════════════════════════════════════════════════ */
+  ════════════════════════════════════════════════════════════ */
   return (
     <div className="h-full">
 
       {/* ══════════════════════════════════════════════
-          STEP 1 — Flow Type Selector (native theme)
+          STEP 1 — Flow type selector (native theme)
       ══════════════════════════════════════════════ */}
       {!flowType && (
         <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-4 py-8">
@@ -348,7 +399,7 @@ export default function EventRequestCreate() {
       )}
 
       {/* ══════════════════════════════════════════════
-          STEP 2 — Full Cinema Form
+          STEP 2 — Cinema form
       ══════════════════════════════════════════════ */}
       {flowType && (
         <>
@@ -357,33 +408,34 @@ export default function EventRequestCreate() {
             <div className="absolute inset-0 bg-[#0c0c0d]" />
             {bannerUrl && (
               <div
-                className="absolute -inset-[30%] opacity-[0.13] saturate-[105%] blur-[170px] scale-110 origin-center transition-all duration-[2000ms]"
+                className="absolute -inset-[30%] opacity-[0.12] saturate-[100%] blur-[180px] scale-110 transition-all duration-[2000ms]"
                 style={{ backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
               />
             )}
-            <div className="absolute inset-0 bg-black/85" />
+            <div className="absolute inset-0 bg-black/87" />
           </div>
 
-          {/* ── Main form — padded container, fixed viewport height ── */}
+          {/* ══════════════════════════════════════════════
+              Main two-column form — locked single viewport
+          ══════════════════════════════════════════════ */}
           <form
             onSubmit={handleSubmit}
-            className="relative z-10 flex gap-5 p-4 md:p-5"
-            style={{ height: 'calc(100vh - 64px)' }}
+            className="relative z-10 h-[calc(100vh-64px)] overflow-hidden flex items-center px-8 md:px-16 lg:px-24 gap-10 lg:gap-14 max-w-[1500px] mx-auto w-full"
           >
 
             {/* ══════════════════════════════════════════
-                LEFT COLUMN — Square image + controls
+                LEFT COLUMN — Square cover + controls
             ══════════════════════════════════════════ */}
-            <div className="hidden md:flex flex-col gap-3 w-full max-w-[340px] lg:max-w-[380px] flex-shrink-0">
+            <div className="w-[300px] md:w-[340px] lg:w-[370px] shrink-0 flex flex-col gap-3">
 
-              {/* Square image preview */}
-              <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-black/60 flex-shrink-0 group">
+              {/* ── Square cover image ── */}
+              <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-black/70 group">
                 {bannerUrl ? (
                   <img src={bannerUrl} alt="Event banner" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-white/[0.04] border border-white/[0.07] flex flex-col items-center justify-center gap-2">
                     <ImageIcon className="w-10 h-10 text-white/10" />
-                    <p className="text-[11px] text-white/20 font-medium">Chưa có ảnh bìa</p>
+                    <p className="text-[11px] text-white/18 font-medium">Chưa có ảnh bìa</p>
                   </div>
                 )}
 
@@ -394,12 +446,16 @@ export default function EventRequestCreate() {
                   </div>
                 )}
 
-                {/* Camera button — bottom-right */}
+                {/* Subtle bottom vignette */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent pointer-events-none" />
+
+                {/* Camera icon — bottom-right; opens dropdown for both actions */}
                 <div className="absolute bottom-3 right-3 z-10">
                   <button
                     type="button"
                     onClick={() => setIsMenuOpen(v => !v)}
-                    className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md text-neutral-800 shadow-xl flex items-center justify-center hover:bg-white hover:scale-105 active:scale-95 transition-all"
+                    aria-label="Quản lý ảnh bìa"
+                    className="w-9 h-9 rounded-full bg-white/88 backdrop-blur-md text-neutral-800 shadow-xl flex items-center justify-center hover:bg-white hover:scale-105 active:scale-95 transition-all"
                   >
                     <Camera className="w-4 h-4" />
                   </button>
@@ -407,23 +463,24 @@ export default function EventRequestCreate() {
                   {isMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)} />
-                      <div className="absolute bottom-11 right-0 z-20 bg-[#141416]/98 backdrop-blur-2xl border border-white/[0.09] rounded-xl overflow-hidden shadow-2xl w-44 py-1">
+                      <div className="absolute bottom-11 right-0 z-20 bg-[#141416]/98 backdrop-blur-2xl border border-white/[0.09] rounded-xl overflow-hidden shadow-2xl w-48 py-1">
                         <button
                           type="button"
                           onClick={() => { setIsBannersModalOpen(true); setIsMenuOpen(false) }}
-                          className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-neutral-300 hover:bg-white/[0.07] hover:text-white flex items-center gap-2 transition"
+                          className="w-full text-left px-3.5 py-2.5 text-[11px] font-semibold text-neutral-300 hover:bg-white/[0.07] hover:text-white flex items-center gap-2 transition"
                         >
-                          <LayoutGrid className="w-3.5 h-3.5 text-orange-400" /> Chọn ảnh mẫu
+                          <LayoutGrid className="w-3.5 h-3.5 text-orange-400" /> Chọn từ thư viện
                         </button>
-                        <label className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-neutral-300 hover:bg-white/[0.07] hover:text-white flex items-center gap-2 cursor-pointer transition">
+                        <label className="w-full text-left px-3.5 py-2.5 text-[11px] font-semibold text-neutral-300 hover:bg-white/[0.07] hover:text-white flex items-center gap-2 cursor-pointer transition">
                           <Upload className="w-3.5 h-3.5 text-orange-400" /> Tải ảnh lên
-                          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => { handleBannerUpload(e); setIsMenuOpen(false) }} />
+                          <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+                            onChange={e => { handleBannerUpload(e); setIsMenuOpen(false) }} />
                         </label>
                         {bannerUrl && (
                           <button
                             type="button"
                             onClick={() => { handleRemoveBanner(); setIsMenuOpen(false) }}
-                            className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-red-400 hover:bg-red-500/[0.09] flex items-center gap-2 transition"
+                            className="w-full text-left px-3.5 py-2.5 text-[11px] font-semibold text-red-400 hover:bg-red-500/[0.09] flex items-center gap-2 transition"
                           >
                             <Trash2 className="w-3.5 h-3.5" /> Xoá ảnh
                           </button>
@@ -432,271 +489,238 @@ export default function EventRequestCreate() {
                     </>
                   )}
                 </div>
-
-                {/* Subtle bottom gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
               </div>
 
-              {/* Sample banner toggle bar — below image */}
+              {/* ── Shuffle random template button ── */}
               <button
                 type="button"
-                onClick={() => setIsBannersModalOpen(true)}
-                className="bg-white/[0.04] backdrop-blur-md border border-white/[0.09] rounded-xl p-3 text-white/60 hover:text-white/90 hover:bg-white/[0.07] text-xs flex items-center justify-between transition-all duration-200 flex-shrink-0"
+                onClick={handleShuffleBanner}
+                disabled={sampleBanners.length === 0}
+                className="flex items-center justify-center gap-2 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/40 hover:text-white/75 hover:bg-white/[0.08] text-[11px] font-semibold transition-all disabled:opacity-25 disabled:cursor-not-allowed"
               >
-                <span className="font-medium">Chọn ảnh mẫu từ thư viện</span>
-                <LayoutGrid className="w-3.5 h-3.5 text-orange-400/70" />
+                <RefreshCw className="w-3 h-3" />
+                Ảnh ngẫu nhiên
               </button>
 
-              {/* Flow badge */}
-              <div className="flex items-center justify-between flex-shrink-0">
+              {/* ── Back link + flow badge ── */}
+              <div className="flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => { setFlowType(null); setError(null); setTimeErrors([]) }}
-                  className="flex items-center gap-1 text-white/35 hover:text-white/70 text-[11px] font-semibold transition"
+                  className="flex items-center gap-1 text-white/30 hover:text-white/65 text-[11px] font-semibold transition"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" /> Thay đổi loại hình
                 </button>
-                <span className="text-[9px] font-black uppercase tracking-[0.18em] text-white/25 border border-white/[0.09] px-2 py-0.5 rounded-md">
-                  {flowType === 'UNIVERSITY' ? 'Trường học' : 'Tự do'}
-                </span>
               </div>
             </div>
 
             {/* ══════════════════════════════════════════
-                RIGHT COLUMN — Floating form on canvas
+                RIGHT COLUMN — Floating form canvas
             ══════════════════════════════════════════ */}
-            <div className="flex-1 min-w-0 flex flex-col overflow-y-auto">
-              <div className="flex flex-col flex-1 max-w-2xl w-full mx-auto pt-8 md:pt-12 pb-2">
+            <div className="flex-1 flex flex-col justify-between py-4 overflow-y-auto max-h-[calc(100vh-120px)] pr-1 min-w-0">
 
-                {/* Mobile: back button */}
-                <div className="flex md:hidden items-center justify-between mb-4">
-                  <button
-                    type="button"
-                    onClick={() => { setFlowType(null); setError(null); setTimeErrors([]) }}
-                    className="flex items-center gap-1 text-white/40 hover:text-white/75 text-[11px] font-semibold transition"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" /> Thay đổi
-                  </button>
-                  <span className="text-[9px] font-black uppercase tracking-widest text-white/25 border border-white/[0.09] px-2 py-0.5 rounded-md">
+              {/* ── Header metadata row: flow label + visibility toggle ── */}
+              <div className="flex items-center justify-between mb-6 flex-shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-black uppercase tracking-[0.22em] text-white/25">
+                    Loại đơn tổ chức:
+                  </span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.22em] text-orange-400/75">
                     {flowType === 'UNIVERSITY' ? 'Trường học' : 'Tự do'}
                   </span>
                 </div>
 
-                {/* ── Event Name — large ghost underline input ── */}
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  required
-                  autoComplete="off"
-                  placeholder="Tên sự kiện..."
-                  className="text-3xl md:text-4xl font-bold tracking-tight bg-transparent border-b border-white/[0.09] focus:border-orange-500/55 text-white placeholder-neutral-700 py-3 focus:outline-none w-full mb-7 transition-colors leading-tight"
-                />
+                {/* Public / Private toggle */}
+                <button
+                  type="button"
+                  onClick={() => setIsPublic(v => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 ${
+                    isPublic
+                      ? 'border-white/[0.12] bg-white/[0.06] text-white/60 hover:bg-white/[0.09]'
+                      : 'border-orange-500/30 bg-orange-500/[0.09] text-orange-400/80'
+                  }`}
+                >
+                  {isPublic
+                    ? <><Globe className="w-3 h-3" /> Công khai</>
+                    : <><Lock  className="w-3 h-3" /> Riêng tư</>}
+                </button>
+              </div>
 
-                {/* ── Time — borderless floating rows (Luma/Quickom style) ── */}
-                <div className="mb-5">
-                  {/* Start */}
-                  <div className="flex items-center gap-3 py-3 border-b border-white/[0.07] group">
-                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0 ml-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28 mb-0.5">Bắt đầu</p>
-                      {formData.preferredStart ? (
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-sm font-semibold text-white/90">{fmtDate(formData.preferredStart)}</span>
-                          <span className="text-sm font-black text-orange-400">{fmtTime(formData.preferredStart)}</span>
-                        </div>
-                      ) : (
-                        <input
-                          type="datetime-local"
-                          name="preferredStart"
-                          value={formData.preferredStart}
-                          onChange={handleChange}
-                          max="9999-12-31T23:59"
-                          className="w-full bg-transparent text-white/50 text-sm font-medium focus:outline-none p-0 border-0 focus:text-white/80 transition-colors"
-                        />
-                      )}
-                    </div>
-                    {formData.preferredStart && (
-                      <button type="button" onClick={() => setFormData(p => ({ ...p, preferredStart: '' }))} className="text-white/15 hover:text-white/50 transition flex-shrink-0">
-                        <X className="w-3 h-3" />
-                      </button>
+              {/* ── Event name ── */}
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                required
+                autoComplete="off"
+                placeholder="Tên sự kiện..."
+                className="text-3xl md:text-4xl font-bold tracking-tight bg-transparent border-b border-white/[0.09] focus:border-orange-500/55 text-white placeholder-neutral-700 py-3 focus:outline-none w-full mb-6 transition-colors leading-tight flex-shrink-0"
+              />
+
+              {/* ── Time — borderless rows ── */}
+              <div className="mb-5 flex-shrink-0">
+                {/* Start */}
+                <div className="flex items-center gap-3 py-3 border-b border-white/[0.07]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0 ml-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28 mb-0.5">Bắt đầu</p>
+                    {formData.preferredStart ? (
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-sm font-semibold text-white/90">{fmtDate(formData.preferredStart)}</span>
+                        <span className="text-sm font-black text-orange-400">{fmtTime(formData.preferredStart)}</span>
+                      </div>
+                    ) : (
+                      <input type="datetime-local" name="preferredStart" value={formData.preferredStart}
+                        onChange={handleChange} max="9999-12-31T23:59"
+                        className="w-full bg-transparent text-white/50 text-sm font-medium focus:outline-none p-0 border-0 focus:text-white/80 transition-colors" />
                     )}
                   </div>
-
-                  {/* End */}
-                  <div className="flex items-center gap-3 py-3 border-b border-white/[0.05] group">
-                    <span className="w-1.5 h-1.5 rounded-full border border-white/20 flex-shrink-0 ml-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28 mb-0.5">Kết thúc</p>
-                      {formData.preferredEnd ? (
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-sm font-semibold text-white/90">{fmtDate(formData.preferredEnd)}</span>
-                          <span className="text-sm font-black text-white/45">{fmtTime(formData.preferredEnd)}</span>
-                        </div>
-                      ) : (
-                        <input
-                          type="datetime-local"
-                          name="preferredEnd"
-                          value={formData.preferredEnd}
-                          onChange={handleChange}
-                          max="9999-12-31T23:59"
-                          className="w-full bg-transparent text-white/50 text-sm font-medium focus:outline-none p-0 border-0 focus:text-white/80 transition-colors"
-                        />
-                      )}
-                    </div>
-                    {formData.preferredEnd && (
-                      <button type="button" onClick={() => setFormData(p => ({ ...p, preferredEnd: '' }))} className="text-white/15 hover:text-white/50 transition flex-shrink-0">
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* ── Event Format — translucent pill dock (Quickom-style) ── */}
-                <div className="mb-5">
-                  <div className="flex items-center gap-1.5 mb-2.5">
-                    <MapPin className="w-3 h-3 text-white/25" />
-                    <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/25">Hình thức</span>
-                  </div>
-
-                  {/* Pill dock */}
-                  <div className="w-full bg-white/[0.04] backdrop-blur-md border border-white/[0.08] rounded-xl p-1 flex gap-1 mb-3">
-                    {(['ONLINE', 'ONSITE', 'HYBRID'] as const).map(fmt => (
-                      <button
-                        key={fmt}
-                        type="button"
-                        onClick={() => setEventFormat(fmt)}
-                        className={`flex-1 text-center py-2 text-xs rounded-lg transition-all duration-200 ${
-                          eventFormat === fmt
-                            ? 'font-semibold text-white bg-white/[0.12] backdrop-blur-lg border border-white/[0.10] shadow-lg'
-                            : 'font-medium text-neutral-400 hover:text-white bg-transparent'
-                        }`}
-                      >
-                        {fmt === 'ONLINE' ? 'Trực tuyến' : fmt === 'ONSITE' ? 'Tại chỗ' : 'Kết hợp'}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Location — borderless rows under format dock */}
-                  {(eventFormat === 'ONSITE' || eventFormat === 'HYBRID') && (
-                    <div>
-                      <div className="py-2.5 border-b border-white/[0.07]">
-                        <input
-                          type="text"
-                          name="customVenueName"
-                          value={formData.customVenueName}
-                          onChange={handleChange}
-                          placeholder="Tên địa điểm tổ chức..."
-                          className="w-full bg-transparent text-white/85 text-sm font-medium placeholder-white/22 focus:outline-none"
-                        />
-                      </div>
-                      <div className="py-2.5 border-b border-white/[0.05]">
-                        <input
-                          type="text"
-                          name="customLocation"
-                          value={formData.customLocation}
-                          onChange={handleChange}
-                          placeholder="Địa chỉ chi tiết..."
-                          className="w-full bg-transparent text-white/50 text-xs font-medium placeholder-white/18 focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Description — borderless expandable row ── */}
-                <div className="mb-4">
-                  {!descOpen ? (
-                    <button
-                      type="button"
-                      onClick={() => setDescOpen(true)}
-                      className="w-full flex items-center gap-2.5 py-3 border-b border-white/[0.07] text-white/30 hover:text-white/60 transition-colors text-left group"
-                    >
-                      <AlignLeft className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="text-sm font-medium">Thêm mô tả sự kiện...</span>
+                  {formData.preferredStart && (
+                    <button type="button" onClick={() => setFormData(p => ({ ...p, preferredStart: '' }))}
+                      className="text-white/15 hover:text-white/50 transition flex-shrink-0">
+                      <X className="w-3 h-3" />
                     </button>
-                  ) : (
-                    <div className="py-3 border-b border-white/[0.07] focus-within:border-orange-500/40 transition-colors">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <AlignLeft className="w-3 h-3 text-white/25" />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/25">Mô tả</span>
-                      </div>
-                      <textarea
-                        name="description"
-                        value={formData.description}
-                        onChange={handleChange}
-                        rows={3}
-                        autoFocus
-                        placeholder="Nội dung, diễn giả, hoạt động nổi bật..."
-                        className="w-full bg-transparent text-white/80 text-sm font-medium placeholder-white/18 focus:outline-none resize-none leading-relaxed"
-                      />
-                    </div>
                   )}
                 </div>
 
-                {/* ── Settings — capacity borderless row ── */}
-                <div className="mb-5 flex items-center justify-between py-3 border-b border-white/[0.07]">
-                  <div className="flex items-center gap-2.5 text-white/35">
-                    <Users className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="text-sm font-medium">Sức chứa tối đa</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      name="expectedParticipants"
-                      value={formData.expectedParticipants}
-                      onChange={handleChange}
-                      min="10"
-                      step="10"
-                      placeholder="Không giới hạn"
-                      className="w-32 text-right bg-transparent text-white/75 text-sm font-semibold placeholder-white/20 focus:outline-none border-b border-transparent focus:border-orange-500/40 transition-colors pb-0.5"
-                    />
-                    {formData.expectedParticipants && (
-                      <span className="text-[10px] text-white/22 font-medium">người</span>
+                {/* End */}
+                <div className="flex items-center gap-3 py-3 border-b border-white/[0.05]">
+                  <span className="w-1.5 h-1.5 rounded-full border border-white/22 flex-shrink-0 ml-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/28 mb-0.5">Kết thúc</p>
+                    {formData.preferredEnd ? (
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-sm font-semibold text-white/90">{fmtDate(formData.preferredEnd)}</span>
+                        <span className="text-sm font-black text-white/45">{fmtTime(formData.preferredEnd)}</span>
+                      </div>
+                    ) : (
+                      <input type="datetime-local" name="preferredEnd" value={formData.preferredEnd}
+                        onChange={handleChange} max="9999-12-31T23:59"
+                        className="w-full bg-transparent text-white/50 text-sm font-medium focus:outline-none p-0 border-0 focus:text-white/80 transition-colors" />
                     )}
                   </div>
+                  {formData.preferredEnd && (
+                    <button type="button" onClick={() => setFormData(p => ({ ...p, preferredEnd: '' }))}
+                      className="text-white/15 hover:text-white/50 transition flex-shrink-0">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Event format — translucent pill dock ── */}
+              <div className="mb-5 flex-shrink-0">
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <MapPin className="w-3 h-3 text-white/22" />
+                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/22">Hình thức</span>
+                </div>
+                <div className="w-full bg-white/[0.04] backdrop-blur-md border border-white/[0.08] rounded-xl p-1 flex gap-1">
+                  {(['ONLINE', 'ONSITE', 'HYBRID'] as const).map(fmt => (
+                    <button key={fmt} type="button" onClick={() => setEventFormat(fmt)}
+                      className={`flex-1 text-center py-2 text-xs rounded-lg transition-all duration-200 ${
+                        eventFormat === fmt
+                          ? 'font-semibold text-white bg-white/[0.12] backdrop-blur-lg border border-white/[0.10] shadow-lg'
+                          : 'font-medium text-neutral-400 hover:text-white bg-transparent'
+                      }`}
+                    >
+                      {fmt === 'ONLINE' ? 'Trực tuyến' : fmt === 'ONSITE' ? 'Tại chỗ' : 'Kết hợp'}
+                    </button>
+                  ))}
                 </div>
 
-                {/* ── Validation errors ── */}
-                {(timeErrors.length > 0 || error) && (
-                  <div className="mb-3 px-3.5 py-3 bg-red-950/35 border border-red-800/25 rounded-xl flex items-start gap-2">
-                    <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
-                    <div className="space-y-0.5">
-                      {timeErrors.slice(0, 2).map((e, i) => (
-                        <p key={i} className="text-[11px] text-red-300/90 font-medium leading-snug">{e}</p>
-                      ))}
-                      {error && <p className="text-[11px] text-red-300/90 font-medium leading-snug">{error}</p>}
+                {/* Location rows — borderless */}
+                {(eventFormat === 'ONSITE' || eventFormat === 'HYBRID') && (
+                  <div className="mt-1">
+                    <div className="py-2.5 border-b border-white/[0.07]">
+                      <input type="text" name="customVenueName" value={formData.customVenueName} onChange={handleChange}
+                        placeholder="Tên địa điểm tổ chức..."
+                        className="w-full bg-transparent text-white/85 text-sm font-medium placeholder-white/20 focus:outline-none" />
+                    </div>
+                    <div className="py-2.5 border-b border-white/[0.05]">
+                      <input type="text" name="customLocation" value={formData.customLocation} onChange={handleChange}
+                        placeholder="Địa chỉ chi tiết..."
+                        className="w-full bg-transparent text-white/50 text-xs font-medium placeholder-white/18 focus:outline-none" />
                     </div>
                   </div>
                 )}
+              </div>
 
-                {/* Push submit to bottom */}
-                <div className="flex-1" />
+              {/* ── Description — borderless expandable ── */}
+              <div className="mb-4 flex-shrink-0">
+                {!descOpen ? (
+                  <button type="button" onClick={() => setDescOpen(true)}
+                    className="w-full flex items-center gap-2.5 py-3 border-b border-white/[0.07] text-white/28 hover:text-white/58 transition-colors text-left">
+                    <AlignLeft className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="text-sm font-medium">Thêm mô tả sự kiện...</span>
+                  </button>
+                ) : (
+                  <div className="py-3 border-b border-white/[0.07]">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <AlignLeft className="w-3 h-3 text-white/22" />
+                      <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/22">Mô tả</span>
+                    </div>
+                    <textarea name="description" value={formData.description} onChange={handleChange}
+                      rows={2} autoFocus placeholder="Nội dung, diễn giả, hoạt động nổi bật..."
+                      className="w-full bg-transparent text-white/80 text-sm font-medium placeholder-white/18 focus:outline-none resize-none leading-relaxed" />
+                  </div>
+                )}
+              </div>
 
-                {/* ── Submit action bar ── */}
-                <div className="space-y-2 pt-3 border-t border-white/[0.06]">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || isUploading}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white font-bold text-sm transition-all shadow-lg shadow-orange-950/40 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <Send className="w-4 h-4" />
-                    {isSubmitting
-                      ? 'Đang xử lý...'
-                      : flowType === 'UNIVERSITY'
-                      ? 'Gửi đề xuất lên trường'
-                      : 'Tạo sự kiện ngay'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    disabled={isSubmitting}
-                    className="w-full py-2 rounded-xl text-white/30 hover:text-white/60 transition-colors font-medium text-sm"
-                  >
-                    Hủy và quay lại
-                  </button>
+              {/* ── Capacity — borderless row ── */}
+              <div className="mb-5 flex items-center justify-between py-3 border-b border-white/[0.07] flex-shrink-0">
+                <div className="flex items-center gap-2.5 text-white/32">
+                  <Users className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="text-sm font-medium">Sức chứa tối đa</span>
                 </div>
+                <div className="flex items-center gap-1.5">
+                  <input type="number" name="expectedParticipants" value={formData.expectedParticipants}
+                    onChange={handleChange} min="10" step="10" placeholder="Không giới hạn"
+                    className="w-32 text-right bg-transparent text-white/72 text-sm font-semibold placeholder-white/18 focus:outline-none border-b border-transparent focus:border-orange-500/40 transition-colors pb-0.5" />
+                  {formData.expectedParticipants && (
+                    <span className="text-[10px] text-white/20 font-medium">người</span>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Validation errors ── */}
+              {(timeErrors.length > 0 || error) && (
+                <div className="mb-3 px-3.5 py-2.5 bg-red-950/30 border border-red-800/22 rounded-xl flex items-start gap-2 flex-shrink-0">
+                  <AlertCircle className="w-3.5 h-3.5 text-red-400/80 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    {timeErrors.slice(0, 2).map((e, i) => (
+                      <p key={i} className="text-[11px] text-red-300/80 font-medium leading-snug">{e}</p>
+                    ))}
+                    {error && <p className="text-[11px] text-red-300/80 font-medium leading-snug">{error}</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* Spacer */}
+              <div className="flex-1 min-h-[8px]" />
+
+              {/* ── Submit bar ── */}
+              <div className="space-y-1.5 pt-3 border-t border-white/[0.06] flex-shrink-0">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || isUploading}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white font-bold text-sm transition-all shadow-lg shadow-orange-950/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Send className="w-4 h-4" />
+                  {isSubmitting
+                    ? 'Đang xử lý...'
+                    : flowType === 'UNIVERSITY'
+                    ? 'Gửi đề xuất lên trường'
+                    : 'Tạo sự kiện ngay'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={isSubmitting}
+                  className="w-full py-2 rounded-xl text-white/28 hover:text-white/58 transition-colors font-medium text-sm"
+                >
+                  Hủy và quay lại
+                </button>
               </div>
             </div>
           </form>
@@ -709,39 +733,32 @@ export default function EventRequestCreate() {
       {isBannersModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
           <div className="bg-[#141416] border border-white/[0.09] rounded-2xl w-full max-w-xl max-h-[76vh] flex flex-col shadow-2xl overflow-hidden">
-
-            {/* Modal header */}
             <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between flex-shrink-0">
               <div>
                 <h3 className="text-sm font-black text-white">Thư viện ảnh bìa</h3>
                 <p className="text-[10px] text-neutral-500 mt-0.5">Chọn hình ảnh phù hợp với sự kiện</p>
               </div>
-              <button type="button" onClick={() => setIsBannersModalOpen(false)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-neutral-400 hover:text-white transition">
+              <button type="button" onClick={() => setIsBannersModalOpen(false)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-neutral-400 hover:text-white transition">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Category pills */}
             {categories.length > 1 && (
               <div className="px-5 py-2 border-b border-white/[0.05] flex gap-1.5 overflow-x-auto flex-shrink-0">
                 {categories.map(cat => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setSelectedCategory(cat)}
+                  <button key={cat} type="button" onClick={() => setSelectedCategory(cat)}
                     className={`px-3 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition ${
                       selectedCategory === cat
                         ? 'bg-orange-600 text-white'
                         : 'bg-white/[0.05] text-neutral-400 hover:bg-white/[0.09] hover:text-white'
-                    }`}
-                  >
+                    }`}>
                     {cat === 'ALL' ? 'Tất cả' : cat}
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Image grid */}
             <div className="flex-1 overflow-y-auto p-4">
               {filteredBanners.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-2">
@@ -751,11 +768,8 @@ export default function EventRequestCreate() {
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {filteredBanners.map(banner => (
-                    <div
-                      key={banner.bannerId}
-                      onClick={() => handleSelectSampleBanner(banner.url)}
-                      className="group relative aspect-[4/3] rounded-xl overflow-hidden cursor-pointer border border-white/[0.07] hover:border-orange-500/60 transition-all duration-200 shadow-sm"
-                    >
+                    <div key={banner.bannerId} onClick={() => handleSelectSampleBanner(banner.url)}
+                      className="group relative aspect-[4/3] rounded-xl overflow-hidden cursor-pointer border border-white/[0.07] hover:border-orange-500/60 transition-all duration-200 shadow-sm">
                       <img src={banner.url} alt={banner.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
                         <span className="text-white text-[9px] font-black truncate">{banner.title}</span>
