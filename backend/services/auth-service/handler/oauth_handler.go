@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -211,21 +212,137 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 		}
 	}
 
-	email := request.Headers["X-User-Email"]
-	if email == "" {
-		email = request.Headers["x-user-email"]
-	}
-	if email == "" {
-		if platform == "google" {
-			email = "organizer.meet@fpt.edu.vn"
+	redirectURI := request.QueryStringParameters["redirect_uri"]
+	if redirectURI == "" {
+		if platform == "zoom" {
+			redirectURI = os.Getenv("ZOOM_REDIRECT_URI")
 		} else {
-			email = "organizer.zoom@fpt.edu.vn"
+			redirectURI = os.Getenv("GOOGLE_REDIRECT_URI")
+		}
+		if redirectURI == "" {
+			redirectURI = "http://localhost:8080/api/v1/auth/" + platform + "/callback"
 		}
 	}
 
+	code := request.QueryStringParameters["code"]
+	email := ""
 	meetingLink := "https://fpt-edu.zoom.us/j/84920491029?pwd=YmUxM2NjO3M4MTk2M2Mx"
 	if platform == "google" {
 		meetingLink = "https://meet.google.com/abc-defg-hij"
+	}
+
+	clientID := getOAuthCredential(strings.ToUpper(platform) + "_CLIENT_ID")
+	isMock := code == "" || clientID == "" || clientID == "mock-zoom-client-id-never-blank" || clientID == "mock-google-client-id-never-blank" || strings.HasPrefix(clientID, "mock-")
+
+	if isMock {
+		// Mock flow fallback: retrieve email from X-User-Email header or defaults
+		email = request.Headers["X-User-Email"]
+		if email == "" {
+			email = request.Headers["x-user-email"]
+		}
+		if email == "" {
+			if platform == "google" {
+				email = "organizer.meet@fpt.edu.vn"
+			} else {
+				email = "organizer.zoom@fpt.edu.vn"
+			}
+		}
+	} else {
+		// Real OAuth flow: perform exchange and fetch user info
+		if platform == "google" {
+			googleConfig := &oauth2.Config{
+				ClientID:     getOAuthCredential("GOOGLE_CLIENT_ID"),
+				ClientSecret: getOAuthCredential("GOOGLE_CLIENT_SECRET"),
+				RedirectURL:  redirectURI,
+				Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
+				Endpoint: oauth2.Endpoint{
+					AuthURL:  "https://accounts.google.com/o/oauth2/auth",
+					TokenURL: "https://oauth2.googleapis.com/token",
+				},
+			}
+			token, err := googleConfig.Exchange(ctx, code)
+			if err != nil {
+				return events.APIGatewayProxyResponse{
+					StatusCode: http.StatusInternalServerError,
+					Body:       fmt.Sprintf(`{"error":"Failed to exchange Google token: %v"}`, err),
+				}, nil
+			}
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			req, err := http.NewRequestWithContext(ctx, "GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+			if err != nil {
+				return events.APIGatewayProxyResponse{
+					StatusCode: http.StatusInternalServerError,
+					Body:       `{"error":"Failed to create Google userinfo request"}`,
+				}, nil
+			}
+			req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+			resp, err := client.Do(req)
+			if err != nil {
+				return events.APIGatewayProxyResponse{
+					StatusCode: http.StatusInternalServerError,
+					Body:       `{"error":"Failed to fetch Google userinfo"}`,
+				}, nil
+			}
+			defer resp.Body.Close()
+
+			var googleUser struct {
+				Email string `json:"email"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&googleUser); err != nil {
+				return events.APIGatewayProxyResponse{
+					StatusCode: http.StatusInternalServerError,
+					Body:       `{"error":"Failed to decode Google userinfo json"}`,
+				}, nil
+			}
+			email = googleUser.Email
+		} else if platform == "zoom" {
+			zoomConfig := &oauth2.Config{
+				ClientID:     getOAuthCredential("ZOOM_CLIENT_ID"),
+				ClientSecret: getOAuthCredential("ZOOM_CLIENT_SECRET"),
+				RedirectURL:  redirectURI,
+				Endpoint: oauth2.Endpoint{
+					AuthURL:  "https://zoom.us/oauth/authorize",
+					TokenURL: "https://zoom.us/oauth/token",
+				},
+			}
+			token, err := zoomConfig.Exchange(ctx, code)
+			if err != nil {
+				return events.APIGatewayProxyResponse{
+					StatusCode: http.StatusInternalServerError,
+					Body:       fmt.Sprintf(`{"error":"Failed to exchange Zoom token: %v"}`, err),
+				}, nil
+			}
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			req, err := http.NewRequestWithContext(ctx, "GET", "https://api.zoom.us/v2/users/me", nil)
+			if err != nil {
+				return events.APIGatewayProxyResponse{
+					StatusCode: http.StatusInternalServerError,
+					Body:       `{"error":"Failed to create Zoom userinfo request"}`,
+				}, nil
+			}
+			req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+			resp, err := client.Do(req)
+			if err != nil {
+				return events.APIGatewayProxyResponse{
+					StatusCode: http.StatusInternalServerError,
+					Body:       `{"error":"Failed to fetch Zoom userinfo"}`,
+				}, nil
+			}
+			defer resp.Body.Close()
+
+			var zoomUser struct {
+				Email string `json:"email"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&zoomUser); err != nil {
+				return events.APIGatewayProxyResponse{
+					StatusCode: http.StatusInternalServerError,
+					Body:       `{"error":"Failed to decode Zoom userinfo json"}`,
+				}, nil
+			}
+			email = zoomUser.Email
+		}
 	}
 
 	// Return HTML that posts message to opener and closes popup

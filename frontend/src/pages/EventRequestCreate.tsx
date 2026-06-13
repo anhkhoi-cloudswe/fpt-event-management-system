@@ -694,16 +694,9 @@ export default function EventRequestCreate() {
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
     
-    const redirectUri = `http://localhost:8080/api/v1/auth/${platform}/callback`;
-    
-    let connectUrl = '';
-    if (platform === 'zoom') {
-      const zoomClientId = import.meta.env.VITE_ZOOM_CLIENT_ID || 'mock-zoom-client-id-never-blank';
-      connectUrl = `https://zoom.us/oauth/authorize?client_id=${zoomClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}`;
-    } else {
-      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '322125152672-bpiub6ajj9bkoec6akto9r1hnljtitt9.apps.googleusercontent.com';
-      connectUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${googleClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}`;
-    }
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    const redirectUri = `${apiBaseUrl}/api/v1/auth/${platform}/callback`;
+    const connectUrl = `${apiBaseUrl}/api/v1/auth/${platform}/connect?redirect_uri=${encodeURIComponent(redirectUri)}`;
 
     const popup = window.open(
       connectUrl,
