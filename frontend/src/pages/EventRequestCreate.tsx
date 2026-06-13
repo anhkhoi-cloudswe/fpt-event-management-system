@@ -91,7 +91,8 @@ function validateEventDateTime(
 ───────────────────────────────────────────────────────────── */
 const ERC_STYLE_ID = 'erc-cinema-fullpage-style'
 const ERC_CSS = `
-  html.erc-cinema body { background: #0c0c0d !important; }
+  html.dark.erc-cinema body { background: #0c0c0d !important; }
+  html:not(.dark).erc-cinema body { background: #f8fafc !important; }
 
   html.erc-cinema body > div > div[class*="min-h-screen"],
   html.erc-cinema body > div[class*="min-h-screen"],
@@ -99,61 +100,117 @@ const ERC_CSS = `
     background: transparent !important;
   }
 
-  html.erc-cinema header {
+  /* Header theme support */
+  html.dark.erc-cinema header {
     background: rgba(12,12,13,0.75) !important;
     backdrop-filter: blur(28px) saturate(130%) !important;
     -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
     border-bottom-color: rgba(255,255,255,0.055) !important;
     box-shadow: none !important;
   }
+  html:not(.dark).erc-cinema header {
+    background: rgba(255,255,255,0.75) !important;
+    backdrop-filter: blur(28px) saturate(130%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
+    border-bottom-color: rgba(0,0,0,0.055) !important;
+    box-shadow: none !important;
+  }
   
   /* Force dark-mode texts on header items */
-  html.erc-cinema header [class*="text-slate-"]:not([class*="rounded-3xl"] *),
-  html.erc-cinema header [class*="text-neutral-"]:not([class*="rounded-3xl"] *) {
+  html.dark.erc-cinema header [class*="text-slate-"]:not([class*="rounded-3xl"] *),
+  html.dark.erc-cinema header [class*="text-neutral-"]:not([class*="rounded-3xl"] *) {
     color: rgba(255,255,255,0.60) !important;
   }
-  html.erc-cinema header p:not([class*="rounded-3xl"] *),
-  html.erc-cinema header span:not([class*="bg-"]):not([class*="from-"]):not([class*="rounded-3xl"] *),
-  html.erc-cinema header h4:not([class*="rounded-3xl"] *),
-  html.erc-cinema header svg:not([class*="rounded-3xl"] *) {
+  html.dark.erc-cinema header p:not([class*="rounded-3xl"] *),
+  html.dark.erc-cinema header span:not([class*="bg-"]):not([class*="from-"]):not([class*="rounded-3xl"] *),
+  html.dark.erc-cinema header h4:not([class*="rounded-3xl"] *),
+  html.dark.erc-cinema header svg:not([class*="rounded-3xl"] *) {
     color: rgba(255,255,255,0.90) !important;
   }
+
+  /* Force light-mode texts on header items */
+  html:not(.dark).erc-cinema header [class*="text-slate-"]:not([class*="rounded-3xl"] *),
+  html:not(.dark).erc-cinema header [class*="text-neutral-"]:not([class*="rounded-3xl"] *) {
+    color: rgba(15,23,42,0.60) !important;
+  }
+  html:not(.dark).erc-cinema header p:not([class*="rounded-3xl"] *),
+  html:not(.dark).erc-cinema header span:not([class*="bg-"]):not([class*="from-"]):not([class*="rounded-3xl"] *),
+  html:not(.dark).erc-cinema header h4:not([class*="rounded-3xl"] *),
+  html:not(.dark).erc-cinema header svg:not([class*="rounded-3xl"] *) {
+    color: rgba(15,23,42,0.90) !important;
+  }
   
-  /* Style wallet balance specifically to avoid white-on-white text */
-  html.erc-cinema header div.bg-gradient-to-r,
-  html.erc-cinema header div.bg-slate-800,
-  html.erc-cinema header div[class*="bg-gradient-to-r"],
-  html.erc-cinema header div[class*="bg-slate-800"] {
+  /* Style wallet balance specifically */
+  html.dark.erc-cinema header div.bg-gradient-to-r,
+  html.dark.erc-cinema header div.bg-slate-800,
+  html.dark.erc-cinema header div[class*="bg-gradient-to-r"],
+  html.dark.erc-cinema header div[class*="bg-slate-800"] {
     background: rgba(255,255,255,0.06) !important;
     background-image: none !important;
     border-color: rgba(255,255,255,0.12) !important;
   }
-  html.erc-cinema header div.bg-gradient-to-r *,
-  html.erc-cinema header div.bg-slate-800 *,
-  html.erc-cinema header div[class*="bg-gradient-to-r"] *,
-  html.erc-cinema header div[class*="bg-slate-800"] * {
+  html.dark.erc-cinema header div.bg-gradient-to-r *,
+  html.dark.erc-cinema header div.bg-slate-800 *,
+  html.dark.erc-cinema header div[class*="bg-gradient-to-r"] *,
+  html.dark.erc-cinema header div[class*="bg-slate-800"] * {
     color: #fb923c !important;
   }
+
+  html:not(.dark).erc-cinema header div.bg-gradient-to-r,
+  html:not(.dark).erc-cinema header div.bg-slate-800,
+  html:not(.dark).erc-cinema header div[class*="bg-gradient-to-r"],
+  html:not(.dark).erc-cinema header div[class*="bg-slate-800"] {
+    background: rgba(251,146,60,0.1) !important;
+    background-image: none !important;
+    border-color: rgba(251,146,60,0.2) !important;
+  }
+  html:not(.dark).erc-cinema header div.bg-gradient-to-r *,
+  html:not(.dark).erc-cinema header div.bg-slate-800 *,
+  html:not(.dark).erc-cinema header div[class*="bg-gradient-to-r"] *,
+  html:not(.dark).erc-cinema header div[class*="bg-slate-800"] * {
+    color: #ea580c !important;
+  }
   
-  /* Style profile details popover trigger to clear light mode styling */
-  html.erc-cinema header div[class*="hover:bg-orange-55"],
-  html.erc-cinema header div[class*="hover:bg-orange-50"] {
+  /* Style profile details popover trigger */
+  html.dark.erc-cinema header div[class*="hover:bg-orange-55"],
+  html.dark.erc-cinema header div[class*="hover:bg-orange-50"] {
     color: rgba(255,255,255,0.90) !important;
   }
-  html.erc-cinema header div[class*="hover:bg-orange-55"]:hover,
-  html.erc-cinema header div[class*="hover:bg-orange-50"]:hover {
+  html.dark.erc-cinema header div[class*="hover:bg-orange-55"]:hover,
+  html.dark.erc-cinema header div[class*="hover:bg-orange-50"]:hover {
     background-color: rgba(255,255,255,0.07) !important;
   }
 
-  html.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]):not([class*="rounded-3xl"] *),
-  html.erc-cinema header select {
+  html:not(.dark).erc-cinema header div[class*="hover:bg-orange-55"],
+  html:not(.dark).erc-cinema header div[class*="hover:bg-orange-50"] {
+    color: rgba(15,23,42,0.90) !important;
+  }
+  html:not(.dark).erc-cinema header div[class*="hover:bg-orange-55"]:hover,
+  html:not(.dark).erc-cinema header div[class*="hover:bg-orange-50"]:hover {
+    background-color: rgba(0,0,0,0.05) !important;
+  }
+  
+  /* Header buttons */
+  html.dark.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]):not([class*="rounded-3xl"] *),
+  html.dark.erc-cinema header select {
     background-color: rgba(255,255,255,0.09) !important;
     border-color: rgba(255,255,255,0.13) !important;
     color: rgba(255,255,255,0.92) !important;
   }
-  html.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]):not([class*="rounded-3xl"] *):hover {
+  html.dark.erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]):not([class*="rounded-3xl"] *):hover {
     background-color: rgba(255,255,255,0.15) !important;
   }
+
+  html:not(.dark).erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]):not([class*="rounded-3xl"] *),
+  html:not(.dark).erc-cinema header select {
+    background-color: rgba(0,0,0,0.05) !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    color: rgba(15,23,42,0.92) !important;
+  }
+  html:not(.dark).erc-cinema header button:not([class*="bg-gradient"]):not([class*="from-orange"]):not([class*="rounded-3xl"] *):hover {
+    background-color: rgba(0,0,0,0.08) !important;
+  }
+
   html.erc-cinema header button[class*="from-orange"],
   html.erc-cinema header button[class*="bg-gradient"] {
     background: linear-gradient(to bottom right,#ea580c,#f97316) !important;
@@ -161,28 +218,55 @@ const ERC_CSS = `
   html.erc-cinema header [class*="text-orange"],
   html.erc-cinema header [class*="text-fpt"] { color: rgba(255,165,40,0.95) !important; }
 
-  html.erc-cinema aside {
+  /* Sidebar (Aside) */
+  html.dark.erc-cinema aside {
     background: rgba(12,12,13,0.62) !important;
     backdrop-filter: blur(28px) saturate(130%) !important;
     -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
     border-right-color: rgba(255,255,255,0.055) !important;
     box-shadow: none !important;
   }
-  html.erc-cinema aside,
-  html.erc-cinema aside * { color: rgba(255,255,255,0.60) !important; }
+  html.dark.erc-cinema aside,
+  html.dark.erc-cinema aside * { color: rgba(255,255,255,0.60) !important; }
+
+  html:not(.dark).erc-cinema aside {
+    background: rgba(255,255,255,0.62) !important;
+    backdrop-filter: blur(28px) saturate(130%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
+    border-right-color: rgba(0,0,0,0.055) !important;
+    box-shadow: none !important;
+  }
+  html:not(.dark).erc-cinema aside,
+  html:not(.dark).erc-cinema aside * { color: rgba(15,23,42,0.60) !important; }
+
   html.erc-cinema aside a,
   html.erc-cinema aside button { background: transparent !important; border-color: transparent !important; }
-  html.erc-cinema aside a:hover,
-  html.erc-cinema aside button:hover { background: rgba(255,255,255,0.07) !important; }
-  html.erc-cinema aside a:hover *,
-  html.erc-cinema aside button:hover * { color: rgba(255,255,255,0.90) !important; }
-  html.erc-cinema aside a[class*="bg-orange"],
-  html.erc-cinema aside a[class*="bg-gradient"] {
+  
+  html.dark.erc-cinema aside a:hover,
+  html.dark.erc-cinema aside button:hover { background: rgba(255,255,255,0.07) !important; }
+  html.dark.erc-cinema aside a:hover *,
+  html.dark.erc-cinema aside button:hover * { color: rgba(255,255,255,0.90) !important; }
+
+  html:not(.dark).erc-cinema aside a:hover,
+  html:not(.dark).erc-cinema aside button:hover { background: rgba(0,0,0,0.05) !important; }
+  html:not(.dark).erc-cinema aside a:hover *,
+  html:not(.dark).erc-cinema aside button:hover * { color: rgba(15,23,42,0.90) !important; }
+
+  html.dark.erc-cinema aside a[class*="bg-orange"],
+  html.dark.erc-cinema aside a[class*="bg-gradient"] {
     background: rgba(234,88,12,0.20) !important;
     border-color: rgba(234,88,12,0.26) !important;
   }
-  html.erc-cinema aside a[class*="bg-orange"] *,
-  html.erc-cinema aside a[class*="bg-gradient"] * { color: rgba(251,146,60,0.95) !important; }
+  html.dark.erc-cinema aside a[class*="bg-orange"] *,
+  html.dark.erc-cinema aside a[class*="bg-gradient"] * { color: rgba(251,146,60,0.95) !important; }
+
+  html:not(.dark).erc-cinema aside a[class*="bg-orange"],
+  html:not(.dark).erc-cinema aside a[class*="bg-gradient"] {
+    background: rgba(234,88,12,0.10) !important;
+    border-color: rgba(234,88,12,0.16) !important;
+  }
+  html:not(.dark).erc-cinema aside a[class*="bg-orange"] *,
+  html:not(.dark).erc-cinema aside a[class*="bg-gradient"] * { color: rgba(234,88,12,0.95) !important; }
 
   html.erc-cinema main { overflow: hidden !important; }
   html.erc-cinema main > div {
@@ -192,59 +276,72 @@ const ERC_CSS = `
     height: 100% !important;
   }
   
-  /* Style profile settings popover card inside cinema mode */
-  html.erc-cinema header div[class*="rounded-3xl"] {
+  /* Profile settings popover card */
+  html.dark.erc-cinema header div[class*="rounded-3xl"] {
     background-color: #18181b !important;
     border-color: rgba(255,255,255,0.1) !important;
     color: rgba(255,255,255,0.9) !important;
   }
-  html.erc-cinema header div[class*="rounded-3xl"] label {
-    color: rgba(255,255,255,0.5) !important;
-  }
-  html.erc-cinema header div[class*="rounded-3xl"] h4 {
-    color: rgba(255,255,255,0.9) !important;
-  }
-  html.erc-cinema header div[class*="rounded-3xl"] p {
-    color: rgba(255,255,255,0.5) !important;
-  }
-  html.erc-cinema header div[class*="rounded-3xl"] input {
+  html.dark.erc-cinema header div[class*="rounded-3xl"] label { color: rgba(255,255,255,0.5) !important; }
+  html.dark.erc-cinema header div[class*="rounded-3xl"] h4 { color: rgba(255,255,255,0.9) !important; }
+  html.dark.erc-cinema header div[class*="rounded-3xl"] p { color: rgba(255,255,255,0.5) !important; }
+  html.dark.erc-cinema header div[class*="rounded-3xl"] input {
     background-color: #09090b !important;
     border-color: rgba(255,255,255,0.15) !important;
     color: rgba(255,255,255,0.9) !important;
   }
-  html.erc-cinema header div[class*="rounded-3xl"] input::placeholder {
-    color: rgba(255,255,255,0.3) !important;
-  }
-  html.erc-cinema header div[class*="rounded-3xl"] button:not([class*="bg-gradient"]) {
+  html.dark.erc-cinema header div[class*="rounded-3xl"] input::placeholder { color: rgba(255,255,255,0.3) !important; }
+  html.dark.erc-cinema header div[class*="rounded-3xl"] button:not([class*="bg-gradient"]) {
     background-color: rgba(255,255,255,0.06) !important;
     border-color: rgba(255,255,255,0.12) !important;
     color: rgba(255,255,255,0.9) !important;
   }
-  html.erc-cinema header div[class*="rounded-3xl"] button:not([class*="bg-gradient"]):hover {
+  html.dark.erc-cinema header div[class*="rounded-3xl"] button:not([class*="bg-gradient"]):hover {
     background-color: rgba(255,255,255,0.12) !important;
   }
-  html.erc-cinema header div[class*="rounded-3xl"] a,
-  html.erc-cinema header div[class*="rounded-3xl"] button[class*="text-left"] {
+  html.dark.erc-cinema header div[class*="rounded-3xl"] a,
+  html.dark.erc-cinema header div[class*="rounded-3xl"] button[class*="text-left"] {
     color: rgba(255,255,255,0.7) !important;
   }
-  html.erc-cinema header div[class*="rounded-3xl"] a:hover,
-  html.erc-cinema header div[class*="rounded-3xl"] button[class*="text-left"]:hover {
+  html.dark.erc-cinema header div[class*="rounded-3xl"] a:hover,
+  html.dark.erc-cinema header div[class*="rounded-3xl"] button[class*="text-left"]:hover {
     background-color: rgba(255,255,255,0.06) !important;
     color: rgba(255,255,255,0.9) !important;
   }
-  html.erc-cinema header div[class*="rounded-3xl"] svg {
-    color: rgba(255,255,255,0.5) !important;
+  html.dark.erc-cinema header div[class*="rounded-3xl"] svg { color: rgba(255,255,255,0.5) !important; }
+
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] {
+    background-color: #ffffff !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    color: rgba(15,23,42,0.9) !important;
   }
-  html.erc-cinema header div[class*="rounded-3xl"] div[class*="absolute"] {
-    background-color: #09090b !important;
-    border-color: rgba(255,255,255,0.15) !important;
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] label { color: rgba(15,23,42,0.5) !important; }
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] h4 { color: rgba(15,23,42,0.9) !important; }
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] p { color: rgba(15,23,42,0.5) !important; }
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] input {
+    background-color: #f1f5f9 !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    color: rgba(15,23,42,0.9) !important;
   }
-  html.erc-cinema header div[class*="rounded-3xl"] div[class*="absolute"] button {
-    color: rgba(255,255,255,0.8) !important;
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] input::placeholder { color: rgba(15,23,42,0.3) !important; }
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] button:not([class*="bg-gradient"]) {
+    background-color: rgba(0,0,0,0.06) !important;
+    border-color: rgba(0,0,0,0.12) !important;
+    color: rgba(15,23,42,0.9) !important;
   }
-  html.erc-cinema header div[class*="rounded-3xl"] div[class*="absolute"] button:hover {
-    background-color: rgba(255,255,255,0.06) !important;
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] button:not([class*="bg-gradient"]):hover {
+    background-color: rgba(0,0,0,0.1) !important;
   }
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] a,
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] button[class*="text-left"] {
+    color: rgba(15,23,42,0.7) !important;
+  }
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] a:hover,
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] button[class*="text-left"]:hover {
+    background-color: rgba(0,0,0,0.06) !important;
+    color: rgba(15,23,42,0.9) !important;
+  }
+  html:not(.dark).erc-cinema header div[class*="rounded-3xl"] svg { color: rgba(15,23,42,0.5) !important; }
   
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px !important;
@@ -299,9 +396,10 @@ interface CalendarPopoverProps {
   onChange: (date: string) => void
   onClose: () => void
   minDate?: string
+  isDark: boolean
 }
 
-function CalendarPopover({ value, onChange, onClose, minDate }: CalendarPopoverProps) {
+function CalendarPopover({ value, onChange, onClose, minDate, isDark }: CalendarPopoverProps) {
   const [viewDate, setViewDate] = useState(() => {
     if (value) {
       const parts = value.split('-')
@@ -371,24 +469,30 @@ function CalendarPopover({ value, onChange, onClose, minDate }: CalendarPopoverP
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-full mt-1.5 z-50 origin-top-right bg-[#18181b] border border-white/[0.08] rounded-2xl p-5 shadow-2xl w-[320px] select-none animate-fadeIn">
+      <div className={`absolute right-0 top-full mt-1.5 z-50 origin-top-right border rounded-2xl p-5 shadow-2xl w-[320px] select-none animate-fadeIn ${
+        isDark ? 'bg-[#18181b] border-white/[0.08] text-white' : 'bg-white border-neutral-200 text-neutral-850'
+      }`}>
         {/* Header matching Luma style */}
         <div className="flex items-center justify-between mb-4 px-1">
-          <span className="text-sm font-black text-white">
+          <span className={`text-sm font-black ${isDark ? 'text-white' : 'text-neutral-800'}`}>
             {monthNames[month]}, {year}
           </span>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-white/70 hover:text-white transition cursor-pointer"
+              className={`w-7 h-7 flex items-center justify-center rounded-lg transition cursor-pointer ${
+                isDark ? 'hover:bg-white/[0.08] text-white/70 hover:text-white' : 'hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900'
+              }`}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={handleNextMonth}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-white/70 hover:text-white transition cursor-pointer"
+              className={`w-7 h-7 flex items-center justify-center rounded-lg transition cursor-pointer ${
+                isDark ? 'hover:bg-white/[0.08] text-white/70 hover:text-white' : 'hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900'
+              }`}
             >
               <ChevronLeft className="w-4 h-4 rotate-180" />
             </button>
@@ -423,10 +527,12 @@ function CalendarPopover({ value, onChange, onClose, minDate }: CalendarPopoverP
                   isSelected
                     ? 'bg-[#fb923c] text-white shadow-lg shadow-orange-500/20'
                     : isToday
-                    ? 'bg-white/[0.08] text-[#fb923c] border border-[#fb923c]/30'
+                    ? isDark 
+                      ? 'bg-white/[0.08] text-[#fb923c] border border-[#fb923c]/30'
+                      : 'bg-orange-50 text-[#ea580c] border border-[#fb923c]/40'
                     : isCurrentMonth
-                    ? 'text-white hover:bg-white/[0.08]'
-                    : 'text-neutral-600 opacity-40 hover:bg-white/[0.02]'
+                    ? isDark ? 'text-white hover:bg-white/[0.08]' : 'text-neutral-800 hover:bg-neutral-100'
+                    : isDark ? 'text-neutral-650 opacity-40 hover:bg-white/[0.02]' : 'text-neutral-400 opacity-40 hover:bg-neutral-50'
                 } ${isBeforeMin ? 'opacity-20 cursor-not-allowed hover:bg-transparent text-neutral-650' : ''}`}
               >
                 {day}
@@ -446,9 +552,10 @@ interface TimePopoverProps {
   showDuration?: boolean
   startDateTimeStr?: string
   endDateStr?: string
+  isDark: boolean
 }
 
-function TimePopover({ value, onChange, onClose, showDuration, startDateTimeStr, endDateStr }: TimePopoverProps) {
+function TimePopover({ value, onChange, onClose, showDuration, startDateTimeStr, endDateStr, isDark }: TimePopoverProps) {
   const listRef = useRef<HTMLDivElement>(null)
   const timeSlots: string[] = []
   for (let h = 0; h < 24; h++) {
@@ -471,7 +578,9 @@ function TimePopover({ value, onChange, onClose, showDuration, startDateTimeStr,
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
         ref={listRef}
-        className="absolute right-0 top-full mt-1.5 z-50 origin-top-right bg-[#18181b] border border-white/[0.08] rounded-2xl shadow-2xl w-[170px] max-h-60 overflow-y-auto py-1.5 custom-scrollbar animate-fadeIn"
+        className={`absolute right-0 top-full mt-1.5 z-50 origin-top-right border rounded-2xl shadow-2xl w-[170px] max-h-60 overflow-y-auto py-1.5 custom-scrollbar animate-fadeIn ${
+          isDark ? 'bg-[#18181b] border-white/[0.08] text-white' : 'bg-white border-neutral-200 text-neutral-850'
+        }`}
       >
         {timeSlots.map(t => {
           const isSelected = value === t
@@ -510,7 +619,7 @@ function TimePopover({ value, onChange, onClose, showDuration, startDateTimeStr,
               className={`w-full text-center py-2.5 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
                 isSelected
                   ? 'bg-[#fb923c] text-white font-black'
-                  : 'text-white/85 hover:bg-white/[0.08]'
+                  : isDark ? 'text-white/85 hover:bg-white/[0.08]' : 'text-neutral-700 hover:bg-neutral-100'
               }`}
             >
               <span>{t}</span>
@@ -534,6 +643,16 @@ export default function EventRequestCreate() {
   const [eventFormat, setEventFormat] = useState<'ONLINE' | 'ONSITE' | 'HYBRID'>('ONSITE')
   const [isPublic, setIsPublic] = useState(true)
   const [descOpen, setDescOpen] = useState(false)
+
+  const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'))
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'))
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   // Online platform oauth integration
   const [selectedOnlinePlatform, setSelectedOnlinePlatform] = useState<'ZOOM' | 'GOOGLE'>('ZOOM')
@@ -578,11 +697,21 @@ export default function EventRequestCreate() {
     
     let connectUrl = '';
     if (platform === 'zoom') {
-      const zoomClientId = import.meta.env.VITE_ZOOM_CLIENT_ID || 'mock-zoom-client-id-never-blank';
-      connectUrl = `https://zoom.us/oauth/authorize?client_id=${zoomClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      const zoomClientId = import.meta.env.VITE_ZOOM_CLIENT_ID || '';
+      const isMock = !zoomClientId || zoomClientId.includes('mock');
+      if (isMock) {
+        connectUrl = redirectUri;
+      } else {
+        connectUrl = `https://zoom.us/oauth/authorize?client_id=${zoomClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      }
     } else {
-      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '322125152672-bpiub6ajj9bkoec6akto9r1hnljtitt9.apps.googleusercontent.com';
-      connectUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${googleClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}`;
+      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+      const isMock = !googleClientId || googleClientId.includes('mock') || googleClientId.startsWith('322125152672');
+      if (isMock) {
+        connectUrl = redirectUri;
+      } else {
+        connectUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${googleClientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}`;
+      }
     }
 
     const popup = window.open(
@@ -1087,14 +1216,14 @@ export default function EventRequestCreate() {
         <>
           {/* ── Fixed cinema backdrop ── */}
           <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden">
-            <div className="absolute inset-0 bg-[#0c0c0d]" />
+            <div className={`absolute inset-0 ${isDarkMode ? 'bg-[#0c0c0d]' : 'bg-[#f8fafc]'}`} />
             {bannerUrl && (
               <div
-                className="absolute -inset-[30%] opacity-[0.12] saturate-[100%] blur-[180px] scale-110 transition-all duration-[2000ms]"
+                className={`absolute -inset-[30%] ${isDarkMode ? 'opacity-[0.12]' : 'opacity-[0.06]'} saturate-[100%] blur-[180px] scale-110 transition-all duration-[2000ms]`}
                 style={{ backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
               />
             )}
-            <div className="absolute inset-0 bg-black/87" />
+            <div className={`absolute inset-0 ${isDarkMode ? 'bg-black/87' : 'bg-white/85'}`} />
           </div>
 
           {/* ══════════════════════════════════════════════
@@ -1115,9 +1244,11 @@ export default function EventRequestCreate() {
                 {bannerUrl ? (
                   <img src={bannerUrl} alt="Event banner" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-white/[0.04] border border-white/[0.07] flex flex-col items-center justify-center gap-2">
-                    <ImageIcon className="w-10 h-10 text-white/10" />
-                    <p className="text-[11px] text-white/20 font-medium">Chưa có ảnh bìa</p>
+                  <div className={`w-full h-full flex flex-col items-center justify-center gap-2 border ${
+                    isDarkMode ? 'bg-white/[0.04] border-white/[0.07] text-white/40' : 'bg-neutral-100 border-neutral-200 text-neutral-500'
+                  }`}>
+                    <ImageIcon className="w-10 h-10 opacity-60" />
+                    <p className="text-[11px] font-medium">Chưa có ảnh bìa</p>
                   </div>
                 )}
 
@@ -1149,7 +1280,9 @@ export default function EventRequestCreate() {
                 <button
                   type="button"
                   onClick={() => { handleFlowTypeChange(null); setError(null); setTimeErrors([]) }}
-                  className="flex items-center gap-1.5 text-white/50 hover:text-white text-[11px] font-bold transition cursor-pointer"
+                  className={`flex items-center gap-1.5 text-[11px] font-bold transition cursor-pointer ${
+                    isDarkMode ? 'text-white/50 hover:text-white' : 'text-neutral-500 hover:text-neutral-800'
+                  }`}
                 >
                   <ChevronLeft className="w-3.5 h-3.5" /> Thay đổi
                 </button>
@@ -1159,7 +1292,11 @@ export default function EventRequestCreate() {
                   onClick={handleShuffleBanner}
                   disabled={sampleBanners.length === 0}
                   aria-label="Ảnh ngẫu nhiên"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.08] transition-all disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer"
+                  className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-all disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer ${
+                    isDarkMode 
+                      ? 'bg-white/[0.05] border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.08]' 
+                      : 'bg-neutral-100 border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200'
+                  }`}
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                 </button>
@@ -1174,10 +1311,10 @@ export default function EventRequestCreate() {
               {/* ── Header metadata row: flow label + visibility toggle ── */}
               <div className="flex items-center justify-between mb-2 flex-shrink-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black uppercase tracking-[0.22em] text-white/50">
+                  <span className={`text-[9px] font-black uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>
                     Loại đơn tổ chức:
                   </span>
-                  <span className="text-[9px] font-black uppercase tracking-[0.22em] text-orange-400/80">
+                  <span className="text-[9px] font-black uppercase tracking-[0.22em] text-orange-500">
                     {flowType === 'UNIVERSITY' ? 'Trường học' : 'Tự do'}
                   </span>
                 </div>
@@ -1187,40 +1324,52 @@ export default function EventRequestCreate() {
                   <button
                     type="button"
                     onClick={() => setShowPublicDropdown(v => !v)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-xs font-bold text-white hover:bg-white/[0.08] transition-all duration-200 cursor-pointer"
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all duration-200 cursor-pointer ${
+                      isDarkMode 
+                        ? 'border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]' 
+                        : 'border-neutral-250 bg-white text-neutral-800 hover:bg-neutral-50'
+                    }`}
                   >
                     {isPublic ? (
-                      <><Globe className="w-3.5 h-3.5 text-orange-400" /> Công khai</>
+                      <><Globe className="w-3.5 h-3.5 text-orange-500" /> Công khai</>
                     ) : (
-                      <><Lock className="w-3.5 h-3.5 text-orange-400" /> Riêng tư</>
+                      <><Lock className="w-3.5 h-3.5 text-orange-500" /> Riêng tư</>
                     )}
-                    <ChevronDown className="w-3 h-3 text-white/50" />
+                    <ChevronDown className={`w-3 h-3 ${isDarkMode ? 'text-white/50' : 'text-neutral-550'}`} />
                   </button>
                   {showPublicDropdown && (
                     <>
                       <div className="fixed inset-0 z-20" onClick={() => setShowPublicDropdown(false)} />
-                      <div className="absolute right-0 mt-1.5 z-30 bg-[#141416]/98 backdrop-blur-2xl border border-white/10 rounded-xl overflow-hidden shadow-2xl w-80 py-1.5 animate-fadeIn">
+                      <div className={`absolute right-0 mt-1.5 z-30 border rounded-xl overflow-hidden shadow-2xl w-80 py-1.5 animate-fadeIn ${
+                        isDarkMode 
+                          ? 'bg-[#141416]/98 border-white/10 text-white' 
+                          : 'bg-white border-neutral-200 text-neutral-850'
+                      }`}>
                         <button
                           type="button"
                           onClick={() => { setIsPublic(true); setShowPublicDropdown(false) }}
-                          className="w-full text-left px-4 py-2.5 hover:bg-white/[0.04] flex items-start gap-3 transition cursor-pointer"
+                          className={`w-full text-left px-4 py-2.5 flex items-start gap-3 transition cursor-pointer ${
+                            isDarkMode ? 'hover:bg-white/[0.04] border-white/[0.05]' : 'hover:bg-neutral-50 border-neutral-100'
+                          }`}
                         >
-                          <Globe className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+                          <Globe className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
-                            <p className={`text-xs font-bold ${isPublic ? 'text-white' : 'text-neutral-300'}`}>Công khai</p>
-                            <p className="text-[10px] text-neutral-400 font-medium mt-0.5 leading-normal">Hiển thị trên lịch của bạn và có đủ điều kiện được đề xuất.</p>
+                            <p className="text-xs font-bold">Công khai</p>
+                            <p className={`text-[10px] font-medium mt-0.5 leading-normal ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Hiển thị trên lịch của bạn và có đủ điều kiện được đề xuất.</p>
                           </div>
                           {isPublic && <Check className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />}
                         </button>
                         <button
                           type="button"
                           onClick={() => { setIsPublic(false); setShowPublicDropdown(false) }}
-                          className="w-full text-left px-4 py-2.5 hover:bg-white/[0.04] flex items-start gap-3 transition cursor-pointer border-t border-white/[0.05]"
+                          className={`w-full text-left px-4 py-2.5 flex items-start gap-3 transition cursor-pointer border-t ${
+                            isDarkMode ? 'hover:bg-white/[0.04] border-white/[0.05]' : 'hover:bg-neutral-50 border-neutral-100'
+                          }`}
                         >
-                          <Lock className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+                          <Lock className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
-                            <p className={`text-xs font-bold ${!isPublic ? 'text-white' : 'text-neutral-300'}`}>Riêng tư</p>
-                            <p className="text-[10px] text-neutral-400 font-medium mt-0.5 leading-normal">Không liệt kê. Chỉ những người có liên kết mới có thể đăng ký.</p>
+                            <p className="text-xs font-bold">Riêng tư</p>
+                            <p className={`text-[10px] font-medium mt-0.5 leading-normal ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Không liệt kê. Chỉ những người có liên kết mới có thể đăng ký.</p>
                           </div>
                           {!isPublic && <Check className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />}
                         </button>
@@ -1239,28 +1388,37 @@ export default function EventRequestCreate() {
                 required
                 autoComplete="off"
                 placeholder="Tên sự kiện..."
-                className="text-3xl md:text-4xl font-bold tracking-tight bg-transparent border-b border-white/[0.09] focus:border-orange-500/55 text-white placeholder-neutral-500 py-2 focus:outline-none w-full mb-2 transition-colors leading-tight flex-shrink-0"
+                className={`text-3xl md:text-4xl font-bold tracking-tight bg-transparent border-b py-2 focus:outline-none w-full mb-2 transition-colors leading-tight flex-shrink-0 ${
+                  isDarkMode 
+                    ? 'border-white/[0.09] text-white placeholder-neutral-500 focus:border-orange-500/55' 
+                    : 'border-neutral-200 text-neutral-850 placeholder-neutral-400 focus:border-orange-500/55'
+                }`}
               />
 
               {/* ── Time — borderless rows ── */}
               <div className="mb-2 flex-shrink-0">
                 {/* Start */}
-                <div className="flex items-center justify-between py-1.5 border-b border-white/[0.07]">
+                <div className={`flex items-center justify-between py-1.5 border-b ${isDarkMode ? 'border-white/[0.07]' : 'border-neutral-200'}`}>
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Bắt đầu</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>Bắt đầu</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="relative">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           setShowStartCalendar(v => !v)
                           setShowStartTimeList(false)
                           setShowEndCalendar(false)
                           setShowEndTimeList(false)
                         }}
-                        className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer ${
+                          isDarkMode 
+                            ? 'bg-white/[0.05] hover:bg-white/[0.10] border-white/10 text-white' 
+                            : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800'
+                        }`}
                       >
                         {startDate ? formatDateVietnamese(startDate) : 'Chọn ngày'}
                       </button>
@@ -1269,6 +1427,7 @@ export default function EventRequestCreate() {
                           value={startDate}
                           onChange={handleStartDateChange}
                           onClose={() => setShowStartCalendar(false)}
+                          isDark={isDarkMode}
                         />
                       )}
                     </div>
@@ -1276,13 +1435,18 @@ export default function EventRequestCreate() {
                     <div className="relative">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           setShowStartTimeList(v => !v)
                           setShowStartCalendar(false)
                           setShowEndCalendar(false)
                           setShowEndTimeList(false)
                         }}
-                        className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer ${
+                          isDarkMode 
+                            ? 'bg-white/[0.05] hover:bg-white/[0.10] border-white/10 text-white' 
+                            : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800'
+                        }`}
                       >
                         {startTime || 'Chọn giờ'}
                       </button>
@@ -1291,6 +1455,7 @@ export default function EventRequestCreate() {
                           value={startTime}
                           onChange={handleStartTimeChange}
                           onClose={() => setShowStartTimeList(false)}
+                          isDark={isDarkMode}
                         />
                       )}
                     </div>
@@ -1298,22 +1463,27 @@ export default function EventRequestCreate() {
                 </div>
 
                 {/* End */}
-                <div className="flex items-center justify-between py-1.5 border-b border-white/[0.05]">
+                <div className={`flex items-center justify-between py-1.5 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
                   <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full border border-white/22 flex-shrink-0" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Kết thúc</span>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 border ${isDarkMode ? 'border-white/22' : 'border-neutral-400'}`} />
+                    <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>Kết thúc</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="relative">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           setShowEndCalendar(v => !v)
                           setShowStartCalendar(false)
                           setShowStartTimeList(false)
                           setShowEndTimeList(false)
                         }}
-                        className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer ${
+                          isDarkMode 
+                            ? 'bg-white/[0.05] hover:bg-white/[0.10] border-white/10 text-white' 
+                            : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800'
+                        }`}
                       >
                         {endDate ? formatDateVietnamese(endDate) : 'Chọn ngày'}
                       </button>
@@ -1323,6 +1493,7 @@ export default function EventRequestCreate() {
                           onChange={setEndDate}
                           onClose={() => setShowEndCalendar(false)}
                           minDate={startDate}
+                          isDark={isDarkMode}
                         />
                       )}
                     </div>
@@ -1330,13 +1501,18 @@ export default function EventRequestCreate() {
                     <div className="relative">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           setShowEndTimeList(v => !v)
                           setShowStartCalendar(false)
                           setShowStartTimeList(false)
                           setShowEndCalendar(false)
                         }}
-                        className="bg-white/[0.05] hover:bg-white/[0.10] px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer"
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-semibold focus:outline-none focus:border-orange-500/50 transition cursor-pointer ${
+                          isDarkMode 
+                            ? 'bg-white/[0.05] hover:bg-white/[0.10] border-white/10 text-white' 
+                            : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800'
+                        }`}
                       >
                         {endTime || 'Chọn giờ'}
                       </button>
@@ -1348,6 +1524,7 @@ export default function EventRequestCreate() {
                           showDuration={true}
                           startDateTimeStr={startDate && startTime ? `${startDate}T${startTime}` : undefined}
                           endDateStr={endDate}
+                          isDark={isDarkMode}
                         />
                       )}
                     </div>
@@ -1357,10 +1534,12 @@ export default function EventRequestCreate() {
 
               {/* UX suggestion notice about Staff review safety margin */}
               {flowType === 'UNIVERSITY' && (
-                <div className="mb-2 px-3 py-2 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-start gap-2 flex-shrink-0 animate-fadeIn">
-                  <AlertCircle className="w-3.5 h-3.5 text-orange-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-orange-200/90 font-medium leading-normal">
-                    <span className="text-orange-400 font-bold">Khuyên dùng:</span> Sự kiện trường cần Staff duyệt. Hãy cân nhắc đặt cách hiện tại <span className="text-orange-400 font-bold">36h - 48h</span> trở lên để Staff kịp tiếp nhận duyệt.
+                <div className={`mb-2 px-3 py-2 border rounded-xl flex items-start gap-2 flex-shrink-0 animate-fadeIn ${
+                  isDarkMode ? 'bg-orange-500/10 border-orange-500/20' : 'bg-orange-50 border-orange-200'
+                }`}>
+                  <AlertCircle className="w-3.5 h-3.5 text-orange-500 flex-shrink-0 mt-0.5" />
+                  <p className={`text-[10px] font-medium leading-normal ${isDarkMode ? 'text-orange-200/90' : 'text-orange-900'}`}>
+                    <span className="text-orange-655 font-bold">Khuyên dùng:</span> Sự kiện trường cần Staff duyệt. Hãy cân nhắc đặt cách hiện tại <span className="text-orange-655 font-bold">36h - 48h</span> trở lên để Staff kịp tiếp nhận duyệt.
                   </p>
                 </div>
               )}
@@ -1368,16 +1547,18 @@ export default function EventRequestCreate() {
               {/* ── Event format — translucent pill dock ── */}
               <div className="mb-2 flex-shrink-0">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <MapPin className="w-3 h-3 text-white/40" />
-                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/50">Hình thức</span>
+                  <MapPin className={`w-3 h-3 ${isDarkMode ? 'text-white/40' : 'text-neutral-500'}`} />
+                  <span className={`text-[9px] font-bold uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/50' : 'text-neutral-550'}`}>Hình thức</span>
                 </div>
-                <div className="w-full bg-white/[0.04] backdrop-blur-md border border-white/[0.08] rounded-xl p-1 flex gap-1">
+                <div className={`w-full backdrop-blur-md border rounded-xl p-1 flex gap-1 ${
+                  isDarkMode ? 'bg-white/[0.04] border-white/[0.08]' : 'bg-neutral-100 border-neutral-200'
+                }`}>
                   {(['ONLINE', 'ONSITE', 'HYBRID'] as const).map(fmt => (
                     <button key={fmt} type="button" onClick={() => setEventFormat(fmt)}
                       className={`flex-1 text-center py-2 text-xs rounded-lg transition-all duration-200 cursor-pointer ${
                         eventFormat === fmt
-                          ? 'font-semibold text-white bg-white/[0.12] backdrop-blur-lg border border-white/[0.10] shadow-lg'
-                          : 'font-medium text-neutral-400 hover:text-white bg-transparent'
+                          ? `font-semibold shadow-lg ${isDarkMode ? 'text-white bg-white/[0.12] border-white/[0.10]' : 'text-neutral-800 bg-white border-neutral-300'}`
+                          : `font-medium hover:text-orange-500 ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-700'}`
                       }`}
                     >
                       {fmt === 'ONLINE' ? 'Trực tuyến' : fmt === 'ONSITE' ? 'Tại chỗ' : 'Kết hợp'}
@@ -1387,10 +1568,12 @@ export default function EventRequestCreate() {
 
                 {/* Online Platform Connectors — Visibly rendered for ONLINE and HYBRID formats */}
                 {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (
-                  <div className="mt-2.5 bg-white/[0.03] backdrop-blur-md border border-white/[0.08] rounded-xl p-3 animate-fadeIn flex flex-col gap-2">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.05]">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Nền tảng trực tuyến</span>
-                      <div className="flex gap-1 bg-white/[0.04] p-0.5 rounded-lg border border-white/[0.06]">
+                  <div className={`mt-2.5 backdrop-blur-md border rounded-xl p-3 animate-fadeIn flex flex-col gap-2 ${
+                    isDarkMode ? 'bg-white/[0.03] border-white/[0.08]' : 'bg-neutral-50 border-neutral-200'
+                  }`}>
+                    <div className={`flex items-center justify-between pb-1.5 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
+                      <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>Nền tảng trực tuyến</span>
+                      <div className={`flex gap-1 p-0.5 rounded-lg border ${isDarkMode ? 'bg-white/[0.04] border-white/[0.06]' : 'bg-neutral-100 border-neutral-200'}`}>
                         {(['ZOOM', 'GOOGLE'] as const).map(p => (
                           <button
                             key={p}
@@ -1399,7 +1582,9 @@ export default function EventRequestCreate() {
                             className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
                               selectedOnlinePlatform === p
                                 ? 'bg-[#fb923c] text-white shadow-md'
-                                : 'text-neutral-400 hover:text-white'
+                                : isDarkMode
+                                ? 'text-neutral-400 hover:text-white'
+                                : 'text-neutral-500 hover:text-neutral-800'
                             }`}
                           >
                             {p === 'ZOOM' ? 'Zoom' : 'Google Meet'}
@@ -1411,14 +1596,16 @@ export default function EventRequestCreate() {
                     {selectedOnlinePlatform === 'ZOOM' ? (
                       connectedPlatforms.zoom.connected ? (
                         /* Connected Zoom */
-                        <div className="flex items-center justify-between bg-emerald-500/[0.04] border border-emerald-500/20 rounded-xl p-3 animate-fadeIn">
+                        <div className={`flex items-center justify-between border rounded-xl p-3 animate-fadeIn ${
+                          isDarkMode ? 'bg-emerald-500/[0.04] border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+                        }`}>
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
                               <Check className="w-5 h-5" />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-white">Đã kết nối tài khoản Zoom</p>
-                              <p className="text-[10px] text-emerald-400/90 font-semibold truncate mt-0.5">
+                              <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-neutral-800'}`}>Đã kết nối tài khoản Zoom</p>
+                              <p className={`text-[10px] font-semibold truncate mt-0.5 ${isDarkMode ? 'text-emerald-400/90' : 'text-emerald-650'}`}>
                                 {connectedPlatforms.zoom.email}
                               </p>
                             </div>
@@ -1426,23 +1613,30 @@ export default function EventRequestCreate() {
                           <button
                             type="button"
                             onClick={() => handleDisconnect('zoom')}
-                            className="text-[10px] text-white/30 hover:text-red-400 font-bold transition duration-200 cursor-pointer shrink-0 ml-2"
+                            className={`text-[10px] font-bold transition duration-200 cursor-pointer shrink-0 ml-2 ${
+                              isDarkMode ? 'text-white/30 hover:text-red-400' : 'text-neutral-400 hover:text-red-650'
+                            }`}
                           >
                             Hủy kết nối
                           </button>
                         </div>
                       ) : (
                         /* Unconnected Zoom */
-                        <div className="flex flex-col gap-3 bg-white/[0.02] border border-white/[0.05] rounded-xl p-3.5 animate-fadeIn">
+                        <div className={`flex flex-col gap-3 border rounded-xl p-3.5 animate-fadeIn ${
+                          isDarkMode ? 'bg-white/[0.02] border-white/[0.05]' : 'bg-neutral-50 border-neutral-200'
+                        }`}>
                           <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center shrink-0 border border-blue-500/20">
-                              <svg className="w-6 h-6 text-blue-450" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.3 12.3c-.1.1-.3.2-.5.2h-.4l-2 1.2c-.3.2-.7 0-.7-.4V14H10c-.6 0-1-.4-1-1V9c0-.6.4-1 1-1h4c.6 0 1 .4 1 1v4h.7c.3 0 .4.3.3.5l-2 1.8z" />
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                              isDarkMode ? 'bg-[#2D8CFF]/10 border-[#2D8CFF]/20' : 'bg-[#2D8CFF]/8 border-[#2D8CFF]/30'
+                            }`}>
+                              <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="24" height="24" rx="5" fill="#2D8CFF"/>
+                                <path fillRule="evenodd" clipRule="evenodd" d="M5.5 8C5.5 7.17157 6.17157 6.5 7 6.5H13C13.8284 6.5 14.5 7.17157 14.5 8V11L18.5 8.5V15.5L14.5 13V16C14.5 16.8284 13.8284 17.5 13 17.5H7C6.17157 17.5 5.5 16.8284 5.5 16V8Z" fill="white"/>
                               </svg>
                             </div>
                             <div>
-                              <p className="text-xs font-bold text-white">Zoom Account Link</p>
-                              <p className="text-[10px] text-neutral-400 mt-1 leading-normal">
+                              <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-neutral-800'}`}>Zoom Account Link</p>
+                              <p className={`text-[10px] mt-1 leading-normal ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
                                 Tự động thiết lập cuộc họp trực tuyến Zoom bảo mật cao cho sự kiện này.
                               </p>
                             </div>
@@ -1460,14 +1654,16 @@ export default function EventRequestCreate() {
                     ) : (
                       connectedPlatforms.google.connected ? (
                         /* Connected Google Meet */
-                        <div className="flex items-center justify-between bg-emerald-500/[0.04] border border-emerald-500/20 rounded-xl p-3 animate-fadeIn">
+                        <div className={`flex items-center justify-between border rounded-xl p-3 animate-fadeIn ${
+                          isDarkMode ? 'bg-emerald-500/[0.04] border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+                        }`}>
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
                               <Check className="w-5 h-5" />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-white">Đã kết nối Google Meet</p>
-                              <p className="text-[10px] text-emerald-400/90 font-semibold truncate mt-0.5">
+                              <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-neutral-800'}`}>Đã kết nối Google Meet</p>
+                              <p className={`text-[10px] font-semibold truncate mt-0.5 ${isDarkMode ? 'text-emerald-400/90' : 'text-emerald-650'}`}>
                                 {connectedPlatforms.google.email}
                               </p>
                             </div>
@@ -1475,23 +1671,34 @@ export default function EventRequestCreate() {
                           <button
                             type="button"
                             onClick={() => handleDisconnect('google')}
-                            className="text-[10px] text-white/30 hover:text-red-400 font-bold transition duration-200 cursor-pointer shrink-0 ml-2"
+                            className={`text-[10px] font-bold transition duration-200 cursor-pointer shrink-0 ml-2 ${
+                              isDarkMode ? 'text-white/30 hover:text-red-400' : 'text-neutral-400 hover:text-red-650'
+                            }`}
                           >
                             Hủy kết nối
                           </button>
                         </div>
                       ) : (
                         /* Unconnected Google Meet */
-                        <div className="flex flex-col gap-3 bg-white/[0.02] border border-white/[0.05] rounded-xl p-3.5 animate-fadeIn">
+                        <div className={`flex flex-col gap-3 border rounded-xl p-3.5 animate-fadeIn ${
+                          isDarkMode ? 'bg-white/[0.02] border-white/[0.05]' : 'bg-neutral-50 border-neutral-200'
+                        }`}>
                           <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-teal-600/10 flex items-center justify-center shrink-0 border border-teal-500/20">
-                              <svg className="w-6 h-6 text-teal-450" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                              isDarkMode ? 'bg-white/[0.04] border-white/10' : 'bg-neutral-100 border-neutral-300'
+                            }`}>
+                              <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M0 11.5v5c0 1.38 1.12 2.5 2.5 2.5h5L10 16.5l-2.5-5H0z" fill="#00832d" />
+                                <path d="M0 5v6.5h7.5l2.5-5-2.5-4h-5C1.12 2.5 0 3.62 0 5z" fill="#0066da" />
+                                <path d="M10 2.5L7.5 7.5l2.5 5 7-3.5v-6.5h-7z" fill="#2684fc" />
+                                <path d="M17 9v6.5l7 3.5V5l-7 4z" fill="#00ac47" />
+                                <path d="M10 12.5l-2.5 4v5h5c1.38 0 2.5-1.12 2.5-2.5v-6.5h-5z" fill="#ea4335" />
+                                <path d="M17 2.5h-7v6.5h7v-6.5z" fill="#ffba00" />
                               </svg>
                             </div>
                             <div>
-                              <p className="text-xs font-bold text-white">Google Meet Connection</p>
-                              <p className="text-[10px] text-neutral-400 mt-1 leading-normal">
+                              <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-neutral-800'}`}>Google Meet Connection</p>
+                              <p className={`text-[10px] mt-1 leading-normal ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
                                 Tạo link Google Meet trực tuyến bảo mật thông qua đồng bộ hóa lịch Google.
                               </p>
                             </div>
@@ -1515,43 +1722,51 @@ export default function EventRequestCreate() {
                   <div className="mt-2.5 animate-fadeIn space-y-3">
                     {flowType === 'UNIVERSITY' ? (
                       /* UNIVERSITY (School) flow: Structured dropdown select */
-                      <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.08] rounded-xl p-3.5 flex flex-col gap-2.5">
+                      <div className={`backdrop-blur-md border rounded-xl p-3.5 flex flex-col gap-2.5 ${
+                        isDarkMode ? 'bg-white/[0.03] border-white/[0.08]' : 'bg-neutral-50 border-neutral-200'
+                      }`}>
                         <div className="flex items-center gap-1.5">
                           <Building2 className="w-3.5 h-3.5 text-orange-400" />
-                          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Phòng/Khu vực học đường</span>
+                          <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>Phòng/Khu vực học đường</span>
                         </div>
                         <div className="relative">
                           <select
                             value={selectedCampusAreaId}
                             onFocus={handleCampusAreaFocus}
                             onChange={handleCampusAreaChange}
-                            className="w-full bg-[#18181b] border border-white/10 text-white rounded-xl p-2.5 pr-10 text-xs font-bold focus:outline-none focus:border-orange-500/50 appearance-none cursor-pointer"
+                            className={`w-full border rounded-xl p-2.5 pr-10 text-xs font-bold focus:outline-none focus:border-orange-500/50 appearance-none cursor-pointer ${
+                              isDarkMode ? 'bg-[#18181b] border-white/10 text-white' : 'bg-white border-neutral-300 text-neutral-800'
+                            }`}
                           >
                             <option value="" className="text-neutral-500">-- Chọn phòng / phòng hội thảo chính quy --</option>
                             {campusAreas.map(area => (
-                              <option key={area.areaId} value={area.areaId} className="text-white">
+                              <option key={area.areaId} value={area.areaId} className={isDarkMode ? 'text-white bg-[#18181b]' : 'text-neutral-800 bg-white'}>
                                 {area.areaName} ({area.floor || 'Tầng thường'} - Sức chứa: {area.capacity || 'N/A'} người)
                               </option>
                             ))}
                           </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white/50">
+                          <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>
                             <ChevronDown className="w-4 h-4" />
                           </div>
                         </div>
                         {selectedCampusAreaId && (
-                          <div className="text-[10px] text-neutral-400 font-medium bg-white/[0.02] border border-white/[0.04] p-2 rounded-lg leading-relaxed">
+                          <div className={`text-[10px] font-medium p-2 rounded-lg leading-relaxed border ${
+                            isDarkMode ? 'text-neutral-400 bg-white/[0.02] border-white/[0.04]' : 'text-neutral-600 bg-neutral-100/50 border-neutral-200'
+                          }`}>
                             <span className="text-orange-400 font-bold">Lựa chọn:</span> {formData.customVenueName} &middot; {formData.customLocation}
                           </div>
                         )}
                       </div>
                     ) : (
                       /* INDEPENDENT (Free) flow: Custom text inputs */
-                      <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.08] rounded-xl p-3.5 flex flex-col gap-2">
-                        <div className="flex items-center gap-1.5 pb-1 border-b border-white/[0.05]">
+                      <div className={`backdrop-blur-md border rounded-xl p-3.5 flex flex-col gap-2 ${
+                        isDarkMode ? 'bg-white/[0.03] border-white/[0.08]' : 'bg-neutral-50 border-neutral-200'
+                      }`}>
+                        <div className={`flex items-center gap-1.5 pb-1 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
                           <MapPin className="w-3.5 h-3.5 text-orange-400" />
-                          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Địa điểm tự do</span>
+                          <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>Địa điểm tự do</span>
                         </div>
-                        <div className="py-1 border-b border-white/[0.07]">
+                        <div className={`py-1 border-b ${isDarkMode ? 'border-white/[0.07]' : 'border-neutral-200'}`}>
                           <input
                             type="text"
                             name="customVenueName"
@@ -1559,10 +1774,12 @@ export default function EventRequestCreate() {
                             onChange={handleChange}
                             required
                             placeholder="Tên địa điểm tự do (VD: L'Amour Cafe, Khách sạn Rex)..."
-                            className="w-full bg-transparent text-white/85 text-xs font-medium placeholder-neutral-500 focus:outline-none"
+                            className={`w-full bg-transparent text-xs font-medium placeholder-neutral-500 focus:outline-none ${
+                              isDarkMode ? 'text-white/85' : 'text-neutral-800'
+                            }`}
                           />
                         </div>
-                        <div className="py-1 border-b border-white/[0.05]">
+                        <div className={`py-1 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
                           <input
                             type="text"
                             name="customLocation"
@@ -1570,10 +1787,12 @@ export default function EventRequestCreate() {
                             onChange={handleChange}
                             required
                             placeholder="Địa chỉ chi tiết địa điểm tự do..."
-                            className="w-full bg-transparent text-white/60 text-xs font-medium placeholder-neutral-500 focus:outline-none"
+                            className={`w-full bg-transparent text-xs font-medium placeholder-neutral-500 focus:outline-none ${
+                              isDarkMode ? 'text-white/65' : 'text-neutral-700'
+                            }`}
                           />
                         </div>
-                        <p className="text-[10px] text-neutral-400/70 mt-1 font-medium tracking-wide leading-normal italic">
+                        <p className={`text-[10px] mt-1 font-medium tracking-wide leading-normal italic ${isDarkMode ? 'text-neutral-400/70' : 'text-neutral-550/80'}`}>
                           Gợi ý: Nhập địa điểm bên ngoài trường. Organizer chịu trách nhiệm tự liên hệ địa điểm này.
                         </p>
                       </div>
@@ -1586,13 +1805,20 @@ export default function EventRequestCreate() {
               <div className="mb-2 flex-shrink-0">
                 <button
                   type="button"
-                  onClick={handleOpenDescModal}
-                  className="w-full flex items-start gap-2.5 py-1.5 border-b border-white/[0.07] text-white/50 hover:text-white/80 transition-colors text-left cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleOpenDescModal()
+                  }}
+                  className={`w-full flex items-start gap-2.5 py-1.5 border-b transition-colors text-left cursor-pointer ${
+                    isDarkMode 
+                      ? 'border-white/[0.07] text-white/50 hover:text-white/80' 
+                      : 'border-neutral-200 text-neutral-500 hover:text-neutral-800'
+                  }`}
                 >
-                  <AlignLeft className="w-3.5 h-3.5 flex-shrink-0 text-white/40 mt-0.5" />
+                  <AlignLeft className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${isDarkMode ? 'text-white/40' : 'text-neutral-550'}`} />
                   <div className="flex-1 min-w-0">
                     {formData.description ? (
-                      <p className="text-sm text-white/80 line-clamp-3 whitespace-pre-wrap">{formData.description}</p>
+                      <p className={`text-sm line-clamp-3 whitespace-pre-wrap ${isDarkMode ? 'text-white/80' : 'text-neutral-800'}`}>{formData.description}</p>
                     ) : (
                       <span className="text-sm font-medium">Thêm mô tả sự kiện...</span>
                     )}
@@ -1603,14 +1829,23 @@ export default function EventRequestCreate() {
               {/* ── Capacity — borderless row with Popover ── */}
               <div className="relative mb-2 flex-shrink-0">
                 <div
-                  onClick={() => setCapacityPopoverOpen(v => !v)}
-                  className="flex items-center justify-between py-1.5 border-b border-white/[0.07] hover:bg-white/[0.02] px-1 rounded-lg transition-colors cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setCapacityPopoverOpen(v => !v)
+                  }}
+                  className={`flex items-center justify-between py-1.5 border-b px-1 rounded-lg transition-colors cursor-pointer ${
+                    isDarkMode 
+                      ? 'border-white/[0.07] hover:bg-white/[0.02]' 
+                      : 'border-neutral-200 hover:bg-neutral-50'
+                  }`}
                 >
-                  <div className="flex items-center gap-2.5 text-white/50">
-                    <Users className="w-3.5 h-3.5 flex-shrink-0 text-white/40" />
+                  <div className={`flex items-center gap-2.5 ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>
+                    <Users className={`w-3.5 h-3.5 flex-shrink-0 ${isDarkMode ? 'text-white/40' : 'text-neutral-500'}`} />
                     <span className="text-sm font-medium">Sức chứa tối đa</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-white/80 hover:text-white transition-colors">
+                  <div className={`flex items-center gap-1.5 transition-colors ${
+                    isDarkMode ? 'text-white/80 hover:text-white' : 'text-neutral-800 hover:text-neutral-900'
+                  }`}>
                     <span className="text-sm font-semibold">
                       {formData.expectedParticipants ? `${formData.expectedParticipants} người` : 'Không giới hạn'}
                     </span>
@@ -1620,85 +1855,6 @@ export default function EventRequestCreate() {
                   </div>
                 </div>
 
-                {/* Capacity Popover (adjacent to the trigger) */}
-                {capacityPopoverOpen && (
-                  <div
-                    ref={capacityPopoverRef}
-                    className="bg-[#18181b] border border-white/[0.08] rounded-2xl p-4 shadow-2xl z-40 w-72 absolute right-0 bottom-full mb-1.5 animate-fadeIn flex flex-col"
-                  >
-                    {/* Limit Event Capacity Toggle Switch */}
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs font-bold text-white">Limit Event Capacity</span>
-                      <button
-                        type="button"
-                        onClick={() => setLimitCapacity(!limitCapacity)}
-                        className={`w-9 h-5 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
-                          limitCapacity ? 'bg-orange-600' : 'bg-neutral-800 border border-white/10'
-                        }`}
-                      >
-                        <span
-                          className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 transform ${
-                            limitCapacity ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {/* Subfields (Max Capacity & Waitlist) with smooth transition container */}
-                    <div
-                      className={`overflow-hidden transition-all duration-300 ${
-                        limitCapacity ? 'max-h-40 opacity-100 mb-4' : 'max-h-0 opacity-0 pointer-events-none'
-                      }`}
-                    >
-                      {/* Numeric Max Capacity Input */}
-                      <div className="flex items-center justify-between py-2 border-b border-white/[0.05] mb-3">
-                        <span className="text-xs text-neutral-400 font-semibold">Max Capacity</span>
-                        <input
-                          type="number"
-                          value={tempCapacity}
-                          onChange={(e) => setTempCapacity(e.target.value)}
-                          min="10"
-                          step="10"
-                          className="w-20 text-right bg-transparent text-white font-bold text-sm focus:outline-none border-b border-white/10 focus:border-orange-500/50 pb-0.5"
-                        />
-                      </div>
-
-                      {/* Over-Capacity Waitlist (Danh sách chờ) Toggle */}
-                      <div className="flex items-center justify-between py-1">
-                        <span className="text-xs text-neutral-400 font-semibold">Over-Capacity Waitlist</span>
-                        <button
-                          type="button"
-                          onClick={() => setWaitlistEnabled(!waitlistEnabled)}
-                          className={`w-9 h-5 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
-                            waitlistEnabled ? 'bg-orange-600' : 'bg-neutral-800 border border-white/10'
-                          }`}
-                        >
-                          <span
-                            className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 transform ${
-                              waitlistEnabled ? 'translate-x-4' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Confirm Button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (limitCapacity) {
-                          setFormData(prev => ({ ...prev, expectedParticipants: tempCapacity }));
-                        } else {
-                          setFormData(prev => ({ ...prev, expectedParticipants: '' }));
-                        }
-                        setCapacityPopoverOpen(false);
-                      }}
-                      className="w-full py-2 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-                    >
-                      Confirm
-                    </button>
-                  </div>
-                )}
               </div>
 
               {/* ── Validation errors ── */}
@@ -1735,13 +1891,179 @@ export default function EventRequestCreate() {
                   type="button"
                   onClick={handleCancel}
                   disabled={isSubmitting}
-                  className="w-full py-2 rounded-xl text-white/50 hover:text-white transition-colors font-medium text-sm cursor-pointer"
+                  className={`w-full py-2 rounded-xl transition-colors font-medium text-sm cursor-pointer ${
+                    isDarkMode ? 'text-white/50 hover:text-white' : 'text-neutral-550 hover:text-neutral-800'
+                  }`}
                 >
                   Hủy và quay lại
                 </button>
               </div>
             </div>
           </form>
+
+          {/* ══════════════════════════════════════════════
+              Event Description Centered Modal
+          ══════════════════════════════════════════════ */}
+          {descOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setDescOpen(false)}>
+              <div className={`w-full max-w-xl rounded-2xl border p-6 shadow-2xl flex flex-col gap-4 transition-all duration-200 transform scale-100 ${
+                isDarkMode ? 'bg-[#141416] border-white/[0.09] text-white' : 'bg-white border-neutral-200 text-neutral-850'
+              }`} onClick={(e) => e.stopPropagation()}>
+                <div className={`flex items-center justify-between pb-2.5 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
+                  <h3 className="text-sm font-black">Mô tả sự kiện</h3>
+                  <button type="button" onClick={() => setDescOpen(false)} className={`w-7 h-7 flex items-center justify-center rounded-lg transition cursor-pointer ${
+                    isDarkMode ? 'hover:bg-white/[0.08] text-neutral-400 hover:text-white' : 'hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800'
+                  }`}>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <textarea
+                  value={descBuffer}
+                  onChange={(e) => setDescBuffer(e.target.value)}
+                  placeholder="Nhập thông tin chi tiết về sự kiện của bạn..."
+                  className={`w-full h-48 rounded-xl p-3.5 text-sm font-medium focus:outline-none focus:border-orange-500/50 resize-none border ${
+                    isDarkMode 
+                      ? 'bg-white/[0.03] border-white/10 text-white placeholder-neutral-500' 
+                      : 'bg-neutral-50 border-neutral-300 text-neutral-800 placeholder-neutral-400'
+                  }`}
+                />
+                <div className="flex justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setDescOpen(false)}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                      isDarkMode 
+                        ? 'bg-white/[0.05] border-white/10 text-white hover:bg-white/[0.08]' 
+                        : 'bg-neutral-100 border-neutral-250 text-neutral-700 hover:bg-neutral-200'
+                    }`}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, description: descBuffer }));
+                      setDescOpen(false);
+                    }}
+                    className="px-4 py-2.5 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    Xác nhận
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════
+              Event Capacity Centered Modal
+          ══════════════════════════════════════════════ */}
+          {capacityPopoverOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setCapacityPopoverOpen(false)}>
+              <div
+                ref={capacityPopoverRef}
+                className={`w-full max-w-sm rounded-2xl border p-6 shadow-2xl flex flex-col gap-4 transition-all duration-200 transform scale-100 ${
+                  isDarkMode ? 'bg-[#141416] border-white/[0.09] text-white' : 'bg-white border-neutral-200 text-neutral-850'
+                }`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className={`flex items-center justify-between pb-2.5 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
+                  <h3 className="text-sm font-black">Sức chứa sự kiện</h3>
+                  <button type="button" onClick={() => setCapacityPopoverOpen(false)} className={`w-7 h-7 flex items-center justify-center rounded-lg transition cursor-pointer ${
+                    isDarkMode ? 'hover:bg-white/[0.08] text-neutral-400 hover:text-white' : 'hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800'
+                  }`}>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Limit Event Capacity Toggle Switch */}
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-xs font-bold">Giới hạn số lượng tham gia</span>
+                  <button
+                    type="button"
+                    onClick={() => setLimitCapacity(!limitCapacity)}
+                    className={`w-9 h-5 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
+                      limitCapacity ? 'bg-orange-600' : 'bg-neutral-800 border border-white/10'
+                    }`}
+                  >
+                    <span
+                      className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 transform ${
+                        limitCapacity ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Subfields (Max Capacity & Waitlist) with smooth transition container */}
+                <div
+                  className={`overflow-hidden transition-all duration-300 ${
+                    limitCapacity ? 'max-h-40 opacity-100 mb-2' : 'max-h-0 opacity-0 pointer-events-none'
+                  }`}
+                >
+                  {/* Numeric Max Capacity Input */}
+                  <div className={`flex items-center justify-between py-2.5 border-b mb-3 ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
+                    <span className="text-xs font-semibold opacity-70">Số lượng tối đa</span>
+                    <input
+                      type="number"
+                      value={tempCapacity}
+                      onChange={(e) => setTempCapacity(e.target.value)}
+                      min="10"
+                      step="10"
+                      className={`w-24 text-right bg-transparent font-bold text-sm focus:outline-none border-b pb-0.5 ${
+                        isDarkMode ? 'text-white border-white/10 focus:border-orange-500/50' : 'text-neutral-800 border-neutral-300 focus:border-orange-500/50'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Over-Capacity Waitlist Toggle */}
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-xs font-semibold opacity-70">Cho phép danh sách chờ</span>
+                    <button
+                      type="button"
+                      onClick={() => setWaitlistEnabled(!waitlistEnabled)}
+                      className={`w-9 h-5 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
+                        waitlistEnabled ? 'bg-orange-600' : 'bg-neutral-800 border border-white/10'
+                      }`}
+                    >
+                      <span
+                        className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 transform ${
+                          waitlistEnabled ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCapacityPopoverOpen(false)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                      isDarkMode 
+                        ? 'bg-white/[0.05] border-white/10 text-white hover:bg-white/[0.08]' 
+                        : 'bg-neutral-100 border-neutral-250 text-neutral-700 hover:bg-neutral-200'
+                    }`}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (limitCapacity) {
+                        setFormData(prev => ({ ...prev, expectedParticipants: tempCapacity }));
+                      } else {
+                        setFormData(prev => ({ ...prev, expectedParticipants: '' }));
+                      }
+                      setCapacityPopoverOpen(false);
+                    }}
+                    className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    Xác nhận
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
