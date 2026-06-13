@@ -56,7 +56,7 @@ function validateEventDateTime(
 
   if (start <= now) errors.push('Thời gian bắt đầu không được trong quá khứ')
   if (end   <= start) errors.push('Thời gian kết thúc phải sau thời gian bắt đầu')
-  if (mins  <  60)   errors.push('Sự kiện phải kéo dài ít nhất 60 phút')
+  if (mins  <  30)   errors.push('Sự kiện phải kéo dài ít nhất 30 phút')
 
   if (flowType === 'UNIVERSITY') {
     const sd = start.toLocaleDateString('en-CA')
@@ -191,6 +191,21 @@ const ERC_CSS = `
     max-width: 100% !important;
     height: 100% !important;
   }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.02) !important;
+    border-radius: 10px !important;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15) !important;
+    border-radius: 10px !important;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.30) !important;
+  }
 `
 
 /* ─────────────────────────────────────────────────────────────
@@ -290,36 +305,41 @@ function CalendarPopover({ value, onChange, onClose, minDate }: CalendarPopoverP
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 md:left-0 z-50 mt-2 bg-[#121214] border border-white/10 rounded-2xl p-4 shadow-2xl w-[280px] select-none animate-fadeIn">
-        <div className="flex items-center justify-between mb-3">
-          <button
-            type="button"
-            onClick={handlePrevMonth}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-white/60 hover:text-white transition cursor-pointer"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-xs font-black text-white">
-            {monthNames[month]} {year}
+      <div className="absolute right-0 md:left-0 z-50 mt-2 bg-[#18181b] border border-white/[0.08] rounded-2xl p-5 shadow-2xl w-[320px] select-none animate-fadeIn">
+        {/* Header matching Luma style */}
+        <div className="flex items-center justify-between mb-4 px-1">
+          <span className="text-sm font-black text-white">
+            {monthNames[month]}, {year}
           </span>
-          <button
-            type="button"
-            onClick={handleNextMonth}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-white/60 hover:text-white transition cursor-pointer"
-          >
-            <ChevronLeft className="w-4 h-4 rotate-180" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-white/70 hover:text-white transition cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] text-white/70 hover:text-white transition cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4 rotate-180" />
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+        {/* Weekday labels */}
+        <div className="grid grid-cols-7 gap-1 text-center mb-3">
           {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((wd, idx) => (
-            <span key={wd} className={`text-[9px] font-black tracking-wider uppercase ${idx === 0 ? 'text-red-400' : 'text-neutral-500'}`}>
+            <span key={wd} className={`text-[10px] font-bold tracking-wider ${idx === 0 ? 'text-red-400' : 'text-neutral-500'}`}>
               {wd}
             </span>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
+        {/* Days Grid */}
+        <div className="grid grid-cols-7 gap-1.5">
           {daysGrid.map(({ day, isCurrentMonth, dateStr }, index) => {
             const isSelected = value === dateStr
             const isToday = todayStr === dateStr
@@ -333,15 +353,15 @@ function CalendarPopover({ value, onChange, onClose, minDate }: CalendarPopoverP
                   onChange(dateStr)
                   onClose()
                 }}
-                className={`aspect-square text-[11px] font-bold rounded-lg flex items-center justify-center transition cursor-pointer ${
+                className={`w-9 h-9 text-xs font-bold rounded-full flex items-center justify-center transition cursor-pointer ${
                   isSelected
-                    ? 'bg-orange-600 text-white shadow-lg shadow-orange-700/30'
+                    ? 'bg-[#fb923c] text-white shadow-lg shadow-orange-500/20'
                     : isToday
-                    ? 'bg-white/[0.08] text-orange-400 border border-orange-500/30'
+                    ? 'bg-white/[0.08] text-[#fb923c] border border-[#fb923c]/30'
                     : isCurrentMonth
-                    ? 'text-white/80 hover:bg-white/[0.05]'
-                    : 'text-neutral-600 hover:bg-white/[0.02]'
-                } ${isBeforeMin ? 'opacity-20 cursor-not-allowed hover:bg-transparent text-neutral-600' : ''}`}
+                    ? 'text-white hover:bg-white/[0.08]'
+                    : 'text-neutral-600 opacity-40 hover:bg-white/[0.02]'
+                } ${isBeforeMin ? 'opacity-20 cursor-not-allowed hover:bg-transparent text-neutral-650' : ''}`}
               >
                 {day}
               </button>
@@ -382,7 +402,7 @@ function TimePopover({ value, onChange, onClose }: TimePopoverProps) {
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
         ref={listRef}
-        className="absolute right-0 z-50 mt-2 bg-[#121214] border border-white/10 rounded-2xl shadow-2xl w-[120px] max-h-60 overflow-y-auto py-1.5 scrollbar-thin animate-fadeIn"
+        className="absolute right-0 z-50 mt-2 bg-[#18181b] border border-white/[0.08] rounded-2xl shadow-2xl w-[130px] max-h-60 overflow-y-auto py-1.5 custom-scrollbar animate-fadeIn"
       >
         {timeSlots.map(t => {
           const isSelected = value === t
@@ -395,10 +415,10 @@ function TimePopover({ value, onChange, onClose }: TimePopoverProps) {
                 onChange(t)
                 onClose()
               }}
-              className={`w-full text-center py-2 text-xs font-bold transition cursor-pointer ${
+              className={`w-full text-center py-2.5 text-xs font-bold transition cursor-pointer ${
                 isSelected
-                  ? 'bg-orange-600 text-white'
-                  : 'text-white/85 hover:bg-white/[0.06]'
+                  ? 'bg-[#fb923c] text-white font-black'
+                  : 'text-white/85 hover:bg-white/[0.08]'
               }`}
             >
               {t}
@@ -488,6 +508,41 @@ export default function EventRequestCreate() {
     setEndDate(`${ey}-${em}-${ed}`)
     setEndTime(`${eh}:${emin}`)
   }, [flowType])
+
+  /* ── Sync and advance end date/time suggestions when start values change ── */
+  const handleStartDateChange = (newDate: string) => {
+    setStartDate(newDate)
+    if (newDate && startTime) {
+      const startObj = new Date(`${newDate}T${startTime}`)
+      if (!isNaN(startObj.getTime())) {
+        const endObj = new Date(startObj.getTime() + 60 * 60 * 1000) // start + 1 hour
+        const ey = endObj.getFullYear()
+        const em = padZ(endObj.getMonth() + 1)
+        const ed = padZ(endObj.getDate())
+        const eh = padZ(endObj.getHours())
+        const emin = padZ(endObj.getMinutes())
+        setEndDate(`${ey}-${em}-${ed}`)
+        setEndTime(`${eh}:${emin}`)
+      }
+    }
+  }
+
+  const handleStartTimeChange = (newTime: string) => {
+    setStartTime(newTime)
+    if (startDate && newTime) {
+      const startObj = new Date(`${startDate}T${newTime}`)
+      if (!isNaN(startObj.getTime())) {
+        const endObj = new Date(startObj.getTime() + 60 * 60 * 1000) // start + 1 hour
+        const ey = endObj.getFullYear()
+        const em = padZ(endObj.getMonth() + 1)
+        const ed = padZ(endObj.getDate())
+        const eh = padZ(endObj.getHours())
+        const emin = padZ(endObj.getMinutes())
+        setEndDate(`${ey}-${em}-${ed}`)
+        setEndTime(`${eh}:${emin}`)
+      }
+    }
+  }
 
   /* ── Sync split date/time fields to formData ── */
   useEffect(() => {
@@ -921,7 +976,7 @@ export default function EventRequestCreate() {
                     {showStartCalendar && (
                       <CalendarPopover
                         value={startDate}
-                        onChange={setStartDate}
+                        onChange={handleStartDateChange}
                         onClose={() => setShowStartCalendar(false)}
                       />
                     )}
@@ -941,7 +996,7 @@ export default function EventRequestCreate() {
                     {showStartTimeList && (
                       <TimePopover
                         value={startTime}
-                        onChange={setStartTime}
+                        onChange={handleStartTimeChange}
                         onClose={() => setShowStartTimeList(false)}
                       />
                     )}
