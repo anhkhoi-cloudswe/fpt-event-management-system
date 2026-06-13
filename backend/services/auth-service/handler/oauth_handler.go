@@ -47,6 +47,18 @@ func (s *oauthStateStore) Verify(state string) bool {
 func HandleOAuthConnect(c *gin.Context) {
 	platform := c.Param("platform")
 
+	redirectURI := c.Query("redirect_uri")
+	if redirectURI == "" {
+		if platform == "zoom" {
+			redirectURI = os.Getenv("ZOOM_REDIRECT_URI")
+		} else {
+			redirectURI = os.Getenv("GOOGLE_REDIRECT_URI")
+		}
+		if redirectURI == "" {
+			redirectURI = "http://localhost:8080/api/v1/auth/" + platform + "/callback"
+		}
+	}
+
 	// Generate state token
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -61,7 +73,7 @@ func HandleOAuthConnect(c *gin.Context) {
 		zoomConfig := &oauth2.Config{
 			ClientID:     os.Getenv("ZOOM_CLIENT_ID"),
 			ClientSecret: os.Getenv("ZOOM_CLIENT_SECRET"),
-			RedirectURL:  os.Getenv("ZOOM_REDIRECT_URI"),
+			RedirectURL:  redirectURI,
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  "https://zoom.us/oauth/authorize",
 				TokenURL: "https://zoom.us/oauth/token",
@@ -72,7 +84,7 @@ func HandleOAuthConnect(c *gin.Context) {
 		googleConfig := &oauth2.Config{
 			ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 			ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-			RedirectURL:  os.Getenv("GOOGLE_REDIRECT_URI"),
+			RedirectURL:  redirectURI,
 			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  "https://accounts.google.com/o/oauth2/auth",
@@ -109,6 +121,18 @@ func (h *AuthHandler) HandleOAuthConnectAPI(ctx context.Context, request events.
 		}
 	}
 
+	redirectURI := request.QueryStringParameters["redirect_uri"]
+	if redirectURI == "" {
+		if platform == "zoom" {
+			redirectURI = os.Getenv("ZOOM_REDIRECT_URI")
+		} else {
+			redirectURI = os.Getenv("GOOGLE_REDIRECT_URI")
+		}
+		if redirectURI == "" {
+			redirectURI = "http://localhost:8080/api/v1/auth/" + platform + "/callback"
+		}
+	}
+
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return events.APIGatewayProxyResponse{
@@ -124,7 +148,7 @@ func (h *AuthHandler) HandleOAuthConnectAPI(ctx context.Context, request events.
 		zoomConfig := &oauth2.Config{
 			ClientID:     os.Getenv("ZOOM_CLIENT_ID"),
 			ClientSecret: os.Getenv("ZOOM_CLIENT_SECRET"),
-			RedirectURL:  os.Getenv("ZOOM_REDIRECT_URI"),
+			RedirectURL:  redirectURI,
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  "https://zoom.us/oauth/authorize",
 				TokenURL: "https://zoom.us/oauth/token",
@@ -135,7 +159,7 @@ func (h *AuthHandler) HandleOAuthConnectAPI(ctx context.Context, request events.
 		googleConfig := &oauth2.Config{
 			ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 			ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-			RedirectURL:  os.Getenv("GOOGLE_REDIRECT_URI"),
+			RedirectURL:  redirectURI,
 			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  "https://accounts.google.com/o/oauth2/auth",

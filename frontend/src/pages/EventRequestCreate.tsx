@@ -547,10 +547,8 @@ export default function EventRequestCreate() {
     const handleOAuthMessage = (event: MessageEvent) => {
       if (event.data.type === "OAUTH_SUCCESS") {
         const platform = event.data.platform; // 'ZOOM' or 'GOOGLE'
-        const email = event.data.email || (platform === 'ZOOM' ? 'organizer.zoom@fpt.edu.vn' : 'organizer.meet@fpt.edu.vn');
-        const meetingLink = event.data.meetingLink || (platform === 'ZOOM' 
-          ? 'https://fpt-edu.zoom.us/j/84920491029?pwd=YmUxM2NjO3M4MTk2M2Mx' 
-          : 'https://meet.google.com/abc-defg-hij');
+        const email = event.data.email || '';
+        const meetingLink = event.data.meetingLink || '';
 
         setConnectedPlatforms(prev => ({
           ...prev,
@@ -571,24 +569,16 @@ export default function EventRequestCreate() {
     const width = 550, height = 650;
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
-    const popup = window.open(
-      `/api/v1/auth/${platform}/connect`,
+    
+    // Explicitly append encoded redirect_uri pointing to our backend gateway receiver node
+    const redirectUri = `http://localhost:8080/api/v1/auth/${platform}/callback`;
+    const connectUrl = `/api/v1/auth/${platform}/connect?redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+    window.open(
+      connectUrl,
       'OAuthPopup',
       `width=${width},height=${height},top=${top},left=${left}`
     );
-
-    // Fallback/Simulation for local/dev environment where backend OAuth endpoints are unconfigured
-    setTimeout(() => {
-      window.postMessage({
-        type: "OAUTH_SUCCESS",
-        platform: platform.toUpperCase(),
-        email: platform === 'zoom' ? 'organizer.zoom@fpt.edu.vn' : 'organizer.meet@fpt.edu.vn',
-        meetingLink: platform === 'zoom' 
-          ? 'https://fpt-edu.zoom.us/j/84920491029?pwd=YmUxM2NjO3M4MTk2M2Mx' 
-          : 'https://meet.google.com/abc-defg-hij'
-      }, window.location.origin);
-      if (popup) popup.close();
-    }, 1500);
   };
 
   const handleDisconnect = (platform: 'zoom' | 'google') => {
