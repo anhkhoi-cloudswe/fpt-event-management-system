@@ -13,7 +13,7 @@ services = [
     ("gateway", "./cmd/gateway"),
 ]
 
-backend_dir = r"c:\AK\HOCKI6\OJT\Project\fpt-event-management-system\backend"
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 logs_dir = os.path.join(backend_dir, "tests", "logs")
 os.makedirs(logs_dir, exist_ok=True)
 
