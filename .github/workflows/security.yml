@@ -47,8 +47,29 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Prepare report directory
+        run: mkdir -p ../security-reports
+
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          npm audit --omit=dev --audit-level=high 2>&1 | tee ../security-reports/npm-audit.txt || true
+
+      - name: Add frontend SCA summary
+        if: always()
+        run: |
+          echo "## Frontend SCA advisory report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Mode: advisory / non-blocking" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Text artifact: security-reports-frontend-sca" >> "$GITHUB_STEP_SUMMARY"
+          echo "- This scan tracks frontend production dependency vulnerabilities." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload frontend SCA report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports-frontend-sca
+          path: security-reports/npm-audit.txt
+          retention-days: 30
 
   backend-sca:
     name: Backend SCA

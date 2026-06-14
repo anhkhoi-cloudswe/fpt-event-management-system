@@ -36,7 +36,16 @@ jobs:
         continue-on-error: true
 
       - name: Unit tests
-        run: npm run test:unit  --if-present
+        run: |
+          if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts['test:unit'] ? 0 : 1)"; then
+            npm run test:unit
+          else
+            echo "No frontend unit test script configured yet. Skipping unit tests for this workflow baseline."
+            echo "## Frontend unit tests" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Status: skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Reason: package.json does not define test:unit yet." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Build
         run: npm run build
