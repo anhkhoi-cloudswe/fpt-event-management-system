@@ -140,17 +140,7 @@ func (h *AuthHandler) HandleOAuthConnectAPI(ctx context.Context, request events.
 		}
 	}
 
-	redirectURI := request.QueryStringParameters["redirect_uri"]
-	if redirectURI == "" {
-		if platform == "zoom" {
-			redirectURI = os.Getenv("ZOOM_REDIRECT_URI")
-		} else {
-			redirectURI = os.Getenv("GOOGLE_REDIRECT_URI")
-		}
-		if redirectURI == "" {
-			redirectURI = "http://localhost:8080/api/v1/auth/" + platform + "/callback"
-		}
-	}
+	redirectURI := getDynamicRedirectURI(request, platform)
 
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -212,17 +202,7 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 		}
 	}
 
-	redirectURI := request.QueryStringParameters["redirect_uri"]
-	if redirectURI == "" {
-		if platform == "zoom" {
-			redirectURI = os.Getenv("ZOOM_REDIRECT_URI")
-		} else {
-			redirectURI = os.Getenv("GOOGLE_REDIRECT_URI")
-		}
-		if redirectURI == "" {
-			redirectURI = "http://localhost:8080/api/v1/auth/" + platform + "/callback"
-		}
-	}
+	redirectURI := getDynamicRedirectURI(request, platform)
 
 	code := request.QueryStringParameters["code"]
 	email := ""
@@ -372,4 +352,32 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 		},
 		Body: html,
 	}, nil
+}
+
+func getDynamicRedirectURI(request events.APIGatewayProxyRequest, platform string) string {
+	redirectURI := request.QueryStringParameters["redirect_uri"]
+	if redirectURI != "" {
+		return redirectURI
+	}
+
+	if platform == "zoom" {
+		redirectURI = os.Getenv("ZOOM_REDIRECT_URI")
+	} else {
+		redirectURI = os.Getenv("GOOGLE_REDIRECT_URI")
+	}
+
+	// Auto-detect host and scheme if we are in production
+	host := request.Headers["Host"]
+	if host == "" {
+		host = request.Headers["host"]
+	}
+	if host != "" && !strings.Contains(host, "localhost") && !strings.Contains(host, "127.0.0.1") {
+		scheme := getScheme(request)
+		return scheme + "://" + host + "/api/v1/auth/" + platform + "/callback"
+	}
+
+	if redirectURI == "" {
+		redirectURI = "http://localhost:8080/api/v1/auth/" + platform + "/callback"
+	}
+	return redirectURI
 }
