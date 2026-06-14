@@ -414,3 +414,23 @@ func (uc *EventUseCase) UpdateSpeaker(ctx context.Context, id int, s *models.Spe
 func (uc *EventUseCase) DeleteSpeaker(ctx context.Context, id int) error {
 	return uc.eventRepo.DeleteSpeaker(ctx, id)
 }
+
+func (uc *EventUseCase) GetSampleBanners(ctx context.Context) ([]models.SampleBanner, error) {
+	return uc.eventRepo.GetSampleBanners(ctx)
+}
+
+func (uc *EventUseCase) CreateSampleBanner(ctx context.Context, title, url string, category *string) (int, error) {
+	return uc.eventRepo.CreateSampleBanner(ctx, title, url, category)
+}
+
+func (uc *EventUseCase) DeleteSampleBanner(ctx context.Context, bannerID int) error {
+	return uc.eventRepo.DeleteSampleBanner(ctx, bannerID)
+}
+
+func (uc *EventUseCase) CreateIndependentEvent(ctx context.Context, userID int, req *models.CreateEventRequestBody) (int, error) {
+	return uc.eventRepo.CreateIndependentEvent(ctx, userID, req)
+}
+
+func (uc *EventUseCase) GetSampleBannerByID(ctx context.Context, bannerID int) (*models.SampleBanner, error) {
+	return uc.eventRepo.GetSampleBannerByID(ctx, bannerID)
+}

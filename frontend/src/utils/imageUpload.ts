@@ -47,15 +47,32 @@ export async function uploadEventBanner(file: File): Promise<string> {
 }
 
 /**
- * Stub: xóa ảnh trên S3 không được thực hiện client-side.
- * Việc xóa cần được làm từ backend (IAM permission) trong tương lai.
+ * Xóa ảnh trên S3 thông qua backend endpoint.
  *
- * @param _url - URL ảnh cần xóa (chưa áp dụng)
+ * @param url - URL ảnh cần xóa
  */
-export async function deleteEventBanner(_url: string): Promise<void> {
-  // S3 object deletion requires backend/IAM credentials.
-  // Implement a DELETE /api/upload/image?key=... endpoint when needed.
-  console.warn('[S3 Upload] deleteEventBanner: server-side deletion not yet implemented')
+export async function deleteEventBanner(url: string): Promise<void> {
+  if (!url) return
+  console.log('[S3 Upload] Deleting file via backend:', url)
+  try {
+    const response = await fetch('/api/upload/image', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ url }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      const message = data?.message || `HTTP ${response.status}`
+      console.error('[S3 Upload] Backend returned error deleting image:', message)
+    } else {
+      console.log('[S3 Upload] Successfully deleted image:', url)
+    }
+  } catch (err) {
+    console.error('[S3 Upload] Error deleting image:', err)
+  }
 }
 
 /**

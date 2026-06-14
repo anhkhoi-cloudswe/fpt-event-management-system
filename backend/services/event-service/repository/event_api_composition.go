@@ -1239,7 +1239,8 @@ func (r *EventRepository) GetEventRequestByIDComposed(ctx context.Context, reque
 			er.expected_capacity, er.status,
 			er.created_at, er.processed_by,
 			er.processed_at, er.organizer_note, er.reject_reason,
-			er.created_event_id
+			er.created_event_id,
+			er.event_format, er.custom_venue_name, er.custom_location, er.banner_url
 		FROM Event_Request er
 		WHERE er.request_id = $1
 		LIMIT 1
@@ -1251,6 +1252,7 @@ func (r *EventRepository) GetEventRequestByIDComposed(ctx context.Context, reque
 	var processedAt, createdAt sql.NullTime
 	var description, organizerNote, rejectReason sql.NullString
 	var expectedCapacity, createdEventID sql.NullInt64
+	var eventFormat, customVenueName, customLocation, bannerURL sql.NullString
 
 	err := r.db.QueryRowContext(ctx, query, requestID).Scan(
 		&req.RequestID, &req.RequesterID,
@@ -1260,6 +1262,7 @@ func (r *EventRepository) GetEventRequestByIDComposed(ctx context.Context, reque
 		&createdAt, &processedBy,
 		&processedAt, &organizerNote, &rejectReason,
 		&createdEventID,
+		&eventFormat, &customVenueName, &customLocation, &bannerURL,
 	)
 
 	if err != nil {
@@ -1278,6 +1281,18 @@ func (r *EventRepository) GetEventRequestByIDComposed(ctx context.Context, reque
 	req.OrganizerNote = stringPointer(organizerNote)
 	req.RejectReason = stringPointer(rejectReason)
 	req.CreatedEventID = intPointer(createdEventID)
+	if eventFormat.Valid {
+		req.EventFormat = &eventFormat.String
+	}
+	if customVenueName.Valid {
+		req.CustomVenueName = &customVenueName.String
+	}
+	if customLocation.Valid {
+		req.CustomLocation = &customLocation.String
+	}
+	if bannerURL.Valid {
+		req.BannerURL = &bannerURL.String
+	}
 
 	// Enrich with API calls (single request)
 	requests := []models.EventRequest{req}
@@ -1370,6 +1385,9 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 			return fmt.Errorf("reject reason is required when rejecting")
 		}
 
+		var bannerURL sql.NullString
+		tx.QueryRowContext(ctx, `SELECT banner_url FROM Event_Request WHERE request_id = $1`, req.RequestID).Scan(&bannerURL)
+
 		updateQuery := `
 			UPDATE Event_Request 
 			SET status = 'REJECTED', 
@@ -1393,6 +1411,10 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 			return fmt.Errorf("failed to commit transaction: %w", err)
 		}
 
+		if bannerURL.Valid && bannerURL.String != "" {
+			go DeleteImageFromS3IfCustom(context.Background(), bannerURL.String)
+		}
+
 		fmt.Printf("[API_COMPOSITION] ✅ REJECTED Request %d\n", req.RequestID)
 		return nil
 	}
@@ -1408,16 +1430,17 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		var requestStartTime, requestEndTime sql.NullTime
 		var requestCapacity int
 		var requesterID int
+		var eventFormat, customVenueName, customLocation, bannerURL sql.NullString
 
 		getRequestQuery := `
 			SELECT title, description, preferred_start_time, preferred_end_time, 
-			       expected_capacity, requester_id
+			       expected_capacity, requester_id, event_format, custom_venue_name, custom_location, banner_url
 			FROM Event_Request 
 			WHERE request_id = $1
 		`
 		err := tx.QueryRowContext(ctx, getRequestQuery, req.RequestID).Scan(
 			&requestTitle, &requestDesc, &requestStartTime, &requestEndTime,
-			&requestCapacity, &requesterID,
+			&requestCapacity, &requesterID, &eventFormat, &customVenueName, &customLocation, &bannerURL,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to get request details: %w", err)
@@ -1501,8 +1524,9 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		insertEventQuery := `
 			INSERT INTO Event (
 				title, description, start_time, end_time, max_seats, 
-				banner_url, area_id, speaker_id, status, created_by, created_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'UPDATING', $9, NOW())
+				banner_url, area_id, speaker_id, status, created_by, created_at,
+				event_format, custom_venue_name, custom_location
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'UPDATING', $9, NOW(), $10, $11, $12)
 			RETURNING event_id
 		`
 
@@ -1514,12 +1538,20 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		bannerURLValue := sql.NullString{Valid: false}
 		if req.BannerURL != nil && *req.BannerURL != "" {
 			bannerURLValue = sql.NullString{String: *req.BannerURL, Valid: true}
+		} else if bannerURL.Valid && bannerURL.String != "" {
+			bannerURLValue = bannerURL
+		}
+
+		formatVal := "ONSITE"
+		if eventFormat.Valid && eventFormat.String != "" {
+			formatVal = eventFormat.String
 		}
 
 		var eventID int64
 		err = tx.QueryRowContext(ctx, insertEventQuery,
 			requestTitle, requestDesc, startTimeWallClock, endTimeWallClock, requestCapacity,
 			bannerURLValue, *req.AreaID, speakerIDValue, requesterID,
+			formatVal, customVenueName, customLocation,
 		).Scan(&eventID)
 		if err != nil {
 			return fmt.Errorf("failed to create event: %w", err)
@@ -1575,14 +1607,15 @@ func (r *EventRepository) CancelEventComposed(ctx context.Context, userID, event
 	var requestID sql.NullInt64
 	var startTime time.Time
 	var eventTitle string
+	var bannerURL sql.NullString
 
 	checkQuery := `
-		SELECT e.status, e.created_by, e.start_time, e.title,
+		SELECT e.status, e.created_by, e.start_time, e.title, e.banner_url,
 		       (SELECT request_id FROM Event_Request WHERE created_event_id = e.event_id LIMIT 1) as request_id
 		FROM Event e
 		WHERE e.event_id = $1
 	`
-	err := r.db.QueryRowContext(ctx, checkQuery, eventID).Scan(&status, &createdBy, &startTime, &eventTitle, &requestID)
+	err := r.db.QueryRowContext(ctx, checkQuery, eventID).Scan(&status, &createdBy, &startTime, &eventTitle, &bannerURL, &requestID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("sự kiện không tồn tại")
@@ -1653,6 +1686,10 @@ func (r *EventRepository) CancelEventComposed(ctx context.Context, userID, event
 	// Commit Event domain transaction
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("lỗi commit transaction: %w", err)
+	}
+
+	if bannerURL.Valid && bannerURL.String != "" {
+		go DeleteImageFromS3IfCustom(context.Background(), bannerURL.String)
 	}
 
 	// Step 9: Release Venue Area via API (cross-domain)

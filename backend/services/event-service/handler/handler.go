@@ -1423,3 +1423,118 @@ func (h *EventHandler) HandleDeleteSpeaker(ctx context.Context, request events.A
 
 	return createJSONResponse(http.StatusOK, map[string]string{"message": "Speaker deleted successfully"})
 }
+
+func (h *EventHandler) HandleGetSampleBanners(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	banners, err := h.useCase.GetSampleBanners(ctx)
+	if err != nil {
+		log.Error("GetSampleBanners error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Internal server error getting sample banners")
+	}
+	return createJSONResponse(http.StatusOK, banners)
+}
+
+func (h *EventHandler) HandleCreateSampleBanner(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	role := request.Headers["X-User-Role"]
+	if role != "ADMIN" {
+		return createMessageResponse(http.StatusForbidden, "Access denied: insufficient role")
+	}
+
+	var req models.CreateSampleBannerRequest
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid request body")
+	}
+	if req.Title == "" || req.URL == "" {
+		return createMessageResponse(http.StatusBadRequest, "Title and URL are required")
+	}
+
+	bannerID, err := h.useCase.CreateSampleBanner(ctx, req.Title, req.URL, req.Category)
+	if err != nil {
+		log.Error("CreateSampleBanner error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Internal server error creating sample banner")
+	}
+
+	return createJSONResponse(http.StatusCreated, map[string]interface{}{
+		"bannerId":  bannerID,
+		"title":     req.Title,
+		"url":       req.URL,
+		"category":  req.Category,
+		"message":   "Sample banner created successfully",
+	})
+}
+
+func (h *EventHandler) HandleDeleteSampleBanner(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	role := request.Headers["X-User-Role"]
+	if role != "ADMIN" {
+		return createMessageResponse(http.StatusForbidden, "Access denied: insufficient role")
+	}
+
+	idStr := request.QueryStringParameters["id"]
+	if idStr == "" {
+		parts := strings.Split(strings.TrimSuffix(request.Path, "/"), "/")
+		if len(parts) > 0 {
+			idStr = parts[len(parts)-1]
+		}
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		return createMessageResponse(http.StatusBadRequest, "Invalid banner ID")
+	}
+
+	banner, err := h.useCase.GetSampleBannerByID(ctx, id)
+	if err != nil {
+		log.Error("GetSampleBannerByID error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Internal server error")
+	}
+	if banner == nil {
+		return createMessageResponse(http.StatusNotFound, "Sample banner not found")
+	}
+
+	err = h.useCase.DeleteSampleBanner(ctx, id)
+	if err != nil {
+		log.Error("DeleteSampleBanner error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Internal server error deleting sample banner")
+	}
+
+	go repository.DeleteImageFromS3IfCustom(context.Background(), banner.URL)
+
+	return createJSONResponse(http.StatusOK, map[string]string{"message": "Sample banner deleted successfully"})
+}
+
+func (h *EventHandler) HandleCreateIndependentEvent(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	userIDStr := request.Headers["X-User-Id"]
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil || userID <= 0 {
+		return createMessageResponse(http.StatusUnauthorized, "Unauthorized: invalid user ID")
+	}
+
+	role := request.Headers["X-User-Role"]
+	if role != "ORGANIZER" && role != "ADMIN" {
+		return createMessageResponse(http.StatusForbidden, "Access denied: insufficient role")
+	}
+
+	var req models.CreateEventRequestBody
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid request body")
+	}
+
+	if req.Title == "" {
+		return createMessageResponse(http.StatusBadRequest, "Title is required")
+	}
+	if req.PreferredStartTime == "" || req.PreferredEndTime == "" {
+		return createMessageResponse(http.StatusBadRequest, "Start time and End time are required")
+	}
+	if req.EventFormat == "" {
+		return createMessageResponse(http.StatusBadRequest, "Event format is required")
+	}
+
+	eventID, err := h.useCase.CreateIndependentEvent(ctx, userID, &req)
+	if err != nil {
+		log.Error("CreateIndependentEvent error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Internal server error creating independent event: "+err.Error())
+	}
+
+	return createJSONResponse(http.StatusCreated, map[string]interface{}{
+		"eventId": eventID,
+		"message": "Independent event created successfully",
+	})
+}

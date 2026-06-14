@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { UserPlus, Edit, Trash2, Search, Filter, Users, UserCheck, ShieldAlert, Award } from 'lucide-react'
+import { UserPlus, Edit, Trash2, Search, Filter, Users, UserCheck, ShieldAlert, Award, Image as ImageIcon, Plus, X, Upload } from 'lucide-react'
 import ConfirmModal from '../components/common/ConfirmModal'
 import UserFormModal from '../components/admin/UserFormModal'
 import SpeakerFormModal from '../components/admin/SpeakerFormModal'
 import type { User, CreateUserRequest, UpdateUserRequest } from '../types/user'
+import { uploadEventBanner } from '../utils/imageUpload'
 
-type ActiveTab = 'STUDENT' | 'SPEAKER' | 'INTERNAL'
+type ActiveTab = 'STUDENT' | 'SPEAKER' | 'INTERNAL' | 'BANNER'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
@@ -20,9 +21,18 @@ export default function AdminDashboard() {
   const [students, setStudents] = useState<any[]>([])
   const [speakers, setSpeakers] = useState<any[]>([])
   const [internalUsers, setInternalUsers] = useState<any[]>([])
+  const [sampleBanners, setSampleBanners] = useState<any[]>([])
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Banner Modal state
+  const [isBannerModalOpen, setIsBannerModalOpen] = useState(false)
+  const [bannerTitle, setBannerTitle] = useState('')
+  const [bannerCategory, setBannerCategory] = useState('')
+  const [newBannerFile, setNewBannerFile] = useState<File | null>(null)
+  const [newBannerPreview, setNewBannerPreview] = useState('')
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false)
 
   // Modals for Internal Users
   const [isUserModalOpen, setIsUserModalOpen] = useState(false)
@@ -102,9 +112,17 @@ export default function AdminDashboard() {
         speakerList = await speakersResponse.json()
       }
 
+      // 3. Fetch Sample Banners List from Event Service
+      const bannersResponse = await fetch('/api/sample-banners')
+      let bannerList: any[] = []
+      if (bannersResponse.ok) {
+        bannerList = await bannersResponse.json()
+      }
+
       setStudents(studentList)
       setInternalUsers(internalList)
       setSpeakers(speakerList)
+      setSampleBanners(bannerList || [])
     } catch (err: any) {
       console.error('Error fetching dashboard data:', err)
       setError(err.message || 'Lỗi tải dữ liệu người dùng')
@@ -310,6 +328,84 @@ export default function AdminDashboard() {
     setConfirmOpen(true)
   }
 
+  // --- SAMPLE BANNER ACTIONS ---
+  const handleCreateSampleBannerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!bannerTitle.trim()) {
+      showToast('error', 'Vui lòng nhập tiêu đề ảnh mẫu')
+      return
+    }
+    if (!newBannerFile && !newBannerPreview) {
+      showToast('error', 'Vui lòng chọn ảnh để tải lên')
+      return
+    }
+
+    setIsUploadingBanner(true)
+    try {
+      let finalUrl = newBannerPreview
+      if (newBannerFile) {
+        finalUrl = await uploadEventBanner(newBannerFile)
+      }
+
+      const response = await fetch('/api/v1/admin/sample-banners', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          title: bannerTitle.trim(),
+          url: finalUrl,
+          category: bannerCategory.trim() || null,
+        }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.message || 'Lưu ảnh mẫu thất bại')
+      }
+
+      showToast('success', 'Thêm ảnh bìa mẫu thành công!')
+      setIsBannerModalOpen(false)
+      setBannerTitle('')
+      setBannerCategory('')
+      setNewBannerFile(null)
+      setNewBannerPreview('')
+      await fetchData()
+    } catch (err: any) {
+      console.error(err)
+      showToast('error', err.message || 'Lỗi thêm ảnh bìa mẫu')
+    } finally {
+      setIsUploadingBanner(false)
+    }
+  }
+
+  const handleDeleteSampleBanner = (banner: any) => {
+    setConfirmType('danger')
+    setConfirmMessage(`Bạn có chắc chắn muốn xóa ảnh bìa mẫu "${banner.title}"?`)
+    setConfirmAction(() => async () => {
+      try {
+        const response = await fetch(`/api/v1/admin/sample-banners/${banner.bannerId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+        const result = await response.json().catch(() => ({}))
+        if (response.ok) {
+          showToast('success', 'Xóa ảnh bìa mẫu thành công')
+          await fetchData()
+        } else {
+          showToast('error', result?.message || 'Xóa ảnh bìa mẫu thất bại')
+        }
+      } catch (err: any) {
+        showToast('error', err.message || 'Lỗi hệ thống')
+      } finally {
+        setConfirmOpen(false)
+        setConfirmAction(null)
+      }
+    })
+    setConfirmOpen(true)
+  }
+
   // --- FILTERING LOGIC ---
   const getFilteredData = () => {
     if (activeTab === 'STUDENT') {
@@ -325,6 +421,12 @@ export default function AdminDashboard() {
         return sp.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (sp.email && sp.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (sp.phone && sp.phone.includes(searchTerm))
+      })
+    } else if (activeTab === 'BANNER') {
+      return sampleBanners.filter(b => {
+        const matchSearch = b.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (b.category && b.category.toLowerCase().includes(searchTerm.toLowerCase()))
+        return matchSearch
       })
     } else {
       return internalUsers.filter(u => {
@@ -379,6 +481,14 @@ export default function AdminDashboard() {
             <UserPlus size={18} />
             Tạo nhân sự mới
           </button>
+        ) : activeTab === 'BANNER' ? (
+          <button
+            onClick={() => setIsBannerModalOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white rounded-xl shadow-lg shadow-orange-500/20 font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Plus size={18} />
+            Thêm ảnh mẫu
+          </button>
         ) : null}
       </div>
 
@@ -418,6 +528,18 @@ export default function AdminDashboard() {
         >
           <ShieldAlert size={16} />
           Nhân sự nội bộ
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('BANNER'); setSearchTerm(''); setStatusFilter('ALL'); }}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
+            activeTab === 'BANNER'
+              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow shadow-orange-500/10'
+              : 'text-slate-600 dark:text-slate-350 hover:bg-slate-200/60 dark:hover:bg-slate-850'
+          }`}
+        >
+          <ImageIcon size={16} />
+          Ảnh bìa mẫu
         </button>
       </div>
 
@@ -520,6 +642,15 @@ export default function AdminDashboard() {
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Số điện thoại</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Vai trò</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trạng thái</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Thao tác</th>
+                  </tr>
+                )}
+                {activeTab === 'BANNER' && (
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Xem trước</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tiêu đề</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Danh mục</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Đường dẫn</th>
                     <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Thao tác</th>
                   </tr>
                 )}
@@ -663,6 +794,34 @@ export default function AdminDashboard() {
                     </td>
                   </tr>
                 ))}
+
+                {activeTab === 'BANNER' && filteredItems.map((banner) => (
+                  <tr key={banner.bannerId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="w-20 aspect-[16/9] rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 shadow-sm">
+                        <img src={banner.url} alt={banner.title} className="w-full h-full object-cover" />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white">{banner.title}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-650 dark:text-slate-350 font-bold">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-105 dark:bg-slate-800/60 border border-slate-200/40 dark:border-slate-700/50 text-xs">
+                        {banner.category || 'Chưa phân loại'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate" title={banner.url}>{banner.url}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleDeleteSampleBanner(banner)}
+                          className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-all"
+                          title="Xóa ảnh mẫu"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -705,6 +864,111 @@ export default function AdminDashboard() {
           setConfirmAction(null)
         }}
       />
+
+      {/* Banner Create Modal */}
+      {isBannerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 border border-gray-150 dark:border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-150 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="font-extrabold text-lg text-gray-900 dark:text-white flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-orange-500" />
+                Thêm ảnh bìa mẫu
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsBannerModalOpen(false)}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSampleBannerSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
+                  Tiêu đề ảnh *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={bannerTitle}
+                  onChange={(e) => setBannerTitle(e.target.value)}
+                  placeholder="Ví dụ: Hội thảo công nghệ, Âm nhạc..."
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-medium text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
+                  Danh mục / Từ khóa
+                </label>
+                <input
+                  type="text"
+                  value={bannerCategory}
+                  onChange={(e) => setBannerCategory(e.target.value)}
+                  placeholder="Ví dụ: TECHNOLOGY, MUSIC, ART..."
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-medium text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
+                  Chọn hình ảnh
+                </label>
+                <div className="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-gray-150 dark:bg-slate-950 border border-dashed border-gray-300 dark:border-slate-800 flex flex-col items-center justify-center group mb-3">
+                  {newBannerPreview ? (
+                    <>
+                      <img src={newBannerPreview} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => { setNewBannerFile(null); setNewBannerPreview(''); }}
+                        className="absolute top-2 right-2 p-1 bg-red-600/80 text-white rounded-lg hover:bg-red-650 transition"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center p-6 cursor-pointer text-center w-full h-full">
+                      <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                      <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">Tải lên ảnh mẫu</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setNewBannerFile(file)
+                            setNewBannerPreview(URL.createObjectURL(file))
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 dark:border-slate-800 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsBannerModalOpen(false)}
+                  className="px-4 py-2 border border-gray-200 dark:border-slate-800 rounded-xl text-gray-750 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 font-bold text-xs"
+                  disabled={isUploadingBanner}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-xl font-bold text-xs shadow-md shadow-orange-500/10 hover:shadow-orange-500/20"
+                  disabled={isUploadingBanner}
+                >
+                  {isUploadingBanner ? 'Đang lưu...' : 'Thêm ngay'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

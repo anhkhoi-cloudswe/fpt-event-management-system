@@ -93,6 +93,10 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	switch {
 	case (path == "/api/v1/auth/login" || path == "/api/login") && method == "POST":
 		return authHandler.HandleLogin(ctx, request)
+	case (strings.HasPrefix(path, "/api/v1/auth/") && strings.HasSuffix(path, "/connect")) && method == "GET":
+		return authHandler.HandleOAuthConnectAPI(ctx, request)
+	case (strings.HasPrefix(path, "/api/v1/auth/") && strings.HasSuffix(path, "/callback")) && method == "GET":
+		return authHandler.HandleOAuthCallbackAPI(ctx, request)
 	case (path == "/api/logout" || path == "/api/auth/logout") && method == "POST":
 		return authHandler.HandleLogout(ctx, request)
 	case path == "/api/auth/refresh" && method == "POST":
