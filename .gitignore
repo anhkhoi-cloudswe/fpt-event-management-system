@@ -1,133 +1,51 @@
-# Ignore environment and local secrets
-.env                    # Root .env (Master - NEVER commit!)
-backend/.env           # Backend local dev (legacy - for info only)
-
-# Root level gitignore for FPT Event Management System
-
-# Backend
-backend/*.exe
-backend/*.exe~
-backend/bin/
-backend/dist/
-backend/bootstrap
-backend/tests/logs/
-backend/test/
-backend/gateway*
-backend/auth-lambda*
-backend/event-lambda*
-backend/ticket-lambda*
-backend/venue-lambda*
-backend/staff-lambda*
-backend/notification-lambda*
-backend/authorizer-lambda*
-backend/auth-service*
-backend/event-service*
-backend/ticket-service*
-backend/venue-service*
-backend/staff-service*
-backend/notification-service*
-backend/fpt-backend*
-backend/app
-backend/main
-
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/dist-ssr/
-frontend/playwright-report/
-frontend/test-results/
-frontend/.playwright/
-
-# Test files & Reports (never commit - may contain credentials)
-**/*_test.go
-**/*.test
-**/test-report/
-**/E2E_TEST_REPORT.md
-playwright-report/
-test-results/
-
-# IDE & Editor
-.vscode/*
-!.vscode/extensions.json
-.idea/
-*.swp
-*.swo
-*~
-
-# OS specific
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-
-# Build artifacts
-*.zip
-*.tar.gz
-
-# Temporary files
-*.tmp
-*.temp
-
-# Environment variables & Secrets
+# Environment and secrets
 .env
 .env.local
 .env.*.local
 backend/.env
 frontend/.env
-
-# Terraform
-.terraform/
-.terraform.lock.hcl
-*.tfstate
-*.tfstate.*
-crash.log
-crash.*.log
-*.tfvars
-*.tfvars.json
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-.example.tfvars
-example.tfvars.json
-
-# Local .terraform directories
-**/.terraform/*
-
-# .terraform.lock files
-.terraform.lock.hcl
-
-# Secret values - NEVER commit these
 *.pem
 *.key
-# Bastion SSH keys — private key (no extension) + public key
-infrastructure/fpt-bastion-ssh
-infrastructure/fpt-bastion-ssh.pub
 credentials.json
 secrets.yaml
 secrets.yml
+secrets.tf
+secret.tf
 
-# Crash logs
+# Keep env examples
+!.env.example
+!frontend/.env.example
+!backend/.env.example
+
+# Infrastructure local state
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
 crash.log
 crash.*.log
 
-# Misc
-.env
-.env.*
-*.log
-*.bak
-*.backup
-Database/
-
-# OS files
+# IDE / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
 .DS_Store
 Thumbs.db
+desktop.ini
 
+# Logs / temp / archives
+*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+*.zip
+*.tar.gz
+
+# Local-only reports
 INFRASTRUCTURE_REPORT.md
-secrets.tf
-secret.tf
-.env
+
+# Local database dumps only
+Database/
