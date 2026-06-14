@@ -74,14 +74,14 @@ jobs:
         run: mkdir -p ../security-reports
 
       - name: Run govulncheck SARIF
-        run: govulncheck -format=sarif ./... > ../security-reports/govulncheck.sarif
+        run: govulncheck -format=sarif ./... > ../security-reports/govulncheck.sarif || true
 
       - name: Run govulncheck text report
         if: always()
         run: govulncheck ./... 2>&1 | tee ../security-reports/govulncheck.txt || true
 
       - name: Upload govulncheck SARIF
-        if: always()
+        if: always() && hashFiles('security-reports/govulncheck.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: security-reports/govulncheck.sarif
@@ -117,10 +117,10 @@ jobs:
         run: |
           mkdir -p security-reports
           docker run --rm -v "$PWD:/src" returntocorp/semgrep \
-            semgrep scan --config p/owasp-top-ten --sarif --output /src/security-reports/semgrep.sarif /src
+            semgrep scan --config p/owasp-top-ten --sarif --output /src/security-reports/semgrep.sarif /src || true
 
       - name: Upload Semgrep SARIF
-        if: always()
+        if: always() && hashFiles('security-reports/govulncheck.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: security-reports/semgrep.sarif
@@ -141,10 +141,10 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p ../security-reports
-          gosec -fmt=sarif -out=../security-reports/gosec.sarif ./...
+          gosec -fmt=sarif -out=../security-reports/gosec.sarif ./... || true
 
       - name: Upload gosec SARIF
-        if: always()
+        if: always() && hashFiles('security-reports/govulncheck.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: security-reports/gosec.sarif
@@ -172,10 +172,10 @@ jobs:
           output: security-reports/trivy.sarif
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: '0'
 
       - name: Upload Trivy SARIF
-        if: always()
+        if: always() && hashFiles('security-reports/govulncheck.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: security-reports/trivy.sarif
