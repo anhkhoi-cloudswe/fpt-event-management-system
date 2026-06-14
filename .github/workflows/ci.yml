@@ -11,6 +11,18 @@ permissions:
   contents: read
 
 jobs:
+  actionlint:
+    name: Workflow Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run actionlint
+        uses: docker://rhysd/actionlint:latest
+        with:
+          args: -color .github/workflows/ci.yml .github/workflows/security.yml .github/workflows/cd.yml .github/workflows/dast.yml
+
   frontend:
     name: Frontend CI
     runs-on: ubuntu-latest
@@ -36,16 +48,7 @@ jobs:
         continue-on-error: true
 
       - name: Unit tests
-        run: |
-          if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts['test:unit'] ? 0 : 1)"; then
-            npm run test:unit
-          else
-            echo "No frontend unit test script configured yet. Skipping unit tests for this workflow baseline."
-            echo "## Frontend unit tests" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "- Status: skipped" >> "$GITHUB_STEP_SUMMARY"
-            echo "- Reason: package.json does not define test:unit yet." >> "$GITHUB_STEP_SUMMARY"
-          fi
+        run: npm run test:unit --if-present
 
       - name: Build
         run: npm run build
@@ -95,4 +98,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build backend image
-        run: docker build --target local -t fems-backend:${{ github.sha }} backend
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: docker build --target local -t "fems-backend:${IMAGE_TAG}" backend
