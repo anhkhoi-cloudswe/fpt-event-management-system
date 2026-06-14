@@ -1,0 +1,155 @@
+name: FEMS CD Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment to validate"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - preview
+          - staging
+          - demo
+          - production
+      backend_url:
+        description: "Backend base URL, for example https://fems-api.example.com"
+        required: true
+      frontend_url:
+        description: "Frontend URL, for example https://fems.vercel.app"
+        required: true
+      backend_health_path:
+        description: "Backend health endpoint path"
+        required: true
+        default: "/health"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-validation-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  validate-deployment:
+    name: Validate deployed FEMS environment
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Normalize URLs
+        shell: bash
+        env:
+          INPUT_BACKEND_URL: ${{ inputs.backend_url }}
+          INPUT_FRONTEND_URL: ${{ inputs.frontend_url }}
+          INPUT_BACKEND_HEALTH_PATH: ${{ inputs.backend_health_path }}
+        run: |
+          set -euo pipefail
+
+          BACKEND_URL="${INPUT_BACKEND_URL%/}"
+          FRONTEND_URL="${INPUT_FRONTEND_URL%/}"
+
+          case "$BACKEND_URL" in
+            http://*|https://*) ;;
+            *)
+              echo "backend_url must start with http:// or https://"
+              exit 1
+              ;;
+          esac
+
+          case "$FRONTEND_URL" in
+            http://*|https://*) ;;
+            *)
+              echo "frontend_url must start with http:// or https://"
+              exit 1
+              ;;
+          esac
+
+          case "$INPUT_BACKEND_HEALTH_PATH" in
+            /*) ;;
+            *)
+              echo "backend_health_path must start with /"
+              exit 1
+              ;;
+          esac
+
+          echo "BACKEND_URL=$BACKEND_URL" >> "$GITHUB_ENV"
+          echo "FRONTEND_URL=$FRONTEND_URL" >> "$GITHUB_ENV"
+          echo "BACKEND_HEALTH_PATH=$INPUT_BACKEND_HEALTH_PATH" >> "$GITHUB_ENV"
+
+      - name: Show deployment target
+        shell: bash
+        env:
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          echo "Environment: $INPUT_ENVIRONMENT"
+          echo "Backend URL: $BACKEND_URL"
+          echo "Frontend URL: $FRONTEND_URL"
+          echo "Backend health path: $BACKEND_HEALTH_PATH"
+
+      - name: Backend health check
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          paths=(
+            "$BACKEND_HEALTH_PATH"
+            "/health"
+            "/api/health"
+          )
+
+          success=0
+
+          for path in "${paths[@]}"; do
+            echo "Trying backend health endpoint: ${BACKEND_URL}${path}"
+            if curl -fsS --max-time 20 "${BACKEND_URL}${path}" > /tmp/backend-health.txt; then
+              echo "Backend health check passed at ${path}"
+              cat /tmp/backend-health.txt || true
+              success=1
+              break
+            fi
+          done
+
+          if [ "$success" -ne 1 ]; then
+            echo "Backend health check failed for all known health paths."
+            exit 1
+          fi
+
+      - name: Frontend health check
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Checking frontend URL: $FRONTEND_URL"
+          curl -fsSL --max-time 20 "$FRONTEND_URL" > /tmp/frontend.html
+
+          if [ ! -s /tmp/frontend.html ]; then
+            echo "Frontend returned an empty response."
+            exit 1
+          fi
+
+          echo "Frontend health check passed."
+
+      - name: Runtime validation note
+        shell: bash
+        run: |
+          cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          ## FEMS CD Validation Summary
+
+          The deployed environment responded successfully.
+
+          Manual or future automated runtime validation should cover:
+
+          - Login
+          - Event listing and event details
+          - Event proposal and approval
+          - Seat reservation
+          - Payment callback/test payment flow
+          - Ticket generation
+          - QR check-in/check-out
+          - Revenue dashboard access
+          - RBAC and object ownership checks
+
+          After this validation, run the DAST workflow against the same deployed frontend URL.
+          EOF
