@@ -56,11 +56,13 @@ jobs:
       - name: Add frontend SCA summary
         if: always()
         run: |
-          echo "## Frontend SCA advisory report" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Mode: advisory / non-blocking" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Text artifact: security-reports-frontend-sca" >> "$GITHUB_STEP_SUMMARY"
-          echo "- This scan tracks frontend production dependency vulnerabilities." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Frontend SCA advisory report"
+            echo ""
+            echo "- Mode: advisory / non-blocking"
+            echo "- Text artifact: security-reports-frontend-sca"
+            echo "- This scan tracks frontend production dependency vulnerabilities."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload frontend SCA report
         if: always()
@@ -103,7 +105,24 @@ jobs:
         if: always()
         run: |
           if [ ! -s ../security-reports/govulncheck.sarif ]; then
-            printf '%s\n' '{"version":"2.1.0","$schema":"https://json.schemastore.org/sarif-2.1.0.json","runs":[{"tool":{"driver":{"name":"govulncheck","informationUri":"https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck","rules":[]}},"results":[]}]}' > ../security-reports/govulncheck.sarif
+            cat > ../security-reports/govulncheck.sarif <<'SARIF'
+          {
+            "version": "2.1.0",
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "govulncheck",
+                    "informationUri": "https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck",
+                    "rules": []
+                  }
+                },
+                "results": []
+              }
+            ]
+          }
+          SARIF
           fi
 
       - name: Run govulncheck text report
@@ -121,12 +140,14 @@ jobs:
       - name: Add govulncheck summary
         if: always()
         run: |
-          echo "## govulncheck advisory report" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Mode: advisory / non-blocking" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Code scanning category: govulncheck" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Text artifact: security-reports-govulncheck" >> "$GITHUB_STEP_SUMMARY"
-          echo "- This scan tracks Go dependency and standard library vulnerabilities." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## govulncheck advisory report"
+            echo ""
+            echo "- Mode: advisory / non-blocking"
+            echo "- Code scanning category: govulncheck"
+            echo "- Text artifact: security-reports-govulncheck"
+            echo "- This scan tracks Go dependency and standard library vulnerabilities."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload govulncheck text report
         if: always()
@@ -157,7 +178,24 @@ jobs:
         if: always()
         run: |
           if [ ! -s security-reports/semgrep.sarif ]; then
-            printf '%s\n' '{"version":"2.1.0","$schema":"https://json.schemastore.org/sarif-2.1.0.json","runs":[{"tool":{"driver":{"name":"Semgrep","informationUri":"https://semgrep.dev","rules":[]}},"results":[]}]}' > security-reports/semgrep.sarif
+            cat > security-reports/semgrep.sarif <<'SARIF'
+          {
+            "version": "2.1.0",
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "Semgrep",
+                    "informationUri": "https://semgrep.dev",
+                    "rules": []
+                  }
+                },
+                "results": []
+              }
+            ]
+          }
+          SARIF
           fi
 
       - name: Upload Semgrep SARIF
@@ -197,7 +235,24 @@ jobs:
         if: always()
         run: |
           if [ ! -s security-reports/gosec.sarif ]; then
-            printf '%s\n' '{"version":"2.1.0","$schema":"https://json.schemastore.org/sarif-2.1.0.json","runs":[{"tool":{"driver":{"name":"gosec","informationUri":"https://github.com/securego/gosec","rules":[]}},"results":[]}]}' > security-reports/gosec.sarif
+            cat > security-reports/gosec.sarif <<'SARIF'
+          {
+            "version": "2.1.0",
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "gosec",
+                    "informationUri": "https://github.com/securego/gosec",
+                    "rules": []
+                  }
+                },
+                "results": []
+              }
+            ]
+          }
+          SARIF
           fi
 
       - name: Upload gosec SARIF
@@ -249,7 +304,24 @@ jobs:
         if: always()
         run: |
           if [ ! -s security-reports/trivy.sarif ]; then
-            printf '%s\n' '{"version":"2.1.0","$schema":"https://json.schemastore.org/sarif-2.1.0.json","runs":[{"tool":{"driver":{"name":"Trivy","informationUri":"https://trivy.dev","rules":[]}},"results":[]}]}' > security-reports/trivy.sarif
+            cat > security-reports/trivy.sarif <<'SARIF'
+          {
+            "version": "2.1.0",
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "Trivy",
+                    "informationUri": "https://trivy.dev",
+                    "rules": []
+                  }
+                },
+                "results": []
+              }
+            ]
+          }
+          SARIF
           fi
 
       - name: Upload Trivy SARIF
