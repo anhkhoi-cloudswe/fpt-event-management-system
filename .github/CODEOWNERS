@@ -1,0 +1,17 @@
+# FEMS governance owners. Replace placeholders with the actual GitHub team or users.
+
+* @Phong004
+
+.github/ @Phong004
+Documents/devsecops/ @Phong004
+Documents/threat-model/ @Phong004
+Documents/runbooks/ @Phong004
+Documents/security-audit/ @Phong004
+
+backend/services/auth-service/ @anhkhoi-cloudswe
+backend/services/authorizer-service/ @anhkhoi-cloudswe
+backend/services/ticket-service/ @anhkhoi-cloudswe
+backend/services/staff-service/ @anhkhoi-cloudswe
+backend/common/jwt/ @anhkhoi-cloudswe
+backend/common/utils/internal_auth.go @anhkhoi-cloudswe
+backend/common/storage/ @anhkhoi-cloudswe
