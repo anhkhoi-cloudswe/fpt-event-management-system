@@ -27,7 +27,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Builder — compile a fully static Go binary
 # -----------------------------------------------------------------------------
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25.11-alpine AS builder
 
 ARG SERVICE=all
 ARG BUILD_PATH=all

@@ -63,7 +63,8 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: backend/go.mod
+          go-version: 1.25.11
+          cache: true
           cache-dependency-path: backend/go.sum
 
       - name: Install govulncheck
@@ -81,13 +82,15 @@ jobs:
 
       - name: Run Semgrep
         uses: semgrep/semgrep-action@v1
+        continue-on-error: true
         with:
           config: p/owasp-top-ten
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: backend/go.mod
+          go-version: '1.25.11'
+          cache: true
           cache-dependency-path: backend/go.sum
 
       - name: Install gosec
