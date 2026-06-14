@@ -40,21 +40,50 @@ jobs:
     steps:
       - name: Normalize URLs
         shell: bash
+        env:
+          INPUT_BACKEND_URL: ${{ inputs.backend_url }}
+          INPUT_FRONTEND_URL: ${{ inputs.frontend_url }}
+          INPUT_BACKEND_HEALTH_PATH: ${{ inputs.backend_health_path }}
         run: |
-          BACKEND_URL="${{ inputs.backend_url }}"
-          FRONTEND_URL="${{ inputs.frontend_url }}"
+          set -euo pipefail
 
-          BACKEND_URL="${BACKEND_URL%/}"
-          FRONTEND_URL="${FRONTEND_URL%/}"
+          BACKEND_URL="${INPUT_BACKEND_URL%/}"
+          FRONTEND_URL="${INPUT_FRONTEND_URL%/}"
+
+          case "$BACKEND_URL" in
+            http://*|https://*) ;;
+            *)
+              echo "backend_url must start with http:// or https://"
+              exit 1
+              ;;
+          esac
+
+          case "$FRONTEND_URL" in
+            http://*|https://*) ;;
+            *)
+              echo "frontend_url must start with http:// or https://"
+              exit 1
+              ;;
+          esac
+
+          case "$INPUT_BACKEND_HEALTH_PATH" in
+            /*) ;;
+            *)
+              echo "backend_health_path must start with /"
+              exit 1
+              ;;
+          esac
 
           echo "BACKEND_URL=$BACKEND_URL" >> "$GITHUB_ENV"
           echo "FRONTEND_URL=$FRONTEND_URL" >> "$GITHUB_ENV"
-          echo "BACKEND_HEALTH_PATH=${{ inputs.backend_health_path }}" >> "$GITHUB_ENV"
+          echo "BACKEND_HEALTH_PATH=$INPUT_BACKEND_HEALTH_PATH" >> "$GITHUB_ENV"
 
       - name: Show deployment target
         shell: bash
+        env:
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          echo "Environment: ${{ inputs.environment }}"
+          echo "Environment: $INPUT_ENVIRONMENT"
           echo "Backend URL: $BACKEND_URL"
           echo "Frontend URL: $FRONTEND_URL"
           echo "Backend health path: $BACKEND_HEALTH_PATH"
