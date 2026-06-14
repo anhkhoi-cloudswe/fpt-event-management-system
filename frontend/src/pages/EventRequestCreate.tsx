@@ -667,7 +667,13 @@ export default function EventRequestCreate() {
   // Listen for OAuth success messages from popup window
   useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
-      if (event.data.type === "OAUTH_SUCCESS") {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+      const apiOrigin = new URL(apiBaseUrl, window.location.origin).origin;
+      if (event.origin !== window.location.origin && event.origin !== apiOrigin) {
+        return;
+      }
+
+      if (event.data?.type === "OAUTH_SUCCESS") {
         const platform = event.data.platform; // 'ZOOM' or 'GOOGLE'
         const email = event.data.email || '';
         const meetingLink = event.data.meetingLink || '';
@@ -682,6 +688,9 @@ export default function EventRequestCreate() {
         }));
         setIsConnecting(false);
         showToast('success', `Đã kết nối tài khoản ${platform === 'ZOOM' ? 'Zoom' : 'Google Meet'} thành công!`);
+      } else if (event.data?.type === "OAUTH_ERROR") {
+        setIsConnecting(false);
+        showToast('error', event.data.error || 'Không thể kết nối tài khoản. Vui lòng thử lại.');
       }
     };
     window.addEventListener("message", handleOAuthMessage);
@@ -696,7 +705,7 @@ export default function EventRequestCreate() {
     
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
     const redirectUri = `${apiBaseUrl}/api/v1/auth/${platform}/callback`;
-    const connectUrl = `${apiBaseUrl}/api/v1/auth/${platform}/connect?redirect_uri=${encodeURIComponent(redirectUri)}`;
+    const connectUrl = `${apiBaseUrl}/api/v1/auth/${platform}/connect?redirect_uri=${encodeURIComponent(redirectUri)}&app_origin=${encodeURIComponent(window.location.origin)}`;
 
     const popup = window.open(
       connectUrl,

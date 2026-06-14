@@ -37,29 +37,37 @@ func getOAuthCredential(key string) string {
 
 // In-memory caching for OAuth states
 type oauthStateStore struct {
-	states map[string]time.Time
+	states map[string]oauthState
 	mu     sync.RWMutex
 }
 
+type oauthState struct {
+	expiresAt time.Time
+	appOrigin string
+}
+
 var stateStore = &oauthStateStore{
-	states: make(map[string]time.Time),
+	states: make(map[string]oauthState),
 }
 
-func (s *oauthStateStore) Save(state string) {
+func (s *oauthStateStore) Save(state string, appOrigin string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.states[state] = time.Now().Add(15 * time.Minute)
+	s.states[state] = oauthState{
+		expiresAt: time.Now().Add(15 * time.Minute),
+		appOrigin: appOrigin,
+	}
 }
 
-func (s *oauthStateStore) Verify(state string) bool {
+func (s *oauthStateStore) Verify(state string) (oauthState, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	exp, ok := s.states[state]
+	savedState, ok := s.states[state]
 	if !ok {
-		return false
+		return oauthState{}, false
 	}
 	delete(s.states, state)
-	return time.Now().Before(exp)
+	return savedState, time.Now().Before(savedState.expiresAt)
 }
 
 // HandleOAuthConnect is a Gin handler to redirect users to OAuth provider
@@ -85,7 +93,7 @@ func HandleOAuthConnect(c *gin.Context) {
 		return
 	}
 	state := base64.URLEncoding.EncodeToString(b)
-	stateStore.Save(state)
+	stateStore.Save(state, c.Query("app_origin"))
 
 	var authURL string
 	if platform == "zoom" {
@@ -150,7 +158,7 @@ func (h *AuthHandler) HandleOAuthConnectAPI(ctx context.Context, request events.
 		}, nil
 	}
 	state := base64.URLEncoding.EncodeToString(b)
-	stateStore.Save(state)
+	stateStore.Save(state, request.QueryStringParameters["app_origin"])
 
 	var authURL string
 	if platform == "zoom" {
@@ -205,6 +213,18 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 	redirectURI := getDynamicRedirectURI(request, platform)
 
 	code := request.QueryStringParameters["code"]
+	state := request.QueryStringParameters["state"]
+	savedState, stateOK := stateStore.Verify(state)
+	if !stateOK {
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusBadRequest,
+			Headers: map[string]string{
+				"Content-Type": "text/html; charset=utf-8",
+			},
+			Body: buildOAuthCallbackHTML(platform, "", "", "*", "Phiên xác thực đã hết hạn. Vui lòng thử kết nối lại."),
+		}, nil
+	}
+
 	email := ""
 	meetingLink := "https://fpt-edu.zoom.us/j/84920491029?pwd=YmUxM2NjO3M4MTk2M2Mx"
 	if platform == "google" {
@@ -325,25 +345,12 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 		}
 	}
 
-	// Return HTML that posts message to opener and closes popup
-	html := fmt.Sprintf(`
-		<!DOCTYPE html>
-		<html>
-		<head><title>Authentication Success</title></head>
-		<body>
-			<p>Authentication successful! Closing window...</p>
-			<script>
-				window.opener.postMessage({
-					type: "OAUTH_SUCCESS",
-					platform: "%s",
-					email: "%s",
-					meetingLink: "%s"
-				}, window.opener.location.origin);
-				window.close();
-			</script>
-		</body>
-		</html>
-	`, strings.ToUpper(platform), email, meetingLink)
+	targetOrigin := savedState.appOrigin
+	if targetOrigin == "" {
+		targetOrigin = "*"
+	}
+
+	html := buildOAuthCallbackHTML(platform, email, meetingLink, targetOrigin, "")
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
@@ -352,6 +359,50 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 		},
 		Body: html,
 	}, nil
+}
+
+func buildOAuthCallbackHTML(platform string, email string, meetingLink string, targetOrigin string, errorMessage string) string {
+	payload := map[string]string{
+		"type":        "OAUTH_SUCCESS",
+		"platform":    strings.ToUpper(platform),
+		"email":       email,
+		"meetingLink": meetingLink,
+	}
+	message := "Authentication successful! Closing window..."
+	if errorMessage != "" {
+		payload["type"] = "OAUTH_ERROR"
+		payload["error"] = errorMessage
+		message = errorMessage
+	}
+	payloadJSON, _ := json.Marshal(payload)
+	originJSON, _ := json.Marshal(targetOrigin)
+	messageJSON, _ := json.Marshal(message)
+
+	return fmt.Sprintf(`
+		<!DOCTYPE html>
+		<html>
+		<head><title>Authentication Success</title></head>
+		<body>
+			<p id="message"></p>
+			<script>
+				(function () {
+					var message = %s;
+					document.getElementById("message").textContent = message;
+					try {
+						if (window.opener && !window.opener.closed) {
+							window.opener.postMessage(%s, %s);
+						}
+					} finally {
+						window.close();
+						setTimeout(function () {
+							document.getElementById("message").textContent = message + " Bạn có thể đóng cửa sổ này.";
+						}, 500);
+					}
+				})();
+			</script>
+		</body>
+		</html>
+	`, string(messageJSON), string(payloadJSON), string(originJSON))
 }
 
 func getDynamicRedirectURI(request events.APIGatewayProxyRequest, platform string) string {
