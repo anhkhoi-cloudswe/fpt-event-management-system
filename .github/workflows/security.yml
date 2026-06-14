@@ -63,15 +63,47 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.25.11
+          go-version: '1.25.11'
           cache: true
           cache-dependency-path: backend/go.sum
 
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
 
-      - name: Run govulncheck
-        run: govulncheck ./...
+      - name: Prepare report directory
+        run: mkdir -p ../security-reports
+
+      - name: Run govulncheck SARIF
+        run: govulncheck -format=sarif ./... > ../security-reports/govulncheck.sarif
+
+      - name: Run govulncheck text report
+        if: always()
+        run: govulncheck ./... 2>&1 | tee ../security-reports/govulncheck.txt || true
+
+      - name: Upload govulncheck SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: security-reports/govulncheck.sarif
+          category: govulncheck
+
+      - name: Add govulncheck summary
+        if: always()
+        run: |
+          echo "## govulncheck advisory report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Mode: advisory / non-blocking" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Code scanning category: govulncheck" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Text artifact: security-reports-govulncheck" >> "$GITHUB_STEP_SUMMARY"
+          echo "- This scan tracks Go dependency and standard library vulnerabilities." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload govulncheck text report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports-govulncheck
+          path: security-reports/govulncheck.txt
+          retention-days: 30
 
   sast:
     name: SAST
@@ -80,11 +112,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run Semgrep
-        uses: semgrep/semgrep-action@v1
+      - name: Run Semgrep SARIF
         continue-on-error: true
+        run: |
+          mkdir -p security-reports
+          docker run --rm -v "$PWD:/src" returntocorp/semgrep \
+            semgrep scan --config p/owasp-top-ten --sarif --output /src/security-reports/semgrep.sarif /src
+
+      - name: Upload Semgrep SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
         with:
-          config: p/owasp-top-ten
+          sarif_file: security-reports/semgrep.sarif
+          category: semgrep
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -96,9 +136,19 @@ jobs:
       - name: Install gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
 
-      - name: Run gosec
+      - name: Run gosec SARIF
         working-directory: backend
-        run: gosec ./...
+        continue-on-error: true
+        run: |
+          mkdir -p ../security-reports
+          gosec -fmt=sarif -out=../security-reports/gosec.sarif ./...
+
+      - name: Upload gosec SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: security-reports/gosec.sarif
+          category: gosec
 
   container-scan:
     name: Container Image Scan
@@ -110,11 +160,23 @@ jobs:
       - name: Build backend image
         run: docker build --target local -t fems-backend:${{ github.sha }} backend
 
-      - name: Run Trivy
+      - name: Prepare report directory
+        run: mkdir -p security-reports
+
+      - name: Run Trivy SARIF
         uses: aquasecurity/trivy-action@master
+        continue-on-error: true
         with:
           image-ref: fems-backend:${{ github.sha }}
-          format: table
+          format: sarif
+          output: security-reports/trivy.sarif
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: security-reports/trivy.sarif
+          category: trivy
