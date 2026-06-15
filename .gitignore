@@ -38,8 +38,7 @@ frontend/playwright-report/
 frontend/test-results/
 frontend/.playwright/
 
-# Test files & Reports (never commit - may contain credentials)
-**/*_test.go
+# Test reports (never commit - may contain credentials)
 **/*.test
 **/test-report/
 **/E2E_TEST_REPORT.md

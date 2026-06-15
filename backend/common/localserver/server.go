@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/jwt"
@@ -99,9 +101,29 @@ func Start(defaultPort string, handler LambdaHandler) {
 
 	addr := ":" + port
 	log.Printf("[OK] Local HTTP server started on http://localhost:%s", port)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := serveLocal(addr, mux); err != nil {
 		log.Fatalf("[FAIL] Server failed: %v", err)
 	}
+}
+
+func serveLocal(addr string, handler http.Handler) error {
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	certFile := strings.TrimSpace(os.Getenv("TLS_CERT_FILE"))
+	keyFile := strings.TrimSpace(os.Getenv("TLS_KEY_FILE"))
+	if certFile != "" && keyFile != "" {
+		return server.ListenAndServeTLS(certFile, keyFile)
+	}
+
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	return server.Serve(listener)
 }
 
 // adaptRequest converts http.Request to APIGatewayProxyRequest

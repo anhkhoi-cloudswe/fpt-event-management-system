@@ -28,9 +28,9 @@ func NewUserRepositoryWithDB(dbConn *sql.DB) *UserRepository {
 }
 
 // CheckLogin verifies user credentials with Lazy Migration support (khớp UsersDAO.checkLogin)
-// Supports Bcrypt, SHA256, MD5, and plaintext password migration to Bcrypt
+// Supports bcrypt and legacy SHA-256 password migration to bcrypt.
 func (r *UserRepository) CheckLogin(ctx context.Context, email, password string) (*models.User, error) {
-	log.Info(">>>>>>>>>> ĐANG CHẠY LOGIC LOGIN MỚI (BCRYPT + SHA256 + MD5 + PLAINTEXT) <<<<<<<<<<")
+	log.Info("CheckLogin - running bcrypt + legacy SHA256 verification")
 
 	if r.db == nil {
 		err := errors.New("database connection is not initialized")

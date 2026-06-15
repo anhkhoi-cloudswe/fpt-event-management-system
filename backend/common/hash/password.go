@@ -1,7 +1,6 @@
 package hash
 
 import (
-	"crypto/md5"
 	"crypto/sha256"
 	"fmt"
 	"strings"
@@ -42,23 +41,12 @@ func VerifyPassword(plainPassword, storedHash string) bool {
 	return verifyLegacyPassword(plainPassword, storedHash)
 }
 
-// verifyLegacyPassword checks legacy password formats (SHA-256, MD5, plaintext)
+// verifyLegacyPassword checks legacy SHA-256 hashes only.
+// Weak legacy formats are intentionally rejected; successful SHA-256 logins
+// are still lazily upgraded to bcrypt by the auth repository.
 func verifyLegacyPassword(plainPassword, storedHash string) bool {
 	trimmedStoredHash := strings.TrimSpace(storedHash)
 
-	// Check 1: Plain text match (legacy plaintext storage)
-	if plainPassword == trimmedStoredHash {
-		return true
-	}
-
-	// Check 2: MD5 hash match (legacy MD5 storage)
-	legacyMD5 := md5.Sum([]byte(plainPassword))
-	legacyMD5Hex := fmt.Sprintf("%x", legacyMD5)
-	if strings.EqualFold(legacyMD5Hex, trimmedStoredHash) {
-		return true
-	}
-
-	// Check 3: SHA256 hash match (legacy SHA256 storage)
 	legacySHA256 := sha256.Sum256([]byte(plainPassword))
 	legacySHA256Hex := fmt.Sprintf("%x", legacySHA256)
 	if strings.EqualFold(legacySHA256Hex, trimmedStoredHash) {
@@ -72,4 +60,3 @@ func verifyLegacyPassword(plainPassword, storedHash string) bool {
 func IsBcryptHash(hash string) bool {
 	return strings.HasPrefix(hash, "$2a$")
 }
-

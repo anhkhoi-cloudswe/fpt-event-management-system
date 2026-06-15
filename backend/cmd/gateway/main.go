@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -417,7 +418,29 @@ func main() {
 	log.Println("============================================================")
 	log.Printf("[OK] Gateway listening on http://localhost:%s", port)
 
-	if err := http.ListenAndServe(":"+port, handler); err != nil {
+	if err := serveGateway(port, handler); err != nil {
 		log.Fatalf("[FAIL] Gateway failed: %v", err)
 	}
+}
+
+func serveGateway(port string, handler http.Handler) error {
+	addr := ":" + port
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	certFile := strings.TrimSpace(os.Getenv("TLS_CERT_FILE"))
+	keyFile := strings.TrimSpace(os.Getenv("TLS_KEY_FILE"))
+	if certFile != "" && keyFile != "" {
+		log.Printf("[OK] Gateway TLS enabled on https://localhost:%s", port)
+		return server.ListenAndServeTLS(certFile, keyFile)
+	}
+
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	return server.Serve(listener)
 }
