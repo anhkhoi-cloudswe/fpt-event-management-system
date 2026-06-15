@@ -50,13 +50,6 @@ jobs:
           BACKEND_URL="${INPUT_BACKEND_URL%/}"
           FRONTEND_URL="${INPUT_FRONTEND_URL%/}"
 
-          case "$BACKEND_URL$FRONTEND_URL$INPUT_BACKEND_HEALTH_PATH" in
-            *$'\n'*|*$'\r'*)
-              echo "workflow inputs must not contain newline characters"
-              exit 1
-              ;;
-          esac
-
           case "$BACKEND_URL" in
             http://*|https://*) ;;
             *)
@@ -81,21 +74,19 @@ jobs:
               ;;
           esac
 
-          {
-            printf 'BACKEND_URL=%s\n' "$BACKEND_URL"
-            printf 'FRONTEND_URL=%s\n' "$FRONTEND_URL"
-            printf 'BACKEND_HEALTH_PATH=%s\n' "$INPUT_BACKEND_HEALTH_PATH"
-          } >> "$GITHUB_ENV"
+          echo "BACKEND_URL=$BACKEND_URL" >> "$GITHUB_ENV"
+          echo "FRONTEND_URL=$FRONTEND_URL" >> "$GITHUB_ENV"
+          echo "BACKEND_HEALTH_PATH=$INPUT_BACKEND_HEALTH_PATH" >> "$GITHUB_ENV"
 
       - name: Show deployment target
         shell: bash
         env:
           INPUT_ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          printf 'Environment: %s\n' "$INPUT_ENVIRONMENT"
-          printf 'Backend URL: %s\n' "$BACKEND_URL"
-          printf 'Frontend URL: %s\n' "$FRONTEND_URL"
-          printf 'Backend health path: %s\n' "$BACKEND_HEALTH_PATH"
+          echo "Environment: $INPUT_ENVIRONMENT"
+          echo "Backend URL: $BACKEND_URL"
+          echo "Frontend URL: $FRONTEND_URL"
+          echo "Backend health path: $BACKEND_HEALTH_PATH"
 
       - name: Backend health check
         shell: bash
