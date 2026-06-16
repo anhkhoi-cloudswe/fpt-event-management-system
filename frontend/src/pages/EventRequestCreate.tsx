@@ -747,24 +747,47 @@ export default function EventRequestCreate() {
   const descModalRef = useRef<HTMLDivElement>(null)
 
   const [capacityPopoverOpen, setCapacityPopoverOpen] = useState(false)
-  const [limitCapacity, setLimitCapacity] = useState(false)
-  const [tempCapacity, setTempCapacity] = useState('50')
+  const [limitCapacity, setLimitCapacity] = useState(true)
+  const [tempCapacity, setTempCapacity] = useState('100')
   const [waitlistEnabled, setWaitlistEnabled] = useState(false)
   const capacityPopoverRef = useRef<HTMLDivElement>(null)
 
-  const handleOpenDescModal = () => {
-    setDescBuffer(formData.description || '');
-    setDescOpen(true);
-  };
+  // Enforce capacity range and default values dynamically
+  useEffect(() => {
+    const selectedArea = campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)
+    const maxRoomCap = selectedArea?.capacity || 200
+    
+    let maxCap = 100
+    if (eventFormat === 'ONLINE') {
+      maxCap = 100
+    } else if (eventFormat === 'ONSITE') {
+      maxCap = maxRoomCap
+    } else if (eventFormat === 'HYBRID') {
+      maxCap = 100 + maxRoomCap
+    }
+    
+    // Auto-initialize or adjust expectedParticipants / tempCapacity
+    const currentVal = parseInt(formData.expectedParticipants || tempCapacity)
+    if (isNaN(currentVal) || currentVal <= 0) {
+      const defaultVal = maxCap.toString()
+      setTempCapacity(defaultVal)
+      setFormData(prev => ({ ...prev, expectedParticipants: defaultVal }))
+    } else if (currentVal > maxCap) {
+      const clampedVal = maxCap.toString()
+      setTempCapacity(clampedVal)
+      setFormData(prev => ({ ...prev, expectedParticipants: clampedVal }))
+    } else {
+      setTempCapacity(currentVal.toString())
+      setFormData(prev => ({ ...prev, expectedParticipants: currentVal.toString() }))
+    }
+  }, [eventFormat, selectedCampusAreaId, campusAreas])
 
   // Sync capacity popover local state with form data when popover opens
   useEffect(() => {
     if (capacityPopoverOpen) {
+      setLimitCapacity(true);
       if (formData.expectedParticipants) {
-        setLimitCapacity(true);
         setTempCapacity(formData.expectedParticipants);
-      } else {
-        setLimitCapacity(false);
       }
     }
   }, [capacityPopoverOpen, formData.expectedParticipants]);
@@ -781,6 +804,11 @@ export default function EventRequestCreate() {
     }
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, [capacityPopoverOpen]);
+
+  const handleOpenDescModal = () => {
+    setDescBuffer(formData.description || '');
+    setDescOpen(true);
+  };
 
   // Date and Time split fields for easy picker configuration
   const [startDate, setStartDate] = useState('')
@@ -1099,8 +1127,21 @@ export default function EventRequestCreate() {
     setError(null)
 
     const cap = parseInt(formData.expectedParticipants)
-    if (formData.expectedParticipants && (isNaN(cap) || cap < 10 || cap % 10 !== 0)) {
-      setError('Số lượng phải tối thiểu 10 và là bội số của 10')
+    const selectedArea = campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)
+    const maxRoomCap = selectedArea?.capacity || 200
+    
+    let maxAllowed = 100
+    if (eventFormat === 'ONLINE') {
+      maxAllowed = 100
+    } else if (eventFormat === 'ONSITE') {
+      maxAllowed = maxRoomCap
+    } else if (eventFormat === 'HYBRID') {
+      maxAllowed = 100 + maxRoomCap
+    }
+
+    if (isNaN(cap) || cap < 1 || cap > maxAllowed) {
+      setError(`Sức chứa không hợp lệ. Số lượng phải từ 1 đến ${maxAllowed} người cho hình thức này.`)
+      showToast('error', `Sức chứa phải từ 1 đến ${maxAllowed}`)
       return
     }
     const tv = validateEventDateTime(formData.preferredStart, formData.preferredEnd, flowType)
@@ -1130,7 +1171,7 @@ export default function EventRequestCreate() {
         description: formData.description || null,
         preferredStartTime: fmt(formData.preferredStart),
         preferredEndTime:   fmt(formData.preferredEnd),
-        expectedCapacity:   cap || 0,
+        expectedCapacity:   cap,
         eventFormat,
         customVenueName: eventFormat === 'ONLINE'
           ? selectedOnlinePlatform
@@ -2015,62 +2056,64 @@ export default function EventRequestCreate() {
                   </button>
                 </div>
 
-                {/* Limit Event Capacity Toggle Switch */}
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-xs font-bold">Giới hạn số lượng tham gia</span>
-                  <button
-                    type="button"
-                    onClick={() => setLimitCapacity(!limitCapacity)}
-                    className={`w-9 h-5 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
-                      limitCapacity ? 'bg-orange-600' : 'bg-neutral-800 border border-white/10'
-                    }`}
-                  >
-                    <span
-                      className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 transform ${
-                        limitCapacity ? 'translate-x-4' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* Subfields (Max Capacity & Waitlist) with smooth transition container */}
-                <div
-                  className={`overflow-hidden transition-all duration-300 ${
-                    limitCapacity ? 'max-h-40 opacity-100 mb-2' : 'max-h-0 opacity-0 pointer-events-none'
-                  }`}
-                >
-                  {/* Numeric Max Capacity Input */}
-                  <div className={`flex items-center justify-between py-2.5 border-b mb-3 ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
+                {/* Numeric Max Capacity Input */}
+                <div className="flex flex-col gap-2.5">
+                  <div className={`flex items-center justify-between py-2.5 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
                     <span className="text-xs font-semibold opacity-70">Số lượng tối đa</span>
                     <input
                       type="number"
                       value={tempCapacity}
-                      onChange={(e) => setTempCapacity(e.target.value)}
-                      min="10"
-                      step="10"
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value)
+                        const selectedArea = campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)
+                        const maxRoomCap = selectedArea?.capacity || 200
+                        let maxCap = 100
+                        if (eventFormat === 'ONLINE') {
+                          maxCap = 100
+                        } else if (eventFormat === 'ONSITE') {
+                          maxCap = maxRoomCap
+                        } else if (eventFormat === 'HYBRID') {
+                          maxCap = 100 + maxRoomCap
+                        }
+                        
+                        if (isNaN(val) || val <= 0) {
+                          setTempCapacity('')
+                        } else if (val > maxCap) {
+                          setTempCapacity(maxCap.toString())
+                        } else {
+                          setTempCapacity(val.toString())
+                        }
+                      }}
+                      min="1"
                       className={`w-24 text-right !bg-transparent font-bold text-sm focus:outline-none border-b pb-0.5 ${
                         isDarkMode ? 'text-white border-white/10 focus:border-orange-500/50' : 'text-neutral-800 border-neutral-300 focus:border-orange-500/50'
                       }`}
                     />
                   </div>
+                  {/* Helper text */}
+                  <p className={`text-[10px] font-medium leading-relaxed italic ${isDarkMode ? 'text-neutral-400/80' : 'text-neutral-500'}`}>
+                    {eventFormat === 'ONLINE' && 'Maximum 100 participants allowed per Zoom/Meet free policy'}
+                    {eventFormat === 'ONSITE' && `Sức chứa tối đa của phòng học đường đã chọn: ${campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)?.capacity || 200} người.`}
+                    {eventFormat === 'HYBRID' && `Sức chứa tối đa kết hợp: ${campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)?.capacity || 200} người tại chỗ và 100 người trực tuyến (tổng cộng ${100 + (campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)?.capacity || 200)} người).`}
+                  </p>
+                </div>
 
-                  {/* Over-Capacity Waitlist Toggle */}
-                  <div className="flex items-center justify-between py-1">
-                    <span className="text-xs font-semibold opacity-70">Cho phép danh sách chờ</span>
-                    <button
-                      type="button"
-                      onClick={() => setWaitlistEnabled(!waitlistEnabled)}
-                      className={`w-9 h-5 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
-                        waitlistEnabled ? 'bg-orange-600' : 'bg-neutral-800 border border-white/10'
+                {/* Over-Capacity Waitlist Toggle */}
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-xs font-semibold opacity-70">Cho phép danh sách chờ</span>
+                  <button
+                    type="button"
+                    onClick={() => setWaitlistEnabled(!waitlistEnabled)}
+                    className={`w-9 h-5 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
+                      waitlistEnabled ? 'bg-orange-600' : 'bg-neutral-800 border border-white/10'
+                    }`}
+                  >
+                    <span
+                      className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 transform ${
+                        waitlistEnabled ? 'translate-x-4' : 'translate-x-0'
                       }`}
-                    >
-                      <span
-                        className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 transform ${
-                          waitlistEnabled ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
+                    />
+                  </button>
                 </div>
 
                 {/* Footer Buttons */}
@@ -2089,11 +2132,7 @@ export default function EventRequestCreate() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (limitCapacity) {
-                        setFormData(prev => ({ ...prev, expectedParticipants: tempCapacity }));
-                      } else {
-                        setFormData(prev => ({ ...prev, expectedParticipants: '' }));
-                      }
+                      setFormData(prev => ({ ...prev, expectedParticipants: tempCapacity }));
                       setCapacityPopoverOpen(false);
                     }}
                     className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
