@@ -881,16 +881,17 @@ export default function EventRequestCreate() {
       let startH = 7
       let endH = 9
       
-      // Late-night / Out-of-bounds Condition: at or after 20:00 PM (8:00 PM) or before 07:00 AM
+      // Late-Night / Early-Morning Window (From 20:00 PM to 06:59 AM)
       if (currentHour >= 20 || currentHour < 7) {
-        // Automatically set the event's start date to Tomorrow
-        startD.setDate(startD.getDate() + 1)
+        // Automatically set the event's start date to Current Date + 3 days
+        startD.setDate(startD.getDate() + 3)
         startH = 7
         endH = 9
       } else {
-        // Normal Operating Hours Condition: between 07:00 AM and 19:59 PM
-        // Set the start date to Today
-        // Round up the current hour to the next full hour and add 1 hour buffer
+        // Daytime Window (From 07:00 AM to 19:59 PM)
+        // Set the recommended start date to Current Date + 2 days
+        startD.setDate(startD.getDate() + 2)
+        // Round up the current hour to the next full hour + 1 hour buffer
         let baseHour = currentHour
         if (currentMinutes > 0) {
           baseHour += 1
