@@ -643,6 +643,23 @@ export default function EventRequestCreate() {
 
   const [flowType, setFlowType] = useState<'UNIVERSITY' | 'INDEPENDENT' | null>(null)
   const [eventFormat, setEventFormat] = useState<'ONLINE' | 'ONSITE' | 'HYBRID'>('ONSITE')
+
+  // Campus Areas States and helpers (moved up to avoid hoisting/crash on load)
+  const [campusAreas, setCampusAreas] = useState<any[]>([])
+  const [selectedCampusAreaId, setSelectedCampusAreaId] = useState('')
+  const [isLoadingCampusAreas, setIsLoadingCampusAreas] = useState(false)
+
+  const getSelectedAreaCapacity = () => {
+    if (!Array.isArray(campusAreas) || !selectedCampusAreaId) return 200
+    const area = campusAreas.find(a => a && String(a.areaId) === selectedCampusAreaId)
+    return area?.capacity || 200
+  }
+
+  const getSelectedArea = () => {
+    if (!Array.isArray(campusAreas) || !selectedCampusAreaId) return null
+    return campusAreas.find(a => a && String(a.areaId) === selectedCampusAreaId) || null
+  }
+
   const [isPublic, setIsPublic] = useState(true)
   const [descOpen, setDescOpen] = useState(false)
 
@@ -838,21 +855,7 @@ export default function EventRequestCreate() {
   const [error, setError] = useState<string | null>(null)
   const [timeErrors, setTimeErrors] = useState<string[]>([])
 
-  // Campus Areas States for University Flow
-  const [campusAreas, setCampusAreas] = useState<any[]>([])
-  const [selectedCampusAreaId, setSelectedCampusAreaId] = useState('')
-  const [isLoadingCampusAreas, setIsLoadingCampusAreas] = useState(false)
 
-  const getSelectedAreaCapacity = () => {
-    if (!Array.isArray(campusAreas) || !selectedCampusAreaId) return 200
-    const area = campusAreas.find(a => a && String(a.areaId) === selectedCampusAreaId)
-    return area?.capacity || 200
-  }
-
-  const getSelectedArea = () => {
-    if (!Array.isArray(campusAreas) || !selectedCampusAreaId) return null
-    return campusAreas.find(a => a && String(a.areaId) === selectedCampusAreaId) || null
-  }
 
   const handleCampusAreaFocus = async () => {
     if (campusAreas.length > 0 || isLoadingCampusAreas) return
