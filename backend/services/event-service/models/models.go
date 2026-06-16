@@ -43,6 +43,13 @@ type Event struct {
 	EventFormat     string         `json:"eventFormat" db:"event_format"`
 	CustomVenueName sql.NullString `json:"-" db:"custom_venue_name"`
 	CustomLocation  sql.NullString `json:"-" db:"custom_location"`
+
+	// ✅ NEW: Organization type, privacy status, and online meeting info
+	OrgType              string         `json:"orgType" db:"org_type"`
+	PrivacyStatus        string         `json:"privacyStatus" db:"privacy_status"`
+	OnlineMeetingURL     sql.NullString `json:"-" db:"online_meeting_url"`
+	OnlineMeetingID      sql.NullString `json:"-" db:"online_meeting_id"`
+	OnlineMeetingSecret  sql.NullString `json:"-" db:"online_meeting_secret"`
 }
 
 // Speaker represents a speaker in the system
@@ -108,6 +115,10 @@ type EventListItem struct {
 	EventFormat     *string `json:"eventFormat,omitempty"`
 	CustomVenueName *string `json:"customVenueName,omitempty"`
 	CustomLocation  *string `json:"customLocation,omitempty"`
+
+	// ✅ NEW: Organization type and privacy status
+	OrgType       *string `json:"orgType,omitempty"`
+	PrivacyStatus *string `json:"privacyStatus,omitempty"`
 }
 
 // ============================================================
@@ -155,6 +166,11 @@ type EventDetailDto struct {
 	EventFormat     *string `json:"eventFormat,omitempty"`
 	CustomVenueName *string `json:"customVenueName,omitempty"`
 	CustomLocation  *string `json:"customLocation,omitempty"`
+
+	// ✅ NEW: Organization type, privacy status, and online meeting URL
+	OrgType          *string `json:"orgType,omitempty"`
+	PrivacyStatus    *string `json:"privacyStatus,omitempty"`
+	OnlineMeetingURL *string `json:"onlineMeetingUrl,omitempty"`
 }
 
 type SeatResponse struct {
@@ -222,6 +238,13 @@ type EventRequest struct {
 	EventFormat     *string `json:"eventFormat,omitempty"`
 	CustomVenueName *string `json:"customVenueName,omitempty"`
 	CustomLocation  *string `json:"customLocation,omitempty"`
+
+	// ✅ NEW: Organization type, privacy status, and online meeting info
+	OrgType             *string `json:"orgType,omitempty"`
+	PrivacyStatus       *string `json:"privacyStatus,omitempty"`
+	OnlineMeetingURL    *string `json:"onlineMeetingUrl,omitempty"`
+	OnlineMeetingID     *string `json:"onlineMeetingId,omitempty"`
+	OnlineMeetingSecret *string `json:"onlineMeetingSecret,omitempty"`
 }
 
 // ============================================================
@@ -237,6 +260,13 @@ type CreateEventRequestBody struct {
 	CustomVenueName    *string `json:"customVenueName,omitempty"`
 	CustomLocation     *string `json:"customLocation,omitempty"`
 	BannerURL          *string `json:"bannerUrl,omitempty"`
+
+	// ✅ NEW: Organization type, privacy status, and online meeting info
+	OrgType             string  `json:"orgType"`
+	PrivacyStatus       string  `json:"privacyStatus"`
+	OnlineMeetingURL    *string `json:"onlineMeetingUrl,omitempty"`
+	OnlineMeetingID     *string `json:"onlineMeetingId,omitempty"`
+	OnlineMeetingSecret *string `json:"onlineMeetingSecret,omitempty"`
 }
 
 // ============================================================

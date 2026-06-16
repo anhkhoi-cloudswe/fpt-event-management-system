@@ -1111,7 +1111,14 @@ export default function EventRequestCreate() {
           ? `${formData.customLocation || ''} (Online: ${selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink})`
           : (formData.customLocation || null),
         bannerUrl: bannerUrl || null,
-        isPublic,
+        // ✅ NEW: Organization type, privacy status, and online meeting info
+        orgType: flowType === 'UNIVERSITY' ? 'SCHOOL' : 'FREE',
+        privacyStatus: isPublic ? 'PUBLIC' : 'PRIVATE',
+        onlineMeetingUrl: (eventFormat === 'ONLINE' || eventFormat === 'HYBRID')
+          ? (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink) || null
+          : null,
+        onlineMeetingId: null,     // Populated by backend if needed via OAuth API
+        onlineMeetingSecret: null, // Populated by backend if needed via OAuth API
       }
       const url = flowType === 'UNIVERSITY' ? '/api/event-requests' : '/api/events/independent'
       const res = await fetch(url, {

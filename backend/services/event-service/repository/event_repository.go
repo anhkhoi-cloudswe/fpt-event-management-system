@@ -1760,10 +1760,21 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 
 	query := `
 		INSERT INTO Event_Request 
-		(requester_id, title, description, preferred_start_time, preferred_end_time, expected_capacity, status, created_at, event_format, custom_venue_name, custom_location, banner_url)
-		VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', NOW(), $7, $8, $9, $10)
+		(requester_id, title, description, preferred_start_time, preferred_end_time, expected_capacity, status, created_at, event_format, custom_venue_name, custom_location, banner_url, org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret)
+		VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', NOW(), $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING request_id
 	`
+
+	// Default org_type to SCHOOL for event requests (university flow)
+	orgType := req.OrgType
+	if orgType == "" {
+		orgType = "SCHOOL"
+	}
+	// Default privacy_status to PUBLIC
+	privacyStatus := req.PrivacyStatus
+	if privacyStatus == "" {
+		privacyStatus = "PUBLIC"
+	}
 
 	var requestID int64
 	err := r.db.QueryRowContext(ctx, query,
@@ -1777,6 +1788,11 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 		req.CustomVenueName,
 		req.CustomLocation,
 		req.BannerURL,
+		orgType,
+		privacyStatus,
+		req.OnlineMeetingURL,
+		req.OnlineMeetingID,
+		req.OnlineMeetingSecret,
 	).Scan(&requestID)
 
 	if err != nil {
@@ -1784,7 +1800,7 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 		return 0, fmt.Errorf("failed to insert event request: %w", err)
 	}
 
-	log.Printf("[DB_INSERT] Successfully inserted request ID: %d", requestID)
+	log.Printf("[DB_INSERT] Successfully inserted request ID: %d (org_type=%s, privacy=%s)", requestID, orgType, privacyStatus)
 	return int(requestID), nil
 }
 
@@ -4047,8 +4063,9 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 		INSERT INTO Event (
 			title, description, start_time, end_time, max_seats, 
 			banner_url, status, created_by, created_at,
-			event_format, custom_venue_name, custom_location
-		) VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, NOW(), $8, $9, $10)
+			event_format, custom_venue_name, custom_location,
+			org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret
+		) VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, NOW(), $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING event_id
 	`
 	var eventID int
@@ -4056,7 +4073,18 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 	if req.BannerURL != nil && *req.BannerURL != "" {
 		bannerURL = sql.NullString{String: *req.BannerURL, Valid: true}
 	}
-	
+
+	// Default org_type to FREE for independent events
+	orgType := req.OrgType
+	if orgType == "" {
+		orgType = "FREE"
+	}
+	// Default privacy_status to PUBLIC
+	privacyStatus := req.PrivacyStatus
+	if privacyStatus == "" {
+		privacyStatus = "PUBLIC"
+	}
+
 	err := r.db.QueryRowContext(ctx, query,
 		req.Title,
 		req.Description,
@@ -4068,9 +4096,15 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 		req.EventFormat,
 		req.CustomVenueName,
 		req.CustomLocation,
+		orgType,
+		privacyStatus,
+		req.OnlineMeetingURL,
+		req.OnlineMeetingID,
+		req.OnlineMeetingSecret,
 	).Scan(&eventID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create independent event: %w", err)
 	}
+	log.Printf("[CreateIndependentEvent] Created event ID=%d (org_type=%s, privacy=%s, format=%s)", eventID, orgType, privacyStatus, req.EventFormat)
 	return eventID, nil
 }
