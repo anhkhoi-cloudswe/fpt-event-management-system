@@ -20,9 +20,9 @@ name: Keep Render Backend Alive (Anti-Sleep Ping)
 
 on:
   schedule:
-    # Chạy mỗi 14 phút (an toàn hơn 10 phút, vẫn ngăn sleep sau 15 phút)
+    # Chạy mỗi 10 phút (đảm bảo vượt qua độ trễ của GitHub Actions và ngăn sleep 15 phút của Render)
     # Cron syntax: phút giờ ngày tháng thứ
-    - cron: '*/14 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch:  # Cho phép chạy thủ công từ GitHub UI
 
 jobs:
@@ -39,9 +39,9 @@ jobs:
           RENDER_BACKEND_URL: ${{ secrets.RENDER_BACKEND_URL }}
         run: |
           # Dùng secrets.RENDER_BACKEND_URL để giữ URL không public trong code
-          # Nếu chưa set secret, fallback về placeholder (sẽ fail nhưng không crash workflow)
+          # Nếu chưa set secret, fallback về URL mặc định
           TARGET_URL="${RENDER_BACKEND_URL:-https://fpt-event-management-system.onrender.com}"
-          HEALTH_URL="${TARGET_URL}/health"
+          HEALTH_URL="${TARGET_URL}/api/health"
 
           echo "🏓 Pinging: ${HEALTH_URL}"
 

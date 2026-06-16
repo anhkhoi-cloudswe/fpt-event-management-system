@@ -1381,9 +1381,9 @@ export default function EventRequestCreate() {
                 required
                 autoComplete="off"
                 placeholder="Tên sự kiện..."
-                className={`text-3xl md:text-4xl font-bold tracking-tight bg-transparent border-b py-2 focus:outline-none w-full mb-2 transition-colors leading-tight flex-shrink-0 ${
+                className={`text-3xl md:text-4xl font-bold tracking-tight !bg-transparent border-b py-2 focus:outline-none w-full mb-2 transition-colors leading-tight flex-shrink-0 ${
                   isDarkMode 
-                    ? 'border-white/[0.09] text-white placeholder-neutral-500 focus:border-orange-500/55' 
+                    ? 'border-white/[0.09] text-white !placeholder-white/20 focus:border-orange-500/55' 
                     : 'border-neutral-200 text-neutral-850 placeholder-neutral-400 focus:border-orange-500/55'
                 }`}
               />
@@ -1728,7 +1728,7 @@ export default function EventRequestCreate() {
                             onFocus={handleCampusAreaFocus}
                             onChange={handleCampusAreaChange}
                             className={`w-full border rounded-xl p-2.5 pr-10 text-xs font-bold focus:outline-none focus:border-orange-500/50 appearance-none cursor-pointer ${
-                              isDarkMode ? 'bg-[#18181b] border-white/10 text-white' : 'bg-white border-neutral-300 text-neutral-800'
+                              isDarkMode ? '!bg-[#18181b] !border-white/10 text-white' : '!bg-white !border-neutral-300 text-neutral-800'
                             }`}
                           >
                             <option value="" className="text-neutral-500">-- Chọn phòng / phòng hội thảo chính quy --</option>
@@ -1767,7 +1767,7 @@ export default function EventRequestCreate() {
                             onChange={handleChange}
                             required
                             placeholder="Tên địa điểm tự do (VD: L'Amour Cafe, Khách sạn Rex)..."
-                            className={`w-full bg-transparent text-xs font-medium placeholder-neutral-500 focus:outline-none ${
+                            className={`w-full !bg-transparent text-xs font-medium placeholder-neutral-500 focus:outline-none ${
                               isDarkMode ? 'text-white/85' : 'text-neutral-800'
                             }`}
                           />
@@ -1780,7 +1780,7 @@ export default function EventRequestCreate() {
                             onChange={handleChange}
                             required
                             placeholder="Địa chỉ chi tiết địa điểm tự do..."
-                            className={`w-full bg-transparent text-xs font-medium placeholder-neutral-500 focus:outline-none ${
+                            className={`w-full !bg-transparent text-xs font-medium placeholder-neutral-500 focus:outline-none ${
                               isDarkMode ? 'text-white/65' : 'text-neutral-700'
                             }`}
                           />
@@ -1924,8 +1924,8 @@ export default function EventRequestCreate() {
                   placeholder="Nhập thông tin chi tiết về sự kiện của bạn..."
                   className={`w-full h-48 rounded-xl p-3.5 text-sm font-medium focus:outline-none focus:border-orange-500/50 resize-none border ${
                     isDarkMode 
-                      ? 'bg-white/[0.03] border-white/10 text-white placeholder-neutral-500' 
-                      : 'bg-neutral-50 border-neutral-300 text-neutral-800 placeholder-neutral-400'
+                      ? '!bg-white/[0.03] !border-white/10 text-white placeholder-neutral-500' 
+                      : '!bg-neutral-50 !border-neutral-300 text-neutral-800 placeholder-neutral-400'
                   }`}
                 />
                 <div className="flex justify-end gap-2.5 pt-2">
@@ -2009,7 +2009,7 @@ export default function EventRequestCreate() {
                       onChange={(e) => setTempCapacity(e.target.value)}
                       min="10"
                       step="10"
-                      className={`w-24 text-right bg-transparent font-bold text-sm focus:outline-none border-b pb-0.5 ${
+                      className={`w-24 text-right !bg-transparent font-bold text-sm focus:outline-none border-b pb-0.5 ${
                         isDarkMode ? 'text-white border-white/10 focus:border-orange-500/50' : 'text-neutral-800 border-neutral-300 focus:border-orange-500/50'
                       }`}
                     />
