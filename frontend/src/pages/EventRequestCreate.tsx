@@ -754,8 +754,7 @@ export default function EventRequestCreate() {
 
   // Enforce capacity range and default values dynamically
   useEffect(() => {
-    const selectedArea = campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)
-    const maxRoomCap = selectedArea?.capacity || 200
+    const maxRoomCap = getSelectedAreaCapacity()
     
     let maxCap = 100
     if (eventFormat === 'ONLINE') {
@@ -844,6 +843,17 @@ export default function EventRequestCreate() {
   const [selectedCampusAreaId, setSelectedCampusAreaId] = useState('')
   const [isLoadingCampusAreas, setIsLoadingCampusAreas] = useState(false)
 
+  const getSelectedAreaCapacity = () => {
+    if (!Array.isArray(campusAreas) || !selectedCampusAreaId) return 200
+    const area = campusAreas.find(a => a && String(a.areaId) === selectedCampusAreaId)
+    return area?.capacity || 200
+  }
+
+  const getSelectedArea = () => {
+    if (!Array.isArray(campusAreas) || !selectedCampusAreaId) return null
+    return campusAreas.find(a => a && String(a.areaId) === selectedCampusAreaId) || null
+  }
+
   const handleCampusAreaFocus = async () => {
     if (campusAreas.length > 0 || isLoadingCampusAreas) return
     setIsLoadingCampusAreas(true)
@@ -869,7 +879,7 @@ export default function EventRequestCreate() {
   const handleCampusAreaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const areaId = e.target.value
     setSelectedCampusAreaId(areaId)
-    const selectedArea = campusAreas.find(a => String(a.areaId) === areaId)
+    const selectedArea = Array.isArray(campusAreas) ? campusAreas.find(a => a && String(a.areaId) === areaId) : null
     if (selectedArea) {
       setFormData(prev => ({
         ...prev,
@@ -1127,8 +1137,7 @@ export default function EventRequestCreate() {
     setError(null)
 
     const cap = parseInt(formData.expectedParticipants)
-    const selectedArea = campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)
-    const maxRoomCap = selectedArea?.capacity || 200
+    const maxRoomCap = getSelectedAreaCapacity()
     
     let maxAllowed = 100
     if (eventFormat === 'ONLINE') {
@@ -2065,8 +2074,7 @@ export default function EventRequestCreate() {
                       value={tempCapacity}
                       onChange={(e) => {
                         const val = parseInt(e.target.value)
-                        const selectedArea = campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)
-                        const maxRoomCap = selectedArea?.capacity || 200
+                        const maxRoomCap = getSelectedAreaCapacity()
                         let maxCap = 100
                         if (eventFormat === 'ONLINE') {
                           maxCap = 100
@@ -2093,8 +2101,8 @@ export default function EventRequestCreate() {
                   {/* Helper text */}
                   <p className={`text-[10px] font-medium leading-relaxed italic ${isDarkMode ? 'text-neutral-400/80' : 'text-neutral-500'}`}>
                     {eventFormat === 'ONLINE' && 'Maximum 100 participants allowed per Zoom/Meet free policy'}
-                    {eventFormat === 'ONSITE' && `Sức chứa tối đa của phòng học đường đã chọn: ${campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)?.capacity || 200} người.`}
-                    {eventFormat === 'HYBRID' && `Sức chứa tối đa kết hợp: ${campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)?.capacity || 200} người tại chỗ và 100 người trực tuyến (tổng cộng ${100 + (campusAreas.find(a => String(a.areaId) === selectedCampusAreaId)?.capacity || 200)} người).`}
+                    {eventFormat === 'ONSITE' && `Sức chứa tối đa của phòng học đường đã chọn: ${getSelectedAreaCapacity()} người.`}
+                    {eventFormat === 'HYBRID' && `Sức chứa tối đa kết hợp: ${getSelectedAreaCapacity()} người tại chỗ và 100 người trực tuyến (tổng cộng ${100 + getSelectedAreaCapacity()} người).`}
                   </p>
                 </div>
 
