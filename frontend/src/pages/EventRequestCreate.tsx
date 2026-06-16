@@ -868,37 +868,68 @@ export default function EventRequestCreate() {
     }))
   }
 
-  /* ── Auto-init suggestions based on flowType with 30-min Slot Rounding ── */
+  /* ── Auto-init suggestions based on flowType with Smart Time Recommendation ── */
   useEffect(() => {
     if (!flowType) return
     const now = new Date()
     
-    // Round current system time UP to the next neat 30-minute block (e.g. 15:47 -> 16:00, 16:05 -> 16:30)
-    const roundedMs = Math.ceil(now.getTime() / (30 * 60000)) * (30 * 60000)
-    
-    // Apply rounded ceiling as default recommended Start Time (INDEPENDENT starts now, UNIVERSITY starts now + 24.5h)
-    const start = flowType === 'INDEPENDENT'
-      ? new Date(roundedMs)
-      : new Date(roundedMs + (24 * 60 + 30) * 60000) // 24.5h ahead to safely clear 24h lead validation
+    if (flowType === 'UNIVERSITY') {
+      const currentHour = now.getHours()
+      const currentMinutes = now.getMinutes()
       
-    const end = new Date(start.getTime() + 60 * 60000) // default 1 hour duration
-    
-    const sy = start.getFullYear()
-    const sm = padZ(start.getMonth() + 1)
-    const sd = padZ(start.getDate())
-    const sh = padZ(start.getHours())
-    const smin = padZ(start.getMinutes())
-    
-    const ey = end.getFullYear()
-    const em = padZ(end.getMonth() + 1)
-    const ed = padZ(end.getDate())
-    const eh = padZ(end.getHours())
-    const emin = padZ(end.getMinutes())
-    
-    setStartDate(`${sy}-${sm}-${sd}`)
-    setStartTime(`${sh}:${smin}`)
-    setEndDate(`${ey}-${em}-${ed}`)
-    setEndTime(`${eh}:${emin}`)
+      let startD = new Date(now)
+      let startH = 7
+      let endH = 9
+      
+      // Late-night / Out-of-bounds Condition: at or after 20:00 PM (8:00 PM) or before 07:00 AM
+      if (currentHour >= 20 || currentHour < 7) {
+        // Automatically set the event's start date to Tomorrow
+        startD.setDate(startD.getDate() + 1)
+        startH = 7
+        endH = 9
+      } else {
+        // Normal Operating Hours Condition: between 07:00 AM and 19:59 PM
+        // Set the start date to Today
+        // Round up the current hour to the next full hour and add 1 hour buffer
+        let baseHour = currentHour
+        if (currentMinutes > 0) {
+          baseHour += 1
+        }
+        startH = baseHour + 1
+        endH = startH + 2
+      }
+      
+      const sy = startD.getFullYear()
+      const sm = padZ(startD.getMonth() + 1)
+      const sd = padZ(startD.getDate())
+      
+      setStartDate(`${sy}-${sm}-${sd}`)
+      setStartTime(`${padZ(startH)}:00`)
+      setEndDate(`${sy}-${sm}-${sd}`)
+      setEndTime(`${padZ(endH)}:00`)
+    } else {
+      // Keep existing 30-min Slot Rounding for INDEPENDENT flow
+      const roundedMs = Math.ceil(now.getTime() / (30 * 60000)) * (30 * 60000)
+      const start = new Date(roundedMs)
+      const end = new Date(start.getTime() + 60 * 60000) // default 1 hour duration
+      
+      const sy = start.getFullYear()
+      const sm = padZ(start.getMonth() + 1)
+      const sd = padZ(start.getDate())
+      const sh = padZ(start.getHours())
+      const smin = padZ(start.getMinutes())
+      
+      const ey = end.getFullYear()
+      const em = padZ(end.getMonth() + 1)
+      const ed = padZ(end.getDate())
+      const eh = padZ(end.getHours())
+      const emin = padZ(end.getMinutes())
+      
+      setStartDate(`${sy}-${sm}-${sd}`)
+      setStartTime(`${sh}:${smin}`)
+      setEndDate(`${ey}-${em}-${ed}`)
+      setEndTime(`${eh}:${emin}`)
+    }
   }, [flowType])
 
   /* ── Sync and advance end date/time suggestions when start values change ── */
