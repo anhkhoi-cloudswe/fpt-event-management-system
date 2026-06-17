@@ -23,6 +23,7 @@ import {
 import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadEventBanner, deleteEventBanner, validateImageFile } from '../utils/imageUpload'
+import LocationAutocomplete from '../components/events/LocationAutocomplete'
 
 /* ─────────────────────────────────────────────────────────────
    DateTime format helpers
@@ -1175,6 +1176,16 @@ export default function EventRequestCreate() {
       }
     }
 
+    if (
+      flowType === 'INDEPENDENT' &&
+      (eventFormat === 'ONSITE' || eventFormat === 'HYBRID') &&
+      (!formData.customVenueName.trim() || !formData.customLocation.trim())
+    ) {
+      setError('Vui long chon hoac nhap day du ten dia diem va dia chi.')
+      showToast('error', 'Vui long dien day du thong tin dia diem')
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const fmt = (s: string) => (s ? s + ':00' : null)
@@ -1844,43 +1855,13 @@ export default function EventRequestCreate() {
                       </div>
                     ) : (
                       /* INDEPENDENT (Free) flow: Custom text inputs */
-                      <div className={`backdrop-blur-md border rounded-xl p-3.5 flex flex-col gap-2 ${
-                        isDarkMode ? 'bg-white/[0.03] border-white/[0.08]' : 'bg-neutral-50 border-neutral-200'
-                      }`}>
-                        <div className={`flex items-center gap-1.5 pb-1 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
-                          <MapPin className="w-3.5 h-3.5 text-orange-400" />
-                          <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>Địa điểm tự do</span>
-                        </div>
-                        <div className={`py-1 border-b ${isDarkMode ? 'border-white/[0.07]' : 'border-neutral-200'}`}>
-                          <input
-                            type="text"
-                            name="customVenueName"
-                            value={formData.customVenueName}
-                            onChange={handleChange}
-                            required
-                            placeholder="Tên địa điểm tự do (VD: L'Amour Cafe, Khách sạn Rex)..."
-                            className={`w-full !bg-transparent text-xs font-medium placeholder-neutral-500 focus:outline-none ${
-                              isDarkMode ? 'text-white/85' : 'text-neutral-800'
-                            }`}
-                          />
-                        </div>
-                        <div className={`py-1 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
-                          <input
-                            type="text"
-                            name="customLocation"
-                            value={formData.customLocation}
-                            onChange={handleChange}
-                            required
-                            placeholder="Địa chỉ chi tiết địa điểm tự do..."
-                            className={`w-full !bg-transparent text-xs font-medium placeholder-neutral-500 focus:outline-none ${
-                              isDarkMode ? 'text-white/65' : 'text-neutral-700'
-                            }`}
-                          />
-                        </div>
-                        <p className={`text-[10px] mt-1 font-medium tracking-wide leading-normal italic ${isDarkMode ? 'text-neutral-400/70' : 'text-neutral-550/80'}`}>
-                          Gợi ý: Nhập địa điểm bên ngoài trường. Organizer chịu trách nhiệm tự liên hệ địa điểm này.
-                        </p>
-                      </div>
+                      <LocationAutocomplete
+                        isDarkMode={isDarkMode}
+                        venueName={formData.customVenueName}
+                        location={formData.customLocation}
+                        onVenueNameChange={(value) => setFormData((prev) => ({ ...prev, customVenueName: value }))}
+                        onLocationChange={(value) => setFormData((prev) => ({ ...prev, customLocation: value }))}
+                      />
                     )}
                   </div>
                 )}
