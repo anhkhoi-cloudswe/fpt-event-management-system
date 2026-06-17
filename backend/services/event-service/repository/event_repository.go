@@ -1821,7 +1821,11 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 			er.created_at, er.processed_by, u2.full_name as processed_by_name,
 			er.processed_at, er.organizer_note, er.reject_reason,
 			er.created_event_id,
-			v.venue_name, va.area_name, va.floor, va.capacity
+			v.venue_name, va.area_name, va.floor, va.capacity,
+			er.event_format, er.custom_venue_name, er.custom_location,
+			er.org_type, er.privacy_status,
+			er.online_meeting_url, er.online_meeting_id, er.online_meeting_secret,
+			er.banner_url
 		FROM Event_Request er
 		LEFT JOIN Users u ON er.requester_id = u.user_id
 		LEFT JOIN Users u2 ON er.processed_by = u2.user_id
@@ -1850,6 +1854,10 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 		var areaCapacity sql.NullInt64
 		var description, organizerNote, rejectReason sql.NullString
 		var expectedCapacity, createdEventID sql.NullInt64
+		var eventFormat, customVenueName, customLocation sql.NullString
+		var orgType, privacyStatus sql.NullString
+		var onlineMeetingURL, onlineMeetingID, onlineMeetingSecret sql.NullString
+		var bannerURL sql.NullString
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
@@ -1860,6 +1868,10 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 			&processedAt, &organizerNote, &rejectReason,
 			&createdEventID,
 			&venueName, &areaName, &floor, &areaCapacity,
+			&eventFormat, &customVenueName, &customLocation,
+			&orgType, &privacyStatus,
+			&onlineMeetingURL, &onlineMeetingID, &onlineMeetingSecret,
+			&bannerURL,
 		)
 		if err != nil {
 			log.Printf("Skip corrupted row due to scan error: %v", err)
@@ -1894,6 +1906,15 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 		req.OrganizerNote = stringPointer(organizerNote)
 		req.RejectReason = stringPointer(rejectReason)
 		req.CreatedEventID = intPointer(createdEventID)
+		req.EventFormat = stringPointer(eventFormat)
+		req.CustomVenueName = stringPointer(customVenueName)
+		req.CustomLocation = stringPointer(customLocation)
+		req.OrgType = stringPointer(orgType)
+		req.PrivacyStatus = stringPointer(privacyStatus)
+		req.OnlineMeetingURL = stringPointer(onlineMeetingURL)
+		req.OnlineMeetingID = stringPointer(onlineMeetingID)
+		req.OnlineMeetingSecret = stringPointer(onlineMeetingSecret)
+		req.BannerURL = stringPointer(bannerURL)
 
 		requests = append(requests, req)
 	}
@@ -1922,7 +1943,11 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 			er.created_at, er.processed_by, u2.full_name as processed_by_name,
 			er.processed_at, er.organizer_note, er.reject_reason,
 			er.created_event_id, e.status as event_status,
-			v.venue_name, va.area_name, va.floor, va.capacity
+			v.venue_name, va.area_name, va.floor, va.capacity,
+			er.event_format, er.custom_venue_name, er.custom_location,
+			er.org_type, er.privacy_status,
+			er.online_meeting_url, er.online_meeting_id, er.online_meeting_secret,
+			er.banner_url
 		FROM Event_Request er
 		LEFT JOIN Users u ON er.requester_id = u.user_id
 		LEFT JOIN Users u2 ON er.processed_by = u2.user_id
@@ -1953,6 +1978,10 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 		var areaCapacity sql.NullInt64
 		var description, organizerNote, rejectReason sql.NullString
 		var expectedCapacity, createdEventID sql.NullInt64
+		var eventFormat, customVenueName, customLocation sql.NullString
+		var orgType, privacyStatus sql.NullString
+		var onlineMeetingURL, onlineMeetingID, onlineMeetingSecret sql.NullString
+		var bannerURL sql.NullString
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
@@ -1963,6 +1992,10 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 			&processedAt, &organizerNote, &rejectReason,
 			&createdEventID, &eventStatus,
 			&venueName, &areaName, &floor, &areaCapacity,
+			&eventFormat, &customVenueName, &customLocation,
+			&orgType, &privacyStatus,
+			&onlineMeetingURL, &onlineMeetingID, &onlineMeetingSecret,
+			&bannerURL,
 		)
 		if err != nil {
 			log.Printf("Skip corrupted row due to scan error: %v", err)
@@ -2000,6 +2033,15 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 		req.OrganizerNote = stringPointer(organizerNote)
 		req.RejectReason = stringPointer(rejectReason)
 		req.CreatedEventID = intPointer(createdEventID)
+		req.EventFormat = stringPointer(eventFormat)
+		req.CustomVenueName = stringPointer(customVenueName)
+		req.CustomLocation = stringPointer(customLocation)
+		req.OrgType = stringPointer(orgType)
+		req.PrivacyStatus = stringPointer(privacyStatus)
+		req.OnlineMeetingURL = stringPointer(onlineMeetingURL)
+		req.OnlineMeetingID = stringPointer(onlineMeetingID)
+		req.OnlineMeetingSecret = stringPointer(onlineMeetingSecret)
+		req.BannerURL = stringPointer(bannerURL)
 
 		requests = append(requests, req)
 	}
@@ -2041,7 +2083,11 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 			er.created_at, er.processed_by, u2.full_name as processed_by_name,
 			er.processed_at, er.organizer_note, er.reject_reason,
 			er.created_event_id, e.status as event_status,
-			v.venue_name, va.area_name, va.floor, va.capacity
+			v.venue_name, va.area_name, va.floor, va.capacity,
+			er.event_format, er.custom_venue_name, er.custom_location,
+			er.org_type, er.privacy_status,
+			er.online_meeting_url, er.online_meeting_id, er.online_meeting_secret,
+			er.banner_url
 		FROM Event_Request er
 		LEFT JOIN Users u ON er.requester_id = u.user_id
 		LEFT JOIN Users u2 ON er.processed_by = u2.user_id
@@ -2073,6 +2119,10 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 		var areaCapacity sql.NullInt64
 		var description, organizerNote, rejectReason sql.NullString
 		var expectedCapacity, createdEventID sql.NullInt64
+		var eventFormat, customVenueName, customLocation sql.NullString
+		var orgType, privacyStatus sql.NullString
+		var onlineMeetingURL, onlineMeetingID, onlineMeetingSecret sql.NullString
+		var bannerURL sql.NullString
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
@@ -2083,6 +2133,10 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 			&processedAt, &organizerNote, &rejectReason,
 			&createdEventID, &eventStatus,
 			&venueName, &areaName, &floor, &areaCapacity,
+			&eventFormat, &customVenueName, &customLocation,
+			&orgType, &privacyStatus,
+			&onlineMeetingURL, &onlineMeetingID, &onlineMeetingSecret,
+			&bannerURL,
 		)
 		if err != nil {
 			log.Printf("Skip corrupted row due to scan error: %v", err)
@@ -2120,6 +2174,15 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 		req.OrganizerNote = stringPointer(organizerNote)
 		req.RejectReason = stringPointer(rejectReason)
 		req.CreatedEventID = intPointer(createdEventID)
+		req.EventFormat = stringPointer(eventFormat)
+		req.CustomVenueName = stringPointer(customVenueName)
+		req.CustomLocation = stringPointer(customLocation)
+		req.OrgType = stringPointer(orgType)
+		req.PrivacyStatus = stringPointer(privacyStatus)
+		req.OnlineMeetingURL = stringPointer(onlineMeetingURL)
+		req.OnlineMeetingID = stringPointer(onlineMeetingID)
+		req.OnlineMeetingSecret = stringPointer(onlineMeetingSecret)
+		req.BannerURL = stringPointer(bannerURL)
 
 		requests = append(requests, req)
 	}
@@ -2162,7 +2225,11 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 			er.created_at, er.processed_by, u2.full_name as processed_by_name,
 			er.processed_at, er.organizer_note, er.reject_reason,
 			er.created_event_id,
-			v.venue_name, va.area_name, va.floor, va.capacity
+			v.venue_name, va.area_name, va.floor, va.capacity,
+			er.event_format, er.custom_venue_name, er.custom_location,
+			er.org_type, er.privacy_status,
+			er.online_meeting_url, er.online_meeting_id, er.online_meeting_secret,
+			er.banner_url
 		FROM Event_Request er
 		LEFT JOIN Users u ON er.requester_id = u.user_id
 		LEFT JOIN Users u2 ON er.processed_by = u2.user_id
@@ -2190,6 +2257,10 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 		var areaCapacity sql.NullInt64
 		var description, organizerNote, rejectReason sql.NullString
 		var expectedCapacity, createdEventID sql.NullInt64
+		var eventFormat, customVenueName, customLocation sql.NullString
+		var orgType, privacyStatus sql.NullString
+		var onlineMeetingURL, onlineMeetingID, onlineMeetingSecret sql.NullString
+		var bannerURL sql.NullString
 
 		err := rows.Scan(
 			&req.RequestID, &req.RequesterID, &requesterName,
@@ -2200,6 +2271,10 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 			&processedAt, &organizerNote, &rejectReason,
 			&createdEventID,
 			&venueName, &areaName, &floor, &areaCapacity,
+			&eventFormat, &customVenueName, &customLocation,
+			&orgType, &privacyStatus,
+			&onlineMeetingURL, &onlineMeetingID, &onlineMeetingSecret,
+			&bannerURL,
 		)
 		if err != nil {
 			log.Printf("Skip corrupted row due to scan error: %v", err)
@@ -2234,6 +2309,15 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 		req.OrganizerNote = stringPointer(organizerNote)
 		req.RejectReason = stringPointer(rejectReason)
 		req.CreatedEventID = intPointer(createdEventID)
+		req.EventFormat = stringPointer(eventFormat)
+		req.CustomVenueName = stringPointer(customVenueName)
+		req.CustomLocation = stringPointer(customLocation)
+		req.OrgType = stringPointer(orgType)
+		req.PrivacyStatus = stringPointer(privacyStatus)
+		req.OnlineMeetingURL = stringPointer(onlineMeetingURL)
+		req.OnlineMeetingID = stringPointer(onlineMeetingID)
+		req.OnlineMeetingSecret = stringPointer(onlineMeetingSecret)
+		req.BannerURL = stringPointer(bannerURL)
 
 		requests = append(requests, req)
 	}

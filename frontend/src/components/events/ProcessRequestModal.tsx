@@ -57,6 +57,50 @@ type ProcessRequestModalProps = {
   } | null
 }
 
+// ===================== HELPER FUNCTIONS =====================
+
+const findMatchingArea = (areas: AvailableArea[], customVenue: string, customLoc?: string): AvailableArea | null => {
+  if (!customVenue) return null
+  const venueLower = customVenue.toLowerCase().trim()
+  const locLower = customLoc?.toLowerCase().trim() || ''
+
+  // 1. Try exact or substring match on areaName/venueName
+  const candidates = areas.filter(area => {
+    const areaNameLower = area.areaName.toLowerCase()
+    return areaNameLower.includes(venueLower) || venueLower.includes(areaNameLower)
+  })
+
+  if (candidates.length === 1) {
+    return candidates[0]
+  }
+
+  if (candidates.length > 1) {
+    // If we have multiple candidates, filter by location if possible
+    if (locLower) {
+      const locCandidates = candidates.filter(area => {
+        const areaVenueLower = area.venueName.toLowerCase()
+        return areaVenueLower.includes(locLower) || locLower.includes(areaVenueLower)
+      })
+      if (locCandidates.length > 0) {
+        return locCandidates[0]
+      }
+    }
+    return candidates[0]
+  }
+
+  // 2. Loose match combining venue name and area name
+  const looseCandidates = areas.filter(area => {
+    const combined = `${area.venueName} ${area.areaName}`.toLowerCase()
+    return combined.includes(venueLower) || venueLower.includes(combined)
+  })
+
+  if (looseCandidates.length > 0) {
+    return looseCandidates[0]
+  }
+
+  return null
+}
+
 // ===================== COMPONENT =====================
 
 export function ProcessRequestModal({
@@ -119,11 +163,19 @@ export function ProcessRequestModal({
 
   useEffect(() => {
     if (areas.length > 0) {
-      setSelectedAreaId(areas[0].areaId)
+      const matched = request?.customVenueName
+        ? findMatchingArea(areas, request.customVenueName, request.customLocation)
+        : null
+      
+      if (matched) {
+        setSelectedAreaId(matched.areaId)
+      } else {
+        setSelectedAreaId(areas[0].areaId)
+      }
     } else {
       setSelectedAreaId(0)
     }
-  }, [areas])
+  }, [areas, request])
 
   const truncateVenueName = (venueName: string, maxLength: number = 30): string => {
     if (venueName.length <= maxLength) return venueName
@@ -421,6 +473,37 @@ export function ProcessRequestModal({
                       <p className="text-slate-500 dark:text-slate-400">
                         📍 Tìm thấy <span className="font-bold text-slate-800 dark:text-slate-200">{areas.length} khu vực</span> phù hợp
                       </p>
+                      {request?.customVenueName && (() => {
+                        const matched = findMatchingArea(areas, request.customVenueName, request.customLocation)
+                        if (matched) {
+                          const isSelectedMatched = selectedAreaId === matched.areaId
+                          return (
+                            <div className={`p-2 rounded border ${
+                              isSelectedMatched 
+                                ? 'bg-green-55 dark:bg-green-950/20 border-green-200 dark:border-green-900/45 text-green-800 dark:text-green-300'
+                                : 'bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-350'
+                            }`}>
+                              <p className="font-semibold flex items-center gap-1">
+                                <span>✨</span>
+                                <span>
+                                  {isSelectedMatched 
+                                    ? `Đã tự động chọn phòng "${matched.areaName}" khớp với yêu cầu của BTC.`
+                                    : `Phòng khớp với mong muốn của BTC là "${matched.areaName}" đang khả dụng.`}
+                                </span>
+                              </p>
+                            </div>
+                          )
+                        } else {
+                          return (
+                            <div className="p-2 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-250 dark:border-yellow-900/45 rounded text-yellow-850 dark:text-yellow-350">
+                              <p className="font-semibold flex items-center gap-1">
+                                <span>⚠️</span>
+                                <span>Hiện không có phòng trống nào khớp với địa điểm mong muốn của BTC ("${request.customVenueName}"). Vui lòng phân bổ một khu vực khác.</span>
+                              </p>
+                            </div>
+                          )
+                        }
+                      })()}
                       {selectedAreaId > 0 && (() => {
                         const selectedArea = areas.find(a => a.areaId === selectedAreaId)
                         const expectedCap = request?.expectedCapacity ?? 0
