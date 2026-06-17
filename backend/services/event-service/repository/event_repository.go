@@ -2578,7 +2578,7 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		var requestTitle string
 		var requestDesc sql.NullString
 		var requestStartTime, requestEndTime sql.NullTime
-		var requestCapacity int
+		var requestCapacity sql.NullInt64
 		var requesterID int
 		var eventFormat, customVenueName, customLocation, bannerURL sql.NullString
 
@@ -2596,6 +2596,11 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		if err != nil {
 			fmt.Printf("[DB_PROCESS] Failed to get request details: %v\n", err)
 			return fmt.Errorf("failed to get request details: %w", err)
+		}
+
+		capacityVal := 0
+		if requestCapacity.Valid {
+			capacityVal = int(requestCapacity.Int64)
 		}
 
 		// ✅ WALL-CLOCK TIME PRESERVATION:
@@ -2675,7 +2680,7 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 
 		var eventID int64
 		err = tx.QueryRowContext(ctx, insertEventQuery,
-			requestTitle, requestDesc, startTimeWallClock, endTimeWallClock, requestCapacity,
+			requestTitle, requestDesc, startTimeWallClock, endTimeWallClock, capacityVal,
 			bannerURLValue, *req.AreaID, speakerIDValue, requesterID,
 			formatVal, customVenueName, customLocation,
 		).Scan(&eventID)
