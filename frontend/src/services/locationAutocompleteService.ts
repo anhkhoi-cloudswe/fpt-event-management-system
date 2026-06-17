@@ -7,6 +7,8 @@ export type LocationSuggestion = {
   mapUrl: string
 }
 
+type Language = 'vi' | 'en'
+
 type NominatimPlace = {
   place_id: number
   name?: string
@@ -33,6 +35,118 @@ type NominatimPlace = {
   }
 }
 
+type PhotonFeature = {
+  type: 'Feature'
+  geometry?: {
+    coordinates?: [number, number]
+  }
+  properties?: {
+    osm_id?: number
+    name?: string
+    street?: string
+    district?: string
+    city?: string
+    county?: string
+    state?: string
+    country?: string
+  }
+}
+
+type PhotonResponse = {
+  features?: PhotonFeature[]
+}
+
+const POPULAR_VN_LOCATIONS: LocationSuggestion[] = [
+  {
+    id: 'popular-landmark-81',
+    name: 'Landmark 81',
+    address: 'Đường Điện Biên Phủ, Vinhomes Central Park, Bình Thạnh, Hồ Chí Minh',
+    lat: '10.7950',
+    lon: '106.7218',
+    mapUrl: 'https://www.openstreetmap.org/search?query=Landmark%2081%20Ho%20Chi%20Minh',
+  },
+  {
+    id: 'popular-landmark-6',
+    name: 'Landmark 6',
+    address: 'Đường Điện Biên Phủ, Vinhomes Central Park, Bình Thạnh, Hồ Chí Minh',
+    lat: '10.7947',
+    lon: '106.7206',
+    mapUrl: 'https://www.openstreetmap.org/search?query=Landmark%206%20Vinhomes%20Central%20Park',
+  },
+  {
+    id: 'popular-landmark-2',
+    name: 'Landmark 2',
+    address: 'Đường Điện Biên Phủ, Vinhomes Central Park, Bình Thạnh, Hồ Chí Minh',
+    lat: '10.7939',
+    lon: '106.7198',
+    mapUrl: 'https://www.openstreetmap.org/search?query=Landmark%202%20Vinhomes%20Central%20Park',
+  },
+  {
+    id: 'popular-landmark-3',
+    name: 'Landmark 3',
+    address: 'Vinhomes Central Park, Bình Thạnh, Hồ Chí Minh',
+    lat: '10.7941',
+    lon: '106.7200',
+    mapUrl: 'https://www.openstreetmap.org/search?query=Landmark%203%20Vinhomes%20Central%20Park',
+  },
+  {
+    id: 'popular-aeon-binh-tan',
+    name: 'AEON MALL Bình Tân',
+    address: 'Đường Số 17A, An Lạc, Bình Tân, Hồ Chí Minh',
+    lat: '10.7422',
+    lon: '106.6127',
+    mapUrl: 'https://www.openstreetmap.org/search?query=AEON%20MALL%20Binh%20Tan',
+  },
+  {
+    id: 'popular-aeon-tan-phu',
+    name: 'AEON MALL Tân Phú Celadon',
+    address: 'Đường Tân Thắng, Sơn Kỳ, Tân Phú, Hồ Chí Minh',
+    lat: '10.8012',
+    lon: '106.6181',
+    mapUrl: 'https://www.openstreetmap.org/search?query=AEON%20MALL%20Tan%20Phu%20Celadon',
+  },
+  {
+    id: 'popular-aeon-binh-duong',
+    name: 'AEON MALL Bình Dương Canary',
+    address: 'Đại lộ Bình Dương, Thuận Giao, Thuận An, Bình Dương',
+    lat: '10.9319',
+    lon: '106.7110',
+    mapUrl: 'https://www.openstreetmap.org/search?query=AEON%20MALL%20Binh%20Duong%20Canary',
+  },
+  {
+    id: 'popular-aeon-da-nang',
+    name: 'AEON MALL Đà Nẵng',
+    address: 'Chính Gián, Thanh Khê, Đà Nẵng',
+    lat: '16.0678',
+    lon: '108.1929',
+    mapUrl: 'https://www.openstreetmap.org/search?query=AEON%20MALL%20Da%20Nang',
+  },
+  {
+    id: 'popular-adora-art-hotel',
+    name: 'Adora Art Hotel',
+    address: 'Lý Tự Trọng, Bến Thành, Quận 1, Hồ Chí Minh',
+    lat: '10.7756',
+    lon: '106.6978',
+    mapUrl: 'https://www.openstreetmap.org/search?query=Adora%20Art%20Hotel%20Ho%20Chi%20Minh',
+  },
+]
+
+const normalize = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+
+const buildMapUrl = (lat: string, lon: string, query?: string) => {
+  if (lat && lon) {
+    return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lon)}#map=17/${encodeURIComponent(lat)}/${encodeURIComponent(lon)}`
+  }
+
+  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(query || '')}`
+}
+
 const buildReadableName = (place: NominatimPlace) => {
   const address = place.address || {}
   const fallback = place.display_name.split(',')[0]?.trim()
@@ -50,19 +164,112 @@ const buildReadableName = (place: NominatimPlace) => {
   )
 }
 
-export async function searchLocations(
-  query: string,
-  language: 'vi' | 'en' = 'vi',
-  signal?: AbortSignal,
-): Promise<LocationSuggestion[]> {
-  const trimmed = query.trim()
-  if (trimmed.length < 2) return []
+const buildPhotonAddress = (properties: PhotonFeature['properties']) => {
+  if (!properties) return ''
 
+  return [
+    properties.street,
+    properties.district,
+    properties.city,
+    properties.county,
+    properties.state,
+    properties.country,
+  ]
+    .filter(Boolean)
+    .join(', ')
+}
+
+const toPhotonSuggestion = (feature: PhotonFeature): LocationSuggestion | null => {
+  const coordinates = feature.geometry?.coordinates
+  const properties = feature.properties
+  const name = properties?.name?.trim()
+  if (!coordinates || !name) return null
+
+  const lon = String(coordinates[0])
+  const lat = String(coordinates[1])
+  const address = buildPhotonAddress(properties) || name
+
+  return {
+    id: `photon-${properties?.osm_id || `${lat}-${lon}-${name}`}`,
+    name,
+    address,
+    lat,
+    lon,
+    mapUrl: buildMapUrl(lat, lon, `${name} ${address}`),
+  }
+}
+
+const rankSuggestion = (suggestion: LocationSuggestion, query: string) => {
+  const haystack = normalize(`${suggestion.name} ${suggestion.address}`)
+  const name = normalize(suggestion.name)
+  const needle = normalize(query)
+
+  if (name === needle) return 0
+  if (name.startsWith(needle)) return 1
+  if (haystack.startsWith(needle)) return 2
+  if (name.includes(needle)) return 3
+  if (haystack.includes(needle)) return 4
+  return 8
+}
+
+const dedupeAndRank = (items: LocationSuggestion[], query: string) => {
+  const seen = new Set<string>()
+  const seenNames = new Set<string>()
+
+  return items
+    .filter((item) => {
+      const nameKey = normalize(item.name)
+      const key = normalize(`${item.name}|${item.address}`)
+      if (seen.has(key) || seenNames.has(nameKey)) return false
+      seen.add(key)
+      seenNames.add(nameKey)
+      return true
+    })
+    .sort((a, b) => rankSuggestion(a, query) - rankSuggestion(b, query))
+    .slice(0, 12)
+}
+
+const searchPopularLocations = (query: string) => {
+  const needle = normalize(query)
+  if (!needle) return []
+
+  return POPULAR_VN_LOCATIONS.filter((item) => {
+    const haystack = normalize(`${item.name} ${item.address}`)
+    return haystack.includes(needle)
+  })
+}
+
+const fetchPhotonLocations = async (query: string, language: Language, signal?: AbortSignal) => {
   const params = new URLSearchParams({
-    q: trimmed,
+    q: query,
+    limit: '12',
+    lang: language === 'en' ? 'en' : 'vi',
+    lat: '10.7769',
+    lon: '106.7009',
+  })
+
+  const response = await fetch(`https://photon.komoot.io/api/?${params.toString()}`, {
+    method: 'GET',
+    signal,
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+
+  if (!response.ok) return []
+
+  const data = (await response.json()) as PhotonResponse
+  return (data.features || [])
+    .map(toPhotonSuggestion)
+    .filter((item): item is LocationSuggestion => Boolean(item))
+}
+
+const fetchNominatimLocations = async (query: string, language: Language, signal?: AbortSignal) => {
+  const params = new URLSearchParams({
+    q: query,
     format: 'jsonv2',
     addressdetails: '1',
-    limit: '5',
+    limit: '12',
     countrycodes: 'vn',
     'accept-language': language === 'en' ? 'en' : 'vi',
   })
@@ -75,17 +282,36 @@ export async function searchLocations(
     },
   })
 
-  if (!response.ok) {
-    throw new Error(language === 'en' ? 'Could not load location suggestions' : 'Chưa tải được gợi ý địa điểm')
-  }
+  if (!response.ok) return []
 
   const data = (await response.json()) as NominatimPlace[]
   return data.map((place) => ({
-    id: String(place.place_id),
+    id: `nominatim-${place.place_id}`,
     name: buildReadableName(place),
     address: place.display_name,
     lat: place.lat,
     lon: place.lon,
-    mapUrl: `https://www.openstreetmap.org/?mlat=${encodeURIComponent(place.lat)}&mlon=${encodeURIComponent(place.lon)}#map=17/${encodeURIComponent(place.lat)}/${encodeURIComponent(place.lon)}`,
+    mapUrl: buildMapUrl(place.lat, place.lon, place.display_name),
   }))
+}
+
+export async function searchLocations(
+  query: string,
+  language: Language = 'vi',
+  signal?: AbortSignal,
+): Promise<LocationSuggestion[]> {
+  const trimmed = query.trim()
+  if (!trimmed) return []
+
+  const localResults = searchPopularLocations(trimmed)
+
+  const providerTasks = [
+    fetchPhotonLocations(trimmed, language, signal),
+    trimmed.length > 1 ? fetchNominatimLocations(trimmed, language, signal) : Promise.resolve([]),
+  ]
+
+  const settled = await Promise.allSettled(providerTasks)
+  const remoteResults = settled.flatMap((result) => result.status === 'fulfilled' ? result.value : [])
+
+  return dedupeAndRank([...localResults, ...remoteResults], trimmed)
 }

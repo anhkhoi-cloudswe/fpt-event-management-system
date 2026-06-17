@@ -72,7 +72,7 @@ export default function LocationAutocomplete({
 
   useEffect(() => {
     const trimmed = query.trim()
-    if (!isExpanded || trimmed.length < 2) {
+    if (!isExpanded || trimmed.length < 1) {
       setSuggestions([])
       setIsLoading(false)
       setSearchError(null)
@@ -146,7 +146,7 @@ export default function LocationAutocomplete({
 
       {isExpanded && (
         <div
-          className={`absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-lg border shadow-xl ${
+          className={`absolute left-0 right-0 top-full z-[80] mt-1 overflow-hidden rounded-lg border shadow-xl ${
             isDarkMode
               ? 'border-white/10 bg-[#18181b] text-white shadow-black/40'
               : 'border-neutral-200 bg-white text-neutral-950 shadow-neutral-900/10'
@@ -169,7 +169,7 @@ export default function LocationAutocomplete({
           </div>
 
           {(hasQuery || suggestions.length > 0 || searchError) && (
-            <div className="max-h-80 overflow-y-auto py-2">
+            <div className="max-h-64 overflow-y-auto py-2">
               {hasQuery && (
                 <button
                   type="button"
