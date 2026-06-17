@@ -54,6 +54,7 @@ type ProcessRequestModalProps = {
     onlineMeetingUrl?: string
     onlineMeetingId?: string
     onlineMeetingSecret?: string
+    bannerUrl?: string
   } | null
 }
 
@@ -256,58 +257,71 @@ export function ProcessRequestModal({
               <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               Chi tiết sự kiện yêu cầu
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-slate-700 dark:text-slate-350">
-              <div className="space-y-0.5">
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Tên sự kiện</p>
-                <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{request.title}</p>
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Người đề xuất</p>
-                <p className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
-                  {request.requesterName || 'Không rõ'}
-                </p>
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Thời gian mong muốn</p>
-                <p className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  {request.preferredStartTime ? formatWallClockTimeFromRFC3339(request.preferredStartTime) : '---'}
-                </p>
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Hình thức & Địa điểm</p>
-                <p className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 animate-bounce" />
-                  {request.eventFormat === 'ONLINE' ? 'Trực tuyến (ONLINE)' :
-                   request.eventFormat === 'ONSITE' ? `${request.customVenueName || 'Tại chỗ'} (${request.customLocation || 'Campus'})` :
-                   request.eventFormat === 'HYBRID' ? `${request.customVenueName || 'Kết hợp'} & ONLINE` : 'Chưa chọn'}
-                </p>
-              </div>
-              {request.orgType && (
-                <div className="space-y-0.5">
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Đơn vị tổ chức</p>
-                  <p className="font-semibold text-slate-900 dark:text-slate-200">
-                    {request.orgType === 'SCHOOL' ? '🏫 Trường học (SCHOOL)' : '👤 Tự do (FREE)'}
-                  </p>
+            <div className="flex flex-col md:flex-row gap-4 items-start">
+              {request.bannerUrl && (
+                <div className="w-full md:w-48 aspect-video md:h-24 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm flex-shrink-0">
+                  <img
+                    src={request.bannerUrl}
+                    alt="Event Banner"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               )}
-              {request.privacyStatus && (
-                <div className="space-y-0.5">
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Hiển thị</p>
-                  <p className="font-semibold text-slate-900 dark:text-slate-200">
-                    {request.privacyStatus === 'PUBLIC' ? '🌐 Công khai (PUBLIC)' : '🔒 Riêng tư (PRIVATE)'}
-                  </p>
+              <div className="flex-1 w-full space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-slate-700 dark:text-slate-350">
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Tên sự kiện</p>
+                    <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{request.title}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Người đề xuất</p>
+                    <p className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
+                      <User className="w-3.5 h-3.5 text-slate-400" />
+                      {request.requesterName || 'Không rõ'}
+                    </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Thời gian mong muốn</p>
+                    <p className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      {request.preferredStartTime ? formatWallClockTimeFromRFC3339(request.preferredStartTime) : '---'}
+                    </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Hình thức & Địa điểm</p>
+                    <p className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 animate-bounce" />
+                      {request.eventFormat === 'ONLINE' ? 'Trực tuyến (ONLINE)' :
+                       request.eventFormat === 'ONSITE' ? `${request.customVenueName || 'Tại chỗ'} (${request.customLocation || 'Campus'})` :
+                       request.eventFormat === 'HYBRID' ? `${request.customVenueName || 'Kết hợp'} & ONLINE` : 'Chưa chọn'}
+                    </p>
+                  </div>
+                  {request.orgType && (
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Đơn vị tổ chức</p>
+                      <p className="font-semibold text-slate-900 dark:text-slate-200">
+                        {request.orgType === 'SCHOOL' ? '🏫 Trường học (SCHOOL)' : '👤 Tự do (FREE)'}
+                      </p>
+                    </div>
+                  )}
+                  {request.privacyStatus && (
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Hiển thị</p>
+                      <p className="font-semibold text-slate-900 dark:text-slate-200">
+                        {request.privacyStatus === 'PUBLIC' ? '🌐 Công khai (PUBLIC)' : '🔒 Riêng tư (PRIVATE)'}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
+                
+                {request.description && request.description !== 'N/A' && (
+                  <div className="border-t border-slate-200 dark:border-slate-800 pt-2 text-[11px] text-slate-550 dark:text-slate-400">
+                    <span className="font-bold text-slate-700 dark:text-slate-300 uppercase mr-1">Mô tả:</span>
+                    <span className="line-clamp-2">{request.description}</span>
+                  </div>
+                )}
+              </div>
             </div>
-            
-            {request.description && request.description !== 'N/A' && (
-              <div className="border-t border-slate-200 dark:border-slate-800 pt-2 text-[11px] text-slate-550 dark:text-slate-400">
-                <span className="font-bold text-slate-700 dark:text-slate-300 uppercase mr-1">Mô tả:</span>
-                <span className="line-clamp-2">{request.description}</span>
-              </div>
-            )}
           </div>
 
           {/* Section 2: Trọng tâm phê duyệt */}
