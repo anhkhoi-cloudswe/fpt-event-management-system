@@ -1037,19 +1037,24 @@ export default function EventRequestEdit() {
 
     return (
         <div className="flex justify-center">
-            <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-md p-6 max-w-6xl w-full">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">
+            <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl shadow-lg p-6 max-w-6xl w-full">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-5 text-center">
                     Cập nhật yêu cầu tổ chức sự kiện
                 </h1>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                        {/* Cột trái: Banner & Diễn giả */}
-                        <div className="lg:col-span-5 space-y-4">
-                            {/* ================= BANNER UPLOAD ================= */}
-                            <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-3 shadow-sm">
-                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider">
+
+                        {/* ================= CỘT TRÁI: BANNER SPOTLIGHT ================= */}
+                        <div className="lg:col-span-5">
+                            <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-3 shadow-sm h-full">
+                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
                                     Banner sự kiện *
+                                    {eventRequest.status === 'APPROVED' && (
+                                        <span className="ml-2 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50 rounded-full px-2 py-0.5 normal-case tracking-normal">
+                                            🔒 Chỉ xem sau khi duyệt
+                                        </span>
+                                    )}
                                 </label>
 
                                 {!imagePreview ? (
@@ -1057,8 +1062,11 @@ export default function EventRequestEdit() {
                                         onDragOver={handleDragOver}
                                         onDragLeave={handleDragLeave}
                                         onDrop={handleDrop}
-                                        className={`border-2 border-dashed rounded-lg p-5 text-center transition-colors ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' : 'border-gray-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500'
-                                            }`}
+                                        className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                                            isDragging
+                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                                                : 'border-gray-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500'
+                                        }`}
                                     >
                                         <input
                                             type="file"
@@ -1067,37 +1075,66 @@ export default function EventRequestEdit() {
                                             onChange={handleImageSelect}
                                             className="hidden"
                                         />
-                                        <label htmlFor="banner-upload" className="cursor-pointer">
-                                            <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                                            <p className="text-xs text-gray-600 dark:text-slate-350 mb-1">Kéo thả ảnh hoặc click để chọn</p>
-                                            <p className="text-[10px] text-gray-505 dark:text-slate-500">PNG, JPG, GIF tối đa 5MB</p>
+                                        <label htmlFor="banner-upload" className="cursor-pointer block">
+                                            <Upload className="w-10 h-10 mx-auto text-gray-400 mb-3" />
+                                            <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Kéo thả ảnh hoặc click để chọn</p>
+                                            <p className="text-[11px] text-gray-400 dark:text-slate-500">PNG, JPG, GIF tối đa 5MB</p>
                                         </label>
                                     </div>
                                 ) : (
-                                    <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 shadow-md">
-                                        <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover" />
-                                        <button
-                                            type="button"
-                                            onClick={handleRemoveImage}
-                                            className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-650 text-white rounded-full transition-colors shadow-lg active:scale-90"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
+                                    <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-lg group">
+                                        <img
+                                            src={imagePreview}
+                                            alt="Banner Preview"
+                                            className="w-full object-cover"
+                                            style={{ maxHeight: '340px', minHeight: '200px' }}
+                                        />
+                                        {/* Chỉ hiện nút xóa khi KHÔNG phải trạng thái APPROVED */}
+                                        {eventRequest.status !== 'APPROVED' && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveImage}
+                                                className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all shadow-lg active:scale-90 opacity-0 group-hover:opacity-100"
+                                                title="Xóa banner"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                        {/* Nút thay ảnh - luôn hiển thị để upload banner mới */}
+                                        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <label
+                                                htmlFor="banner-upload-replace"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/90 text-slate-800 text-xs font-semibold rounded-lg cursor-pointer hover:bg-white transition-colors shadow"
+                                            >
+                                                <Upload className="w-3.5 h-3.5" />
+                                                Thay banner
+                                            </label>
+                                            <input
+                                                type="file"
+                                                id="banner-upload-replace"
+                                                accept="image/*"
+                                                onChange={handleImageSelect}
+                                                className="hidden"
+                                            />
+                                        </div>
                                     </div>
                                 )}
                             </div>
+                        </div>
 
-                            {/* ================= SPEAKER INFO ================= */}
-                            <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-4 shadow-sm">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Thông tin diễn giả</h2>
+                        {/* ================= CỘT PHẢI: SPEAKER + TICKET ================= */}
+                        <div className="lg:col-span-7 space-y-4">
 
-                                {/* Autocomplete Combobox */}
-                                <div className="space-y-4">
+                            {/* ===== SPEAKER INFO ===== */}
+                            <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-3 shadow-sm">
+                                <h2 className="text-base font-semibold text-gray-900 dark:text-white">Thông tin diễn giả</h2>
+
+                                <div className="space-y-3">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-2">
                                             Chọn diễn giả *
                                         </label>
-                                        
+
                                         <div className="relative">
                                             <div className="relative">
                                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -1116,11 +1153,11 @@ export default function EventRequestEdit() {
 
                                             {showSuggestions && (
                                                 <>
-                                                    <div 
-                                                        className="fixed inset-0 z-10" 
+                                                    <div
+                                                        className="fixed inset-0 z-10"
                                                         onClick={() => setShowSuggestions(false)}
                                                     />
-                                                    <div className="absolute z-20 w-full mt-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
+                                                    <div className="absolute z-20 w-full mt-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto">
                                                         {filteredSuggestions.length > 0 ? (
                                                             filteredSuggestions.map((sp) => (
                                                                 <div
@@ -1145,7 +1182,7 @@ export default function EventRequestEdit() {
                                                                     )}
                                                                     <div>
                                                                         <p className="font-semibold text-xs">{sp.fullName}</p>
-                                                                        <p className="text-[10px] text-slate-550 dark:text-neutral-400">{sp.email || 'Không có email'}</p>
+                                                                        <p className="text-[10px] text-slate-500 dark:text-neutral-400">{sp.email || 'Không có email'}</p>
                                                                     </div>
                                                                 </div>
                                                             ))
@@ -1154,16 +1191,16 @@ export default function EventRequestEdit() {
                                                                 Không tìm thấy diễn giả nào
                                                             </div>
                                                         )}
-                        <div
-                            onClick={() => {
-                                handleOpenDrawer(searchQuery)
-                                setShowSuggestions(false)
-                            }}
-                            className="px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-semibold cursor-pointer border-t border-slate-100 dark:border-white/10 flex items-center gap-1.5 text-xs"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            Thêm diễn giả mới {searchQuery.trim() ? `"${searchQuery}"` : ''}
-                        </div>
+                                                        <div
+                                                            onClick={() => {
+                                                                handleOpenDrawer(searchQuery)
+                                                                setShowSuggestions(false)
+                                                            }}
+                                                            className="px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-semibold cursor-pointer border-t border-slate-100 dark:border-white/10 flex items-center gap-1.5 text-xs"
+                                                        >
+                                                            <Plus className="w-3.5 h-3.5" />
+                                                            Thêm diễn giả mới {searchQuery.trim() ? `"${searchQuery}"` : ''}
+                                                        </div>
                                                     </div>
                                                 </>
                                             )}
@@ -1171,7 +1208,7 @@ export default function EventRequestEdit() {
                                     </div>
 
                                     {/* Selected speaker chips */}
-                                    <div className="flex flex-wrap gap-2 mt-2">
+                                    <div className="flex flex-wrap gap-2">
                                         {selectedSpeakers.map((sp) => {
                                             const currentId = sp.speaker_id || sp.speakerId
                                             const avatarUrl = sp.avatar_url || sp.avatarUrl
@@ -1181,7 +1218,7 @@ export default function EventRequestEdit() {
                                             return (
                                                 <div
                                                     key={currentId || 'temp'}
-                                                    className="inline-flex items-center gap-2 bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10 text-slate-800 dark:text-slate-100 rounded-full pl-2 pr-2.5 py-1 shadow-md"
+                                                    className="inline-flex items-center gap-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-100 rounded-full pl-2 pr-2.5 py-1 shadow-sm"
                                                 >
                                                     {avatarUrl ? (
                                                         <img
@@ -1201,7 +1238,7 @@ export default function EventRequestEdit() {
                                                     <button
                                                         type="button"
                                                         onClick={() => setSelectedSpeakers(selectedSpeakers.filter(s => s.speaker_id !== currentId))}
-                                                        className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-400 hover:text-slate-655 dark:hover:text-white transition-colors"
+                                                        className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
                                                     >
                                                         <X className="w-3 h-3" />
                                                     </button>
@@ -1211,123 +1248,122 @@ export default function EventRequestEdit() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Cột phải: Thông tin vé */}
-                        <div className="lg:col-span-7 bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-3 shadow-sm">
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Thông tin vé</h2>
+                            {/* ===== TICKET INFO (nằm dưới speaker, bên phải) ===== */}
+                            <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-3 shadow-sm">
+                                <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
+                                    <h2 className="text-base font-semibold text-gray-900 dark:text-white">Thông tin vé</h2>
 
-                                <button
-                                    type="button"
-                                    onClick={handleAddTicket}
-                                    disabled={tickets.length >= MAX_TICKETS}
-                                    className={`inline-flex items-center px-3 py-1.5 text-white text-xs font-semibold rounded-lg transition-colors ${tickets.length >= MAX_TICKETS
-                                        ? 'bg-gray-400 cursor-not-allowed'
-                                        : 'bg-green-600 hover:bg-green-700 active:scale-95'
+                                    <button
+                                        type="button"
+                                        onClick={handleAddTicket}
+                                        disabled={tickets.length >= MAX_TICKETS}
+                                        className={`inline-flex items-center px-3 py-1.5 text-white text-xs font-semibold rounded-lg transition-colors ${
+                                            tickets.length >= MAX_TICKETS
+                                                ? 'bg-gray-400 cursor-not-allowed'
+                                                : 'bg-green-600 hover:bg-green-700 active:scale-95'
                                         }`}
-                                >
-                                    <Plus className="w-3.5 h-3.5 mr-1.5" />
-                                    Thêm loại vé ({tickets.length}/{MAX_TICKETS})
-                                </button>
-                            </div>
-
-                            {/* Ticket Items Grid - Dynamic Columns (no scrollbar) */}
-                            <div className={`grid gap-4 transition-all duration-300 ${tickets.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                                {tickets.map((ticket, index) => (
-                                    <div 
-                                        key={ticket.name} 
-                                        className="p-3 border border-gray-200 dark:border-slate-800/85 rounded-lg relative bg-white dark:bg-slate-950/60 shadow-sm space-y-2 transition-all duration-300 hover:shadow-md animate-in fade-in-50 zoom-in-95 duration-200"
                                     >
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                                <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider mb-1">
-                                                    Loại vé *
-                                                </label>
-                                                <select
-                                                    value={ticket.name}
-                                                    onChange={(e) => handleTicketTypeChange(index, e.target.value as TicketType)}
-                                                    className="w-36 px-2.5 py-1 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs font-semibold"
-                                                >
-                                                    <option value="VIP">VIP</option>
-                                                    <option value="STANDARD">STANDARD</option>
-                                                </select>
-                                            </div>
+                                        <Plus className="w-3.5 h-3.5 mr-1.5" />
+                                        Thêm loại vé ({tickets.length}/{MAX_TICKETS})
+                                    </button>
+                                </div>
 
-                                            {tickets.length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveTicket(index)}
-                                                    className="p-1.5 rounded-lg text-red-650 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors active:scale-90"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            {/* description */}
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1">
-                                                    Mô tả *
-                                                </label>
-                                                <textarea
-                                                    value={ticket.description}
-                                                    onChange={(e) => handleTicketChange(index, 'description', e.target.value)}
-                                                    required
-                                                    rows={2}
-                                                    className="w-full px-3 py-1 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs resize-none"
-                                                />
-                                            </div>
-
-                                            {/* price + maxQuantity side-by-side */}
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div>
+                                <div className={`grid gap-3 ${
+                                    tickets.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'
+                                }`}>
+                                    {tickets.map((ticket, index) => (
+                                        <div
+                                            key={ticket.name}
+                                            className="p-3 border border-gray-200 dark:border-slate-800/85 rounded-lg bg-white dark:bg-slate-950/60 shadow-sm space-y-2 hover:shadow-md transition-shadow"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex-1">
                                                     <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider mb-1">
-                                                        Giá (VNĐ) *
+                                                        Loại vé *
                                                     </label>
-                                                    <input
-                                                        type="number"
-                                                        value={ticket.price}
-                                                        onChange={(e) => handleTicketChange(index, 'price', e.target.value)}
-                                                        required
-                                                        min="0"
-                                                        max={MAX_PRICE_DIGITS}
-                                                        className={`w-full px-2.5 py-1 bg-white dark:bg-slate-950 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs ${
-                                                            ticket.price > MAX_TICKET_PRICE
-                                                                ? 'border-red-500 bg-red-50/20'
-                                                                : 'border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white'
-                                                        }`}
-                                                        placeholder="Tối đa 100M"
-                                                    />
-                                                    {ticket.price > MAX_TICKET_PRICE && (
-                                                        <p className="text-red-500 text-[10px] font-bold mt-1">
-                                                            ⚠️ Vượt 100 triệu
-                                                        </p>
-                                                    )}
+                                                    <select
+                                                        value={ticket.name}
+                                                        onChange={(e) => handleTicketTypeChange(index, e.target.value as TicketType)}
+                                                        className="w-36 px-2.5 py-1 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs font-semibold"
+                                                    >
+                                                        <option value="VIP">VIP</option>
+                                                        <option value="STANDARD">STANDARD</option>
+                                                    </select>
                                                 </div>
 
+                                                {tickets.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveTicket(index)}
+                                                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors active:scale-90"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-2">
                                                 <div>
                                                     <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1">
-                                                        Số lượng tối đa *
+                                                        Mô tả *
                                                     </label>
-                                                    <input
-                                                        type="number"
-                                                        value={ticket.maxQuantity}
-                                                        onChange={(e) => handleTicketChange(index, 'maxQuantity', e.target.value)}
+                                                    <textarea
+                                                        value={ticket.description}
+                                                        onChange={(e) => handleTicketChange(index, 'description', e.target.value)}
                                                         required
-                                                        min="10"
-                                                        step="10"
-                                                        placeholder="10, 20, ..."
-                                                        className="w-full px-2.5 py-1 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                                                        rows={2}
+                                                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs resize-none"
                                                     />
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider mb-1">
+                                                            Giá (VNĐ) *
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            value={ticket.price}
+                                                            onChange={(e) => handleTicketChange(index, 'price', e.target.value)}
+                                                            required
+                                                            min="0"
+                                                            max={MAX_PRICE_DIGITS}
+                                                            className={`w-full px-2.5 py-1.5 bg-white dark:bg-slate-950 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs ${
+                                                                ticket.price > MAX_TICKET_PRICE
+                                                                    ? 'border-red-500 bg-red-50/20'
+                                                                    : 'border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white'
+                                                            }`}
+                                                            placeholder="Tối đa 100M"
+                                                        />
+                                                        {ticket.price > MAX_TICKET_PRICE && (
+                                                            <p className="text-red-500 text-[10px] font-bold mt-0.5">⚠️ Vượt 100 triệu</p>
+                                                        )}
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1">
+                                                            Số lượng tối đa *
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            value={ticket.maxQuantity}
+                                                            onChange={(e) => handleTicketChange(index, 'maxQuantity', e.target.value)}
+                                                            required
+                                                            min="10"
+                                                            step="10"
+                                                            placeholder="10, 20, ..."
+                                                            className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+
+                        </div>{/* end cột phải */}
                     </div>
                     {/* ================= ERROR BOX ================= */}
                     {error && (
