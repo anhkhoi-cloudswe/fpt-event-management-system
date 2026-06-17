@@ -1037,15 +1037,15 @@ export default function EventRequestEdit() {
 
     return (
         <div className="flex justify-center">
-            <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-md p-8 max-w-6xl w-full">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6 text-center">
+            <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-md p-6 max-w-6xl w-full">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">
                     Cập nhật yêu cầu tổ chức sự kiện
                 </h1>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                         {/* Cột trái: Banner & Diễn giả */}
-                        <div className="lg:col-span-5 space-y-6">
+                        <div className="lg:col-span-5 space-y-4">
                             {/* ================= BANNER UPLOAD ================= */}
                             <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-3 shadow-sm">
                                 <label className="block text-sm font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider">
@@ -1154,18 +1154,16 @@ export default function EventRequestEdit() {
                                                                 Không tìm thấy diễn giả nào
                                                             </div>
                                                         )}
-
-                                                        {searchQuery.trim() !== '' && !allSpeakers.some(s => s.fullName.toLowerCase() === searchQuery.trim().toLowerCase()) && (
-                                                            <div
-                                                                onClick={() => {
-                                                                    handleOpenDrawer(searchQuery)
-                                                                    setShowSuggestions(false)
-                                                                }}
-                                                                className="px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-semibold cursor-pointer border-t border-slate-100 dark:border-white/10 flex items-center text-xs"
-                                                            >
-                                                                + Thêm mới diễn giả "{searchQuery}"
-                                                            </div>
-                                                        )}
+                        <div
+                            onClick={() => {
+                                handleOpenDrawer(searchQuery)
+                                setShowSuggestions(false)
+                            }}
+                            className="px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-semibold cursor-pointer border-t border-slate-100 dark:border-white/10 flex items-center gap-1.5 text-xs"
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            Thêm diễn giả mới {searchQuery.trim() ? `"${searchQuery}"` : ''}
+                        </div>
                                                     </div>
                                                 </>
                                             )}
@@ -1216,7 +1214,7 @@ export default function EventRequestEdit() {
                         </div>
 
                         {/* Cột phải: Thông tin vé */}
-                        <div className="lg:col-span-7 bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-4 shadow-sm">
+                        <div className="lg:col-span-7 bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-3 shadow-sm">
                             <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
                                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Thông tin vé</h2>
 
@@ -1239,11 +1237,11 @@ export default function EventRequestEdit() {
                                 {tickets.map((ticket, index) => (
                                     <div 
                                         key={ticket.name} 
-                                        className="p-4 border border-gray-200 dark:border-slate-800/85 rounded-lg relative bg-white dark:bg-slate-950/60 shadow-sm space-y-3 transition-all duration-300 hover:shadow-md animate-in fade-in-50 zoom-in-95 duration-200"
+                                        className="p-3 border border-gray-200 dark:border-slate-800/85 rounded-lg relative bg-white dark:bg-slate-950/60 shadow-sm space-y-2 transition-all duration-300 hover:shadow-md animate-in fade-in-50 zoom-in-95 duration-200"
                                     >
                                         <div className="flex justify-between items-start">
                                             <div className="flex-1">
-                                                <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider mb-1.5">
+                                                <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider mb-1">
                                                     Loại vé *
                                                 </label>
                                                 <select
@@ -1267,10 +1265,10 @@ export default function EventRequestEdit() {
                                             )}
                                         </div>
 
-                                        <div className="space-y-3">
+                                        <div className="space-y-2">
                                             {/* description */}
                                             <div>
-                                                <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1.5">
+                                                <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1">
                                                     Mô tả *
                                                 </label>
                                                 <textarea
@@ -1278,14 +1276,14 @@ export default function EventRequestEdit() {
                                                     onChange={(e) => handleTicketChange(index, 'description', e.target.value)}
                                                     required
                                                     rows={2}
-                                                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs resize-none"
+                                                    className="w-full px-3 py-1 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs resize-none"
                                                 />
                                             </div>
 
-                                            {/* price + maxQuantity */}
-                                            <div className="grid grid-cols-1 gap-3">
+                                            {/* price + maxQuantity side-by-side */}
+                                            <div className="grid grid-cols-2 gap-3">
                                                 <div>
-                                                    <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider mb-1.5">
+                                                    <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider mb-1">
                                                         Giá (VNĐ) *
                                                     </label>
                                                     <input
@@ -1295,22 +1293,22 @@ export default function EventRequestEdit() {
                                                         required
                                                         min="0"
                                                         max={MAX_PRICE_DIGITS}
-                                                        className={`w-full px-3 py-1.5 bg-white dark:bg-slate-950 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs ${
+                                                        className={`w-full px-2.5 py-1 bg-white dark:bg-slate-950 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs ${
                                                             ticket.price > MAX_TICKET_PRICE
-                                                                ? 'border-red-500 bg-red-55/20'
+                                                                ? 'border-red-500 bg-red-50/20'
                                                                 : 'border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white'
                                                         }`}
-                                                        placeholder="Tối đa 100,000,000"
+                                                        placeholder="Tối đa 100M"
                                                     />
                                                     {ticket.price > MAX_TICKET_PRICE && (
                                                         <p className="text-red-500 text-[10px] font-bold mt-1">
-                                                            ⚠️ Vượt hạn mức 100 triệu
+                                                            ⚠️ Vượt 100 triệu
                                                         </p>
                                                     )}
                                                 </div>
 
                                                 <div>
-                                                    <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1.5">
+                                                    <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1">
                                                         Số lượng tối đa *
                                                     </label>
                                                     <input
@@ -1321,7 +1319,7 @@ export default function EventRequestEdit() {
                                                         min="10"
                                                         step="10"
                                                         placeholder="10, 20, ..."
-                                                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                                                        className="w-full px-2.5 py-1 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs"
                                                     />
                                                 </div>
                                             </div>
