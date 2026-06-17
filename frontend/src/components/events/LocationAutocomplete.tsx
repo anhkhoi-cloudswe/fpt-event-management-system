@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Loader2, MapPin } from 'lucide-react'
 import { searchLocations, type LocationSuggestion } from '../../services/locationAutocompleteService'
 
@@ -45,7 +46,10 @@ export default function LocationAutocomplete({
   const [isExpanded, setIsExpanded] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [dropdownRect, setDropdownRect] = useState({ top: 0, left: 0, width: 0, maxHeight: 256 })
 
   useEffect(() => {
     setQuery(location || venueName)
@@ -53,7 +57,11 @@ export default function LocationAutocomplete({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      const target = event.target as Node
+      const clickedTrigger = wrapperRef.current?.contains(target)
+      const clickedDropdown = dropdownRef.current?.contains(target)
+
+      if (!clickedTrigger && !clickedDropdown) {
         setIsExpanded(false)
       }
     }
@@ -66,8 +74,37 @@ export default function LocationAutocomplete({
     if (!isExpanded) return
 
     window.requestAnimationFrame(() => {
+      updateDropdownPosition()
       inputRef.current?.focus()
     })
+  }, [isExpanded])
+
+  const updateDropdownPosition = () => {
+    const rect = triggerRef.current?.getBoundingClientRect()
+    if (!rect) return
+
+    const viewportPadding = 16
+    const availableHeight = window.innerHeight - rect.bottom - viewportPadding
+
+    setDropdownRect({
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      maxHeight: Math.max(220, Math.min(360, availableHeight)),
+    })
+  }
+
+  useEffect(() => {
+    if (!isExpanded) return
+
+    updateDropdownPosition()
+    window.addEventListener('resize', updateDropdownPosition)
+    window.addEventListener('scroll', updateDropdownPosition, true)
+
+    return () => {
+      window.removeEventListener('resize', updateDropdownPosition)
+      window.removeEventListener('scroll', updateDropdownPosition, true)
+    }
   }, [isExpanded])
 
   useEffect(() => {
@@ -134,6 +171,7 @@ export default function LocationAutocomplete({
   return (
     <div ref={wrapperRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsExpanded(true)}
         className={`flex w-full items-center justify-between gap-3 px-0 py-1.5 text-left transition ${
@@ -144,9 +182,15 @@ export default function LocationAutocomplete({
         {!isExpanded && preview && <MapPin className={`h-4 w-4 shrink-0 ${isDarkMode ? 'text-white/35' : 'text-neutral-400'}`} />}
       </button>
 
-      {isExpanded && (
+      {isExpanded && createPortal((
         <div
-          className={`absolute left-0 right-0 top-full z-[80] mt-1 overflow-hidden rounded-lg border shadow-xl ${
+          ref={dropdownRef}
+          style={{
+            top: dropdownRect.top,
+            left: dropdownRect.left,
+            width: dropdownRect.width,
+          }}
+          className={`fixed z-[9999] overflow-hidden rounded-lg border shadow-xl ${
             isDarkMode
               ? 'border-white/10 bg-[#18181b] text-white shadow-black/40'
               : 'border-neutral-200 bg-white text-neutral-950 shadow-neutral-900/10'
@@ -169,7 +213,7 @@ export default function LocationAutocomplete({
           </div>
 
           {(hasQuery || suggestions.length > 0 || searchError) && (
-            <div className="max-h-64 overflow-y-auto py-2">
+            <div className="overflow-y-auto py-2" style={{ maxHeight: dropdownRect.maxHeight }}>
               {hasQuery && (
                 <button
                   type="button"
@@ -211,7 +255,7 @@ export default function LocationAutocomplete({
             </div>
           )}
         </div>
-      )}
+      ), document.body)}
     </div>
   )
 }

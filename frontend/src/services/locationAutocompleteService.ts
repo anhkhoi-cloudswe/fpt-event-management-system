@@ -129,6 +129,22 @@ const POPULAR_VN_LOCATIONS: LocationSuggestion[] = [
     lon: '106.6978',
     mapUrl: 'https://www.openstreetmap.org/search?query=Adora%20Art%20Hotel%20Ho%20Chi%20Minh',
   },
+  {
+    id: 'popular-tan-dinh-church',
+    name: 'Nhà thờ Tân Định',
+    address: '289 Hai Bà Trưng, Phường 8, Quận 3, Hồ Chí Minh',
+    lat: '10.7882',
+    lon: '106.6907',
+    mapUrl: 'https://www.openstreetmap.org/search?query=Nha%20tho%20Tan%20Dinh%20Ho%20Chi%20Minh',
+  },
+  {
+    id: 'popular-tan-dinh-market',
+    name: 'Chợ Tân Định',
+    address: 'Hai Bà Trưng, Tân Định, Quận 1, Hồ Chí Minh',
+    lat: '10.7905',
+    lon: '106.6904',
+    mapUrl: 'https://www.openstreetmap.org/search?query=Cho%20Tan%20Dinh%20Ho%20Chi%20Minh',
+  },
 ]
 
 const normalize = (value: string) =>
@@ -203,13 +219,41 @@ const rankSuggestion = (suggestion: LocationSuggestion, query: string) => {
   const haystack = normalize(`${suggestion.name} ${suggestion.address}`)
   const name = normalize(suggestion.name)
   const needle = normalize(query)
+  const hcmBoost = /ho chi minh|hcm|sai gon|saigon/.test(haystack) ? -3.5 : 0
 
-  if (name === needle) return 0
-  if (name.startsWith(needle)) return 1
-  if (haystack.startsWith(needle)) return 2
-  if (name.includes(needle)) return 3
-  if (haystack.includes(needle)) return 4
+  if (name === needle) return 0 + hcmBoost
+  if (name.startsWith(needle)) return 1 + hcmBoost
+  if (haystack.startsWith(needle)) return 2 + hcmBoost
+  if (name.includes(needle)) return 3 + hcmBoost
+  if (haystack.includes(needle)) return 4 + hcmBoost
   return 8
+}
+
+const getSignificantTokens = (query: string) => {
+  const stopWords = new Set(['o', 'tai', 'dia', 'diem', 'duong', 'phuong', 'quan', 'tp', 'thanh', 'pho'])
+  return normalize(query)
+    .split(/[^a-z0-9]+/i)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2 && !stopWords.has(token))
+}
+
+const isRelevantSuggestion = (suggestion: LocationSuggestion, query: string) => {
+  const needle = normalize(query)
+  const haystack = normalize(`${suggestion.name} ${suggestion.address}`)
+  const tokens = getSignificantTokens(query)
+  const requiredIntentTokens = ['sach', 'tho', 'cafe', 'hotel', 'mall', 'cho', 'truong', 'benh', 'vien']
+    .filter((token) => tokens.includes(token))
+
+  if (requiredIntentTokens.some((token) => !haystack.includes(token))) {
+    return false
+  }
+
+  if (!needle || tokens.length <= 1) return true
+  if (haystack.includes(needle)) return true
+
+  const matchedTokens = tokens.filter((token) => haystack.includes(token)).length
+  const requiredMatches = tokens.length <= 3 ? tokens.length : Math.ceil(tokens.length * 0.75)
+  return matchedTokens >= requiredMatches
 }
 
 const dedupeAndRank = (items: LocationSuggestion[], query: string) => {
@@ -217,6 +261,7 @@ const dedupeAndRank = (items: LocationSuggestion[], query: string) => {
   const seenNames = new Set<string>()
 
   return items
+    .filter((item) => isRelevantSuggestion(item, query))
     .filter((item) => {
       const nameKey = normalize(item.name)
       const key = normalize(`${item.name}|${item.address}`)
@@ -295,6 +340,21 @@ const fetchNominatimLocations = async (query: string, language: Language, signal
   }))
 }
 
+const fetchNominatimVariants = async (query: string, language: Language, signal?: AbortSignal) => {
+  const variants = Array.from(new Set([
+    query,
+    `${query} Hồ Chí Minh`,
+    `${query} TP Hồ Chí Minh`,
+    `${query} Việt Nam`,
+  ]))
+
+  const settled = await Promise.allSettled(
+    variants.map((variant) => fetchNominatimLocations(variant, language, signal)),
+  )
+
+  return settled.flatMap((result) => result.status === 'fulfilled' ? result.value : [])
+}
+
 export async function searchLocations(
   query: string,
   language: Language = 'vi',
@@ -307,7 +367,7 @@ export async function searchLocations(
 
   const providerTasks = [
     fetchPhotonLocations(trimmed, language, signal),
-    trimmed.length > 1 ? fetchNominatimLocations(trimmed, language, signal) : Promise.resolve([]),
+    trimmed.length > 1 ? fetchNominatimVariants(trimmed, language, signal) : Promise.resolve([]),
   ]
 
   const settled = await Promise.allSettled(providerTasks)
