@@ -640,7 +640,7 @@ function TimePopover({ value, onChange, onClose, showDuration, startDateTimeStr,
 export default function EventRequestCreate() {
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const { user } = useAuth()
+  const { user, currentLanguage } = useAuth()
 
   const [flowType, setFlowType] = useState<'UNIVERSITY' | 'INDEPENDENT' | null>(null)
   const [eventFormat, setEventFormat] = useState<'ONLINE' | 'ONSITE' | 'HYBRID'>('ONSITE')
@@ -1181,8 +1181,11 @@ export default function EventRequestCreate() {
       (eventFormat === 'ONSITE' || eventFormat === 'HYBRID') &&
       (!formData.customVenueName.trim() || !formData.customLocation.trim())
     ) {
-      setError('Vui long chon hoac nhap day du ten dia diem va dia chi.')
-      showToast('error', 'Vui long dien day du thong tin dia diem')
+      const locationError = currentLanguage === 'en'
+        ? 'Please enter the event location.'
+        : 'Vui lòng nhập địa chỉ sự kiện.'
+      setError(locationError)
+      showToast('error', locationError)
       return
     }
 
@@ -1857,6 +1860,7 @@ export default function EventRequestCreate() {
                       /* INDEPENDENT (Free) flow: Custom text inputs */
                       <LocationAutocomplete
                         isDarkMode={isDarkMode}
+                        language={currentLanguage}
                         venueName={formData.customVenueName}
                         location={formData.customLocation}
                         onVenueNameChange={(value) => setFormData((prev) => ({ ...prev, customVenueName: value }))}

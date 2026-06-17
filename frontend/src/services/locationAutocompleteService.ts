@@ -46,12 +46,13 @@ const buildReadableName = (place: NominatimPlace) => {
     address.tourism ||
     address.shop ||
     fallback ||
-    'Dia diem'
+    'Địa điểm'
   )
 }
 
 export async function searchLocations(
   query: string,
+  language: 'vi' | 'en' = 'vi',
   signal?: AbortSignal,
 ): Promise<LocationSuggestion[]> {
   const trimmed = query.trim()
@@ -63,7 +64,7 @@ export async function searchLocations(
     addressdetails: '1',
     limit: '5',
     countrycodes: 'vn',
-    'accept-language': 'vi',
+    'accept-language': language === 'en' ? 'en' : 'vi',
   })
 
   const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
@@ -75,7 +76,7 @@ export async function searchLocations(
   })
 
   if (!response.ok) {
-    throw new Error('Khong the tai goi y dia diem')
+    throw new Error(language === 'en' ? 'Could not load location suggestions' : 'Chưa tải được gợi ý địa điểm')
   }
 
   const data = (await response.json()) as NominatimPlace[]
