@@ -1042,87 +1042,10 @@ export default function EventRequestEdit() {
                     Cập nhật yêu cầu tổ chức sự kiện
                 </h1>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
-                        {/* ================= CỘT TRÁI: BANNER SPOTLIGHT ================= */}
-                        <div className="lg:col-span-5">
-                            <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-3 shadow-sm h-full">
-                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
-                                    Banner sự kiện *
-                                    {eventRequest.status === 'APPROVED' && (
-                                        <span className="ml-2 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50 rounded-full px-2 py-0.5 normal-case tracking-normal">
-                                            🔒 Chỉ xem sau khi duyệt
-                                        </span>
-                                    )}
-                                </label>
-
-                                {!imagePreview ? (
-                                    <div
-                                        onDragOver={handleDragOver}
-                                        onDragLeave={handleDragLeave}
-                                        onDrop={handleDrop}
-                                        className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-                                            isDragging
-                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
-                                                : 'border-gray-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500'
-                                        }`}
-                                    >
-                                        <input
-                                            type="file"
-                                            id="banner-upload"
-                                            accept="image/*"
-                                            onChange={handleImageSelect}
-                                            className="hidden"
-                                        />
-                                        <label htmlFor="banner-upload" className="cursor-pointer block">
-                                            <Upload className="w-10 h-10 mx-auto text-gray-400 mb-3" />
-                                            <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Kéo thả ảnh hoặc click để chọn</p>
-                                            <p className="text-[11px] text-gray-400 dark:text-slate-500">PNG, JPG, GIF tối đa 5MB</p>
-                                        </label>
-                                    </div>
-                                ) : (
-                                    <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-lg group">
-                                        <img
-                                            src={imagePreview}
-                                            alt="Banner Preview"
-                                            className="w-full object-cover"
-                                            style={{ maxHeight: '340px', minHeight: '200px' }}
-                                        />
-                                        {/* Chỉ hiện nút xóa khi KHÔNG phải trạng thái APPROVED */}
-                                        {eventRequest.status !== 'APPROVED' && (
-                                            <button
-                                                type="button"
-                                                onClick={handleRemoveImage}
-                                                className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all shadow-lg active:scale-90 opacity-0 group-hover:opacity-100"
-                                                title="Xóa banner"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                        {/* Nút thay ảnh - luôn hiển thị để upload banner mới */}
-                                        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <label
-                                                htmlFor="banner-upload-replace"
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/90 text-slate-800 text-xs font-semibold rounded-lg cursor-pointer hover:bg-white transition-colors shadow"
-                                            >
-                                                <Upload className="w-3.5 h-3.5" />
-                                                Thay banner
-                                            </label>
-                                            <input
-                                                type="file"
-                                                id="banner-upload-replace"
-                                                accept="image/*"
-                                                onChange={handleImageSelect}
-                                                className="hidden"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* ================= CỘT PHẢI: SPEAKER + TICKET ================= */}
+                        {/* ====== CỘT TRÁI (7/12): SPEAKER + TICKET ====== */}
                         <div className="lg:col-span-7 space-y-4">
 
                             {/* ===== SPEAKER INFO ===== */}
@@ -1363,35 +1286,77 @@ export default function EventRequestEdit() {
                                 </div>
                             </div>
 
+                        </div>{/* end cột trái */}
+
+                        {/* ====== CỘT PHẢI (5/12): BANNER + BUTTONS ====== */}
+                        <div className="lg:col-span-5 space-y-3">
+
+                            {/* ----- BANNER ----- */}
+                            <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-sm space-y-3">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <label className="text-sm font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">Banner sự kiện *</label>
+                                    {eventRequest.status === 'APPROVED' && (
+                                        <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50 rounded-full px-2 py-0.5">
+                                            🔒 Chỉ xem sau khi duyệt
+                                        </span>
+                                    )}
+                                </div>
+                                {!imagePreview ? (
+                                    eventRequest.status !== 'APPROVED' ? (
+                                        <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' : 'border-gray-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500'}`}>
+                                            <input type="file" id="banner-upload" accept="image/*" onChange={handleImageSelect} className="hidden" />
+                                            <label htmlFor="banner-upload" className="cursor-pointer block">
+                                                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-3" />
+                                                <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Kéo thả ảnh hoặc click để chọn</p>
+                                                <p className="text-[11px] text-gray-400 dark:text-slate-500">PNG, JPG, GIF tối đa 5MB</p>
+                                            </label>
+                                        </div>
+                                    ) : (
+                                        <div className="border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-xl p-10 text-center opacity-50">
+                                            <Upload className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                                            <p className="text-xs text-gray-400 dark:text-slate-500">Không có banner</p>
+                                        </div>
+                                    )
+                                ) : (
+                                    <div className={`relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-lg ${eventRequest.status !== 'APPROVED' ? 'group' : ''}`}>
+                                        <img src={imagePreview} alt="Banner Preview" className="w-full object-cover" style={{ maxHeight: '300px', minHeight: '180px' }} />
+                                        {eventRequest.status !== 'APPROVED' && (
+                                            <>
+                                                <button type="button" onClick={handleRemoveImage} className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg active:scale-90 opacity-0 group-hover:opacity-100 transition-all" title="Xóa banner">
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <label htmlFor="banner-upload-replace" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/90 text-slate-800 text-xs font-semibold rounded-lg cursor-pointer hover:bg-white transition-colors shadow">
+                                                        <Upload className="w-3.5 h-3.5" />
+                                                        Thay banner
+                                                    </label>
+                                                    <input type="file" id="banner-upload-replace" accept="image/*" onChange={handleImageSelect} className="hidden" />
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* ----- ERROR + BUTTONS ----- */}
+                            <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-sm space-y-3">
+                                {error && (
+                                    <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg">
+                                        <p className="text-xs text-red-600 dark:text-red-300 font-semibold">{error}</p>
+                                    </div>
+                                )}
+                                <div className="flex gap-3">
+                                    <Link to="/dashboard/event-requests" className="flex-1 text-center px-4 py-2.5 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors text-xs font-bold shadow-sm">
+                                        Hủy
+                                    </Link>
+                                    <button type="submit" disabled={isSubmitting} className={`flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-white rounded-lg transition-colors text-xs font-bold shadow ${isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-95'}`}>
+                                        {isSubmitting && <Loader className="w-3.5 h-3.5 animate-spin" />}
+                                        {isSubmitting ? 'Đang xử lý...' : 'Cập nhật yêu cầu'}
+                                    </button>
+                                </div>
+                            </div>
+
                         </div>{/* end cột phải */}
-                    </div>
-                    {/* ================= ERROR BOX ================= */}
-                    {error && (
-                        <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg">
-                            <p className="text-xs text-red-600 dark:text-red-300 font-semibold">{error}</p>
-                        </div>
-                    )}
-
-                    {/* ================= BUTTONS ================= */}
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                        <Link
-                            to="/dashboard/event-requests"
-                            className="px-5 py-2 border border-gray-300 dark:border-slate-700 text-gray-750 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors text-xs font-bold shadow-sm"
-                        >
-                            Hủy
-                        </Link>
-
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className={`inline-flex items-center gap-1.5 px-5 py-2 text-white rounded-lg transition-colors text-xs font-bold shadow ${isSubmitting
-                                ? 'bg-blue-400 cursor-not-allowed'
-                                : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
-                                }`}
-                        >
-                            {isSubmitting && <Loader className="w-3.5 h-3.5 animate-spin" />}
-                            {isSubmitting ? 'Đang xử lý...' : 'Cập nhật yêu cầu'}
-                        </button>
                     </div>
                 </form>
             </div>
