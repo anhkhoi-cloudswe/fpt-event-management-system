@@ -78,6 +78,15 @@ type EventRequest = {
   areaName?: string
   floor?: string
   areaCapacity?: number
+  rejectReason?: string
+  eventFormat?: string
+  customVenueName?: string
+  customLocation?: string
+  orgType?: string
+  privacyStatus?: string
+  onlineMeetingUrl?: string
+  onlineMeetingId?: string
+  onlineMeetingSecret?: string
 }
 
 /**
@@ -105,6 +114,15 @@ type EventRequestForModal = {
   areaName?: string
   floor?: string
   areaCapacity?: number
+  rejectReason?: string
+  eventFormat?: string
+  customVenueName?: string
+  customLocation?: string
+  orgType?: string
+  privacyStatus?: string
+  onlineMeetingUrl?: string
+  onlineMeetingId?: string
+  onlineMeetingSecret?: string
 }
 
 /**
@@ -166,6 +184,15 @@ const sanitizeEventRequest = (value: unknown): EventRequest | null => {
     areaName: value.areaName ?? value.area_name,
     floor: value.floor,
     areaCapacity: Number(value.areaCapacity ?? value.area_capacity ?? 0) || undefined,
+    rejectReason: value.rejectReason ?? value.reject_reason,
+    eventFormat: value.eventFormat ?? value.event_format,
+    customVenueName: value.customVenueName ?? value.custom_venue_name,
+    customLocation: value.customLocation ?? value.custom_location,
+    orgType: value.orgType ?? value.org_type,
+    privacyStatus: value.privacyStatus ?? value.privacy_status,
+    onlineMeetingUrl: value.onlineMeetingUrl ?? value.online_meeting_url,
+    onlineMeetingId: value.onlineMeetingId ?? value.online_meeting_id,
+    onlineMeetingSecret: value.onlineMeetingSecret ?? value.online_meeting_secret,
   }
 }
 

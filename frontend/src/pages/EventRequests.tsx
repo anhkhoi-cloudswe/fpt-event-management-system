@@ -61,6 +61,19 @@ type EventRequest = {
   organizerNote?: string
   createdEventId?: number
   bannerUrl?: string
+  venueName?: string
+  areaName?: string
+  floor?: string
+  areaCapacity?: number
+  rejectReason?: string
+  eventFormat?: string
+  customVenueName?: string
+  customLocation?: string
+  orgType?: string
+  privacyStatus?: string
+  onlineMeetingUrl?: string
+  onlineMeetingId?: string
+  onlineMeetingSecret?: string
 }
 
 /**

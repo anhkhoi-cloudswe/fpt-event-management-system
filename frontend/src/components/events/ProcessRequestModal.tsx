@@ -1,16 +1,10 @@
 // ===================== IMPORTS =====================
 
-// Icon X dùng cho nút đóng modal
-import { X } from 'lucide-react'
-
-// useState/useEffect dùng quản lý state & lifecycle React
+import { X, Calendar, Users, MapPin, User, Info, FileText } from 'lucide-react'
 import { useState, useEffect } from 'react'
-
-// ToastContext để hiển thị thông báo (warning/success/error)
 import { useToast } from '../../contexts/ToastContext'
-
-// useAvailableAreas hook để fetch khu vực trống theo thời gian & sức chứa
 import { useAvailableAreas, AvailableArea } from '../../hooks/useAvailableAreas'
+import { formatWallClockTimeFromRFC3339 } from '../../utils/dateFormat'
 
 // ===================== MESSAGE TEMPLATES =====================
 const TEMPLATES = {
@@ -30,7 +24,6 @@ const TEMPLATES = {
 
 // ===================== TYPES =====================
 
-// CheckDailyQuotaResponse: Response từ API /api/events/daily-quota
 type CheckDailyQuotaResponse = {
   eventDate: string
   currentCount: number
@@ -40,30 +33,27 @@ type CheckDailyQuotaResponse = {
   warningMessage: string
 }
 
-// Props của modal xử lý request
 type ProcessRequestModalProps = {
-  // isOpen: modal có đang mở không
   isOpen: boolean
-
-  // onClose: callback đóng modal (component cha truyền xuống)
   onClose: () => void
-
-  // onSubmit: callback gửi dữ liệu duyệt/từ chối lên cha
-  // areaId: khu vực được chọn (khi APPROVE)
-  // organizerNote: ghi chú cho organizer
-  // rejectReason: lý do từ chối (bắt buộc khi REJECT)
   onSubmit: (areaId: number, organizerNote: string, rejectReason?: string) => void
-
-  // action: hành động đang xử lý: APPROVE (duyệt) hoặc REJECT (từ chối)
   action: 'APPROVE' | 'REJECT'
-
-  // request: request đang được xử lý (có thể null nếu chưa chọn request)
   request: {
     requestId: number
     title: string
     preferredStartTime?: string
     preferredEndTime?: string
     expectedCapacity?: number
+    requesterName?: string
+    description?: string
+    eventFormat?: string
+    customVenueName?: string
+    customLocation?: string
+    orgType?: string
+    privacyStatus?: string
+    onlineMeetingUrl?: string
+    onlineMeetingId?: string
+    onlineMeetingSecret?: string
   } | null
 }
 
@@ -77,68 +67,25 @@ export function ProcessRequestModal({
   request
 }: ProcessRequestModalProps) {
 
-  // Lấy hàm showToast để hiển thị thông báo nhỏ trên UI
   const { showToast } = useToast()
 
-  // selectedAreaId: id khu vực đang được chọn
-  // mặc định 0 = chưa chọn/không hợp lệ
   const [selectedAreaId, setSelectedAreaId] = useState<number>(0)
-
-  // organizerNote: ghi chú staff gửi cho organizer
   const [organizerNote, setOrganizerNote] = useState('')
-
-  // rejectReason: lý do từ chối (bắt buộc khi action === 'REJECT')
   const [rejectReason, setRejectReason] = useState('')
-
-  // isDropdownOpen: state để control custom dropdown
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-
-  // quotaInfo: Thông tin hạn ngạch hàng ngày (tối đa 2 sự kiện/ngày)
   const [quotaInfo, setQuotaInfo] = useState<CheckDailyQuotaResponse | null>(null)
   const [loadingQuota, setLoadingQuota] = useState(false)
 
-  /**
-   * ======================== HOOK: Get AVAILABLE AREAS ========================
-   * useAvailableAreas:
-   * - Truyền: startTime, endTime, expectedCapacity
-   * - Return: areas[], loading, error
-   * 
-   * Cách hoạt động:
-   * 1. Modal mở + action = APPROVE -> pass thời gian + capacity vào hook
-   * 2. Hook tự động gọi API /api/events/available-areas?startTime=...&endTime=...&expectedCapacity=...
-   * 3. Kết quả trả về tự động update state
-   * 4. UI render danh sách areas sorted by capacity (ASC)
-   * 
-   * Backend đảm bảo:
-   * - Filter: COALESCE(va.capacity, 0) >= expectedCapacity
-   * - Sort: ORDER BY COALESCE(va.capacity, 0) ASC (nhỏ nhất trước)
-   */
   const {
     areas,
     loading,
     error
   } = useAvailableAreas(
-    // startTime: ISO format từ request.preferredStartTime
-    // null nếu modal chưa mở hoặc action != APPROVE
     isOpen && action === 'APPROVE' && request?.preferredStartTime ? request.preferredStartTime : null,
-
-    // endTime: ISO format từ request.preferredEndTime
-    // null nếu modal chưa mở hoặc action != APPROVE
     isOpen && action === 'APPROVE' && request?.preferredEndTime ? request.preferredEndTime : null,
-
-    // expectedCapacity: số người dự kiến
-    // 0 (default) = show tất cả areas, 
-    // > 0 = chỉ show areas có capacity >= expectedCapacity
     isOpen && action === 'APPROVE' && request?.expectedCapacity ? request.expectedCapacity : 0
   )
 
-  /**
-   * ======================== HOOK: FETCH DAILY QUOTA ========================
-   * useEffect:
-   * - Khi modal mở + action = APPROVE + có preferredStartTime
-   * - Gọi API /api/events/daily-quota?date=YYYY-MM-DD
-   * - Hiển thị cảnh báo nếu hết slot (2 sự kiện/ngày)
-   */
   useEffect(() => {
     if (!isOpen || action !== 'APPROVE' || !request?.preferredStartTime) {
       setQuotaInfo(null)
@@ -148,26 +95,17 @@ export function ProcessRequestModal({
     const fetchQuota = async () => {
       try {
         setLoadingQuota(true)
-        // Extract YYYY-MM-DD from ISO timestamp
         const eventDate = request?.preferredStartTime?.split('T')[0]
-        if (!eventDate) {
-          console.warn('Unable to extract event date from request')
-          return
-        }
+        if (!eventDate) return
 
         const response = await fetch(
           `/api/events/daily-quota?date=${eventDate}`,
-          {
-            credentials: 'include'
-          }
+          { credentials: 'include' }
         )
 
         if (response.ok) {
           const data: CheckDailyQuotaResponse = await response.json()
           setQuotaInfo(data)
-          console.log('[ProcessRequestModal] Daily quota:', data)
-        } else {
-          console.error('[ProcessRequestModal] Failed to fetch quota')
         }
       } catch (error) {
         console.error('[ProcessRequestModal] Error fetching daily quota:', error)
@@ -179,36 +117,17 @@ export function ProcessRequestModal({
     fetchQuota()
   }, [isOpen, action, request?.preferredStartTime])
 
-  // ===================== EFFECT: AUTO SELECT FIRST AREA IF AVAILABLE =====================
   useEffect(() => {
-    /**
-     * Khi danh sách areas thay đổi (từ hook):
-     * - Nếu có areas -> auto select cái đầu tiên (optimize UX)
-     * - Hook đã sort by capacity ASC => cái đầu là phòng nhỏ nhất thoả điều kiện
-     * - Nếu không có areas -> selected = 0
-     */
     if (areas.length > 0) {
       setSelectedAreaId(areas[0].areaId)
-      console.log('[ProcessRequestModal] Auto-selected first area:', {
-        areaId: areas[0].areaId,
-        areaName: areas[0].areaName,
-        capacity: areas[0].capacity,
-        totalOptions: areas.length
-      })
     } else {
       setSelectedAreaId(0)
     }
   }, [areas])
 
-  // ===================== HELPER: TRUNCATE VENUE NAME =====================
-  /**
-   * Smart truncation for long venue names
-   * Example: "Nhà văn hóa sinh viên Đại học Quốc gia Tp HCM" → "NVH Sinh viên ĐHQG"
-   */
   const truncateVenueName = (venueName: string, maxLength: number = 30): string => {
     if (venueName.length <= maxLength) return venueName
 
-    // Map common long venue names to abbreviations
     const abbreviations: Record<string, string> = {
       'Nhà văn hóa sinh viên': 'NVH Sinh viên',
       'Nhà văn hóa': 'NVH',
@@ -225,447 +144,413 @@ export function ProcessRequestModal({
       abbreviated = abbreviated.replace(full, abbrev)
     }
 
-    // If still too long, truncate with ellipsis
     if (abbreviated.length > maxLength) {
       return abbreviated.substring(0, maxLength - 3) + '...'
     }
     return abbreviated
   }
 
-  // ===================== HELPER: FORMAT AREA OPTION TEXT =====================
-  /**
-   * Helper function to format area dropdown option text
-   * Format: [capacity] - areaName (venueName)
-   * With warning if oversized: (Quá rộng) in orange
-   */
-  const formatAreaOption = (area: AvailableArea): string => {
-    const expectedCap = request?.expectedCapacity ?? 0
-    const capacity = area.capacity ?? 0
-    const isMuchLarger = expectedCap > 0 && capacity > expectedCap * 3
-
-    let text = `[${capacity}] - ${area.areaName} (${area.venueName})`
-    if (isMuchLarger) {
-      text += ' (Quá rộng)'
-    }
-    return text
-  }
-
-  // ===================== SUBMIT FORM =====================
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    /**
-     * Nếu APPROVE thì bắt buộc phải có selectedAreaId != 0
-     * Nếu không có -> toast warning và return
-     */
     if (action === 'APPROVE' && selectedAreaId === 0) {
       showToast('warning', 'Vui lòng chọn khu vực cho sự kiện')
       return
     }
 
-    /**
-     * Nếu REJECT thì bắt buộc phải có lý do từ chối
-     * Nếu không có -> toast warning và return
-     */
     if (action === 'REJECT' && rejectReason.trim() === '') {
       showToast('warning', 'Vui lòng nhập lý do từ chối')
       return
     }
 
-    // Gửi dữ liệu lên cha
-    // Với REJECT: chuyển rejectReason thay vì organizerNote
     onSubmit(selectedAreaId, organizerNote, action === 'REJECT' ? rejectReason : undefined)
-
-    // Đóng modal và reset state
     handleClose()
   }
 
-  // ===================== CLOSE MODAL + RESET STATE =====================
   const handleClose = () => {
-    // reset các state về mặc định
     setSelectedAreaId(0)
     setOrganizerNote('')
     setRejectReason('')
     setIsDropdownOpen(false)
-
-    // gọi callback đóng modal
     onClose()
   }
 
-  // Nếu modal không mở hoặc request null => không render
   if (!isOpen || !request) return null
 
-  // ===================== UI RENDER =====================
   return (
-    // ⭐ ABSOLUTE CENTERING: Fixed overlay + centered container
-    <div className="fixed inset-0 bg-black/60 dark:bg-slate-950/80 backdrop-blur-sm z-50 overflow-y-auto">
-      {/* Centering wrapper */}
-      <div className="flex items-center justify-center min-h-screen p-4">
-        {/* Modal Card: responsive width + scrollable */}
-        <div className="bg-slate-950 rounded-2xl shadow-2xl w-full max-w-[90vw] max-h-[90vh] overflow-y-auto border border-slate-800/80">
-          <div className="flex items-center justify-between p-8 border-b border-slate-800/80 bg-slate-950 sticky top-0 z-10">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-50">
-              {/* Title đổi theo action */}
-              {action === 'APPROVE' ? 'Duyệt yêu cầu' : 'Từ chối yêu cầu'}
-            </h2>
+    <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-10 flex-shrink-0">
+          <h2 className="text-lg font-extrabold text-slate-900 dark:text-slate-50">
+            {action === 'APPROVE' ? '✓ Duyệt yêu cầu sự kiện' : '✗ Từ chối yêu cầu sự kiện'}
+          </h2>
 
-            {/* Nút đóng */}
+          <button
+            onClick={handleClose}
+            className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors inline-flex p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-4 flex-1 space-y-4">
+          
+          {/* Section 1: Thông tin yêu cầu chi tiết (Compact Top Panel) */}
+          <div className="bg-slate-50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-3">
+            <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-1.5">
+              <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              Chi tiết sự kiện yêu cầu
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-slate-700 dark:text-slate-350">
+              <div className="space-y-0.5">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Tên sự kiện</p>
+                <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{request.title}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Người đề xuất</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                  {request.requesterName || 'Không rõ'}
+                </p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Thời gian mong muốn</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  {request.preferredStartTime ? formatWallClockTimeFromRFC3339(request.preferredStartTime) : '---'}
+                </p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Hình thức & Địa điểm</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400 animate-bounce" />
+                  {request.eventFormat === 'ONLINE' ? 'Trực tuyến (ONLINE)' :
+                   request.eventFormat === 'ONSITE' ? `${request.customVenueName || 'Tại chỗ'} (${request.customLocation || 'Campus'})` :
+                   request.eventFormat === 'HYBRID' ? `${request.customVenueName || 'Kết hợp'} & ONLINE` : 'Chưa chọn'}
+                </p>
+              </div>
+              {request.orgType && (
+                <div className="space-y-0.5">
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Đơn vị tổ chức</p>
+                  <p className="font-semibold text-slate-900 dark:text-slate-200">
+                    {request.orgType === 'SCHOOL' ? '🏫 Trường học (SCHOOL)' : '👤 Tự do (FREE)'}
+                  </p>
+                </div>
+              )}
+              {request.privacyStatus && (
+                <div className="space-y-0.5">
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Hiển thị</p>
+                  <p className="font-semibold text-slate-900 dark:text-slate-200">
+                    {request.privacyStatus === 'PUBLIC' ? '🌐 Công khai (PUBLIC)' : '🔒 Riêng tư (PRIVATE)'}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {request.description && request.description !== 'N/A' && (
+              <div className="border-t border-slate-200 dark:border-slate-800 pt-2 text-[11px] text-slate-550 dark:text-slate-400">
+                <span className="font-bold text-slate-700 dark:text-slate-300 uppercase mr-1">Mô tả:</span>
+                <span className="line-clamp-2">{request.description}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Trọng tâm phê duyệt */}
+          {action === 'APPROVE' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* Cột Trái */}
+              <div className="space-y-3 flex flex-col justify-between">
+                
+                {request.expectedCapacity ? (
+                  <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-xl border border-blue-200 dark:border-blue-900/40 flex-1 flex flex-col justify-center shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <p className="text-[10px] text-blue-700 dark:text-blue-400 font-bold uppercase tracking-wider mb-1">
+                          Sức chứa yêu cầu
+                        </p>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-3xl font-extrabold text-blue-900 dark:text-blue-200">
+                            {request.expectedCapacity}
+                          </span>
+                          <span className="text-xs text-blue-700 dark:text-blue-300 font-bold">người</span>
+                        </div>
+                      </div>
+                      <div className="text-2xl dark:opacity-90 bg-blue-100 dark:bg-blue-900/50 p-2.5 rounded-xl">👥</div>
+                    </div>
+                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1">
+                      <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                      Hệ thống lọc các phòng có sức chứa ≥ {request.expectedCapacity} người
+                    </p>
+                  </div>
+                ) : null}
+
+                {quotaInfo && !loadingQuota && (() => {
+                  const isFull = quotaInfo.currentCount >= quotaInfo.maxAllowed
+                  const isLastSlot = !isFull && quotaInfo.currentCount === quotaInfo.maxAllowed - 1
+
+                  return (
+                    <div
+                      className={`p-3 rounded-xl border text-xs font-semibold shadow-sm ${
+                        isFull
+                          ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 text-red-800 dark:text-red-300'
+                          : isLastSlot
+                            ? 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-250 dark:border-yellow-900/50 text-yellow-850 dark:text-yellow-350'
+                            : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50 text-green-800 dark:text-green-300'
+                      }`}
+                    >
+                      <p className="flex items-center gap-1.5">
+                        {isFull ? (
+                          <>
+                            <span className="text-base flex-shrink-0">🚫</span>
+                            <span>Đã hết suất tổ chức trong ngày ({quotaInfo.currentCount}/{quotaInfo.maxAllowed})</span>
+                          </>
+                        ) : isLastSlot ? (
+                          <>
+                            <span className="text-base flex-shrink-0">⚠️</span>
+                            <span>{quotaInfo.warningMessage || `Còn 1 suất trống trong ngày (${quotaInfo.currentCount}/{quotaInfo.maxAllowed})`}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-base flex-shrink-0">✅</span>
+                            <span>Còn {quotaInfo.maxAllowed - quotaInfo.currentCount} slot trống cho ngày này ({quotaInfo.currentCount}/{quotaInfo.maxAllowed})</span>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  )
+                })()}
+              </div>
+
+              {/* Cột Phải */}
+              <div className="space-y-3 flex flex-col justify-start">
+                <div className="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 flex-1">
+                  <div>
+                    <label htmlFor="area" className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider mb-2">
+                      Chọn khu vực bố trí <span className="text-red-500">*</span>
+                    </label>
+
+                    {loading ? (
+                      <div className="flex items-center gap-2 p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                        <div className="w-4 h-4 border-2 border-slate-300 dark:border-slate-700 border-t-blue-600 rounded-full animate-spin"></div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Đang tìm phòng khả dụng...</p>
+                      </div>
+                    ) : error ? (
+                      <div className="p-2.5 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-900/50">
+                        <p className="text-xs text-red-700 dark:text-red-300">⚠️ {error}</p>
+                      </div>
+                    ) : areas.length === 0 ? (
+                      <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-250 dark:border-yellow-900/50 text-xs text-yellow-800 dark:text-yellow-300">
+                        <p className="font-bold">❌ Không tìm thấy phòng trống phù hợp!</p>
+                        <p className="mt-1 text-[11px]">Không có phòng trống nào có sức chứa đủ lớn ({request.expectedCapacity} người) vào khung giờ này.</p>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-left bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-105 hover:bg-slate-50 dark:hover:bg-slate-800/80 flex justify-between items-center transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
+                        >
+                          <span className="font-semibold text-xs truncate">
+                            {selectedAreaId === 0
+                              ? '-- Chọn khu vực --'
+                              : (() => {
+                                const selected = areas.find(a => a.areaId === selectedAreaId)
+                                return selected ? `[${selected.capacity} chỗ] - ${selected.areaName}` : '-- Chọn khu vực --'
+                              })()}
+                          </span>
+                          <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform flex-shrink-0 ml-1 ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+
+                        {isDropdownOpen && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xl z-50 max-h-40 overflow-y-auto">
+                            {areas.map((area: AvailableArea) => {
+                              const expectedCap = request?.expectedCapacity ?? 0
+                              const capacity = area.capacity ?? 0
+                              const isMuchLarger = expectedCap > 0 && capacity > expectedCap * 3
+                              const isSelected = area.areaId === selectedAreaId
+                              const truncatedVenue = truncateVenueName(area.venueName, 25)
+
+                              return (
+                                <button
+                                  key={area.areaId}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedAreaId(area.areaId)
+                                    setIsDropdownOpen(false)
+                                  }}
+                                  className={`w-full px-3 py-2 text-left border-b last:border-b-0 border-slate-100 dark:border-slate-800/80 transition-colors flex flex-col gap-0.5 ${
+                                    isSelected
+                                      ? 'bg-slate-50 dark:bg-slate-800 border-l-4 border-l-blue-500'
+                                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-200'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between w-full gap-2">
+                                    <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                                      [{area.capacity} chỗ] - {area.areaName}
+                                    </span>
+                                    {isMuchLarger && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 flex-shrink-0">
+                                        Rộng
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-550 truncate">
+                                    {truncatedVenue} {area.floor && `• Tầng ${area.floor}`}
+                                  </span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        {isDropdownOpen && (
+                          <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {!loading && !error && areas.length > 0 && (
+                    <div className="space-y-1.5 text-[11px]">
+                      <p className="text-slate-500 dark:text-slate-400">
+                        📍 Tìm thấy <span className="font-bold text-slate-800 dark:text-slate-200">{areas.length} khu vực</span> phù hợp
+                      </p>
+                      {selectedAreaId > 0 && (() => {
+                        const selectedArea = areas.find(a => a.areaId === selectedAreaId)
+                        const expectedCap = request?.expectedCapacity ?? 0
+                        const selectedCapacity = selectedArea?.capacity ?? 0
+                        const isMuchLarger = expectedCap > 0 && selectedCapacity > expectedCap * 3
+
+                        if (isMuchLarger) {
+                          return (
+                            <div className="p-2 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900/45 rounded text-orange-800 dark:text-orange-300">
+                              <p className="font-bold flex items-center gap-1">
+                                ⚠️ Phòng được chọn quá rộng ({selectedCapacity} chỗ), gấp {Math.floor(selectedCapacity / expectedCap)} lần yêu cầu ({expectedCap} người).
+                              </p>
+                            </div>
+                          )
+                        }
+                        return null
+                      })()}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section 3: Textarea inputs & Suggestions */}
+          
+          {action === 'REJECT' && (
+            <div className="space-y-2">
+              <label htmlFor="rejectReason" className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">
+                Lý do từ chối <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="rejectReason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+                required
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-105 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/10 focus:border-red-500 resize-none"
+                placeholder="Nhập lý do từ chối cụ thể để gửi ban tổ chức (bắt buộc)..."
+              />
+
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">💡 Điền nhanh mẫu có sẵn:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {TEMPLATES.reject.map((template, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setRejectReason(template)}
+                      className="bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] px-2.5 py-1 rounded-full transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer shadow-sm"
+                      title={template}
+                    >
+                      📝 {template.substring(0, 35)}...
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {action === 'APPROVE' && (
+            <div className="space-y-2">
+              <label htmlFor="note" className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">
+                Ghi chú cho ban tổ chức sự kiện
+              </label>
+              <textarea
+                id="note"
+                value={organizerNote}
+                onChange={(e) => setOrganizerNote(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-105 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 resize-none"
+                placeholder="Nhập hướng dẫn, nhắc nhở hoặc lưu ý thêm cho ban tổ chức (không bắt buộc)..."
+              />
+
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">💡 Điền nhanh mẫu có sẵn:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {TEMPLATES.approve.map((template, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setOrganizerNote(template)}
+                      className="bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] px-2.5 py-1 rounded-full transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer shadow-sm"
+                      title={template}
+                    >
+                      📝 {template.substring(0, 35)}...
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section 4: Modal Action Buttons */}
+          <div className="flex gap-3 pt-2 mt-4 border-t border-slate-200 dark:border-slate-800/80 sticky bottom-0 bg-white dark:bg-slate-950 py-3 flex-shrink-0">
             <button
+              type="button"
               onClick={handleClose}
-              className="text-slate-400 hover:text-slate-200 transition-colors"
+              className="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all font-extrabold text-sm shadow-sm active:scale-95"
             >
-              <X className="w-5 h-5" />
+              Quay lại
+            </button>
+
+            <button
+              type="submit"
+              disabled={
+                action === 'APPROVE' &&
+                (loading || areas.length === 0 || (quotaInfo?.currentCount ?? 0) >= 2)
+              }
+              title={
+                action === 'APPROVE' && (quotaInfo?.currentCount ?? 0) >= 2
+                  ? 'Không thể duyệt do đã hết giới hạn sự kiện trong ngày'
+                  : undefined
+              }
+              className={`flex-1 px-4 py-2.5 text-white rounded-lg transition-all font-extrabold text-sm active:scale-95 shadow-md ${
+                action === 'APPROVE'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none'
+                  : 'bg-rose-600 hover:bg-rose-700'
+              }`}
+            >
+              {action === 'APPROVE' ? '✓ Phê duyệt & Cấp phòng' : '✗ Từ chối yêu cầu'}
             </button>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-8 space-y-5">
-            {/* Hiển thị tên sự kiện */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                Sự kiện
-              </label>
-              <p className="text-sm text-slate-300 font-medium">{request.title}</p>
-            </div>
-
-            {/* Hiển thị số lượng dự kiến nếu có */}
-            {request.expectedCapacity && (
-              <div className="bg-slate-900/80 p-4 rounded-lg border border-slate-700/70">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <p className="text-xs text-blue-300 font-semibold uppercase tracking-wide mb-1">
-                      Sức chứa yêu cầu
-                    </p>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold text-blue-200">
-                        {request.expectedCapacity}
-                      </span>
-                      <span className="text-sm text-blue-300">người</span>
-                    </div>
-                  </div>
-                  <div className="text-2xl dark:opacity-90">👥</div>
-                </div>
-                <p className="text-xs text-blue-200 mt-2">
-                  💡 Hệ thống gợi ý phòng có sức chứa ≥ {request.expectedCapacity} người
-                </p>
-              </div>
-            )}
-
-            {/* Daily Quota Warning - Chỉ hiện khi APPROVE */}
-            {action === 'APPROVE' && quotaInfo && !loadingQuota && (() => {
-              // Dùng currentCount >= 2 trực tiếp để đảm bảo đồng bộ với backend lock.
-              // KHÔNG dùng quotaExceeded (server-side flag) vì có thể lỗi thời nếu
-              // server đếm sai (cũ: chỉ đếm OPEN+APPROVED, giờ: NOT IN CANCELLED/REJECTED).
-              const isFull = quotaInfo.currentCount >= quotaInfo.maxAllowed
-              const isLastSlot = !isFull && quotaInfo.currentCount === quotaInfo.maxAllowed - 1
-
-              return (
-                  <div
-                    className={`p-4 rounded-lg border ${isFull
-                    ? 'bg-red-950/30 border-red-900/60'
-                    : isLastSlot
-                      ? 'bg-yellow-950/30 border-yellow-900/60'
-                      : 'bg-green-950/30 border-green-900/60'
-                    }`}
-                >
-                  <p
-                    className={`text-sm font-semibold ${isFull
-                      ? 'text-red-200'
-                      : isLastSlot
-                        ? 'text-yellow-200'
-                        : 'text-green-200'
-                      }`}
-                  >
-                    {isFull ? (
-                      <>
-                        <span className="text-lg">🚫</span>{' '}
-                        Ngày này đã hết suất tổ chức ({quotaInfo.currentCount}/{quotaInfo.maxAllowed})
-                      </>
-                    ) : isLastSlot ? (
-                      <>
-                        <span className="text-lg">⚠️</span>{' '}
-                        {quotaInfo.warningMessage || `Còn 1 suất trống trong ngày (${quotaInfo.currentCount}/${quotaInfo.maxAllowed})`}
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-lg">✅</span> Còn{' '}
-                        {quotaInfo.maxAllowed - quotaInfo.currentCount} slot trống cho ngày này
-                        (Tổng: {quotaInfo.currentCount}/{quotaInfo.maxAllowed})
-                      </>
-                    )}
-                  </p>
-                </div>
-              )
-            })()}
-
-            {/* Nếu action là APPROVE => bắt buộc chọn khu vực */}
-            {action === 'APPROVE' && (
-              <div>
-                <label htmlFor="area" className="block text-sm font-medium text-gray-700 mb-2">
-                  Chọn khu vực <span className="text-red-500">*</span>
-                </label>
-
-                {/* Loading trạng thái */}
-                {loading ? (
-                  <div className="flex items-center gap-2 p-3 bg-slate-800 rounded-lg border border-slate-700/70">
-                    <div className="w-4 h-4 bg-blue-500 rounded-full animate-pulse"></div>
-                    <p className="text-sm text-slate-300">Đang tải danh sách khu vực khả dụng...</p>
-                  </div>
-
-                ) : error ? (
-                  // Nếu lỗi => show error text
-                  <div className="p-3 bg-red-950/30 rounded-lg border border-red-900/60">
-                    <p className="text-sm text-red-200">
-                      ⚠️ {error}
-                    </p>
-                  </div>
-
-                ) : areas.length === 0 ? (
-                  // Không có area nào phù hợp
-                  <div className="p-4 bg-yellow-950/30 rounded-lg border border-yellow-900/60">
-                    <p className="text-sm text-yellow-200 font-medium">
-                      ❌ Không tìm thấy phòng trống phù hợp với {request.expectedCapacity} chỗ ngồi
-                    </p>
-                    <p className="text-xs text-yellow-200 mt-1">
-                      Vui lòng thay đổi thời gian hoặc số lượng người tham gia
-                    </p>
-                  </div>
-
-                ) : (
-                  // Custom dropdown with rich rendering
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="w-full px-4 py-2 border border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left bg-slate-900 hover:bg-slate-800 flex justify-between items-center"
-                    >
-                      <span className="text-slate-100 font-medium">
-                        {selectedAreaId === 0
-                          ? '-- Chọn khu vực --'
-                          : (() => {
-                            const selected = areas.find(a => a.areaId === selectedAreaId)
-                            return selected ? `[${selected.capacity}] - ${selected.areaName}` : '-- Chọn khu vực --'
-                          })()}
-                      </span>
-                      <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                      </svg>
-                    </button>
-
-                    {/* Dropdown menu */}
-                    {isDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
-                        {areas.map((area: AvailableArea) => {
-                          const expectedCap = request?.expectedCapacity ?? 0
-                          const capacity = area.capacity ?? 0
-                          const isMuchLarger = expectedCap > 0 && capacity > expectedCap * 3
-                          const isSelected = area.areaId === selectedAreaId
-                          const truncatedVenue = truncateVenueName(area.venueName)
-
-                          return (
-                            <button
-                              key={area.areaId}
-                              type="button"
-                              onClick={() => {
-                                setSelectedAreaId(area.areaId)
-                                setIsDropdownOpen(false)
-                              }}
-                              className={`w-full px-4 py-3 text-left hover:bg-slate-800 border-b last:border-b-0 border-slate-800 transition-colors ${isSelected ? 'bg-slate-800 border-l-4 border-l-blue-500' : ''
-                                }`}
-                            >
-                              {/* Row 1: Capacity - Area Name, with warning badge if needed */}
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1">
-                                  <p className="font-semibold text-slate-100">
-                                    [{area.capacity}] - {area.areaName}
-                                  </p>
-                                </div>
-                                {isMuchLarger && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-950/40 text-orange-300 whitespace-nowrap">
-                                    Quá rộng
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Row 2: Venue name and floor - smaller gray text */}
-                              <p className="text-xs text-slate-400 mt-1">
-                                {truncatedVenue}
-                                {area.floor && ` - Tầng ${area.floor}`}
-                              </p>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Close dropdown when clicking outside */}
-                {isDropdownOpen && (
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setIsDropdownOpen(false)}
-                  />
-                )}
-
-                {/* Info: Số lượng phòng trống */}
-                {!loading && !error && areas.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-slate-300">
-                      📍 Tìm thấy <span className="font-bold text-slate-100">{areas.length} khu vực</span> phù hợp (sorted by capacity)
-                    </p>
-                    {areas.some((a: AvailableArea) => {
-                      const expectedCap = request?.expectedCapacity ?? 0
-                      const capacity = a.capacity ?? 0
-                      return expectedCap > 0 && capacity > expectedCap * 3
-                    }) && (
-                        <p className="text-xs text-orange-200 bg-orange-950/30 px-2 py-1 rounded">
-                          ⚠️ Phòng có dấu (Quá rộng) sức chứa {'>'} 3 lần yêu cầu
-                        </p>
-                      )}
-                  </div>
-                )}
-
-                {/* ⚠️ 3x CAPACITY WARNING - Show prominent warning if selected room is too large */}
-                {!loading && !error && selectedAreaId > 0 && (() => {
-                  const selectedArea = areas.find(a => a.areaId === selectedAreaId)
-                  const expectedCap = request?.expectedCapacity ?? 0
-                  const selectedCapacity = selectedArea?.capacity ?? 0
-                  const isMuchLarger = expectedCap > 0 && selectedCapacity > expectedCap * 3
-
-                  if (isMuchLarger) {
-                    return (
-                        <div className="mt-3 p-4 bg-orange-950/30 border border-orange-900/60 rounded-lg">
-                        <p className="text-sm font-semibold text-orange-200 flex items-start gap-2">
-                          <span className="text-lg flex-shrink-0">⚠️</span>
-                          <span>
-                            Hệ thống gợi ý phòng có sức chứa gần với {expectedCap} người hơn để tối ưu tài nguyên
-                          </span>
-                        </p>
-                        <p className="text-xs text-orange-200 mt-1 ml-7">
-                          Phòng được chọn có sức chứa {selectedCapacity}, lớn hơn {Math.floor(selectedCapacity / expectedCap)}x so với yêu cầu.
-                        </p>
-                      </div>
-                    )
-                  }
-                  return null
-                })()}
-              </div>
-            )}
-
-            {/* Lý do từ chối (required khi REJECT) */}
-            {action === 'REJECT' && (
-              <div>
-                <label htmlFor="rejectReason" className="block text-sm font-medium text-slate-200 mb-2">
-                  Lý do từ chối <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  id="rejectReason"
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  rows={3}
-                  required
-                  className="w-full px-4 py-3 border border-slate-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-slate-100 text-sm bg-slate-950 placeholder:text-slate-500"
-                  placeholder="Nhập lý do từ chối (bắt buộc)..."
-                />
-
-                {/* Template suggestions for reject reason */}
-                <div className="mt-3">
-                  <p className="text-xs font-medium text-slate-300 mb-2">💡 Gợi ý:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {TEMPLATES.reject.map((template, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => setRejectReason(template)}
-                        className="bg-slate-800 hover:bg-red-950/40 text-slate-200 hover:text-red-200 text-xs px-3 py-1.5 rounded-full transition-colors border border-slate-700 hover:border-red-800 cursor-pointer"
-                        title="Click để điền nội dung"
-                      >
-                        📝 {template.substring(0, 35)}...
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Ghi chú cho organizer (optional, chỉ hiện khi APPROVE) */}
-            {action === 'APPROVE' && (
-              <div>
-                <label htmlFor="note" className="block text-sm font-medium text-slate-200 mb-2">
-                  Ghi chú cho người tổ chức
-                </label>
-                <textarea
-                  id="note"
-                  value={organizerNote}
-                  onChange={(e) => setOrganizerNote(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-3 border border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-slate-100 text-sm bg-slate-950 placeholder:text-slate-500"
-                  placeholder="Nhập ghi chú (không bắt buộc)..."
-                />
-
-                {/* Template suggestions for approval note */}
-                <div className="mt-3">
-                  <p className="text-xs font-medium text-slate-300 mb-2">💡 Gợi ý:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {TEMPLATES.approve.map((template, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => setOrganizerNote(template)}
-                        className="bg-slate-800 hover:bg-green-950/40 text-slate-200 hover:text-green-200 text-xs px-3 py-1.5 rounded-full transition-colors border border-slate-700 hover:border-green-800 cursor-pointer"
-                        title="Click để điền nội dung"
-                      >
-                        📝 {template.substring(0, 35)}...
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div className="flex gap-3 pt-2">
-              {/* Hủy */}
-              <button
-                type="button"
-                onClick={handleClose}
-                className="flex-1 px-4 py-3 border border-slate-700 text-slate-100 rounded-lg hover:bg-slate-800 transition-colors font-medium text-sm"
-              >
-                Hủy
-              </button>
-
-              {/* Submit */}
-              {/* Khóa cứng: nếu currentCount >= 2 → disable nút Duyệt, buộc staff phải từ chối */}
-              <button
-                type="submit"
-                // Nếu APPROVE mà đang loading, không có area, hoặc đã đủ 2 sự kiện/ngày => disable
-                disabled={
-                  action === 'APPROVE' &&
-                  (loading || areas.length === 0 || (quotaInfo?.currentCount ?? 0) >= 2)
-                }
-                title={
-                  action === 'APPROVE' && (quotaInfo?.currentCount ?? 0) >= 2
-                    ? 'Vui lòng từ chối đơn này vì đã hết suất trong ngày'
-                    : undefined
-                }
-                className={`flex-1 px-4 py-3 text-white rounded-lg transition-colors font-medium text-sm ${action === 'APPROVE'
-                  ? 'bg-green-600 hover:bg-green-700 disabled:cursor-not-allowed'
-                  : 'bg-red-600 hover:bg-red-700'
-                  }`}
-              >
-                {action === 'APPROVE' ? '✓ Duyệt' : '✗ Từ chối'}
-              </button>
-            </div>
-
-            {/* Thông báo khóa cứng khi đã đạt giới hạn 2 sự kiện/ngày */}
-            {action === 'APPROVE' && quotaInfo && (quotaInfo.currentCount ?? 0) >= 2 && (
-              <p className="text-xs text-red-200 text-center font-medium bg-red-950/30 border border-red-900/60 rounded-lg px-3 py-2">
-                🚫 Vui lòng từ chối đơn này vì đã hết suất trong ngày ({quotaInfo.currentCount}/{quotaInfo.maxAllowed} sự kiện)
-              </p>
-            )}
-          </form>
-        </div>
+          {action === 'APPROVE' && quotaInfo && (quotaInfo.currentCount ?? 0) >= 2 && (
+            <p className="text-[11px] text-red-800 dark:text-red-300 text-center font-bold bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg px-3 py-1.5 mt-2 flex items-center justify-center gap-1 shadow-sm">
+              🚫 Không thể phê duyệt đơn này vì ngày {quotaInfo.eventDate} đã đạt số lượng tối đa ({quotaInfo.currentCount}/{quotaInfo.maxAllowed} sự kiện).
+            </p>
+          )}
+        </form>
       </div>
     </div>
   )

@@ -30,6 +30,14 @@ interface EventRequestDetailModalProps {
     floor?: string
     areaCapacity?: number
     rejectReason?: string
+    eventFormat?: string
+    customVenueName?: string
+    customLocation?: string
+    orgType?: string
+    privacyStatus?: string
+    onlineMeetingUrl?: string
+    onlineMeetingId?: string
+    onlineMeetingSecret?: string
   } | null
   userRole?: string
   onEdit?: () => void
@@ -154,41 +162,101 @@ export function EventRequestDetailModal({
               </div>
             )}
 
-            {request.status === 'APPROVED' && (
-              <div className="mb-6 p-4 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg border border-indigo-200 dark:border-indigo-900/50">
-                <h3 className="text-lg font-semibold mb-3 flex items-center text-slate-900 dark:text-slate-100">
-                  <MapPin className="w-5 h-5 mr-2 text-indigo-600" />
-                  Địa điểm tổ chức
-                </h3>
-                {request.areaName || request.venueName ? (
-                  <div className="space-y-2">
-                    {request.venueName && (
+            <div className={`grid grid-cols-1 ${request.status === 'APPROVED' && (request.eventFormat || request.customVenueName || request.customLocation) ? 'md:grid-cols-2' : ''} gap-6 mb-6`}>
+              {/* Card 1: Requested Venue (shows for all status if present) */}
+              {(request.eventFormat || request.customVenueName || request.customLocation) && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900/50">
+                  <h3 className="text-base font-bold mb-3 flex items-center text-slate-900 dark:text-slate-105">
+                    <MapPin className="w-5 h-5 mr-2 text-blue-600" />
+                    Địa điểm yêu cầu (Mong muốn)
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-blue-700 dark:text-blue-400 font-medium">Hình thức:</span>
+                      <span className="text-blue-900 dark:text-blue-200 font-semibold">
+                        {request.eventFormat === 'ONLINE' ? 'Trực tuyến (ONLINE)' :
+                         request.eventFormat === 'ONSITE' ? 'Tại chỗ (ONSITE)' :
+                         request.eventFormat === 'HYBRID' ? 'Kết hợp (HYBRID)' : request.eventFormat || 'N/A'}
+                      </span>
+                    </div>
+                    {request.customVenueName && (
                       <div className="flex justify-between">
-                        <span className="text-sm text-indigo-700 dark:text-indigo-400 font-medium">Địa điểm:</span>
-                        <span className="text-sm text-indigo-900 dark:text-indigo-200 font-semibold">{request.venueName}</span>
+                        <span className="text-blue-700 dark:text-blue-400 font-medium">Phòng mong muốn:</span>
+                        <span className="text-blue-900 dark:text-blue-200 font-semibold">{request.customVenueName}</span>
                       </div>
                     )}
-                    {request.areaName && (
+                    {request.customLocation && (
                       <div className="flex justify-between">
-                        <span className="text-sm text-indigo-700 dark:text-indigo-400 font-medium">Khu vực:</span>
-                        <span className="text-sm text-indigo-900 dark:text-indigo-200 font-semibold">
-                          {request.areaName}
-                          {request.floor && ` (Tầng ${request.floor})`}
-                        </span>
+                        <span className="text-blue-700 dark:text-blue-400 font-medium">Khu vực/Campus:</span>
+                        <span className="text-blue-900 dark:text-blue-200 font-semibold">{request.customLocation}</span>
                       </div>
                     )}
-                    {request.areaCapacity && (
-                      <div className="flex justify-between">
-                        <span className="text-sm text-indigo-700 dark:text-indigo-400 font-medium">Sức chứa khu vực:</span>
-                        <span className="text-sm text-indigo-900 dark:text-indigo-200 font-semibold">{request.areaCapacity} chỗ</span>
+
+                    {/* Online platform information if applicable */}
+                    {(request.onlineMeetingUrl || request.onlineMeetingId || request.onlineMeetingSecret) && (
+                      <div className="border-t border-blue-200 dark:border-blue-900/50 pt-2 mt-2 space-y-2 text-xs">
+                        <p className="font-bold text-blue-750 dark:text-blue-300 uppercase tracking-wide">Thông tin phòng họp trực tuyến:</p>
+                        {request.onlineMeetingUrl && (
+                          <div className="flex justify-between">
+                            <span className="text-blue-700 dark:text-blue-400 font-medium">Đường dẫn:</span>
+                            <a href={request.onlineMeetingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline truncate max-w-[200px] sm:max-w-xs">{request.onlineMeetingUrl}</a>
+                          </div>
+                        )}
+                        {request.onlineMeetingId && (
+                          <div className="flex justify-between">
+                            <span className="text-blue-700 dark:text-blue-400 font-medium">Meeting ID:</span>
+                            <span className="text-blue-900 dark:text-blue-200 font-semibold">{request.onlineMeetingId}</span>
+                          </div>
+                        )}
+                        {request.onlineMeetingSecret && (
+                          <div className="flex justify-between">
+                            <span className="text-blue-700 dark:text-blue-400 font-medium">Mật khẩu:</span>
+                            <span className="text-blue-900 dark:text-blue-200 font-semibold">{request.onlineMeetingSecret}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                ) : (
-                  <p className="text-sm text-indigo-600 dark:text-indigo-400 italic">Thông tin địa điểm đang được cập nhật...</p>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+
+              {/* Card 2: Allocated Venue (only shows when APPROVED) */}
+              {request.status === 'APPROVED' && (
+                <div className="p-4 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg border border-indigo-200 dark:border-indigo-900/50">
+                  <h3 className="text-base font-bold mb-3 flex items-center text-slate-900 dark:text-slate-105">
+                    <MapPin className="w-5 h-5 mr-2 text-indigo-600" />
+                    Địa điểm tổ chức (Đã phân bổ)
+                  </h3>
+                  {request.areaName || request.venueName ? (
+                    <div className="space-y-2 text-sm">
+                      {request.venueName && (
+                        <div className="flex justify-between">
+                          <span className="text-indigo-700 dark:text-indigo-400 font-medium">Địa điểm:</span>
+                          <span className="text-indigo-900 dark:text-indigo-200 font-semibold">{request.venueName}</span>
+                        </div>
+                      )}
+                      {request.areaName && (
+                        <div className="flex justify-between">
+                          <span className="text-indigo-700 dark:text-indigo-400 font-medium">Khu vực:</span>
+                          <span className="text-indigo-900 dark:text-indigo-200 font-semibold">
+                            {request.areaName}
+                            {request.floor && ` (Tầng ${request.floor})`}
+                          </span>
+                        </div>
+                      )}
+                      {request.areaCapacity && (
+                        <div className="flex justify-between">
+                          <span className="text-indigo-700 dark:text-indigo-400 font-medium">Sức chứa:</span>
+                          <span className="text-indigo-900 dark:text-indigo-200 font-semibold">{request.areaCapacity} chỗ</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-indigo-600 dark:text-indigo-400 italic">Thông tin địa điểm đang được cập nhật...</p>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="flex items-start">

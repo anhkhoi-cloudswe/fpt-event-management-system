@@ -70,6 +70,19 @@ type EventRequest = {
   organizerNote?: string
   createdEventId?: number
   bannerUrl?: string
+  venueName?: string
+  areaName?: string
+  floor?: string
+  areaCapacity?: number
+  rejectReason?: string
+  eventFormat?: string
+  customVenueName?: string
+  customLocation?: string
+  orgType?: string
+  privacyStatus?: string
+  onlineMeetingUrl?: string
+  onlineMeetingId?: string
+  onlineMeetingSecret?: string
 }
 
 const ITEMS_PER_PAGE = 10
@@ -132,7 +145,7 @@ const sanitizeEventRequest = (value: unknown): EventRequest | null => {
       rawValue.organizerName ??
       rawValue.organizer_name ??
       rawValue.Organizer?.name,
-    title: String(value.title ?? 'Yêu cầu sự kiện'),
+    title: String(rawValue.title ?? value.title ?? 'Yêu cầu sự kiện'),
     description: String(rawValue.description ?? 'N/A'),
     preferredStartTime: String(rawValue.preferredStartTime ?? rawValue.preferred_start_time ?? rawValue.startTime ?? rawValue.start_time ?? ''),
     preferredEndTime: String(rawValue.preferredEndTime ?? rawValue.preferred_end_time ?? rawValue.endTime ?? rawValue.end_time ?? ''),
@@ -145,6 +158,19 @@ const sanitizeEventRequest = (value: unknown): EventRequest | null => {
     organizerNote: rawValue.organizerNote ?? rawValue.organizer_note,
     createdEventId: Number(rawValue.createdEventId ?? rawValue.created_event_id ?? 0) || undefined,
     bannerUrl: rawValue.bannerUrl ?? rawValue.banner_url,
+    venueName: rawValue.venueName ?? rawValue.venue_name ?? rawValue.Venue?.name,
+    areaName: rawValue.areaName ?? rawValue.area_name,
+    floor: rawValue.floor,
+    areaCapacity: Number(rawValue.areaCapacity ?? rawValue.area_capacity ?? 0) || undefined,
+    rejectReason: rawValue.rejectReason ?? rawValue.reject_reason,
+    eventFormat: rawValue.eventFormat ?? rawValue.event_format,
+    customVenueName: rawValue.customVenueName ?? rawValue.custom_venue_name,
+    customLocation: rawValue.customLocation ?? rawValue.custom_location,
+    orgType: rawValue.orgType ?? rawValue.org_type,
+    privacyStatus: rawValue.privacyStatus ?? rawValue.privacy_status,
+    onlineMeetingUrl: rawValue.onlineMeetingUrl ?? rawValue.online_meeting_url,
+    onlineMeetingId: rawValue.onlineMeetingId ?? rawValue.online_meeting_id,
+    onlineMeetingSecret: rawValue.onlineMeetingSecret ?? rawValue.online_meeting_secret,
   }
 }
 
