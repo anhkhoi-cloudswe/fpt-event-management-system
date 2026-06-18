@@ -477,7 +477,7 @@ export default function StaffEventRequests() {
   }
 
   const handleProcessRequest = async (
-    areaId: number,
+    areaId: number | null,
     organizerNote: string,
     rejectReason?: string,
   ) => {
@@ -489,7 +489,7 @@ export default function StaffEventRequests() {
         action: processAction === 'APPROVE' ? 'APPROVED' : 'REJECTED',
         organizerNote: processAction === 'APPROVE' ? organizerNote : null,
         rejectReason: processAction === 'REJECT' ? rejectReason : null,
-        areaId: areaId,
+        ...(processAction === 'APPROVE' && areaId ? { areaId } : {}),
       }
 
       const response = await fetch('/api/event-requests/process', {

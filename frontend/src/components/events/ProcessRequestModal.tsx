@@ -36,7 +36,7 @@ type CheckDailyQuotaResponse = {
 type ProcessRequestModalProps = {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (areaId: number, organizerNote: string, rejectReason?: string) => void
+  onSubmit: (areaId: number | null, organizerNote: string, rejectReason?: string) => void
   action: 'APPROVE' | 'REJECT'
   request: {
     requestId: number
@@ -102,6 +102,15 @@ const findMatchingArea = (areas: AvailableArea[], customVenue: string, customLoc
   return null
 }
 
+const getPhysicalCapacityRequirement = (request: ProcessRequestModalProps['request']): number => {
+  if (!request || request.eventFormat === 'ONLINE') return 0
+  const expectedCapacity = request.expectedCapacity ?? 0
+  if (request.eventFormat === 'HYBRID') {
+    return Math.max(1, expectedCapacity - 100)
+  }
+  return expectedCapacity
+}
+
 // ===================== COMPONENT =====================
 
 export function ProcessRequestModal({
@@ -120,15 +129,17 @@ export function ProcessRequestModal({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [quotaInfo, setQuotaInfo] = useState<CheckDailyQuotaResponse | null>(null)
   const [loadingQuota, setLoadingQuota] = useState(false)
+  const requiresArea = action === 'APPROVE' && request?.eventFormat !== 'ONLINE'
+  const physicalCapacityRequirement = getPhysicalCapacityRequirement(request)
 
   const {
     areas,
     loading,
     error
   } = useAvailableAreas(
-    isOpen && action === 'APPROVE' && request?.preferredStartTime ? request.preferredStartTime : null,
-    isOpen && action === 'APPROVE' && request?.preferredEndTime ? request.preferredEndTime : null,
-    isOpen && action === 'APPROVE' && request?.expectedCapacity ? request.expectedCapacity : 0
+    isOpen && requiresArea && request?.preferredStartTime ? request.preferredStartTime : null,
+    isOpen && requiresArea && request?.preferredEndTime ? request.preferredEndTime : null,
+    isOpen && requiresArea ? physicalCapacityRequirement : 0
   )
 
   useEffect(() => {
@@ -163,6 +174,11 @@ export function ProcessRequestModal({
   }, [isOpen, action, request?.preferredStartTime])
 
   useEffect(() => {
+    if (!requiresArea) {
+      setSelectedAreaId(0)
+      return
+    }
+
     if (areas.length > 0) {
       const matched = request?.customVenueName
         ? findMatchingArea(areas, request.customVenueName, request.customLocation)
@@ -176,7 +192,7 @@ export function ProcessRequestModal({
     } else {
       setSelectedAreaId(0)
     }
-  }, [areas, request])
+  }, [areas, request, requiresArea])
 
   const truncateVenueName = (venueName: string, maxLength: number = 30): string => {
     if (venueName.length <= maxLength) return venueName
@@ -206,7 +222,7 @@ export function ProcessRequestModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (action === 'APPROVE' && selectedAreaId === 0) {
+    if (action === 'APPROVE' && requiresArea && selectedAreaId === 0) {
       showToast('warning', 'Vui lòng chọn khu vực cho sự kiện')
       return
     }
@@ -216,7 +232,7 @@ export function ProcessRequestModal({
       return
     }
 
-    onSubmit(selectedAreaId, organizerNote, action === 'REJECT' ? rejectReason : undefined)
+    onSubmit(requiresArea ? selectedAreaId : null, organizerNote, action === 'REJECT' ? rejectReason : undefined)
     handleClose()
   }
 
@@ -393,7 +409,13 @@ export function ProcessRequestModal({
 
               {/* Cột Phải */}
               <div className="space-y-3 flex flex-col justify-start">
-                <div className="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 flex-1">
+                {!requiresArea && (
+                  <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/40 shadow-sm text-xs text-emerald-800 dark:text-emerald-300">
+                    <p className="font-bold">Sự kiện trực tuyến không cần cấp phòng.</p>
+                    <p className="mt-1">Hệ thống sẽ giữ link họp online và tạo sự kiện sau khi duyệt.</p>
+                  </div>
+                )}
+                <div className={`${requiresArea ? '' : 'hidden'} bg-slate-50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 flex-1`}>
                   <div>
                     <label htmlFor="area" className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider mb-2">
                       Chọn khu vực bố trí <span className="text-red-500">*</span>
@@ -625,7 +647,7 @@ export function ProcessRequestModal({
               type="submit"
               disabled={
                 action === 'APPROVE' &&
-                (loading || areas.length === 0 || (quotaInfo?.currentCount ?? 0) >= 2)
+                ((requiresArea && (loading || areas.length === 0)) || (quotaInfo?.currentCount ?? 0) >= 2)
               }
               title={
                 action === 'APPROVE' && (quotaInfo?.currentCount ?? 0) >= 2
@@ -638,7 +660,9 @@ export function ProcessRequestModal({
                   : 'bg-rose-600 hover:bg-rose-700'
               }`}
             >
-              {action === 'APPROVE' ? '✓ Phê duyệt & Cấp phòng' : '✗ Từ chối yêu cầu'}
+              {action === 'APPROVE'
+                ? (requiresArea ? '✓ Phê duyệt & Cấp phòng' : '✓ Phê duyệt yêu cầu')
+                : '✗ Từ chối yêu cầu'}
             </button>
           </div>
 

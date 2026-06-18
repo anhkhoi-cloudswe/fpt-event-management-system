@@ -43,6 +43,41 @@ func intPointer(ni sql.NullInt64) *int {
 	return &val
 }
 
+func normalizeEventFormat(format string) string {
+	normalized := strings.ToUpper(strings.TrimSpace(format))
+	if normalized == "" {
+		return "ONSITE"
+	}
+	return normalized
+}
+
+func isValidEventFormat(format string) bool {
+	switch normalizeEventFormat(format) {
+	case "ONLINE", "ONSITE", "HYBRID":
+		return true
+	default:
+		return false
+	}
+}
+
+func eventFormatRequiresArea(format string) bool {
+	return normalizeEventFormat(format) != "ONLINE"
+}
+
+func sqlNullInt64FromID(id *int) sql.NullInt64 {
+	if id == nil || *id <= 0 {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: int64(*id), Valid: true}
+}
+
+func validateApprovalArea(format string, areaID *int) error {
+	if eventFormatRequiresArea(format) && (areaID == nil || *areaID <= 0) {
+		return fmt.Errorf("area ID is required when approving onsite or hybrid events")
+	}
+	return nil
+}
+
 // formatTimeToWallClockRFC3339 returns wall-clock time in RFC3339 format without Go timezone interpretation
 // ✅ CRITICAL: Without loc=Asia/Ho_Chi_Minh in DSN, Go reads DATETIME as UTC
 // We read the wall-clock values and just append +07:00 offset
@@ -1758,6 +1793,11 @@ func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page 
 func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID int, req *models.CreateEventRequestBody) (int, error) {
 	log.Printf("[DB_INSERT] Starting insert for requesterID=%d, title=%s", requesterID, req.Title)
 
+	req.EventFormat = normalizeEventFormat(req.EventFormat)
+	if !isValidEventFormat(req.EventFormat) {
+		return 0, fmt.Errorf("invalid event format: %s", req.EventFormat)
+	}
+
 	query := `
 		INSERT INTO Event_Request 
 		(requester_id, title, description, preferred_start_time, preferred_end_time, expected_capacity, status, created_at, event_format, custom_venue_name, custom_location, banner_url, org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret)
@@ -2414,7 +2454,7 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 	req.OrganizerNote = stringPointer(organizerNote)
 	req.RejectReason = stringPointer(rejectReason)
 	req.CreatedEventID = intPointer(createdEventID)
-	
+
 	if eventFormat.Valid {
 		req.EventFormat = &eventFormat.String
 	}
@@ -2569,11 +2609,6 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 	// SCENARIO 2: APPROVED
 	// ============================================================
 	if req.Action == "APPROVED" {
-		// Validate: AreaID is required
-		if req.AreaID == nil || *req.AreaID == 0 {
-			return fmt.Errorf("area ID is required when approving")
-		}
-
 		// Get request details to create event
 		var requestTitle string
 		var requestDesc sql.NullString
@@ -2581,10 +2616,12 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		var requestCapacity sql.NullInt64
 		var requesterID int
 		var eventFormat, customVenueName, customLocation, bannerURL sql.NullString
+		var orgType, privacyStatus, onlineMeetingURL, onlineMeetingID, onlineMeetingSecret sql.NullString
 
 		getRequestQuery := `
 			SELECT title, description, preferred_start_time, preferred_end_time, 
-			       expected_capacity, requester_id, event_format, custom_venue_name, custom_location, banner_url
+			       expected_capacity, requester_id, event_format, custom_venue_name, custom_location, banner_url,
+			       org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret
 			FROM Event_Request 
 			WHERE request_id = $1
 		`
@@ -2592,11 +2629,24 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		err := tx.QueryRowContext(ctx, getRequestQuery, req.RequestID).Scan(
 			&requestTitle, &requestDesc, &requestStartTime, &requestEndTime,
 			&requestCapacity, &requesterID, &eventFormat, &customVenueName, &customLocation, &bannerURL,
+			&orgType, &privacyStatus, &onlineMeetingURL, &onlineMeetingID, &onlineMeetingSecret,
 		)
 		if err != nil {
 			fmt.Printf("[DB_PROCESS] Failed to get request details: %v\n", err)
 			return fmt.Errorf("failed to get request details: %w", err)
 		}
+
+		formatVal := "ONSITE"
+		if eventFormat.Valid && eventFormat.String != "" {
+			formatVal = normalizeEventFormat(eventFormat.String)
+		}
+		if !isValidEventFormat(formatVal) {
+			return fmt.Errorf("invalid event format: %s", formatVal)
+		}
+		if err := validateApprovalArea(formatVal, req.AreaID); err != nil {
+			return err
+		}
+		areaIDValue := sqlNullInt64FromID(req.AreaID)
 
 		capacityVal := 0
 		if requestCapacity.Valid {
@@ -2656,8 +2706,9 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 			INSERT INTO Event (
 				title, description, start_time, end_time, max_seats, 
 				banner_url, area_id, speaker_id, status, created_by, created_at,
-				event_format, custom_venue_name, custom_location
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'UPDATING', $9, NOW(), $10, $11, $12)
+				event_format, custom_venue_name, custom_location,
+				org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'UPDATING', $9, NOW(), $10, $11, $12, $13, $14, $15, $16, $17)
 			RETURNING event_id
 		`
 
@@ -2673,16 +2724,21 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 			bannerURLValue = bannerURL
 		}
 
-		formatVal := "ONSITE"
-		if eventFormat.Valid && eventFormat.String != "" {
-			formatVal = eventFormat.String
+		orgTypeValue := "SCHOOL"
+		if orgType.Valid && orgType.String != "" {
+			orgTypeValue = orgType.String
+		}
+		privacyStatusValue := "PUBLIC"
+		if privacyStatus.Valid && privacyStatus.String != "" {
+			privacyStatusValue = privacyStatus.String
 		}
 
 		var eventID int64
 		err = tx.QueryRowContext(ctx, insertEventQuery,
 			requestTitle, requestDesc, startTimeWallClock, endTimeWallClock, capacityVal,
-			bannerURLValue, *req.AreaID, speakerIDValue, requesterID,
+			bannerURLValue, areaIDValue, speakerIDValue, requesterID,
 			formatVal, customVenueName, customLocation,
+			orgTypeValue, privacyStatusValue, onlineMeetingURL, onlineMeetingID, onlineMeetingSecret,
 		).Scan(&eventID)
 		if err != nil {
 			fmt.Printf("[DB_PROCESS] Failed to create Event: %v\n", err)
@@ -2711,31 +2767,36 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		}
 
 		fmt.Printf("[DB_PROCESS] Step B3: Updated Event_Request.created_event_id = %d\n", eventID)
+		if !eventFormatRequiresArea(formatVal) {
+			fmt.Printf("[DB_PROCESS] Step B4 skipped: ONLINE event does not require a venue area\n")
+		} else {
 
-		// B4: Mark Venue_Area as UNAVAILABLE (trong Transaction để Rollback nếu lỗi)
-		fmt.Printf("[DB_PROCESS] Step B4: About to mark Area %d as UNAVAILABLE\n", *req.AreaID)
+			// B4: Mark Venue_Area as UNAVAILABLE (trong Transaction để Rollback nếu lỗi)
+			fmt.Printf("[DB_PROCESS] Step B4: About to mark Area %d as UNAVAILABLE\n", *req.AreaID)
 
-		updateAreaStatusQuery := `
+			updateAreaStatusQuery := `
 			UPDATE Venue_Area 
 			SET status = 'UNAVAILABLE'
 			WHERE area_id = $1
 		`
 
-		result, err = tx.ExecContext(ctx, updateAreaStatusQuery, *req.AreaID)
-		if err != nil {
-			fmt.Printf("[DB_PROCESS] ❌ FAILED to update Venue_Area status for AreaID=%d: %v\n", *req.AreaID, err)
-			return fmt.Errorf("failed to update venue area status: %w", err)
+			result, err = tx.ExecContext(ctx, updateAreaStatusQuery, *req.AreaID)
+			if err != nil {
+				fmt.Printf("[DB_PROCESS] ❌ FAILED to update Venue_Area status for AreaID=%d: %v\n", *req.AreaID, err)
+				return fmt.Errorf("failed to update venue area status: %w", err)
+			}
+
+			rowsAffected, _ = result.RowsAffected()
+			fmt.Printf("[DB_PROCESS] Step B4: UPDATE Venue_Area affected %d rows (AreaID=%d)\n", rowsAffected, *req.AreaID)
+
+			if rowsAffected == 0 {
+				fmt.Printf("[DB_PROCESS] ⚠️ WARNING: No rows affected when updating Venue_Area status for AreaID=%d\n", *req.AreaID)
+				return fmt.Errorf("failed to mark venue area as unavailable - area not found or already unavailable")
+			}
+
+			fmt.Printf("[DB_PROCESS] ✅ Step B4 SUCCESS: Marked Venue_Area %d as UNAVAILABLE\n", *req.AreaID)
+
 		}
-
-		rowsAffected, _ = result.RowsAffected()
-		fmt.Printf("[DB_PROCESS] Step B4: UPDATE Venue_Area affected %d rows (AreaID=%d)\n", rowsAffected, *req.AreaID)
-
-		if rowsAffected == 0 {
-			fmt.Printf("[DB_PROCESS] ⚠️ WARNING: No rows affected when updating Venue_Area status for AreaID=%d\n", *req.AreaID)
-			return fmt.Errorf("failed to mark venue area as unavailable - area not found or already unavailable")
-		}
-
-		fmt.Printf("[DB_PROCESS] ✅ Step B4 SUCCESS: Marked Venue_Area %d as UNAVAILABLE\n", *req.AreaID)
 
 		// Commit transaction
 		if err := tx.Commit(); err != nil {
@@ -4148,9 +4209,20 @@ func (r *EventRepository) DeleteSampleBanner(ctx context.Context, bannerID int) 
 }
 
 func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int, req *models.CreateEventRequestBody) (int, error) {
+	req.EventFormat = normalizeEventFormat(req.EventFormat)
+	if !isValidEventFormat(req.EventFormat) {
+		return 0, fmt.Errorf("invalid event format: %s", req.EventFormat)
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to start independent event transaction: %w", err)
+	}
+	defer tx.Rollback()
+
 	query := `
 		INSERT INTO Event (
-			title, description, start_time, end_time, max_seats, 
+			title, description, start_time, end_time, max_seats,
 			banner_url, status, created_by, created_at,
 			event_format, custom_venue_name, custom_location,
 			org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret
@@ -4174,7 +4246,7 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 		privacyStatus = "PUBLIC"
 	}
 
-	err := r.db.QueryRowContext(ctx, query,
+	err = tx.QueryRowContext(ctx, query,
 		req.Title,
 		req.Description,
 		req.PreferredStartTime,
@@ -4194,6 +4266,48 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 	if err != nil {
 		return 0, fmt.Errorf("failed to create independent event: %w", err)
 	}
-	log.Printf("[CreateIndependentEvent] Created event ID=%d (org_type=%s, privacy=%s, format=%s)", eventID, orgType, privacyStatus, req.EventFormat)
+
+	if len(req.Tickets) > 0 {
+		insertTicketQuery := `
+			INSERT INTO category_ticket (event_id, name, description, price, max_quantity, status)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`
+
+		for _, ticket := range req.Tickets {
+			name := strings.TrimSpace(ticket.Name)
+			if name == "" {
+				return 0, fmt.Errorf("ticket name is required")
+			}
+			if ticket.Price < 0 {
+				return 0, fmt.Errorf("ticket price cannot be negative")
+			}
+			if ticket.Price > models.MAX_TICKET_PRICE {
+				return 0, fmt.Errorf("ticket price exceeds allowed limit")
+			}
+			if ticket.MaxQuantity == nil || *ticket.MaxQuantity <= 0 {
+				return 0, fmt.Errorf("ticket max quantity must be greater than zero")
+			}
+
+			description := ""
+			if ticket.Description != nil {
+				description = *ticket.Description
+			}
+			status := ticket.Status
+			if status == "" {
+				status = "ACTIVE"
+			}
+			roundedPrice := math.Round(ticket.Price)
+
+			if _, err := tx.ExecContext(ctx, insertTicketQuery, eventID, name, description, roundedPrice, *ticket.MaxQuantity, status); err != nil {
+				return 0, fmt.Errorf("failed to create independent event ticket: %w", err)
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("failed to commit independent event transaction: %w", err)
+	}
+
+	log.Printf("[CreateIndependentEvent] Created event ID=%d (org_type=%s, privacy=%s, format=%s, tickets=%d)", eventID, orgType, privacyStatus, req.EventFormat, len(req.Tickets))
 	return eventID, nil
 }

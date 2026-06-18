@@ -1505,10 +1505,6 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 
 	// APPROVED scenario
 	if req.Action == "APPROVED" {
-		if req.AreaID == nil || *req.AreaID == 0 {
-			return fmt.Errorf("area ID is required when approving")
-		}
-
 		// B0: Get request details
 		var requestTitle string
 		var requestDesc sql.NullString
@@ -1516,20 +1512,35 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		var requestCapacity sql.NullInt64
 		var requesterID int
 		var eventFormat, customVenueName, customLocation, bannerURL sql.NullString
+		var orgType, privacyStatus, onlineMeetingURL, onlineMeetingID, onlineMeetingSecret sql.NullString
 
 		getRequestQuery := `
 			SELECT title, description, preferred_start_time, preferred_end_time, 
-			       expected_capacity, requester_id, event_format, custom_venue_name, custom_location, banner_url
+			       expected_capacity, requester_id, event_format, custom_venue_name, custom_location, banner_url,
+			       org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret
 			FROM Event_Request 
 			WHERE request_id = $1
 		`
 		err := tx.QueryRowContext(ctx, getRequestQuery, req.RequestID).Scan(
 			&requestTitle, &requestDesc, &requestStartTime, &requestEndTime,
 			&requestCapacity, &requesterID, &eventFormat, &customVenueName, &customLocation, &bannerURL,
+			&orgType, &privacyStatus, &onlineMeetingURL, &onlineMeetingID, &onlineMeetingSecret,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to get request details: %w", err)
 		}
+
+		formatVal := "ONSITE"
+		if eventFormat.Valid && eventFormat.String != "" {
+			formatVal = normalizeEventFormat(eventFormat.String)
+		}
+		if !isValidEventFormat(formatVal) {
+			return fmt.Errorf("invalid event format: %s", formatVal)
+		}
+		if err := validateApprovalArea(formatVal, req.AreaID); err != nil {
+			return err
+		}
+		areaIDValue := sqlNullInt64FromID(req.AreaID)
 
 		capacityVal := 0
 		if requestCapacity.Valid {
@@ -1615,8 +1626,9 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 			INSERT INTO Event (
 				title, description, start_time, end_time, max_seats, 
 				banner_url, area_id, speaker_id, status, created_by, created_at,
-				event_format, custom_venue_name, custom_location
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'UPDATING', $9, NOW(), $10, $11, $12)
+				event_format, custom_venue_name, custom_location,
+				org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'UPDATING', $9, NOW(), $10, $11, $12, $13, $14, $15, $16, $17)
 			RETURNING event_id
 		`
 
@@ -1632,16 +1644,21 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 			bannerURLValue = bannerURL
 		}
 
-		formatVal := "ONSITE"
-		if eventFormat.Valid && eventFormat.String != "" {
-			formatVal = eventFormat.String
+		orgTypeValue := "SCHOOL"
+		if orgType.Valid && orgType.String != "" {
+			orgTypeValue = orgType.String
+		}
+		privacyStatusValue := "PUBLIC"
+		if privacyStatus.Valid && privacyStatus.String != "" {
+			privacyStatusValue = privacyStatus.String
 		}
 
 		var eventID int64
 		err = tx.QueryRowContext(ctx, insertEventQuery,
 			requestTitle, requestDesc, startTimeWallClock, endTimeWallClock, capacityVal,
-			bannerURLValue, *req.AreaID, speakerIDValue, requesterID,
+			bannerURLValue, areaIDValue, speakerIDValue, requesterID,
 			formatVal, customVenueName, customLocation,
+			orgTypeValue, privacyStatusValue, onlineMeetingURL, onlineMeetingID, onlineMeetingSecret,
 		).Scan(&eventID)
 		if err != nil {
 			return fmt.Errorf("failed to create event: %w", err)
@@ -1666,6 +1683,11 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		}
 
 		fmt.Printf("[API_COMPOSITION] Step B1-B3 committed: Event %d created\n", eventID)
+
+		if !eventFormatRequiresArea(formatVal) {
+			fmt.Printf("[API_COMPOSITION] Step B4 skipped: ONLINE event does not require a venue area\n")
+			return nil
+		}
 
 		// B4: Mark Venue_Area as UNAVAILABLE via API call (cross-domain)
 		fmt.Printf("[API_COMPOSITION] Step B4: Calling area-status API for AreaID=%d\n", *req.AreaID)

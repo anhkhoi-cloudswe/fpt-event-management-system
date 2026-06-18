@@ -19,6 +19,7 @@ import {
   Lock,
   ChevronDown,
   Check,
+  Ticket,
 } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -765,10 +766,61 @@ export default function EventRequestCreate() {
   const descModalRef = useRef<HTMLDivElement>(null)
 
   const [capacityPopoverOpen, setCapacityPopoverOpen] = useState(false)
+  const [ticketPopoverOpen, setTicketPopoverOpen] = useState(false)
   const [limitCapacity, setLimitCapacity] = useState(true)
   const [tempCapacity, setTempCapacity] = useState('100')
   const [waitlistEnabled, setWaitlistEnabled] = useState(false)
   const capacityPopoverRef = useRef<HTMLDivElement>(null)
+  const [ticketConfig, setTicketConfig] = useState({
+    onlineFree: true,
+    onlinePrice: '0',
+    onsiteFree: true,
+    onsitePrice: '0',
+  })
+
+  const formatMoney = (value: string) => {
+    const amount = Number(value || 0)
+    return amount > 0 ? `${amount.toLocaleString('vi-VN')} VND` : 'Free'
+  }
+
+  const getTicketSummary = () => {
+    if (eventFormat === 'ONLINE') return `Online: ${ticketConfig.onlineFree ? 'Free' : formatMoney(ticketConfig.onlinePrice)}`
+    if (eventFormat === 'ONSITE') return `Onsite: ${ticketConfig.onsiteFree ? 'Free' : formatMoney(ticketConfig.onsitePrice)}`
+    return `Onsite: ${ticketConfig.onsiteFree ? 'Free' : formatMoney(ticketConfig.onsitePrice)}, Online: ${ticketConfig.onlineFree ? 'Free' : formatMoney(ticketConfig.onlinePrice)}`
+  }
+
+  const getTicketQuantity = (channel: 'ONLINE' | 'ONSITE') => {
+    const cap = Math.max(1, parseInt(formData.expectedParticipants || tempCapacity || '1') || 1)
+    if (eventFormat === 'ONLINE') return cap
+    if (eventFormat === 'ONSITE') return cap
+
+    const onsiteCap = Math.max(1, Math.min(getSelectedAreaCapacity(), cap - 1))
+    const onlineCap = Math.max(1, cap - onsiteCap)
+    return channel === 'ONSITE' ? onsiteCap : onlineCap
+  }
+
+  const buildIndependentTickets = () => {
+    const onlinePrice = ticketConfig.onlineFree ? 0 : Number(ticketConfig.onlinePrice || 0)
+    const onsitePrice = ticketConfig.onsiteFree ? 0 : Number(ticketConfig.onsitePrice || 0)
+    const mkTicket = (name: string, price: number, quantity: number) => ({
+      name,
+      description: `${name} access`,
+      price,
+      maxQuantity: quantity,
+      status: 'ACTIVE',
+    })
+
+    if (eventFormat === 'ONLINE') {
+      return [mkTicket('Online Ticket', onlinePrice, getTicketQuantity('ONLINE'))]
+    }
+    if (eventFormat === 'ONSITE') {
+      return [mkTicket('Onsite Ticket', onsitePrice, getTicketQuantity('ONSITE'))]
+    }
+    return [
+      mkTicket('Onsite Ticket', onsitePrice, getTicketQuantity('ONSITE')),
+      mkTicket('Online Ticket', onlinePrice, getTicketQuantity('ONLINE')),
+    ]
+  }
 
   // Enforce capacity range and default values dynamically
   useEffect(() => {
@@ -1157,6 +1209,21 @@ export default function EventRequestCreate() {
       showToast('error', `Sức chứa phải từ 1 đến ${maxAllowed}`)
       return
     }
+    if (eventFormat === 'HYBRID' && cap < 2) {
+      const msg = 'Hybrid events need at least 2 participants: one onsite and one online.'
+      setError(msg)
+      showToast('error', msg)
+      return
+    }
+    const independentTickets = flowType === 'INDEPENDENT' ? buildIndependentTickets() : []
+    const invalidTicket = independentTickets.find(ticket => Number.isNaN(ticket.price) || ticket.price < 0 || ticket.price > 100000000)
+    if (invalidTicket) {
+      const msg = 'Ticket price must be between 0 and 100,000,000 VND.'
+      setError(msg)
+      showToast('error', msg)
+      return
+    }
+
     const tv = validateEventDateTime(formData.preferredStart, formData.preferredEnd, flowType)
     if (!tv.valid) {
       setError(tv.errors.join(' · '))
@@ -1202,12 +1269,12 @@ export default function EventRequestCreate() {
         customVenueName: eventFormat === 'ONLINE'
           ? selectedOnlinePlatform
           : eventFormat === 'HYBRID'
-          ? `${formData.customVenueName || ''} & ${selectedOnlinePlatform}`
+          ? (formData.customVenueName || null)
           : (formData.customVenueName || null),
         customLocation: eventFormat === 'ONLINE'
           ? (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink)
           : eventFormat === 'HYBRID'
-          ? `${formData.customLocation || ''} (Online: ${selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink})`
+          ? (formData.customLocation || null)
           : (formData.customLocation || null),
         bannerUrl: bannerUrl || null,
         // ✅ NEW: Organization type, privacy status, and online meeting info
@@ -1218,6 +1285,7 @@ export default function EventRequestCreate() {
           : null,
         onlineMeetingId: null,     // Populated by backend if needed via OAuth API
         onlineMeetingSecret: null, // Populated by backend if needed via OAuth API
+        tickets: flowType === 'INDEPENDENT' ? independentTickets : undefined,
       }
       const url = flowType === 'UNIVERSITY' ? '/api/event-requests' : '/api/events/independent'
       const res = await fetch(url, {
@@ -1896,6 +1964,35 @@ export default function EventRequestCreate() {
                 </button>
               </div>
 
+              {flowType === 'INDEPENDENT' && (
+                <div className="relative mb-2 flex-shrink-0">
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setTicketPopoverOpen(true)
+                    }}
+                    className={`flex items-center justify-between py-1.5 border-b px-1 rounded-lg transition-colors cursor-pointer ${
+                      isDarkMode
+                        ? 'border-white/[0.07] hover:bg-white/[0.02]'
+                        : 'border-neutral-200 hover:bg-neutral-50'
+                    }`}
+                  >
+                    <div className={`flex items-center gap-2.5 ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>
+                      <Ticket className={`w-3.5 h-3.5 flex-shrink-0 ${isDarkMode ? 'text-white/40' : 'text-neutral-500'}`} />
+                      <span className="text-sm font-medium">Tickets</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 min-w-0 transition-colors ${
+                      isDarkMode ? 'text-white/80 hover:text-white' : 'text-neutral-800 hover:text-neutral-900'
+                    }`}>
+                      <span className="text-sm font-semibold truncate">{getTicketSummary()}</span>
+                      <svg className="w-3.5 h-3.5 text-orange-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ── Capacity — borderless row with Popover ── */}
               <div className="relative mb-2 flex-shrink-0">
                 <div
@@ -2028,6 +2125,97 @@ export default function EventRequestCreate() {
                     Xác nhận
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {ticketPopoverOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setTicketPopoverOpen(false)}>
+              <div
+                className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl flex flex-col gap-5 transition-all duration-200 transform scale-100 ${
+                  isDarkMode ? 'bg-[#141416] border-white/[0.09] text-white' : 'bg-white border-neutral-200 text-neutral-850'
+                }`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-3xl font-black tracking-tight">Tickets</h3>
+                    <p className={`text-sm mt-1 ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Set ticket price before publishing.</p>
+                  </div>
+                  <button type="button" onClick={() => setTicketPopoverOpen(false)} className={`w-8 h-8 flex items-center justify-center rounded-lg transition cursor-pointer ${
+                    isDarkMode ? 'hover:bg-white/[0.08] text-neutral-400 hover:text-white' : 'hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800'
+                  }`}>
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {(eventFormat === 'ONSITE' || eventFormat === 'HYBRID') && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold">Onsite ticket</span>
+                      <button
+                        type="button"
+                        onClick={() => setTicketConfig(prev => ({ ...prev, onsiteFree: !prev.onsiteFree, onsitePrice: !prev.onsiteFree ? '0' : prev.onsitePrice }))}
+                        className={`w-11 h-6 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
+                          ticketConfig.onsiteFree ? 'bg-neutral-500' : 'bg-orange-600'
+                        }`}
+                      >
+                        <span className={`w-5 h-5 rounded-full bg-white transition-transform duration-200 transform ${ticketConfig.onsiteFree ? 'translate-x-0' : 'translate-x-5'}`} />
+                      </button>
+                    </div>
+                    <label className={`block text-xs font-bold ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Price</label>
+                    <div className={`flex items-center rounded-xl border overflow-hidden ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-neutral-200 bg-neutral-50'}`}>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100000000"
+                        disabled={ticketConfig.onsiteFree}
+                        value={ticketConfig.onsiteFree ? '0' : ticketConfig.onsitePrice}
+                        onChange={(e) => setTicketConfig(prev => ({ ...prev, onsitePrice: e.target.value }))}
+                        className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold outline-none disabled:opacity-50"
+                      />
+                      <span className="px-4 text-sm font-bold">VND</span>
+                    </div>
+                  </div>
+                )}
+
+                {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold">Online ticket</span>
+                      <button
+                        type="button"
+                        onClick={() => setTicketConfig(prev => ({ ...prev, onlineFree: !prev.onlineFree, onlinePrice: !prev.onlineFree ? '0' : prev.onlinePrice }))}
+                        className={`w-11 h-6 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
+                          ticketConfig.onlineFree ? 'bg-neutral-500' : 'bg-orange-600'
+                        }`}
+                      >
+                        <span className={`w-5 h-5 rounded-full bg-white transition-transform duration-200 transform ${ticketConfig.onlineFree ? 'translate-x-0' : 'translate-x-5'}`} />
+                      </button>
+                    </div>
+                    <label className={`block text-xs font-bold ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Price</label>
+                    <div className={`flex items-center rounded-xl border overflow-hidden ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-neutral-200 bg-neutral-50'}`}>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100000000"
+                        disabled={ticketConfig.onlineFree}
+                        value={ticketConfig.onlineFree ? '0' : ticketConfig.onlinePrice}
+                        onChange={(e) => setTicketConfig(prev => ({ ...prev, onlinePrice: e.target.value }))}
+                        className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold outline-none disabled:opacity-50"
+                      />
+                      <span className="px-4 text-sm font-bold">VND</span>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setTicketPopoverOpen(false)}
+                  className="mx-auto mt-1 px-8 py-3 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-xl text-sm font-bold transition cursor-pointer"
+                >
+                  Save
+                </button>
               </div>
             </div>
           )}

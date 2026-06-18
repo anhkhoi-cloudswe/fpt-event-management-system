@@ -241,19 +241,19 @@ type EventRequest struct {
 
 	// ✅ NEW: Organization type, privacy status, and online meeting info
 	OrgType             *string `json:"orgType,omitempty"`
-	PrivacyStatus       *string `json:"privacyStatus,omitempty"`
-	OnlineMeetingURL    *string `json:"onlineMeetingUrl,omitempty"`
-	OnlineMeetingID     *string `json:"onlineMeetingId,omitempty"`
-	OnlineMeetingSecret *string `json:"onlineMeetingSecret,omitempty"`
-}
+	PrivacyStatus       *string `json:"privacyStatus,omitempty"`
+	OnlineMeetingURL    *string `json:"onlineMeetingUrl,omitempty"`
+	OnlineMeetingID     *string `json:"onlineMeetingId,omitempty"`
+	OnlineMeetingSecret *string `json:"onlineMeetingSecret,omitempty"`
+}
 
 // ============================================================
 // CreateEventRequestBody - Request body từ FE
 // ============================================================
-type CreateEventRequestBody struct {
-	Title              string  `json:"title"`
-	Description        *string `json:"description"`
-	PreferredStartTime string  `json:"preferredStartTime"`
+type CreateEventRequestBody struct {
+	Title              string  `json:"title"`
+	Description        *string `json:"description"`
+	PreferredStartTime string  `json:"preferredStartTime"`
 	PreferredEndTime   string  `json:"preferredEndTime"`
 	ExpectedCapacity   *int    `json:"expectedCapacity"`
 	EventFormat        string  `json:"eventFormat"`
@@ -264,10 +264,11 @@ type CreateEventRequestBody struct {
 	// ✅ NEW: Organization type, privacy status, and online meeting info
 	OrgType             string  `json:"orgType"`
 	PrivacyStatus       string  `json:"privacyStatus"`
-	OnlineMeetingURL    *string `json:"onlineMeetingUrl,omitempty"`
-	OnlineMeetingID     *string `json:"onlineMeetingId,omitempty"`
-	OnlineMeetingSecret *string `json:"onlineMeetingSecret,omitempty"`
-}
+	OnlineMeetingURL    *string `json:"onlineMeetingUrl,omitempty"`
+	OnlineMeetingID     *string `json:"onlineMeetingId,omitempty"`
+	OnlineMeetingSecret *string `json:"onlineMeetingSecret,omitempty"`
+	Tickets             []CategoryTicket `json:"tickets,omitempty"`
+}
 
 // ============================================================
 // ProcessEventRequestBody - Request body cho approve/reject
