@@ -1546,19 +1546,26 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 	var areaName sql.NullString
 	var venueName sql.NullString
 	var venueLocation sql.NullString
+	var eventFormat string
 	err = r.db.QueryRowContext(bgCtx,
 		`SELECT e.title, e.start_time, e.area_id, 
 		        COALESCE(va.area_name, 'Chưa xác định') as area_name,
 		        COALESCE(v.venue_name, 'Chưa xác định') as venue_name,
-		        COALESCE(v.location, 'Chưa xác định') as location
+		        COALESCE(v.location, 'Chưa xác định') as location,
+		        COALESCE(e.event_format, 'OFFLINE')
 		 FROM Event e
 		 LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		 LEFT JOIN Venue v ON va.venue_id = v.venue_id
 		 WHERE e.event_id = $1`,
 		eventID,
-	).Scan(&eventTitle, &startTime, &areaID, &areaName, &venueName, &venueLocation)
+	).Scan(&eventTitle, &startTime, &areaID, &areaName, &venueName, &venueLocation, &eventFormat)
 	if err != nil {
 		log.Error("Failed to get event for email", "event_id", eventID, "error", err)
+		return
+	}
+
+	if strings.ToUpper(eventFormat) == "ONLINE" && (amount == "0" || amount == "0 VND" || amount == "") {
+		log.Info("Skipping email for FREE ONLINE event", "event_id", eventID)
 		return
 	}
 
@@ -1693,19 +1700,26 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 	var venueName sql.NullString
 	var venueLocation sql.NullString
 	var createdBy sql.NullInt64
+	var eventFormat string
 	err = r.db.QueryRowContext(bgCtx,
 		`SELECT e.title, e.start_time, e.end_time, e.area_id, e.created_by,
 		        COALESCE(va.area_name, 'Chưa xác định') as area_name,
 		        COALESCE(v.venue_name, 'Chưa xác định') as venue_name,
-		        COALESCE(v.location, 'Chưa xác định') as location
+		        COALESCE(v.location, 'Chưa xác định') as location,
+		        COALESCE(e.event_format, 'OFFLINE')
 		 FROM Event e
 		 LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		 LEFT JOIN Venue v ON va.venue_id = v.venue_id
 		 WHERE e.event_id = $1`,
 		eventID,
-	).Scan(&eventTitle, &startTime, &endTime, &areaID, &createdBy, &areaName, &venueName, &venueLocation)
+	).Scan(&eventTitle, &startTime, &endTime, &areaID, &createdBy, &areaName, &venueName, &venueLocation, &eventFormat)
 	if err != nil {
 		log.Error("Failed to get event for email", "event_id", eventID, "error", err)
+		return
+	}
+
+	if strings.ToUpper(eventFormat) == "ONLINE" && (totalAmount == "0" || totalAmount == "0 VND" || totalAmount == "") {
+		log.Info("Skipping email for FREE ONLINE event", "event_id", eventID)
 		return
 	}
 

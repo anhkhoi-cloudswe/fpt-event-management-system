@@ -769,7 +769,6 @@ export default function EventRequestCreate() {
   const [ticketPopoverOpen, setTicketPopoverOpen] = useState(false)
   const [limitCapacity, setLimitCapacity] = useState(true)
   const [tempCapacity, setTempCapacity] = useState('100')
-  const [waitlistEnabled, setWaitlistEnabled] = useState(false)
   const capacityPopoverRef = useRef<HTMLDivElement>(null)
   const [ticketConfig, setTicketConfig] = useState({
     onlineFree: true,
