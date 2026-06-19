@@ -497,10 +497,21 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 	}
 
 	// Validate
-	if paymentReq.EventID == 0 || paymentReq.CategoryTicketID == 0 || len(paymentReq.SeatIDs) == 0 {
-		fmt.Printf("[WALLET_PAYMENT] ❌ VALIDATION FAILED - EventID: %d, CategoryTicketID: %d, SeatIDs: %v\n",
-			paymentReq.EventID, paymentReq.CategoryTicketID, paymentReq.SeatIDs)
-		return createMessageResponse(http.StatusBadRequest, "Missing required parameters: eventId, categoryTicketId, seatIds")
+	if paymentReq.EventID == 0 || paymentReq.CategoryTicketID == 0 {
+		fmt.Printf("[WALLET_PAYMENT] ❌ VALIDATION FAILED - EventID: %d, CategoryTicketID: %d\n",
+			paymentReq.EventID, paymentReq.CategoryTicketID)
+		return createMessageResponse(http.StatusBadRequest, "Missing required parameters: eventId, categoryTicketId")
+	}
+
+	isOnline, err := h.useCase.IsOnlineEvent(ctx, paymentReq.EventID)
+	if err != nil {
+		fmt.Printf("[WALLET_PAYMENT] ❌ ERROR GETTING EVENT FORMAT - EventID: %d, Error: %v\n", paymentReq.EventID, err)
+		return createMessageResponse(http.StatusBadRequest, "Invalid eventId or event not found")
+	}
+
+	if !isOnline && len(paymentReq.SeatIDs) == 0 {
+		fmt.Printf("[WALLET_PAYMENT] ❌ VALIDATION FAILED - SeatIDs is empty for offline/hybrid event\n")
+		return createMessageResponse(http.StatusBadRequest, "Missing required parameters: seatIds is required for onsite/hybrid events")
 	}
 
 	fmt.Printf("[WALLET_PAYMENT] ✅ Validation passed - Processing payment for UserID: %d, EventID: %d, CategoryTicketID: %d, %d seat(s)\n",
@@ -742,8 +753,18 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 		req.SeatIDs = seatIDs
 	}
 
-	if req.EventID == 0 || len(req.SeatIDs) == 0 {
-		return createMessageResponse(http.StatusBadRequest, "Missing required parameters")
+	if req.EventID == 0 {
+		return createMessageResponse(http.StatusBadRequest, "Missing required parameters: eventId")
+	}
+
+	isOnline, err := h.useCase.IsOnlineEvent(ctx, req.EventID)
+	if err != nil {
+		fmt.Printf("[CREATE_BANK_TRANSFER] ❌ ERROR GETTING EVENT FORMAT - EventID: %d, Error: %v\n", req.EventID, err)
+		return createMessageResponse(http.StatusBadRequest, "Invalid eventId or event not found")
+	}
+
+	if !isOnline && len(req.SeatIDs) == 0 {
+		return createMessageResponse(http.StatusBadRequest, "Missing required parameters: seatIds")
 	}
 
 	// Call usecase to create the pending order

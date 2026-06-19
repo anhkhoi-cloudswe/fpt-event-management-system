@@ -3014,6 +3014,15 @@ func (r *TicketRepository) GetTicketIDsByBillID(ctx context.Context, billID int6
 	return ids, nil
 }
 
+func (r *TicketRepository) GetEventFormat(ctx context.Context, eventID int) (string, error) {
+	var format string
+	err := r.db.QueryRowContext(ctx, "SELECT event_format FROM Event WHERE event_id = $1", eventID).Scan(&format)
+	if err != nil {
+		return "", err
+	}
+	return format, nil
+}
+
 func generateDeterministicUUID(userID, eventID int, seatIDs []int) string {
 	// Sort seatIDs to ensure same seats in any order produce the same UUID
 	sortedSeatIDs := make([]int, len(seatIDs))

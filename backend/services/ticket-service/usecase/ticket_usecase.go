@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fpt-event-services/common/config"
@@ -142,3 +143,12 @@ func (uc *TicketUseCase) GetBillCreatedAt(ctx context.Context, billID int) (time
 func (uc *TicketUseCase) GetTicketIDsByBillID(ctx context.Context, billID int64) ([]string, error) {
 	return uc.ticketRepo.GetTicketIDsByBillID(ctx, billID)
 }
+
+func (uc *TicketUseCase) IsOnlineEvent(ctx context.Context, eventID int) (bool, error) {
+	format, err := uc.ticketRepo.GetEventFormat(ctx, eventID)
+	if err != nil {
+		return false, err
+	}
+	return strings.ToUpper(format) == "ONLINE", nil
+}
+

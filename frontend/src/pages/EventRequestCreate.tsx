@@ -2282,23 +2282,6 @@ export default function EventRequestCreate() {
                   </p>
                 </div>
 
-                {/* Over-Capacity Waitlist Toggle */}
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-xs font-semibold opacity-70">Cho phép danh sách chờ</span>
-                  <button
-                    type="button"
-                    onClick={() => setWaitlistEnabled(!waitlistEnabled)}
-                    className={`w-9 h-5 rounded-full transition-colors duration-200 relative flex items-center px-0.5 ${
-                      waitlistEnabled ? 'bg-orange-600' : 'bg-neutral-800 border border-white/10'
-                    }`}
-                  >
-                    <span
-                      className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 transform ${
-                        waitlistEnabled ? 'translate-x-4' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
 
                 {/* Footer Buttons */}
                 <div className="flex gap-2.5 pt-2">

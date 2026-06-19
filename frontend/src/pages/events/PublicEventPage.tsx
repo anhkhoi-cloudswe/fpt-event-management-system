@@ -511,80 +511,64 @@ export default function PublicEventPage() {
               </div>
             )}
 
-            {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (
+            {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (user?.id === organizerId || isRegistered) && (
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
                 <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">
                   {pageLanguage === 'en' ? 'Online Meeting Info' : 'Thông tin phòng họp trực tuyến'}
                 </h3>
-                {user?.id === organizerId || isRegistered ? (
-                  <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-5 space-y-4">
-                    <div className="flex items-start gap-3">
-                      <MapPin className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="font-bold text-neutral-100">
-                          {pageLanguage === 'en' ? 'Online Platform' : 'Nền tảng trực tuyến'}
-                        </p>
-                        <p className="text-sm text-neutral-300 mt-1">
-                          {event.onlineMeetingUrl && /zoom\.us/i.test(event.onlineMeetingUrl) ? 'Zoom Meeting' : 'Google Meet'}
-                        </p>
+                <div className="rounded-2xl border border-blue-500/20 bg-blue-50/10 p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-bold text-neutral-100">
+                        {pageLanguage === 'en' ? 'Online Platform' : 'Nền tảng trực tuyến'}
+                      </p>
+                      <p className="text-sm text-neutral-300 mt-1">
+                        {event.onlineMeetingUrl && /zoom\.us/i.test(event.onlineMeetingUrl) ? 'Zoom Meeting' : 'Google Meet'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {event.onlineMeetingUrl && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-bold text-neutral-450 uppercase tracking-wide">
+                        {pageLanguage === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={event.onlineMeetingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-semibold text-blue-400 hover:underline break-all"
+                        >
+                          {event.onlineMeetingUrl}
+                        </a>
                       </div>
                     </div>
+                  )}
 
-                    {event.onlineMeetingUrl && (
-                      <div className="space-y-1.5">
-                        <p className="text-xs font-bold text-neutral-450 uppercase tracking-wide">
-                          {pageLanguage === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <a
-                            href={event.onlineMeetingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-semibold text-blue-400 hover:underline break-all"
-                          >
-                            {event.onlineMeetingUrl}
-                          </a>
-                        </div>
-                      </div>
-                    )}
-
-                    {event.onlineMeetingId && (
-                      <div className="space-y-1">
-                        <p className="text-xs font-bold text-neutral-450 uppercase tracking-wide">
-                          Meeting ID
-                        </p>
-                        <p className="text-sm font-semibold text-neutral-200">
-                          {event.onlineMeetingId}
-                        </p>
-                      </div>
-                    )}
-
-                    {event.onlineMeetingSecret && (
-                      <div className="space-y-1">
-                        <p className="text-xs font-bold text-neutral-450 uppercase tracking-wide">
-                          {pageLanguage === 'en' ? 'Passcode' : 'Mật khẩu cuộc họp'}
-                        </p>
-                        <p className="text-sm font-semibold text-neutral-200 font-mono">
-                          {event.onlineMeetingSecret}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-5 flex flex-col items-center text-center">
-                    <div className="w-10 h-10 rounded-full bg-yellow-900/30 flex items-center justify-center text-yellow-400 mb-3">
-                      <MapPin className="w-5 h-5" />
+                  {event.onlineMeetingId && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-neutral-450 uppercase tracking-wide">
+                        Meeting ID
+                      </p>
+                      <p className="text-sm font-semibold text-neutral-200">
+                        {event.onlineMeetingId}
+                      </p>
                     </div>
-                    <p className="text-sm font-bold text-neutral-100">
-                      {pageLanguage === 'en' ? 'Meeting link is locked' : 'Đường dẫn phòng họp đang bị khóa'}
-                    </p>
-                    <p className="text-xs text-neutral-400 mt-1 max-w-sm">
-                      {pageLanguage === 'en'
-                        ? 'Please register for this event to receive the Zoom/Meet meeting link and passcode.'
-                        : 'Vui lòng đăng ký tham gia sự kiện để nhận đường dẫn meeting và mật khẩu.'}
-                    </p>
-                  </div>
-                )}
+                  )}
+
+                  {event.onlineMeetingSecret && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-neutral-450 uppercase tracking-wide">
+                        {pageLanguage === 'en' ? 'Passcode' : 'Mật khẩu cuộc họp'}
+                      </p>
+                      <p className="text-sm font-semibold text-neutral-200 font-mono">
+                        {event.onlineMeetingSecret}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
