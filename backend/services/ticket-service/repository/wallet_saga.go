@@ -65,9 +65,9 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 		}
 
 		rows, seatErr := r.db.QueryContext(ctx, `
-			SELECT t.event_id, t.category_ticket_id, t.seat_id, s.seat_code 
+			SELECT t.event_id, t.category_ticket_id, t.seat_id, COALESCE(s.seat_code, 'ONLINE') as seat_code 
 			FROM Ticket t
-			JOIN Seat s ON t.seat_id = s.seat_id
+			LEFT JOIN Seat s ON t.seat_id = s.seat_id
 			WHERE t.bill_id = $1 AND t.status = 'PENDING'
 		`, pendingBillID)
 
@@ -80,14 +80,17 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 		if seatErr == nil {
 			defer rows.Close()
 			for rows.Next() {
-				var eID, cID, seatID int
+				var eID, cID int
+				var seatID sql.NullInt64
 				var code string
 				if scanErr := rows.Scan(&eID, &cID, &seatID, &code); scanErr == nil {
 					evID = eID
 					catID = cID
-					seatIDsList = append(seatIDsList, strconv.Itoa(seatID))
+					if seatID.Valid {
+						seatIDsList = append(seatIDsList, strconv.Itoa(int(seatID.Int64)))
+						pendingSeatIDs = append(pendingSeatIDs, int(seatID.Int64))
+					}
 					seatCodes = append(seatCodes, code)
-					pendingSeatIDs = append(pendingSeatIDs, seatID)
 				}
 			}
 		}
@@ -112,7 +115,8 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 	// ===== VALIDATION: CHECK EVENT STATUS (same as monolith) =====
 	var eventStatus string
 	var startTime time.Time
-	err := r.db.QueryRowContext(ctx, "SELECT status, start_time FROM Event WHERE event_id = $1", eventID).Scan(&eventStatus, &startTime)
+	var eventFormat string
+	err := r.db.QueryRowContext(ctx, "SELECT status, start_time, event_format FROM Event WHERE event_id = $1", eventID).Scan(&eventStatus, &startTime, &eventFormat)
 	if err != nil {
 		return "", fmt.Errorf("event not found")
 	}
@@ -127,6 +131,8 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 		fmt.Printf("[BOOKING_SECURITY] User %d blocked from buying ticket for Event %d (Event started at %s)\n", userID, eventID, startTime.Format(time.RFC3339))
 		return "", fmt.Errorf("Sự kiện đã bắt đầu hoặc kết thúc, không thể đặt thêm vé")
 	}
+
+	isOnline := strings.ToUpper(eventFormat) == "ONLINE"
 
 	// ===== 0đ FAST-PATH: Vé miễn phí — bỏ qua Reserve/Confirm, ví không thể giữ chỗ 0 đồng =====
 	if amount == 0 {
@@ -159,12 +165,19 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 	// ===== SAGA STEP 1: RESERVE (Giữ tiền tạm) =====
 	log.Info("[SAGA_STEP_1] 🔒 Reserving wallet: user=%d, amount=%d", userID, amount)
 
+	var reserveDesc string
+	if isOnline {
+		reserveDesc = fmt.Sprintf("Mua vé online event %d", eventID)
+	} else {
+		reserveDesc = fmt.Sprintf("Mua vé event %d, %d ghế", eventID, len(seatIDs))
+	}
+
 	reserveReq := walletModels.WalletReserveRequest{
 		UserID:        userID,
 		Amount:        float64(amount),
 		ReferenceType: "TICKET_PURCHASE",
 		ReferenceID:   fmt.Sprintf("event:%d:cat:%d", eventID, categoryTicketID),
-		Description:   fmt.Sprintf("Mua vé event %d, %d ghế", eventID, len(seatIDs)),
+		Description:   reserveDesc,
 		TTLSeconds:    300, // 5 phút
 	}
 
@@ -270,7 +283,7 @@ type sagaTicketData struct {
 	TotalPrice    float64
 }
 
-func (r *TicketRepository) createTicketsInDB(ctx context.Context, userID, eventID, _ int, seatIDs []int) ([]string, *sagaTicketData, error) {
+func (r *TicketRepository) createTicketsInDB(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int) ([]string, *sagaTicketData, error) {
 	// Start local transaction for ticket creation only
 	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
@@ -280,6 +293,13 @@ func (r *TicketRepository) createTicketsInDB(ctx context.Context, userID, eventI
 		return nil, nil, fmt.Errorf("error starting ticket creation transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	var eventFormat string
+	err = tx.QueryRowContext(ctx, "SELECT event_format FROM Event WHERE event_id = $1", eventID).Scan(&eventFormat)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error querying event format: %w", err)
+	}
+	isOnline := strings.ToUpper(eventFormat) == "ONLINE"
 
 	ticketIds := []string{}
 	qrValues := []string{}
@@ -291,41 +311,23 @@ func (r *TicketRepository) createTicketsInDB(ctx context.Context, userID, eventI
 	var eventStart, eventEnd time.Time
 	var totalPrice float64
 
-	for _, seatID := range seatIDs {
-		fmt.Printf("[SAGA] Creating ticket for seatID: %d, userID: %d, eventID: %d\n", seatID, userID, eventID)
-
-		// Always resolve category by seat to support mixed-seat wallet purchases.
-		var currentCategoryTicketID int
-		err = tx.QueryRowContext(ctx, `
-			SELECT s.category_ticket_id
-			FROM Seat s
-			JOIN Category_Ticket ct ON s.category_ticket_id = ct.category_ticket_id
-			WHERE s.seat_id = $1 AND ct.event_id = $2
-		`, seatID, eventID).Scan(&currentCategoryTicketID)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error resolving category for seat %d: %w", seatID, err)
-		}
-
-		// Create ticket
+	if isOnline {
 		insertTicketQuery := `
 			INSERT INTO Ticket (user_id, event_id, category_ticket_id, seat_id, qr_code_value, status, created_at)
-			VALUES ($1, $2, $3, $4, 'PENDING_QR', 'BOOKED', NOW())
+			VALUES ($1, $2, $3, NULL, 'PENDING_QR', 'BOOKED', NOW())
 			RETURNING ticket_id
 		`
 		var ticketID int64
-		err = tx.QueryRowContext(ctx, insertTicketQuery, userID, eventID, currentCategoryTicketID, seatID).Scan(&ticketID)
+		err = tx.QueryRowContext(ctx, insertTicketQuery, userID, eventID, categoryTicketID).Scan(&ticketID)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error creating ticket for seat %d: %w", seatID, err)
+			return nil, nil, fmt.Errorf("error creating online ticket: %w", err)
 		}
 
-		// Generate QR code
 		qrBase64, err := qrcode.GenerateTicketQRBase64(int(ticketID), 300)
 		if err != nil {
-			fmt.Printf("[SAGA] ⚠️ Failed to generate QR for Ticket ID: %d, error: %v\n", ticketID, err)
 			qrBase64 = fmt.Sprintf("PENDING_QR_%d", ticketID)
 		}
 
-		// Update ticket with QR code
 		_, err = tx.ExecContext(ctx, "UPDATE Ticket SET qr_code_value = $1 WHERE ticket_id = $2", qrBase64, ticketID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error updating QR code for ticket %d: %w", ticketID, err)
@@ -334,42 +336,121 @@ func (r *TicketRepository) createTicketsInDB(ctx context.Context, userID, eventI
 		ticketIds = append(ticketIds, fmt.Sprintf("%d", ticketID))
 		qrValues = append(qrValues, qrBase64)
 
-		// Get ticket details for email (same JOIN as monolith)
 		selectTicketQuery := `
 			SELECT 
-				e.title, e.start_time, e.end_time, v.location, v.venue_name,
-				va.area_name, s.seat_code, ct.name, ct.price, u.email, u.full_name
+				e.title, e.start_time, e.end_time,
+				COALESCE(e.custom_location, 'Zoom/Google Meet') as location,
+				COALESCE(e.custom_venue_name, 'Nền tảng trực tuyến') as venue_name,
+				ct.name as category_name, ct.price, u.email, u.full_name
 			FROM Ticket t
 			JOIN Event e ON t.event_id = e.event_id
-			JOIN Venue_Area va ON e.area_id = va.area_id
-			JOIN Venue v ON va.venue_id = v.venue_id
-			JOIN Seat s ON t.seat_id = s.seat_id
 			JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
 			JOIN users u ON t.user_id = u.user_id
 			WHERE t.ticket_id = $1
 		`
 
-		var categoryName, areaName, seatCode string
+		var categoryName string
 		var price float64
 		var scanStartTime time.Time
 		var scanEndTime sql.NullTime
 		err = tx.QueryRowContext(ctx, selectTicketQuery, ticketID).Scan(
 			&eventTitle, &scanStartTime, &scanEndTime, &venueAddress, &venueName,
-			&areaName, &seatCode, &categoryName, &price, &userEmail, &userName,
+			&categoryName, &price, &userEmail, &userName,
 		)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error getting ticket details for ticket %d: %w", ticketID, err)
+			return nil, nil, fmt.Errorf("error getting ticket details: %w", err)
 		}
 		eventStart = scanStartTime
 		if scanEndTime.Valid {
 			eventEnd = scanEndTime.Time
 		}
 
-		seatCodes = append(seatCodes, seatCode)
+		seatCodes = append(seatCodes, "ONLINE")
 		categoryNames = append(categoryNames, categoryName)
 		prices = append(prices, price)
-		areaNames = append(areaNames, areaName)
+		areaNames = append(areaNames, "ONLINE")
 		totalPrice += price
+	} else {
+		for _, seatID := range seatIDs {
+			fmt.Printf("[SAGA] Creating ticket for seatID: %d, userID: %d, eventID: %d\n", seatID, userID, eventID)
+
+			// Always resolve category by seat to support mixed-seat wallet purchases.
+			var currentCategoryTicketID int
+			err = tx.QueryRowContext(ctx, `
+				SELECT s.category_ticket_id
+				FROM Seat s
+				JOIN Category_Ticket ct ON s.category_ticket_id = ct.category_ticket_id
+				WHERE s.seat_id = $1 AND ct.event_id = $2
+			`, seatID, eventID).Scan(&currentCategoryTicketID)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error resolving category for seat %d: %w", seatID, err)
+			}
+
+			// Create ticket
+			insertTicketQuery := `
+				INSERT INTO Ticket (user_id, event_id, category_ticket_id, seat_id, qr_code_value, status, created_at)
+				VALUES ($1, $2, $3, $4, 'PENDING_QR', 'BOOKED', NOW())
+				RETURNING ticket_id
+			`
+			var ticketID int64
+			err = tx.QueryRowContext(ctx, insertTicketQuery, userID, eventID, currentCategoryTicketID, seatID).Scan(&ticketID)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error creating ticket for seat %d: %w", seatID, err)
+			}
+
+			// Generate QR code
+			qrBase64, err := qrcode.GenerateTicketQRBase64(int(ticketID), 300)
+			if err != nil {
+				fmt.Printf("[SAGA] ⚠️ Failed to generate QR for Ticket ID: %d, error: %v\n", ticketID, err)
+				qrBase64 = fmt.Sprintf("PENDING_QR_%d", ticketID)
+			}
+
+			// Update ticket with QR code
+			_, err = tx.ExecContext(ctx, "UPDATE Ticket SET qr_code_value = $1 WHERE ticket_id = $2", qrBase64, ticketID)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error updating QR code for ticket %d: %w", ticketID, err)
+			}
+
+			ticketIds = append(ticketIds, fmt.Sprintf("%d", ticketID))
+			qrValues = append(qrValues, qrBase64)
+
+			// Get ticket details for email (same JOIN as monolith)
+			selectTicketQuery := `
+				SELECT 
+					e.title, e.start_time, e.end_time, v.location, v.venue_name,
+					va.area_name, s.seat_code, ct.name, ct.price, u.email, u.full_name
+				FROM Ticket t
+				JOIN Event e ON t.event_id = e.event_id
+				JOIN Venue_Area va ON e.area_id = va.area_id
+				JOIN Venue v ON va.venue_id = v.venue_id
+				JOIN Seat s ON t.seat_id = s.seat_id
+				JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
+				JOIN users u ON t.user_id = u.user_id
+				WHERE t.ticket_id = $1
+			`
+
+			var categoryName, areaName, seatCode string
+			var price float64
+			var scanStartTime time.Time
+			var scanEndTime sql.NullTime
+			err = tx.QueryRowContext(ctx, selectTicketQuery, ticketID).Scan(
+				&eventTitle, &scanStartTime, &scanEndTime, &venueAddress, &venueName,
+				&areaName, &seatCode, &categoryName, &price, &userEmail, &userName,
+			)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error getting ticket details for ticket %d: %w", ticketID, err)
+			}
+			eventStart = scanStartTime
+			if scanEndTime.Valid {
+				eventEnd = scanEndTime.Time
+			}
+
+			seatCodes = append(seatCodes, seatCode)
+			categoryNames = append(categoryNames, categoryName)
+			prices = append(prices, price)
+			areaNames = append(areaNames, areaName)
+			totalPrice += price
+		}
 	}
 
 	// Commit ticket creation
@@ -727,53 +808,100 @@ func (r *TicketRepository) resumeTicketsInDB(ctx context.Context, userID int, pe
 			return nil, nil, fmt.Errorf("error updating ticket status: %w", err)
 		}
 
+		var eventFormat string
+		err = tx.QueryRowContext(ctx, "SELECT e.event_format FROM Ticket t JOIN Event e ON t.event_id = e.event_id WHERE t.ticket_id = $1", t.ticketID).Scan(&eventFormat)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error getting event format: %w", err)
+		}
+		isOnline := strings.ToUpper(eventFormat) == "ONLINE"
 
-
-		selectQuery := `
-			SELECT 
-				e.title,
-				e.start_time,
-				e.end_time,
-				v.location,
-				v.venue_name,
-				va.area_name,
-				s.seat_code,
-				ct.name as category_name,
-				ct.price,
-				u.email,
-				u.full_name
-			FROM Ticket t
-			JOIN Event e ON t.event_id = e.event_id
-			JOIN Venue_Area va ON e.area_id = va.area_id
-			JOIN Venue v ON va.venue_id = v.venue_id
-			JOIN Seat s ON t.seat_id = s.seat_id
-			JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
-			JOIN users u ON t.user_id = u.user_id
-			WHERE t.ticket_id = $1
-		`
-		var categoryName, areaName, seatCode string
-		var price float64
-		err = tx.QueryRowContext(ctx, selectQuery, t.ticketID).Scan(
-			&eventTitle,
-			&eventStart,
-			&eventEnd,
-			&venueAddress,
-			&venueName,
-			&areaName,
-			&seatCode,
-			&categoryName,
-			&price,
-			&userEmail,
-			&userName,
-		)
-		if err == nil {
-			ticketIds = append(ticketIds, fmt.Sprintf("%d", t.ticketID))
-			qrValues = append(qrValues, qrBase64)
-			seatCodes = append(seatCodes, seatCode)
-			categoryNames = append(categoryNames, categoryName)
-			prices = append(prices, price)
-			areaNames = append(areaNames, areaName)
-			totalPrice += price
+		if isOnline {
+			selectQuery := `
+				SELECT 
+					e.title,
+					e.start_time,
+					e.end_time,
+					COALESCE(e.custom_location, 'Zoom/Google Meet') as location,
+					COALESCE(e.custom_venue_name, 'Nền tảng trực tuyến') as venue_name,
+					ct.name as category_name,
+					ct.price,
+					u.email,
+					u.full_name
+				FROM Ticket t
+				JOIN Event e ON t.event_id = e.event_id
+				JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
+				JOIN users u ON t.user_id = u.user_id
+				WHERE t.ticket_id = $1
+			`
+			var categoryName string
+			var price float64
+			err = tx.QueryRowContext(ctx, selectQuery, t.ticketID).Scan(
+				&eventTitle,
+				&eventStart,
+				&eventEnd,
+				&venueAddress,
+				&venueName,
+				&categoryName,
+				&price,
+				&userEmail,
+				&userName,
+			)
+			if err == nil {
+				ticketIds = append(ticketIds, fmt.Sprintf("%d", t.ticketID))
+				qrValues = append(qrValues, qrBase64)
+				seatCodes = append(seatCodes, "ONLINE")
+				categoryNames = append(categoryNames, categoryName)
+				prices = append(prices, price)
+				areaNames = append(areaNames, "ONLINE")
+				totalPrice += price
+			}
+		} else {
+			selectQuery := `
+				SELECT 
+					e.title,
+					e.start_time,
+					e.end_time,
+					v.location,
+					v.venue_name,
+					va.area_name,
+					s.seat_code,
+					ct.name as category_name,
+					ct.price,
+					u.email,
+					u.full_name
+				FROM Ticket t
+				JOIN Event e ON t.event_id = e.event_id
+				JOIN Venue_Area va ON e.area_id = va.area_id
+				JOIN Venue v ON va.venue_id = v.venue_id
+				JOIN Seat s ON t.seat_id = s.seat_id
+				JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
+				JOIN users u ON t.user_id = u.user_id
+				WHERE t.ticket_id = $1
+			`
+			var categoryName, areaName, seatCode string
+			var price float64
+			err = tx.QueryRowContext(ctx, selectQuery, t.ticketID).Scan(
+				&eventTitle,
+				&eventStart,
+				&eventEnd,
+				&venueAddress,
+				&venueName,
+				&areaName,
+				&seatCode,
+				&categoryName,
+				&price,
+				&userEmail,
+				&userName,
+			)
+			if err == nil {
+				ticketIds = append(ticketIds, fmt.Sprintf("%d", t.ticketID))
+				qrValues = append(qrValues, qrBase64)
+				seatCodes = append(seatCodes, seatCode)
+				categoryNames = append(categoryNames, categoryName)
+				prices = append(prices, price)
+				areaNames = append(areaNames, areaName)
+				totalPrice += price
+			}
 		}
 	}
 

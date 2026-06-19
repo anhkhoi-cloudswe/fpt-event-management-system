@@ -534,7 +534,7 @@ func (h *TicketHandler) HandleWalletPayTicket(ctx context.Context, request event
 	}
 
 	// Calculate total amount needed
-	totalAmount, err := h.useCase.CalculateSeatsPriceForWallet(ctx, paymentReq.EventID, paymentReq.SeatIDs)
+	totalAmount, err := h.useCase.CalculateSeatsPriceForWallet(ctx, paymentReq.EventID, paymentReq.CategoryTicketID, paymentReq.SeatIDs)
 	if err != nil {
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}

@@ -48,6 +48,8 @@ type EventDetailExtras = EventDetail & {
       venueName?: string | null
     } | null
   } | null
+  onlineMeetingId?: string | null
+  onlineMeetingSecret?: string | null
 }
 
 const formatDate = (value: string | undefined, lang: 'vi' | 'en') => {
@@ -138,6 +140,8 @@ export function EventDetailModal({
   const activeRole = userRole || user?.role
   const [copied, setCopied] = useState(false)
   const [isZoomed, setIsZoomed] = useState(false)
+  const [isRegistered, setIsRegistered] = useState(false)
+  const [checkingRegistration, setCheckingRegistration] = useState(false)
 
   const lang: 'vi' | 'en' = currentLanguage === 'en' ? 'en' : 'vi'
   const text = {
@@ -178,18 +182,48 @@ export function EventDetailModal({
     }
   }, [isOpen])
 
+  const detail = event as EventDetailExtras | null
+  const eventId = detail?.eventId || detail?.id || 0
+
+  useEffect(() => {
+    if (isOpen && eventId && user && activeRole === 'STUDENT') {
+      const checkRegistration = async () => {
+        setCheckingRegistration(true)
+        try {
+          const res = await fetch('/api/registrations/my-tickets?page=1&limit=100', {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+          })
+          if (res.ok) {
+            const data = await res.json()
+            const tickets = data.tickets || []
+            const registered = tickets.some((t: any) => t.eventId === eventId)
+            setIsRegistered(registered)
+          }
+        } catch (err) {
+          console.error('Error checking registration status:', err)
+        } finally {
+          setCheckingRegistration(false)
+        }
+      }
+      checkRegistration()
+    } else {
+      setIsRegistered(false)
+    }
+  }, [isOpen, eventId, user, activeRole])
+
   if (!isOpen) return null
 
-  const detail = event as EventDetailExtras | null
   const eventClosed = detail?.status !== 'OPEN'
   const eventEnded = detail ? new Date(detail.endTime).getTime() < Date.now() : false
-  const eventId = detail?.eventId || detail?.id || 0
   const eventPagePath = `/events/${eventId}/page`
   const eventPaymentPath = `/events/${eventId}/payment`
   const eventFormat = (detail?.eventFormat || '').toUpperCase()
-  const canShowAttendanceQr = activeRole === 'ORGANIZER' && detail?.status === 'OPEN' && (eventFormat === 'ONLINE' || eventFormat === 'HYBRID')
-  const attendanceUrl = `${window.location.origin}/attendance/confirm?eventId=${eventId}&action=checkout`
   const organizerId = detail?.organizerId ?? detail?.organizer_id
+  const canShowAttendanceQr = activeRole === 'ORGANIZER' && user?.id === organizerId && detail?.status === 'OPEN' && (eventFormat === 'ONLINE' || eventFormat === 'HYBRID')
+  const attendanceUrl = `${window.location.origin}/attendance/confirm?eventId=${eventId}&action=checkout`
   const organizerName = detail?.organizerName || (organizerId ? `${text.organizerFallback} #${organizerId}` : text.organizerFallback)
   const organizerAvatar =
     detail?.organizerAvatar ||
@@ -216,12 +250,15 @@ export function EventDetailModal({
     exactLocationString !== venueName ? exactLocationString : '',
     /viet nam|vietnam|ho chi minh|hcm|sai gon|saigon/i.test(`${venueName} ${exactLocationString}`) ? '' : 'Ho Chi Minh City, Vietnam',
   ]
-  const locationRows = [
-    venueName,
-    areaName ? `${text.area}: ${areaName}` : '',
-    floor ? `${text.floor} ${floor}` : '',
-    exactLocationString,
-  ].filter(Boolean)
+  const isOnlineEvent = eventFormat === 'ONLINE'
+  const locationRows = isOnlineEvent
+    ? [venueName, exactLocationString].filter(Boolean)
+    : [
+        venueName,
+        areaName ? `${text.area}: ${areaName}` : '',
+        floor ? `${text.floor} ${floor}` : '',
+        exactLocationString,
+      ].filter(Boolean)
   const mapSrc = buildGoogleMapsEmbedUrl(mapTokens)
   const speakers = (detail?.speakers ?? []).filter((speaker) => getSpeakerName(speaker))
   const fallbackSpeaker = detail?.speakerName
@@ -482,27 +519,106 @@ export function EventDetailModal({
                 </section>
               )}
 
+              {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (
+                <section className="space-y-3">
+                  <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">
+                    {lang === 'en' ? 'Online Meeting Info' : 'Thông tin phòng họp trực tuyến'}
+                  </h2>
+                  {user?.id === organizerId || isRegistered ? (
+                    <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5 dark:border-blue-500/20 dark:bg-blue-950/20 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <MapPin className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white">
+                            {lang === 'en' ? 'Online Platform' : 'Nền tảng trực tuyến'}
+                          </p>
+                          <p className="text-sm text-slate-700 dark:text-neutral-300 mt-1">
+                            {detail.onlineMeetingUrl && /zoom\.us/i.test(detail.onlineMeetingUrl) ? 'Zoom Meeting' : 'Google Meet'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {detail.onlineMeetingUrl && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">
+                            {lang === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={detail.onlineMeetingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline break-all"
+                            >
+                              {detail.onlineMeetingUrl}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                      {detail.onlineMeetingId && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">
+                            Meeting ID
+                          </p>
+                          <p className="text-sm font-semibold text-slate-800 dark:text-neutral-200">
+                            {detail.onlineMeetingId}
+                          </p>
+                        </div>
+                      )}
+
+                      {detail.onlineMeetingSecret && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">
+                            {lang === 'en' ? 'Passcode' : 'Mật khẩu cuộc họp'}
+                          </p>
+                          <p className="text-sm font-semibold text-slate-800 dark:text-neutral-200 font-mono">
+                            {detail.onlineMeetingSecret}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-yellow-250 bg-yellow-50/50 p-5 dark:border-yellow-500/20 dark:bg-yellow-950/20 flex flex-col items-center text-center">
+                      <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600 dark:text-yellow-400 mb-3">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <p className="text-sm font-bold text-slate-800 dark:text-white">
+                        {lang === 'en' ? 'Meeting link is locked' : 'Đường dẫn phòng họp đang bị khóa'}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-neutral-400 mt-1 max-w-sm">
+                        {lang === 'en'
+                          ? 'Please register for this event to receive the Zoom/Meet meeting link and passcode.'
+                          : 'Vui lòng đăng ký tham gia sự kiện để nhận đường dẫn meeting và mật khẩu.'}
+                      </p>
+                    </div>
+                  )}
+                </section>
+              )}
+
               <section className="space-y-3">
                 <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.location}</h2>
                 <div className="flex items-start gap-3 text-sm leading-relaxed">
                   <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                   <div>
                     {venueName && <p className="font-medium text-slate-900 dark:text-white">{venueName}</p>}
-                    {areaName && <p className="text-slate-600 dark:text-neutral-400">{text.area}: {areaName}</p>}
-                    {floor && <p className="text-slate-600 dark:text-neutral-400">{text.floor} {floor}</p>}
+                    {eventFormat !== 'ONLINE' && areaName && <p className="text-slate-600 dark:text-neutral-400">{text.area}: {areaName}</p>}
+                    {eventFormat !== 'ONLINE' && floor && <p className="text-slate-600 dark:text-neutral-400">{text.floor} {floor}</p>}
                     <p className="text-slate-700 dark:text-neutral-300">{locationDisplayString}</p>
                   </div>
                 </div>
-                <iframe
-                  title="Event Location Map"
-                  width="100%"
-                  height="200"
-                  style={{ border: 0, borderRadius: '12px' }}
-                  src={mapSrc}
-                  allowFullScreen
-                  loading="lazy"
-                  className="mt-2 shadow-inner border border-slate-100 dark:border-neutral-800"
-                />
+                {eventFormat !== 'ONLINE' && (
+                  <iframe
+                    title="Event Location Map"
+                    width="100%"
+                    height="200"
+                    style={{ border: 0, borderRadius: '12px' }}
+                    src={mapSrc}
+                    allowFullScreen
+                    loading="lazy"
+                    className="mt-2 shadow-inner border border-slate-100 dark:border-neutral-800"
+                  />
+                )}
               </section>
             </>
           )}

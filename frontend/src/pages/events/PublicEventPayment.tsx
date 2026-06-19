@@ -212,6 +212,58 @@ export default function PublicEventPayment() {
   const [timeLeft, setTimeLeft] = useState(0)
   const [pollingIntervalId, setPollingIntervalId] = useState<number | null>(null)
   const [updatePhoneProfile, setUpdatePhoneProfile] = useState(false)
+  const [isFastTracking, setIsFastTracking] = useState(false)
+
+  const eventFormat = (event?.eventFormat || '').toUpperCase()
+  const isOnline = eventFormat === 'ONLINE'
+
+  useEffect(() => {
+    if (!loading && event && user && isAuthenticated && isOnline) {
+      const firstAvailable = selectedTicket || (event.tickets as Ticket[] | undefined)?.find((ticket) => ticket.status !== 'INACTIVE' && ticket.remaining !== 0) || (event.tickets?.[0] as Ticket)
+      if (firstAvailable && firstAvailable.price === 0 && !isFastTracking) {
+        setIsFastTracking(true)
+        const autoRegisterFreeOnline = async () => {
+          const payload = {
+            eventId: Number(event.eventId || event.id || id),
+            categoryTicketId: Number(firstAvailable.categoryTicketId),
+            seatIds: [],
+          }
+          const authToken = token || localStorage.getItem('token') || ''
+          try {
+            const response = await fetch('/api/payment/create-order', {
+              method: 'POST',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+              },
+              body: JSON.stringify(payload),
+            })
+            if (response.ok) {
+              const data = await response.json()
+              navigate(`/payment-success?status=success&method=free&ticketIds=${encodeURIComponent(data.ticketIds || '')}`, { replace: true })
+            } else {
+              const errText = await response.text()
+              let errData: any = {}
+              try { errData = JSON.parse(errText) } catch {}
+              setError(errData.message || 'Auto registration failed')
+              setIsFastTracking(false)
+            }
+          } catch (err: any) {
+            setError(err.message || 'Auto registration failed')
+            setIsFastTracking(false)
+          }
+        }
+        autoRegisterFreeOnline()
+      }
+    }
+  }, [loading, event, selectedTicket, user, isAuthenticated, isOnline, token, id, navigate])
+
+  useEffect(() => {
+    if (!loading && event && isOnline && selectedTicket && selectedTicket.price > 0 && currentStep === 1) {
+      setCurrentStep(2)
+    }
+  }, [loading, event, selectedTicket, currentStep, isOnline])
 
   const eventClosed = event?.status !== 'OPEN'
   const eventEnded = event ? new Date(event.endTime).getTime() < Date.now() : false
@@ -347,10 +399,12 @@ export default function PublicEventPayment() {
     return (event.tickets as Ticket[]).find((ticket) => ticket.categoryTicketId === seat.categoryTicketId) || selectedTicket
   }
 
-  const subtotal = selectedSeats.reduce((sum, seat) => {
-    const ticket = ticketForSeat(seat)
-    return sum + (ticket?.price ?? 0)
-  }, 0)
+  const subtotal = isOnline
+    ? (selectedTicket?.price ?? 0)
+    : selectedSeats.reduce((sum, seat) => {
+        const ticket = ticketForSeat(seat)
+        return sum + (ticket?.price ?? 0)
+      }, 0)
   const normalizedPromo = promoCode.trim().toUpperCase()
   const discountRate = normalizedPromo === 'FPT20' ? 0.2 : normalizedPromo === 'SAVE10' ? 0.1 : 0
   const discountAmount = Math.round(subtotal * discountRate)
@@ -359,6 +413,14 @@ export default function PublicEventPayment() {
   const walletCanPay = walletBalance >= totalAmount
 
   const ticketBreakdown = useMemo(() => {
+    if (isOnline) {
+      if (!selectedTicket) return []
+      return [{
+        name: selectedTicket.name,
+        price: selectedTicket.price,
+        count: 1,
+      }]
+    }
     const map = new Map<number, { name: string; count: number; price: number }>()
     selectedSeats.forEach((seat) => {
       const ticket = ticketForSeat(seat)
@@ -371,7 +433,7 @@ export default function PublicEventPayment() {
       })
     })
     return Array.from(map.values())
-  }, [selectedSeats, selectedTicket, event])
+  }, [selectedSeats, selectedTicket, event, isOnline])
 
   const formatTimeLeft = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -481,7 +543,15 @@ export default function PublicEventPayment() {
   }
 
   const buildPaymentPayload = () => {
-    if (!event || selectedSeats.length === 0) return null
+    if (!event || (!isOnline && selectedSeats.length === 0)) return null
+    if (isOnline) {
+      if (!selectedTicket) return null
+      return {
+        eventId: Number(event.eventId || event.id || id),
+        categoryTicketId: Number(selectedTicket.categoryTicketId),
+        seatIds: [],
+      }
+    }
     const firstSeatTicket = ticketForSeat(selectedSeats[0])
     const categoryTicketId = firstSeatTicket?.categoryTicketId || selectedTicket?.categoryTicketId
     if (!categoryTicketId) return null
@@ -583,9 +653,9 @@ export default function PublicEventPayment() {
   }
 
   const handleContinueToPayment = async () => {
-    if (!event || selectedSeats.length === 0) return
-    const firstSeatTicket = ticketForSeat(selectedSeats[0])
-    if (!firstSeatTicket && !selectedTicket) return
+    if (!event || (!isOnline && selectedSeats.length === 0)) return
+    const firstSeatTicket = isOnline ? null : ticketForSeat(selectedSeats[0])
+    if (!isOnline && !firstSeatTicket && !selectedTicket) return
 
     if (currentStep === 1) {
       setCurrentStep(2)
@@ -656,6 +726,28 @@ export default function PublicEventPayment() {
     return (
       <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
         <div className="w-12 h-12 rounded-full border-2 border-neutral-800 border-t-blue-500 animate-spin" />
+      </div>
+    )
+  }
+
+  if (isFastTracking) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] -top-10 -left-10" />
+        <div className="absolute w-[300px] h-[300px] bg-indigo-500/10 rounded-full blur-[80px] -bottom-10 -right-10" />
+        <div className="relative z-10 text-center space-y-6 max-w-md">
+          <div className="w-16 h-16 rounded-full border-4 border-t-blue-500 border-neutral-800 animate-spin mx-auto" />
+          <div className="space-y-2">
+            <h3 className="text-xl font-black uppercase tracking-wider text-neutral-100">
+              {pageLanguage === 'en' ? 'Registering Online Event...' : 'Đang đăng ký sự kiện trực tuyến...'}
+            </h3>
+            <p className="text-sm text-neutral-400">
+              {pageLanguage === 'en'
+                ? 'Please wait a moment while we set up your virtual ticket and meeting details.'
+                : 'Vui lòng đợi trong giây lát khi chúng tôi khởi tạo vé ảo và thông tin cuộc họp trực tuyến.'}
+            </p>
+          </div>
+        </div>
       </div>
     )
   }
@@ -1006,6 +1098,42 @@ export default function PublicEventPayment() {
 
                   {currentStep === 2 && (
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-6 space-y-6">
+                      {isOnline && (
+                        <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+                          <p className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">{t.ticketTiers}</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {(event.tickets as Ticket[] | undefined)?.map((ticket) => {
+                              const selected = selectedTicket?.categoryTicketId === ticket.categoryTicketId
+                              const soldOut = ticket.remaining === 0 || ticket.status === 'INACTIVE'
+                              return (
+                                <button
+                                  type="button"
+                                  key={ticket.categoryTicketId}
+                                  onClick={() => !soldOut && setSelectedTicket(ticket)}
+                                  className={`text-left rounded-2xl border p-4 select-none transition-all ${
+                                    soldOut
+                                      ? 'border-white/5 bg-white/5 opacity-50 cursor-not-allowed'
+                                      : selected
+                                        ? 'border-blue-500 bg-blue-500/15 ring-2 ring-blue-500/20'
+                                        : 'border-white/10 bg-white/5 hover:bg-white/10'
+                                  }`}
+                                >
+                                  <p className="font-bold text-white">{ticket.name}</p>
+                                  <p className="text-sm text-blue-200 font-black mt-1">
+                                    {ticket.price > 0 ? formatCurrency(ticket.price) : t.free}
+                                  </p>
+                                  <p className="text-xs text-neutral-400 mt-1">
+                                    {pageLanguage === 'en' 
+                                      ? `${ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity} available` 
+                                      : `Còn lại ${ticket.remaining !== undefined ? ticket.remaining : ticket.maxQuantity}`
+                                    }
+                                  </p>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <p className="text-xs font-black uppercase tracking-widest text-neutral-400">{t.reviewOrderTitle}</p>
                         <h2 className="text-2xl font-black mt-2">{t.attendeeInformation}</h2>
@@ -1055,14 +1183,16 @@ export default function PublicEventPayment() {
                           {attendeeErrors.email && <p className="mt-1.5 text-xs font-semibold text-red-400">{attendeeErrors.email}</p>}
                         </label>
                       </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <p className="text-xs font-black uppercase tracking-widest text-neutral-500 mb-3">{t.selectedSeats}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedSeats.map((seat) => (
-                            <span key={seat.seatId} className="rounded-full bg-blue-500/15 border border-blue-400/25 px-3 py-1 text-sm font-black text-blue-100">{seat.seatCode}</span>
-                          ))}
+                      {!isOnline && (
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                          <p className="text-xs font-black uppercase tracking-widest text-neutral-500 mb-3">{t.selectedSeats}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedSeats.map((seat) => (
+                              <span key={seat.seatId} className="rounded-full bg-blue-500/15 border border-blue-400/25 px-3 py-1 text-sm font-black text-blue-100">{seat.seatCode}</span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   )}
 
@@ -1172,11 +1302,13 @@ export default function PublicEventPayment() {
 
             <div className="space-y-3 text-sm">
               <div className="flex justify-between gap-4 text-neutral-300">
-                <span>{t.selectedSeats}</span>
-                <span className="font-bold text-white">{selectedSeats.length || 0}</span>
+                <span>{isOnline ? (pageLanguage === 'en' ? 'Event Format' : 'Loại sự kiện') : t.selectedSeats}</span>
+                <span className="font-bold text-white">{isOnline ? 'ONLINE' : (selectedSeats.length || 0)}</span>
               </div>
               <div className="min-h-[44px] rounded-2xl bg-white/5 border border-white/10 p-3 text-neutral-300">
-                {selectedSeats.length > 0 ? selectedSeats.map((seat) => seat.seatCode).join(', ') : t.noSeatsSelected}
+                {isOnline
+                  ? (selectedTicket?.name || (pageLanguage === 'en' ? 'Online Admission' : 'Vé vào cổng trực tuyến'))
+                  : (selectedSeats.length > 0 ? selectedSeats.map((seat) => seat.seatCode).join(', ') : t.noSeatsSelected)}
               </div>
 
               {ticketBreakdown.length > 0 && (
@@ -1218,9 +1350,9 @@ export default function PublicEventPayment() {
             <button
               type="button"
               onClick={handleContinueToPayment}
-              disabled={isLocked || processingOrder || selectedSeats.length === 0 || (currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)}
+              disabled={isLocked || processingOrder || (!isOnline && selectedSeats.length === 0) || (currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)}
               className={`mt-6 w-full rounded-xl py-4 text-sm font-black uppercase tracking-wide transition-all ${
-                !isLocked && !processingOrder && selectedSeats.length > 0 && !(currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)
+                !isLocked && !processingOrder && (isOnline || selectedSeats.length > 0) && !(currentStep === 3 && activeMethod === 'wallet' && !walletCanPay)
                   ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]'
                   : 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700'
               }`}

@@ -85,8 +85,8 @@ func (uc *TicketUseCase) GetWalletBalance(ctx context.Context, userID int) (floa
 }
 
 // CalculateSeatsPriceForWallet - Tính tổng giá cho các ghế
-func (uc *TicketUseCase) CalculateSeatsPriceForWallet(ctx context.Context, eventID int, seatIDs []int) (int, error) {
-	return uc.ticketRepo.CalculateSeatsTotal(ctx, eventID, seatIDs)
+func (uc *TicketUseCase) CalculateSeatsPriceForWallet(ctx context.Context, eventID int, categoryTicketID int, seatIDs []int) (int, error) {
+	return uc.ticketRepo.CalculateSeatsTotal(ctx, eventID, categoryTicketID, seatIDs)
 }
 
 // ProcessWalletPayment - Xử lý thanh toán bằng ví
