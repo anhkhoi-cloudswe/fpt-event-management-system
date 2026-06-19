@@ -9,6 +9,12 @@ export type LocationSuggestion = {
 
 type Language = 'vi' | 'en'
 
+declare global {
+  interface Window {
+    google?: any
+  }
+}
+
 type NominatimPlace = {
   place_id: number
   name?: string
@@ -154,6 +160,70 @@ const normalize = (value: string) =>
     .replace(/đ/g, 'd')
     .replace(/Đ/g, 'D')
     .toLowerCase()
+
+let googlePlacesPromise: Promise<void> | null = null
+
+const loadGooglePlaces = (language: Language) => {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+  if (!apiKey) return Promise.reject(new Error('Google Maps API key is not configured'))
+  if (window.google?.maps?.places) return Promise.resolve()
+  if (googlePlacesPromise) return googlePlacesPromise
+
+  googlePlacesPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>('script[data-google-places-loader="true"]')
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true })
+      existing.addEventListener('error', () => reject(new Error('Failed to load Google Places')), { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&language=${language}&region=VN`
+    script.async = true
+    script.defer = true
+    script.dataset.googlePlacesLoader = 'true'
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load Google Places'))
+    document.head.appendChild(script)
+  })
+
+  return googlePlacesPromise
+}
+
+const fetchGooglePlaces = async (query: string, language: Language, signal?: AbortSignal): Promise<LocationSuggestion[]> => {
+  await loadGooglePlaces(language)
+  if (signal?.aborted) return []
+
+  const service = new window.google.maps.places.AutocompleteService()
+  const predictions = await new Promise<any[]>((resolve) => {
+    service.getPlacePredictions(
+      {
+        input: query,
+        componentRestrictions: { country: 'vn' },
+      },
+      (results: any[] | null, status: string) => {
+        if (status !== window.google.maps.places.PlacesServiceStatus.OK || !results) {
+          resolve([])
+          return
+        }
+        resolve(results)
+      },
+    )
+  })
+
+  return predictions.slice(0, 8).map((place) => {
+    const name = place.structured_formatting?.main_text || place.description
+    const address = place.description || name
+    return {
+      id: `google-${place.place_id}`,
+      name,
+      address,
+      lat: '',
+      lon: '',
+      mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}&query_place_id=${encodeURIComponent(place.place_id)}`,
+    }
+  })
+}
 
 const buildMapUrl = (lat: string, lon: string, query?: string) => {
   if (lat && lon) {
@@ -366,6 +436,7 @@ export async function searchLocations(
   const localResults = searchPopularLocations(trimmed)
 
   const providerTasks = [
+    fetchGooglePlaces(trimmed, language, signal),
     fetchPhotonLocations(trimmed, language, signal),
     trimmed.length > 1 ? fetchNominatimVariants(trimmed, language, signal) : Promise.resolve([]),
   ]

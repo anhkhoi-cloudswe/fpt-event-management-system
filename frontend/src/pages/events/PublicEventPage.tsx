@@ -94,6 +94,23 @@ const getCalendarParts = (value: string | undefined, lang: 'vi' | 'en') => {
   return { month, day }
 }
 
+const cleanLocationToken = (value?: string | null) => {
+  const trimmed = (value || '').trim()
+  if (!trimmed || /^null$/i.test(trimmed) || /^undefined$/i.test(trimmed)) return ''
+  if (/^https?:\/\//i.test(trimmed)) return ''
+  return trimmed
+}
+
+const buildGoogleMapsEmbedUrl = (tokens: Array<string | null | undefined>) => {
+  const query = tokens
+    .map(cleanLocationToken)
+    .filter(Boolean)
+    .filter((value, index, arr) => arr.findIndex((item) => item.toLowerCase() === value.toLowerCase()) === index)
+    .join(', ')
+
+  return `https://maps.google.com/maps?q=${encodeURIComponent(query || 'FPT University Ho Chi Minh City, Vietnam')}&t=&z=16&ie=UTF-8&iwloc=&output=embed`
+}
+
 export default function PublicEventPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -223,20 +240,23 @@ export default function PublicEventPage() {
     ''
   const areaName = event.areaName || event.area_name || event.venueArea?.areaName || event.venueArea?.area_name || ''
   const floor = event.floor || event.venueArea?.floor || ''
-  const venueName = event.venueName || event.venue?.venueName || event.venueArea?.venue?.venueName || ''
+  const customVenueName = cleanLocationToken(event.customVenueName)
+  const customLocation = cleanLocationToken(event.customLocation)
+  const venueName = customVenueName || event.venueName || event.venue?.venueName || event.venueArea?.venue?.venueName || ''
   const exactLocationString =
+    customLocation ||
     event.venueArea?.venue?.location ||
     event.location ||
     event.venueLocation ||
     event.venue?.location ||
     ''
-  const locationDisplayString = event.venueArea?.venue?.location || event.location || 'HCMC'
-  const mapLocationString = [
+  const locationDisplayString = exactLocationString || venueName || 'FPT University Ho Chi Minh City, Vietnam'
+  const mapTokens = [
     venueName,
     exactLocationString !== venueName ? exactLocationString : '',
-    exactLocationString === '' && locationDisplayString !== venueName ? locationDisplayString : ''
-  ].filter((val) => val && val.trim() !== '').join(', ') || 'FPT University HCMC'
-  const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(mapLocationString)}&t=&z=15&ie=UTF-8&iwloc=&output=embed`
+    /viet nam|vietnam|ho chi minh|hcm|sai gon|saigon/i.test(`${venueName} ${exactLocationString}`) ? '' : 'Ho Chi Minh City, Vietnam',
+  ]
+  const mapSrc = buildGoogleMapsEmbedUrl(mapTokens)
 
   const getSpeakerName = (speaker: SpeakerLike) => (
     speaker.name ||
@@ -258,7 +278,7 @@ export default function PublicEventPage() {
     : []
   const speakersToDisplay = speakers.length > 0 ? speakers : fallbackSpeaker
 
-  const locationTitle = venueName || event.location || t.defaultLocation
+  const locationTitle = venueName || exactLocationString || t.defaultLocation
   const locationDetail = [
     areaName ? `${t.area}: ${areaName}` : '',
     floor ? `${t.floor} ${floor}` : '',

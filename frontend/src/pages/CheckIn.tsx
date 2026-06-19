@@ -26,7 +26,7 @@ import { useState, useEffect, useRef } from 'react'
 
 import { useAuth } from '../contexts/AuthContext'
 // Custom hook để lấy thông tin người dùng đang đăng nhập từ AuthContext
-// Dùng để kiểm tra quyền truy cập (chỉ STAFF/ADMIN mới được check-in/checkout)
+// Dùng để kiểm tra quyền truy cập (chỉ ORGANIZER sở hữu sự kiện mới được check-in/checkout)
 
 import { Html5Qrcode } from 'html5-qrcode'
 // Thư viện bên thứ 3 để quét mã QR bằng camera trên trình duyệt web
@@ -161,6 +161,99 @@ export default function CheckIn() {
   // ✅ NEW: State kiểm soát việc đang xử lý request (disable button, show loading)
   const [isProcessing, setIsProcessing] = useState(false)
 
+  // ✅ NEW: Trạng thái và lịch sử cho chế độ quét liên tục (Continuous Scan Mode)
+  const [continuousMode, setContinuousMode] = useState(false)
+  const continuousModeRef = useRef(continuousMode)
+  const isProcessingRef = useRef(false)
+  const [scanHistory, setScanHistory] = useState<any[]>([])
+
+  // Đồng bộ ref của continuousMode để tránh stale closure trong camera callback
+  useEffect(() => {
+    continuousModeRef.current = continuousMode
+  }, [continuousMode])
+
+  // Đồng bộ ref của isProcessing
+  useEffect(() => {
+    isProcessingRef.current = isProcessing
+  }, [isProcessing])
+
+  // ===========================================================================
+  // AUDIO FEEDBACK & SCAN HISTORY EFFECTS
+  // ===========================================================================
+  const playBeep = (success: boolean) => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioContext) return
+      const ctx = new AudioContext()
+      
+      if (success) {
+        // Âm bíp ngắn cao tần báo thành công
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(800, ctx.currentTime) // 800Hz
+        gain.gain.setValueAtTime(0.1, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start()
+        osc.stop(ctx.currentTime + 0.15)
+      } else {
+        // Âm buzzer trầm báo thất bại
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sawtooth'
+        osc.frequency.setValueAtTime(300, ctx.currentTime) // 300Hz
+        gain.gain.setValueAtTime(0.12, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start()
+        osc.stop(ctx.currentTime + 0.25)
+      }
+    } catch (e) {
+      console.warn('AudioContext play blocked or unsupported', e)
+    }
+  }
+
+  useEffect(() => {
+    if (!result) return
+
+    // Phát âm báo bíp
+    playBeep(result.success)
+
+    // Thêm vào lịch sử quét vé
+    let ticketId = 'N/A'
+    let customerName = 'Không rõ'
+    let message = result.message
+
+    if (result.registration) {
+      if (result.registration.ticketId) {
+        ticketId = `#${result.registration.ticketId}`
+      }
+      if (result.registration.customerName) {
+        customerName = result.registration.customerName
+      }
+      if (result.registration.results && Array.isArray(result.registration.results)) {
+        const total = result.registration.totalTickets || result.registration.results.length
+        const successCount = result.registration.successCount || 0
+        ticketId = `Lô ${total} vé`
+        customerName = `Nhiều khách hàng (${successCount}/${total} thành công)`
+      }
+    }
+
+    setScanHistory((prev) => [
+      {
+        success: result.success,
+        ticketId,
+        customerName,
+        message,
+        time: format(new Date(), 'HH:mm:ss')
+      },
+      ...prev
+    ].slice(0, 5))
+  }, [result])
+
   // ===========================================================================
   // EFFECT: QUẢN LÝ KHỞI ĐỘNG VÀ DỪNG CAMERA QR SCANNER
   // ===========================================================================
@@ -187,20 +280,29 @@ export default function CheckIn() {
           { fps: 10, qrbox: { width: 280, height: 280 } },
           (decodedText) => {
             // Callback khi quét thành công - nhận được nội dung QR
-            // Use stopScanning() to consistently stop/clear and avoid races
-            if (scannerRef.current) {
-              stopScanning()
-                .then(() => {
-                  processAction(decodedText)
-                })
-                .catch((err) => {
-                  console.error('Error stopping scanner after decode', err)
-                  // Still process the decoded QR even if stopping failed
-                  processAction(decodedText)
-                })
-            } else {
-              setScanning(false)
+            if (isProcessingRef.current) {
+              return // Đang xử lý lượt quét trước, bỏ qua lượt quét này
+            }
+
+            if (continuousModeRef.current) {
+              // Chế độ quét liên tục: Không tắt camera, gọi xử lý trực tiếp
               processAction(decodedText)
+            } else {
+              // Chế độ quét từng vé: Tắt camera rồi mới xử lý
+              if (scannerRef.current) {
+                stopScanning()
+                  .then(() => {
+                    processAction(decodedText)
+                  })
+                  .catch((err) => {
+                    console.error('Error stopping scanner after decode', err)
+                    // Still process the decoded QR even if stopping failed
+                    processAction(decodedText)
+                  })
+              } else {
+                setScanning(false)
+                processAction(decodedText)
+              }
             }
           },
           () => { },  // Callback khi quét thất bại - bỏ trống vì không cần xử lý
@@ -758,6 +860,31 @@ export default function CheckIn() {
               Quét mã QR - {actionLabel}
             </h2>
 
+            {/* ✅ NEW: Nút gạt chế độ quét liên tục (Continuous Mode) */}
+            <div className="flex items-center justify-between mb-4 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800/80">
+              <div className="flex flex-col pr-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Chế độ quét liên tục
+                </span>
+                <span className="text-[9px] font-bold text-slate-405 dark:text-slate-500 mt-0.5 leading-relaxed">
+                  Giữ camera luôn mở để soát nhiều vé liên tiếp, tự động phát âm báo.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setContinuousMode(!continuousMode)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  continuousMode ? (isCheckIn ? 'bg-orange-500' : 'bg-purple-500') : 'bg-slate-300 dark:bg-slate-800'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    continuousMode ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
             {!scanning ? (
               <div className="space-y-5">
                 {/* Nút bắt đầu quét QR */}
@@ -840,6 +967,12 @@ export default function CheckIn() {
                       <div className={`absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 rounded-tr-xl ${isCheckIn ? 'border-orange-500' : 'border-purple-500'}`} />
                       <div className={`absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 rounded-bl-xl ${isCheckIn ? 'border-orange-500' : 'border-purple-500'}`} />
                       <div className={`absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 rounded-br-xl ${isCheckIn ? 'border-orange-500' : 'border-purple-500'}`} />
+                      
+                      {/* ✅ NEW: Tia laser quét chuyển động chạy dọc */}
+                      <div 
+                        className={`absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent ${isCheckIn ? 'via-orange-500' : 'via-purple-500'} to-transparent animate-laser`} 
+                        style={{ top: 0 }}
+                      />
                     </div>
                   </div>
 
@@ -1011,6 +1144,54 @@ export default function CheckIn() {
                 </button>
               </div>
             )}
+
+            {/* ✅ NEW: Lịch sử 5 lượt quét gần nhất hiển thị trực quan */}
+            {scanHistory.length > 0 && (
+              <div className="mt-6 border-t border-slate-200 dark:border-slate-800/60 pt-4 animate-fade-in-up">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 pl-1 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-slate-400 animate-spin" style={{ animationDuration: '6s' }} />
+                  Lịch sử quét gần đây
+                </h3>
+                <div className="space-y-2 max-h-[190px] overflow-y-auto pr-1 custom-scrollbar">
+                  {scanHistory.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border text-[11px] transition-all hover:scale-[1.01] ${
+                        item.success
+                          ? 'bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-200/40 dark:border-emerald-900/20 text-emerald-800 dark:text-emerald-400'
+                          : 'bg-rose-50/20 dark:bg-rose-950/10 border-rose-200/40 dark:border-rose-900/20 text-rose-800 dark:text-rose-450'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[9px] font-bold opacity-60 font-mono shrink-0">{item.time}</span>
+                        <div className="min-w-0">
+                          <p className="font-extrabold truncate text-slate-800 dark:text-slate-200">{item.customerName}</p>
+                          <p className="text-[9px] opacity-75 truncate">{item.ticketId} &middot; {item.message}</p>
+                        </div>
+                      </div>
+                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md shrink-0 select-none ${
+                        item.success
+                          ? 'bg-emerald-100/60 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400'
+                          : 'bg-rose-100/60 dark:bg-rose-900/30 text-rose-800 dark:text-rose-450'
+                      }`}>
+                        {item.success ? 'Hợp lệ' : 'Lỗi'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ✅ NEW: Nhúng style động cho hiệu ứng Laser */}
+            <style>{`
+              @keyframes laserScan {
+                0%, 100% { top: 0%; opacity: 0.3; }
+                50% { top: 100%; opacity: 1; }
+              }
+              .animate-laser {
+                animation: laserScan 2s ease-in-out infinite;
+              }
+            `}</style>
           </div>
         </div>
       </div>

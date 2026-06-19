@@ -26,6 +26,12 @@ export interface EventDetail extends EventListItem {
   location?: string
   organizerId?: number
   organizerName?: string
+  eventFormat?: string
+  customVenueName?: string | null
+  customLocation?: string | null
+  orgType?: string | null
+  privacyStatus?: string | null
+  onlineMeetingUrl?: string | null
   speakerName?: string
   speakerBio?: string
   speakerAvatarUrl?: string

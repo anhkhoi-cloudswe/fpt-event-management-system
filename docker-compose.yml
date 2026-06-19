@@ -351,6 +351,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY}
+        VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY}
         VITE_SYSTEM_TIME_OVERRIDE: ${SYSTEM_TIME_OVERRIDE}
     env_file: .env
     container_name: fpt-frontend

@@ -9,6 +9,8 @@ WORKDIR /app
 # Build-time arg for Vite public env (passed from docker-compose build args)
 ARG VITE_RECAPTCHA_SITE_KEY
 ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
+ARG VITE_GOOGLE_MAPS_API_KEY
+ENV VITE_GOOGLE_MAPS_API_KEY=${VITE_GOOGLE_MAPS_API_KEY}
 
 # Copy dependency manifests first for better layer caching
 COPY package.json package-lock.json ./
