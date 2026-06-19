@@ -36,6 +36,7 @@ import SystemPolicy from './pages/SystemPolicy.tsx'
 import Profile from './pages/Profile.tsx'
 import PublicEventPage from './pages/events/PublicEventPage.tsx'
 import PublicEventPayment from './pages/events/PublicEventPayment.tsx'
+import AttendanceConfirm from './pages/AttendanceConfirm.tsx'
 
 
 import { useState } from 'react'
@@ -256,6 +257,7 @@ function AppRoutes() {
       <Route path="/events/:id" element={<EventDetail />} />
       <Route path="/events/:id/page" element={<PublicEventPage />} />
       <Route path="/events/:id/payment" element={<PublicEventPayment />} />
+      <Route path="/attendance/confirm" element={<ProtectedRoute><AttendanceConfirm /></ProtectedRoute>} />
       <Route path="/dashboard/events/:id/page" element={<DashboardEventPageRedirect />} />
 
       <Route

@@ -56,6 +56,23 @@ type Ticket struct {
 	CreatedAt        time.Time  `json:"createdAt"`
 }
 
+type AttendanceConfirmRequest struct {
+	EventID int    `json:"eventId"`
+	Action  string `json:"action"`
+}
+
+type AttendanceConfirmResponse struct {
+	TicketID     int        `json:"ticketId"`
+	EventID      int        `json:"eventId"`
+	EventName    string     `json:"eventName"`
+	Status       string     `json:"status"`
+	Action       string     `json:"action"`
+	AlreadyDone  bool       `json:"alreadyDone"`
+	CheckInTime  *time.Time `json:"checkInTime,omitempty"`
+	CheckOutTime *time.Time `json:"checkOutTime,omitempty"`
+	Message      string     `json:"message"`
+}
+
 // ============================================================
 // Bill - Hóa đơn
 // ============================================================

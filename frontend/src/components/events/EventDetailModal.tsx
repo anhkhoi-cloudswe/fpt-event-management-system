@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Copy, ExternalLink, MapPin, Users, X } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import type { EventDetail } from '../../types/event'
@@ -91,6 +92,23 @@ const getSpeakerAvatar = (speaker: SpeakerLike) => (
   ''
 ).trim()
 
+const cleanLocationToken = (value?: string | null) => {
+  const trimmed = (value || '').trim()
+  if (!trimmed || /^null$/i.test(trimmed) || /^undefined$/i.test(trimmed)) return ''
+  if (/^https?:\/\//i.test(trimmed)) return ''
+  return trimmed
+}
+
+const buildGoogleMapsEmbedUrl = (tokens: Array<string | null | undefined>) => {
+  const query = tokens
+    .map(cleanLocationToken)
+    .filter(Boolean)
+    .filter((value, index, arr) => arr.findIndex((item) => item.toLowerCase() === value.toLowerCase()) === index)
+    .join(', ')
+
+  return `https://maps.google.com/maps?q=${encodeURIComponent(query || 'FPT University Ho Chi Minh City, Vietnam')}&t=&z=16&ie=UTF-8&iwloc=&output=embed`
+}
+
 const getCalendarParts = (value: string | undefined, lang: 'vi' | 'en') => {
   if (!value) return { month: '---', day: '--' }
   const date = new Date(value)
@@ -147,6 +165,10 @@ export function EventDetailModal({
     detailMap: lang === 'en' ? 'event banner' : 'ảnh sự kiện',
     ended: lang === 'en' ? 'Event Ended' : 'Sự kiện đã kết thúc',
     closed: lang === 'en' ? 'Registration Closed' : 'Đăng ký đã đóng',
+    attendanceQr: lang === 'en' ? 'Attendance QR' : 'Ma QR diem danh',
+    attendanceHint: lang === 'en'
+      ? 'Share this QR near the end of the Zoom/Meet session. Only registered students can confirm attendance.'
+      : 'Chia se QR nay vao cuoi buoi Zoom/Meet. Chi sinh vien da dang ky moi xac nhan duoc.',
   }
 
   useEffect(() => {
@@ -164,6 +186,9 @@ export function EventDetailModal({
   const eventId = detail?.eventId || detail?.id || 0
   const eventPagePath = `/events/${eventId}/page`
   const eventPaymentPath = `/events/${eventId}/payment`
+  const eventFormat = (detail?.eventFormat || '').toUpperCase()
+  const canShowAttendanceQr = activeRole === 'ORGANIZER' && detail?.status === 'OPEN' && (eventFormat === 'ONLINE' || eventFormat === 'HYBRID')
+  const attendanceUrl = `${window.location.origin}/attendance/confirm?eventId=${eventId}&action=checkout`
   const organizerId = detail?.organizerId ?? detail?.organizer_id
   const organizerName = detail?.organizerName || (organizerId ? `${text.organizerFallback} #${organizerId}` : text.organizerFallback)
   const organizerAvatar =
@@ -175,26 +200,29 @@ export function EventDetailModal({
   const organizerInitial = organizerName.trim().charAt(0).toUpperCase() || 'F'
   const areaName = detail?.areaName || detail?.area_name || detail?.venueArea?.areaName || detail?.venueArea?.area_name || ''
   const floor = detail?.floor || detail?.venueArea?.floor || ''
-  const venueName = detail?.venueName || detail?.venue?.venueName || detail?.venueArea?.venue?.venueName || ''
+  const customVenueName = cleanLocationToken(detail?.customVenueName)
+  const customLocation = cleanLocationToken(detail?.customLocation)
+  const venueName = customVenueName || detail?.venueName || detail?.venue?.venueName || detail?.venueArea?.venue?.venueName || ''
   const exactLocationString =
+    customLocation ||
     detail?.venueArea?.venue?.location ||
     detail?.location ||
     detail?.venueLocation ||
     detail?.venue?.location ||
     ''
-  const locationDisplayString = detail?.venueArea?.venue?.location || detail?.location || 'HCMC'
-  const mapLocationString = [
+  const locationDisplayString = exactLocationString || venueName || 'FPT University Ho Chi Minh City, Vietnam'
+  const mapTokens = [
     venueName,
     exactLocationString !== venueName ? exactLocationString : '',
-    exactLocationString === '' && locationDisplayString !== venueName ? locationDisplayString : ''
-  ].filter((val) => val && val.trim() !== '').join(', ') || 'FPT University HCMC'
+    /viet nam|vietnam|ho chi minh|hcm|sai gon|saigon/i.test(`${venueName} ${exactLocationString}`) ? '' : 'Ho Chi Minh City, Vietnam',
+  ]
   const locationRows = [
     venueName,
     areaName ? `${text.area}: ${areaName}` : '',
     floor ? `${text.floor} ${floor}` : '',
     exactLocationString,
   ].filter(Boolean)
-  const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(mapLocationString)}&t=&z=15&ie=UTF-8&iwloc=&output=embed`
+  const mapSrc = buildGoogleMapsEmbedUrl(mapTokens)
   const speakers = (detail?.speakers ?? []).filter((speaker) => getSpeakerName(speaker))
   const fallbackSpeaker = detail?.speakerName
     ? [{ name: detail.speakerName, avatarUrl: detail.speakerAvatarUrl || '' }]
@@ -344,6 +372,28 @@ export function EventDetailModal({
                   </div>
                 </div>
               </div>
+
+              {canShowAttendanceQr && (
+                <section className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-500/30 dark:bg-blue-500/10">
+                  <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+                    <div className="rounded-lg bg-white p-3 shadow-sm">
+                      <QRCodeSVG value={attendanceUrl} size={128} level="H" includeMargin />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-sm font-black uppercase tracking-wide text-blue-900 dark:text-blue-100">{text.attendanceQr}</h2>
+                      <p className="mt-2 text-sm leading-relaxed text-blue-800 dark:text-blue-100/80">{text.attendanceHint}</p>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText(attendanceUrl)}
+                        className="mt-3 inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-400/30 dark:bg-blue-500/10 dark:text-blue-100 dark:hover:bg-blue-500/20"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        {text.copyLink}
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              )}
 
               {detail.tickets && detail.tickets.length > 0 && (
                 <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-5">

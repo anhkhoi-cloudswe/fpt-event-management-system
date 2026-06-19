@@ -178,6 +178,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return ticketHandler.HandleGetMyBills(ctx, request)
 	case path == "/api/payment/my-bills" && method == "GET":
 		return ticketHandler.HandleGetMyBills(ctx, request)
+	case path == "/api/attendance/confirm" && method == "POST":
+		return ticketHandler.HandleConfirmAttendance(ctx, request)
 
 	case path == "/api/payment/create-order" && method == "POST":
 		return ticketHandler.HandleCreateBankTransferOrder(ctx, request)

@@ -20,6 +20,7 @@ import (
 	"github.com/fpt-event-services/common/logger"
 	commonresponse "github.com/fpt-event-services/common/response"
 	"github.com/fpt-event-services/common/utils"
+	"github.com/fpt-event-services/services/ticket-service/models"
 	"github.com/fpt-event-services/services/ticket-service/usecase"
 )
 
@@ -99,6 +100,41 @@ func (h *TicketHandler) HandleGetMyTickets(ctx context.Context, request events.A
 
 	log.Debug("HandleGetMyTickets - userID=%d page=%d found=%d total=%d", userID, page, len(paginatedTickets.Tickets), paginatedTickets.TotalRecords)
 	return createJSONResponse(http.StatusOK, paginatedTickets)
+}
+
+func (h *TicketHandler) HandleConfirmAttendance(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	ctx = utils.WithRequestHeaders(ctx, request.Headers)
+
+	userIDStr := extractUserIDFromHeaders(request.Headers)
+	if userIDStr == "" {
+		return createMessageResponse(http.StatusUnauthorized, "Unauthorized: missing userId")
+	}
+
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid userId")
+	}
+
+	var req models.AttendanceConfirmRequest
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid request body")
+	}
+	if req.EventID <= 0 {
+		return createMessageResponse(http.StatusBadRequest, "eventId is required")
+	}
+
+	result, err := h.useCase.ConfirmAttendance(ctx, userID, req.EventID, req.Action)
+	if err != nil {
+		message := err.Error()
+		statusCode := http.StatusBadRequest
+		if strings.Contains(message, "no eligible ticket") {
+			statusCode = http.StatusForbidden
+		}
+		log.Warn("HandleConfirmAttendance - userID=%d eventID=%d error=%v", userID, req.EventID, err)
+		return createMessageResponse(statusCode, message)
+	}
+
+	return createJSONResponse(http.StatusOK, result)
 }
 
 // HandleGetTicketList - GET /api/tickets/list?eventId=
@@ -327,8 +363,6 @@ func isLocalHost(host string) bool {
 	hostOnly := strings.Split(host, ":")[0]
 	return hostOnly == "localhost" || hostOnly == "127.0.0.1"
 }
-
-
 
 // ============================================================
 // HandleGetWalletBalance - GET /api/wallet/balance

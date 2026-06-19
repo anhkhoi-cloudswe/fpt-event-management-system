@@ -51,6 +51,10 @@ func (uc *TicketUseCase) GetTicketsByRole(ctx context.Context, role string, user
 }
 
 // GetCategoryTickets - Lấy các loại vé của event
+func (uc *TicketUseCase) ConfirmAttendance(ctx context.Context, userID, eventID int, action string) (*models.AttendanceConfirmResponse, error) {
+	return uc.ticketRepo.ConfirmAttendance(ctx, userID, eventID, action)
+}
+
 func (uc *TicketUseCase) GetCategoryTickets(ctx context.Context, eventID int) ([]models.CategoryTicket, error) {
 	return uc.ticketRepo.GetCategoryTicketsByEventID(ctx, eventID)
 }
@@ -64,8 +68,6 @@ func (uc *TicketUseCase) GetMyBills(ctx context.Context, userID int) ([]models.M
 func (uc *TicketUseCase) GetMyBillsPaginated(ctx context.Context, userID, page, limit int, search, paymentStatus, paymentMethod string) (*models.PaginatedBillsResponse, error) {
 	return uc.ticketRepo.GetBillsByUserIDPaginated(ctx, userID, page, limit, search, paymentStatus, paymentMethod)
 }
-
-
 
 // ============================================================
 // WALLET PAYMENT METHODS
@@ -140,4 +142,3 @@ func (uc *TicketUseCase) GetBillCreatedAt(ctx context.Context, billID int) (time
 func (uc *TicketUseCase) GetTicketIDsByBillID(ctx context.Context, billID int64) ([]string, error) {
 	return uc.ticketRepo.GetTicketIDsByBillID(ctx, billID)
 }
-

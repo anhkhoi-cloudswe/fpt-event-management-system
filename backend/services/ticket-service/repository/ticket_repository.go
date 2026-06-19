@@ -782,7 +782,6 @@ func (r *TicketRepository) GetBillsByUserIDPaginated(ctx context.Context, userID
 	}, nil
 }
 
-
 // CreateBankTransferOrder - Tạo đơn hàng thanh toán chuyển khoản ngân hàng (SePay)
 // Trả về order_id (bill_id) và amount
 func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int) (int64, float64, error) {
@@ -1066,8 +1065,6 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			}
 			bookedIDsFree = append(bookedIDsFree, int(tid))
 		}
-
-
 
 		if err = tx.Commit(); err != nil {
 			return 0, 0, apperrors.DatabaseError(err)
@@ -1779,6 +1776,131 @@ func (r *TicketRepository) GetUserWalletBalance(ctx context.Context, userID int)
 	fmt.Printf("[WALLET_FINAL_CHECK] User %d has Wallet: %f\n", userID, balance)
 	fmt.Printf("[WALLET_DB] ✅ User %d has balance: %.2f VND in database\n", userID, balance)
 	return balance, nil
+}
+
+// ConfirmAttendance lets a registered user confirm end-of-session attendance from an event-level QR code.
+func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventID int, action string) (*models.AttendanceConfirmResponse, error) {
+	normalizedAction := strings.ToUpper(strings.TrimSpace(action))
+	if normalizedAction == "" {
+		normalizedAction = "CHECKOUT"
+	}
+	if normalizedAction != "CHECKOUT" {
+		return nil, fmt.Errorf("unsupported attendance action: %s", action)
+	}
+
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var ticketID int
+	var status string
+	var checkInTime sql.NullTime
+	var checkOutTime sql.NullTime
+	var eventName string
+	var eventFormat sql.NullString
+	var endTime time.Time
+	var checkoutOffset sql.NullInt64
+
+	query := `
+		SELECT
+			t.ticket_id,
+			t.status,
+			t.checkin_time,
+			t.check_out_time,
+			e.title,
+			e.event_format,
+			e.end_time,
+			e.checkout_offset
+		FROM Ticket t
+		JOIN Event e ON e.event_id = t.event_id
+		WHERE t.user_id = $1
+			AND t.event_id = $2
+			AND t.status IN ('BOOKED', 'CHECKED_IN', 'CHECKED_OUT')
+		ORDER BY t.ticket_id ASC
+		LIMIT 1
+		FOR UPDATE`
+
+	if err := tx.QueryRowContext(ctx, query, userID, eventID).Scan(
+		&ticketID,
+		&status,
+		&checkInTime,
+		&checkOutTime,
+		&eventName,
+		&eventFormat,
+		&endTime,
+		&checkoutOffset,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no eligible ticket found for this event")
+		}
+		return nil, err
+	}
+
+	format := strings.ToUpper(strings.TrimSpace(eventFormat.String))
+	if format == "" {
+		format = "ONSITE"
+	}
+	if format == "ONSITE" {
+		return nil, fmt.Errorf("attendance QR is only available for online or hybrid events")
+	}
+
+	if status == "CHECKED_OUT" {
+		return &models.AttendanceConfirmResponse{
+			TicketID:     ticketID,
+			EventID:      eventID,
+			EventName:    eventName,
+			Status:       status,
+			Action:       normalizedAction,
+			AlreadyDone:  true,
+			CheckInTime:  nullTimePtr(checkInTime),
+			CheckOutTime: nullTimePtr(checkOutTime),
+			Message:      "Attendance already confirmed",
+		}, tx.Commit()
+	}
+
+	now := time.Now()
+	offsetMinutes := config.GetEffectiveCheckoutOffset(checkoutOffset)
+	allowedAt := endTime.Add(-time.Duration(offsetMinutes) * time.Minute)
+	if now.Before(allowedAt) {
+		return nil, fmt.Errorf("attendance confirmation is not open yet")
+	}
+
+	updateQuery := `
+		UPDATE Ticket
+		SET status = 'CHECKED_OUT',
+			checkin_time = COALESCE(checkin_time, NOW()),
+			check_out_time = NOW()
+		WHERE ticket_id = $1
+			AND status IN ('BOOKED', 'CHECKED_IN')
+		RETURNING checkin_time, check_out_time`
+	if err := tx.QueryRowContext(ctx, updateQuery, ticketID).Scan(&checkInTime, &checkOutTime); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return &models.AttendanceConfirmResponse{
+		TicketID:     ticketID,
+		EventID:      eventID,
+		EventName:    eventName,
+		Status:       "CHECKED_OUT",
+		Action:       normalizedAction,
+		AlreadyDone:  false,
+		CheckInTime:  nullTimePtr(checkInTime),
+		CheckOutTime: nullTimePtr(checkOutTime),
+		Message:      "Attendance confirmed",
+	}, nil
+}
+
+func nullTimePtr(value sql.NullTime) *time.Time {
+	if !value.Valid {
+		return nil
+	}
+	return &value.Time
 }
 
 // CalculateSeatsTotal - Tính tổng giá cho các ghế
@@ -2514,7 +2636,6 @@ func equalIntSlices(a, b []int) bool {
 	return true
 }
 
-
 func (r *TicketRepository) ProcessWalletPaymentForExistingBill(ctx context.Context, userID int, pendingBillID int64, amount int) (string, error) {
 	opts := &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
@@ -2648,8 +2769,6 @@ func (r *TicketRepository) ProcessWalletPaymentForExistingBill(ctx context.Conte
 		return "", fmt.Errorf("error updating bill to PAID: %w", err)
 	}
 
-
-
 	newBalance := currentBalance - float64(amount)
 	_, err = tx.ExecContext(ctx, "UPDATE Wallet SET balance = $1 WHERE wallet_id = $2", newBalance, walletID)
 	if err != nil {
@@ -2735,7 +2854,7 @@ func generateDeterministicUUID(userID, eventID int, seatIDs []int) string {
 
 	input := fmt.Sprintf("free_ticket:%d:%d:%s", userID, eventID, strings.Join(seatStrParts, ","))
 	hash := sha256.Sum256([]byte(input))
-	
+
 	// Create UUID RFC 4122 Variant from SHA-256 hash (v4-like layout)
 	// Modify the version (4) and variant (1) bits:
 	hash[6] = (hash[6] & 0x0f) | 0x40
