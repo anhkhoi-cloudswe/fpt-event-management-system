@@ -3054,7 +3054,7 @@ func generateDeterministicUUID(userID, eventID int, seatIDs []int) string {
 		seatStrParts[i] = strconv.Itoa(sid)
 	}
 
-	input := fmt.Sprintf("free_ticket:%d:%d:%s", userID, eventID, strings.Join(seatStrParts, ","))
+	input := fmt.Sprintf("free_ticket:%d:%d:%s:%d", userID, eventID, strings.Join(seatStrParts, ","), time.Now().UnixNano())
 	hash := sha256.Sum256([]byte(input))
 
 	// Create UUID RFC 4122 Variant from SHA-256 hash (v4-like layout)
