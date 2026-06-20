@@ -226,10 +226,7 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 	}
 
 	email := ""
-	meetingLink := "https://fpt-edu.zoom.us/j/84920491029?pwd=YmUxM2NjO3M4MTk2M2Mx"
-	if platform == "google" {
-		meetingLink = "https://meet.google.com/abc-defg-hij"
-	}
+	meetingLink := ""
 
 	clientID := getOAuthCredential(strings.ToUpper(platform) + "_CLIENT_ID")
 	isMock := code == "" || clientID == "" || clientID == "mock-zoom-client-id-never-blank" || clientID == "mock-google-client-id-never-blank" || strings.HasPrefix(clientID, "mock-")

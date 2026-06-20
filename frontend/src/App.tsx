@@ -217,7 +217,38 @@ class EventRequestsErrorBoundary extends Component<{ children: ReactNode }, { ha
 function AppRoutes() {
   const DashboardEventPageRedirect = () => {
     const { id } = useParams()
-    return <Navigate to={`/events/${id}/page`} replace />
+    const [redirectPath, setRedirectPath] = useState<string | null>(null)
+
+    useEffect(() => {
+      if (!id) return
+
+      let cancelled = false
+      const resolvePath = async () => {
+        try {
+          const res = await fetch(`/api/events/detail?id=${id}`, {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+          })
+          if (!res.ok) throw new Error('Failed to resolve event page path')
+          const data = await res.json()
+          if (!cancelled) {
+            setRedirectPath(data?.eventPagePath || `/events/${id}/page`)
+          }
+        } catch {
+          if (!cancelled) {
+            setRedirectPath(`/events/${id}/page`)
+          }
+        }
+      }
+
+      void resolvePath()
+      return () => {
+        cancelled = true
+      }
+    }, [id])
+
+    if (!redirectPath) return <LoadingScreen />
+    return <Navigate to={redirectPath} replace />
   }
 
   const EventRequestsRouter = () => {

@@ -214,6 +214,9 @@ export default function PublicEventPayment() {
   const [updatePhoneProfile, setUpdatePhoneProfile] = useState(false)
   const [isFastTracking, setIsFastTracking] = useState(false)
 
+  const resolveEventPagePath = () => event?.eventPagePath || (inviteToken ? `/invite/${inviteToken}` : `/events/${id}/page`)
+  const resolveEventPaymentPath = () => event?.eventPaymentPath || (inviteToken ? `/invite/${inviteToken}/payment` : `/events/${id}/payment`)
+
   const eventFormat = (event?.eventFormat || '').toUpperCase()
   const isOnline = eventFormat === 'ONLINE'
 
@@ -282,7 +285,7 @@ export default function PublicEventPayment() {
   useEffect(() => {
     if (authLoading || isRefreshing) return
     if (!hasActiveSession) {
-      const redirectPath = inviteToken ? `/invite/${inviteToken}/payment` : `/events/${id}/payment`
+      const redirectPath = resolveEventPaymentPath()
       navigate(`/login?redirect=${encodeURIComponent(redirectPath)}`, { replace: true })
     }
   }, [authLoading, hasActiveSession, id, isRefreshing, navigate])
@@ -293,7 +296,7 @@ export default function PublicEventPayment() {
       alert(pageLanguage === 'en'
         ? 'Operational, staff, or admin accounts are not allowed to purchase event tickets.'
         : 'Tài khoản Ban tổ chức, Nhân sự, hoặc Quản trị không được phép thực hiện thanh toán vé.')
-      navigate(inviteToken ? `/invite/${inviteToken}` : `/events/${id}/page`, { replace: true })
+      navigate(resolveEventPagePath(), { replace: true })
     }
   }, [user, authLoading, isRefreshing, id, navigate, pageLanguage])
 
@@ -820,7 +823,7 @@ export default function PublicEventPayment() {
                   setPendingOrderDetails(null)
                   setCurrentStep(3)
                 } else {
-                  navigate(inviteToken ? `/invite/${inviteToken}/payment` : `/events/${pendingOrderDetails.eventId}/payment`, { replace: true })
+                  navigate(resolveEventPaymentPath(), { replace: true })
                 }
               }}
               className="w-full px-4 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center text-xs uppercase tracking-wider font-sans"
@@ -910,7 +913,7 @@ export default function PublicEventPayment() {
             )}
           </div>
           <button
-            onClick={() => navigate(inviteToken ? `/invite/${inviteToken}` : `/events/${id}/page`, { replace: true })}
+            onClick={() => navigate(resolveEventPagePath(), { replace: true })}
             className="w-full bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] uppercase text-xs tracking-wider"
           >
             {isExpiredError ? t.btnBackNew : t.btnBackSeats}
@@ -950,7 +953,7 @@ export default function PublicEventPayment() {
       <div className="relative z-10 max-w-[1450px] mx-auto px-5 sm:px-8 py-6">
         <button
           type="button"
-          onClick={() => navigate(`/events/${id}/page`, { replace: true })}
+          onClick={() => navigate(resolveEventPagePath(), { replace: true })}
           className="inline-flex items-center gap-2 text-sm font-bold text-neutral-300 hover:text-white transition-colors mb-8"
         >
           <ArrowLeft className="w-4 h-4" />

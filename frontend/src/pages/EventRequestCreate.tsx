@@ -770,6 +770,8 @@ export default function EventRequestCreate() {
   const [limitCapacity, setLimitCapacity] = useState(true)
   const [tempCapacity, setTempCapacity] = useState('100')
   const capacityPopoverRef = useRef<HTMLDivElement>(null)
+  const getSelectedPlatformLabel = () => selectedOnlinePlatform === 'ZOOM' ? 'Zoom' : 'Google Meet'
+
   const [ticketConfig, setTicketConfig] = useState({
     onlineFree: true,
     onlinePrice: '0',
@@ -1266,12 +1268,12 @@ export default function EventRequestCreate() {
         expectedCapacity:   cap,
         eventFormat,
         customVenueName: eventFormat === 'ONLINE'
-          ? selectedOnlinePlatform
+          ? getSelectedPlatformLabel()
           : eventFormat === 'HYBRID'
           ? (formData.customVenueName || null)
           : (formData.customVenueName || null),
         customLocation: eventFormat === 'ONLINE'
-          ? (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink)
+          ? null
           : eventFormat === 'HYBRID'
           ? (formData.customLocation || null)
           : (formData.customLocation || null),
