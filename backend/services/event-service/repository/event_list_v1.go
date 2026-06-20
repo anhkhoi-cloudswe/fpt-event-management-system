@@ -84,18 +84,18 @@ func (r *EventRepository) GetEventsByStatusV1(
 	// Add status condition
 	switch status {
 	case "open", "today":
-		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'")
 
 	case "upcoming":
-		whereConditions = append(whereConditions, "e.start_time > timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time > timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'")
 
 	case "past", "closed":
-		whereConditions = append(whereConditions, "(e.end_time < timezone('Asia/Ho_Chi_Minh', NOW()) OR e.status = 'CLOSED') AND e.status != 'CANCELLED'")
+		whereConditions = append(whereConditions, "(e.end_time < timezone('Asia/Ho_Chi_Minh', NOW()) OR e.status = 'CLOSED') AND e.status != 'CANCELLED' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'")
 
 	default:
 		// Invalid status - default to today's events
 		status = "open"
-		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'")
 	}
 
 	// Add search condition
@@ -241,9 +241,9 @@ func (r *EventRepository) GetEventsByStatusV1(
 		}
 
 		event := models.EventListItem{
-			EventID:       eventID,
-			Title:         title,
-			Description:   nullStringToPointer(description),
+			EventID:     eventID,
+			Title:       title,
+			Description: nullStringToPointer(description),
 			// ✅ FIXED: Use FormatTimeToWallClockRFC3339 - formats wall-clock time directly without conversion
 			StartTime:     utils.FormatTimeToWallClockRFC3339(startTime),
 			EndTime:       utils.FormatTimeToWallClockRFC3339(endTime),
@@ -317,18 +317,18 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 	// Add status condition
 	switch status {
 	case "open", "today":
-		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'")
 
 	case "upcoming":
-		whereConditions = append(whereConditions, "e.start_time > timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time > timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'")
 
 	case "past", "closed":
-		whereConditions = append(whereConditions, "(e.end_time < timezone('Asia/Ho_Chi_Minh', NOW()) OR e.status = 'CLOSED') AND e.status != 'CANCELLED'")
+		whereConditions = append(whereConditions, "(e.end_time < timezone('Asia/Ho_Chi_Minh', NOW()) OR e.status = 'CLOSED') AND e.status != 'CANCELLED' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'")
 
 	default:
 		// Invalid status - default to today's events
 		status = "open"
-		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN'")
+		whereConditions = append(whereConditions, "e.start_time <= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.end_time >= timezone('Asia/Ho_Chi_Minh', NOW()) AND e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'")
 	}
 
 	// Add search condition
@@ -481,9 +481,9 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 		}
 
 		event := models.EventListItem{
-			EventID:       eventID,
-			Title:         title,
-			Description:   nullStringToPointer(description),
+			EventID:     eventID,
+			Title:       title,
+			Description: nullStringToPointer(description),
 			// ✅ FIXED: Use FormatTimeToWallClockRFC3339 - formats wall-clock time directly without conversion
 			StartTime:     utils.FormatTimeToWallClockRFC3339(startTime),
 			EndTime:       utils.FormatTimeToWallClockRFC3339(endTime),

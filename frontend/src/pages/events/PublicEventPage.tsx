@@ -113,8 +113,51 @@ const buildGoogleMapsEmbedUrl = (tokens: Array<string | null | undefined>) => {
   return `https://maps.google.com/maps?q=${encodeURIComponent(query || 'FPT University Ho Chi Minh City, Vietnam')}&t=&z=16&ie=UTF-8&iwloc=&output=embed`
 }
 
+const getOnlinePlatformLabel = (onlineMeetingUrl?: string | null) => (
+  onlineMeetingUrl && /zoom\.us/i.test(onlineMeetingUrl) ? 'Zoom' : 'Google Meet'
+)
+
+const buildLocationRows = ({
+  eventFormat,
+  venueName,
+  areaName,
+  floor,
+  exactLocationString,
+  onlinePlatformLabel,
+  areaLabel,
+  floorLabel,
+}: {
+  eventFormat: string
+  venueName: string
+  areaName: string
+  floor: string
+  exactLocationString: string
+  onlinePlatformLabel: string
+  areaLabel: string
+  floorLabel: string
+}) => {
+  if (eventFormat === 'ONLINE') return [onlinePlatformLabel]
+
+  if (eventFormat === 'HYBRID') {
+    return [
+      `Online: ${onlinePlatformLabel}`,
+      venueName ? `Onsite: ${venueName}` : '',
+      areaName ? `${areaLabel}: ${areaName}` : '',
+      floor ? `${floorLabel} ${floor}` : '',
+      exactLocationString && exactLocationString !== venueName ? exactLocationString : '',
+    ].filter(Boolean)
+  }
+
+  return [
+    venueName,
+    areaName ? `${areaLabel}: ${areaName}` : '',
+    floor ? `${floorLabel} ${floor}` : '',
+    exactLocationString,
+  ].filter(Boolean)
+}
+
 export default function PublicEventPage() {
-  const { id } = useParams()
+  const { id, token } = useParams()
   const navigate = useNavigate()
   const { user, currentLanguage } = useAuth()
   const pageLanguage: 'vi' | 'en' = currentLanguage
@@ -199,13 +242,14 @@ export default function PublicEventPage() {
   }, [])
 
   useEffect(() => {
-    if (!id) return
+    if (!id && !token) return
 
     const fetchEvent = async () => {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`/api/events/detail?id=${id}`, {
+        const query = token ? `token=${encodeURIComponent(token)}` : `id=${id}`
+        const res = await fetch(`/api/events/detail?${query}`, {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
         })
@@ -219,7 +263,7 @@ export default function PublicEventPage() {
     }
 
     void fetchEvent()
-  }, [id, pageLanguage])
+  }, [id, token, pageLanguage])
 
   const applyStoredDashboardTheme = () => {
     const storedTheme = user?.id
@@ -263,6 +307,7 @@ export default function PublicEventPage() {
   }
 
   const eventId = event.eventId || event.id || Number(id)
+  const eventPaymentPath = event.eventPaymentPath || (token ? `/invite/${token}/payment` : `/events/${eventId}/payment`)
   const eventBannerImg = event.bannerUrl || event.bannerImg || ''
   const organizerId = event.organizerId ?? event.organizer_id
   const organizerName = event.organizerName || (organizerId ? `${t.organizerFallback} #${organizerId}` : t.organizerFallback)
@@ -284,7 +329,8 @@ export default function PublicEventPage() {
     event.venueLocation ||
     event.venue?.location ||
     ''
-  const locationDisplayString = exactLocationString || venueName || 'FPT University Ho Chi Minh City, Vietnam'
+  const eventFormat = (event.eventFormat || '').toUpperCase()
+  const onlinePlatformLabel = getOnlinePlatformLabel(event.onlineMeetingUrl)
   const mapTokens = [
     venueName,
     exactLocationString !== venueName ? exactLocationString : '',
@@ -311,13 +357,18 @@ export default function PublicEventPage() {
     ? [{ name: event.speakerName, avatarUrl: event.speakerAvatarUrl || '', bio: event.speakerBio || '' }]
     : []
   const speakersToDisplay = speakers.length > 0 ? speakers : fallbackSpeaker
-
-  const eventFormat = (event.eventFormat || '').toUpperCase()
-  const locationTitle = venueName || exactLocationString || t.defaultLocation
-  const locationDetail = eventFormat === 'ONLINE' ? '' : [
-    areaName ? `${t.area}: ${areaName}` : '',
-    floor ? `${t.floor} ${floor}` : '',
-  ].filter(Boolean).join(' · ')
+  const locationRows = buildLocationRows({
+    eventFormat,
+    venueName,
+    areaName,
+    floor,
+    exactLocationString,
+    onlinePlatformLabel,
+    areaLabel: t.area,
+    floorLabel: t.floor,
+  })
+  const locationTitle = locationRows[0] || t.defaultLocation
+  const locationDetail = locationRows.slice(1).join(' | ')
   const eventClosed = event.status !== 'OPEN' || (event as any).isClosed === true
   const eventEnded = new Date(event.endTime).getTime() < Date.now()
   const { month: calMonth, day: calDay } = getCalendarParts(event.startTime, pageLanguage)
@@ -454,7 +505,7 @@ export default function PublicEventPage() {
               ) : (
                 <button
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl mt-6 transition-all text-lg shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] uppercase tracking-wide"
-                  onClick={() => navigate(`/events/${eventId}/payment`)}
+                  onClick={() => navigate(eventPaymentPath)}
                 >
                   {t.register}
                 </button>
@@ -524,7 +575,7 @@ export default function PublicEventPage() {
                         {pageLanguage === 'en' ? 'Online Platform' : 'Nền tảng trực tuyến'}
                       </p>
                       <p className="text-sm text-neutral-300 mt-1">
-                        {event.onlineMeetingUrl && /zoom\.us/i.test(event.onlineMeetingUrl) ? 'Zoom Meeting' : 'Google Meet'}
+                        {onlinePlatformLabel}
                       </p>
                     </div>
                   </div>
@@ -579,10 +630,9 @@ export default function PublicEventPage() {
               <div className="flex items-start gap-3 text-sm leading-relaxed text-neutral-200">
                 <MapPin className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  {venueName && <p className="font-bold text-neutral-100 text-lg leading-tight">{venueName}</p>}
-                  {eventFormat !== 'ONLINE' && areaName && <p className="text-neutral-300 mt-1">{pageLanguage === 'en' ? 'Area' : 'Khu vực'}: {areaName}</p>}
-                  {eventFormat !== 'ONLINE' && floor && <p className="text-neutral-300 mt-1">{pageLanguage === 'en' ? 'Floor' : 'Tầng'} {floor}</p>}
-                  <p className="text-neutral-400 mt-1">{locationDisplayString}</p>
+                  {locationRows.map((row) => (
+                    <p key={row} className="text-neutral-400 mt-1 first:mt-0 first:text-neutral-100 first:text-lg first:font-bold first:leading-tight">{row}</p>
+                  ))}
                 </div>
               </div>
               {eventFormat !== 'ONLINE' && (

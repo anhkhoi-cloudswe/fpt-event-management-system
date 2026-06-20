@@ -32,6 +32,8 @@ export interface EventDetail extends EventListItem {
   orgType?: string | null
   privacyStatus?: string | null
   onlineMeetingUrl?: string | null
+  eventPagePath?: string | null
+  eventPaymentPath?: string | null
   speakerName?: string
   speakerBio?: string
   speakerAvatarUrl?: string

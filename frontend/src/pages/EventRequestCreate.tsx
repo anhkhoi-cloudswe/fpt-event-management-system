@@ -1506,7 +1506,7 @@ export default function EventRequestCreate() {
                   {showPublicDropdown && (
                     <>
                       <div className="fixed inset-0 z-20" onClick={() => setShowPublicDropdown(false)} />
-                      <div className={`absolute right-0 mt-1.5 z-30 border rounded-xl overflow-hidden shadow-2xl w-80 py-1.5 animate-fadeIn ${
+                      <div className={`absolute right-0 bottom-full mb-2 z-30 border rounded-xl overflow-hidden shadow-2xl w-80 py-1.5 animate-fadeIn ${
                         isDarkMode 
                           ? 'bg-[#141416]/98 border-white/10 text-white' 
                           : 'bg-white border-neutral-200 text-neutral-850'

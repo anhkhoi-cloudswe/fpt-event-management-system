@@ -111,7 +111,7 @@ const resolveWalletBalance = (user: ReturnType<typeof useAuth>['user']) => {
 }
 
 export default function PublicEventPayment() {
-  const { id } = useParams()
+  const { id, token: inviteToken } = useParams()
   const navigate = useNavigate()
   const { user, token, isAuthenticated, loading: authLoading, isRefreshing, refreshUser, currentLanguage } = useAuth()
   const pageLanguage = currentLanguage || 'en'
@@ -282,7 +282,8 @@ export default function PublicEventPayment() {
   useEffect(() => {
     if (authLoading || isRefreshing) return
     if (!hasActiveSession) {
-      navigate(`/login?redirect=${encodeURIComponent(`/events/${id}/payment`)}`, { replace: true })
+      const redirectPath = inviteToken ? `/invite/${inviteToken}/payment` : `/events/${id}/payment`
+      navigate(`/login?redirect=${encodeURIComponent(redirectPath)}`, { replace: true })
     }
   }, [authLoading, hasActiveSession, id, isRefreshing, navigate])
 
@@ -292,18 +293,19 @@ export default function PublicEventPayment() {
       alert(pageLanguage === 'en'
         ? 'Operational, staff, or admin accounts are not allowed to purchase event tickets.'
         : 'Tài khoản Ban tổ chức, Nhân sự, hoặc Quản trị không được phép thực hiện thanh toán vé.')
-      navigate(`/events/${id}/page`, { replace: true })
+      navigate(inviteToken ? `/invite/${inviteToken}` : `/events/${id}/page`, { replace: true })
     }
   }, [user, authLoading, isRefreshing, id, navigate, pageLanguage])
 
   useEffect(() => {
-    if (!id || !hasActiveSession) return
+    if ((!id && !inviteToken) || !hasActiveSession) return
 
     const fetchEvent = async () => {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`/api/events/detail?id=${id}`, {
+        const query = inviteToken ? `token=${encodeURIComponent(inviteToken)}` : `id=${id}`
+        const res = await fetch(`/api/events/detail?${query}`, {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
         })
@@ -317,7 +319,7 @@ export default function PublicEventPayment() {
     }
 
     void fetchEvent()
-  }, [hasActiveSession, id])
+  }, [hasActiveSession, id, inviteToken])
 
   useEffect(() => {
     if (!event || loading) return
@@ -818,7 +820,7 @@ export default function PublicEventPayment() {
                   setPendingOrderDetails(null)
                   setCurrentStep(3)
                 } else {
-                  navigate(`/events/${pendingOrderDetails.eventId}/payment`, { replace: true })
+                  navigate(inviteToken ? `/invite/${inviteToken}/payment` : `/events/${pendingOrderDetails.eventId}/payment`, { replace: true })
                 }
               }}
               className="w-full px-4 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center text-xs uppercase tracking-wider font-sans"
@@ -908,7 +910,7 @@ export default function PublicEventPayment() {
             )}
           </div>
           <button
-            onClick={() => navigate(`/events/${id}/page`, { replace: true })}
+            onClick={() => navigate(inviteToken ? `/invite/${inviteToken}` : `/events/${id}/page`, { replace: true })}
             className="w-full bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] uppercase text-xs tracking-wider"
           >
             {isExpiredError ? t.btnBackNew : t.btnBackSeats}

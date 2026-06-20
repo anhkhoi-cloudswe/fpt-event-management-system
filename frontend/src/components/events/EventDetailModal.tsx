@@ -126,6 +126,49 @@ const getCalendarParts = (value: string | undefined, lang: 'vi' | 'en') => {
   return { month, day }
 }
 
+const getOnlinePlatformLabel = (onlineMeetingUrl?: string | null) => (
+  onlineMeetingUrl && /zoom\.us/i.test(onlineMeetingUrl) ? 'Zoom' : 'Google Meet'
+)
+
+const buildLocationRows = ({
+  eventFormat,
+  venueName,
+  areaName,
+  floor,
+  exactLocationString,
+  onlinePlatformLabel,
+  areaLabel,
+  floorLabel,
+}: {
+  eventFormat: string
+  venueName: string
+  areaName: string
+  floor: string
+  exactLocationString: string
+  onlinePlatformLabel: string
+  areaLabel: string
+  floorLabel: string
+}) => {
+  if (eventFormat === 'ONLINE') return [onlinePlatformLabel]
+
+  if (eventFormat === 'HYBRID') {
+    return [
+      `Online: ${onlinePlatformLabel}`,
+      venueName ? `Onsite: ${venueName}` : '',
+      areaName ? `${areaLabel}: ${areaName}` : '',
+      floor ? `${floorLabel} ${floor}` : '',
+      exactLocationString && exactLocationString !== venueName ? exactLocationString : '',
+    ].filter(Boolean)
+  }
+
+  return [
+    venueName,
+    areaName ? `${areaLabel}: ${areaName}` : '',
+    floor ? `${floorLabel} ${floor}` : '',
+    exactLocationString,
+  ].filter(Boolean)
+}
+
 export function EventDetailModal({
   isOpen,
   onClose,
@@ -218,8 +261,8 @@ export function EventDetailModal({
 
   const eventClosed = detail?.status !== 'OPEN'
   const eventEnded = detail ? new Date(detail.endTime).getTime() < Date.now() : false
-  const eventPagePath = `/events/${eventId}/page`
-  const eventPaymentPath = `/events/${eventId}/payment`
+  const eventPagePath = detail?.eventPagePath || `/events/${eventId}/page`
+  const eventPaymentPath = detail?.eventPaymentPath || `/events/${eventId}/payment`
   const eventFormat = (detail?.eventFormat || '').toUpperCase()
   const organizerId = detail?.organizerId ?? detail?.organizer_id
   const canShowAttendanceQr = activeRole === 'ORGANIZER' && user?.id === organizerId && detail?.status === 'OPEN' && (eventFormat === 'ONLINE' || eventFormat === 'HYBRID')
@@ -244,21 +287,22 @@ export function EventDetailModal({
     detail?.venueLocation ||
     detail?.venue?.location ||
     ''
-  const locationDisplayString = exactLocationString || venueName || 'FPT University Ho Chi Minh City, Vietnam'
+  const onlinePlatformLabel = getOnlinePlatformLabel(detail?.onlineMeetingUrl)
   const mapTokens = [
     venueName,
     exactLocationString !== venueName ? exactLocationString : '',
     /viet nam|vietnam|ho chi minh|hcm|sai gon|saigon/i.test(`${venueName} ${exactLocationString}`) ? '' : 'Ho Chi Minh City, Vietnam',
   ]
-  const isOnlineEvent = eventFormat === 'ONLINE'
-  const locationRows = isOnlineEvent
-    ? [venueName, exactLocationString].filter(Boolean)
-    : [
-        venueName,
-        areaName ? `${text.area}: ${areaName}` : '',
-        floor ? `${text.floor} ${floor}` : '',
-        exactLocationString,
-      ].filter(Boolean)
+  const locationRows = buildLocationRows({
+    eventFormat,
+    venueName,
+    areaName,
+    floor,
+    exactLocationString,
+    onlinePlatformLabel,
+    areaLabel: text.area,
+    floorLabel: text.floor,
+  })
   const mapSrc = buildGoogleMapsEmbedUrl(mapTokens)
   const speakers = (detail?.speakers ?? []).filter((speaker) => getSpeakerName(speaker))
   const fallbackSpeaker = detail?.speakerName
@@ -532,7 +576,7 @@ export function EventDetailModal({
                           {lang === 'en' ? 'Online Platform' : 'Nền tảng trực tuyến'}
                         </p>
                         <p className="text-sm text-slate-700 dark:text-neutral-300 mt-1">
-                          {detail.onlineMeetingUrl && /zoom\.us/i.test(detail.onlineMeetingUrl) ? 'Zoom Meeting' : 'Google Meet'}
+                          {onlinePlatformLabel}
                         </p>
                       </div>
                     </div>
@@ -585,10 +629,9 @@ export function EventDetailModal({
                 <div className="flex items-start gap-3 text-sm leading-relaxed">
                   <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                   <div>
-                    {venueName && <p className="font-medium text-slate-900 dark:text-white">{venueName}</p>}
-                    {eventFormat !== 'ONLINE' && areaName && <p className="text-slate-600 dark:text-neutral-400">{text.area}: {areaName}</p>}
-                    {eventFormat !== 'ONLINE' && floor && <p className="text-slate-600 dark:text-neutral-400">{text.floor} {floor}</p>}
-                    <p className="text-slate-700 dark:text-neutral-300">{locationDisplayString}</p>
+                    {locationRows.map((row) => (
+                      <p key={row} className="text-slate-700 dark:text-neutral-300 first:font-medium first:text-slate-900 first:dark:text-white">{row}</p>
+                    ))}
                   </div>
                 </div>
                 {eventFormat !== 'ONLINE' && (

@@ -2,11 +2,15 @@ package handler
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -165,21 +169,37 @@ func (h *EventHandler) HandleGetOpenEvents(ctx context.Context, request events.A
 	return createJSONResponse(http.StatusOK, response)
 }
 
-// HandleGetEventDetail handles GET /api/events/detail?id={eventId}
-// Response format khớp với Java: trả trực tiếp EventDetailDto object
+// HandleGetEventDetail handles GET /api/events/detail?id={eventId} or ?token={shareToken}
+// Response format kh?p v?i Java: tr? tr?c ti?p EventDetailDto object
 func (h *EventHandler) HandleGetEventDetail(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Get event ID from query parameter (khớp với Java: ?id=...)
-	eventIDStr := request.QueryStringParameters["id"]
-	if eventIDStr == "" {
-		return createMessageResponse(http.StatusBadRequest, "Missing event id")
+	role := strings.ToUpper(strings.TrimSpace(request.Headers["X-User-Role"]))
+	if role == "" {
+		role = "PUBLIC"
 	}
 
-	eventID, err := strconv.Atoi(eventIDStr)
-	if err != nil {
-		return createMessageResponse(http.StatusBadRequest, "Invalid event id")
+	userID, _ := strconv.Atoi(strings.TrimSpace(request.Headers["X-User-Id"]))
+	shareToken := strings.TrimSpace(request.QueryStringParameters["token"])
+
+	var eventID int
+	if shareToken != "" {
+		decodedID, err := decodePrivateEventToken(shareToken)
+		if err != nil {
+			return createMessageResponse(http.StatusForbidden, "Invalid private event link")
+		}
+		eventID = decodedID
+	} else {
+		eventIDStr := strings.TrimSpace(request.QueryStringParameters["id"])
+		if eventIDStr == "" {
+			return createMessageResponse(http.StatusBadRequest, "Missing event id")
+		}
+
+		parsedID, err := strconv.Atoi(eventIDStr)
+		if err != nil {
+			return createMessageResponse(http.StatusBadRequest, "Invalid event id")
+		}
+		eventID = parsedID
 	}
 
-	// Get event detail
 	event, err := h.useCase.GetEventDetail(ctx, eventID)
 	if err != nil {
 		return createMessageResponse(http.StatusInternalServerError, "Error loading event detail")
@@ -189,8 +209,81 @@ func (h *EventHandler) HandleGetEventDetail(ctx context.Context, request events.
 		return createMessageResponse(http.StatusNotFound, "Event not found")
 	}
 
-	// Trả trực tiếp object (khớp với Java Backend)
+	privacyStatus := strings.ToUpper(strings.TrimSpace(valueOrEmpty(event.PrivacyStatus)))
+	isPrivate := privacyStatus == "PRIVATE"
+	isOwner := event.OrganizerID != nil && *event.OrganizerID == userID
+	canAccessPrivateByID := role == "ADMIN" || role == "STAFF" || role == "STUDENT" || (role == "ORGANIZER" && isOwner)
+
+	if isPrivate && shareToken == "" && !canAccessPrivateByID {
+		return createMessageResponse(http.StatusForbidden, "Private event requires invitation link")
+	}
+
+	if isPrivate {
+		token := shareToken
+		if token == "" {
+			token = generatePrivateEventToken(event.EventID)
+		}
+		privatePagePath := fmt.Sprintf("/invite/%s", token)
+		privatePaymentPath := privatePagePath + "/payment"
+		event.EventPagePath = &privatePagePath
+		event.EventPaymentPath = &privatePaymentPath
+	} else {
+		publicPagePath := fmt.Sprintf("/events/%d/page", event.EventID)
+		publicPaymentPath := fmt.Sprintf("/events/%d/payment", event.EventID)
+		event.EventPagePath = &publicPagePath
+		event.EventPaymentPath = &publicPaymentPath
+	}
+
 	return createJSONResponse(http.StatusOK, event)
+}
+
+func valueOrEmpty(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func privateEventSecret() string {
+	for _, key := range []string{"PRIVATE_EVENT_LINK_SECRET", "JWT_SECRET", "APP_SECRET"} {
+		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+			return value
+		}
+	}
+	return "fpt-event-private-link-secret"
+}
+
+func generatePrivateEventToken(eventID int) string {
+	payload := strconv.Itoa(eventID)
+	mac := hmac.New(sha256.New, []byte(privateEventSecret()))
+	_, _ = mac.Write([]byte(payload))
+	signature := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	return base64.RawURLEncoding.EncodeToString([]byte(payload + ":" + signature))
+}
+
+func decodePrivateEventToken(token string) (int, error) {
+	decoded, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(token))
+	if err != nil {
+		return 0, err
+	}
+
+	parts := strings.SplitN(string(decoded), ":", 2)
+	if len(parts) != 2 {
+		return 0, fmt.Errorf("invalid token payload")
+	}
+
+	mac := hmac.New(sha256.New, []byte(privateEventSecret()))
+	_, _ = mac.Write([]byte(parts[0]))
+	expected := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(parts[1]), []byte(expected)) {
+		return 0, fmt.Errorf("invalid token signature")
+	}
+
+	eventID, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, err
+	}
+	return eventID, nil
 }
 
 // createJSONResponse creates a JSON response (trả trực tiếp data, không wrap)
@@ -1454,11 +1547,11 @@ func (h *EventHandler) HandleCreateSampleBanner(ctx context.Context, request eve
 	}
 
 	return createJSONResponse(http.StatusCreated, map[string]interface{}{
-		"bannerId":  bannerID,
-		"title":     req.Title,
-		"url":       req.URL,
-		"category":  req.Category,
-		"message":   "Sample banner created successfully",
+		"bannerId": bannerID,
+		"title":    req.Title,
+		"url":      req.URL,
+		"category": req.Category,
+		"message":  "Sample banner created successfully",
 	})
 }
 

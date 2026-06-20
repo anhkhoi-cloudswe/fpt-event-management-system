@@ -257,6 +257,8 @@ function AppRoutes() {
       <Route path="/events/:id" element={<EventDetail />} />
       <Route path="/events/:id/page" element={<PublicEventPage />} />
       <Route path="/events/:id/payment" element={<PublicEventPayment />} />
+      <Route path="/invite/:token" element={<PublicEventPage />} />
+      <Route path="/invite/:token/payment" element={<PublicEventPayment />} />
       <Route path="/attendance/confirm" element={<ProtectedRoute><AttendanceConfirm /></ProtectedRoute>} />
       <Route path="/dashboard/events/:id/page" element={<DashboardEventPageRedirect />} />
 
@@ -272,6 +274,8 @@ function AppRoutes() {
         <Route path="events" element={<Events />} />
         <Route path="events/:id" element={<EventDetail />} />
         <Route path="events/:id/page" element={<PublicEventPage />} />
+        <Route path="invite/:token" element={<PublicEventPage />} />
+        <Route path="invite/:token/payment" element={<PublicEventPayment />} />
         <Route path="events/create" element={<EventRequestCreate />} />
         <Route path="events/:id/edit" element={<EventEdit />} />
         <Route path="my-tickets" element={<MyTickets />} />

@@ -901,7 +901,7 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 		whereClause = ` WHERE (e.status IN ('OPEN', 'CLOSED', 'CANCELLED') OR e.end_time < NOW())`
 	} else {
 		// Public: show open events and historical events (by end_time), but NOT cancelled
-		whereClause = ` WHERE (e.status = 'OPEN' OR (e.end_time < NOW() AND e.status != 'CANCELLED'))`
+		whereClause = ` WHERE (e.status = 'OPEN' OR (e.end_time < NOW() AND e.status != 'CANCELLED')) AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'`
 	}
 
 	// Query with LIMIT and OFFSET
@@ -1043,7 +1043,7 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 	} else if role == "STAFF" {
 		whereClause = ` WHERE (e.status IN ('OPEN', 'CLOSED', 'CANCELLED') OR e.end_time < NOW())`
 	} else {
-		whereClause = ` WHERE (e.status = 'OPEN' OR (e.end_time < NOW() AND e.status != 'CANCELLED'))`
+		whereClause = ` WHERE (e.status = 'OPEN' OR (e.end_time < NOW() AND e.status != 'CANCELLED')) AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'`
 	}
 
 	countQuery := `
@@ -1283,7 +1283,7 @@ func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) 
 		SELECT
 			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
 			e.area_id, e.speaker_id, e.created_by, u.full_name,
-			e.event_format, e.custom_venue_name, e.custom_location
+			e.event_format, e.custom_venue_name, e.custom_location, e.org_type, e.privacy_status, e.online_meeting_url
 		FROM Event e
 		LEFT JOIN Users u ON e.created_by = u.user_id
 		WHERE e.event_id = $1
@@ -1295,14 +1295,14 @@ func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) 
 	var startTime, endTime time.Time
 	var maxSeats sql.NullInt64
 	var status sql.NullString
-	var eventFormat, customVenueName, customLocation sql.NullString
+	var eventFormat, customVenueName, customLocation, orgType, privacyStatus, onlineMeetingURL sql.NullString
 
 	var err error
 	for attempt := 1; attempt <= 3; attempt++ {
 		err = r.db.QueryRowContext(ctx, query, eventID).Scan(
 			&detail.EventID, &detail.Title, &description, &startTime, &endTime, &maxSeats, &status, &bannerURL,
 			&areaID, &speakerID, &organizerID, &organizerName,
-			&eventFormat, &customVenueName, &customLocation,
+			&eventFormat, &customVenueName, &customLocation, &orgType, &privacyStatus, &onlineMeetingURL,
 		)
 		if err == nil || err == sql.ErrNoRows {
 			break
@@ -1346,6 +1346,15 @@ func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) 
 	}
 	if customLocation.Valid {
 		detail.CustomLocation = &customLocation.String
+	}
+	if orgType.Valid {
+		detail.OrgType = &orgType.String
+	}
+	if privacyStatus.Valid {
+		detail.PrivacyStatus = &privacyStatus.String
+	}
+	if onlineMeetingURL.Valid {
+		detail.OnlineMeetingURL = &onlineMeetingURL.String
 	}
 	detail.Tickets = []models.CategoryTicket{}
 	detail.Seats = []models.SeatResponse{}
@@ -1623,7 +1632,7 @@ func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventList
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
-		WHERE e.status = 'OPEN'
+		WHERE e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'
 		ORDER BY e.start_time DESC
 	`
 
@@ -1707,7 +1716,7 @@ func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page 
 	countQuery := `
 		SELECT COUNT(*)
 		FROM Event e
-		WHERE e.status = 'OPEN'
+		WHERE e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'
 	`
 
 	var totalCount int
@@ -1724,7 +1733,7 @@ func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page 
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
-		WHERE e.status = 'OPEN'
+		WHERE e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'
 		ORDER BY e.start_time DESC
 		LIMIT $1 OFFSET $2
 	`
