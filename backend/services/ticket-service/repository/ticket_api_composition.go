@@ -403,46 +403,57 @@ func (r *TicketRepository) enrichTicketRows(ctx context.Context, client *utils.I
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		var eventWg sync.WaitGroup
 		for eventID := range eventIDs {
-			var detail eventDetailResponse
-			baseURL := utils.GetEventServiceURL() + "/api/events/detail"
-			params := map[string]string{"id": strconv.Itoa(eventID)}
-			statusCode, err := client.GetJSON(ctx, baseURL, params, &detail)
-			if err != nil {
-				log.Warn("Failed to fetch event %d: %v", eventID, err)
-				continue
-			}
-			if statusCode == 200 {
-				mu.Lock()
-				detail.EventID = eventID
-				eventMap[eventID] = &detail
-				mu.Unlock()
-			}
+			eventWg.Add(1)
+			go func(eID int) {
+				defer eventWg.Done()
+				var detail eventDetailResponse
+				baseURL := utils.GetEventServiceURL() + "/api/events/detail"
+				params := map[string]string{"id": strconv.Itoa(eID)}
+				statusCode, err := client.GetJSON(ctx, baseURL, params, &detail)
+				if err != nil {
+					log.Warn("Failed to fetch event %d: %v", eID, err)
+					return
+				}
+				if statusCode == 200 {
+					mu.Lock()
+					detail.EventID = eID
+					eventMap[eID] = &detail
+					mu.Unlock()
+				}
+			}(eventID)
 		}
+		eventWg.Wait()
 	}()
 
-	// Category tickets
+	// Category tickets - Query directly from the local database
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		var catWg sync.WaitGroup
 		for eventID := range eventIDs {
-			var categories []categoryTicketInfo
-			baseURL := utils.GetTicketServiceURL() + "/api/category-tickets"
-			params := map[string]string{"eventId": strconv.Itoa(eventID)}
-			statusCode, err := client.GetJSON(ctx, baseURL, params, &categories)
-			if err != nil {
-				log.Warn("Failed to fetch categories for event %d: %v", eventID, err)
-				continue
-			}
-			if statusCode == 200 {
+			catWg.Add(1)
+			go func(eID int) {
+				defer catWg.Done()
+				categories, err := r.GetCategoryTicketsByEventID(ctx, eID)
+				if err != nil {
+					log.Warn("Failed to fetch category tickets locally for event %d: %v", eID, err)
+					return
+				}
 				mu.Lock()
 				for i := range categories {
 					cat := categories[i]
-					categoryMap[cat.CategoryTicketID] = &cat
+					categoryMap[cat.CategoryTicketID] = &categoryTicketInfo{
+						CategoryTicketID: cat.CategoryTicketID,
+						Name:             cat.Name,
+						Price:            cat.Price,
+					}
 				}
 				mu.Unlock()
-			}
+			}(eventID)
 		}
+		catWg.Wait()
 	}()
 
 	// Seats
@@ -452,26 +463,32 @@ func (r *TicketRepository) enrichTicketRows(ctx context.Context, client *utils.I
 		if len(seatIDs) == 0 {
 			return
 		}
+		var seatWg sync.WaitGroup
 		for eventID := range eventIDs {
-			var response struct {
-				Seats []seatInfo `json:"seats"`
-			}
-			baseURL := utils.GetVenueServiceURL() + "/api/seats"
-			params := map[string]string{"eventId": strconv.Itoa(eventID)}
-			statusCode, err := client.GetJSON(ctx, baseURL, params, &response)
-			if err != nil {
-				log.Warn("Failed to fetch seats for event %d: %v", eventID, err)
-				continue
-			}
-			if statusCode == 200 {
-				mu.Lock()
-				for i := range response.Seats {
-					s := response.Seats[i]
-					seatMap[s.SeatID] = &s
+			seatWg.Add(1)
+			go func(eID int) {
+				defer seatWg.Done()
+				var response struct {
+					Seats []seatInfo `json:"seats"`
 				}
-				mu.Unlock()
-			}
+				baseURL := utils.GetVenueServiceURL() + "/api/seats"
+				params := map[string]string{"eventId": strconv.Itoa(eID)}
+				statusCode, err := client.GetJSON(ctx, baseURL, params, &response)
+				if err != nil {
+					log.Warn("Failed to fetch seats for event %d: %v", eID, err)
+					return
+				}
+				if statusCode == 200 {
+					mu.Lock()
+					for i := range response.Seats {
+						s := response.Seats[i]
+						seatMap[s.SeatID] = &s
+					}
+					mu.Unlock()
+				}
+			}(eventID)
 		}
+		seatWg.Wait()
 	}()
 
 	// Users — Gọi /internal/user/profiles?userIds=1,2,3 (batch lookup) để lấy tên của học sinh/khách hàng mua vé
