@@ -99,7 +99,7 @@ const getCalendarParts = (value: string | undefined, lang: 'vi' | 'en') => {
 
 const cleanLocationToken = (value?: string | null) => {
   const trimmed = (value || '').trim()
-  if (!trimmed || /^null$/i.test(trimmed) || /^undefined$/i.test(trimmed)) return ''
+  if (!trimmed || /^null$/i.test(trimmed) || /^undefined$/i.test(trimmed) || trimmed === '-') return ''
   if (/^https?:\/\//i.test(trimmed)) return ''
   return trimmed
 }
