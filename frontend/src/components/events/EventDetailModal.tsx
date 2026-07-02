@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import type { EventDetail } from '../../types/event'
+import { getCleanedLocationForMap } from '../../utils/location'
 
 interface EventDetailModalProps {
   isOpen: boolean
@@ -288,10 +289,11 @@ export function EventDetailModal({
     detail?.venue?.location ||
     ''
   const onlinePlatformLabel = getOnlinePlatformLabel(detail?.onlineMeetingUrl)
+  const cleanedMapLocation = getCleanedLocationForMap(exactLocationString, venueName)
   const mapTokens = [
-    venueName,
-    exactLocationString !== venueName ? exactLocationString : '',
-    /viet nam|vietnam|ho chi minh|hcm|sai gon|saigon/i.test(`${venueName} ${exactLocationString}`) ? '' : 'Ho Chi Minh City, Vietnam',
+    cleanedMapLocation,
+
+    /viet nam|vietnam|ho chi minh|hcm|sai gon|saigon/i.test(cleanedMapLocation) ? '' : 'Ho Chi Minh City, Vietnam',
   ]
   const locationRows = buildLocationRows({
     eventFormat,

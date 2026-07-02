@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { EventListItem } from '../../types/event'
+import { formatEventLocation } from '../../utils/location'
 
 interface EventCalendarProps {
   events: EventListItem[]
@@ -285,10 +286,10 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
                               minute: '2-digit'
                             })}
                           </span>
-                          {event.venueLocation && (
+                          {(event.venueLocation || event.location || event.venueName || event.areaName) && (
                             <>
                               <span>•</span>
-                              <span className="truncate">{event.venueLocation}</span>
+                              <span className="truncate">{formatEventLocation(event, 'vi')}</span>
                             </>
                           )}
                         </div>

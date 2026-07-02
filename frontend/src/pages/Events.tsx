@@ -20,6 +20,7 @@ import {
 // date-fns: format ngày giờ + startOfDay + isAfter để phân loại sự kiện sắp tới/đã qua
 import { format, startOfDay, isAfter } from 'date-fns'
 import { vi } from 'date-fns/locale'
+import { formatEventLocation } from '../utils/location'
 
 // React hooks
 import { useState, useEffect, useCallback } from 'react'
@@ -540,7 +541,7 @@ export default function Events() {
                             <div className="flex items-center text-sm text-gray-650 dark:text-gray-350">
                               <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
                               <span className="line-clamp-1">
-{event.venueLocation || event.location || (currentLanguage === 'en' ? 'TBD' : 'Chưa xác định')}
+{formatEventLocation(event, currentLanguage === 'en' ? 'en' : 'vi')}
                               </span>
                             </div>
 
@@ -650,7 +651,7 @@ export default function Events() {
                             <div className="flex items-center text-sm text-gray-500">
                               <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
                               <span className="line-clamp-1">
-{event.venueLocation || event.location || (currentLanguage === 'en' ? 'TBD' : 'Chưa xác định')}
+{formatEventLocation(event, currentLanguage === 'en' ? 'en' : 'vi')}
                               </span>
                             </div>
 

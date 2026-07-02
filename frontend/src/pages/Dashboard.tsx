@@ -57,6 +57,7 @@ import { format, isSameDay, startOfDay } from 'date-fns'
 // ✅ Import timezone-safe date formatter
 
 import { formatWallClockDateTimeWithDayOfWeek } from '../utils/dateFormat'
+import { formatEventLocation } from '../utils/location'
 
 // formatWallClockDateTimeWithDayOfWeek: Extract date/time via pure strings + safe Date usage for day-of-week only
 
@@ -1496,7 +1497,7 @@ export default function Dashboard() {
 
                         <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-auto leading-relaxed">
 
-                          📍 {event.venueLocation || event.location || 'Trực tuyến'}
+                          📍 {formatEventLocation(event, currentLanguage === 'en' ? 'en' : 'vi')}
 
                         </p>
 
@@ -1798,7 +1799,7 @@ export default function Dashboard() {
 
                         <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-auto leading-relaxed">
 
-                          📍 {event.venueLocation || event.location || 'Trực tuyến'}
+                          📍 {formatEventLocation(event, currentLanguage === 'en' ? 'en' : 'vi')}
 
                         </p>
 
@@ -2044,7 +2045,7 @@ export default function Dashboard() {
 
                       <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-auto leading-relaxed">
 
-                        📍 {event.venueLocation || event.location || 'Trực tuyến'}
+                        📍 {formatEventLocation(event, currentLanguage === 'en' ? 'en' : 'vi')}
 
                       </p>
 

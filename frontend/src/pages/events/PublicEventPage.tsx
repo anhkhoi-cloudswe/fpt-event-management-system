@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Calendar, MapPin, Users } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import type { EventDetail } from '../../types/event'
+import { getCleanedLocationForMap } from '../../utils/location'
 
 type Ticket = {
   categoryTicketId: number
@@ -331,10 +332,11 @@ export default function PublicEventPage() {
     ''
   const eventFormat = (event.eventFormat || '').toUpperCase()
   const onlinePlatformLabel = getOnlinePlatformLabel(event.onlineMeetingUrl)
+  const cleanedMapLocation = getCleanedLocationForMap(exactLocationString, venueName)
   const mapTokens = [
-    venueName,
-    exactLocationString !== venueName ? exactLocationString : '',
-    /viet nam|vietnam|ho chi minh|hcm|sai gon|saigon/i.test(`${venueName} ${exactLocationString}`) ? '' : 'Ho Chi Minh City, Vietnam',
+    cleanedMapLocation,
+
+    /viet nam|vietnam|ho chi minh|hcm|sai gon|saigon/i.test(cleanedMapLocation) ? '' : 'Ho Chi Minh City, Vietnam',
   ]
   const mapSrc = buildGoogleMapsEmbedUrl(mapTokens)
 

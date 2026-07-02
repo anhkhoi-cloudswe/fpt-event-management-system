@@ -965,10 +965,10 @@ export default function GuestLanding() {
                         </p>
 
                         {/* venueName nếu có */}
-                        {event.venueName && (
+                        {(event.venueName || event.venueLocation || event.location || event.areaName) && (
                           <p className="flex items-center gap-2">
                             <Award className="w-4 h-4 text-orange-500" />
-                            {event.venueName}
+                            <span className="line-clamp-1">{formatEventLocation(event, 'vi')}</span>
                           </p>
                         )}
 
