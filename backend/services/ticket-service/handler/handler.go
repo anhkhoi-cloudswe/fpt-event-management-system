@@ -897,15 +897,21 @@ func (h *TicketHandler) HandleSePayWebhook(ctx context.Context, request events.A
 	log.Info("SePay Webhook Request Received")
 
 	signatureHex := getHeaderIgnoreCase(request.Headers, "x-sepay-signature")
-	if signatureHex == "" {
-		return createMessageResponse(http.StatusUnauthorized, "Missing webhook signature")
-	}
-	hMac := hmac.New(sha256.New, []byte(secret))
-	hMac.Write([]byte(request.Body))
-	computedSignature := hex.EncodeToString(hMac.Sum(nil))
-	if !hmac.Equal([]byte(computedSignature), []byte(strings.TrimSpace(signatureHex))) {
-		log.Warn("SePay Webhook: invalid signature")
-		return createMessageResponse(http.StatusUnauthorized, "Invalid webhook signature")
+	bypassSignature := strings.TrimSpace(os.Getenv("BYPASS_SEPAY_SIGNATURE")) == "true"
+
+	if bypassSignature {
+		log.Warn("SePay Webhook: BYPASS_SEPAY_SIGNATURE is enabled, skipping signature check")
+	} else {
+		if signatureHex == "" {
+			return createMessageResponse(http.StatusUnauthorized, "Missing webhook signature")
+		}
+		hMac := hmac.New(sha256.New, []byte(secret))
+		hMac.Write([]byte(request.Body))
+		computedSignature := hex.EncodeToString(hMac.Sum(nil))
+		if !hmac.Equal([]byte(computedSignature), []byte(strings.TrimSpace(signatureHex))) {
+			log.Warn("SePay Webhook: invalid signature. Secret length: %d, Computed: %s, Received: %s, Body length: %d", len(secret), computedSignature, signatureHex, len(request.Body))
+			return createMessageResponse(http.StatusUnauthorized, "Invalid webhook signature")
+		}
 	}
 
 	type SePayWebhookPayload struct {
