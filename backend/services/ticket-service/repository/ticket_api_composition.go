@@ -456,39 +456,27 @@ func (r *TicketRepository) enrichTicketRows(ctx context.Context, client *utils.I
 		catWg.Wait()
 	}()
 
-	// Seats
+	// Seats - Query directly from the local database
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		if len(seatIDs) == 0 {
 			return
 		}
-		var seatWg sync.WaitGroup
-		for eventID := range eventIDs {
-			seatWg.Add(1)
-			go func(eID int) {
-				defer seatWg.Done()
-				var response struct {
-					Seats []seatInfo `json:"seats"`
-				}
-				baseURL := utils.GetVenueServiceURL() + "/api/seats"
-				params := map[string]string{"eventId": strconv.Itoa(eID)}
-				statusCode, err := client.GetJSON(ctx, baseURL, params, &response)
-				if err != nil {
-					log.Warn("Failed to fetch seats for event %d: %v", eID, err)
-					return
-				}
-				if statusCode == 200 {
-					mu.Lock()
-					for i := range response.Seats {
-						s := response.Seats[i]
-						seatMap[s.SeatID] = &s
-					}
-					mu.Unlock()
-				}
-			}(eventID)
+		ids := make([]int, 0, len(seatIDs))
+		for id := range seatIDs {
+			ids = append(ids, id)
 		}
-		seatWg.Wait()
+		dbSeats, err := r.GetSeatsByIDs(ctx, ids)
+		if err != nil {
+			log.Warn("Failed to fetch seats directly from database: %v", err)
+			return
+		}
+		mu.Lock()
+		for id, s := range dbSeats {
+			seatMap[id] = s
+		}
+		mu.Unlock()
 	}()
 
 	// Users — Gọi /internal/user/profiles?userIds=1,2,3 (batch lookup) để lấy tên của học sinh/khách hàng mua vé
@@ -601,4 +589,36 @@ func (r *TicketRepository) enrichTicketRows(ctx context.Context, client *utils.I
 	}
 
 	return tickets, nil
+}
+
+// GetSeatsByIDs - Lấy thông tin các ghế dựa trên danh sách seat IDs trực tiếp từ DB
+func (r *TicketRepository) GetSeatsByIDs(ctx context.Context, seatIDs []int) (map[int]*seatInfo, error) {
+	if len(seatIDs) == 0 {
+		return map[int]*seatInfo{}, nil
+	}
+
+	placeholders := make([]string, len(seatIDs))
+	args := make([]interface{}, len(seatIDs))
+	for i, id := range seatIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+
+	query := fmt.Sprintf("SELECT seat_id, seat_code FROM Seat WHERE seat_id IN (%s)", strings.Join(placeholders, ","))
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query seats by IDs: %w", err)
+	}
+	defer rows.Close()
+
+	seatMap := make(map[int]*seatInfo)
+	for rows.Next() {
+		var id int
+		var code string
+		if err := rows.Scan(&id, &code); err != nil {
+			return nil, fmt.Errorf("failed to scan seat: %w", err)
+		}
+		seatMap[id] = &seatInfo{SeatID: id, SeatCode: code}
+	}
+	return seatMap, nil
 }

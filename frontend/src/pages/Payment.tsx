@@ -109,6 +109,22 @@ function cleanEventTitleForTransfer(title: string): string {
   return cleaned || "EVENT";
 }
 
+const getCleanAbbreviation = (title: string): string => {
+  const noAccent = title.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const clean = noAccent.replace(/[^a-zA-Z0-9]/g, " ").toUpperCase();
+  const tokens = clean.split(/\s+/).filter(t => t.length > 0);
+  if (tokens.length === 0) return "EVENT";
+  
+  let prefix = "";
+  if (tokens[0] === "FPT" && tokens.length > 1) {
+    prefix = "FPT";
+    tokens.shift();
+  }
+  
+  const initials = tokens.map(t => t[0]).join("");
+  return (prefix + initials).slice(0, 6);
+}
+
 // ======================== MAIN COMPONENT ========================
 
 export default function Payment() {
@@ -158,8 +174,12 @@ export default function Payment() {
   } | null>(null)
 
   // Dynamic transfer description for SePay VietQR
-  const cleanTitle = cleanEventTitleForTransfer(state.eventTitle || 'Sự kiện demo (mock)')
-  const transferDescription = bankTransferOrder ? `${cleanTitle} HD${bankTransferOrder.order_id}` : ''
+  const seatCodeStr = state.seatCodes && state.seatCodes.length > 0
+    ? state.seatCodes.map(code => code.replace(/[^a-zA-Z0-9]/g, "")).join("")
+    : "ONLINE"
+  const transferDescription = bankTransferOrder
+    ? `FEMS_${getCleanAbbreviation(state.eventTitle || 'Sự kiện')}_${seatCodeStr}_DH${bankTransferOrder.order_id}`
+    : ''
 
   // ⏳ SePay Bank Transfer Countdown (Dynamic from Server expire_at)
   const [timeLeft, setTimeLeft] = useState<number>(300)

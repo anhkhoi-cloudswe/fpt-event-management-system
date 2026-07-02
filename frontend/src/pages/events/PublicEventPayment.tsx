@@ -99,6 +99,22 @@ const formatDateTime = (value?: string, lang?: 'vi' | 'en') => {
 
 const formatCurrency = (value: number) => `${value.toLocaleString('vi-VN')} đ`
 
+const getCleanAbbreviation = (title: string): string => {
+  const noAccent = title.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const clean = noAccent.replace(/[^a-zA-Z0-9]/g, " ").toUpperCase();
+  const tokens = clean.split(/\s+/).filter(t => t.length > 0);
+  if (tokens.length === 0) return "EVENT";
+  
+  let prefix = "";
+  if (tokens[0] === "FPT" && tokens.length > 1) {
+    prefix = "FPT";
+    tokens.shift();
+  }
+  
+  const initials = tokens.map(t => t[0]).join("");
+  return (prefix + initials).slice(0, 6);
+}
+
 const normalizeText = (value?: string | null) => (value || '').trim().replace(/\s+/g, ' ').toLowerCase()
 const normalizePhone = (value?: string | null) => (value || '').replace(/\D/g, '')
 const isValidVietnamPhone = (value: string) => /^(0[35789])[0-9]{8}$/.test(normalizePhone(value))
@@ -722,9 +738,55 @@ export default function PublicEventPayment() {
       await handleWalletPayment()
       return
     }
-    setConfirmationMessage(activeMethod === 'qr' 
-      ? (pageLanguage === 'en' ? 'SePay transfer confirmation request recorded.' : 'Đã ghi nhận yêu cầu xác nhận chuyển khoản SePay.') 
-      : (pageLanguage === 'en' ? 'FPT internal wallet payment request recorded.' : 'Đã ghi nhận yêu cầu thanh toán bằng Ví nội bộ FPT.'))
+    
+    if (activeMethod === 'qr') {
+      if (!bankTransferOrder?.order_id) return
+      setProcessingOrder(true)
+      setError(null)
+      setConfirmationMessage('')
+      
+      const authToken = token || localStorage.getItem('token') || ''
+      try {
+        const statusRes = await fetch(`/api/payment/check-status/${bankTransferOrder.order_id}`, {
+          credentials: 'include',
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        })
+        
+        if (statusRes.ok) {
+          const statusData = await statusRes.json()
+          if (statusData.status === 'PAID') {
+            if (pollingIntervalId) {
+              window.clearInterval(pollingIntervalId)
+              setPollingIntervalId(null)
+            }
+            const ticketIds = bankTransferOrder.ticketIds || bankTransferOrder.seatIds?.join(',') || selectedSeats.map((seat) => seat.seatId).join(',')
+            navigate(`/payment-success?status=success&method=bank_transfer&billId=${bankTransferOrder.order_id}&ticketIds=${encodeURIComponent(ticketIds)}`, { replace: true })
+          } else {
+            setConfirmationMessage(
+              pageLanguage === 'en'
+                ? 'Payment not received yet. If you completed the transfer, please wait 10-30 seconds and click again.'
+                : 'Hệ thống chưa nhận được thanh toán. Nếu bạn đã chuyển khoản thành công, vui lòng đợi 10-30 giây rồi bấm xác nhận lại.'
+            )
+          }
+        } else {
+          setConfirmationMessage(
+            pageLanguage === 'en'
+              ? 'Unable to verify payment status at this moment. Please wait a moment.'
+              : 'Chưa thể xác minh trạng thái thanh toán lúc này. Vui lòng thử lại sau.'
+          )
+        }
+      } catch (err) {
+        console.error('Error checking payment status on click:', err)
+        setConfirmationMessage(
+          pageLanguage === 'en'
+            ? 'An error occurred while verifying payment. Please try again.'
+            : 'Đã xảy ra lỗi khi xác minh thanh toán. Vui lòng thử lại.'
+        )
+      } finally {
+        setProcessingOrder(false)
+      }
+      return
+    }
   }
 
   if (authLoading || isRefreshing || loading) {
@@ -934,7 +996,12 @@ export default function PublicEventPayment() {
   const organizerName = event.organizerName || 'FPT Organizer'
   const eventKey = event.eventId || event.id || id || 'event'
   const userId = user?.id || 'GUEST'
-  const transferMessage = bankTransferOrder?.order_id ? `FEMS_${eventKey}_DH${bankTransferOrder.order_id}` : `FEMS_${eventKey}_${userId || 'GUEST'}`
+  const seatCodeStr = selectedSeats.length > 0
+    ? selectedSeats.map(s => s.seatCode.replace(/[^a-zA-Z0-9]/g, "")).join("")
+    : "ONLINE"
+  const transferMessage = bankTransferOrder?.order_id
+    ? `FEMS_${getCleanAbbreviation(event.title)}_${seatCodeStr}_DH${bankTransferOrder.order_id}`
+    : `FEMS_${getCleanAbbreviation(event.title)}_${seatCodeStr}_${userId || 'GUEST'}`
   const paymentAmount = Number(bankTransferOrder?.amount ?? totalAmount)
   const vietQrSrc = `https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '2911121319'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${paymentAmount}&des=${encodeURIComponent(transferMessage)}`
 
