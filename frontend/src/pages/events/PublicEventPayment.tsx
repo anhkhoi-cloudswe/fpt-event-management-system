@@ -1000,8 +1000,8 @@ export default function PublicEventPayment() {
     ? selectedSeats.map(s => s.seatCode.replace(/[^a-zA-Z0-9]/g, "")).join("")
     : "ONLINE"
   const transferMessage = bankTransferOrder?.order_id
-    ? `FEMS_${getCleanAbbreviation(event.title)}_${seatCodeStr}_DH${bankTransferOrder.order_id}`
-    : `FEMS_${getCleanAbbreviation(event.title)}_${seatCodeStr}_${userId || 'GUEST'}`
+    ? `FEMS ${getCleanAbbreviation(event.title)} ${seatCodeStr} DH${bankTransferOrder.order_id}`
+    : `FEMS ${getCleanAbbreviation(event.title)} ${seatCodeStr} ${userId || 'GUEST'}`
   const paymentAmount = Number(bankTransferOrder?.amount ?? totalAmount)
   const vietQrSrc = `https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '2911121319'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${paymentAmount}&des=${encodeURIComponent(transferMessage)}`
 

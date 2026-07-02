@@ -178,7 +178,7 @@ export default function Payment() {
     ? state.seatCodes.map(code => code.replace(/[^a-zA-Z0-9]/g, "")).join("")
     : "ONLINE"
   const transferDescription = bankTransferOrder
-    ? `FEMS_${getCleanAbbreviation(state.eventTitle || 'Sự kiện')}_${seatCodeStr}_DH${bankTransferOrder.order_id}`
+    ? `FEMS ${getCleanAbbreviation(state.eventTitle || 'Sự kiện')} ${seatCodeStr} DH${bankTransferOrder.order_id}`
     : ''
 
   // ⏳ SePay Bank Transfer Countdown (Dynamic from Server expire_at)

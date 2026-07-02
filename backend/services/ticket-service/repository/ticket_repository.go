@@ -1205,16 +1205,50 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 	// Quét tìm từ khóa HD, DH, hoặc BILL nằm sát các chữ số cuối cùng của chuỗi nội dung
 	re := regexp.MustCompile(`(?:HD|DH|BILL)\s*(\d+)`)
 	matches := re.FindStringSubmatch(strings.ToUpper(content))
-	if len(matches) < 2 {
-		log.Warn("SePay Webhook: Invalid content format (missing HD{order_id})", "content", content)
-		return "", fmt.Errorf("invalid transaction content: %s", content)
-	}
-
-	orderIDStr := matches[1]
-	orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
-	if err != nil {
-		log.Error("SePay Webhook: Failed to parse order ID", "order_id_str", orderIDStr, "error", err)
-		return "", fmt.Errorf("invalid order id: %s", orderIDStr)
+	
+	var orderID int64
+	var err error
+	
+	if len(matches) >= 2 {
+		orderIDStr := matches[1]
+		orderID, err = strconv.ParseInt(orderIDStr, 10, 64)
+		if err != nil {
+			log.Error("SePay Webhook: Failed to parse order ID", "order_id_str", orderIDStr, "error", err)
+			return "", fmt.Errorf("invalid order id: %s", orderIDStr)
+		}
+	} else {
+		log.Info("SePay Webhook: No order ID pattern found in content, trying fallback by amount", "amount", amount)
+		fallbackQuery := `
+			SELECT bill_id 
+			FROM Bill 
+			WHERE payment_status = 'PENDING' 
+			  AND ABS(total_amount - $1) < 1.0
+			  AND created_at >= NOW() - INTERVAL '15 minutes'
+		`
+		rows, err := r.db.QueryContext(ctx, fallbackQuery, amount)
+		if err != nil {
+			return "", fmt.Errorf("failed to query fallback bills: %w", err)
+		}
+		defer rows.Close()
+		
+		var candidateIDs []int64
+		for rows.Next() {
+			var bid int64
+			if err := rows.Scan(&bid); err == nil {
+				candidateIDs = append(candidateIDs, bid)
+			}
+		}
+		
+		if len(candidateIDs) == 1 {
+			orderID = candidateIDs[0]
+			log.Info("SePay Webhook: Fallback matched exactly one pending bill", "bill_id", orderID, "amount", amount)
+		} else if len(candidateIDs) > 1 {
+			log.Warn("SePay Webhook: Fallback matched multiple pending bills, cannot resolve automatically", "candidate_count", len(candidateIDs), "amount", amount)
+			return "", fmt.Errorf("multiple pending bills of amount %.2f found, cannot resolve", amount)
+		} else {
+			log.Warn("SePay Webhook: Fallback matched no pending bills", "amount", amount)
+			return "", fmt.Errorf("invalid transaction content and no matching pending bill for amount %.2f", amount)
+		}
 	}
 
 	log.Info("SePay Webhook: Parsed transaction", "order_id", orderID, "amount", amount)
