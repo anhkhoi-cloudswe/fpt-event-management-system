@@ -897,6 +897,7 @@ func (h *TicketHandler) HandleSePayWebhook(ctx context.Context, request events.A
 	log.Info("SePay Webhook Request Received")
 
 	signatureHex := getHeaderIgnoreCase(request.Headers, "x-sepay-signature")
+	signatureHex = strings.TrimPrefix(strings.TrimSpace(signatureHex), "sha256=")
 	bypassSignature := strings.TrimSpace(os.Getenv("BYPASS_SEPAY_SIGNATURE")) == "true"
 
 	if bypassSignature {
