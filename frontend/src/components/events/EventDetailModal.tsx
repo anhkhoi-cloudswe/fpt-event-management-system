@@ -283,9 +283,9 @@ export function EventDetailModal({
   const venueName = customVenueName || detail?.venueName || detail?.venue?.venueName || detail?.venueArea?.venue?.venueName || ''
   const exactLocationString =
     customLocation ||
-    detail?.venueArea?.venue?.location ||
-    detail?.location ||
     detail?.venueLocation ||
+    detail?.location ||
+    detail?.venueArea?.venue?.location ||
     detail?.venue?.location ||
     ''
   const onlinePlatformLabel = getOnlinePlatformLabel(detail?.onlineMeetingUrl)

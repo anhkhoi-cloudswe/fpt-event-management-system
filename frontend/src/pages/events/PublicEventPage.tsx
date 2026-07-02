@@ -325,9 +325,9 @@ export default function PublicEventPage() {
   const venueName = customVenueName || event.venueName || event.venue?.venueName || event.venueArea?.venue?.venueName || ''
   const exactLocationString =
     customLocation ||
-    event.venueArea?.venue?.location ||
-    event.location ||
     event.venueLocation ||
+    event.location ||
+    event.venueArea?.venue?.location ||
     event.venue?.location ||
     ''
   const eventFormat = (event.eventFormat || '').toUpperCase()
