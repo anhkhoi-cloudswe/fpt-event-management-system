@@ -898,6 +898,7 @@ func (h *TicketHandler) HandleSePayWebhook(ctx context.Context, request events.A
 
 	signatureHex := getHeaderIgnoreCase(request.Headers, "x-sepay-signature")
 	signatureHex = strings.TrimPrefix(strings.TrimSpace(signatureHex), "sha256=")
+	timestamp := getHeaderIgnoreCase(request.Headers, "x-sepay-timestamp")
 	bypassSignature := strings.TrimSpace(os.Getenv("BYPASS_SEPAY_SIGNATURE")) == "true"
 
 	if bypassSignature {
@@ -906,8 +907,15 @@ func (h *TicketHandler) HandleSePayWebhook(ctx context.Context, request events.A
 		if signatureHex == "" {
 			return createMessageResponse(http.StatusUnauthorized, "Missing webhook signature")
 		}
+		if timestamp == "" {
+			return createMessageResponse(http.StatusUnauthorized, "Missing webhook timestamp")
+		}
+		
+		// String to sign: {timestamp}.{raw_request_body}
+		payloadToSign := timestamp + "." + request.Body
+		
 		hMac := hmac.New(sha256.New, []byte(secret))
-		hMac.Write([]byte(request.Body))
+		hMac.Write([]byte(payloadToSign))
 		computedSignature := hex.EncodeToString(hMac.Sum(nil))
 		if !hmac.Equal([]byte(computedSignature), []byte(strings.TrimSpace(signatureHex))) {
 			log.Warn("SePay Webhook: invalid signature. Secret length: %d, Computed: %s, Received: %s, Body length: %d", len(secret), computedSignature, signatureHex, len(request.Body))
