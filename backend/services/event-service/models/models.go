@@ -226,6 +226,8 @@ type EventDetailDto struct {
 
 	VenueName *string `json:"venueName"`
 
+	VenueLocation *string `json:"venueLocation,omitempty"`
+
 	// Organizer info
 
 	OrganizerID *int `json:"organizerId"`

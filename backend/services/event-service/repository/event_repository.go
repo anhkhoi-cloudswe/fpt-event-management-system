@@ -1160,7 +1160,7 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 		SELECT
 			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor, va.capacity,
-			v.venue_name,
+			v.venue_name, v.location,
 			e.speaker_id, s.full_name, s.bio, s.avatar_url, s.email, s.phone
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
@@ -1170,7 +1170,7 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 	`
 
 	var detail models.EventDetailDto
-	var description, bannerURL, areaName, floor, venueName, speakerName, speakerBio, speakerAvatar, speakerEmail, speakerPhone sql.NullString
+	var description, bannerURL, areaName, floor, venueName, venueLoc, speakerName, speakerBio, speakerAvatar, speakerEmail, speakerPhone sql.NullString
 	var areaID, areaCapacity sql.NullInt64
 	var speakerID sql.NullInt64
 	var startTime, endTime time.Time
@@ -1180,7 +1180,7 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 	err := r.db.QueryRowContext(ctx, query, eventID).Scan(
 		&detail.EventID, &detail.Title, &description, &startTime, &endTime, &maxSeats, &status, &bannerURL,
 		&areaID, &areaName, &floor, &areaCapacity,
-		&venueName,
+		&venueName, &venueLoc,
 		/* speaker */ &speakerID, &speakerName, &speakerBio, &speakerAvatar, &speakerEmail, &speakerPhone,
 	)
 	if err != nil {
@@ -1210,6 +1210,9 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 	}
 	if venueName.Valid {
 		detail.VenueName = &venueName.String
+	}
+	if venueLoc.Valid {
+		detail.VenueLocation = &venueLoc.String
 	}
 	if areaID.Valid {
 		aid := int(areaID.Int64)
@@ -1371,15 +1374,15 @@ func (r *EventRepository) loadEventDetailVenue(ctx context.Context, detail *mode
 	detail.AreaID = &aid
 
 	query := `
-		SELECT va.area_name, va.floor, va.capacity, v.venue_name
+		SELECT va.area_name, va.floor, va.capacity, v.venue_name, v.location
 		FROM Venue_Area va
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
 		WHERE va.area_id = $1
 	`
 
-	var areaName, floor, venueName sql.NullString
+	var areaName, floor, venueName, venueLoc sql.NullString
 	var areaCapacity sql.NullInt64
-	err := r.db.QueryRowContext(ctx, query, areaID.Int64).Scan(&areaName, &floor, &areaCapacity, &venueName)
+	err := r.db.QueryRowContext(ctx, query, areaID.Int64).Scan(&areaName, &floor, &areaCapacity, &venueName, &venueLoc)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil
@@ -1390,6 +1393,9 @@ func (r *EventRepository) loadEventDetailVenue(ctx context.Context, detail *mode
 
 	if venueName.Valid {
 		detail.VenueName = &venueName.String
+	}
+	if venueLoc.Valid {
+		detail.VenueLocation = &venueLoc.String
 	}
 	if areaName.Valid {
 		detail.AreaName = &areaName.String

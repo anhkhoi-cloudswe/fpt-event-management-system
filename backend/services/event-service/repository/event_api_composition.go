@@ -438,6 +438,9 @@ func (r *EventRepository) GetEventDetailComposed(ctx context.Context, eventID in
 				if areaInfo.VenueName != nil {
 					detail.VenueName = areaInfo.VenueName
 				}
+				if areaInfo.VenueLocation != nil {
+					detail.VenueLocation = areaInfo.VenueLocation
+				}
 			}
 		}
 
