@@ -30,7 +30,8 @@ import { EventDetailModal } from '../components/events/EventDetailModal'
 import type { EventDetail } from '../types/event'
 
 // Import helper để format thời gian theo Vietnam timezone
-import { formatVietnamDateTime } from '../utils/dateFormat'
+import { formatVietnamDateTime } from '../utils/dateFormat'
+import { formatEventLocation } from '../utils/location'
 
 // Import logo và logo loading từ assets
 import fptLogo from '../assets/fpt-logo.png'
