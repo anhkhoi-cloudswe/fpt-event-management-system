@@ -324,8 +324,8 @@ export default function PublicEventPage() {
   const customLocation = cleanLocationToken(event.customLocation)
   const venueName = customVenueName || event.venueName || event.venue?.venueName || event.venueArea?.venue?.venueName || ''
   const exactLocationString =
-    customLocation ||
     event.venueLocation ||
+    customLocation ||
     event.location ||
     event.venueArea?.venue?.location ||
     event.venue?.location ||

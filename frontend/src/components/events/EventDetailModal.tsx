@@ -282,8 +282,8 @@ export function EventDetailModal({
   const customLocation = cleanLocationToken(detail?.customLocation)
   const venueName = customVenueName || detail?.venueName || detail?.venue?.venueName || detail?.venueArea?.venue?.venueName || ''
   const exactLocationString =
-    customLocation ||
     detail?.venueLocation ||
+    customLocation ||
     detail?.location ||
     detail?.venueArea?.venue?.location ||
     detail?.venue?.location ||
