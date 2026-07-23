@@ -479,7 +479,7 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 					SELECT seat_id, seat_code, row_no, col_no
 					FROM Seat 
 					WHERE area_id = $1
-					ORDER BY row_no ASC, CAST(SUBSTRING(seat_code FROM 2) AS INTEGER) ASC, seat_code ASC
+					ORDER BY LENGTH(row_no) ASC, row_no ASC, CASE WHEN col_no ~ '^[0-9]+$' THEN col_no::integer ELSE 0 END ASC, seat_code ASC
 				`
 				rows, err := tx.QueryContext(ctx, getSeatIDsQuery, areaID)
 				if err != nil {
