@@ -567,6 +567,17 @@ function TimePopover({ value, onChange, onClose, showDuration, startDateTimeStr,
     timeSlots.push(`${hs}:30`)
   }
 
+  let filteredTimeSlots = timeSlots
+  if (startDateTimeStr && endDateStr) {
+    const startDateStr = startDateTimeStr.split('T')[0]
+    if (startDateStr === endDateStr) {
+      const startTimeStr = startDateTimeStr.split('T')[1]
+      if (startTimeStr) {
+        filteredTimeSlots = timeSlots.filter(t => t > startTimeStr)
+      }
+    }
+  }
+
   useEffect(() => {
     if (listRef.current && value) {
       const activeTimeItem = listRef.current.querySelector('[data-selected="true"]') as HTMLElement
@@ -585,7 +596,7 @@ function TimePopover({ value, onChange, onClose, showDuration, startDateTimeStr,
           isDark ? 'bg-[#18181b] border-white/[0.08] text-white' : 'bg-white border-neutral-200 text-neutral-850'
         }`}
       >
-        {timeSlots.map(t => {
+        {filteredTimeSlots.map(t => {
           const isSelected = value === t
           let durationText = ''
           
