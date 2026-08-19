@@ -285,6 +285,8 @@ type EventDetailDto struct {
 	EventPagePath *string `json:"eventPagePath,omitempty"`
 
 	EventPaymentPath *string `json:"eventPaymentPath,omitempty"`
+
+	Speakers []SpeakerDTO `json:"speakers,omitempty"`
 }
 
 type SeatResponse struct {
@@ -396,6 +398,8 @@ type EventRequest struct {
 
 	Speaker *SpeakerDTO `json:"speaker,omitempty"`
 
+	Speakers []SpeakerDTO `json:"speakers,omitempty"`
+
 	Tickets []CategoryTicket `json:"tickets,omitempty"`
 
 	EventFormat *string `json:"eventFormat,omitempty"`
@@ -446,6 +450,7 @@ type CreateEventRequestBody struct {
 	OnlineMeetingID     *string          `json:"onlineMeetingId,omitempty"`
 	OnlineMeetingSecret *string          `json:"onlineMeetingSecret,omitempty"`
 	Tickets             []CategoryTicket `json:"tickets,omitempty"`
+	SpeakerIDs          []int            `json:"speakerIds,omitempty"`
 }
 
 // ============================================================
@@ -542,6 +547,8 @@ type UpdateEventRequest struct {
 	AreaID *int `json:"areaId"`
 
 	SpeakerID *int `json:"speakerId"`
+
+	SpeakerIDs []int `json:"speakerIds,omitempty"`
 }
 
 // ============================================================
@@ -560,6 +567,10 @@ type UpdateEventDetailsRequest struct {
 	Tickets []CategoryTicketDTO `json:"tickets"`
 
 	BannerURL *string `json:"bannerUrl"`
+
+	SpeakerIDs []int `json:"speakerIds,omitempty"`
+
+	Speaker_IDs []int `json:"speaker_ids,omitempty"`
 }
 
 type SpeakerDTO struct {
@@ -730,6 +741,10 @@ type UpdateEventRequestRequest struct {
 	Tickets []map[string]interface{} `json:"tickets,omitempty"`
 
 	BannerUrl string `json:"bannerUrl,omitempty"`
+
+	SpeakerIDs []int `json:"speakerIds,omitempty"`
+
+	Speaker_IDs []int `json:"speaker_ids,omitempty"`
 
 	DryRun bool `json:"dryRun,omitempty"` // ✅ NEW: If true, validate only, don't commit
 

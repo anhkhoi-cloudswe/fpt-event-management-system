@@ -514,6 +514,8 @@ func (r *EventRepository) GetEventDetailComposed(ctx context.Context, eventID in
 		detail.SpeakerPhone = &speakerPhone.String
 	}
 
+	_ = r.loadEventDetailSpeaker(ctx, &detail, speakerID)
+
 	// Fetch area + venue info via API (thay thế JOIN Venue_Area + Venue)
 	if areaID.Valid {
 		aid := int(areaID.Int64)
@@ -1399,30 +1401,17 @@ func (r *EventRepository) GetEventRequestByIDComposed(ctx context.Context, reque
 			if detail.BannerURL != nil {
 				req.BannerURL = detail.BannerURL
 			}
-			sp := models.SpeakerDTO{
-				FullName: "",
+			req.Speakers = detail.Speakers
+			if len(detail.Speakers) > 0 {
+				req.Speaker = &detail.Speakers[0]
 			}
-			if detail.SpeakerName != nil {
-				sp.FullName = *detail.SpeakerName
-			}
-			if detail.SpeakerBio != nil {
-				sp.Bio = detail.SpeakerBio
-			}
-			if detail.SpeakerEmail != nil {
-				sp.Email = detail.SpeakerEmail
-			}
-			if detail.SpeakerPhone != nil {
-				sp.Phone = detail.SpeakerPhone
-			}
-			if detail.SpeakerAvatarURL != nil {
-				sp.AvatarURL = detail.SpeakerAvatarURL
-			}
-			req.Speaker = &sp
 
 			if len(detail.Tickets) > 0 {
 				req.Tickets = detail.Tickets
 			}
 		}
+	} else {
+		r.populateEventRequestSpeakers(ctx, &req)
 	}
 
 	return &req, nil

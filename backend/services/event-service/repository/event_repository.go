@@ -261,6 +261,22 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 			fmt.Printf("[UpdateEventRequest] Status unchanged: %s\n", currentEventStatus)
 		}
 
+		// Extract speaker IDs
+		var speakerIDs []int
+		if len(req.SpeakerIDs) > 0 {
+			speakerIDs = req.SpeakerIDs
+		} else if len(req.Speaker_IDs) > 0 {
+			speakerIDs = req.Speaker_IDs
+		}
+
+		if len(speakerIDs) == 0 && req.Speaker != nil {
+			if sidVal, ok := req.Speaker["speakerId"]; ok && sidVal != nil {
+				if floatSid, ok := sidVal.(float64); ok && floatSid > 0 {
+					speakerIDs = []int{int(floatSid)}
+				}
+			}
+		}
+
 		// ===== STEP 1: SAVE/UPDATE SPEAKER =====
 		// Extract speaker info from request
 		var speakerID sql.NullInt64
@@ -356,18 +372,59 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 			}
 		}
 
+		// Add newly created/updated speaker to our speakerIDs array if not present
+		if speakerID.Valid {
+			found := false
+			for _, id := range speakerIDs {
+				if id == int(speakerID.Int64) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				speakerIDs = append(speakerIDs, int(speakerID.Int64))
+			}
+		}
+
+		// Save speaker ID list to junction table event_request_speaker
+		_, err = tx.ExecContext(ctx, `DELETE FROM event_request_speaker WHERE request_id = $1`, req.RequestID)
+		if err != nil {
+			return fmt.Errorf("failed to clear event request speakers: %w", err)
+		}
+		for _, spID := range speakerIDs {
+			_, err = tx.ExecContext(ctx, `INSERT INTO event_request_speaker (request_id, speaker_id) VALUES ($1, $2)`, req.RequestID, spID)
+			if err != nil {
+				return fmt.Errorf("failed to insert event request speaker: %w", err)
+			}
+		}
+
+		// Update event_speaker junction table and Event.speaker_id for the created event
+		_, err = tx.ExecContext(ctx, `DELETE FROM event_speaker WHERE event_id = $1`, eventID)
+		if err != nil {
+			return fmt.Errorf("failed to clear event speakers: %w", err)
+		}
+		for _, spID := range speakerIDs {
+			_, err = tx.ExecContext(ctx, `INSERT INTO event_speaker (event_id, speaker_id) VALUES ($1, $2)`, eventID, spID)
+			if err != nil {
+				return fmt.Errorf("failed to insert event speaker: %w", err)
+			}
+		}
+
+		var mainSpeakerID interface{} = nil
+		if len(speakerIDs) > 0 {
+			mainSpeakerID = speakerIDs[0]
+			speakerID.Int64 = int64(speakerIDs[0])
+			speakerID.Valid = true
+		} else {
+			speakerID.Valid = false
+		}
+
 		// ✅ Save speaker_id for final logging
 		finalSpeakerID = speakerID
 
 		// ===== STEP 3: UPDATE EVENT with speaker_id and banner =====
-		// [DEBUG] Log final speaker_id before saving to Event
-		if speakerID.Valid {
-			fmt.Printf("[DEBUG] Final Speaker ID to be saved in Event: %d\n", speakerID.Int64)
-		} else {
-			fmt.Printf("[DEBUG] Final Speaker ID to be saved in Event: NULL (no speaker)\n")
-		}
 		eventUpdateQuery := `UPDATE Event SET banner_url = $1, speaker_id = $2, status = $3 WHERE event_id = $4`
-		result, err := tx.ExecContext(ctx, eventUpdateQuery, req.BannerUrl, speakerID, newStatus, eventID)
+		result, err := tx.ExecContext(ctx, eventUpdateQuery, req.BannerUrl, mainSpeakerID, newStatus, eventID)
 		if err != nil {
 			return fmt.Errorf("failed to update event: %w", err)
 		}
@@ -376,7 +433,7 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 		if rowsAffected == 0 {
 			log.Printf("[WARNING] UPDATE Event ID=%d returned 0 rows affected!", eventID)
 		}
-		fmt.Printf("[UpdateEventRequest] ✅ Updated Event ID=%d with speaker_id=%v, status=%s (rows affected: %d)\n", eventID, speakerID.Int64, newStatus, rowsAffected)
+		fmt.Printf("[UpdateEventRequest] ✅ Updated Event ID=%d with speaker_id=%v, status=%s (rows affected: %d)\n", eventID, mainSpeakerID, newStatus, rowsAffected)
 
 		// ✅ DIAGNOSTIC: Log before processing tickets
 		log.Printf("[DIAGNOSTIC] Bat dau xu ly tickets. So luong: %d", len(req.Tickets))
@@ -1412,42 +1469,86 @@ func (r *EventRepository) loadEventDetailVenue(ctx context.Context, detail *mode
 }
 
 func (r *EventRepository) loadEventDetailSpeaker(ctx context.Context, detail *models.EventDetailDto, speakerID sql.NullInt64) error {
-	if !speakerID.Valid {
-		return nil
-	}
-
+	// Query junction table
 	query := `
-		SELECT full_name, bio, avatar_url, email, phone
-		FROM Speaker
-		WHERE speaker_id = $1
+		SELECT s.speaker_id, s.full_name, s.bio, s.avatar_url, s.email, s.phone
+		FROM Speaker s
+		INNER JOIN event_speaker es ON s.speaker_id = es.speaker_id
+		WHERE es.event_id = $1
+		ORDER BY s.speaker_id ASC
 	`
-
-	var speakerName, speakerBio, speakerAvatar, speakerEmail, speakerPhone sql.NullString
-	err := r.db.QueryRowContext(ctx, query, speakerID.Int64).Scan(
-		&speakerName, &speakerBio, &speakerAvatar, &speakerEmail, &speakerPhone,
-	)
+	rows, err := r.db.QueryContext(ctx, query, detail.EventID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil
-		}
-		log.Printf("[GetEventDetail] Failed to load speaker %d: %v", speakerID.Int64, err)
+		log.Printf("[GetEventDetail] Failed to load event speakers: %v", err)
 		return nil
 	}
+	defer rows.Close()
 
-	if speakerName.Valid {
-		detail.SpeakerName = &speakerName.String
+	var speakers []models.SpeakerDTO
+	for rows.Next() {
+		var sID int
+		var name, bio, avatar, email, phone sql.NullString
+		if err := rows.Scan(&sID, &name, &bio, &avatar, &email, &phone); err == nil {
+			sp := models.SpeakerDTO{
+				SpeakerID: &sID,
+				FullName:  name.String,
+			}
+			if bio.Valid {
+				sp.Bio = &bio.String
+			}
+			if avatar.Valid {
+				sp.AvatarURL = &avatar.String
+			}
+			if email.Valid {
+				sp.Email = &email.String
+			}
+			if phone.Valid {
+				sp.Phone = &phone.String
+			}
+			speakers = append(speakers, sp)
+		}
 	}
-	if speakerBio.Valid {
-		detail.SpeakerBio = &speakerBio.String
-	}
-	if speakerAvatar.Valid {
-		detail.SpeakerAvatarURL = &speakerAvatar.String
-	}
-	if speakerEmail.Valid {
-		detail.SpeakerEmail = &speakerEmail.String
-	}
-	if speakerPhone.Valid {
-		detail.SpeakerPhone = &speakerPhone.String
+
+	detail.Speakers = speakers
+
+	// Legacy backward compatibility for single speaker fields
+	if len(speakers) > 0 {
+		detail.SpeakerName = &speakers[0].FullName
+		detail.SpeakerBio = speakers[0].Bio
+		detail.SpeakerAvatarURL = speakers[0].AvatarURL
+		detail.SpeakerEmail = speakers[0].Email
+		detail.SpeakerPhone = speakers[0].Phone
+	} else if speakerID.Valid {
+		// Fallback: If junction table is empty but old speaker_id column is set
+		var name, bio, avatar, email, phone sql.NullString
+		err := r.db.QueryRowContext(ctx, `SELECT full_name, bio, avatar_url, email, phone FROM Speaker WHERE speaker_id = $1`, speakerID.Int64).Scan(
+			&name, &bio, &avatar, &email, &phone,
+		)
+		if err == nil {
+			sID := int(speakerID.Int64)
+			sp := models.SpeakerDTO{
+				SpeakerID: &sID,
+				FullName:  name.String,
+			}
+			if bio.Valid {
+				sp.Bio = &bio.String
+			}
+			if avatar.Valid {
+				sp.AvatarURL = &avatar.String
+			}
+			if email.Valid {
+				sp.Email = &email.String
+			}
+			if phone.Valid {
+				sp.Phone = &phone.String
+			}
+			detail.Speakers = []models.SpeakerDTO{sp}
+			detail.SpeakerName = &sp.FullName
+			detail.SpeakerBio = sp.Bio
+			detail.SpeakerAvatarURL = sp.AvatarURL
+			detail.SpeakerEmail = sp.Email
+			detail.SpeakerPhone = sp.Phone
+		}
 	}
 
 	return nil
@@ -1813,6 +1914,12 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 		return 0, fmt.Errorf("invalid event format: %s", req.EventFormat)
 	}
 
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
 	query := `
 		INSERT INTO Event_Request 
 		(requester_id, title, description, preferred_start_time, preferred_end_time, expected_capacity, status, created_at, event_format, custom_venue_name, custom_location, banner_url, org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret)
@@ -1831,8 +1938,23 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 		privacyStatus = "PUBLIC"
 	}
 
+	// Default online meeting URL for ONLINE/HYBRID format if not provided
+	if (req.EventFormat == "ONLINE" || req.EventFormat == "HYBRID") && (req.OnlineMeetingURL == nil || *req.OnlineMeetingURL == "") {
+		url := "https://zoom.us/j/123456789"
+		id := "123456789"
+		secret := "abc123"
+		if req.CustomLocation != nil && strings.Contains(strings.ToLower(*req.CustomLocation), "google") {
+			url = "https://meet.google.com/abc-defg-hij"
+			id = "abc-defg-hij"
+			secret = ""
+		}
+		req.OnlineMeetingURL = &url
+		req.OnlineMeetingID = &id
+		req.OnlineMeetingSecret = &secret
+	}
+
 	var requestID int64
-	err := r.db.QueryRowContext(ctx, query,
+	err = tx.QueryRowContext(ctx, query,
 		requesterID,
 		req.Title,
 		req.Description,
@@ -1855,8 +1977,79 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 		return 0, fmt.Errorf("failed to insert event request: %w", err)
 	}
 
+	for _, spID := range req.SpeakerIDs {
+		_, err = tx.ExecContext(ctx, `INSERT INTO event_request_speaker (request_id, speaker_id) VALUES ($1, $2)`, requestID, spID)
+		if err != nil {
+			log.Printf("[DB_INSERT] Failed to insert event_request_speaker: %v", err)
+			return 0, fmt.Errorf("failed to insert event request speaker: %w", err)
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	log.Printf("[DB_INSERT] Successfully inserted request ID: %d (org_type=%s, privacy=%s)", requestID, orgType, privacyStatus)
 	return int(requestID), nil
+}
+
+func (r *EventRepository) populateEventRequestSpeakers(ctx context.Context, req *models.EventRequest) {
+	var query string
+	var id int
+	if req.CreatedEventID != nil && *req.CreatedEventID > 0 {
+		query = `
+			SELECT s.speaker_id, s.full_name, s.bio, s.avatar_url, s.email, s.phone
+			FROM Speaker s
+			INNER JOIN event_speaker es ON s.speaker_id = es.speaker_id
+			WHERE es.event_id = $1
+			ORDER BY s.speaker_id ASC
+		`
+		id = *req.CreatedEventID
+	} else {
+		query = `
+			SELECT s.speaker_id, s.full_name, s.bio, s.avatar_url, s.email, s.phone
+			FROM Speaker s
+			INNER JOIN event_request_speaker ers ON s.speaker_id = ers.speaker_id
+			WHERE ers.request_id = $1
+			ORDER BY s.speaker_id ASC
+		`
+		id = req.RequestID
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, id)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	var speakers []models.SpeakerDTO
+	for rows.Next() {
+		var sID int
+		var name, bio, avatar, email, phone sql.NullString
+		if err := rows.Scan(&sID, &name, &bio, &avatar, &email, &phone); err == nil {
+			sp := models.SpeakerDTO{
+				SpeakerID: &sID,
+				FullName:  name.String,
+			}
+			if bio.Valid {
+				sp.Bio = &bio.String
+			}
+			if avatar.Valid {
+				sp.AvatarURL = &avatar.String
+			}
+			if email.Valid {
+				sp.Email = &email.String
+			}
+			if phone.Valid {
+				sp.Phone = &phone.String
+			}
+			speakers = append(speakers, sp)
+		}
+	}
+	req.Speakers = speakers
+	if len(speakers) > 0 {
+		req.Speaker = &speakers[0]
+	}
 }
 
 func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID int) ([]models.EventRequest, error) {
@@ -1972,6 +2165,10 @@ func (r *EventRepository) GetMyEventRequests(ctx context.Context, requesterID in
 		req.BannerURL = stringPointer(bannerURL)
 
 		requests = append(requests, req)
+	}
+
+	for i := range requests {
+		r.populateEventRequestSpeakers(ctx, &requests[i])
 	}
 
 	if err = rows.Err(); err != nil {
@@ -2099,6 +2296,10 @@ func (r *EventRepository) GetMyActiveEventRequests(ctx context.Context, requeste
 		req.BannerURL = stringPointer(bannerURL)
 
 		requests = append(requests, req)
+	}
+
+	for i := range requests {
+		r.populateEventRequestSpeakers(ctx, &requests[i])
 	}
 
 	if err = rows.Err(); err != nil {
@@ -2242,6 +2443,10 @@ func (r *EventRepository) GetMyArchivedEventRequests(ctx context.Context, reques
 		requests = append(requests, req)
 	}
 
+	for i := range requests {
+		r.populateEventRequestSpeakers(ctx, &requests[i])
+	}
+
 	if err = rows.Err(); err != nil {
 		return nil, 0, fmt.Errorf("error iterating archived event requests: %w", err)
 	}
@@ -2377,6 +2582,10 @@ func (r *EventRepository) GetPendingEventRequests(ctx context.Context) ([]models
 		requests = append(requests, req)
 	}
 
+	for i := range requests {
+		r.populateEventRequestSpeakers(ctx, &requests[i])
+	}
+
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating pending event requests: %w", err)
 	}
@@ -2495,33 +2704,16 @@ func (r *EventRepository) GetEventRequestByID(ctx context.Context, requestID int
 			if detail.BannerURL != nil {
 				req.BannerURL = detail.BannerURL
 			}
-			// Always build Speaker DTO (even if some fields are null/empty)
-			// This ensures consistent JSON structure for frontend
-			sp := models.SpeakerDTO{
-				FullName: "",
+			req.Speakers = detail.Speakers
+			if len(detail.Speakers) > 0 {
+				req.Speaker = &detail.Speakers[0]
 			}
-			if detail.SpeakerName != nil {
-				sp.FullName = *detail.SpeakerName
-			}
-			if detail.SpeakerBio != nil {
-				sp.Bio = detail.SpeakerBio
-			}
-			if detail.SpeakerEmail != nil {
-				sp.Email = detail.SpeakerEmail
-			}
-			if detail.SpeakerPhone != nil {
-				sp.Phone = detail.SpeakerPhone
-			}
-			if detail.SpeakerAvatarURL != nil {
-				sp.AvatarURL = detail.SpeakerAvatarURL
-			}
-			// Set speaker in response (even if empty/null, ensures consistent structure)
-			req.Speaker = &sp
-
 			if len(detail.Tickets) > 0 {
 				req.Tickets = detail.Tickets
 			}
 		}
+	} else {
+		r.populateEventRequestSpeakers(ctx, &req)
 	}
 
 	return &req, nil
@@ -2762,6 +2954,27 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 
 		fmt.Printf("[DB_PROCESS] Step B2: Created Event %d with status UPDATING\n", eventID)
 
+		// Copy speakers from event_request_speaker to event_speaker
+		speakersRows, err := tx.QueryContext(ctx, `SELECT speaker_id FROM event_request_speaker WHERE request_id = $1`, req.RequestID)
+		if err == nil {
+			var spIDs []int
+			for speakersRows.Next() {
+				var spID int
+				if err := speakersRows.Scan(&spID); err == nil {
+					spIDs = append(spIDs, spID)
+				}
+			}
+			speakersRows.Close()
+
+			for _, spID := range spIDs {
+				_, _ = tx.ExecContext(ctx, `INSERT INTO event_speaker (event_id, speaker_id) VALUES ($1, $2)`, eventID, spID)
+			}
+
+			if len(spIDs) > 0 {
+				_, _ = tx.ExecContext(ctx, `UPDATE Event SET speaker_id = $1 WHERE event_id = $2`, spIDs[0], eventID)
+			}
+		}
+
 		// B3: Update Event_Request.created_event_id
 		updateCreatedEventQuery := `
 			UPDATE Event_Request 
@@ -2913,8 +3126,18 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 	log.Printf("[UpdateEventDetails] Existing bookings: %d (hasBookings=%v)", bookingCount, hasBookings)
 
 	// ✅ STEP 2: Handle SPEAKER (INSERT or UPDATE)
-	var speakerID sql.NullInt64
+	var speakerIDs []int
+	if len(updateReq.SpeakerIDs) > 0 {
+		speakerIDs = updateReq.SpeakerIDs
+	} else if len(updateReq.Speaker_IDs) > 0 {
+		speakerIDs = updateReq.Speaker_IDs
+	}
 
+	if len(speakerIDs) == 0 && updateReq.Speaker != nil && updateReq.Speaker.SpeakerID != nil && *updateReq.Speaker.SpeakerID > 0 {
+		speakerIDs = []int{*updateReq.Speaker.SpeakerID}
+	}
+
+	var speakerID sql.NullInt64
 	// Get current speaker_id from Event
 	checkSpeakerQuery := `SELECT speaker_id FROM Event WHERE event_id = $1`
 	err = tx.QueryRowContext(ctx, checkSpeakerQuery, updateReq.EventID).Scan(&speakerID)
@@ -2988,17 +3211,48 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 				log.Printf("[UpdateEventDetails] ✅ Updated speaker ID=%d (rows affected: %d)", speakerID.Int64, rowsAffected)
 			}
 		}
+
+		// Add newly created/updated speaker to our speakerIDs array if not present
+		if speakerID.Valid {
+			found := false
+			for _, id := range speakerIDs {
+				if id == int(speakerID.Int64) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				speakerIDs = append(speakerIDs, int(speakerID.Int64))
+			}
+		}
 	}
 
-	// ✅ STEP 3: Update Event with speaker_id and banner_url
+	// Update event_speaker junction table
+	_, err = tx.ExecContext(ctx, `DELETE FROM event_speaker WHERE event_id = $1`, updateReq.EventID)
+	if err != nil {
+		return fmt.Errorf("failed to clear event speakers: %w", err)
+	}
+	for _, spID := range speakerIDs {
+		_, err = tx.ExecContext(ctx, `INSERT INTO event_speaker (event_id, speaker_id) VALUES ($1, $2)`, updateReq.EventID, spID)
+		if err != nil {
+			return fmt.Errorf("failed to insert event speaker: %w", err)
+		}
+	}
+
+	// ✅ STEP 3: Update Event with speaker_id (first/main speaker) and banner_url
 	var bannerURL interface{} = nil
 	if updateReq.BannerURL != nil {
 		bannerURL = *updateReq.BannerURL
 	}
 
+	var mainSpeakerID interface{} = nil
+	if len(speakerIDs) > 0 {
+		mainSpeakerID = speakerIDs[0]
+	}
+
 	updateEventQuery := `UPDATE Event SET banner_url = $1, speaker_id = $2 WHERE event_id = $3`
-	log.Printf("[SQL_EXECUTE] UPDATE Event ID=%d: speaker_id=%v, banner_url=%v", updateReq.EventID, speakerID, bannerURL)
-	result, err := tx.ExecContext(ctx, updateEventQuery, bannerURL, speakerID, updateReq.EventID)
+	log.Printf("[SQL_EXECUTE] UPDATE Event ID=%d: speaker_id=%v, banner_url=%v", updateReq.EventID, mainSpeakerID, bannerURL)
+	result, err := tx.ExecContext(ctx, updateEventQuery, bannerURL, mainSpeakerID, updateReq.EventID)
 	if err != nil {
 		return fmt.Errorf("failed to update event: %w", err)
 	}
@@ -4261,6 +4515,21 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 		privacyStatus = "PUBLIC"
 	}
 
+	// Default online meeting URL for ONLINE/HYBRID format if not provided
+	if (req.EventFormat == "ONLINE" || req.EventFormat == "HYBRID") && (req.OnlineMeetingURL == nil || *req.OnlineMeetingURL == "") {
+		url := "https://zoom.us/j/123456789"
+		id := "123456789"
+		secret := "abc123"
+		if req.CustomLocation != nil && strings.Contains(strings.ToLower(*req.CustomLocation), "google") {
+			url = "https://meet.google.com/abc-defg-hij"
+			id = "abc-defg-hij"
+			secret = ""
+		}
+		req.OnlineMeetingURL = &url
+		req.OnlineMeetingID = &id
+		req.OnlineMeetingSecret = &secret
+	}
+
 	err = tx.QueryRowContext(ctx, query,
 		req.Title,
 		req.Description,
@@ -4280,6 +4549,22 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 	).Scan(&eventID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create independent event: %w", err)
+	}
+
+	// Insert speakers into event_speaker junction table
+	for _, spID := range req.SpeakerIDs {
+		_, err = tx.ExecContext(ctx, `INSERT INTO event_speaker (event_id, speaker_id) VALUES ($1, $2)`, eventID, spID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to insert independent event speaker: %w", err)
+		}
+	}
+
+	// Update legacy speaker_id column for compatibility if there are speakers
+	if len(req.SpeakerIDs) > 0 {
+		_, err = tx.ExecContext(ctx, `UPDATE Event SET speaker_id = $1 WHERE event_id = $2`, req.SpeakerIDs[0], eventID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to update event speaker compatibility column: %w", err)
+		}
 	}
 
 	if len(req.Tickets) > 0 {

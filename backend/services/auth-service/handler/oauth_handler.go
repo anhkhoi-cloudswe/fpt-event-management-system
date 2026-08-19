@@ -244,6 +244,11 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 				email = "organizer.zoom@fpt.edu.vn"
 			}
 		}
+		if platform == "google" {
+			meetingLink = "https://meet.google.com/abc-defg-hij"
+		} else {
+			meetingLink = "https://zoom.us/j/123456789"
+		}
 	} else {
 		// Real OAuth flow: perform exchange and fetch user info
 		if platform == "google" {
@@ -339,6 +344,12 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 				}, nil
 			}
 			email = zoomUser.Email
+		}
+
+		if platform == "google" {
+			meetingLink = "https://meet.google.com/abc-defg-hij"
+		} else {
+			meetingLink = "https://zoom.us/j/123456789"
 		}
 	}
 
