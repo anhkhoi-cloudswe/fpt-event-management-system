@@ -231,8 +231,8 @@ export default function Speakers() {
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">Quản lý Diễn giả</h1>
-          <p className="text-sm text-neutral-400 mt-1">
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Quản lý Diễn giả</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Xem danh sách, thêm, chỉnh sửa hoặc xóa thông tin diễn giả trong hệ thống.
           </p>
         </div>
@@ -248,38 +248,38 @@ export default function Speakers() {
       </div>
 
       {/* Filter and Table Container */}
-      <div className="bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-2xl">
+      <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl p-6 shadow-sm dark:shadow-2xl backdrop-blur-2xl">
         {/* Search */}
         <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
             placeholder="Tìm diễn giả theo tên, email, điện thoại..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-400 focus:border-blue-500 outline-none transition-colors"
+            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 outline-none transition-colors"
           />
         </div>
 
         {/* Table representation */}
         <div className="overflow-x-auto">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-500">
               <Loader className="w-10 h-10 animate-spin text-blue-500 mb-4" />
               <p>Đang tải dữ liệu diễn giả...</p>
             </div>
           ) : filteredSpeakers.length === 0 ? (
-            <div className="text-center py-20 text-neutral-400">
-              <User className="w-16 h-16 mx-auto text-neutral-600 mb-4" />
+            <div className="text-center py-20 text-slate-400 dark:text-slate-500">
+              <User className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
               <p className="text-lg font-semibold">Chưa có diễn giả nào</p>
-              <p className="text-sm text-neutral-500 mt-1">
+              <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
                 {search ? 'Không tìm thấy kết quả phù hợp' : 'Hãy nhấp vào nút "+ Thêm Diễn Giả" để bắt đầu.'}
               </p>
             </div>
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-white/5 text-neutral-400 text-xs uppercase tracking-wider font-semibold">
+                <tr className="border-b border-slate-200 dark:border-white/5 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider font-semibold">
                   <th className="py-4 px-4">Ảnh đại diện</th>
                   <th className="py-4 px-4">Họ và tên</th>
                   <th className="py-4 px-4">Email</th>
@@ -287,31 +287,31 @@ export default function Speakers() {
                   <th className="py-4 px-4 text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-sm text-white">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-sm text-slate-800 dark:text-white">
                 {filteredSpeakers.map((speaker) => (
-                  <tr key={speaker.speakerId} className="hover:bg-white/5 transition-colors">
+                  <tr key={speaker.speakerId} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                     <td className="py-4 px-4">
                       {speaker.avatarUrl ? (
                         <img
                           src={speaker.avatarUrl}
                           alt={speaker.fullName}
-                          className="w-12 h-12 rounded-full object-cover border border-white/10 shadow-md"
+                          className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-white/10 shadow-md"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-lg border border-blue-500/20 shadow-md">
+                        <div className="w-12 h-12 rounded-full bg-blue-600/20 text-blue-500 dark:text-blue-400 flex items-center justify-center font-bold text-lg border border-blue-500/20 shadow-md">
                           {speaker.fullName.charAt(0).toUpperCase()}
                         </div>
                       )}
                     </td>
                     <td className="py-4 px-4 font-semibold">{speaker.fullName}</td>
-                    <td className="py-4 px-4 text-neutral-300">{speaker.email || '-'}</td>
-                    <td className="py-4 px-4 text-neutral-300">{speaker.phone || '-'}</td>
+                    <td className="py-4 px-4 text-slate-500 dark:text-slate-400">{speaker.email || '-'}</td>
+                    <td className="py-4 px-4 text-slate-500 dark:text-slate-400">{speaker.phone || '-'}</td>
                     <td className="py-4 px-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(speaker)}
-                          className="p-2 bg-white/5 hover:bg-blue-600/20 text-neutral-300 hover:text-blue-400 border border-white/10 rounded-xl transition-all cursor-pointer"
+                          className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-blue-600/20 text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 border border-slate-200 dark:border-white/10 rounded-xl transition-all cursor-pointer"
                           title="Sửa"
                         >
                           <Edit className="w-4 h-4" />
@@ -319,7 +319,7 @@ export default function Speakers() {
                         <button
                           type="button"
                           onClick={() => speaker.speakerId && handleDeleteSpeaker(speaker.speakerId)}
-                          className="p-2 bg-white/5 hover:bg-red-600/20 text-neutral-300 hover:text-red-400 border border-white/10 rounded-xl transition-all cursor-pointer"
+                          className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-red-600/20 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 border border-slate-200 dark:border-white/10 rounded-xl transition-all cursor-pointer"
                           title="Xóa"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -337,24 +337,24 @@ export default function Speakers() {
       {/* Reactive Dialog Modal Sheet */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-          <div className="relative bg-neutral-900/90 border border-white/10 rounded-3xl p-8 backdrop-blur-2xl max-w-lg w-full text-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 rounded-3xl p-8 dark:backdrop-blur-2xl max-w-lg w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {/* Close button */}
             <button
               type="button"
               onClick={handleCloseModal}
-              className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-white rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+              className="absolute top-4 right-4 p-2 text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <h2 className="text-2xl font-bold mb-6 text-white">
+            <h2 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">
               {editingSpeaker ? 'Cập nhật Diễn giả' : 'Thêm Diễn giả mới'}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* fullName */}
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                   Tên diễn giả *
                 </label>
                 <input
@@ -362,14 +362,14 @@ export default function Speakers() {
                   required
                   value={formData.fullName}
                   onChange={(e) => handleInputChange('fullName', e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none w-full transition-colors"
+                  className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none transition-colors placeholder-slate-400 dark:placeholder-slate-500"
                   placeholder="Nhập họ và tên..."
                 />
               </div>
 
               {/* bio */}
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                   Tiểu sử *
                 </label>
                 <textarea
@@ -377,7 +377,7 @@ export default function Speakers() {
                   rows={4}
                   value={formData.bio}
                   onChange={(e) => handleInputChange('bio', e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none w-full transition-colors resize-none"
+                  className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none transition-colors resize-none placeholder-slate-400 dark:placeholder-slate-500"
                   placeholder="Thông tin giới thiệu về diễn giả..."
                 />
               </div>
@@ -385,26 +385,26 @@ export default function Speakers() {
               {/* email + phone */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                     Email
                   </label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none w-full transition-colors"
+                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none transition-colors placeholder-slate-400 dark:placeholder-slate-500"
                     placeholder="example@fpt.edu.vn"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                     Số điện thoại
                   </label>
                   <input
                     type="text"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none w-full transition-colors"
+                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none transition-colors placeholder-slate-400 dark:placeholder-slate-500"
                     placeholder="0912345678"
                   />
                 </div>
@@ -412,7 +412,7 @@ export default function Speakers() {
 
               {/* Avatar Upload Container */}
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                   Ảnh đại diện (tùy chọn)
                 </label>
                 <div className="flex items-center gap-4">
@@ -421,7 +421,7 @@ export default function Speakers() {
                       <img
                         src={imagePreview}
                         alt="Avatar Preview"
-                        className="w-20 h-20 rounded-full object-cover border border-white/10 shadow-lg"
+                        className="w-20 h-20 rounded-full object-cover border border-slate-200 dark:border-white/10 shadow-lg"
                       />
                       <button
                         type="button"
@@ -432,7 +432,7 @@ export default function Speakers() {
                       </button>
                     </div>
                   ) : (
-                    <div className="w-20 h-20 rounded-full bg-white/5 border border-dashed border-white/10 flex items-center justify-center text-neutral-500">
+                    <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/10 flex items-center justify-center text-slate-400 dark:text-slate-500">
                       <User className="w-8 h-8" />
                     </div>
                   )}
@@ -447,22 +447,22 @@ export default function Speakers() {
                     />
                     <label
                       htmlFor="speaker-avatar-upload"
-                      className="inline-flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-white shadow-sm transition-all cursor-pointer"
+                      className="inline-flex items-center px-4 py-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-700 dark:text-white shadow-sm transition-all cursor-pointer"
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       Tải ảnh lên
                     </label>
-                    <p className="text-[11px] text-neutral-400 mt-1">PNG, JPG tối đa 5MB</p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">PNG, JPG tối đa 5MB</p>
                   </div>
                 </div>
               </div>
 
               {/* Action buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-semibold text-neutral-300 transition-all cursor-pointer"
+                  className="px-5 py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
                 >
                   Hủy
                 </button>
