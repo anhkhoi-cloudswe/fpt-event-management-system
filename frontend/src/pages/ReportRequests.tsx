@@ -548,7 +548,7 @@ export default function ReportRequests() {
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-left">
                     <thead>
-                      <tr className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-150 dark:border-slate-800 text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                      <tr className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
                         <th className="px-6 py-4">ID Báo cáo</th>
                         <th className="px-6 py-4">Mã Vé (Ticket ID)</th>
                         <th className="px-6 py-4">Sinh viên</th>
@@ -728,7 +728,7 @@ export default function ReportRequests() {
                     {selected.staff_note && (
                       <div className="mt-2.5 pt-2.5 border-t border-slate-200/50 dark:border-slate-700">
                         <p className="text-xs text-slate-400 dark:text-slate-400 font-semibold mb-1">Ghi chú nhân viên:</p>
-                        <p className="text-sm text-slate-700 dark:text-slate-200 italic bg-white dark:bg-slate-850 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                        <p className="text-sm text-slate-700 dark:text-slate-200 italic bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
                           "{selected.staff_note}"
                         </p>
                       </div>

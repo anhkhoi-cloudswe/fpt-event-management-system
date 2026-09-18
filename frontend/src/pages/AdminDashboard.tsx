@@ -804,7 +804,7 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white">{banner.title}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-bold">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-105 dark:bg-slate-800/60 border border-slate-200/40 dark:border-slate-700/50 text-xs">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800/60 border border-slate-200/40 dark:border-slate-700/50 text-xs">
                         {banner.category || 'Chưa phân loại'}
                       </span>
                     </td>

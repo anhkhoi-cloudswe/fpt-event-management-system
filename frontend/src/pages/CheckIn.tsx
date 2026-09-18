@@ -866,7 +866,7 @@ export default function CheckIn() {
                 <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   Chế độ quét liên tục
                 </span>
-                <span className="text-[9px] font-bold text-slate-405 dark:text-slate-500 mt-0.5 leading-relaxed">
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">
                   Giữ camera luôn mở để soát nhiều vé liên tiếp, tự động phát âm báo.
                 </span>
               </div>

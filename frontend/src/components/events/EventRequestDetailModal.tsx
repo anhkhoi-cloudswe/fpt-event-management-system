@@ -69,19 +69,19 @@ const getStatusLabel = (status: EventRequestStatus) => {
 const getStatusClass = (status: EventRequestStatus) => {
   switch (status) {
     case 'APPROVED':
-      return 'bg-green-100 text-green-800 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border dark:border-emerald-900/50'
+      return 'bg-green-100 text-green-800 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border dark:border-emerald-800/80'
     case 'REJECTED':
-      return 'bg-red-100 text-red-800 dark:bg-rose-950/20 dark:text-rose-400 dark:border dark:border-rose-900/50'
+      return 'bg-red-100 text-red-800 dark:bg-rose-950/60 dark:text-rose-300 dark:border dark:border-rose-800/80'
     case 'UPDATING':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-950/20 dark:text-blue-400 dark:border dark:border-blue-900/50'
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 dark:border dark:border-blue-800/80'
     case 'CANCELLED':
-      return 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-400 dark:border dark:border-slate-700'
+      return 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-300 dark:border dark:border-slate-700'
     case 'CLOSED':
       return 'bg-gray-200 text-gray-900 dark:bg-slate-800 dark:text-slate-300'
     case 'OPEN':
-      return 'bg-green-50 text-green-700 dark:bg-emerald-950/20 dark:text-emerald-400'
+      return 'bg-green-50 text-green-700 dark:bg-emerald-950/60 dark:text-emerald-300'
     default:
-      return 'bg-yellow-100 text-yellow-800 dark:bg-amber-950/20 dark:text-amber-400'
+      return 'bg-yellow-100 text-yellow-800 dark:bg-amber-950/60 dark:text-amber-300 dark:border dark:border-amber-800/80'
   }
 }
 
@@ -165,15 +165,15 @@ export function EventRequestDetailModal({
             <div className={`grid grid-cols-1 ${request.status === 'APPROVED' && (request.eventFormat || request.customVenueName || request.customLocation) ? 'md:grid-cols-2' : ''} gap-6 mb-6`}>
               {/* Card 1: Requested Venue (shows for all status if present) */}
               {(request.eventFormat || request.customVenueName || request.customLocation) && (
-                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900/50">
-                  <h3 className="text-base font-bold mb-3 flex items-center text-slate-900 dark:text-slate-105">
-                    <MapPin className="w-5 h-5 mr-2 text-blue-600" />
+                <div className="p-4 bg-blue-50/80 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-800/60 shadow-sm">
+                  <h3 className="text-base font-bold mb-3 flex items-center text-slate-900 dark:text-slate-100">
+                    <MapPin className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
                     Địa điểm yêu cầu (Mong muốn)
                   </h3>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2.5 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-blue-700 dark:text-blue-400 font-medium">Hình thức:</span>
-                      <span className="text-blue-900 dark:text-blue-200 font-semibold">
+                      <span className="text-blue-700 dark:text-blue-300 font-medium">Hình thức:</span>
+                      <span className="text-slate-900 dark:text-slate-100 font-bold">
                         {request.eventFormat === 'ONLINE' ? 'Trực tuyến (ONLINE)' :
                          request.eventFormat === 'ONSITE' ? 'Tại chỗ (ONSITE)' :
                          request.eventFormat === 'HYBRID' ? 'Kết hợp (HYBRID)' : request.eventFormat || 'N/A'}
@@ -181,37 +181,37 @@ export function EventRequestDetailModal({
                     </div>
                     {request.customVenueName && (
                       <div className="flex justify-between">
-                        <span className="text-blue-700 dark:text-blue-400 font-medium">Phòng mong muốn:</span>
-                        <span className="text-blue-900 dark:text-blue-200 font-semibold">{request.customVenueName}</span>
+                        <span className="text-blue-700 dark:text-blue-300 font-medium">Phòng mong muốn:</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-bold">{request.customVenueName}</span>
                       </div>
                     )}
                     {request.customLocation && (
                       <div className="flex justify-between">
-                        <span className="text-blue-700 dark:text-blue-400 font-medium">Khu vực/Campus:</span>
-                        <span className="text-blue-900 dark:text-blue-200 font-semibold">{request.customLocation}</span>
+                        <span className="text-blue-700 dark:text-blue-300 font-medium">Khu vực/Campus:</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-bold">{request.customLocation}</span>
                       </div>
                     )}
 
                     {/* Online platform information if applicable */}
                     {(request.onlineMeetingUrl || request.onlineMeetingId || request.onlineMeetingSecret) && (
-                      <div className="border-t border-blue-200 dark:border-blue-900/50 pt-2 mt-2 space-y-2 text-xs">
-                        <p className="font-bold text-blue-750 dark:text-blue-300 uppercase tracking-wide">Thông tin phòng họp trực tuyến:</p>
+                      <div className="border-t border-blue-200 dark:border-blue-800/60 pt-2.5 mt-2.5 space-y-2 text-xs">
+                        <p className="font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Thông tin phòng họp trực tuyến:</p>
                         {request.onlineMeetingUrl && (
                           <div className="flex justify-between">
-                            <span className="text-blue-700 dark:text-blue-400 font-medium">Đường dẫn:</span>
+                            <span className="text-blue-700 dark:text-blue-300 font-medium">Đường dẫn:</span>
                             <a href={request.onlineMeetingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline truncate max-w-[200px] sm:max-w-xs">{request.onlineMeetingUrl}</a>
                           </div>
                         )}
                         {request.onlineMeetingId && (
                           <div className="flex justify-between">
-                            <span className="text-blue-700 dark:text-blue-400 font-medium">Meeting ID:</span>
-                            <span className="text-blue-900 dark:text-blue-200 font-semibold">{request.onlineMeetingId}</span>
+                            <span className="text-blue-700 dark:text-blue-300 font-medium">Meeting ID:</span>
+                            <span className="text-slate-900 dark:text-slate-100 font-bold">{request.onlineMeetingId}</span>
                           </div>
                         )}
                         {request.onlineMeetingSecret && (
                           <div className="flex justify-between">
-                            <span className="text-blue-700 dark:text-blue-400 font-medium">Mật khẩu:</span>
-                            <span className="text-blue-900 dark:text-blue-200 font-semibold">{request.onlineMeetingSecret}</span>
+                            <span className="text-blue-700 dark:text-blue-300 font-medium">Mật khẩu:</span>
+                            <span className="text-slate-900 dark:text-slate-100 font-bold">{request.onlineMeetingSecret}</span>
                           </div>
                         )}
                       </div>
@@ -222,23 +222,23 @@ export function EventRequestDetailModal({
 
               {/* Card 2: Allocated Venue (only shows when APPROVED) */}
               {request.status === 'APPROVED' && (
-                <div className="p-4 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg border border-indigo-200 dark:border-indigo-900/50">
-                  <h3 className="text-base font-bold mb-3 flex items-center text-slate-900 dark:text-slate-105">
-                    <MapPin className="w-5 h-5 mr-2 text-indigo-600" />
+                <div className="p-4 bg-indigo-50/80 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800/60 shadow-sm">
+                  <h3 className="text-base font-bold mb-3 flex items-center text-slate-900 dark:text-slate-100">
+                    <MapPin className="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" />
                     Địa điểm tổ chức (Đã phân bổ)
                   </h3>
                   {request.areaName || request.venueName ? (
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-2.5 text-sm">
                       {request.venueName && (
                         <div className="flex justify-between">
-                          <span className="text-indigo-700 dark:text-indigo-400 font-medium">Địa điểm:</span>
-                          <span className="text-indigo-900 dark:text-indigo-200 font-semibold">{request.venueName}</span>
+                          <span className="text-indigo-700 dark:text-indigo-300 font-medium">Địa điểm:</span>
+                          <span className="text-slate-900 dark:text-slate-100 font-bold">{request.venueName}</span>
                         </div>
                       )}
                       {request.areaName && (
                         <div className="flex justify-between">
-                          <span className="text-indigo-700 dark:text-indigo-400 font-medium">Khu vực:</span>
-                          <span className="text-indigo-900 dark:text-indigo-200 font-semibold">
+                          <span className="text-indigo-700 dark:text-indigo-300 font-medium">Khu vực:</span>
+                          <span className="text-slate-900 dark:text-slate-100 font-bold">
                             {request.areaName}
                             {request.floor && ` (Tầng ${request.floor})`}
                           </span>
@@ -246,8 +246,8 @@ export function EventRequestDetailModal({
                       )}
                       {request.areaCapacity && (
                         <div className="flex justify-between">
-                          <span className="text-indigo-700 dark:text-indigo-400 font-medium">Sức chứa:</span>
-                          <span className="text-indigo-900 dark:text-indigo-200 font-semibold">{request.areaCapacity} chỗ</span>
+                          <span className="text-indigo-700 dark:text-indigo-300 font-medium">Sức chứa:</span>
+                          <span className="text-slate-900 dark:text-slate-100 font-bold">{request.areaCapacity} chỗ</span>
                         </div>
                       )}
                     </div>
@@ -260,75 +260,75 @@ export function EventRequestDetailModal({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="flex items-start">
-                <div className="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-950/30 rounded-lg flex items-center justify-center mr-3">
-                  <User className="w-5 h-5 text-purple-600" />
+                <div className="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-950/40 rounded-xl flex items-center justify-center mr-3 border border-purple-200/50 dark:border-purple-800/40">
+                  <User className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Người đề xuất</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-200">{request.requesterName || 'Không có thông tin'}</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Người đề xuất</p>
+                  <p className="font-bold text-slate-900 dark:text-slate-100">{request.requesterName || 'Không có thông tin'}</p>
                 </div>
               </div>
 
               <div className="flex items-start">
-                <div className="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-950/30 rounded-lg flex items-center justify-center mr-3">
-                  <Users className="w-5 h-5 text-blue-600" />
+                <div className="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-950/40 rounded-xl flex items-center justify-center mr-3 border border-blue-200/50 dark:border-blue-800/40">
+                  <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Số lượng dự kiến</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-200">{request.expectedCapacity} người</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Số lượng dự kiến</p>
+                  <p className="font-bold text-slate-900 dark:text-slate-100">{request.expectedCapacity} người</p>
                 </div>
               </div>
 
               <div className="flex items-start">
-                <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-950/30 rounded-lg flex items-center justify-center mr-3">
-                  <Calendar className="w-5 h-5 text-green-600" />
+                <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-950/40 rounded-xl flex items-center justify-center mr-3 border border-green-200/50 dark:border-green-800/40">
+                  <Calendar className="w-5 h-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Thời gian bắt đầu mong muốn</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-200">{safeFormatWallClock(request?.preferredStartTime)}</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Thời gian bắt đầu mong muốn</p>
+                  <p className="font-bold text-slate-900 dark:text-slate-100">{safeFormatWallClock(request?.preferredStartTime)}</p>
                 </div>
               </div>
 
               <div className="flex items-start">
-                <div className="flex-shrink-0 w-10 h-10 bg-orange-100 dark:bg-orange-950/30 rounded-lg flex items-center justify-center mr-3">
-                  <Calendar className="w-5 h-5 text-orange-600" />
+                <div className="flex-shrink-0 w-10 h-10 bg-orange-100 dark:bg-orange-950/40 rounded-xl flex items-center justify-center mr-3 border border-orange-200/50 dark:border-orange-800/40">
+                  <Calendar className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Thời gian kết thúc mong muốn</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-200">{safeFormatWallClock(request?.preferredEndTime)}</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Thời gian kết thúc mong muốn</p>
+                  <p className="font-bold text-slate-900 dark:text-slate-100">{safeFormatWallClock(request?.preferredEndTime)}</p>
                 </div>
               </div>
 
               <div className="flex items-start">
-                <div className="flex-shrink-0 w-10 h-10 bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center mr-3">
-                  <Clock className="w-5 h-5 text-slate-500 dark:text-slate-300" />
+                <div className="flex-shrink-0 w-10 h-10 bg-slate-100 dark:bg-slate-900 rounded-xl flex items-center justify-center mr-3 border border-slate-200/50 dark:border-slate-800">
+                  <Clock className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Ngày tạo</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-200">{safeFormatWallClock(request?.createdAt)}</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Ngày tạo</p>
+                  <p className="font-bold text-slate-900 dark:text-slate-100">{safeFormatWallClock(request?.createdAt)}</p>
                 </div>
               </div>
 
               {request.processedAt && (
                 <div className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center mr-3">
-                    <Clock className="w-5 h-5 text-slate-500 dark:text-slate-300" />
+                  <div className="flex-shrink-0 w-10 h-10 bg-slate-100 dark:bg-slate-900 rounded-xl flex items-center justify-center mr-3 border border-slate-200/50 dark:border-slate-800">
+                    <Clock className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Ngày xử lý</p>
-                    <p className="font-medium text-slate-900 dark:text-slate-200">{safeFormatWallClock(request?.processedAt)}</p>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Ngày xử lý</p>
+                    <p className="font-bold text-slate-900 dark:text-slate-100">{safeFormatWallClock(request?.processedAt)}</p>
                   </div>
                 </div>
               )}
 
               {request.processedByName && (
                 <div className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 dark:bg-indigo-950/30 rounded-lg flex items-center justify-center mr-3">
-                    <User className="w-5 h-5 text-indigo-600" />
+                  <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 dark:bg-indigo-950/40 rounded-xl flex items-center justify-center mr-3 border border-indigo-200/50 dark:border-indigo-800/40">
+                    <User className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Người xử lý</p>
-                    <p className="font-medium text-slate-900 dark:text-slate-200">{request.processedByName}</p>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Người xử lý</p>
+                    <p className="font-bold text-slate-900 dark:text-slate-100">{request.processedByName}</p>
                   </div>
                 </div>
               )}

@@ -258,7 +258,7 @@ export function ProcessRequestModal({
 
           <button
             onClick={handleClose}
-            className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors inline-flex p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors inline-flex p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900"
           >
             <X className="w-5 h-5" />
           </button>
@@ -284,7 +284,7 @@ export function ProcessRequestModal({
                 </div>
               )}
               <div className="flex-1 w-full space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-slate-700 dark:text-slate-350">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-slate-700 dark:text-slate-300">
                   <div className="space-y-0.5">
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Tên sự kiện</p>
                     <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{request.title}</p>
@@ -331,7 +331,7 @@ export function ProcessRequestModal({
                 </div>
                 
                 {request.description && request.description !== 'N/A' && (
-                  <div className="border-t border-slate-200 dark:border-slate-800 pt-2 text-[11px] text-slate-550 dark:text-slate-400">
+                  <div className="border-t border-slate-200 dark:border-slate-800 pt-2 text-[11px] text-slate-500 dark:text-slate-400">
                     <span className="font-bold text-slate-700 dark:text-slate-300 uppercase mr-1">Mô tả:</span>
                     <span className="line-clamp-2">{request.description}</span>
                   </div>
@@ -380,7 +380,7 @@ export function ProcessRequestModal({
                         isFull
                           ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 text-red-800 dark:text-red-300'
                           : isLastSlot
-                            ? 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-250 dark:border-yellow-900/50 text-yellow-850 dark:text-yellow-350'
+                            ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300'
                             : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50 text-green-800 dark:text-green-300'
                       }`}
                     >
@@ -417,7 +417,7 @@ export function ProcessRequestModal({
                 )}
                 <div className={`${requiresArea ? '' : 'hidden'} bg-slate-50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 flex-1`}>
                   <div>
-                    <label htmlFor="area" className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider mb-2">
+                    <label htmlFor="area" className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
                       Chọn khu vực bố trí <span className="text-red-500">*</span>
                     </label>
 
@@ -431,7 +431,7 @@ export function ProcessRequestModal({
                         <p className="text-xs text-red-700 dark:text-red-300">⚠️ {error}</p>
                       </div>
                     ) : areas.length === 0 ? (
-                      <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-250 dark:border-yellow-900/50 text-xs text-yellow-800 dark:text-yellow-300">
+                      <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300">
                         <p className="font-bold">❌ Không tìm thấy phòng trống phù hợp!</p>
                         <p className="mt-1 text-[11px]">Không có phòng trống nào có sức chứa đủ lớn ({request.expectedCapacity} người) vào khung giờ này.</p>
                       </div>
@@ -440,7 +440,7 @@ export function ProcessRequestModal({
                         <button
                           type="button"
                           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-left bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-105 hover:bg-slate-50 dark:hover:bg-slate-800/80 flex justify-between items-center transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-left bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/80 flex justify-between items-center transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
                         >
                           <span className="font-semibold text-xs truncate">
                             {selectedAreaId === 0
@@ -488,7 +488,7 @@ export function ProcessRequestModal({
                                       </span>
                                     )}
                                   </div>
-                                  <span className="text-[10px] text-slate-400 dark:text-slate-550 truncate">
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-400 truncate">
                                     {truncatedVenue} {area.floor && `• Tầng ${area.floor}`}
                                   </span>
                                 </button>
@@ -516,8 +516,8 @@ export function ProcessRequestModal({
                           return (
                             <div className={`p-2 rounded border ${
                               isSelectedMatched 
-                                ? 'bg-green-55 dark:bg-green-950/20 border-green-200 dark:border-green-900/45 text-green-800 dark:text-green-300'
-                                : 'bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-350'
+                                ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900/45 text-green-800 dark:text-green-300'
+                                : 'bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300'
                             }`}>
                               <p className="font-semibold flex items-center gap-1">
                                 <span>✨</span>
@@ -531,7 +531,7 @@ export function ProcessRequestModal({
                           )
                         } else {
                           return (
-                            <div className="p-2 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-250 dark:border-yellow-900/45 rounded text-yellow-850 dark:text-yellow-350">
+                            <div className="p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded text-amber-800 dark:text-amber-300">
                               <p className="font-semibold flex items-center gap-1">
                                 <span>⚠️</span>
                                 <span>Hiện không có phòng trống nào khớp với địa điểm mong muốn của BTC ("${request.customVenueName}"). Vui lòng phân bổ một khu vực khác.</span>
@@ -568,7 +568,7 @@ export function ProcessRequestModal({
           
           {action === 'REJECT' && (
             <div className="space-y-2">
-              <label htmlFor="rejectReason" className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">
+              <label htmlFor="rejectReason" className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                 Lý do từ chối <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -577,7 +577,7 @@ export function ProcessRequestModal({
                 onChange={(e) => setRejectReason(e.target.value)}
                 rows={3}
                 required
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-105 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/10 focus:border-red-500 resize-none"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/10 focus:border-red-500 resize-none"
                 placeholder="Nhập lý do từ chối cụ thể để gửi ban tổ chức (bắt buộc)..."
               />
 
@@ -602,7 +602,7 @@ export function ProcessRequestModal({
 
           {action === 'APPROVE' && (
             <div className="space-y-2">
-              <label htmlFor="note" className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">
+              <label htmlFor="note" className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                 Ghi chú cho ban tổ chức sự kiện
               </label>
               <textarea
@@ -610,7 +610,7 @@ export function ProcessRequestModal({
                 value={organizerNote}
                 onChange={(e) => setOrganizerNote(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-105 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 resize-none"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 resize-none"
                 placeholder="Nhập hướng dẫn, nhắc nhở hoặc lưu ý thêm cho ban tổ chức (không bắt buộc)..."
               />
 

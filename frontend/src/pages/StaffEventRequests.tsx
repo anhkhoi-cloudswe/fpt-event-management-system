@@ -546,14 +546,14 @@ export default function StaffEventRequests() {
   }
 
   return (
-    <div className="w-full min-h-screen p-4 md:p-6 text-white bg-transparent dark:bg-slate-950">
+    <div className="w-full min-h-screen p-4 md:p-6 text-slate-900 dark:text-slate-100 bg-transparent">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight sm:text-4xl">
             Duyệt Yêu Cầu Sự Kiện
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-300 mt-1.5 max-w-2xl font-medium">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
             Hệ thống quản lý, thẩm định hồ sơ và cấp phép tổ chức sự kiện từ Ban tổ chức sinh viên.
           </p>
         </div>
@@ -568,31 +568,31 @@ export default function StaffEventRequests() {
       {/* Stats Widgets */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
         <div className="bg-white/70 dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3.5 bg-amber-50 text-amber-600 rounded-2xl border border-amber-100/50">
+          <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-2xl border border-amber-200/60 dark:border-amber-800/50">
             <Clock className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Chờ thẩm định</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Chờ thẩm định</p>
             <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{waitingCount}</p>
           </div>
         </div>
 
         <div className="bg-white/70 dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100/50">
+          <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-200/60 dark:border-emerald-800/50">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Đã giải quyết</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Đã giải quyết</p>
             <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{processedCount}</p>
           </div>
         </div>
 
         <div className="bg-white/70 dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3.5 bg-orange-50 text-orange-600 rounded-2xl border border-orange-100/50">
+          <div className="p-3.5 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 rounded-2xl border border-orange-200/60 dark:border-orange-800/50">
             <Inbox className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Tổng số hồ sơ</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Tổng số hồ sơ</p>
             <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{waitingCount + processedCount}</p>
           </div>
         </div>
@@ -615,14 +615,14 @@ export default function StaffEventRequests() {
           className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
             activeTab === 'waiting'
               ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
-              : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-800'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-800'
           }`}
         >
           Hồ sơ chờ xử lý
           <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
             activeTab === 'waiting'
               ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200'
-              : 'bg-slate-300/50 text-slate-500 dark:bg-slate-700 dark:text-slate-200'
+              : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
           }`}>
             {waitingCount}
           </span>
@@ -636,14 +636,14 @@ export default function StaffEventRequests() {
           className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
             activeTab === 'processed'
               ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
-              : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-800'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-800'
           }`}
         >
           Hồ sơ đã giải quyết
           <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
             activeTab === 'processed'
               ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200'
-              : 'bg-slate-300/50 text-slate-500 dark:bg-slate-700 dark:text-slate-200'
+              : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
           }`}>
             {processedCount}
           </span>
@@ -672,19 +672,19 @@ export default function StaffEventRequests() {
               onChange={(e) => setStatusFilter(e.target.value as EventRequestStatus | '')}
               className="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-sm text-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all appearance-none cursor-pointer font-medium shadow-sm"
             >
-              <option value="">Tất cả trạng thái</option>
+              <option value="" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Tất cả trạng thái</option>
               {activeTab === 'waiting' && (
                 <>
-                  <option value="PENDING">Chờ duyệt (PENDING)</option>
-                  <option value="UPDATING">Chờ cập nhật (UPDATING)</option>
+                  <option value="PENDING" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Chờ duyệt (PENDING)</option>
+                  <option value="UPDATING" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Chờ cập nhật (UPDATING)</option>
                 </>
               )}
               {activeTab === 'processed' && (
                 <>
-                  <option value="APPROVED">Đã duyệt (APPROVED)</option>
-                  <option value="REJECTED">Từ chối (REJECTED)</option>
-                  <option value="CANCELLED">Đã hủy (CANCELLED)</option>
-                  <option value="FINISHED">Hoàn tất (FINISHED)</option>
+                  <option value="APPROVED" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Đã duyệt (APPROVED)</option>
+                  <option value="REJECTED" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Từ chối (REJECTED)</option>
+                  <option value="CANCELLED" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Đã hủy (CANCELLED)</option>
+                  <option value="FINISHED" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Hoàn tất (FINISHED)</option>
                 </>
               )}
             </select>
@@ -700,9 +700,9 @@ export default function StaffEventRequests() {
               onChange={(e) => setDateRangeFilter(e.target.value as typeof dateRangeFilter)}
               className="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-sm text-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all appearance-none cursor-pointer font-medium shadow-sm"
             >
-              <option value="all">Tất cả thời gian</option>
-              <option value="7days">7 ngày qua</option>
-              <option value="30days">30 ngày qua</option>
+              <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Tất cả thời gian</option>
+              <option value="7days" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">7 ngày qua</option>
+              <option value="30days" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">30 ngày qua</option>
             </select>
             <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
               <Calendar className="w-3.5 h-3.5" />
