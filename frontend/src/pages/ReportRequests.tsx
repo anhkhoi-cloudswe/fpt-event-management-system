@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
@@ -314,129 +314,121 @@ export default function ReportRequests() {
   }
 
   return (
-    <div className="bg-slate-50/50 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+    <div className="w-full min-h-screen p-4 md:p-6 text-slate-900 dark:text-slate-100 bg-transparent">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-5">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Quản lý Báo cáo & Hoàn tiền</h1>
-          <p className="text-sm text-slate-500 mt-1.5 max-w-2xl">
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight sm:text-4xl">Quản lý Báo cáo & Hoàn tiền</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
             Trung tâm kiểm soát và xử lý phản ánh ghế ngồi lỗi từ sinh viên. Hỗ trợ duyệt tự động hoàn tiền vé vào ví.
           </p>
         </div>
         <button
           onClick={forceRefresh}
-          className="self-start md:self-auto inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-xl text-sm font-semibold shadow-sm hover:shadow transition-all active:scale-95"
+          className="self-start md:self-auto inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400 border border-slate-200 dark:border-slate-800 hover:border-orange-500 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-300 active:scale-95"
         >
-          <RefreshCw className="w-4 h-4" /> Làm mới danh sách
+          <RefreshCw className="w-4 h-4 text-orange-500" /> Làm mới danh sách
         </button>
       </div>
 
       {/* Dashboard Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Pending Card */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-amber-200/50 group">
-          <div className="p-3.5 bg-amber-50 text-amber-600 rounded-xl group-hover:scale-110 transition-transform">
-            <Clock className="w-6 h-6" />
+        <div className="bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-2xl border border-slate-200/70 dark:border-slate-800 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-amber-300/50 dark:hover:border-amber-700/50 group">
+          <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-xl border border-amber-200/40 dark:border-amber-800/40 group-hover:scale-110 transition-transform">
+            <Clock className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Chờ xử lý</p>
-            <p className="text-2xl font-bold text-slate-900 mt-0.5">{counts.pending}</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Chờ xử lý</p>
+            <p className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-slate-50 mt-0.5 tracking-tight">{counts.pending}</p>
           </div>
         </div>
 
         {/* Approved Card */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-emerald-200/50 group">
-          <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform">
+        <div className="bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-2xl border border-slate-200/70 dark:border-slate-800 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-emerald-300/50 dark:hover:border-emerald-700/50 group">
+          <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-200/40 dark:border-emerald-800/40 group-hover:scale-110 transition-transform">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Đã duyệt</p>
-            <p className="text-2xl font-bold text-slate-900 mt-0.5">{counts.approved}</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Đã duyệt</p>
+            <p className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-slate-50 mt-0.5 tracking-tight">{counts.approved}</p>
           </div>
         </div>
 
         {/* Rejected Card */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-rose-200/50 group">
-          <div className="p-3.5 bg-rose-50 text-rose-600 rounded-xl group-hover:scale-110 transition-transform">
+        <div className="bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-2xl border border-slate-200/70 dark:border-slate-800 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-rose-300/50 dark:hover:border-rose-700/50 group">
+          <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-xl border border-rose-200/40 dark:border-rose-800/40 group-hover:scale-110 transition-transform">
             <XCircle className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Đã từ chối</p>
-            <p className="text-2xl font-bold text-slate-900 mt-0.5">{counts.rejected}</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Đã từ chối</p>
+            <p className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-slate-50 mt-0.5 tracking-tight">{counts.rejected}</p>
           </div>
         </div>
 
         {/* Total Card */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-blue-200/50 group">
-          <div className="p-3.5 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-110 transition-transform">
+        <div className="bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-2xl border border-slate-200/70 dark:border-slate-800 p-5 flex items-center gap-4 shadow-sm transition-all hover:shadow-md hover:border-blue-300/50 dark:hover:border-blue-700/50 group">
+          <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl border border-blue-200/40 dark:border-blue-800/40 group-hover:scale-110 transition-transform">
             <FileClock className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tổng cộng</p>
-            <p className="text-2xl font-bold text-slate-900 mt-0.5">{counts.pending + counts.processed}</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Tổng cộng</p>
+            <p className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-slate-50 mt-0.5 tracking-tight">{counts.pending + counts.processed}</p>
           </div>
         </div>
       </div>
 
       {/* Main Content Area */}
       <div className="space-y-6">
-        {/* Navigation Tabs */}
-        <div className="border-b border-slate-200">
-          <div className="flex gap-6">
-            <button
-              onClick={() => {
-                setActiveTab('PENDING')
-                setCurrentPage(1)
-                setSearchParams({ page: '1' })
-              }}
-              className={`pb-4 px-1 text-sm font-bold tracking-wide transition-all relative inline-flex items-center gap-2 ${
-                activeTab === 'PENDING'
-                  ? 'text-blue-600 font-extrabold'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              Chờ xử lý
-              {counts.pending > 0 && (
-                <span className="px-2.5 py-0.5 text-xs font-bold bg-amber-100 text-amber-800 rounded-full animate-pulse">
-                  {counts.pending}
-                </span>
-              )}
-              {activeTab === 'PENDING' && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-full" />
-              )}
-            </button>
+        {/* Navigation Tabs - Modern Floating Segmented Control */}
+        <div className="flex bg-slate-200/50 dark:bg-slate-900 backdrop-blur-sm p-1 rounded-2xl gap-1.5 w-fit mb-6 border border-slate-200/40 dark:border-slate-800 shadow-inner">
+          <button
+            onClick={() => {
+              setActiveTab('PENDING')
+              setCurrentPage(1)
+              setSearchParams({ page: '1' })
+            }}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+              activeTab === 'PENDING'
+                ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/20 dark:hover:bg-slate-800/40'
+            }`}
+          >
+            Chờ xử lý
+            {counts.pending > 0 && (
+              <span className="px-2 py-0.5 text-xs font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 rounded-full animate-pulse">
+                {counts.pending}
+              </span>
+            )}
+          </button>
 
-            <button
-              onClick={() => {
-                setActiveTab('PROCESSED')
-                setCurrentPage(1)
-                setSearchParams({ page: '1' })
-              }}
-              className={`pb-4 px-1 text-sm font-bold tracking-wide transition-all relative inline-flex items-center gap-2 ${
-                activeTab === 'PROCESSED'
-                  ? 'text-blue-600 font-extrabold'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              Lịch sử xử lý
-              {counts.processed > 0 && (
-                <span className="px-2.5 py-0.5 text-xs font-bold bg-slate-100 text-slate-600 rounded-full">
-                  {counts.processed}
-                </span>
-              )}
-              {activeTab === 'PROCESSED' && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-full" />
-              )}
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setActiveTab('PROCESSED')
+              setCurrentPage(1)
+              setSearchParams({ page: '1' })
+            }}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+              activeTab === 'PROCESSED'
+                ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/20 dark:hover:bg-slate-800/40'
+            }`}
+          >
+            Lịch sử xử lý
+            {counts.processed > 0 && (
+              <span className="px-2 py-0.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full">
+                {counts.processed}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Filter Bar Card */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+        <div className="bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-2xl border border-slate-200/70 dark:border-slate-800 p-5 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search Input */}
             <div className="relative flex items-center">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Tìm tiêu đề, mã vé, người gửi..."
@@ -446,12 +438,12 @@ export default function ReportRequests() {
                   setCurrentPage(1)
                   setSearchParams({ page: '1' })
                 }}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
               />
               {searchQuery && (
                 <button 
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 p-1 hover:bg-slate-200 rounded-full text-slate-400"
+                  className="absolute right-3 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-400 dark:text-slate-500"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -467,14 +459,14 @@ export default function ReportRequests() {
                   setCurrentPage(1)
                   setSearchParams({ page: '1' })
                 }}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-sm text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none cursor-pointer"
               >
-                <option value="">Tất cả trạng thái</option>
-                <option value="PENDING">Chờ xử lý (PENDING)</option>
-                <option value="APPROVED">Đã duyệt (APPROVED)</option>
-                <option value="REJECTED">Từ chối (REJECTED)</option>
+                <option value="" className="dark:bg-slate-800">Tất cả trạng thái</option>
+                <option value="PENDING" className="dark:bg-slate-800">Chờ xử lý (PENDING)</option>
+                <option value="APPROVED" className="dark:bg-slate-800">Đã duyệt (APPROVED)</option>
+                <option value="REJECTED" className="dark:bg-slate-800">Từ chối (REJECTED)</option>
               </select>
-              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
                 <Filter className="w-3.5 h-3.5" />
               </div>
             </div>
@@ -488,14 +480,14 @@ export default function ReportRequests() {
                   setCurrentPage(1)
                   setSearchParams({ page: '1' })
                 }}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-sm text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none cursor-pointer"
               >
-                <option value="">Tất cả thời gian</option>
-                <option value="today">Hôm nay</option>
-                <option value="week">Tuần này</option>
-                <option value="month">Tháng này</option>
+                <option value="" className="dark:bg-slate-800">Tất cả thời gian</option>
+                <option value="today" className="dark:bg-slate-800">Hôm nay</option>
+                <option value="week" className="dark:bg-slate-800">Tuần này</option>
+                <option value="month" className="dark:bg-slate-800">Tháng này</option>
               </select>
-              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
                 <Calendar className="w-3.5 h-3.5" />
               </div>
             </div>
@@ -504,23 +496,23 @@ export default function ReportRequests() {
 
         {/* Loading Spinner */}
         {loading && (
-          <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
-            <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm font-medium text-slate-500">Đang tải dữ liệu yêu cầu...</p>
+          <div className="bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-2xl border border-slate-200/70 dark:border-slate-800 p-16 text-center shadow-sm">
+            <div className="w-10 h-10 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Đang tải dữ liệu yêu cầu...</p>
           </div>
         )}
 
         {/* Error Block */}
         {error && (
-          <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center shadow-sm">
-            <div className="p-3 bg-rose-50 text-rose-600 rounded-full w-fit mx-auto mb-4">
+          <div className="bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-2xl border border-slate-200/70 dark:border-slate-800 p-12 text-center shadow-sm">
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-full w-fit mx-auto mb-4 border border-rose-200/40 dark:border-rose-900/40">
               <AlertCircle className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Không thể tải dữ liệu</h3>
-            <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">{error}</p>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Không thể tải dữ liệu</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-md mx-auto">{error}</p>
             <button
               onClick={() => setRefreshTrigger(prev => prev + 1)}
-              className="mt-5 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all shadow-sm"
+              className="mt-5 px-5 py-2.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-semibold active:scale-95 transition-all shadow-sm"
             >
               Thử tải lại
             </button>
@@ -531,20 +523,20 @@ export default function ReportRequests() {
         {!loading && !error && (
           <div>
             {displayList.length > 0 && (
-              <div className="mb-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Tìm thấy <span className="text-blue-600 font-bold">{displayList.length}</span> trên{' '}
-                <span className="font-bold text-slate-700">{totalItems}</span> báo cáo
+              <div className="mb-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Tìm thấy <span className="text-orange-600 dark:text-orange-400 font-bold">{displayList.length}</span> trên{' '}
+                <span className="font-bold text-slate-700 dark:text-slate-200">{totalItems}</span> báo cáo
               </div>
             )}
 
             {/* Empty State */}
             {displayList.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
-                <div className="p-4 bg-slate-50 text-slate-300 rounded-full w-fit mx-auto mb-4">
+              <div className="bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-2xl border border-slate-200/70 dark:border-slate-800 p-16 text-center shadow-sm">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 rounded-full w-fit mx-auto mb-4">
                   <FileClock className="w-12 h-12" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800">Không tìm thấy yêu cầu</h3>
-                <p className="text-sm text-slate-400 mt-2 max-w-sm mx-auto">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Không tìm thấy yêu cầu</h3>
+                <p className="text-sm text-slate-400 dark:text-slate-400 mt-2 max-w-sm mx-auto">
                   {activeTab === 'PENDING'
                     ? 'Tuyệt vời! Hiện không có phản ánh báo cáo ghế hỏng nào đang chờ xử lý.'
                     : 'Chưa có lịch sử xử lý báo cáo nào được ghi nhận.'}
@@ -552,11 +544,11 @@ export default function ReportRequests() {
               </div>
             ) : (
               /* Table Layout */
-              <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+              <div className="bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-2xl border border-slate-200/70 dark:border-slate-800 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-left">
                     <thead>
-                      <tr className="bg-slate-50/70 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      <tr className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-150 dark:border-slate-800 text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
                         <th className="px-6 py-4">ID Báo cáo</th>
                         <th className="px-6 py-4">Mã Vé (Ticket ID)</th>
                         <th className="px-6 py-4">Sinh viên</th>
@@ -566,25 +558,25 @@ export default function ReportRequests() {
                         <th className="px-6 py-4 text-right">Thao tác</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm text-slate-700 dark:text-slate-200">
                       {displayList.map((r) => (
-                        <tr key={r.report_id} className="hover:bg-slate-50/50 transition-colors group">
+                        <tr key={r.report_id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors group">
                           {/* Report ID */}
-                          <td className="px-6 py-4 font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                          <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
                             #{r.report_id}
                           </td>
                           {/* Ticket ID */}
-                          <td className="px-6 py-4 font-medium text-slate-500">
+                          <td className="px-6 py-4 font-medium text-slate-500 dark:text-slate-400">
                             #{r.ticket_id}
                           </td>
                           {/* Student Name */}
-                          <td className="px-6 py-4 font-semibold text-slate-800">
+                          <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-100">
                             {r.student_name}
                           </td>
                           {/* Category Name */}
-                          <td className="px-6 py-4 font-medium text-slate-500">
+                          <td className="px-6 py-4 font-medium text-slate-500 dark:text-slate-400">
                             {r.category_ticket_name ? (
-                              <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded font-medium">
+                              <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs rounded-md font-medium border border-slate-200/50 dark:border-slate-700">
                                 {r.category_ticket_name}
                               </span>
                             ) : (
@@ -594,31 +586,31 @@ export default function ReportRequests() {
                           {/* Status Badge */}
                           <td className="px-6 py-4">
                             {r.report_status === 'PENDING' ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50">
                                 <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
                                 Chờ xử lý
                               </span>
                             ) : r.report_status === 'APPROVED' ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 Đã duyệt
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50">
                                 <XCircle className="w-3.5 h-3.5" />
                                 Đã từ chối
                               </span>
                             )}
                           </td>
                           {/* Created Time */}
-                          <td className="px-6 py-4 text-slate-500">
+                          <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
                             {formatVietnamDateTime(r.created_at, 'dd/MM/yyyy HH:mm')}
                           </td>
                           {/* Actions */}
                           <td className="px-6 py-4 text-right">
                             <button
                               onClick={() => openDetail(r.report_id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:text-white bg-blue-50 hover:bg-blue-600 border border-blue-100 rounded-xl transition-all shadow-sm active:scale-95"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-orange-600 dark:text-orange-400 hover:text-white bg-orange-50 dark:bg-orange-950/30 hover:bg-orange-600 dark:hover:bg-orange-600 border border-orange-200/80 dark:border-orange-800/50 rounded-xl transition-all shadow-sm active:scale-95"
                             >
                               Xem chi tiết
                               <ExternalLink className="w-3 h-3" />
@@ -634,16 +626,16 @@ export default function ReportRequests() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-                <div className="text-sm text-slate-500 font-medium">
-                  Trang <span className="font-bold text-slate-800">{currentPage}</span> /{' '}
-                  <span className="font-bold text-slate-800">{totalPages}</span> ({totalItems} yêu cầu)
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 bg-white/80 dark:bg-slate-900 backdrop-blur-md rounded-2xl border border-slate-200/70 dark:border-slate-800 p-5 shadow-sm">
+                <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                  Trang <span className="font-bold text-slate-800 dark:text-slate-100">{currentPage}</span> /{' '}
+                  <span className="font-bold text-slate-800 dark:text-slate-100">{totalPages}</span> ({totalItems} yêu cầu)
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-all"
+                    className="px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                   >
                     Trước
                   </button>
@@ -668,8 +660,8 @@ export default function ReportRequests() {
                         onClick={() => handlePageChange(pageNum)}
                         className={`w-9 h-9 rounded-xl text-xs font-bold transition-all border ${
                           currentPage === pageNum
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/20'
-                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                            ? 'bg-orange-600 text-white border-orange-600 shadow-sm shadow-orange-500/20'
+                            : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                         }`}
                       >
                         {pageNum}
@@ -680,7 +672,7 @@ export default function ReportRequests() {
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-all"
+                    className="px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                   >
                     Sau
                   </button>
@@ -695,20 +687,20 @@ export default function ReportRequests() {
           HIGH-FIDELITY DETAILS MODAL
           ====================== */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all duration-300">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-slate-200/70 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
             
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/60 dark:bg-slate-800/50">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Chi tiết phản ánh ghế hỏng #{selected.report_id}</h2>
-                <p className="text-xs text-slate-400 font-semibold uppercase mt-0.5 tracking-wider">
-                  Mã giao dịch vé: <span className="text-slate-600 font-bold">#{selected.ticket_id}</span>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">Chi tiết phản ánh ghế hỏng #{selected.report_id}</h2>
+                <p className="text-xs text-slate-400 dark:text-slate-400 font-semibold uppercase mt-0.5 tracking-wider">
+                  Mã giao dịch vé: <span className="text-slate-600 dark:text-slate-200 font-bold">#{selected.ticket_id}</span>
                 </p>
               </div>
               <button 
                 onClick={closeDetail} 
-                className="p-1.5 hover:bg-slate-200/60 rounded-full text-slate-400 hover:text-slate-700 transition-all"
+                className="p-1.5 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -719,24 +711,24 @@ export default function ReportRequests() {
               
               {/* Processed Operator Banner */}
               {selected.report_status !== 'PENDING' && (
-                <div className="bg-slate-50/80 border border-slate-200/60 rounded-xl p-4 flex gap-3.5 items-start">
+                <div className="bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700 rounded-xl p-4 flex gap-3.5 items-start">
                   <div className={`p-2 rounded-lg text-white mt-0.5 ${
                     selected.report_status === 'APPROVED' ? 'bg-emerald-500' : 'bg-rose-500'
                   }`}>
                     {selected.report_status === 'APPROVED' ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lịch sử xử lý</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-4 mt-2 text-xs font-medium text-slate-500">
-                      <p>Nhân viên xử lý: <span className="font-semibold text-slate-800">{selected.processed_by ?? 'Nhân viên hệ thống'}</span></p>
-                      <p>Ngày xử lý: <span className="font-semibold text-slate-800">
+                    <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Lịch sử xử lý</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-4 mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                      <p>Nhân viên xử lý: <span className="font-semibold text-slate-800 dark:text-slate-200">{selected.processed_by ?? 'Nhân viên hệ thống'}</span></p>
+                      <p>Ngày xử lý: <span className="font-semibold text-slate-800 dark:text-slate-200">
                         {selected.processed_at ? formatVietnamDateTime(selected.processed_at, 'dd/MM/yyyy HH:mm') : '---'}
                       </span></p>
                     </div>
                     {selected.staff_note && (
-                      <div className="mt-2.5 pt-2.5 border-t border-slate-200/50">
-                        <p className="text-xs text-slate-400 font-semibold mb-1">Ghi chú nhân viên:</p>
-                        <p className="text-sm text-slate-700 italic bg-white p-2.5 rounded-lg border border-slate-100">
+                      <div className="mt-2.5 pt-2.5 border-t border-slate-200/50 dark:border-slate-700">
+                        <p className="text-xs text-slate-400 dark:text-slate-400 font-semibold mb-1">Ghi chú nhân viên:</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-200 italic bg-white dark:bg-slate-850 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
                           "{selected.staff_note}"
                         </p>
                       </div>
@@ -748,25 +740,25 @@ export default function ReportRequests() {
               {/* Grid ticket specs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* User Card */}
-                <div className="bg-slate-50/50 border border-slate-150 rounded-xl p-3.5 flex gap-3 items-center">
-                  <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                <div className="bg-slate-50/60 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/70 rounded-xl p-3.5 flex gap-3 items-center">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-lg">
                     <User className="w-4.5 h-4.5" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-400">Sinh viên gửi</p>
-                    <p className="text-sm font-bold text-slate-800">{selected.student_name}</p>
-                    <p className="text-[10px] font-semibold text-slate-400">ID: {selected.student_id ?? '-'}</p>
+                    <p className="text-xs font-semibold text-slate-400 dark:text-slate-400">Sinh viên gửi</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{selected.student_name}</p>
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-400">ID: {selected.student_id ?? '-'}</p>
                   </div>
                 </div>
 
                 {/* Seat Code Card */}
-                <div className="bg-slate-50/50 border border-slate-150 rounded-xl p-3.5 flex gap-3 items-center">
-                  <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                <div className="bg-slate-50/60 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/70 rounded-xl p-3.5 flex gap-3 items-center">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 rounded-lg">
                     <Tag className="w-4.5 h-4.5" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-400">Mã ghế phản ánh</p>
-                    <p className="text-sm font-bold text-purple-700 uppercase">
+                    <p className="text-xs font-semibold text-slate-400 dark:text-slate-400">Mã ghế phản ánh</p>
+                    <p className="text-sm font-bold text-purple-700 dark:text-purple-400 uppercase">
                       {selected.seat_code ? `Ghế ${selected.seat_code}` : (
                         selected.row_no != null && selected.col_no != null 
                           ? `Hàng ${selected.row_no} - Cột ${selected.col_no}` 
@@ -777,16 +769,16 @@ export default function ReportRequests() {
                 </div>
 
                 {/* Location / Area Card */}
-                <div className="bg-slate-50/50 border border-slate-150 rounded-xl p-3.5 flex gap-3 items-start sm:col-span-2">
-                  <div className="p-2 bg-orange-100 text-orange-600 rounded-lg mt-0.5">
+                <div className="bg-slate-50/60 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/70 rounded-xl p-3.5 flex gap-3 items-start sm:col-span-2">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 rounded-lg mt-0.5">
                     <MapPin className="w-4.5 h-4.5" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-400">Địa điểm & Sảnh sự kiện</p>
-                    <p className="text-sm font-bold text-slate-800 mt-0.5">
+                    <p className="text-xs font-semibold text-slate-400 dark:text-slate-400">Địa điểm & Sảnh sự kiện</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {selected.venue_name ?? 'Cơ sở FPT'}
                     </p>
-                    <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
                       {selected.area_name && `${selected.area_name}`}
                       {selected.floor && ` - Lầu ${selected.floor}`}
                       {selected.location && ` (${selected.location})`}
@@ -795,16 +787,16 @@ export default function ReportRequests() {
                 </div>
 
                 {/* Refund & Price Card */}
-                <div className="bg-emerald-50/40 border border-emerald-100/60 rounded-xl p-3.5 flex gap-3 items-center sm:col-span-2">
-                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                <div className="bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 rounded-xl p-3.5 flex gap-3 items-center sm:col-span-2">
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-lg">
                     <Wallet className="w-4.5 h-4.5" />
                   </div>
                   <div className="flex-1 flex justify-between items-center">
                     <div>
-                      <p className="text-xs font-semibold text-emerald-600">Giá trị hoàn trả dự kiến</p>
-                      <p className="text-xs text-slate-400 font-medium">Hệ thống sẽ hoàn trực tiếp vào ví sau khi duyệt</p>
+                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Giá trị hoàn trả dự kiến</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">Hệ thống sẽ hoàn trực tiếp vào ví sau khi duyệt</p>
                     </div>
-                    <p className="text-xl font-black text-emerald-600">
+                    <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">
                       {selected.price != null
                         ? selected.price === 0
                           ? '0₫ (Miễn phí)'
@@ -816,15 +808,15 @@ export default function ReportRequests() {
               </div>
 
               {/* Report Description Section */}
-              <div className="border-t border-b border-slate-100 py-4 space-y-3.5">
+              <div className="border-t border-b border-slate-100 dark:border-slate-800 py-4 space-y-3.5">
                 <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tiêu đề sự cố</p>
-                  <p className="text-sm font-bold text-slate-900 mt-1">{selected.title ?? 'Chưa nhập tiêu đề'}</p>
+                  <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Tiêu đề sự cố</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-1">{selected.title ?? 'Chưa nhập tiêu đề'}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Chi tiết mô tả lỗi</p>
-                  <div className="bg-slate-50 rounded-xl p-3.5 mt-1 border border-slate-100">
-                    <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+                  <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Chi tiết mô tả lỗi</p>
+                  <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3.5 mt-1 border border-slate-100 dark:border-slate-700/80">
+                    <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-line leading-relaxed">
                       {selected.description ?? 'Không có phần mô tả.'}
                     </p>
                   </div>
@@ -834,10 +826,10 @@ export default function ReportRequests() {
               {/* Prove Image Section */}
               {selected.image_url && (
                 <div className="space-y-2">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
                     <ImageIcon className="w-4 h-4" /> Hình ảnh minh chứng ghế hỏng
                   </p>
-                  <div className="relative group overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50">
+                  <div className="relative group overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
                     <img
                       src={selected.image_url}
                       alt="Ảnh minh chứng ghế hỏng"
@@ -851,13 +843,13 @@ export default function ReportRequests() {
               <div className="space-y-4">
                 {selected.report_status === 'PENDING' ? (
                   <div className="space-y-2">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phản hồi của Nhân viên xử lý</p>
+                    <p className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Phản hồi của Nhân viên xử lý</p>
                     <textarea
                       value={staffNote}
                       onChange={(e) => setStaffNote(e.target.value)}
                       placeholder="Nhập lý do duyệt/từ chối hoặc lời nhắn đến sinh viên (tùy chọn)..."
                       disabled={isProcessing}
-                      className="w-full border border-slate-200 rounded-xl p-3 h-24 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition-all text-sm"
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 rounded-xl p-3 h-24 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 focus:outline-none transition-all text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
                 ) : null}
@@ -866,11 +858,11 @@ export default function ReportRequests() {
             </div>
 
             {/* Modal Actions Footer */}
-            <div className="px-6 py-4 border-t border-slate-100 flex justify-end items-center gap-3 bg-slate-50/50">
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex justify-end items-center gap-3 bg-slate-50/60 dark:bg-slate-800/50">
               <button 
                 onClick={closeDetail} 
                 disabled={isProcessing}
-                className="px-4.5 py-2.5 border border-slate-200 hover:bg-slate-100 rounded-xl text-sm font-semibold text-slate-600 transition-all hover:text-slate-800 disabled:opacity-50"
+                className="px-4.5 py-2.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 transition-all hover:text-slate-800 dark:hover:text-white disabled:opacity-50"
               >
                 Đóng
               </button>
@@ -917,3 +909,4 @@ export default function ReportRequests() {
     </div>
   )
 }
+
