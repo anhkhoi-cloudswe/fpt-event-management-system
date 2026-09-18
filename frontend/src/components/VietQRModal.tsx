@@ -39,7 +39,7 @@ export default function VietQRModal({
         </div>
 
         {/* QR Code Container */}
-        <div className="bg-gray-50 dark:bg-white p-4 rounded-xl border border-gray-200 dark:border-slate-750 mb-6 relative">
+        <div className="bg-gray-50 dark:bg-white p-4 rounded-xl border border-gray-200 dark:border-slate-700 mb-6 relative">
           <img
             src={`https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '2911121319'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${bankTransferOrder.amount}&des=${encodeURIComponent(transferDescription)}`}
             alt="VietQR"
@@ -85,7 +85,7 @@ export default function VietQRModal({
           <button
             type="button"
             onClick={onCancel}
-            className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750 dark:text-slate-300 font-semibold rounded-lg transition-colors"
+            className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 font-semibold rounded-lg transition-colors"
           >
             Hủy giao dịch & Giải phóng ghế
           </button>

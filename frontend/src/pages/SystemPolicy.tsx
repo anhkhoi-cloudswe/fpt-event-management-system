@@ -147,7 +147,7 @@ export default function SystemPolicy() {
           <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
             Chính Sách Hệ Thống FPT Event
           </h1>
-          <p className="text-slate-550 text-sm mt-2 max-w-xl mx-auto font-medium">
+          <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto font-medium">
             Mọi quy định được thiết lập nhằm bảo vệ quyền lợi tham dự của sinh viên và nâng cao chất lượng vận hành sự kiện.
           </p>
         </div>
@@ -171,11 +171,11 @@ export default function SystemPolicy() {
                     className={`flex items-center gap-4 py-3 px-4 rounded-2xl text-xs font-black transition-all duration-300 active:scale-95 text-left w-full ${
                       isActive
                         ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20 scale-[1.02]'
-                        : 'text-slate-550 hover:bg-slate-100/50 hover:text-slate-800'
+                        : 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800'
                     }`}
                   >
                     <div className={`p-2.5 rounded-xl transition-colors ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-orange-50 text-orange-655'
+                      isActive ? 'bg-white/20 text-white' : 'bg-orange-50 text-orange-600'
                     }`}>
                       <Icon className="w-4 h-4" />
                     </div>
@@ -217,7 +217,7 @@ export default function SystemPolicy() {
                     <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5">
                       {idx + 1}
                     </div>
-                    <p className="text-slate-655 text-xs sm:text-sm font-semibold leading-relaxed">
+                    <p className="text-slate-600 text-xs sm:text-sm font-semibold leading-relaxed">
                       {rule}
                     </p>
                   </div>
@@ -238,7 +238,7 @@ export default function SystemPolicy() {
                   return (
                     <div
                       key={idx}
-                      className="border border-slate-150 rounded-2xl overflow-hidden bg-white/40 transition-all duration-300 hover:bg-white/80 shadow-sm"
+                      className="border border-slate-200 rounded-2xl overflow-hidden bg-white/40 transition-all duration-300 hover:bg-white/80 shadow-sm"
                     >
                       <button
                         onClick={() => toggleFaq(idx)}
@@ -256,7 +256,7 @@ export default function SystemPolicy() {
 
                       <div
                         className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                          isExpanded ? 'max-h-48 border-t border-slate-150' : 'max-h-0'
+                          isExpanded ? 'max-h-48 border-t border-slate-200' : 'max-h-0'
                         }`}
                       >
                         <div className="p-5 text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold">
@@ -270,7 +270,7 @@ export default function SystemPolicy() {
             </div>
 
             {/* Banner trợ giúp trực tiếp */}
-            <div className="bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-orange-500/10 flex flex-col sm:flex-row items-center justify-between gap-6 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+            <div className="bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-orange-500/10 flex flex-col sm:flex-row items-center justify-between gap-6 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
               <div className="space-y-1.5 text-center sm:text-left">
                 <div className="flex items-center gap-1.5 justify-center sm:justify-start">
                   <Sparkles className="w-4 h-4" />

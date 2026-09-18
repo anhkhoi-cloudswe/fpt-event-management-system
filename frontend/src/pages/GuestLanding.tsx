@@ -643,7 +643,7 @@ export default function GuestLanding() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-xl text-slate-655 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+              className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-orange-600 hover:bg-orange-50 transition-colors"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -1042,7 +1042,7 @@ export default function GuestLanding() {
                 Điều Khoản & Chính Sách
               </Link>
               <span className="text-slate-300 hidden sm:inline">|</span>
-              <a href="mailto:support@fpt.edu.vn" className="text-slate-550 hover:text-orange-600 transition-colors">
+              <a href="mailto:support@fpt.edu.vn" className="text-slate-500 hover:text-orange-600 transition-colors">
                 Hỗ Trợ Kỹ Thuật
               </a>
             </div>

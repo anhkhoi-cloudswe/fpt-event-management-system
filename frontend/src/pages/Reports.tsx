@@ -1059,9 +1059,9 @@ export default function Reports() {
 
               {/* Dropdown list */}
               {isDropdownOpen && (
-                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-64 overflow-y-auto">
+                <div className="absolute z-10 w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg mt-1 max-h-64 overflow-y-auto">
                   {eventsLoading && (
-                    <div className="px-4 py-2 text-sm text-gray-500">Đang tải...</div>
+                    <div className="px-4 py-2 text-sm text-gray-500 dark:text-slate-400">Đang tải...</div>
                   )}
 
                   {!eventsLoading && searchableFilteredEvents.length === 0 && (
@@ -1116,7 +1116,7 @@ export default function Reports() {
                           }}
                           className={`px-4 py-2 cursor-pointer transition-colors ${String(selectedEventId) === String(event.id)
                             ? 'bg-blue-500 text-white'
-                            : 'hover:bg-gray-100'
+                            : 'hover:bg-gray-100 dark:hover:bg-slate-700 dark:text-slate-200'
                             }`}
                         >
                           <div className="font-medium text-sm">

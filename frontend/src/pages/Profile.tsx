@@ -663,7 +663,7 @@ export default function Profile() {
           onClick={() => handleTabChange('profile')}
           className={`pb-3 text-sm font-extrabold transition-all relative ${activeTab === 'profile'
             ? 'text-orange-600 dark:text-orange-500'
-            : 'text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
+            : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
             }`}
         >
           {t.profileTab}
@@ -675,7 +675,7 @@ export default function Profile() {
           onClick={() => handleTabChange('security')}
           className={`pb-3 text-sm font-extrabold transition-all relative ${activeTab === 'security'
             ? 'text-orange-600 dark:text-orange-500'
-            : 'text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
+            : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
             }`}
         >
           {t.securityTab}
@@ -687,7 +687,7 @@ export default function Profile() {
           onClick={() => handleTabChange('language')}
           className={`pb-3 text-sm font-extrabold transition-all relative ${activeTab === 'language'
             ? 'text-orange-600 dark:text-orange-500'
-            : 'text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
+            : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
             }`}
         >
           {t.languageTab}
@@ -817,7 +817,7 @@ export default function Profile() {
                       {isDarkMode ? <Moon size={15} className="text-orange-400" /> : <Sun size={15} className="text-orange-500" />}
                       <span>{isDarkMode ? t.darkMode : t.lightMode}</span>
                     </div>
-                    <div className={`w-8 h-4 rounded-full relative transition-colors ${isDarkMode ? 'bg-orange-500' : 'bg-slate-350'}`}>
+                    <div className={`w-8 h-4 rounded-full relative transition-colors ${isDarkMode ? 'bg-orange-500' : 'bg-slate-400'}`}>
                       <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.25 transition-all ${isDarkMode ? 'right-0.5' : 'left-0.5'}`} />
                     </div>
                   </button>
@@ -932,7 +932,7 @@ export default function Profile() {
               ) : (
                 // Standard Password Change Form
                 <form onSubmit={handleUpdateStandardPassword} className="space-y-4">
-                  <p className="text-xs text-slate-450 dark:text-slate-400 font-semibold pl-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold pl-1">
                     {t.passwordSecurityHelp}
                   </p>
 
@@ -1224,7 +1224,7 @@ export default function Profile() {
               <span>{t.closeAccountTitle}</span>
             </h3>
             <div className="text-sm space-y-3 mb-6 leading-relaxed text-slate-400 font-medium">
-              <p className="font-extrabold text-slate-750 dark:text-slate-350">
+              <p className="font-extrabold text-slate-700 dark:text-slate-400">
                 {t.close1}
               </p>
               <p>

@@ -814,7 +814,7 @@ export default function CheckIn() {
           <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white uppercase sm:text-3xl">
             Kiểm Soát Check-In / Check-Out
           </h1>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-450 mt-1">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-500 mt-1">
             Bảng điều khiển quét mã QR và nhập mã vé tham gia hội trường sự kiện FPT.
           </p>
         </div>
@@ -828,7 +828,7 @@ export default function CheckIn() {
           className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-300 ${
             activeTab === 'checkin'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20 scale-102'
-              : 'text-slate-500 dark:text-slate-450 hover:text-slate-700 dark:hover:text-slate-200'
+              : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
           <LogIn className="w-4 h-4" />
@@ -841,7 +841,7 @@ export default function CheckIn() {
           className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-300 ${
             activeTab === 'checkout'
               ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/20 scale-102'
-              : 'text-slate-500 dark:text-slate-450 hover:text-slate-700 dark:hover:text-slate-200'
+              : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
           <LogOut className="w-4 h-4" />
@@ -942,7 +942,7 @@ export default function CheckIn() {
                     <button
                       onClick={handleManualAction}
                       disabled={isProcessing}
-                      className="px-5 py-3 text-white rounded-2xl bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-650 transition-all duration-300 active:scale-95 flex items-center justify-center shadow-sm disabled:opacity-40"
+                      className="px-5 py-3 text-white rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all duration-300 active:scale-95 flex items-center justify-center shadow-sm disabled:opacity-40"
                     >
                       {isProcessing ? (
                         <Loader className="w-5 h-5 animate-spin" />
@@ -999,7 +999,7 @@ export default function CheckIn() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 shadow-md flex flex-col justify-between min-h-[350px] max-h-[400px] overflow-y-auto">
           <div>
             <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
-              <CheckCircle className="w-4.5 h-4.5 text-orange-550" />
+              <CheckCircle className="w-4.5 h-4.5 text-orange-500" />
               Kết quả quét - {actionLabel}
             </h2>
 
@@ -1033,7 +1033,7 @@ export default function CheckIn() {
                       <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-2.5 text-xs">
                         {result.registration?.ticketId && (
                           <div className="flex justify-between items-center">
-                            <span className="text-slate-450 font-bold">Ticket ID:</span>
+                            <span className="text-slate-500 font-bold">Ticket ID:</span>
                             <span className="font-black text-slate-200">#{result.registration.ticketId}</span>
                           </div>
                         )}
@@ -1041,8 +1041,8 @@ export default function CheckIn() {
                           const checkinDate = parseBackendDate(result.registration.checkedInAt)
                           return (
                             <div className="flex justify-between items-center">
-                              <span className="text-slate-450 font-bold">Thời gian Check-in:</span>
-                              <span className="font-extrabold text-slate-250">
+                              <span className="text-slate-500 font-bold">Thời gian Check-in:</span>
+                              <span className="font-extrabold text-slate-300">
                                 {checkinDate ? format(checkinDate, 'dd/MM/yyyy HH:mm:ss', { locale: vi }) : result.registration.checkedInAt}
                               </span>
                             </div>
@@ -1052,8 +1052,8 @@ export default function CheckIn() {
                           const checkoutDate = parseBackendDate(result.registration.checkedOutAt)
                           return (
                             <div className="flex justify-between items-center">
-                              <span className="text-slate-450 font-bold">Thời gian Check-out:</span>
-                              <span className="font-extrabold text-slate-250">
+                              <span className="text-slate-500 font-bold">Thời gian Check-out:</span>
+                              <span className="font-extrabold text-slate-300">
                                 {checkoutDate ? format(checkoutDate, 'dd/MM/yyyy HH:mm:ss', { locale: vi }) : result.registration.checkedOutAt}
                               </span>
                             </div>
@@ -1061,7 +1061,7 @@ export default function CheckIn() {
                         })()}
                         {result.registration?.customerName && (
                           <div className="flex justify-between items-center border-t border-slate-800/80 pt-2 mt-2">
-                            <span className="text-slate-450 font-bold">Sinh viên:</span>
+                            <span className="text-slate-500 font-bold">Sinh viên:</span>
                             <span className="font-extrabold text-slate-100">{result.registration.customerName}</span>
                           </div>
                         )}
@@ -1096,21 +1096,21 @@ export default function CheckIn() {
                   <div className="border-t border-slate-800 pt-4 space-y-3">
                     {result.registration.customerName && (
                       <div className="bg-slate-900/60 p-3.5 rounded-2xl border-l-4 border-orange-500/80 text-xs">
-                        <p className="text-slate-450 font-bold uppercase tracking-wider mb-0.5">👤 Khách hàng:</p>
+                        <p className="text-slate-500 font-bold uppercase tracking-wider mb-0.5">👤 Khách hàng:</p>
                         <p className="font-extrabold text-slate-100">{result.registration.customerName}</p>
                       </div>
                     )}
 
                     {result.registration.eventName && (
                       <div className="bg-slate-900/60 p-3.5 rounded-2xl border-l-4 border-purple-500/80 text-xs">
-                        <p className="text-slate-450 font-bold uppercase tracking-wider mb-0.5">📋 Sự kiện:</p>
+                        <p className="text-slate-500 font-bold uppercase tracking-wider mb-0.5">📋 Sự kiện:</p>
                         <p className="font-extrabold text-slate-100">{result.registration.eventName}</p>
                       </div>
                     )}
 
                     {result.registration.results && Array.isArray(result.registration.results) && (
                       <div className="space-y-2">
-                        <p className="text-xs text-slate-450 font-extrabold uppercase tracking-wider mb-2">Báo cáo kiểm tra lô vé:</p>
+                        <p className="text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-2">Báo cáo kiểm tra lô vé:</p>
                         <div className="text-xs space-y-2 max-h-48 overflow-y-auto pr-1">
                           {result.registration.results.map((r: any, idx: number) => (
                             <div
@@ -1138,7 +1138,7 @@ export default function CheckIn() {
                 {/* Button next checkin */}
                 <button
                   onClick={resetResult}
-                  className="w-full mt-4 py-3.5 font-extrabold text-xs uppercase tracking-wider text-slate-200 bg-slate-800 hover:bg-slate-750 hover:text-white rounded-2xl transition-all duration-300 shadow-sm active:scale-95"
+                  className="w-full mt-4 py-3.5 font-extrabold text-xs uppercase tracking-wider text-slate-200 bg-slate-800 hover:bg-slate-700 hover:text-white rounded-2xl transition-all duration-300 shadow-sm active:scale-95"
                 >
                   Quét vé tiếp theo
                 </button>

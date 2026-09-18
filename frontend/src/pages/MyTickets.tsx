@@ -453,7 +453,7 @@ export default function MyTickets() {
             <select
               value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
-              className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
+              className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-700 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
               <option value="">{currentLanguage === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
               <option value="BOOKED">{currentLanguage === 'en' ? 'Not Checked In' : 'Chưa check-in'}</option>
@@ -469,7 +469,7 @@ export default function MyTickets() {
         {/* Results count */}
         {!loading && (
           <div className="mt-3.5 text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider pl-1">
-{currentLanguage === 'en' ? 'Found' : 'Tìm thấy'} <span className="text-orange-655 font-extrabold">{totalRecords}</span> {currentLanguage === 'en' ? 'tickets' : 'vé'}
+{currentLanguage === 'en' ? 'Found' : 'Tìm thấy'} <span className="text-orange-600 font-extrabold">{totalRecords}</span> {currentLanguage === 'en' ? 'tickets' : 'vé'}
           </div>
         )}
       </div>
@@ -492,7 +492,7 @@ export default function MyTickets() {
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">
 {searchQuery || statusFilter ? (currentLanguage === 'en' ? 'No matching tickets found' : 'Không tìm thấy vé phù hợp') : (currentLanguage === 'en' ? "You don't have any tickets yet" : 'Bạn chưa có vé nào')}
           </h3>
-          <p className="text-sm text-slate-400 dark:text-slate-450 mt-2 max-w-sm mx-auto font-medium">
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-2 max-w-sm mx-auto font-medium">
 {searchQuery || statusFilter
               ? (currentLanguage === 'en' ? 'Please try again with a different keyword or clear filters.' : 'Vui lòng thử lại với từ khóa khác hoặc xóa bộ lọc.')
               : (currentLanguage === 'en' ? 'Explore interesting events and register for tickets to join now!' : 'Hãy khám phá các sự kiện thú vị và đăng ký vé tham gia ngay nhé!')}
@@ -684,7 +684,7 @@ export default function MyTickets() {
                         type="button"
                         onClick={() => setQrTicket(t)}
                         className={`${!hasExistingReport && status === 'CHECKED_IN' ? 'flex-1' : 'w-full'
-                          } inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 rounded-xl hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 hover:scale-[1.02] active:scale-95`}
+                          } inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 rounded-xl hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 hover:scale-[1.02] active:scale-95`}
                       >
                         <TicketIcon className="w-4 h-4" /> {currentLanguage === 'en' ? 'View QR Ticket' : 'Xem vé QR'}
                       </button>
@@ -729,7 +729,7 @@ export default function MyTickets() {
                 <div className="absolute top-4 right-4">
                   <button 
                     onClick={() => setQrTicket(null)}
-                    className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-150 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 transition-colors"
                   >
                     ✕
                   </button>
@@ -746,7 +746,7 @@ export default function MyTickets() {
 
                 {getTicketDisplayCode(qrTicket) && (
                   <div className="mb-4 bg-orange-50/50 dark:bg-orange-950/20 border border-orange-100/40 dark:border-orange-900/30 rounded-2xl py-2.5 px-4 inline-block">
-                    <p className="text-xs font-bold text-slate-450 dark:text-slate-400 uppercase tracking-wide">
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                       {currentLanguage === 'en' ? 'Your Ticket ID' : 'Mã số vé của bạn'}
                     </p>
                     <p className="text-base font-black text-orange-600 tracking-wider">
@@ -791,7 +791,7 @@ export default function MyTickets() {
                 <button
                   type="button"
                   onClick={() => setQrTicket(null)}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-5 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 rounded-2xl transition-all duration-300 shadow-sm active:scale-95"
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-5 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-2xl transition-all duration-300 shadow-sm active:scale-95"
                 >
                   {currentLanguage === 'en' ? 'Close Window' : 'Đóng cửa sổ'}
                 </button>

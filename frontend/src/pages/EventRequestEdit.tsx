@@ -1054,7 +1054,7 @@ export default function EventRequestEdit() {
 
                                 <div className="space-y-3">
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-2">
+                                        <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2">
                                             Chọn diễn giả *
                                         </label>
 
@@ -1202,7 +1202,7 @@ export default function EventRequestEdit() {
                                         >
                                             <div className="flex justify-between items-start">
                                                 <div className="flex-1">
-                                                    <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider mb-1">
+                                                    <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                                                         Loại vé *
                                                     </label>
                                                     <select
@@ -1228,7 +1228,7 @@ export default function EventRequestEdit() {
 
                                             <div className="space-y-2">
                                                 <div>
-                                                    <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1">
+                                                    <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                                                         Mô tả *
                                                     </label>
                                                     <textarea
@@ -1242,7 +1242,7 @@ export default function EventRequestEdit() {
 
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div>
-                                                        <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider mb-1">
+                                                        <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                                                             Giá (VNĐ) *
                                                         </label>
                                                         <input
@@ -1265,7 +1265,7 @@ export default function EventRequestEdit() {
                                                     </div>
 
                                                     <div>
-                                                        <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1">
+                                                        <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                                                             Số lượng tối đa *
                                                         </label>
                                                         <input
@@ -1498,7 +1498,7 @@ export default function EventRequestEdit() {
                             </div>
                         </div>
 
-                        <div className="flex gap-3 pt-6 border-t border-slate-150 dark:border-white/5 mt-6">
+                        <div className="flex gap-3 pt-6 border-t border-slate-200 dark:border-white/5 mt-6">
                             <button
                                 type="button"
                                 onClick={() => setIsDrawerOpen(false)}

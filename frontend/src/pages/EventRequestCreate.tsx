@@ -1718,7 +1718,7 @@ export default function EventRequestCreate() {
                 }`}>
                   <AlertCircle className="w-3.5 h-3.5 text-orange-500 flex-shrink-0 mt-0.5" />
                   <p className={`text-[10px] font-medium leading-normal ${isDarkMode ? 'text-orange-200/90' : 'text-orange-900'}`}>
-                    <span className="text-orange-655 font-bold">Khuyên dùng:</span> Sự kiện trường cần Staff duyệt. Hãy cân nhắc đặt cách hiện tại <span className="text-orange-655 font-bold">36h - 48h</span> trở lên để Staff kịp tiếp nhận duyệt.
+                    <span className="text-orange-600 font-bold">Khuyên dùng:</span> Sự kiện trường cần Staff duyệt. Hãy cân nhắc đặt cách hiện tại <span className="text-orange-600 font-bold">36h - 48h</span> trở lên để Staff kịp tiếp nhận duyệt.
                   </p>
                 </div>
               )}

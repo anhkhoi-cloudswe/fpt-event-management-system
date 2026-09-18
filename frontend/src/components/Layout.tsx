@@ -409,7 +409,7 @@ export default function Layout() {
                         onClick={handleToggleTheme}
                         className={`w-full flex items-center justify-between p-2.5 rounded-xl border transition-all active:scale-98 ${isDarkMode
                           ? 'bg-slate-800 border-slate-700 hover:border-orange-500/40 text-slate-200'
-                          : 'bg-slate-50 border-slate-200 hover:border-orange-500/35 text-slate-750'
+                          : 'bg-slate-50 border-slate-200 hover:border-orange-500/35 text-slate-700'
                           }`}
                       >
                         <div className="flex min-w-0 items-center gap-2.5 text-xs font-bold">
@@ -424,7 +424,7 @@ export default function Layout() {
 
                     {/* Phone Update option */}
                     <div className="space-y-1.5 min-w-0">
-                      <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider truncate">{currentLanguage === 'en' ? 'PHONE NUMBER (OPTIONAL)' : 'Số điện thoại (Không bắt buộc)'}</label>
+                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider truncate">{currentLanguage === 'en' ? 'PHONE NUMBER (OPTIONAL)' : 'Số điện thoại (Không bắt buộc)'}</label>
                       <div className="flex gap-2">
                         <input
                           type="tel"
@@ -449,7 +449,7 @@ export default function Layout() {
                     {/* Timezone option */}
                     <div className="space-y-1.5 min-w-0">
                       <div className="flex items-center justify-between">
-                        <label className="block text-[10px] font-extrabold text-slate-450 uppercase tracking-wider truncate">{currentLanguage === 'en' ? 'WORKING TIMEZONE' : 'Múi giờ khu vực'}</label>
+                        <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider truncate">{currentLanguage === 'en' ? 'WORKING TIMEZONE' : 'Múi giờ khu vực'}</label>
                       </div>
                       <TimezoneCombobox
                         value={timezone}

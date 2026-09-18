@@ -1161,7 +1161,7 @@ export default function Payment() {
           <div className="space-y-4 text-base text-gray-800 dark:text-slate-200">
             {/* ----- Tên sự kiện ----- */}
             <p className="flex justify-between items-start gap-4">
-              <span className="text-gray-600 dark:text-slate-350 font-bold text-base">Sự kiện</span>
+              <span className="text-gray-600 dark:text-slate-400 font-bold text-base">Sự kiện</span>
               <span className="font-extrabold text-gray-950 dark:text-white text-right text-base sm:text-lg">
                 {state.eventTitle || 'Sự kiện demo (mock)'}
               </span>
@@ -1170,7 +1170,7 @@ export default function Payment() {
             {/* ----- Hạng vé ----- */}
             {state.ticketBreakdown && state.ticketBreakdown.length > 0 ? (
               <p className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-slate-350 font-bold text-base">Hạng vé</span>
+                <span className="text-gray-600 dark:text-slate-400 font-bold text-base">Hạng vé</span>
                 <span className="font-extrabold text-gray-900 dark:text-white text-base">
                   {state.ticketBreakdown.map((t, idx) => (
                     <span key={idx}>
@@ -1182,7 +1182,7 @@ export default function Payment() {
               </p>
             ) : state.ticketName ? (
               <p className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-slate-350 font-bold text-base">Hạng vé</span>
+                <span className="text-gray-600 dark:text-slate-400 font-bold text-base">Hạng vé</span>
                 <span className="font-extrabold text-gray-900 dark:text-white text-base">{state.ticketName}</span>
               </p>
             ) : null}
@@ -1191,7 +1191,7 @@ export default function Payment() {
             {(state.rowNo ||
               (state.seatCodes && state.seatCodes.length > 0)) && (
                 <p className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-slate-350 font-bold text-base">Vị trí ghế</span>
+                  <span className="text-gray-600 dark:text-slate-400 font-bold text-base">Vị trí ghế</span>
                   <span className="font-extrabold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-0.5 rounded-md border border-orange-100/40 dark:border-orange-900/30 text-base">
                     {state.rowNo ? `Hàng ${state.rowNo}` : ''}
                     {state.rowNo &&
@@ -1230,7 +1230,7 @@ export default function Payment() {
         <div className="space-y-5">
           {/* ----- Dropdown chọn phương thức ----- */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-350 mb-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-3">
               Phương thức thanh toán
             </label>
 
@@ -1243,13 +1243,13 @@ export default function Payment() {
                 className={`flex items-start p-4 rounded-xl border text-left transition-all duration-300 ${
                   paymentMethod === 'bank_transfer'
                     ? 'border-blue-500 dark:border-blue-500 bg-blue-50/20 dark:bg-blue-950/15 ring-2 ring-blue-500/20'
-                    : 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-750'
+                    : 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-700'
                 }`}
               >
                 <div className={`p-2 rounded-lg mr-3 ${
                   paymentMethod === 'bank_transfer'
                     ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
-                    : 'bg-gray-100 text-gray-500 dark:bg-slate-750 dark:text-slate-400'
+                    : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400'
                 }`}>
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
@@ -1269,13 +1269,13 @@ export default function Payment() {
                 className={`flex items-start p-4 rounded-xl border text-left transition-all duration-300 ${
                   paymentMethod === 'wallet'
                     ? 'border-blue-500 dark:border-blue-500 bg-blue-50/20 dark:bg-blue-950/15 ring-2 ring-blue-500/20'
-                    : 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-750'
+                    : 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-700'
                 }`}
               >
                 <div className={`p-2 rounded-lg mr-3 ${
                   paymentMethod === 'wallet'
                     ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
-                    : 'bg-gray-100 text-gray-500 dark:bg-slate-750 dark:text-slate-400'
+                    : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400'
                 }`}>
                   <Wallet className="w-5 h-5" />
                 </div>

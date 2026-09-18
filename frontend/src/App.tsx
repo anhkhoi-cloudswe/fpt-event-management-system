@@ -365,29 +365,24 @@ function ThemeRouteIsolation() {
   const pathname = typeof location?.pathname === 'string' ? location.pathname : ''
 
   useEffect(() => {
-    const isDashboardRoute = (pathname: string) => {
-      return pathname === '/' || 
-             pathname.startsWith('/dashboard') || 
-             pathname.startsWith('/my-tickets')
-    }
+    // Read the user's saved theme preference from localStorage
+    const savedTheme = user?.id
+      ? localStorage.getItem('theme_user_' + user.id) || localStorage.getItem('theme')
+      : localStorage.getItem('theme')
 
-    if (isDashboardRoute(pathname)) {
-      const savedTheme = user?.id
-        ? localStorage.getItem('theme_user_' + user.id) || localStorage.getItem('theme')
-        : localStorage.getItem('theme')
+    const themeToApply = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : (user?.theme === 'dark' ? 'dark' : 'light')
 
-      const themeToApply = savedTheme === 'dark' || savedTheme === 'light'
-        ? savedTheme
-        : (user?.theme === 'dark' ? 'dark' : 'light')
-
-      if (themeToApply === 'dark') {
-        document.documentElement.classList.add('dark')
-      } else {
-        document.documentElement.classList.remove('dark')
-      }
+    // Apply the saved theme on ALL routes — dashboard and public alike.
+    // Previously, public routes always called classList.remove('dark'), wiping out
+    // the user's preferred theme on /guest, /login, /events/:id, etc.
+    if (themeToApply === 'dark') {
+      document.documentElement.classList.add('dark')
     } else {
       document.documentElement.classList.remove('dark')
     }
+
     window.dispatchEvent(new Event('theme-change'))
   }, [pathname, user])
 

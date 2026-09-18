@@ -499,7 +499,7 @@ export default function AdminDashboard() {
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
             activeTab === 'STUDENT'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow shadow-orange-500/10'
-              : 'text-slate-600 dark:text-slate-350 hover:bg-slate-200/60 dark:hover:bg-slate-850'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-850'
           }`}
         >
           <Users size={16} />
@@ -511,7 +511,7 @@ export default function AdminDashboard() {
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
             activeTab === 'SPEAKER'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow shadow-orange-500/10'
-              : 'text-slate-600 dark:text-slate-350 hover:bg-slate-200/60 dark:hover:bg-slate-850'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-850'
           }`}
         >
           <Award size={16} />
@@ -523,7 +523,7 @@ export default function AdminDashboard() {
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
             activeTab === 'INTERNAL'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow shadow-orange-500/10'
-              : 'text-slate-600 dark:text-slate-350 hover:bg-slate-200/60 dark:hover:bg-slate-850'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-850'
           }`}
         >
           <ShieldAlert size={16} />
@@ -535,7 +535,7 @@ export default function AdminDashboard() {
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
             activeTab === 'BANNER'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow shadow-orange-500/10'
-              : 'text-slate-600 dark:text-slate-350 hover:bg-slate-200/60 dark:hover:bg-slate-850'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-850'
           }`}
         >
           <ImageIcon size={16} />
@@ -659,8 +659,8 @@ export default function AdminDashboard() {
                 {activeTab === 'STUDENT' && filteredItems.map((u) => (
                   <tr key={u.userId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white">{u.fullName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-350 font-medium">{u.email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-350 font-medium">{u.phone || '—'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{u.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{u.phone || '—'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
                         u.status === 'ACTIVE'
@@ -703,8 +703,8 @@ export default function AdminDashboard() {
                       )}
                       <span>{sp.fullName}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-350 font-medium">{sp.email || '—'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-350 font-medium">{sp.phone || '—'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{sp.email || '—'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{sp.phone || '—'}</td>
                     <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 max-w-xs truncate" title={sp.bio}>
                       {sp.bio || '—'}
                     </td>
@@ -733,8 +733,8 @@ export default function AdminDashboard() {
                   <tr key={u.userId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white">{u.username}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800 dark:text-slate-200 font-bold">{u.fullName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-350 font-medium">{u.email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-350 font-medium">{u.phone || '—'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{u.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{u.phone || '—'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
                       <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
                         u.role === 'ADMIN'
@@ -803,7 +803,7 @@ export default function AdminDashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white">{banner.title}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-650 dark:text-slate-350 font-bold">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-bold">
                       <span className="px-2 py-0.5 rounded-md bg-slate-105 dark:bg-slate-800/60 border border-slate-200/40 dark:border-slate-700/50 text-xs">
                         {banner.category || 'Chưa phân loại'}
                       </span>

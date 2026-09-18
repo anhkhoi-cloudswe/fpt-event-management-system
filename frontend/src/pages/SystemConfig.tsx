@@ -397,7 +397,7 @@ export default function SystemConfig() {
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 p-8 shadow-md">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-          <p className="text-slate-655 dark:text-slate-300 font-extrabold text-sm">Đang tải cấu hình...</p>
+          <p className="text-slate-600 dark:text-slate-300 font-extrabold text-sm">Đang tải cấu hình...</p>
         </div>
       </div>
     )
@@ -446,7 +446,7 @@ export default function SystemConfig() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3">
-              <Settings className="w-6 h-6 text-orange-655" />
+              <Settings className="w-6 h-6 text-orange-600" />
               Cấu hình hệ thống
             </h1>
 
@@ -494,7 +494,7 @@ export default function SystemConfig() {
                   max="600"
                   className="w-32 px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-lg font-bold text-slate-900 dark:text-slate-100 shadow-sm transition-all duration-300"
                 />
-                <span className="text-sm font-bold text-slate-655 dark:text-slate-300">phút trước khi bắt đầu</span>
+                <span className="text-sm font-bold text-slate-600 dark:text-slate-300">phút trước khi bắt đầu</span>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -512,7 +512,7 @@ export default function SystemConfig() {
                     className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all duration-300 active:scale-95 ${
                       config.checkinAllowedBeforeStartMinutes === val
                         ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-md shadow-orange-500/10'
-                        : 'bg-white border border-slate-150 text-slate-600 hover:bg-orange-550 hover:text-orange-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-400'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-orange-500 hover:text-orange-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-400'
                     }`}
                   >
                     {val} phút
@@ -545,7 +545,7 @@ export default function SystemConfig() {
                   max="600"
                   className="w-32 px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-lg font-bold text-slate-900 dark:text-slate-100 shadow-sm transition-all duration-300"
                 />
-                <span className="text-sm font-bold text-slate-655 dark:text-slate-300">phút trước khi kết thúc</span>
+                <span className="text-sm font-bold text-slate-600 dark:text-slate-300">phút trước khi kết thúc</span>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -560,7 +560,7 @@ export default function SystemConfig() {
                     className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all duration-300 active:scale-95 ${
                       config.minMinutesAfterStart === val
                         ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-md shadow-orange-500/10'
-                        : 'bg-white border border-slate-150 text-slate-600 hover:bg-orange-550 hover:text-orange-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-400'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-orange-500 hover:text-orange-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-400'
                     }`}
                   >
                     {val} phút
@@ -570,7 +570,7 @@ export default function SystemConfig() {
             </div>
 
             {/* Info box: giải thích ý nghĩa cấu hình */}
-            <div className="bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-5 shadow-sm text-slate-700 dark:text-slate-350 leading-relaxed font-semibold text-xs sm:text-sm">
+            <div className="bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-5 shadow-sm text-slate-700 dark:text-slate-400 leading-relaxed font-semibold text-xs sm:text-sm">
               <h3 className="font-extrabold text-blue-900 dark:text-blue-400 mb-2 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                 Hướng dẫn vận hành
@@ -590,7 +590,7 @@ export default function SystemConfig() {
                 </li>
                 <li className="mt-3 pt-3 border-t border-slate-200/50 dark:border-slate-800/50">
                   <strong className="text-slate-800 dark:text-slate-200">Ví dụ thực tế:</strong> Sự kiện kết thúc lúc 17:00
-                  <ul className="ml-4 mt-1 space-y-1 text-slate-550 dark:text-slate-400 text-xs">
+                  <ul className="ml-4 mt-1 space-y-1 text-slate-500 dark:text-slate-400 text-xs">
                     <li>• Check-in = 60 phút → Có thể check-in mở từ 13:00</li>
                     <li>• Check-out = 30 phút → Có thể check-out trước 16:30</li>
                   </ul>
@@ -603,7 +603,7 @@ export default function SystemConfig() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-orange-600 via-orange-550 to-orange-500 text-white rounded-2xl shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/35 transition-all duration-300 active:scale-95 hover:scale-[1.02] font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 text-white rounded-2xl shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/35 transition-all duration-300 active:scale-95 hover:scale-[1.02] font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-4 h-4" />
                 {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
@@ -618,10 +618,10 @@ export default function SystemConfig() {
         <div className="bg-white/70 dark:bg-slate-900/70 border border-white/80 dark:border-slate-800/80 backdrop-blur-md rounded-3xl p-8 max-w-7xl w-full mx-auto shadow-xl hover:shadow-orange-500/5 transition-all duration-500 animate-fade-in-up">
           <div className="mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 mb-2">
-              <Settings className="w-6 h-6 text-orange-655" />
+              <Settings className="w-6 h-6 text-orange-600" />
               Cấu hình riêng cho từng sự kiện
             </h2>
-            <p className="text-xs text-slate-550 dark:text-slate-400 font-semibold leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">
               Tùy chỉnh thời gian check-in/check-out cho từng sự kiện cụ thể. Cấu hình riêng sẽ ghi đè lên cấu hình toàn hệ thống.
             </p>
           </div>
@@ -704,7 +704,7 @@ export default function SystemConfig() {
 
                       {/* Start Time */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-xs font-semibold text-slate-550 dark:text-slate-400">
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                           {new Date(event.startTime).toLocaleDateString('vi-VN', {
                             day: '2-digit',
                             month: '2-digit',
@@ -723,7 +723,7 @@ export default function SystemConfig() {
                               📍 {event.venueLocation}
                             </span>
                           ) : (
-                            <span className="text-slate-400 dark:text-slate-550 italic font-semibold">Chưa có địa điểm</span>
+                            <span className="text-slate-400 dark:text-slate-500 italic font-semibold">Chưa có địa điểm</span>
                           )}
                         </div>
                       </td>
@@ -735,7 +735,7 @@ export default function SystemConfig() {
                             event.status === 'OPEN'
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-450 dark:border-emerald-900/50'
                               : event.status === 'CLOSED'
-                                ? 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-350 dark:border-slate-700'
+                                ? 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700'
                                 : event.status === 'CANCELLED'
                                   ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50'
                                   : 'bg-blue-50 text-blue-755 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50'
@@ -755,7 +755,7 @@ export default function SystemConfig() {
                             onClick={() =>
                               handleManageEventConfig(event.eventId, event.title)
                             }
-                            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-gradient-to-r from-orange-655 via-orange-600 to-orange-500 border border-transparent rounded-xl text-xs font-bold text-white hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 active:scale-95 hover:scale-[1.02]"
+                            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 border border-transparent rounded-xl text-xs font-bold text-white hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 active:scale-95 hover:scale-[1.02]"
                             title="Cấu hình Check-in Gate"
                           >
                             <Settings className="w-3.5 h-3.5" />

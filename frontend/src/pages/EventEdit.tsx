@@ -902,7 +902,7 @@ export default function EventEdit() {
             <div className="lg:col-span-5 space-y-6">
               {/* ================= BANNER UPLOAD ================= */}
               <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-3 shadow-sm">
-                <label className="block text-sm font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider">
+                <label className="block text-sm font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider">
                   Banner sự kiện *
                 </label>
 
@@ -923,7 +923,7 @@ export default function EventEdit() {
                     />
                     <label htmlFor="banner-upload" className="cursor-pointer">
                       <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                      <p className="text-xs text-gray-600 dark:text-slate-350 mb-1">Kéo thả ảnh hoặc click để chọn</p>
+                      <p className="text-xs text-gray-600 dark:text-slate-400 mb-1">Kéo thả ảnh hoặc click để chọn</p>
                       <p className="text-[10px] text-gray-505 dark:text-slate-500">PNG, JPG, GIF tối đa 5MB</p>
                     </label>
                   </div>
@@ -948,7 +948,7 @@ export default function EventEdit() {
                 {/* Autocomplete Combobox */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-2">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2">
                       Chọn diễn giả *
                     </label>
                     
@@ -999,7 +999,7 @@ export default function EventEdit() {
                                   )}
                                   <div>
                                     <p className="font-semibold text-xs">{sp.fullName}</p>
-                                    <p className="text-[10px] text-slate-550 dark:text-neutral-400">{sp.email || 'Không có email'}</p>
+                                    <p className="text-[10px] text-slate-500 dark:text-neutral-400">{sp.email || 'Không có email'}</p>
                                   </div>
                                 </div>
                               ))
@@ -1056,7 +1056,7 @@ export default function EventEdit() {
                           <button
                             type="button"
                             onClick={() => setSelectedSpeakers(selectedSpeakers.filter(s => s.speaker_id !== currentId))}
-                            className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-400 hover:text-slate-655 dark:hover:text-white transition-colors"
+                            className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -1104,7 +1104,7 @@ export default function EventEdit() {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                           Loại vé *
                         </label>
                         <select
@@ -1137,7 +1137,7 @@ export default function EventEdit() {
                     <div className="space-y-2">
                       {/* description */}
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-350 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                           Mô tả *
                         </label>
                         <textarea
@@ -1152,7 +1152,7 @@ export default function EventEdit() {
                       {/* price + maxQuantity side-by-side */}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1">
+                          <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                             Giá (VNĐ) *
                           </label>
                           <input
@@ -1166,7 +1166,7 @@ export default function EventEdit() {
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-355 uppercase tracking-wider mb-1">
+                          <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                             Số lượng tối đa *
                           </label>
                           <input
@@ -1306,7 +1306,7 @@ export default function EventEdit() {
                         <img
                           src={drawerAvatarPreview}
                           alt="Avatar Preview"
-                          className="w-16 h-16 rounded-full object-cover border border-slate-250 dark:border-white/10"
+                          className="w-16 h-16 rounded-full object-cover border border-slate-300 dark:border-white/10"
                         />
                         <button
                           type="button"
@@ -1320,7 +1320,7 @@ export default function EventEdit() {
                         </button>
                       </div>
                     ) : (
-                      <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/5 border border-dashed border-slate-250 dark:border-white/10 flex items-center justify-center text-gray-400 dark:text-neutral-500">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/10 flex items-center justify-center text-gray-400 dark:text-neutral-500">
                         <User className="w-6 h-6" />
                       </div>
                     )}
@@ -1356,7 +1356,7 @@ export default function EventEdit() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-6 border-t border-slate-150 dark:border-white/5 mt-6">
+            <div className="flex gap-3 pt-6 border-t border-slate-200 dark:border-white/5 mt-6">
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}

@@ -385,7 +385,7 @@ export default function Venues() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-orange-655" />
+            <Building2 className="w-6 h-6 text-orange-600" />
             Quản lý địa điểm
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">Quản lý các địa điểm tổ chức sự kiện</p>
@@ -424,7 +424,7 @@ export default function Venues() {
       ) : filtered.length === 0 ? (
         // Trường hợp 2: Không có dữ liệu -> hiển thị empty state
         <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 p-12 text-center shadow-md animate-fade-in-up">
-          <Building2 className="w-12 h-12 text-slate-350 dark:text-slate-600 mx-auto mb-3" />
+          <Building2 className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
           <p className="text-slate-500 dark:text-slate-400 font-extrabold text-sm">Chưa có địa điểm nào</p>
           <p className="text-xs text-slate-400 dark:text-slate-500 font-bold mt-1">Hãy thêm địa điểm đầu tiên để bắt đầu</p>
         </div>
