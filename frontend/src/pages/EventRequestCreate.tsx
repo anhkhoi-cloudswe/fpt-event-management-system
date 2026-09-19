@@ -1499,7 +1499,7 @@ export default function EventRequestCreate() {
                 </div>
 
                 {/* Public / Private Dropdown */}
-                <div className="relative">
+                <div className="relative z-30">
                   <button
                     type="button"
                     onClick={() => setShowPublicDropdown(v => !v)}
@@ -1518,8 +1518,8 @@ export default function EventRequestCreate() {
                   </button>
                   {showPublicDropdown && (
                     <>
-                      <div className="fixed inset-0 z-20" onClick={() => setShowPublicDropdown(false)} />
-                      <div className={`absolute right-0 bottom-full mb-2 z-30 border rounded-xl overflow-hidden shadow-2xl w-80 py-1.5 animate-fadeIn ${
+                      <div className="fixed inset-0 z-40" onClick={() => setShowPublicDropdown(false)} />
+                      <div className={`absolute right-0 top-full mt-2 z-50 border rounded-xl overflow-hidden shadow-2xl w-80 py-1.5 animate-fadeIn ${
                         isDarkMode 
                           ? 'bg-[#141416]/98 border-white/10 text-white' 
                           : 'bg-white border-neutral-200 text-neutral-900'
