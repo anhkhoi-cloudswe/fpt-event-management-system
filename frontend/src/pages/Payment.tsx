@@ -1133,7 +1133,7 @@ export default function Payment() {
         {bankTransferOrder && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-3 text-red-700 dark:text-red-400 w-full sm:w-auto">
-              <Clock className="w-5 h-5 flex-shrink-0 text-red-600 dark:text-red-450 animate-pulse" />
+              <Clock className="w-5 h-5 flex-shrink-0 text-red-600 dark:text-red-400 animate-pulse" />
               <div>
                 <p className="text-sm font-bold">Giao dịch đang được xử lý (Giữ ghế tạm thời)</p>
                 <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
@@ -1321,7 +1321,7 @@ export default function Payment() {
                   <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-400">
                     Số dư ví không đủ
                   </h3>
-                  <div className="mt-2 text-sm text-amber-700 dark:text-amber-350">
+                  <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
                     <p>Số dư hiện tại: <span className="font-bold">{(walletBalance || 0).toLocaleString('vi-VN')} đ</span></p>
                     <p>Số tiền cần thanh toán: <span className="font-bold">{totalAmount.toLocaleString('vi-VN')} đ</span></p>
                     <p className="mt-1">Thiếu: <span className="font-bold text-amber-950 dark:text-amber-200">{(insufficientAmount).toLocaleString('vi-VN')} đ</span></p>

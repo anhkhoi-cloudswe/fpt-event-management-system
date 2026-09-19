@@ -400,7 +400,7 @@ export default function Events() {
         </div>
       ) : error ? (
         <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-rose-100 dark:border-rose-950/20 p-16 text-center shadow-md animate-fade-in-up">
-          <p className="text-rose-600 dark:text-rose-450 text-sm font-extrabold">{currentLanguage === 'en' ? 'An error occurred: ' : 'Đã xảy ra lỗi: '}{error}</p>
+          <p className="text-rose-600 dark:text-rose-400 text-sm font-extrabold">{currentLanguage === 'en' ? 'An error occurred: ' : 'Đã xảy ra lỗi: '}{error}</p>
         </div>
       ) : openEvents.length === 0 ? (
         <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-16 text-center shadow-md animate-fade-in-up">

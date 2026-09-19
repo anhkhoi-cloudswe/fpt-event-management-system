@@ -60,7 +60,7 @@ export default function AccountRestoreOverlay() {
         </div>
 
         {/* Description Body */}
-        <div className="text-sm text-slate-350 leading-relaxed font-medium space-y-3 bg-slate-900/50 border border-slate-800/80 p-5 rounded-2xl">
+        <div className="text-sm text-slate-400 leading-relaxed font-medium space-y-3 bg-slate-900/50 border border-slate-800/80 p-5 rounded-2xl">
           <p>
             Chào <strong className="text-white">{user?.fullName}</strong>, tài khoản của bạn hiện đang trong trạng thái chờ xóa theo yêu cầu của bạn.
           </p>

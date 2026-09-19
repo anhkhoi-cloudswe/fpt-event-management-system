@@ -125,14 +125,14 @@ export default function SystemPolicy() {
   }
 
   return (
-    <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 min-h-screen py-10 px-4 sm:px-6 lg:px-8">
+    <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 min-h-screen py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         
         {/* Quay lại trang chủ */}
         <div className="mb-6">
           <Link
             to="/guest"
-            className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-500 hover:text-orange-600 transition-all duration-300 active:scale-95 bg-white/70 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/80 shadow-sm"
+            className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-all duration-300 active:scale-95 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/80 dark:border-slate-800 shadow-sm"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Quay lại trang chủ
           </Link>
@@ -140,14 +140,14 @@ export default function SystemPolicy() {
 
         {/* Tiêu đề chính */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200/50 shadow-sm mb-4 animate-bounce">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-900/50 shadow-sm mb-4 animate-bounce">
             <HeartHandshake className="w-3.5 h-3.5" />
             Điều khoản & Hướng dẫn sử dụng
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
             Chính Sách Hệ Thống FPT Event
           </h1>
-          <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto font-medium">
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 max-w-xl mx-auto font-medium">
             Mọi quy định được thiết lập nhằm bảo vệ quyền lợi tham dự của sinh viên và nâng cao chất lượng vận hành sự kiện.
           </p>
         </div>
@@ -156,7 +156,7 @@ export default function SystemPolicy() {
         <div className="flex flex-col md:flex-row gap-8 items-start">
           
           {/* Left Sidebar Navigation */}
-          <div className="w-full md:w-80 flex-shrink-0 bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-3 shadow-md animate-fade-in-up">
+          <div className="w-full md:w-80 flex-shrink-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-3 shadow-md animate-fade-in-up">
             <div className="flex flex-col gap-2">
               {categories.map((c) => {
                 const Icon = c.icon
@@ -171,18 +171,18 @@ export default function SystemPolicy() {
                     className={`flex items-center gap-4 py-3 px-4 rounded-2xl text-xs font-black transition-all duration-300 active:scale-95 text-left w-full ${
                       isActive
                         ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20 scale-[1.02]'
-                        : 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800'
+                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-100'
                     }`}
                   >
                     <div className={`p-2.5 rounded-xl transition-colors ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-orange-50 text-orange-600'
+                      isActive ? 'bg-white/20 text-white' : 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400'
                     }`}>
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <span className="block font-black text-sm">{c.title}</span>
                       <span className={`block text-[10px] truncate ${
-                        isActive ? 'text-orange-100' : 'text-slate-400 font-semibold'
+                        isActive ? 'text-orange-100' : 'text-slate-400 dark:text-slate-500 font-semibold'
                       }`}>
                         {c.id === 'booking' && '04 vé, 5 phút thanh toán'}
                         {c.id === 'refunds' && 'Báo lỗi & Hoàn 100%'}
@@ -200,24 +200,24 @@ export default function SystemPolicy() {
           <div className="flex-1 space-y-6 w-full">
             
             {/* Section: Quy định chính */}
-            <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 sm:p-8 shadow-md animate-fade-in-up">
+            <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 sm:p-8 shadow-md animate-fade-in-up">
               <div className="flex items-center gap-3 mb-5">
-                <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl border border-orange-100/50">
+                <div className="p-3 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 rounded-2xl border border-orange-100/50 dark:border-orange-900/50">
                   <activeCategory.icon className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-extrabold text-slate-900">{activeCategory.title}</h2>
-                  <p className="text-xs text-slate-400 font-semibold mt-0.5">{activeCategory.description}</p>
+                  <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">{activeCategory.title}</h2>
+                  <p className="text-xs text-slate-400 dark:text-slate-400 font-semibold mt-0.5">{activeCategory.description}</p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 {activeCategory.rules.map((rule, idx) => (
-                  <div key={idx} className="flex items-start gap-3 bg-white/40 border border-slate-100 rounded-2xl p-4 transition-all duration-300 hover:border-orange-200/50 hover:bg-white/70 shadow-sm">
-                    <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5">
+                  <div key={idx} className="flex items-start gap-3 bg-white/40 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 transition-all duration-300 hover:border-orange-200/50 dark:hover:border-orange-900/50 hover:bg-white/70 dark:hover:bg-slate-950/70 shadow-sm">
+                    <div className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5">
                       {idx + 1}
                     </div>
-                    <p className="text-slate-600 text-xs sm:text-sm font-semibold leading-relaxed">
+                    <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm font-semibold leading-relaxed">
                       {rule}
                     </p>
                   </div>
@@ -226,10 +226,10 @@ export default function SystemPolicy() {
             </div>
 
             {/* Section: FAQs Hỏi đáp nhanh */}
-            <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/80 p-6 sm:p-8 shadow-md animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+            <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 sm:p-8 shadow-md animate-fade-in-up" style={{ animationDelay: '100ms' }}>
               <div className="flex items-center gap-2 mb-6">
                 <HelpCircle className="w-5 h-5 text-orange-500" />
-                <h3 className="text-lg font-extrabold text-slate-900">Giải Đáp Thắc Mắc</h3>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Giải Đáp Thắc Mắc</h3>
               </div>
 
               <div className="space-y-3">
@@ -238,17 +238,17 @@ export default function SystemPolicy() {
                   return (
                     <div
                       key={idx}
-                      className="border border-slate-200 rounded-2xl overflow-hidden bg-white/40 transition-all duration-300 hover:bg-white/80 shadow-sm"
+                      className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white/40 dark:bg-slate-950/40 transition-all duration-300 hover:bg-white/80 dark:hover:bg-slate-950/70 shadow-sm"
                     >
                       <button
                         onClick={() => toggleFaq(idx)}
                         className="w-full flex items-center justify-between p-5 text-left focus:outline-none"
                       >
-                        <span className="text-xs sm:text-sm font-extrabold text-slate-800 pr-4">
+                        <span className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 pr-4">
                           {faq.question}
                         </span>
                         <ChevronDown
-                          className={`w-4 h-4 text-slate-400 transition-transform duration-300 flex-shrink-0 ${
+                          className={`w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-300 flex-shrink-0 ${
                             isExpanded ? 'rotate-180 text-orange-500' : ''
                           }`}
                         />
@@ -256,10 +256,10 @@ export default function SystemPolicy() {
 
                       <div
                         className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                          isExpanded ? 'max-h-48 border-t border-slate-200' : 'max-h-0'
+                          isExpanded ? 'max-h-48 border-t border-slate-200 dark:border-slate-800' : 'max-h-0'
                         }`}
                       >
-                        <div className="p-5 text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold">
+                        <div className="p-5 text-xs sm:text-sm text-slate-500 dark:text-slate-300 leading-relaxed font-semibold">
                           {faq.answer}
                         </div>
                       </div>

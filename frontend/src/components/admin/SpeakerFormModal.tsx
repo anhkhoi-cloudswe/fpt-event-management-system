@@ -156,13 +156,13 @@ export default function SpeakerFormModal({
         <div className="bg-white dark:bg-slate-900 border dark:border-slate-800/80 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 animate-fade-in-up text-slate-900 dark:text-white">
           
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-150 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
             <h2 className="text-xl font-bold">
               {mode === 'create' ? 'Tạo diễn giả mới' : 'Chỉnh sửa diễn giả'}
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-650 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+              className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
               disabled={loading}
             >
               <X className="w-5 h-5" />
@@ -181,7 +181,7 @@ export default function SpeakerFormModal({
                 required
                 value={formData.fullName}
                 onChange={e => setFormData({ ...formData, fullName: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-850 text-gray-900 dark:text-white transition-all duration-205 ${
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-all duration-205 ${
                   errors.fullName ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'
                 }`}
                 disabled={loading}
@@ -202,7 +202,7 @@ export default function SpeakerFormModal({
                 required
                 value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-850 text-gray-900 dark:text-white transition-all duration-205 ${
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-all duration-205 ${
                   errors.email ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'
                 }`}
                 disabled={loading}
@@ -223,7 +223,7 @@ export default function SpeakerFormModal({
                 required
                 value={formData.phone}
                 onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-850 text-gray-900 dark:text-white transition-all duration-205 ${
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-all duration-205 ${
                   errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'
                 }`}
                 disabled={loading}
@@ -244,7 +244,7 @@ export default function SpeakerFormModal({
                 rows={4}
                 value={formData.bio}
                 onChange={e => setFormData({ ...formData, bio: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-850 text-gray-900 dark:text-white transition-all duration-205 resize-none ${
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-all duration-205 resize-none ${
                   errors.bio ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'
                 }`}
                 disabled={loading}
@@ -266,7 +266,7 @@ export default function SpeakerFormModal({
                     <img
                       src={avatarPreview}
                       alt="Avatar Preview"
-                      className="w-16 h-16 rounded-full object-cover border border-gray-250 dark:border-white/10 shadow-sm"
+                      className="w-16 h-16 rounded-full object-cover border border-gray-300 dark:border-white/10 shadow-sm"
                     />
                     <button
                       type="button"
@@ -320,11 +320,11 @@ export default function SpeakerFormModal({
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-3 pt-4 border-t border-gray-150 dark:border-slate-800">
+            <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-350 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-400 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
                 disabled={loading}
               >
                 Hủy

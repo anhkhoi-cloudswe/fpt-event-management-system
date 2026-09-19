@@ -397,7 +397,7 @@ export default function MyTickets() {
     return (
       <div className="bg-gradient-to-br from-orange-50/20 via-slate-50 to-amber-50/10 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
         <div className="text-center py-16 bg-white/70 backdrop-blur-md dark:bg-slate-900/70 border border-white/80 dark:border-slate-800 rounded-3xl p-8 max-w-md mx-auto my-12 shadow-md">
-          <div className="p-3.5 bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-350 rounded-2xl w-fit mx-auto mb-4 border border-rose-100/50 dark:border-rose-900/30">
+          <div className="p-3.5 bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-400 rounded-2xl w-fit mx-auto mb-4 border border-rose-100/50 dark:border-rose-900/30">
             <XCircle className="w-8 h-8 animate-pulse" />
           </div>
           <p className="text-slate-800 dark:text-white font-extrabold text-lg">{currentLanguage === 'en' ? 'An error occurred' : 'Đã xảy ra lỗi'}</p>
@@ -405,7 +405,7 @@ export default function MyTickets() {
           <div className="mt-6">
             <Link
               to="/dashboard/events"
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-orange-650 hover:bg-orange-600 text-white rounded-xl text-xs font-extrabold transition-all duration-300 shadow-md shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-extrabold transition-all duration-300 shadow-md shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
             >
               {currentLanguage === 'en' ? 'View upcoming events →' : 'Xem các sự kiện sắp tới →'}
             </Link>
@@ -486,7 +486,7 @@ export default function MyTickets() {
       {/* Empty state */}
       {!loading && tickets.length === 0 && (
         <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800/80 p-16 text-center shadow-md animate-fade-in-up">
-          <div className="p-4 bg-orange-50 dark:bg-orange-950/20 text-orange-500 dark:text-orange-350 rounded-full w-fit mx-auto mb-4 border border-orange-100/50 dark:border-orange-900/30">
+          <div className="p-4 bg-orange-50 dark:bg-orange-950/20 text-orange-500 dark:text-orange-400 rounded-full w-fit mx-auto mb-4 border border-orange-100/50 dark:border-orange-900/30">
             <TicketIcon className="w-12 h-12 animate-pulse" />
           </div>
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">
@@ -641,7 +641,7 @@ export default function MyTickets() {
                         )}
 
                         {existingReportStatus === 'REJECTED' && (
-                          <div className="text-[11px] text-rose-500 font-semibold bg-rose-50/50 border border-rose-150 rounded-xl p-2.5 mt-2 flex items-center gap-1.5 animate-pulse">
+                          <div className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-xl p-2.5 mt-2 flex items-center gap-1.5 animate-pulse">
                             <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
                             <span>{currentLanguage === 'en' ? 'Report/Refund request rejected by Staff' : 'Yêu cầu báo cáo/hoàn tiền bị từ chối bởi Staff'}</span>
                           </div>
@@ -735,7 +735,7 @@ export default function MyTickets() {
                   </button>
                 </div>
 
-                <div className="p-2.5 bg-orange-50 dark:bg-orange-950/30 text-orange-650 rounded-2xl w-fit mx-auto mb-4 border border-orange-100/50 animate-bounce">
+                <div className="p-2.5 bg-orange-50 dark:bg-orange-950/30 text-orange-600 rounded-2xl w-fit mx-auto mb-4 border border-orange-100/50 dark:border-orange-900/30 animate-bounce">
                   <TicketIcon className="w-6 h-6" />
                 </div>
 

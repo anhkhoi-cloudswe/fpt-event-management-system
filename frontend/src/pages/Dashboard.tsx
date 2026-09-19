@@ -1319,7 +1319,7 @@ export default function Dashboard() {
 
               <div className="mb-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
 
-                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-550 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
+                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-400 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
 
               </div>
 
@@ -1551,7 +1551,7 @@ export default function Dashboard() {
 
                     disabled={currentPage <= 1}
 
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 
@@ -1589,7 +1589,7 @@ export default function Dashboard() {
 
                             ? 'border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800'
 
-                            : 'text-slate-400 dark:text-slate-650 cursor-default'
+                            : 'text-slate-400 dark:text-slate-600 cursor-default'
 
                           }`}
 
@@ -1611,7 +1611,7 @@ export default function Dashboard() {
 
                     disabled={currentPage >= totalPages}
 
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 
@@ -1661,7 +1661,7 @@ export default function Dashboard() {
 
               <div className="mb-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
 
-                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-550 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
+                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-400 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
 
               </div>
 
@@ -1695,7 +1695,7 @@ export default function Dashboard() {
 
                         isSoldOut
 
-                          ? 'border-gray-250 dark:border-slate-800 opacity-75 cursor-not-allowed shadow-sm'
+                          ? 'border-gray-300 dark:border-slate-800 opacity-75 cursor-not-allowed shadow-sm'
 
                           : 'border-white/80 dark:border-slate-800/80 shadow-md hover:border-orange-500 dark:hover:border-orange-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:-translate-y-1.5 transition-all duration-500 cursor-pointer'
 
@@ -1711,7 +1711,7 @@ export default function Dashboard() {
 
                         <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center z-10">
 
-                          <div className="bg-red-650 text-white font-extrabold text-sm sm:text-base px-4 py-2 rounded-xl shadow-lg border border-red-500 tracking-wider uppercase animate-pulse">
+                          <div className="bg-red-600 text-white font-extrabold text-sm sm:text-base px-4 py-2 rounded-xl shadow-lg border border-red-500 tracking-wider uppercase animate-pulse">
 
                             {currentLanguage === 'en' ? 'SOLD OUT' : 'HẾT CHỖ'}
 
@@ -1853,7 +1853,7 @@ export default function Dashboard() {
 
                     disabled={currentPage <= 1}
 
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 
@@ -1891,7 +1891,7 @@ export default function Dashboard() {
 
                             ? 'border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800'
 
-                            : 'text-slate-400 dark:text-slate-650 cursor-default'
+                            : 'text-slate-400 dark:text-slate-600 cursor-default'
 
                           }`}
 
@@ -1913,7 +1913,7 @@ export default function Dashboard() {
 
                     disabled={currentPage >= totalPages}
 
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 
@@ -1963,7 +1963,7 @@ export default function Dashboard() {
 
               <div className="mb-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
 
-                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-550 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
+                <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-400 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
 
               </div>
 
@@ -2007,7 +2007,7 @@ export default function Dashboard() {
 
                       <div className="w-full h-44 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center relative">
 
-                        <Calendar className="w-12 h-12 text-gray-450 dark:text-gray-500" />
+                        <Calendar className="w-12 h-12 text-gray-400 dark:text-gray-500" />
 
                       </div>
 
@@ -2035,7 +2035,7 @@ export default function Dashboard() {
 
 
 
-                      <p className="text-xs text-gray-650 dark:text-gray-300 mb-3 font-semibold line-clamp-1">
+                      <p className="text-xs text-gray-600 dark:text-gray-300 mb-3 font-semibold line-clamp-1">
 
                         {formatWallClockDateTimeWithDayOfWeek(event.startTime)}
 
@@ -2087,7 +2087,7 @@ export default function Dashboard() {
 
                     disabled={currentPage <= 1}
 
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 
@@ -2125,7 +2125,7 @@ export default function Dashboard() {
 
                             ? 'border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800'
 
-                            : 'text-slate-400 dark:text-slate-650 cursor-default'
+                            : 'text-slate-400 dark:text-slate-600 cursor-default'
 
                           }`}
 
@@ -2147,7 +2147,7 @@ export default function Dashboard() {
 
                     disabled={currentPage >= totalPages}
 
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-700 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
 
                   >
 

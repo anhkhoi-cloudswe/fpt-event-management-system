@@ -56,14 +56,14 @@ export default function PaymentFailed() {
     // Check for specific wallet errors
     if (vnpMessage.includes('wallet_not_enough') || vnpMessage.toLowerCase().includes('insufficient')) {
       return (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl p-4 mb-6">
           <div className="flex items-start gap-3">
-            <Wallet className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <Wallet className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
             <div className="text-left">
-              <p className="font-semibold text-red-800 mb-1">
+              <p className="font-bold text-red-800 dark:text-red-300 mb-1 text-sm">
                 Số dư trong ví không đủ
               </p>
-              <p className="text-sm text-red-700">
+              <p className="text-xs text-red-700 dark:text-red-400 leading-relaxed">
                 Ví của bạn không có đủ số tiền để hoàn tất giao dịch này. Vui lòng nạp thêm tiền hoặc chọn phương thức thanh toán khác.
               </p>
             </div>
@@ -74,14 +74,14 @@ export default function PaymentFailed() {
 
     if (vnpMessage.includes('seat') && vnpMessage.includes('taken')) {
       return (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl p-4 mb-6">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
             <div className="text-left">
-              <p className="font-semibold text-yellow-800 mb-1">
+              <p className="font-bold text-amber-800 dark:text-amber-300 mb-1 text-sm">
                 Ghế đã có người đặt
               </p>
-              <p className="text-sm text-yellow-700">
+              <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
                 Một hoặc nhiều ghế bạn chọn đã có người khác đặt trước. Vui lòng quay lại và chọn ghế khác.
               </p>
             </div>
@@ -92,11 +92,11 @@ export default function PaymentFailed() {
 
     // Generic error message
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+      <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 mb-6">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 text-slate-500 dark:text-slate-400 mt-0.5 flex-shrink-0" />
           <div className="text-left">
-            <p className="text-sm text-gray-700">{vnpMessage}</p>
+            <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{vnpMessage}</p>
           </div>
         </div>
       </div>
@@ -105,45 +105,39 @@ export default function PaymentFailed() {
 
   /**
    * ===================== RENDER UI =====================
-   *
-   * Trang này có nhiệm vụ:
-   * - Thông báo thanh toán thất bại
-   * - Hiển thị mã lỗi VNPay (nếu có)
-   * - Hiển thị lý do lỗi (nếu có)
-   * - Cho user quay về Dashboard
    */
   return (
     // Wrapper căn giữa nội dung cả chiều ngang và dọc
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50">
-      {/* Card nền trắng hiển thị thông tin lỗi */}
-      <div className="bg-white rounded-2xl shadow-2xl p-12 max-w-lg w-full mx-4">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-50/50 via-slate-50 to-orange-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+      {/* Card hiển thị thông tin lỗi */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-lg w-full mx-4">
         {/* Icon X đỏ biểu thị thất bại */}
-        <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-red-400 to-red-600 rounded-full mb-6 mx-auto block shadow-lg">
-          <XCircle className="w-14 h-14 text-white" strokeWidth={3} />
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-rose-500 to-red-600 rounded-full mb-6 mx-auto block shadow-lg shadow-red-500/25">
+          <XCircle className="w-12 h-12 text-white" strokeWidth={3} />
         </div>
 
         {/* Tiêu đề */}
-        <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-red-600 via-orange-600 to-red-600 bg-clip-text text-transparent mb-4">
+        <h1 className="text-3xl font-black text-center text-slate-900 dark:text-white mb-3">
           Thanh toán thất bại
         </h1>
 
         {/* Payment method badge */}
         <div className="flex justify-center mb-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-50 to-orange-50 border border-red-200">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50">
             {paymentMethod === 'wallet' ? (
               <>
-                <Wallet className="w-4 h-4 text-red-600" />
-                <span className="text-sm font-semibold text-red-600">Thanh toán bằng Ví</span>
+                <Wallet className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <span className="text-xs font-bold text-red-600 dark:text-red-400">Thanh toán bằng Ví</span>
               </>
             ) : paymentMethod === 'bank_transfer' ? (
               <>
-                <span className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white mr-1">B</span>
-                <span className="text-sm font-semibold text-blue-600">Chuyển khoản Ngân hàng</span>
+                <span className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white mr-0.5">B</span>
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Chuyển khoản Ngân hàng</span>
               </>
             ) : (
               <>
-                <span className="w-4 h-4 rounded bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white mr-1">V</span>
-                <span className="text-sm font-semibold text-indigo-600">Ví VNPay</span>
+                <span className="w-4 h-4 rounded bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white mr-0.5">V</span>
+                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Ví VNPay</span>
               </>
             )}
           </div>
@@ -154,14 +148,14 @@ export default function PaymentFailed() {
 
         {/* Payment error details */}
         {paymentMethod !== 'wallet' && (vnpResponseCode || vnpMessage) && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+          <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 mb-6">
             {vnpResponseCode && (
-              <p className="text-sm text-gray-600 text-center">
-                Mã phản hồi: <span className="font-mono font-bold text-red-600">{vnpResponseCode}</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                Mã phản hồi: <span className="font-mono font-bold text-red-600 dark:text-red-400">{vnpResponseCode}</span>
               </p>
             )}
             {vnpMessage && (
-              <p className="text-sm text-gray-700 text-center mt-2">
+              <p className="text-xs text-slate-700 dark:text-slate-300 text-center mt-1.5 font-medium leading-relaxed">
                 {vnpMessage}
               </p>
             )}
@@ -170,7 +164,7 @@ export default function PaymentFailed() {
 
         {/* Generic message if no specific error */}
         {!vnpMessage && !vnpResponseCode && (
-          <p className="text-gray-600 text-center mb-8">
+          <p className="text-slate-500 dark:text-slate-400 text-sm text-center mb-8 font-medium">
             Đã xảy ra lỗi trong quá trình thanh toán. Vui lòng thử lại sau.
           </p>
         )}
@@ -179,32 +173,27 @@ export default function PaymentFailed() {
         <div className="space-y-3">
           {/* Nút thử lại */}
           <button
-            onClick={() => navigate(-1)} // quay lại trang trước đó
-            className="group relative w-full px-6 py-4 rounded-xl bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 text-white font-semibold shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden"
+            onClick={() => navigate(-1)}
+            className="w-full px-5 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-blue-600/20 hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center gap-2 active:scale-98"
           >
-            <span className="absolute inset-0 bg-gradient-to-r from-blue-700 to-purple-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-            <span className="relative flex items-center justify-center gap-2">
-              <RefreshCcw className="w-5 h-5" />
-              Thử lại thanh toán
-            </span>
+            <RefreshCcw className="w-4 h-4" />
+            Thử lại thanh toán
           </button>
 
           {/* Nút quay về Dashboard */}
           <button
-            onClick={() => navigate('/')} // điều hướng về trang Dashboard/Home
-            className="w-full px-6 py-4 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:border-gray-400 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md"
+            onClick={() => navigate('/')}
+            className="w-full px-5 py-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300 flex items-center justify-center gap-2 active:scale-98"
           >
-            <span className="flex items-center justify-center gap-2">
-              <Home className="w-5 h-5" />
-              Về trang chính
-            </span>
+            <Home className="w-4 h-4" />
+            Về trang chính
           </button>
         </div>
 
         {/* Thông tin hữu ích */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-            <AlertCircle className="w-4 h-4" />
+        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-400 dark:text-slate-500 font-medium">
+            <AlertCircle className="w-3.5 h-3.5" />
             <span>Nếu vấn đề tiếp diễn xảy ra, vui lòng liên hệ hỗ trợ</span>
           </div>
         </div>

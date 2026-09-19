@@ -897,14 +897,14 @@ export default function GuestLanding() {
                       }}
                       className={`group relative flex-shrink-0 w-[380px] overflow-hidden rounded-3xl bg-white/70 backdrop-blur-md shadow-lg border transition-all duration-500 flex flex-col justify-between ${
                         isSoldOut
-                          ? 'border-gray-250 dark:border-slate-800 opacity-75 cursor-not-allowed shadow-sm'
+                          ? 'border-gray-300 dark:border-slate-800 opacity-75 cursor-not-allowed shadow-sm'
                           : 'border-white/85 hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-2 cursor-pointer'
                       }`}
                     >
                       {/* Sold Out Overlay */}
                       {isSoldOut && (
                         <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center z-10">
-                          <div className="bg-red-650 text-white font-extrabold text-sm sm:text-base px-4 py-2 rounded-xl shadow-lg border border-red-500 tracking-wider uppercase animate-pulse">
+                          <div className="bg-red-600 text-white font-extrabold text-sm sm:text-base px-4 py-2 rounded-xl shadow-lg border border-red-500 tracking-wider uppercase animate-pulse">
                             HẾT CHỖ
                           </div>
                         </div>
@@ -922,7 +922,7 @@ export default function GuestLanding() {
                         </div>
                       ) : (
                         <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                          <CalendarDays className="w-12 h-12 text-gray-450" />
+                          <CalendarDays className="w-12 h-12 text-gray-400" />
                         </div>
                       )}
 
@@ -950,7 +950,7 @@ export default function GuestLanding() {
                         </h3>
 
                         {/* Description */}
-                        <p className="text-sm text-gray-550 line-clamp-3 leading-relaxed font-medium">
+                        <p className="text-sm text-gray-500 line-clamp-3 leading-relaxed font-medium">
                           {event.description}
                         </p>
                       </div>
@@ -959,7 +959,7 @@ export default function GuestLanding() {
                     {/* Bottom layout containing Info & Action */}
                     <div className="relative p-6 pt-0 space-y-4">
                       {/* Info */}
-                      <div className="space-y-2.5 pt-4 border-t border-gray-100/60 text-sm text-gray-550 font-medium">
+                      <div className="space-y-2.5 pt-4 border-t border-gray-100/60 text-sm text-gray-500 font-medium">
                         <p className="flex items-center gap-2">
                           <CalendarDays className="w-4 h-4 text-orange-500" />
                           {formatVietnamDateTime(event.startTime, 'dd/MM/yyyy HH:mm')}
@@ -1100,3 +1100,4 @@ export default function GuestLanding() {
   )
 }
 
+

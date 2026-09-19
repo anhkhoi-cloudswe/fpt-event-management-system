@@ -270,7 +270,7 @@ export function SeatGrid({
     const seatStatus = normalizeSeatStatus(seat.status)
 
     if (seatStatus === 'BOOKED') {
-      return 'bg-red-500 text-white cursor-not-allowed border-red-650'
+      return 'bg-red-500 text-white cursor-not-allowed border-red-600'
     }
 
     // Nếu ghế đang giữ chỗ / hold (Đang giao dịch) => bg-amber-500 border-amber-600 text-white cursor-not-allowed
@@ -279,7 +279,7 @@ export function SeatGrid({
     }
 
     // Available: bg-slate-200 dark:bg-slate-800 text-slate-400
-    return 'bg-slate-200 dark:bg-slate-800 border-slate-350 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200'
+    return 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
   }
 
   // ===================== PREPARE CATEGORY SECTIONS FOR RENDERING =====================
@@ -362,7 +362,7 @@ export function SeatGrid({
                       {/* Row display: letter + seat buttons */}
                       <div className="flex items-center space-x-2 justify-center">
                         {/* Row letter (A/B/C...) */}
-                        <div className="w-5 sm:w-8 text-center font-semibold text-gray-700 dark:text-slate-350 text-xs sm:text-sm flex-shrink-0">
+                        <div className="w-5 sm:w-8 text-center font-semibold text-gray-700 dark:text-slate-400 text-xs sm:text-sm flex-shrink-0">
                           {row}
                         </div>
 
@@ -440,20 +440,20 @@ export function SeatGrid({
         <p className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-2">Chú thích:</p>
         <div className="flex flex-wrap gap-3 text-xs">
           <div className="flex items-center">
-            <div className="w-6 h-6 bg-slate-200 dark:bg-slate-800 border-2 border-slate-350 dark:border-slate-700 rounded mr-1.5"></div>
-            <span className="text-gray-650 dark:text-slate-400">Ghế trống (Available)</span>
+            <div className="w-6 h-6 bg-slate-200 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 rounded mr-1.5"></div>
+            <span className="text-gray-600 dark:text-slate-400">Ghế trống (Available)</span>
           </div>
           <div className="flex items-center">
             <div className="w-6 h-6 bg-green-500 animate-pulse border-2 border-green-600 rounded mr-1.5"></div>
-            <span className="text-gray-650 dark:text-slate-400">Đang chọn (Selected)</span>
+            <span className="text-gray-600 dark:text-slate-400">Đang chọn (Selected)</span>
           </div>
           <div className="flex items-center">
             <div className="w-6 h-6 bg-amber-500 border-2 border-amber-600 rounded mr-1.5"></div>
-            <span className="text-gray-650 dark:text-slate-400">Đang giao dịch (Pending)</span>
+            <span className="text-gray-600 dark:text-slate-400">Đang giao dịch (Pending)</span>
           </div>
           <div className="flex items-center">
-            <div className="w-6 h-6 bg-red-500 border-2 border-red-650 rounded mr-1.5"></div>
-            <span className="text-gray-650 dark:text-slate-400">Đã đặt (Occupied)</span>
+            <div className="w-6 h-6 bg-red-500 border-2 border-red-600 rounded mr-1.5"></div>
+            <span className="text-gray-600 dark:text-slate-400">Đã đặt (Occupied)</span>
           </div>
         </div>
       </div>

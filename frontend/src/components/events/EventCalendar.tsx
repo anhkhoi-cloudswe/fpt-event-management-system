@@ -148,7 +148,7 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
         {dayNames.map(day => (
           <div
             key={day}
-            className="text-center text-sm font-semibold text-gray-650 dark:text-slate-400 py-2"
+            className="text-center text-sm font-semibold text-gray-600 dark:text-slate-400 py-2"
           >
             {day}
           </div>

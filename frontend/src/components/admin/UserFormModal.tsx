@@ -202,7 +202,7 @@ export default function UserFormModal({
         {/* Modal Card: responsive width + scrollable */}
         <div className="bg-white dark:bg-slate-900 border dark:border-slate-800/80 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 animate-fade-in-up">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-150 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               {mode === 'create' ? 'Tạo người dùng mới' : 'Chỉnh sửa người dùng'}
             </h2>
@@ -262,7 +262,7 @@ export default function UserFormModal({
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-450 hover:text-gray-650 dark:text-slate-400 dark:hover:text-slate-200 focus:outline-none"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 focus:outline-none"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -288,7 +288,7 @@ export default function UserFormModal({
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-450 hover:text-gray-650 dark:text-slate-400 dark:hover:text-slate-200 focus:outline-none"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 focus:outline-none"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -389,11 +389,11 @@ export default function UserFormModal({
             )}
 
             {/* Action buttons */}
-            <div className="flex gap-3 pt-4 border-t border-gray-150 dark:border-slate-800">
+            <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-350 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors disabled:bg-gray-100 dark:disabled:bg-slate-900"
+                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-400 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors disabled:bg-gray-100 dark:disabled:bg-slate-900"
                 disabled={loading}
               >
                 Hủy

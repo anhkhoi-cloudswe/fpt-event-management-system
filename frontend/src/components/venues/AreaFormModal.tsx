@@ -111,7 +111,7 @@ export default function AreaFormModal({ isOpen, area, venueId, onClose, onSubmit
       <div className="flex items-center justify-center min-h-screen p-4">
         {/* Modal Card: responsive width + scrollable */}
         <div className="bg-white dark:bg-slate-900 border dark:border-slate-800/80 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 animate-fade-in-up">
-          <div className="flex items-center justify-between p-6 border-b border-gray-150 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               {area ? 'Chỉnh sửa phòng' : 'Thêm phòng mới'}
             </h2>
@@ -202,7 +202,7 @@ export default function AreaFormModal({ isOpen, area, venueId, onClose, onSubmit
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-350 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-400 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
               >
                 Hủy
               </button>

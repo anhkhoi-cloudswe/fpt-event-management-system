@@ -933,7 +933,7 @@ export default function EventEdit() {
                     <button
                       type="button"
                       onClick={handleRemoveImage}
-                      className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-650 text-white rounded-full transition-colors shadow-lg active:scale-90"
+                      className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors shadow-lg active:scale-90"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -1088,7 +1088,7 @@ export default function EventEdit() {
                   </button>
 
                   {hasBookings && (
-                    <span className="text-[10px] text-red-650 font-bold bg-red-55/20 border border-red-100 dark:border-red-900/40 px-2 py-0.5 rounded">
+                    <span className="text-[10px] text-red-600 font-bold bg-red-50/20 border border-red-100 dark:border-red-900/40 px-2 py-0.5 rounded">
                       Đã có khách đặt vé
                     </span>
                   )}
@@ -1203,7 +1203,7 @@ export default function EventEdit() {
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
             <Link
               to="/dashboard/events"
-              className="px-5 py-2 border border-gray-350 dark:border-slate-700 text-gray-750 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors text-xs font-bold shadow-sm"
+              className="px-5 py-2 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors text-xs font-bold shadow-sm"
             >
               Hủy
             </Link>

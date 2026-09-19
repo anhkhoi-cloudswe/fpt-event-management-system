@@ -64,7 +64,7 @@ export default function VenueList({ venues, selectedVenueId, onSelect, onEdit, o
                   e.stopPropagation()
                   onDelete(venue.venueId)
                 }}
-                className="flex-1 rounded-xl flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-red-700 dark:text-red-450 bg-red-50 hover:bg-red-100 border border-red-200/40 dark:bg-red-950/20 dark:border-red-900/30 dark:hover:bg-red-950/40 transition-all duration-300 active:scale-95"
+                className="flex-1 rounded-xl flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-red-700 dark:text-red-400 bg-red-50 hover:bg-red-100 border border-red-200/40 dark:bg-red-950/20 dark:border-red-900/30 dark:hover:bg-red-950/40 transition-all duration-300 active:scale-95"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Xóa

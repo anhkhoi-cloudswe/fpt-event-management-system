@@ -499,7 +499,7 @@ export default function AdminDashboard() {
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
             activeTab === 'STUDENT'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow shadow-orange-500/10'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-850'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
           }`}
         >
           <Users size={16} />
@@ -511,7 +511,7 @@ export default function AdminDashboard() {
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
             activeTab === 'SPEAKER'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow shadow-orange-500/10'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-850'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
           }`}
         >
           <Award size={16} />
@@ -523,7 +523,7 @@ export default function AdminDashboard() {
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
             activeTab === 'INTERNAL'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow shadow-orange-500/10'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-850'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
           }`}
         >
           <ShieldAlert size={16} />
@@ -535,7 +535,7 @@ export default function AdminDashboard() {
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
             activeTab === 'BANNER'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow shadow-orange-500/10'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-850'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
           }`}
         >
           <ImageIcon size={16} />
@@ -760,7 +760,7 @@ export default function AdminDashboard() {
                       <div className="flex justify-end items-center gap-4">
                         <button
                           onClick={() => handleOpenEditUser(u)}
-                          className="text-blue-500 hover:text-blue-750 p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg transition-all"
+                          className="text-blue-500 hover:text-blue-700 p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg transition-all"
                           title="Sửa thông tin"
                         >
                           <Edit size={16} />
@@ -868,8 +868,8 @@ export default function AdminDashboard() {
       {/* Banner Create Modal */}
       {isBannerModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-900 border border-gray-150 dark:border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
-            <div className="px-6 py-4 border-b border-gray-150 dark:border-slate-800 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
               <h3 className="font-extrabold text-lg text-gray-900 dark:text-white flex items-center gap-2">
                 <ImageIcon className="w-5 h-5 text-orange-500" />
                 Thêm ảnh bìa mẫu
@@ -915,14 +915,14 @@ export default function AdminDashboard() {
                 <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
                   Chọn hình ảnh
                 </label>
-                <div className="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-gray-150 dark:bg-slate-950 border border-dashed border-gray-300 dark:border-slate-800 flex flex-col items-center justify-center group mb-3">
+                <div className="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-gray-200 dark:bg-slate-950 border border-dashed border-gray-300 dark:border-slate-800 flex flex-col items-center justify-center group mb-3">
                   {newBannerPreview ? (
                     <>
                       <img src={newBannerPreview} alt="Preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={() => { setNewBannerFile(null); setNewBannerPreview(''); }}
-                        className="absolute top-2 right-2 p-1 bg-red-600/80 text-white rounded-lg hover:bg-red-650 transition"
+                        className="absolute top-2 right-2 p-1 bg-red-600/80 text-white rounded-lg hover:bg-red-600 transition"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -952,7 +952,7 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setIsBannerModalOpen(false)}
-                  className="px-4 py-2 border border-gray-200 dark:border-slate-800 rounded-xl text-gray-750 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 font-bold text-xs"
+                  className="px-4 py-2 border border-gray-200 dark:border-slate-800 rounded-xl text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 font-bold text-xs"
                   disabled={isUploadingBanner}
                 >
                   Hủy

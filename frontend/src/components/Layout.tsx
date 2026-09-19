@@ -470,7 +470,7 @@ export default function Layout() {
                     <Link
                       to="/dashboard/profile"
                       onClick={() => setSettingsOpen(false)}
-                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${isDarkMode ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-50 text-slate-650'
+                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${isDarkMode ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-50 text-slate-600'
                         }`}
                     >
                       <User size={14} className="text-slate-400" />
@@ -482,7 +482,7 @@ export default function Layout() {
                         setSettingsOpen(false)
                         navigate('/dashboard/profile?tab=security')
                       }}
-                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${isDarkMode ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-50 text-slate-650'
+                      className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all duration-305 ${isDarkMode ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-50 text-slate-600'
                         }`}
                     >
                       <Lock size={14} className="text-slate-400" />
@@ -536,8 +536,8 @@ export default function Layout() {
               title={currentLanguage === 'en' ? 'Sidebar Control' : 'Điều khiển Sidebar'}
               onClick={() => setShowModePopover(!showModePopover)}
               className={`p-2.5 rounded-xl border transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${isDarkMode
-                ? 'bg-slate-800/60 border-slate-700 hover:border-orange-500/40 text-slate-350 hover:text-white'
-                : 'bg-orange-50/60 border-orange-200 hover:border-orange-500/30 text-slate-650 hover:text-slate-900'
+                ? 'bg-slate-800/60 border-slate-700 hover:border-orange-500/40 text-slate-400 hover:text-white'
+                : 'bg-orange-50/60 border-orange-200 hover:border-orange-500/30 text-slate-600 hover:text-slate-900'
                 } ${sidebarMode === 'expanded'
                   ? 'w-full gap-3'
                   : sidebarMode === 'hover-expand'
@@ -565,7 +565,7 @@ export default function Layout() {
                 />
                 <div className={`absolute bottom-full left-4 mb-2 w-52 rounded-2xl border shadow-2xl p-3.5 z-50 animate-fade-in-up ${isDarkMode
                   ? 'bg-slate-900 border-slate-800 text-slate-200 shadow-slate-950/80'
-                  : 'bg-white border-orange-150 text-slate-800 shadow-orange-500/10'
+                  : 'bg-white border-orange-200 text-slate-800 shadow-orange-500/10'
                   }`}>
                   <div className="text-[10px] font-black tracking-wider uppercase opacity-50 px-2.5 pb-2 border-b border-slate-200/40 dark:border-slate-800/50">
                     {currentLanguage === 'en' ? 'Sidebar control' : 'Điều khiển sidebar'}
@@ -592,8 +592,8 @@ export default function Layout() {
                             ? 'bg-orange-500/10 text-orange-400'
                             : 'bg-orange-50 text-orange-600'
                           : isDarkMode
-                            ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-250'
-                            : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
+                            ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-300'
+                            : 'hover:bg-slate-50 text-slate-600 hover:text-slate-900'
                           }`}
                       >
                         <div className="w-4 flex items-center justify-center">

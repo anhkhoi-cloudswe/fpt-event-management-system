@@ -446,7 +446,7 @@ export default function PublicEventPage() {
                 </div>
                 <div>
                   <p className="text-neutral-100 text-sm font-black leading-tight">{formatDate(event.startTime, pageLanguage)}</p>
-                  <p className="text-neutral-450 text-xs mt-0.5">{formatTimeRange(event.startTime, event.endTime, pageLanguage)}</p>
+                  <p className="text-neutral-400 text-xs mt-0.5">{formatTimeRange(event.startTime, event.endTime, pageLanguage)}</p>
                 </div>
               </div>
 
@@ -456,7 +456,7 @@ export default function PublicEventPage() {
                 </div>
                 <div>
                   <p className="text-neutral-100 text-sm font-black leading-tight">{locationTitle}</p>
-                  {locationDetail && <p className="text-neutral-450 text-xs mt-0.5">{locationDetail}</p>}
+                  {locationDetail && <p className="text-neutral-400 text-xs mt-0.5">{locationDetail}</p>}
                 </div>
               </div>
 
@@ -584,7 +584,7 @@ export default function PublicEventPage() {
 
                   {event.onlineMeetingUrl && (
                     <div className="space-y-1.5">
-                      <p className="text-xs font-bold text-neutral-450 uppercase tracking-wide">
+                      <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide">
                         {pageLanguage === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
                       </p>
                       <div className="flex items-center gap-2">
@@ -602,7 +602,7 @@ export default function PublicEventPage() {
 
                   {event.onlineMeetingId && (
                     <div className="space-y-1">
-                      <p className="text-xs font-bold text-neutral-450 uppercase tracking-wide">
+                      <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide">
                         Meeting ID
                       </p>
                       <p className="text-sm font-semibold text-neutral-200">
@@ -613,7 +613,7 @@ export default function PublicEventPage() {
 
                   {event.onlineMeetingSecret && (
                     <div className="space-y-1">
-                      <p className="text-xs font-bold text-neutral-450 uppercase tracking-wide">
+                      <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide">
                         {pageLanguage === 'en' ? 'Passcode' : 'Mật khẩu cuộc họp'}
                       </p>
                       <p className="text-sm font-semibold text-neutral-200 font-mono">

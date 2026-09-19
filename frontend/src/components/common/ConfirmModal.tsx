@@ -36,7 +36,7 @@ export default function ConfirmModal({
         return {
           icon: <Info className="w-6 h-6 text-blue-600 dark:text-blue-400" />,
           iconBg: 'bg-blue-100 dark:bg-blue-950/40',
-          confirmBtn: 'bg-gradient-to-r from-blue-600 to-blue-505 hover:from-blue-500 hover:to-blue-450 focus:ring-blue-500 shadow-blue-500/20'
+          confirmBtn: 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-500 focus:ring-blue-500 shadow-blue-500/20'
         }
       case 'warning':
       default:
@@ -53,13 +53,13 @@ export default function ConfirmModal({
   return createPortal(
     <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-50 overflow-y-auto backdrop-blur-sm flex items-center justify-center p-4">
       {/* Modal Card: constrained max-width + premium animation */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl dark:shadow-slate-950/75 max-w-md w-full overflow-hidden border border-slate-150 dark:border-slate-800/80 animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl dark:shadow-slate-950/75 max-w-md w-full overflow-hidden border border-slate-200 dark:border-slate-800/80 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Close button at top right */}
         <div className="flex justify-end p-4 pb-0">
           <button 
             onClick={onClose} 
-            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -76,7 +76,7 @@ export default function ConfirmModal({
             Xác nhận yêu cầu
           </h3>
           
-          <p className="text-slate-650 dark:text-slate-300 text-sm leading-relaxed font-medium px-2">
+          <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed font-medium px-2">
             {message}
           </p>
         </div>
@@ -85,7 +85,7 @@ export default function ConfirmModal({
         <div className="flex gap-3 px-6 py-4 bg-slate-50/70 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800/60">
           <button 
             onClick={onClose} 
-            className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm transition-all duration-200"
+            className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm transition-all duration-200"
           >
             {cancelLabel}
           </button>

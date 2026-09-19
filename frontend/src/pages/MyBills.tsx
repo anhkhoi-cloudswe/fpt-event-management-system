@@ -276,7 +276,7 @@ export default function MyBills() {
             <select
               value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
-              className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
+              className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-700 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
               <option value="">{currentLanguage === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
               <option value="PENDING">{currentLanguage === 'en' ? 'Pending Payment' : 'Chờ thanh toán'}</option>
@@ -291,7 +291,7 @@ export default function MyBills() {
             <select
               value={methodFilter}
               onChange={(e) => handleMethodChange(e.target.value)}
-              className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-750 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
+              className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-700 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
               <option value="">{currentLanguage === 'en' ? 'All Methods' : 'Tất cả phương thức'}</option>
               <option value="WALLET">{currentLanguage === 'en' ? 'E-wallet' : 'Ví điện tử'}</option>
@@ -324,19 +324,19 @@ export default function MyBills() {
                 {/* Header của bảng */}
                 <thead className="bg-slate-50/50 dark:bg-slate-950/50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       {currentLanguage === 'en' ? 'Bill ID' : 'Mã hóa đơn'}
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       {currentLanguage === 'en' ? 'Created Date' : 'Ngày tạo'}
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-right text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       {currentLanguage === 'en' ? 'Amount' : 'Số tiền'}
                     </th>
-                    <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       {currentLanguage === 'en' ? 'Method' : 'Phương thức'}
                     </th>
-                    <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       {currentLanguage === 'en' ? 'Status' : 'Trạng thái'}
                     </th>
                   </tr>
@@ -371,7 +371,7 @@ export default function MyBills() {
                           bill.paymentMethod === 'MOMO' ? 'bg-pink-50 dark:bg-pink-950/20 text-pink-700 dark:text-pink-300 border border-pink-100 dark:border-pink-900/30' :
                           bill.paymentMethod === 'WALLET' ? 'bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-300 border border-orange-100 dark:border-orange-900/30' :
                           bill.paymentMethod === 'FREE' ? 'bg-teal-50 dark:bg-teal-950/20 text-teal-700 dark:text-teal-300 border border-teal-100 dark:border-teal-900/30' :
-                          'bg-slate-50 dark:bg-slate-800 text-slate-650 dark:text-slate-350 border border-slate-100 dark:border-slate-700'
+                          'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700'
                         }`}>
                           {bill.paymentMethod === 'WALLET' ? (currentLanguage === 'en' ? 'E-Wallet' : 'Ví điện tử') : bill.paymentMethod === 'FREE' ? (currentLanguage === 'en' ? 'Free' : 'Miễn phí') : (bill.paymentMethod || 'N/A')}
                         </span>
@@ -422,16 +422,16 @@ export default function MyBills() {
           <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
             <thead className="bg-slate-50/50 dark:bg-slate-950/50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {currentLanguage === 'en' ? 'Bill ID' : 'Mã hóa đơn'}
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {currentLanguage === 'en' ? 'Created Date' : 'Ngày tạo'}
                 </th>
-                <th className="px-6 py-4 text-right text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-4 text-right text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {currentLanguage === 'en' ? 'Amount' : 'Số tiền'}
                 </th>
-                <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-450 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {currentLanguage === 'en' ? 'Status' : 'Trạng thái'}
                 </th>
               </tr>
@@ -446,7 +446,7 @@ export default function MyBills() {
       {/* Empty state */}
       {!loading && !error && bills.length === 0 && (
         <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-16 text-center shadow-md animate-fade-in-up">
-          <div className="p-4 bg-orange-50 dark:bg-orange-950/20 text-orange-500 dark:text-orange-350 rounded-full w-fit mx-auto mb-4 border border-orange-100/50 dark:border-orange-900/30">
+          <div className="p-4 bg-orange-50 dark:bg-orange-950/20 text-orange-500 dark:text-orange-400 rounded-full w-fit mx-auto mb-4 border border-orange-100/50 dark:border-orange-900/30">
             <FileText className="w-12 h-12 animate-pulse" />
           </div>
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">
@@ -454,7 +454,7 @@ export default function MyBills() {
               ? (currentLanguage === 'en' ? 'No matching bills found' : 'Không tìm thấy hóa đơn phù hợp')
               : (currentLanguage === 'en' ? "You don't have any bills yet" : 'Bạn chưa có hóa đơn nào')}
           </h3>
-          <p className="text-sm text-slate-400 dark:text-slate-455 mt-2 max-w-sm mx-auto font-medium">
+          <p className="text-sm text-slate-400 dark:text-slate-400 mt-2 max-w-sm mx-auto font-medium">
             {searchQuery || statusFilter || methodFilter
               ? (currentLanguage === 'en' ? 'Please try again with a different keyword or clear filters.' : 'Vui lòng thử lại với từ khóa khác hoặc xóa bộ lọc.')
               : (currentLanguage === 'en' ? 'Your transactions or event ticket payments will be displayed here.' : 'Các giao dịch hoặc thanh toán vé sự kiện của bạn sẽ hiển thị tại đây.')}
