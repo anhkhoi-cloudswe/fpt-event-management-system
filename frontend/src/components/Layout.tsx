@@ -284,7 +284,7 @@ export default function Layout() {
           currentLanguage === 'en' ? "Create Event" : "Tạo sự kiện",
           handleLinkClick,
           closeMobile,
-          "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-extrabold transition-all duration-300 w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-450 text-white hover:shadow-lg hover:shadow-orange-500/25 active:scale-98"
+          "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-extrabold transition-all duration-300 w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white hover:shadow-lg hover:shadow-orange-500/25 active:scale-98"
         )}
         {(user?.role === 'ORGANIZER' || isStaff) && renderLink(
           "/dashboard/event-requests",

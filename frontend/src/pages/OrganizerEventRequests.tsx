@@ -640,7 +640,7 @@ export default function OrganizerEventRequests() {
     Number.isFinite(currentTotalCount)
 
   return (
-    <div className="w-full min-h-screen p-4 md:p-6 text-white bg-transparent">
+    <div className="w-full min-h-screen p-4 md:p-6 text-slate-900 dark:text-slate-100 bg-transparent">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-4">
         <div>

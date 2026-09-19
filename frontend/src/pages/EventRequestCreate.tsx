@@ -1569,7 +1569,7 @@ export default function EventRequestCreate() {
                 placeholder="Tên sự kiện..."
                 className={`text-3xl md:text-4xl font-bold tracking-tight !bg-transparent border-b py-2 focus:outline-none w-full mb-2 transition-colors leading-tight flex-shrink-0 ${
                   isDarkMode 
-                    ? 'border-white/[0.09] text-white !placeholder-white/20 focus:border-orange-500/55' 
+                    ? 'border-white/[0.09] text-white !placeholder-white/45 focus:border-orange-500/55' 
                     : 'border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-orange-500/55'
                 }`}
               />

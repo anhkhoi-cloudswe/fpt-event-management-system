@@ -986,7 +986,7 @@ export default function CheckIn() {
                     stopScanning()
                     resetResult()
                   }}
-                  className="w-full bg-rose-650 hover:bg-rose-700 text-white font-extrabold text-xs uppercase tracking-wider py-3.5 rounded-2xl transition-all duration-300 shadow active:scale-95"
+                  className="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs uppercase tracking-wider py-3.5 rounded-2xl transition-all duration-300 shadow active:scale-95"
                 >
                   Dừng quét camera
                 </button>
@@ -1034,7 +1034,7 @@ export default function CheckIn() {
                         {result.registration?.ticketId && (
                           <div className="flex justify-between items-center">
                             <span className="text-slate-500 font-bold">Ticket ID:</span>
-                            <span className="font-black text-slate-200">#{result.registration.ticketId}</span>
+                            <span className="font-black text-slate-800 dark:text-slate-200">#{result.registration.ticketId}</span>
                           </div>
                         )}
                         {result.registration?.checkedInAt && (() => {
@@ -1042,7 +1042,7 @@ export default function CheckIn() {
                           return (
                             <div className="flex justify-between items-center">
                               <span className="text-slate-500 font-bold">Thời gian Check-in:</span>
-                              <span className="font-extrabold text-slate-300">
+                              <span className="font-extrabold text-slate-700 dark:text-slate-300">
                                 {checkinDate ? format(checkinDate, 'dd/MM/yyyy HH:mm:ss', { locale: vi }) : result.registration.checkedInAt}
                               </span>
                             </div>
@@ -1053,16 +1053,16 @@ export default function CheckIn() {
                           return (
                             <div className="flex justify-between items-center">
                               <span className="text-slate-500 font-bold">Thời gian Check-out:</span>
-                              <span className="font-extrabold text-slate-300">
+                              <span className="font-extrabold text-slate-700 dark:text-slate-300">
                                 {checkoutDate ? format(checkoutDate, 'dd/MM/yyyy HH:mm:ss', { locale: vi }) : result.registration.checkedOutAt}
                               </span>
                             </div>
                           )
                         })()}
                         {result.registration?.customerName && (
-                          <div className="flex justify-between items-center border-t border-slate-800/80 pt-2 mt-2">
+                          <div className="flex justify-between items-center border-t border-slate-200 dark:border-slate-800/80 pt-2 mt-2">
                             <span className="text-slate-500 font-bold">Sinh viên:</span>
-                            <span className="font-extrabold text-slate-100">{result.registration.customerName}</span>
+                            <span className="font-extrabold text-slate-900 dark:text-slate-100">{result.registration.customerName}</span>
                           </div>
                         )}
                       </div>
@@ -1075,13 +1075,13 @@ export default function CheckIn() {
                     const ErrIcon = errCfg.Icon
                     return (
                       <div className="space-y-4">
-                        <div className="text-center py-5 bg-rose-950/20 border border-rose-900/30 rounded-2xl p-5 relative overflow-hidden">
+                        <div className="text-center py-5 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 rounded-2xl p-5 relative overflow-hidden">
                           <ErrIcon className={`w-14 h-14 mx-auto mb-3.5 ${errCfg.iconClass} animate-pulse`} />
-                          <p className="text-base font-black text-slate-200 whitespace-pre-line leading-relaxed">
+                          <p className="text-base font-black text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed">
                             {errCfg.title}
                           </p>
                           {result.message && (
-                            <div className="mt-3 text-xs text-rose-400 font-extrabold italic bg-rose-950/50 rounded-xl p-2 border border-rose-900/20">
+                            <div className="mt-3 text-xs text-rose-700 dark:text-rose-400 font-extrabold italic bg-rose-100 dark:bg-rose-950/50 rounded-xl p-2 border border-rose-200 dark:border-rose-900/20">
                               {result.message}
                             </div>
                           )}
@@ -1093,18 +1093,18 @@ export default function CheckIn() {
 
                 {/* Info details case of failure multi-ticket */}
                 {!result.success && result.registration && (
-                  <div className="border-t border-slate-800 pt-4 space-y-3">
+                  <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-3">
                     {result.registration.customerName && (
-                      <div className="bg-slate-900/60 p-3.5 rounded-2xl border-l-4 border-orange-500/80 text-xs">
+                      <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border-l-4 border-orange-500/80 text-xs">
                         <p className="text-slate-500 font-bold uppercase tracking-wider mb-0.5">👤 Khách hàng:</p>
-                        <p className="font-extrabold text-slate-100">{result.registration.customerName}</p>
+                        <p className="font-extrabold text-slate-800 dark:text-slate-100">{result.registration.customerName}</p>
                       </div>
                     )}
 
                     {result.registration.eventName && (
-                      <div className="bg-slate-900/60 p-3.5 rounded-2xl border-l-4 border-purple-500/80 text-xs">
+                      <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border-l-4 border-purple-500/80 text-xs">
                         <p className="text-slate-500 font-bold uppercase tracking-wider mb-0.5">📋 Sự kiện:</p>
-                        <p className="font-extrabold text-slate-100">{result.registration.eventName}</p>
+                        <p className="font-extrabold text-slate-800 dark:text-slate-100">{result.registration.eventName}</p>
                       </div>
                     )}
 
@@ -1119,13 +1119,13 @@ export default function CheckIn() {
                               style={{ borderColor: r.success ? '#10b981' : '#ef4444' }}
                             >
                               <div className="flex justify-between items-center font-bold">
-                                <span className="text-slate-300">Vé #{r.ticketId}</span>
+                                <span className="text-slate-700 dark:text-slate-300">Vé #{r.ticketId}</span>
                                 <span className={r.success ? 'text-emerald-500 font-extrabold' : 'text-rose-500 font-extrabold'}>
                                   {r.success ? '✓ Hợp lệ' : '✗ Lỗi quét'}
                                 </span>
                               </div>
                               {!r.success && r.error && (
-                                <p className="text-[10px] text-rose-450 mt-1 font-semibold italic">{r.error}</p>
+                                <p className="text-[10px] text-rose-600 dark:text-rose-400 mt-1 font-semibold italic">{r.error}</p>
                               )}
                             </div>
                           ))}
@@ -1138,7 +1138,7 @@ export default function CheckIn() {
                 {/* Button next checkin */}
                 <button
                   onClick={resetResult}
-                  className="w-full mt-4 py-3.5 font-extrabold text-xs uppercase tracking-wider text-slate-200 bg-slate-800 hover:bg-slate-700 hover:text-white rounded-2xl transition-all duration-300 shadow-sm active:scale-95"
+                  className="w-full mt-4 py-3.5 font-extrabold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-2xl transition-all duration-300 shadow-sm active:scale-95 border border-slate-200 dark:border-transparent"
                 >
                   Quét vé tiếp theo
                 </button>
@@ -1159,7 +1159,7 @@ export default function CheckIn() {
                       className={`flex items-center justify-between p-2.5 rounded-xl border text-[11px] transition-all hover:scale-[1.01] ${
                         item.success
                           ? 'bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-200/40 dark:border-emerald-900/20 text-emerald-800 dark:text-emerald-400'
-                          : 'bg-rose-50/20 dark:bg-rose-950/10 border-rose-200/40 dark:border-rose-900/20 text-rose-800 dark:text-rose-450'
+                          : 'bg-rose-50/20 dark:bg-rose-950/10 border-rose-200/40 dark:border-rose-900/20 text-rose-800 dark:text-rose-400'
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
@@ -1172,7 +1172,7 @@ export default function CheckIn() {
                       <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md shrink-0 select-none ${
                         item.success
                           ? 'bg-emerald-100/60 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400'
-                          : 'bg-rose-100/60 dark:bg-rose-900/30 text-rose-800 dark:text-rose-450'
+                          : 'bg-rose-100/60 dark:bg-rose-900/30 text-rose-800 dark:text-rose-400'
                       }`}>
                         {item.success ? 'Hợp lệ' : 'Lỗi'}
                       </span>
@@ -1203,7 +1203,7 @@ export default function CheckIn() {
           : 'bg-purple-50/80 border-purple-200 text-purple-800 dark:bg-purple-950/25 dark:border-purple-500/35 dark:text-purple-200 shadow-md dark:shadow-lg dark:shadow-purple-500/5'
       }`}>
         <h3 className={`font-black uppercase tracking-wider mb-2 text-[11px] ${
-          isCheckIn ? 'text-orange-750 dark:text-orange-400' : 'text-purple-750 dark:text-purple-400'
+          isCheckIn ? 'text-orange-700 dark:text-orange-400' : 'text-purple-700 dark:text-purple-400'
         }`}>
           Hướng dẫn nghiệp vụ {actionLabel}
         </h3>
