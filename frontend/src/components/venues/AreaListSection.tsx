@@ -77,10 +77,10 @@ export default function AreaListSection({
                       <span className="text-slate-500 dark:text-slate-400 font-semibold">Trạng thái:</span>
                       <span className={`inline-flex px-2.5 py-1 text-[10px] font-extrabold rounded-full border shadow-sm ${
                         area.status === 'AVAILABLE'
-                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-250/20 dark:border-emerald-900/30'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200/20 dark:border-emerald-900/30'
                           : area.status === 'UNAVAILABLE'
-                            ? 'bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 border-orange-250/20 dark:border-orange-900/30'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-355 border-slate-200 dark:border-slate-700'
+                            ? 'bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 border-orange-200/20 dark:border-orange-900/30'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                       }`}>
                         {area.status === 'AVAILABLE'
                           ? '🟢 Sẵn sàng'
@@ -101,7 +101,7 @@ export default function AreaListSection({
                   </button>
                   <button
                     onClick={() => onDelete(area.areaId)}
-                    className="flex-1 rounded-xl flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-red-700 dark:text-red-450 bg-red-50 hover:bg-red-100 border border-red-200/40 dark:bg-red-950/20 dark:border-red-900/30 dark:hover:bg-red-950/40 transition-all duration-300 active:scale-95"
+                    className="flex-1 rounded-xl flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-red-700 dark:text-red-400 bg-red-50 hover:bg-red-100 border border-red-200/40 dark:bg-red-950/20 dark:border-red-900/30 dark:hover:bg-red-950/40 transition-all duration-300 active:scale-95"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     Xóa
@@ -111,8 +111,8 @@ export default function AreaListSection({
             ))}
           </div>
         ) : (
-          <div className="text-center py-10 bg-white/40 dark:bg-slate-900/30 border border-slate-150 dark:border-slate-800 rounded-3xl shadow-inner">
-            <Building2 className="w-10 h-10 text-slate-300 dark:text-slate-655 mx-auto mb-3" />
+          <div className="text-center py-10 bg-white/40 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-inner">
+            <Building2 className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
             <p className="text-slate-500 dark:text-slate-400 font-bold text-sm">Chưa có phòng nào</p>
           </div>
         )}

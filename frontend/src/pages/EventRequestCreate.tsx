@@ -473,7 +473,7 @@ function CalendarPopover({ value, onChange, onClose, minDate, isDark }: Calendar
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div className={`absolute right-0 top-full mt-1.5 z-50 origin-top-right border rounded-2xl p-5 shadow-2xl w-[320px] select-none animate-fadeIn ${
-        isDark ? 'bg-[#18181b] border-white/[0.08] text-white' : 'bg-white border-neutral-200 text-neutral-850'
+        isDark ? 'bg-[#18181b] border-white/[0.08] text-white' : 'bg-white border-neutral-200 text-neutral-900'
       }`}>
         {/* Header matching Luma style */}
         <div className="flex items-center justify-between mb-4 px-1">
@@ -535,8 +535,8 @@ function CalendarPopover({ value, onChange, onClose, minDate, isDark }: Calendar
                       : 'bg-orange-50 text-[#ea580c] border border-[#fb923c]/40'
                     : isCurrentMonth
                     ? isDark ? 'text-white hover:bg-white/[0.08]' : 'text-neutral-800 hover:bg-neutral-100'
-                    : isDark ? 'text-neutral-650 opacity-40 hover:bg-white/[0.02]' : 'text-neutral-400 opacity-40 hover:bg-neutral-50'
-                } ${isBeforeMin ? 'opacity-20 cursor-not-allowed hover:bg-transparent text-neutral-650' : ''}`}
+                    : isDark ? 'text-neutral-600 opacity-40 hover:bg-white/[0.02]' : 'text-neutral-400 opacity-40 hover:bg-neutral-50'
+                } ${isBeforeMin ? 'opacity-20 cursor-not-allowed hover:bg-transparent text-neutral-600' : ''}`}
               >
                 {day}
               </button>
@@ -593,7 +593,7 @@ function TimePopover({ value, onChange, onClose, showDuration, startDateTimeStr,
       <div
         ref={listRef}
         className={`absolute right-0 top-full mt-1.5 z-50 origin-top-right border rounded-2xl shadow-2xl w-[170px] max-h-60 overflow-y-auto py-1.5 custom-scrollbar animate-fadeIn ${
-          isDark ? 'bg-[#18181b] border-white/[0.08] text-white' : 'bg-white border-neutral-200 text-neutral-850'
+          isDark ? 'bg-[#18181b] border-white/[0.08] text-white' : 'bg-white border-neutral-200 text-neutral-900'
         }`}
       >
         {filteredTimeSlots.map(t => {
@@ -1379,7 +1379,7 @@ export default function EventRequestCreate() {
               <button
                 type="button"
                 onClick={() => navigate('/dashboard/event-requests')}
-                className="inline-flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 hover:text-orange-500 dark:hover:text-orange-450 font-black tracking-wider uppercase transition cursor-pointer"
+                className="inline-flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 hover:text-orange-500 dark:hover:text-orange-400 font-black tracking-wider uppercase transition cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" /> Quay lại danh sách
               </button>
@@ -1506,7 +1506,7 @@ export default function EventRequestCreate() {
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all duration-200 cursor-pointer ${
                       isDarkMode 
                         ? 'border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]' 
-                        : 'border-neutral-250 bg-white text-neutral-800 hover:bg-neutral-50'
+                        : 'border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50'
                     }`}
                   >
                     {isPublic ? (
@@ -1514,7 +1514,7 @@ export default function EventRequestCreate() {
                     ) : (
                       <><Lock className="w-3.5 h-3.5 text-orange-500" /> Riêng tư</>
                     )}
-                    <ChevronDown className={`w-3 h-3 ${isDarkMode ? 'text-white/50' : 'text-neutral-550'}`} />
+                    <ChevronDown className={`w-3 h-3 ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`} />
                   </button>
                   {showPublicDropdown && (
                     <>
@@ -1522,7 +1522,7 @@ export default function EventRequestCreate() {
                       <div className={`absolute right-0 bottom-full mb-2 z-30 border rounded-xl overflow-hidden shadow-2xl w-80 py-1.5 animate-fadeIn ${
                         isDarkMode 
                           ? 'bg-[#141416]/98 border-white/10 text-white' 
-                          : 'bg-white border-neutral-200 text-neutral-850'
+                          : 'bg-white border-neutral-200 text-neutral-900'
                       }`}>
                         <button
                           type="button"
@@ -1570,7 +1570,7 @@ export default function EventRequestCreate() {
                 className={`text-3xl md:text-4xl font-bold tracking-tight !bg-transparent border-b py-2 focus:outline-none w-full mb-2 transition-colors leading-tight flex-shrink-0 ${
                   isDarkMode 
                     ? 'border-white/[0.09] text-white !placeholder-white/20 focus:border-orange-500/55' 
-                    : 'border-neutral-200 text-neutral-850 placeholder-neutral-400 focus:border-orange-500/55'
+                    : 'border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-orange-500/55'
                 }`}
               />
 
@@ -1727,7 +1727,7 @@ export default function EventRequestCreate() {
               <div className="mb-2 flex-shrink-0">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <MapPin className={`w-3 h-3 ${isDarkMode ? 'text-white/40' : 'text-neutral-500'}`} />
-                  <span className={`text-[9px] font-bold uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/50' : 'text-neutral-550'}`}>Hình thức</span>
+                  <span className={`text-[9px] font-bold uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>Hình thức</span>
                 </div>
                 <div className={`w-full backdrop-blur-md border rounded-xl p-1 flex gap-1 ${
                   isDarkMode ? 'bg-white/[0.04] border-white/[0.08]' : 'bg-neutral-100 border-neutral-200'
@@ -1784,7 +1784,7 @@ export default function EventRequestCreate() {
                             </div>
                             <div className="min-w-0">
                               <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-neutral-800'}`}>Đã kết nối tài khoản Zoom</p>
-                              <p className={`text-[10px] font-semibold truncate mt-0.5 ${isDarkMode ? 'text-emerald-400/90' : 'text-emerald-650'}`}>
+                              <p className={`text-[10px] font-semibold truncate mt-0.5 ${isDarkMode ? 'text-emerald-400/90' : 'text-emerald-600'}`}>
                                 {connectedPlatforms.zoom.email}
                               </p>
                             </div>
@@ -1793,7 +1793,7 @@ export default function EventRequestCreate() {
                             type="button"
                             onClick={() => handleDisconnect('zoom')}
                             className={`text-[10px] font-bold transition duration-200 cursor-pointer shrink-0 ml-2 ${
-                              isDarkMode ? 'text-white/30 hover:text-red-400' : 'text-neutral-400 hover:text-red-650'
+                              isDarkMode ? 'text-white/30 hover:text-red-400' : 'text-neutral-400 hover:text-red-600'
                             }`}
                           >
                             Hủy kết nối
@@ -1842,7 +1842,7 @@ export default function EventRequestCreate() {
                             </div>
                             <div className="min-w-0">
                               <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-neutral-800'}`}>Đã kết nối Google Meet</p>
-                              <p className={`text-[10px] font-semibold truncate mt-0.5 ${isDarkMode ? 'text-emerald-400/90' : 'text-emerald-650'}`}>
+                              <p className={`text-[10px] font-semibold truncate mt-0.5 ${isDarkMode ? 'text-emerald-400/90' : 'text-emerald-600'}`}>
                                 {connectedPlatforms.google.email}
                               </p>
                             </div>
@@ -1851,7 +1851,7 @@ export default function EventRequestCreate() {
                             type="button"
                             onClick={() => handleDisconnect('google')}
                             className={`text-[10px] font-bold transition duration-200 cursor-pointer shrink-0 ml-2 ${
-                              isDarkMode ? 'text-white/30 hover:text-red-400' : 'text-neutral-400 hover:text-red-650'
+                              isDarkMode ? 'text-white/30 hover:text-red-400' : 'text-neutral-400 hover:text-red-600'
                             }`}
                           >
                             Hủy kết nối
@@ -1965,7 +1965,7 @@ export default function EventRequestCreate() {
                       : 'border-neutral-200 text-neutral-500 hover:text-neutral-800'
                   }`}
                 >
-                  <AlignLeft className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${isDarkMode ? 'text-white/40' : 'text-neutral-550'}`} />
+                  <AlignLeft className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${isDarkMode ? 'text-white/40' : 'text-neutral-500'}`} />
                   <div className="flex-1 min-w-0">
                     {formData.description ? (
                       <p className={`text-sm line-clamp-3 whitespace-pre-wrap ${isDarkMode ? 'text-white/80' : 'text-neutral-800'}`}>{formData.description}</p>
@@ -2079,7 +2079,7 @@ export default function EventRequestCreate() {
                   onClick={handleCancel}
                   disabled={isSubmitting}
                   className={`w-full py-2 rounded-xl transition-colors font-medium text-sm cursor-pointer ${
-                    isDarkMode ? 'text-white/50 hover:text-white' : 'text-neutral-550 hover:text-neutral-800'
+                    isDarkMode ? 'text-white/50 hover:text-white' : 'text-neutral-500 hover:text-neutral-800'
                   }`}
                 >
                   Hủy và quay lại
@@ -2094,7 +2094,7 @@ export default function EventRequestCreate() {
           {descOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setDescOpen(false)}>
               <div className={`w-full max-w-xl rounded-2xl border p-6 shadow-2xl flex flex-col gap-4 transition-all duration-200 transform scale-100 ${
-                isDarkMode ? 'bg-[#141416] border-white/[0.09] text-white' : 'bg-white border-neutral-200 text-neutral-850'
+                isDarkMode ? 'bg-[#141416] border-white/[0.09] text-white' : 'bg-white border-neutral-200 text-neutral-900'
               }`} onClick={(e) => e.stopPropagation()}>
                 <div className={`flex items-center justify-between pb-2.5 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
                   <h3 className="text-sm font-black">Mô tả sự kiện</h3>
@@ -2121,7 +2121,7 @@ export default function EventRequestCreate() {
                     className={`px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
                       isDarkMode 
                         ? 'bg-white/[0.05] border-white/10 text-white hover:bg-white/[0.08]' 
-                        : 'bg-neutral-100 border-neutral-250 text-neutral-700 hover:bg-neutral-200'
+                        : 'bg-neutral-100 border-neutral-300 text-neutral-700 hover:bg-neutral-200'
                     }`}
                   >
                     Hủy
@@ -2145,7 +2145,7 @@ export default function EventRequestCreate() {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setTicketPopoverOpen(false)}>
               <div
                 className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl flex flex-col gap-5 transition-all duration-200 transform scale-100 ${
-                  isDarkMode ? 'bg-[#141416] border-white/[0.09] text-white' : 'bg-white border-neutral-200 text-neutral-850'
+                  isDarkMode ? 'bg-[#141416] border-white/[0.09] text-white' : 'bg-white border-neutral-200 text-neutral-900'
                 }`}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -2240,7 +2240,7 @@ export default function EventRequestCreate() {
               <div
                 ref={capacityPopoverRef}
                 className={`w-full max-w-sm rounded-2xl border p-6 shadow-2xl flex flex-col gap-4 transition-all duration-200 transform scale-100 ${
-                  isDarkMode ? 'bg-[#141416] border-white/[0.09] text-white' : 'bg-white border-neutral-200 text-neutral-850'
+                  isDarkMode ? 'bg-[#141416] border-white/[0.09] text-white' : 'bg-white border-neutral-200 text-neutral-900'
                 }`}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -2303,7 +2303,7 @@ export default function EventRequestCreate() {
                     className={`flex-1 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
                       isDarkMode 
                         ? 'bg-white/[0.05] border-white/10 text-white hover:bg-white/[0.08]' 
-                        : 'bg-neutral-100 border-neutral-250 text-neutral-700 hover:bg-neutral-200'
+                        : 'bg-neutral-100 border-neutral-300 text-neutral-700 hover:bg-neutral-200'
                     }`}
                   >
                     Hủy

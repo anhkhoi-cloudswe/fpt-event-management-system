@@ -1211,7 +1211,7 @@ export default function CheckIn() {
           {isCheckIn ? (
             <>
               <li className="flex items-center gap-1.5">• Sử dụng camera sau để quét mã QR vé đơn hoặc mã kiểm soát lô vé của SV.</li>
-              <li className="flex items-center gap-1.5">• Cho phép quét QR đa vé định dạng <strong className="text-orange-605 dark:text-orange-400 font-black">TICKETS:id1,id2,id3</strong> để check-in hàng loạt.</li>
+              <li className="flex items-center gap-1.5">• Cho phép quét QR đa vé định dạng <strong className="text-orange-600 dark:text-orange-400 font-black">TICKETS:id1,id2,id3</strong> để check-in hàng loạt.</li>
               <li className="flex items-center gap-1.5">• Nhập trực tiếp số ID vé vào ô tìm kiếm thủ công nếu thiết bị không bật được camera hoặc camera mờ.</li>
             </>
           ) : (

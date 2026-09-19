@@ -404,11 +404,11 @@ export default function Events() {
         </div>
       ) : openEvents.length === 0 ? (
         <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-16 text-center shadow-md animate-fade-in-up">
-          <div className="p-4 bg-orange-50 dark:bg-orange-950/20 text-orange-500 dark:text-orange-350 rounded-full w-fit mx-auto mb-4 border border-orange-100/50 dark:border-orange-900/30">
+          <div className="p-4 bg-orange-50 dark:bg-orange-950/20 text-orange-500 dark:text-orange-400 rounded-full w-fit mx-auto mb-4 border border-orange-100/50 dark:border-orange-900/30">
             <CalendarDays className="w-12 h-12" />
           </div>
 <h3 className="text-lg font-black text-slate-800 dark:text-white">{currentLanguage === 'en' ? 'No open events' : 'Chưa có sự kiện đang mở'}</h3>
-          <p className="text-sm text-slate-400 dark:text-slate-450 mt-2 max-w-sm mx-auto font-medium">
+          <p className="text-sm text-slate-400 dark:text-slate-400 mt-2 max-w-sm mx-auto font-medium">
             {currentLanguage === 'en' ? 'There are currently no public events open for registration. Please check back later.' : 'Hiện tại không có sự kiện công khai nào đang mở đăng ký vé. Vui lòng quay lại sau.'}
           </p>
         </div>
@@ -464,7 +464,7 @@ export default function Events() {
                                 {(user?.role === 'ADMIN' || isOrganizer) && (
                                   <button
                                     onClick={() => handleManageConfig(event.eventId, event.title)}
-                                    className="p-1 text-purple-650 hover:bg-purple-50 rounded"
+                                    className="p-1 text-purple-600 hover:bg-purple-50 rounded"
                                     title={currentLanguage === 'en' ? 'Manage Check-in Gate' : 'Quản lý Check-in Gate'}
                                   >
                                     <Settings size={18} />
@@ -531,21 +531,21 @@ export default function Events() {
 
                           {/* Thông tin ngày/địa điểm/số chỗ */}
                           <div className="space-y-2 mb-4 flex-grow">
-                            <div className="flex items-center text-sm text-gray-650 dark:text-gray-350">
+                            <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                               <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
                               {format(new Date(event.startTime), 'dd/MM/yyyy HH:mm', {
                                 locale: vi
                               })}
                             </div>
 
-                            <div className="flex items-center text-sm text-gray-650 dark:text-gray-350">
+                            <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                               <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
                               <span className="line-clamp-1">
 {formatEventLocation(event, currentLanguage === 'en' ? 'en' : 'vi')}
                               </span>
                             </div>
 
-                            <div className="flex items-center text-sm text-gray-650 dark:text-gray-350">
+                            <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                               <Users className="w-4 h-4 mr-2 flex-shrink-0" />
 {event.maxSeats} {currentLanguage === 'en' ? 'seats' : 'chỗ'}
                             </div>
@@ -635,27 +635,27 @@ export default function Events() {
                           </div>
 
                           {/* Mô tả */}
-                          <p className="text-gray-500 text-sm mb-4 line-clamp-2 min-h-[2.5rem]">
+                          <p className="text-gray-500 dark:text-slate-400 text-sm mb-4 line-clamp-2 min-h-[2.5rem]">
                             {event.description}
                           </p>
 
                           {/* Info */}
                           <div className="space-y-2 mb-4 flex-grow">
-                            <div className="flex items-center text-sm text-gray-500">
+                            <div className="flex items-center text-sm text-gray-500 dark:text-slate-400">
                               <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
                               {format(new Date(event.startTime), 'dd/MM/yyyy HH:mm', {
                                 locale: vi
                               })}
                             </div>
 
-                            <div className="flex items-center text-sm text-gray-500">
+                            <div className="flex items-center text-sm text-gray-500 dark:text-slate-400">
                               <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
                               <span className="line-clamp-1">
 {formatEventLocation(event, currentLanguage === 'en' ? 'en' : 'vi')}
                               </span>
                             </div>
 
-                            <div className="flex items-center text-sm text-gray-500">
+                            <div className="flex items-center text-sm text-gray-500 dark:text-slate-400">
                               <Users className="w-4 h-4 mr-2 flex-shrink-0" />
 {event.maxSeats} {currentLanguage === 'en' ? 'seats' : 'chỗ'}
                             </div>

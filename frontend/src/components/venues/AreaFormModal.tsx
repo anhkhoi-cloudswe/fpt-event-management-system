@@ -153,13 +153,13 @@ export default function AreaFormModal({ isOpen, area, venueId, onClose, onSubmit
                   setFormData({ ...formData, floor: parseInt(e.target.value) || 0 })
                   setErrors({ ...errors, floor: '' })
                 }}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-955 dark:text-white transition-all duration-205 ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-all duration-200 ${
                   errors.floor ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'
                 }`}
                 placeholder="Nhập số tầng"
               />
               {errors.floor && <p className="text-red-500 text-sm mt-1">{errors.floor}</p>}
-              <p className="text-gray-500 dark:text-slate-450 text-xs mt-1">Cho phép số âm (ví dụ: -1 cho tầng hầm)</p>
+              <p className="text-gray-500 dark:text-slate-400 text-xs mt-1">Cho phép số âm (ví dụ: -1 cho tầng hầm)</p>
             </div>
 
             <div>
@@ -175,7 +175,7 @@ export default function AreaFormModal({ isOpen, area, venueId, onClose, onSubmit
                   setFormData({ ...formData, capacity: parseInt(e.target.value) || 0 })
                   setErrors({ ...errors, capacity: '' })
                 }}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-955 dark:text-white transition-all duration-205 ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-all duration-200 ${
                   errors.capacity ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'
                 }`}
                 placeholder="Nhập sức chứa"
@@ -190,12 +190,12 @@ export default function AreaFormModal({ isOpen, area, venueId, onClose, onSubmit
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-955 dark:text-white transition-all duration-205"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-all duration-200"
               >
                 <option value="AVAILABLE">Sẵn sàng</option>
                 <option value="UNAVAILABLE">Tạm ngưng</option>
               </select>
-              <p className="text-gray-500 dark:text-slate-450 text-xs mt-1">Chọn trạng thái của phòng</p>
+              <p className="text-gray-500 dark:text-slate-400 text-xs mt-1">Chọn trạng thái của phòng</p>
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-slate-800">

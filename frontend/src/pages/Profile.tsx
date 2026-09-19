@@ -868,7 +868,7 @@ export default function Profile() {
                 </div>
 
                 <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 flex items-start gap-2.5">
-                  <AlertCircle size={16} className="text-amber-550 flex-shrink-0 mt-0.5" />
+                  <AlertCircle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
                   <p>
                     {t.p2}
                   </p>
@@ -905,9 +905,9 @@ export default function Profile() {
               {user?.ssoProvider === 'GOOGLE' ? (
                 // SSO warning banner matching Figure 4 (amber/yellow premium alert block)
                 <div className="space-y-6">
-                  <div className="p-5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/25 text-amber-800 dark:text-amber-350 space-y-3">
+                  <div className="p-5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/25 text-amber-800 dark:text-amber-300 space-y-3">
                     <div className="flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-amber-550 flex-shrink-0 mt-0.5" />
+                      <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                       <div className="text-sm font-medium leading-relaxed">
                         <p className="font-extrabold text-amber-900 dark:text-amber-200">{t.ssoTitle}</p>
                         <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">

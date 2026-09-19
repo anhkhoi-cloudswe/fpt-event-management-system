@@ -840,7 +840,7 @@ export default function OrganizerEventRequests() {
                     setSearchQuery('')
                     setRefreshTrigger(prev => prev + 1)
                   }}
-                  className="hover:text-red-650 dark:hover:text-red-400 font-black ml-1"
+                  className="hover:text-red-600 dark:hover:text-red-400 font-black ml-1"
                 >
                   ✕
                 </button>

@@ -924,7 +924,7 @@ export default function EventEdit() {
                     <label htmlFor="banner-upload" className="cursor-pointer">
                       <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
                       <p className="text-xs text-gray-600 dark:text-slate-400 mb-1">Kéo thả ảnh hoặc click để chọn</p>
-                      <p className="text-[10px] text-gray-505 dark:text-slate-500">PNG, JPG, GIF tối đa 5MB</p>
+                      <p className="text-[10px] text-gray-500 dark:text-slate-500">PNG, JPG, GIF tối đa 5MB</p>
                     </label>
                   </div>
                 ) : (
@@ -1314,7 +1314,7 @@ export default function EventEdit() {
                             setDrawerAvatarFile(null)
                             setDrawerAvatarPreview(null)
                           }}
-                          className="absolute -top-1 -right-1 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-505 transition-colors"
+                          className="absolute -top-1 -right-1 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-500 transition-colors"
                         >
                           <X className="w-3 h-3" />
                         </button>

@@ -29,8 +29,8 @@ export default function VenueList({ venues, selectedVenueId, onSelect, onEdit, o
             <div className="flex items-start gap-3.5 mb-5">
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 border transition-all duration-300 ${
                 isSelected 
-                  ? 'bg-orange-100 text-orange-655 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-900/30' 
-                  : 'bg-orange-50/50 text-orange-600 border-orange-100/50 dark:bg-slate-850 dark:text-orange-400 dark:border-slate-800'
+                  ? 'bg-orange-100 text-orange-600 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-900/30' 
+                  : 'bg-orange-50/50 text-orange-600 border-orange-100/50 dark:bg-slate-800 dark:text-orange-400 dark:border-slate-800'
               }`}>
                 <Building2 className="w-5 h-5 animate-pulse" />
               </div>

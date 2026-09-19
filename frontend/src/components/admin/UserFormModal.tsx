@@ -237,7 +237,7 @@ export default function UserFormModal({
                 <p className="text-red-500 text-sm mt-1">{errors.email}</p>
               )}
               {mode === 'edit' && (
-                <p className="text-xs italic text-gray-405 dark:text-slate-500 mt-1.5">Email không thể chỉnh sửa</p>
+                <p className="text-xs italic text-gray-400 dark:text-slate-500 mt-1.5">Email không thể chỉnh sửa</p>
               )}
             </div>
 

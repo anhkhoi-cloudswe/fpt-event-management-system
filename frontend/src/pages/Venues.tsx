@@ -419,7 +419,7 @@ export default function Venues() {
         // Trường hợp 1: Đang tải dữ liệu -> hiển thị loading spinner
         <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 p-12 text-center shadow-md animate-fade-in-up">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-slate-555 dark:text-slate-400 font-extrabold text-sm">Đang tải địa điểm...</p>
+          <p className="text-slate-500 dark:text-slate-400 font-extrabold text-sm">Đang tải địa điểm...</p>
         </div>
       ) : filtered.length === 0 ? (
         // Trường hợp 2: Không có dữ liệu -> hiển thị empty state

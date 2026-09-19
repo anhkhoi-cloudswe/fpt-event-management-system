@@ -251,20 +251,20 @@ export default function Reports() {
     const v = String(s).toUpperCase()
     switch (v) {
       case 'CHECKED_IN':
-        return 'inline-block px-2 py-1 rounded text-xs bg-green-100 text-green-800 font-medium'
+        return 'inline-block px-2 py-1 rounded text-xs bg-green-100 text-green-800 dark:bg-emerald-950/40 dark:text-emerald-300 font-medium'
       case 'CHECKED_OUT':
-        return 'inline-block px-2 py-1 rounded text-xs bg-purple-100 text-purple-800 font-medium'
+        return 'inline-block px-2 py-1 rounded text-xs bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300 font-medium'
       case 'REFUNDED':
-        return 'inline-block px-2 py-1 rounded text-xs bg-red-100 text-red-800 font-medium'
+        return 'inline-block px-2 py-1 rounded text-xs bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300 font-medium'
       case 'PURCHASED':
       case 'BOOKED':
-        return 'inline-block px-2 py-1 rounded text-xs bg-blue-100 text-blue-800 font-medium'
+        return 'inline-block px-2 py-1 rounded text-xs bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 font-medium'
       case 'CANCELLED':
-        return 'inline-block px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800 font-medium'
+        return 'inline-block px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800 dark:bg-amber-950/40 dark:text-amber-300 font-medium'
       case 'EXPIRED':
-        return 'inline-block px-2 py-1 rounded text-xs bg-gray-100 text-gray-500 font-medium'
+        return 'inline-block px-2 py-1 rounded text-xs bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400 font-medium'
       default:
-        return 'inline-block px-2 py-1 rounded text-xs bg-gray-100 text-gray-800 font-medium'
+        return 'inline-block px-2 py-1 rounded text-xs bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-300 font-medium'
     }
   }
 
@@ -1025,7 +1025,7 @@ export default function Reports() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* ✅ UPGRADED: Searchable Combobox Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Chọn sự kiện</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Chọn sự kiện</label>
 
             {/* Combobox Container */}
             <div className="relative">
@@ -1049,7 +1049,7 @@ export default function Reports() {
                   // Delay to allow click on dropdown items
                   setTimeout(() => setIsDropdownOpen(false), 200)
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10"
               />
 
               {/* Dropdown toggle icon */}
@@ -1162,7 +1162,7 @@ export default function Reports() {
 
           {/* Date start */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Từ ngày</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Từ ngày</label>
             <input
               type="date"
               value={dateRange.start}
@@ -1173,13 +1173,13 @@ export default function Reports() {
                   setAggregatedStats(null)
                 }
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
           {/* Date end */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Đến ngày</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Đến ngày</label>
             <input
               type="date"
               value={dateRange.end}
@@ -1190,7 +1190,7 @@ export default function Reports() {
                   setAggregatedStats(null)
                 }
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
         </div>
@@ -1218,10 +1218,10 @@ export default function Reports() {
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">
+              <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">
                 {user?.role === 'ADMIN' ? 'Thống kê toàn bộ hệ thống' : 'Thống kê tất cả sự kiện của bạn'}
               </h3>
-              <div className="mt-2 text-sm text-blue-700">
+              <div className="mt-2 text-sm text-blue-700 dark:text-blue-200">
                 <p>Danh sách vé không được hiển thị khi xem báo cáo tổng hợp của tất cả sự kiện.</p>
               </div>
             </div>
@@ -1239,24 +1239,24 @@ export default function Reports() {
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Tổng vé: {totalRegistrations}</p>
 
           <div className="max-h-[400px] overflow-y-auto overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
               <thead className="bg-gray-50 dark:bg-slate-800">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Ticket ID</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Tên</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Seat</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Loại vé</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Ngày mua</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nhật ký Ra/Vào</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Trạng thái</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">#</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">Ticket ID</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">Tên</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">Seat</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">Loại vé</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">Ngày mua</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">Nhật ký Ra/Vào</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">Trạng thái</th>
                 </tr>
               </thead>
 
               <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
                 {registrations.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-6 text-center text-sm text-gray-500">
+                    <td colSpan={8} className="px-4 py-6 text-center text-sm text-gray-500 dark:text-slate-400">
                       Không có vé / đăng ký nào
                     </td>
                   </tr>
@@ -1291,15 +1291,15 @@ export default function Reports() {
                     const itemIndex = (currentPage - 1) * limit + idx + 1
 
                     return (
-                      <tr key={r.id ?? idx}>
-                        <td className="px-4 py-3 text-sm text-gray-700">{itemIndex}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{ticketId}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{r.userName ?? '-'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{seat}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{seatType}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{formatDateTime((r as any).purchaseDate ?? r.purchaseDate ?? null)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{renderAccessLog(checkInTime, checkOutTime)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
+                      <tr key={r.id ?? idx} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-200">{itemIndex}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-200">{ticketId}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-200">{r.userName ?? '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-200">{seat}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-200">{seatType}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-200">{formatDateTime((r as any).purchaseDate ?? r.purchaseDate ?? null)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-200">{renderAccessLog(checkInTime, checkOutTime)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-200">
                           {statusLabel ? <span className={statusBadgeClass}>{statusLabel}</span> : null}
                         </td>
                       </tr>
@@ -1320,17 +1320,17 @@ export default function Reports() {
                 <button
                   onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+                  className="px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-semibold text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-400 dark:disabled:text-slate-600 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
                 >
                   Trang trước
                 </button>
-                <span className="text-sm text-gray-700 font-semibold px-3 py-1 bg-gray-50 border border-gray-200 rounded-md">
+                <span className="text-sm text-gray-700 dark:text-slate-200 font-semibold px-3 py-1 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md">
                   Trang {currentPage} / {Math.ceil(totalCount / limit) || 1}
                 </span>
                 <button
                   onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(totalCount / limit)))}
                   disabled={currentPage >= Math.ceil(totalCount / limit)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+                  className="px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-semibold text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-400 dark:disabled:text-slate-600 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
                 >
                   Trang sau
                 </button>
@@ -1349,11 +1349,11 @@ export default function Reports() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">Tổng đăng ký</p>
-                    <p className="text-3xl font-bold text-blue-600 mt-2">
+                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
                       {displayStats.totalRegistered}
                     </p>
                   </div>
@@ -1361,11 +1361,11 @@ export default function Reports() {
                 </div>
               </div>
 
-              <div className="bg-green-50 rounded-lg p-4">
+              <div className="bg-green-50 dark:bg-green-950/20 border border-green-100/50 dark:border-green-900/30 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">Đã check-in</p>
-                    <p className="text-3xl font-bold text-green-600 mt-2">
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
                       {displayStats.totalCheckedIn}
                     </p>
                   </div>
@@ -1373,11 +1373,11 @@ export default function Reports() {
                 </div>
               </div>
 
-              <div className="bg-purple-50 rounded-lg p-4">
+              <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-100/50 dark:border-purple-900/30 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">Đã check-out</p>
-                    <p className="text-3xl font-bold text-purple-600 mt-2">
+                    <p className="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-2">
                       {displayStats.totalCheckedOut}
                     </p>
                   </div>
@@ -1385,11 +1385,11 @@ export default function Reports() {
                 </div>
               </div>
 
-              <div className="bg-orange-50 rounded-lg p-4">
+              <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-100/50 dark:border-orange-900/30 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">Chưa check-in</p>
-                    <p className="text-3xl font-bold text-orange-600 mt-2">
+                    <p className="text-3xl font-bold text-orange-600 dark:text-orange-400 mt-2">
                       {displayStats.totalNotCheckedIn}
                     </p>
                   </div>

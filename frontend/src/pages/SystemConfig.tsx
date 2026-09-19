@@ -454,7 +454,7 @@ export default function SystemConfig() {
             <button
               onClick={handleReload}
               disabled={loading}
-              className="p-2 text-slate-500 dark:text-slate-400 hover:text-orange-650 dark:hover:text-orange-500 hover:bg-white/80 dark:hover:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 transition-all duration-300 active:scale-95 shadow-sm"
+              className="p-2 text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-500 hover:bg-white/80 dark:hover:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 transition-all duration-300 active:scale-95 shadow-sm"
               title="Tải lại cấu hình"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -645,7 +645,7 @@ export default function SystemConfig() {
               <select
                 value={statusFilter}
                 onChange={e => handleStatusFilterChange(e.target.value as 'ALL' | 'OPEN' | 'CLOSED')}
-                className="w-full pl-4 pr-10 py-3 bg-white/50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-755 dark:text-slate-200 font-semibold text-sm shadow-sm cursor-pointer transition-all duration-300 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M7%209l3%203%203-3%22%20stroke%3D%22%25236b7280%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.75rem_center] bg-no-repeat bg-[length:1rem_1rem]"
+                className="w-full pl-4 pr-10 py-3 bg-white/50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-700 dark:text-slate-200 font-semibold text-sm shadow-sm cursor-pointer transition-all duration-300 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M7%209l3%203%203-3%22%20stroke%3D%22%25236b7280%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.75rem_center] bg-no-repeat bg-[length:1rem_1rem]"
               >
                 <option value="ALL" className="dark:bg-slate-950">Tất cả trạng thái</option>
                 <option value="OPEN" className="dark:bg-slate-950">🟢 Đang mở</option>
@@ -693,7 +693,7 @@ export default function SystemConfig() {
                   {filteredEvents.map(event => (
                     <tr
                       key={event.eventId}
-                      className="hover:bg-slate-50/30 dark:hover:bg-slate-850/30 transition-colors"
+                      className="hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-colors"
                     >
                       {/* Event Title */}
                       <td className="px-6 py-4">
@@ -733,12 +733,12 @@ export default function SystemConfig() {
                         <span
                           className={`inline-flex px-2.5 py-1 text-[11px] font-extrabold rounded-full border shadow-sm ${
                             event.status === 'OPEN'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-450 dark:border-emerald-900/50'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50'
                               : event.status === 'CLOSED'
                                 ? 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700'
                                 : event.status === 'CANCELLED'
                                   ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50'
-                                  : 'bg-blue-50 text-blue-755 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50'
+                                  : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50'
                           }`}
                         >
                           {event.status === 'OPEN' && '🟢 Đang mở'}
@@ -764,7 +764,7 @@ export default function SystemConfig() {
                         ) : (
                           <button
                             disabled
-                            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-100 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold text-slate-400 dark:text-slate-600 cursor-not-allowed"
+                            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-100 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-400 dark:text-slate-600 cursor-not-allowed"
                             title="Chỉ có thể cấu hình sự kiện đang mở"
                           >
                             <Settings className="w-3.5 h-3.5" />

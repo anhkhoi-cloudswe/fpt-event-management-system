@@ -365,7 +365,7 @@ export function EventConfigModal({
                                         <h3 className="font-semibold text-blue-800 dark:text-blue-400 mb-2">
                                             Hướng dẫn
                                         </h3>
-                                        <ul className="text-sm text-blue-755 dark:text-blue-300 space-y-1">
+                                        <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
                                             <li>
                                                 • <strong>Check-in</strong>: Người dùng có thể check-in
                                                 trước thời gian bắt đầu sự kiện theo số phút đã cấu hình
