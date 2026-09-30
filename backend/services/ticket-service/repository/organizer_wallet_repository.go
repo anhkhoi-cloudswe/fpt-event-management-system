@@ -8,10 +8,12 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/fpt-event-services/common/logger"
 	"github.com/fpt-event-services/services/ticket-service/models"
+	ticketutils "github.com/fpt-event-services/services/ticket-service/utils"
 )
 
 // ============================================================
@@ -281,6 +283,33 @@ func (r *TicketRepository) CreateOrganizerTopupOrder(ctx context.Context, userID
 	// Cú pháp chuyển khoản định dạng: TOPUP <bill_id>
 	transferContent := fmt.Sprintf("TOPUP %d", billID)
 
+	// 1. Thử tạo link thanh toán qua PayOS (Cổng mặc định)
+	payosSvc := ticketutils.GetPayOSService()
+	if payosSvc.IsConfigured() {
+		frontendURL := strings.TrimRight(os.Getenv("FRONTEND_URL"), "/")
+		if frontendURL == "" {
+			frontendURL = "http://localhost:3000"
+		}
+		returnURL := fmt.Sprintf("%s/dashboard/organizer/wallet?status=topup_success&billId=%d", frontendURL, billID)
+		cancelURL := fmt.Sprintf("%s/dashboard/organizer/wallet?status=topup_cancel&billId=%d", frontendURL, billID)
+
+		payosResp, payosErr := payosSvc.CreatePaymentLink(ctx, billID, int(amount), transferContent, cancelURL, returnURL)
+		if payosErr == nil && payosResp != nil {
+			return &models.TopupWalletResponse{
+				OrderID:         billID,
+				Amount:          amount,
+				Gateway:         "payos",
+				CheckoutURL:     payosResp.CheckoutUrl,
+				TransferContent: transferContent,
+				BankCode:        payosResp.Bin,
+				AccountNumber:   payosResp.AccountNumber,
+				AccountName:     payosResp.AccountName,
+				QRCodeURL:       payosResp.QrCode,
+			}, nil
+		}
+	}
+
+	// 2. Dự phòng qua VietQR / SePay (Cổng backup)
 	bankCode := os.Getenv("VITE_BANK_NAME")
 	if bankCode == "" {
 		bankCode = "MB"
@@ -306,6 +335,7 @@ func (r *TicketRepository) CreateOrganizerTopupOrder(ctx context.Context, userID
 	return &models.TopupWalletResponse{
 		OrderID:         billID,
 		Amount:          amount,
+		Gateway:         "sepay",
 		TransferContent: transferContent,
 		BankCode:        bankCode,
 		AccountNumber:   accountNumber,

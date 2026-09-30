@@ -188,6 +188,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return ticketHandler.HandleCreateBankTransferOrder(ctx, request)
 	case (path == "/api/payment/cancel" || path == "/api/payment/cancel-order") && method == "POST":
 		return ticketHandler.HandleCancelOrder(ctx, request)
+	case path == "/api/payment/payos-webhook" && method == "POST":
+		return ticketHandler.HandlePayOSWebhook(ctx, request)
 	case path == "/api/payment/sepay-webhook" && method == "POST":
 		return ticketHandler.HandleSePayWebhook(ctx, request)
 	case path == "/api/payment/active-order" && method == "GET":

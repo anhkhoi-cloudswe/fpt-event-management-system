@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { AlertCircle, ArrowLeft, Calendar, Clock, CreditCard, MapPin, ShieldCheck, X, XCircle } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Calendar, Clock, CreditCard, ExternalLink, MapPin, ShieldCheck, X, XCircle } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { SeatGrid, type Seat } from '../../components/common/SeatGrid'
 import type { EventDetail } from '../../types/event'
@@ -999,11 +999,14 @@ export default function PublicEventPayment() {
   const seatCodeStr = selectedSeats.length > 0
     ? selectedSeats.map(s => s.seatCode.replace(/[^a-zA-Z0-9]/g, "")).join("")
     : "ONLINE"
+  const isPayOS = bankTransferOrder?.gateway === 'payos'
   const transferMessage = bankTransferOrder?.order_id
-    ? `FEMS ${getCleanAbbreviation(event.title)} ${seatCodeStr} DH${bankTransferOrder.order_id}`
+    ? (isPayOS && bankTransferOrder?.transferDescription ? bankTransferOrder.transferDescription : `FEMS ${getCleanAbbreviation(event.title)} ${seatCodeStr} DH${bankTransferOrder.order_id}`)
     : `FEMS ${getCleanAbbreviation(event.title)} ${seatCodeStr} ${userId || 'GUEST'}`
   const paymentAmount = Number(bankTransferOrder?.amount ?? totalAmount)
-  const vietQrSrc = `https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '2911121319'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${paymentAmount}&des=${encodeURIComponent(transferMessage)}`
+  const vietQrSrc = (isPayOS && bankTransferOrder?.bin && bankTransferOrder?.accountNumber)
+    ? `https://img.vietqr.io/image/${bankTransferOrder.bin}-${bankTransferOrder.accountNumber}-compact2.png?amount=${paymentAmount}&addInfo=${encodeURIComponent(transferMessage)}&accountName=${encodeURIComponent(bankTransferOrder.accountName || '')}`
+    : `https://qr.sepay.vn/img?acc=${import.meta.env.VITE_BANK_ACC || '2911121319'}&bank=${import.meta.env.VITE_BANK_NAME || 'MB'}&amount=${paymentAmount}&des=${encodeURIComponent(transferMessage)}`
 
   return (
     <div className="relative w-full min-h-screen overflow-x-hidden bg-neutral-950 text-white selection:bg-blue-500/30">
@@ -1309,7 +1312,7 @@ export default function PublicEventPayment() {
                             activeMethod === 'qr' ? 'bg-white/10 text-white border border-white/10 shadow-sm' : 'text-neutral-400 hover:text-white hover:bg-white/5'
                           }`}
                         >
-                          VietQR SePay
+                          {isPayOS ? 'VietQR (payOS)' : 'VietQR (SePay)'}
                         </button>
                         <button
                           type="button"
@@ -1324,13 +1327,41 @@ export default function PublicEventPayment() {
 
                       {activeMethod === 'qr' ? (
                         <div className="flex flex-col items-center justify-center text-center py-1 space-y-3">
+                          {/* Gateway Badge */}
+                          <div className="flex items-center justify-center">
+                            {isPayOS ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                                payOS Gateway (Mặc định)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                SePay Backup (Dự phòng)
+                              </span>
+                            )}
+                          </div>
+
                           <div className="bg-white p-3 rounded-2xl border border-white/20 shadow-lg inline-block transform transition-transform hover:scale-105 duration-300">
                             <img
                               src={vietQrSrc}
-                              alt="VietQR SePay Auto Payment"
+                              alt="VietQR Auto Payment"
                               className="w-44 h-44 object-contain"
                             />
                           </div>
+
+                          {bankTransferOrder?.checkoutUrl && (
+                            <a
+                              href={bankTransferOrder.checkoutUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold rounded-xl text-xs transition-all shadow-md hover:shadow-lg"
+                            >
+                              <span>Mở cổng thanh toán payOS</span>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+
                           <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-1.5 flex items-center gap-2 text-xs font-mono text-neutral-300">
                             <span className="text-neutral-500">{t.transferSyntax}</span>
                             <span className="font-bold text-white select-all">{transferMessage}</span>

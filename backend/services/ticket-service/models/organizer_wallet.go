@@ -138,10 +138,12 @@ type TopupWalletRequest struct {
 	Amount float64 `json:"amount"`
 }
 
-// TopupWalletResponse - Kết quả sinh thông tin nạp tiền QR SePay
+// TopupWalletResponse - Kết quả sinh thông tin nạp tiền QR PayOS / SePay
 type TopupWalletResponse struct {
 	OrderID         int64   `json:"orderId"`
 	Amount          float64 `json:"amount"`
+	Gateway         string  `json:"gateway,omitempty"`
+	CheckoutURL     string  `json:"checkoutUrl,omitempty"`
 	TransferContent string  `json:"transferContent"`
 	BankCode        string  `json:"bankCode"`
 	AccountNumber   string  `json:"accountNumber"`

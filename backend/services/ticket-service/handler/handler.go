@@ -22,6 +22,8 @@ import (
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/ticket-service/models"
 	"github.com/fpt-event-services/services/ticket-service/usecase"
+	ticketutils "github.com/fpt-event-services/services/ticket-service/utils"
+	payos "github.com/payOSHQ/payos-lib-golang/v2"
 )
 
 var (
@@ -768,7 +770,7 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 	}
 
 	// Call usecase to create the pending order
-	orderID, amount, err := h.useCase.CreateBankTransferOrder(ctx, userID, req.EventID, req.CategoryTicketID, req.SeatIDs)
+	orderResp, err := h.useCase.CreateBankTransferOrder(ctx, userID, req.EventID, req.CategoryTicketID, req.SeatIDs)
 	if err != nil {
 		if strings.Contains(err.Error(), "[E4002]|") {
 			splitErr := strings.Split(err.Error(), "[E4002]|")
@@ -849,32 +851,10 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 		return createMessageResponse(http.StatusBadRequest, err.Error())
 	}
 
-	createdAt, dbErr := h.useCase.GetBillCreatedAt(ctx, int(orderID))
-	var expireTime time.Time
-	if dbErr == nil {
-		expireTime = createdAt.Add(5 * time.Minute)
-	} else {
-		expireTime = time.Now().Add(5 * time.Minute)
-		createdAt = time.Now()
+	body, err := json.Marshal(orderResp)
+	if err != nil {
+		return createMessageResponse(http.StatusInternalServerError, "Failed to encode response")
 	}
-
-	var ticketIDsStr string
-	if amount == 0 {
-		tids, _ := h.useCase.GetTicketIDsByBillID(ctx, orderID)
-		ticketIDsStr = strings.Join(tids, ",")
-	}
-
-	body, _ := json.Marshal(map[string]interface{}{
-		"order_id":   orderID,
-		"amount":     amount,
-		"expire_at":  expireTime.Format(time.RFC3339),
-		"expiresAt":  expireTime.Format(time.RFC3339),
-		"createdAt":  createdAt.Format(time.RFC3339),
-		"serverTime": time.Now().Format(time.RFC3339),
-		"free":       amount == 0,
-		"ticketIds":  ticketIDsStr,
-		"successUrl": fmt.Sprintf("/dashboard/payment/success?status=success&method=free&ticketIds=%s", url.QueryEscape(ticketIDsStr)),
-	})
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
@@ -883,6 +863,56 @@ func (h *TicketHandler) HandleCreateBankTransferOrder(ctx context.Context, reque
 			"Vary":         "Origin",
 		},
 		Body: string(body),
+	}, nil
+}
+
+// HandlePayOSWebhook - POST /api/payment/payos-webhook
+func (h *TicketHandler) HandlePayOSWebhook(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	log := logger.Default().WithContext(ctx)
+	log.Info("PayOS Webhook Request Received")
+
+	var webhook payos.Webhook
+	if err := json.Unmarshal([]byte(request.Body), &webhook); err != nil {
+		log.Error("PayOS Webhook: Failed to parse request body", "error", err)
+		return createMessageResponse(http.StatusBadRequest, "Invalid JSON payload")
+	}
+
+	payosSvc := ticketutils.GetPayOSService()
+	verifiedData, err := payosSvc.VerifyWebhook(ctx, webhook)
+	if err != nil {
+		log.Error("PayOS Webhook: Signature verification failed", "error", err)
+		return createMessageResponse(http.StatusUnauthorized, "Signature verification failed: "+err.Error())
+	}
+
+	if verifiedData == nil {
+		return createMessageResponse(http.StatusBadRequest, "Empty verified webhook data")
+	}
+
+	log.Info("PayOS Webhook Verified", "order_code", verifiedData.OrderCode, "amount", verifiedData.Amount, "desc", verifiedData.Description, "code", verifiedData.Code)
+
+	if verifiedData.Code == "00" {
+		res, err := h.useCase.ProcessPayOSWebhook(ctx, verifiedData.OrderCode, float64(verifiedData.Amount), verifiedData.Description)
+		if err != nil {
+			log.Error("PayOS Webhook: Failed to process order", "order_code", verifiedData.OrderCode, "error", err)
+			return createMessageResponse(http.StatusInternalServerError, err.Error())
+		}
+		log.Info("PayOS Webhook: Successfully processed", "order_code", verifiedData.OrderCode, "result", res)
+	} else {
+		log.Warn("PayOS Webhook: Received non-success code", "code", verifiedData.Code, "desc", verifiedData.Description)
+	}
+
+	respBody, _ := json.Marshal(map[string]interface{}{
+		"code": "00",
+		"desc": "success",
+		"data": nil,
+	})
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type": "application/json;charset=UTF-8",
+		},
+		Body: string(respBody),
 	}, nil
 }
 
