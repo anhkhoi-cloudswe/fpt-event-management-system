@@ -302,8 +302,23 @@ export function SeatGrid({
     },
   ]
 
+  // Build dynamic section list so ANY ticket category (VIP, STANDARD, or custom names) is rendered
+  const knownKeys = new Set(sectionOrder.map(s => s.key))
+  const dynamicSections = [...sectionOrder]
+  Object.keys(seatsBySection).forEach(catKey => {
+    if (catKey !== 'UNALLOCATED' && !knownKeys.has(catKey)) {
+      dynamicSections.push({
+        key: catKey,
+        label: `${catKey.toUpperCase()} SECTION`,
+        borderColor: 'border-emerald-400 dark:border-emerald-600',
+        bgColor: 'bg-emerald-50/30 dark:bg-emerald-950/5',
+        labelStyle: 'px-3 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs font-semibold rounded-full border border-emerald-300 dark:border-emerald-800'
+      })
+    }
+  })
+
   // Filter out empty sections
-  const sectionsToRender = sectionOrder.filter(section =>
+  const sectionsToRender = dynamicSections.filter(section =>
     seatsBySection[section.key] && Object.keys(seatsBySection[section.key]).length > 0
   )
 

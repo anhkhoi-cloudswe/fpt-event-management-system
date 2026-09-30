@@ -17,8 +17,10 @@ import {
   CreditCard,
   Percent,
   SlidersHorizontal,
-  X
+  X,
+  ExternalLink
 } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import {
   organizerWalletService,
   OrganizerWallet as IOrganizerWallet,
@@ -917,11 +919,30 @@ export default function OrganizerWalletPage() {
                 <h3 className="text-xl font-black text-slate-900 dark:text-white">Quét Mã VietQR Để Nạp Tiền</h3>
                 <p className="text-xs text-slate-400 mt-1">Hệ thống tự động cộng tiền vào ví ngay khi nhận chuyển khoản.</p>
 
-                {/* QR Code image */}
-                <div className="mt-4 flex justify-center">
-                  <div className="p-3 rounded-2xl bg-white shadow-md border border-slate-100">
-                    <img src={topupOrder.qrCodeUrl} alt="VietQR" className="w-56 h-56 object-contain" />
+                {/* QR Code */}
+                <div className="mt-4 flex flex-col items-center justify-center">
+                  <div className="p-3 rounded-2xl bg-white shadow-md border border-slate-100 flex items-center justify-center min-w-[240px] min-h-[240px]">
+                    {topupOrder.qrCodeUrl?.startsWith('http') || topupOrder.qrCodeUrl?.startsWith('data:image') ? (
+                      <img src={topupOrder.qrCodeUrl} alt="VietQR" className="w-56 h-56 object-contain" />
+                    ) : topupOrder.qrCodeUrl ? (
+                      <QRCodeSVG value={topupOrder.qrCodeUrl} size={224} level="M" />
+                    ) : (
+                      <div className="w-56 h-56 flex items-center justify-center text-xs text-slate-400">
+                        Đang tạo mã QR...
+                      </div>
+                    )}
                   </div>
+                  {topupOrder.checkoutUrl && (
+                    <a
+                      href={topupOrder.checkoutUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 mt-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 font-bold text-xs border border-orange-500/30 transition-all active:scale-95"
+                    >
+                      <span>Mở Cổng Thanh Toán payOS</span>
+                      <ExternalLink size={13} />
+                    </a>
+                  )}
                 </div>
 
                 {/* Transfer Info */}
