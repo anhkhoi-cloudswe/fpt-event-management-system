@@ -220,6 +220,18 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return ticketHandler.HandleGetPayoutRequests(ctx, request)
 	case strings.HasPrefix(path, "/api/v1/organizer/events/") && strings.HasSuffix(path, "/settle") && method == "POST":
 		return ticketHandler.HandleSettleEventPayout(ctx, request)
+
+	// ========== Admin Financial Center Routes ==========
+	case path == "/api/v1/admin/finance/overview" && method == "GET":
+		return ticketHandler.HandleGetAdminFinanceOverview(ctx, request)
+	case path == "/api/v1/admin/finance/payouts" && method == "GET":
+		return ticketHandler.HandleGetAdminPayouts(ctx, request)
+	case strings.HasPrefix(path, "/api/v1/admin/finance/payouts/") && strings.HasSuffix(path, "/process") && method == "POST":
+		return ticketHandler.HandleProcessAdminPayout(ctx, request)
+	case path == "/api/v1/admin/finance/receipts" && method == "GET":
+		return ticketHandler.HandleGetAdminFinancialReceipts(ctx, request)
+	case path == "/api/v1/admin/finance/receipts/export" && method == "GET":
+		return ticketHandler.HandleExportAdminFinancialReceipts(ctx, request)
 	}
 
 	return events.APIGatewayProxyResponse{

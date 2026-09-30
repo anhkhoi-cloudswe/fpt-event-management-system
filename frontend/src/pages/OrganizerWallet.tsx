@@ -18,7 +18,9 @@ import {
   Percent,
   SlidersHorizontal,
   X,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  AlertCircle
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import {
@@ -33,18 +35,27 @@ import {
 import { useToast } from '../contexts/ToastContext'
 import { emitWalletRefresh } from '../hooks/useWallet'
 
-const POPULAR_BANKS = [
-  { code: 'MB', name: 'MBBank (Ngân hàng Quân Đội)' },
-  { code: 'VCB', name: 'Vietcombank (Ngoại thương VN)' },
-  { code: 'TCB', name: 'Techcombank (Kỹ thương VN)' },
-  { code: 'VPB', name: 'VPBank (Việt Nam Thịnh Vượng)' },
-  { code: 'ACB', name: 'ACB (Á Châu)' },
-  { code: 'BIDV', name: 'BIDV (Đầu tư & Phát triển VN)' },
-  { code: 'CTG', name: 'VietinBank (Công thương VN)' },
-  { code: 'TPB', name: 'TPBank (Tiên Phong)' },
-  { code: 'STB', name: 'Sacombank (Sài Gòn Thương Tín)' },
-  { code: 'HDB', name: 'HDBank (Phát triển TP.HCM)' },
-  { code: 'VIB', name: 'VIB (Quốc tế VN)' },
+interface BankItem {
+  code: string
+  name: string
+  bin: string
+}
+
+const POPULAR_BANKS: BankItem[] = [
+  { code: 'MB', name: 'MBBank (Ngân hàng Quân Đội)', bin: '970422' },
+  { code: 'VCB', name: 'Vietcombank (Ngoại thương VN)', bin: '970436' },
+  { code: 'TCB', name: 'Techcombank (Kỹ thương VN)', bin: '970407' },
+  { code: 'VPB', name: 'VPBank (Việt Nam Thịnh Vượng)', bin: '970432' },
+  { code: 'ACB', name: 'ACB (Á Châu)', bin: '970416' },
+  { code: 'BIDV', name: 'BIDV (Đầu tư & Phát triển VN)', bin: '970418' },
+  { code: 'CTG', name: 'VietinBank (Công thương VN)', bin: '970415' },
+  { code: 'TPB', name: 'TPBank (Tiên Phong)', bin: '970458' },
+  { code: 'STB', name: 'Sacombank (Sài Gòn Thương Tín)', bin: '970403' },
+  { code: 'HDB', name: 'HDBank (Phát triển TP.HCM)', bin: '970437' },
+  { code: 'VIB', name: 'VIB (Quốc tế VN)', bin: '970441' },
+  { code: 'OCB', name: 'OCB (Phương Đông)', bin: '970448' },
+  { code: 'SHB', name: 'SHB (Sài Gòn - Hà Nội)', bin: '970443' },
+  { code: 'MSB', name: 'MSB (Hàng Hải VN)', bin: '970426' },
 ]
 
 export default function OrganizerWalletPage() {
@@ -96,12 +107,15 @@ export default function OrganizerWalletPage() {
   const [showBankModal, setShowBankModal] = useState(false)
   const [bankForm, setBankForm] = useState({
     bankCode: 'MB',
-    bankName: 'MBBank',
+    bankName: 'MBBank (Ngân hàng Quân Đội)',
     accountNumber: '',
     accountHolderName: '',
     isDefault: true,
   })
   const [bankSubmitting, setBankSubmitting] = useState(false)
+  const [isLookingUp, setIsLookingUp] = useState(false)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [isNameVerified, setIsNameVerified] = useState(false)
 
   // Load wallet overview
   const loadWallet = useCallback(async () => {
@@ -233,10 +247,47 @@ export default function OrganizerWalletPage() {
     }
   }
 
+  // Auto lookup account holder name
+  const handleLookupAccount = async (bankCode: string, accNum: string) => {
+    const cleanAcc = accNum.trim()
+    if (!cleanAcc || cleanAcc.length < 6) {
+      return
+    }
+
+    const selectedBank = POPULAR_BANKS.find((b) => b.code === bankCode)
+    if (!selectedBank) return
+
+    try {
+      setIsLookingUp(true)
+      setLookupError(null)
+      setIsNameVerified(false)
+      const res = await organizerWalletService.lookupBankAccount(selectedBank.bin, cleanAcc)
+      if (res && res.accountName) {
+        setBankForm((prev) => ({
+          ...prev,
+          accountHolderName: res.accountName,
+        }))
+        setIsNameVerified(true)
+      } else {
+        throw new Error('Không thể tra cứu tên chủ tài khoản')
+      }
+    } catch (err: any) {
+      // Khi API ngoài gián đoạn hoặc không tìm thấy
+      setLookupError(err?.message || 'Không thể tra cứu tên chủ tài khoản từ ngân hàng')
+      setIsNameVerified(false)
+    } finally {
+      setIsLookingUp(false)
+    }
+  }
+
   // Handle Add Bank
   const handleAddBank = async () => {
-    if (!bankForm.accountNumber.trim() || !bankForm.accountHolderName.trim()) {
-      showToast('error', 'Vui lòng điền đầy đủ số tài khoản và tên chủ tài khoản')
+    if (!bankForm.accountNumber.trim()) {
+      showToast('error', 'Vui lòng nhập số tài khoản ngân hàng')
+      return
+    }
+    if (!bankForm.accountHolderName.trim() || !isNameVerified) {
+      showToast('error', 'Chưa xác thực được tên chủ tài khoản hợp lệ từ ngân hàng')
       return
     }
     try {
@@ -249,11 +300,13 @@ export default function OrganizerWalletPage() {
       setShowBankModal(false)
       setBankForm({
         bankCode: 'MB',
-        bankName: 'MBBank',
+        bankName: 'MBBank (Ngân hàng Quân Đội)',
         accountNumber: '',
         accountHolderName: '',
         isDefault: true,
       })
+      setIsNameVerified(false)
+      setLookupError(null)
       void loadBankAccounts()
     } catch (err: any) {
       showToast('error', err?.response?.data?.message || err.message || 'Lỗi thêm tài khoản ngân hàng')
@@ -1115,11 +1168,18 @@ export default function OrganizerWalletPage() {
                   value={bankForm.bankCode}
                   onChange={(e) => {
                     const found = POPULAR_BANKS.find((b) => b.code === e.target.value)
+                    const newCode = e.target.value
                     setBankForm({
                       ...bankForm,
-                      bankCode: e.target.value,
-                      bankName: found?.name || e.target.value,
+                      bankCode: newCode,
+                      bankName: found?.name || newCode,
+                      accountHolderName: '',
                     })
+                    setIsNameVerified(false)
+                    setLookupError(null)
+                    if (bankForm.accountNumber.length >= 6) {
+                      void handleLookupAccount(newCode, bankForm.accountNumber)
+                    }
                   }}
                   className="w-full mt-2 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
                 >
@@ -1133,24 +1193,63 @@ export default function OrganizerWalletPage() {
 
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Số tài khoản:</label>
-                <input
-                  type="text"
-                  placeholder="Nhập số tài khoản ngân hàng"
-                  value={bankForm.accountNumber}
-                  onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value.trim() })}
-                  className="w-full mt-2 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-sm text-slate-900 dark:text-white"
-                />
+                <div className="relative mt-2">
+                  <input
+                    type="text"
+                    placeholder="Nhập số tài khoản ngân hàng"
+                    value={bankForm.accountNumber}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9a-zA-Z]/g, '').trim()
+                      setBankForm({ ...bankForm, accountNumber: val, accountHolderName: '' })
+                      setIsNameVerified(false)
+                      setLookupError(null)
+                    }}
+                    onBlur={() => {
+                      if (bankForm.accountNumber.length >= 6) {
+                        void handleLookupAccount(bankForm.bankCode, bankForm.accountNumber)
+                      }
+                    }}
+                    className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500/20"
+                  />
+                  {isLookingUp && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs text-orange-500 font-bold">
+                      <Loader2 size={15} className="animate-spin" />
+                      <span>Tra cứu...</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">Hệ thống sẽ tự động tra cứu tên chủ tài khoản qua cổng liên ngân hàng NAPAS.</p>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tên chủ tài khoản (viết hoa không dấu):</label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: NGUYEN VAN A"
-                  value={bankForm.accountHolderName}
-                  onChange={(e) => setBankForm({ ...bankForm, accountHolderName: e.target.value.toUpperCase() })}
-                  className="w-full mt-2 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-sm uppercase text-slate-900 dark:text-white"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tên chủ tài khoản (Tự động):</label>
+                  {isNameVerified && (
+                    <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-black">
+                      <CheckCircle2 size={13} />
+                      Đã xác thực NAPAS
+                    </span>
+                  )}
+                </div>
+                <div className="relative mt-2">
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder={isLookingUp ? 'Đang tra cứu tên chủ tài khoản...' : 'Tự động hiển thị sau khi nhập STK'}
+                    value={bankForm.accountHolderName}
+                    className={`w-full px-4 py-2.5 rounded-2xl border font-bold text-sm uppercase transition-all ${
+                      isNameVerified
+                        ? 'border-emerald-500/40 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/60 text-slate-500 cursor-not-allowed'
+                    }`}
+                  />
+                </div>
+                {lookupError && (
+                  <div className="flex items-center gap-1.5 text-xs text-red-500 font-bold mt-1.5 animate-fade-in">
+                    <AlertCircle size={14} />
+                    <span>{lookupError}</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 pt-2">
@@ -1169,10 +1268,10 @@ export default function OrganizerWalletPage() {
 
             <button
               onClick={handleAddBank}
-              disabled={bankSubmitting}
-              className="w-full mt-6 py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-sm shadow-lg shadow-orange-950/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              disabled={bankSubmitting || !isNameVerified || !bankForm.accountHolderName.trim()}
+              className="w-full mt-6 py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-sm shadow-lg shadow-orange-950/20 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {bankSubmitting ? 'Đang lưu tài khoản...' : 'Lưu Tài Khoản Ngân Hàng'}
+              {bankSubmitting ? 'Đang lưu tài khoản...' : isNameVerified ? 'Lưu Tài Khoản Ngân Hàng' : 'Vui Lòng Nhập STK Để Tra Cứu'}
             </button>
           </div>
         </div>

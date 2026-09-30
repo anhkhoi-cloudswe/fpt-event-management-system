@@ -150,3 +150,81 @@ type TopupWalletResponse struct {
 	AccountName     string  `json:"accountName"`
 	QRCodeURL       string  `json:"qrCodeUrl"`
 }
+
+// ============================================================
+// Admin Financial Center Models
+// ============================================================
+
+// AdminFinanceOverviewResponse - 4 chỉ số KPI tổng thể sàn cho Role Admin
+type AdminFinanceOverviewResponse struct {
+	TotalCommission     float64 `json:"totalCommission"`
+	TotalUsageFees      float64 `json:"totalUsageFees"`
+	TotalEscrowLocked   float64 `json:"totalEscrowLocked"`
+	TotalWalletsBalance float64 `json:"totalWalletsBalance"`
+}
+
+// AdminPayoutItem - Chi tiết lệnh rút tiền kèm thông tin Organizer và ngân hàng
+type AdminPayoutItem struct {
+	PayoutID          int        `json:"payoutId"`
+	UserID            int        `json:"userId"`
+	OrganizerName     string     `json:"organizerName"`
+	OrganizerEmail    string     `json:"organizerEmail"`
+	BankAccountID     int        `json:"bankAccountId"`
+	BankCode          string     `json:"bankCode"`
+	BankName          string     `json:"bankName"`
+	AccountNumber     string     `json:"accountNumber"`
+	AccountHolderName string     `json:"accountHolderName"`
+	Amount            float64    `json:"amount"`
+	Status            string     `json:"status"` // PENDING, PROCESSING, COMPLETED, REJECTED
+	Note              *string    `json:"note,omitempty"`
+	RejectReason      *string    `json:"rejectReason,omitempty"`
+	ProcessedBy       *int       `json:"processedBy,omitempty"`
+	ProcessorName     *string    `json:"processorName,omitempty"`
+	ProcessedAt       *time.Time `json:"processedAt,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt"`
+}
+
+// AdminPayoutsResponse - Danh sách lệnh rút tiền phân trang cho Admin
+type AdminPayoutsResponse struct {
+	Payouts      []AdminPayoutItem `json:"payouts"`
+	TotalRecords int               `json:"totalRecords"`
+	CurrentPage  int               `json:"currentPage"`
+	Limit        int               `json:"limit"`
+	TotalPages   int               `json:"totalPages"`
+}
+
+// ProcessPayoutRequest - Yêu cầu duyệt hoặc từ chối lệnh rút tiền
+type ProcessPayoutRequest struct {
+	Action            string `json:"action"` // APPROVE / COMPLETE, REJECT
+	BankReferenceCode string `json:"bankReferenceCode,omitempty"`
+	Note              string `json:"note,omitempty"`
+	RejectReason      string `json:"rejectReason,omitempty"`
+}
+
+// AdminReceiptItem - Biên lai tài chính sàn kèm tên sự kiện & organizer
+type AdminReceiptItem struct {
+	ReceiptID           int       `json:"receiptId"`
+	OrderID             int64     `json:"orderId"`
+	BillID              *int      `json:"billId,omitempty"`
+	TicketID            *int      `json:"ticketId,omitempty"`
+	EventID             int       `json:"eventId"`
+	EventTitle          string    `json:"eventTitle"`
+	OrganizerID         int       `json:"organizerId"`
+	OrganizerName       string    `json:"organizerName"`
+	GrossAmount         float64   `json:"grossAmount"`
+	SystemFeePercentage float64   `json:"systemFeePercentage"`
+	FixedFee            float64   `json:"fixedFee"`
+	CommissionAmount    float64   `json:"commissionAmount"`
+	NetAmount           float64   `json:"netAmount"`
+	Currency            string    `json:"currency"`
+	CreatedAt           time.Time `json:"createdAt"`
+}
+
+// AdminReceiptsResponse - Danh sách biên lai tài chính phân trang
+type AdminReceiptsResponse struct {
+	Receipts     []AdminReceiptItem `json:"receipts"`
+	TotalRecords int                `json:"totalRecords"`
+	CurrentPage  int                `json:"currentPage"`
+	Limit        int                `json:"limit"`
+	TotalPages   int                `json:"totalPages"`
+}
