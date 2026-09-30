@@ -112,6 +112,10 @@ export default function Login() {
   }
 
   useEffect(() => {
+    document.documentElement.classList.remove('dark')
+  }, [])
+
+  useEffect(() => {
     let timer: number
     if (lockoutCountdown > 0) {
       timer = window.setTimeout(() => setLockoutCountdown(lockoutCountdown - 1), 1000)
@@ -520,7 +524,7 @@ export default function Login() {
               placeholder="email@fpt.edu.vn"
               required
               disabled={loading || lockoutCountdown > 0}
-              className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
+              className={`w-full px-4 py-3 !bg-slate-50 !text-slate-900 border border-slate-200 rounded-2xl outline-none font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:!bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
                 emailError 
                   ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
                   : ''
@@ -551,7 +555,7 @@ export default function Login() {
                 placeholder="Nhập mật khẩu"
                 required
                 disabled={loading || lockoutCountdown > 0}
-                className={`w-full px-4 py-3 pr-10 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-900 font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
+                className={`w-full px-4 py-3 pr-10 !bg-slate-50 !text-slate-900 border border-slate-200 rounded-2xl outline-none font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:!bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
                   passwordError 
                     ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
                     : ''
@@ -626,7 +630,7 @@ export default function Login() {
             type="button"
             onClick={signInWithGoogle}
             disabled={loading || lockoutCountdown > 0}
-            className="!mt-3 w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 py-3.5 px-4 rounded-2xl hover:bg-slate-50 font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 hover:shadow"
+            className="!mt-3 w-full flex items-center justify-center gap-2.5 !bg-white border border-slate-200 hover:border-slate-300 !text-slate-700 py-3.5 px-4 rounded-2xl hover:!bg-slate-50 font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 hover:shadow"
           >
             <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
               <path
@@ -646,7 +650,7 @@ export default function Login() {
                 d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.4 0 3.25 2.7 1.24 6.64l3.93 3.08c.96-2.9 3.65-5.05 6.83-5.05z"
               />
             </svg>
-            <span>Đăng nhập bằng Google</span>
+            <span className="!text-slate-700 font-extrabold text-sm">Đăng nhập bằng Google</span>
           </button>
 
           {/* Reset Password & Sign Up */}

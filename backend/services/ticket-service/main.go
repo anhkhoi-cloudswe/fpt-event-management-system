@@ -74,6 +74,9 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	if path == "/internal/scheduler/pending-ticket-cleanup" && method == "POST" {
 		return ticketSchedulerHandler.HandlePendingTicketCleanup(ctx, request)
 	}
+	if path == "/internal/scheduler/event-settlement" && method == "POST" {
+		return ticketSchedulerHandler.HandleEventSettlement(ctx, request)
+	}
 
 	// ========== Internal Wallet Routes ==========
 	if strings.HasPrefix(path, "/internal/wallet/") {
@@ -195,6 +198,26 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return ticketHandler.HandleGetWalletBalance(ctx, request)
 	case path == "/api/wallet/pay-ticket" && method == "POST":
 		return ticketHandler.HandleWalletPayTicket(ctx, request)
+
+	// ========== Organizer Wallet & Settlement Routes ==========
+	case path == "/api/v1/organizer/wallet" && method == "GET":
+		return ticketHandler.HandleGetOrganizerWallet(ctx, request)
+	case path == "/api/v1/organizer/wallet/transactions" && method == "GET":
+		return ticketHandler.HandleGetOrganizerWalletTransactions(ctx, request)
+	case strings.HasPrefix(path, "/api/v1/organizer/events/") && strings.HasSuffix(path, "/financial-report") && method == "GET":
+		return ticketHandler.HandleGetEventFinancialReport(ctx, request)
+	case path == "/api/v1/organizer/wallet/topup" && method == "POST":
+		return ticketHandler.HandleOrganizerWalletTopup(ctx, request)
+	case path == "/api/v1/organizer/bank-accounts" && method == "POST":
+		return ticketHandler.HandleCreateOrganizerBankAccount(ctx, request)
+	case path == "/api/v1/organizer/bank-accounts" && method == "GET":
+		return ticketHandler.HandleGetOrganizerBankAccounts(ctx, request)
+	case path == "/api/v1/organizer/wallet/payout" && method == "POST":
+		return ticketHandler.HandleRequestPayout(ctx, request)
+	case (path == "/api/v1/organizer/wallet/payouts" || path == "/api/v1/organizer/payouts") && method == "GET":
+		return ticketHandler.HandleGetPayoutRequests(ctx, request)
+	case strings.HasPrefix(path, "/api/v1/organizer/events/") && strings.HasSuffix(path, "/settle") && method == "POST":
+		return ticketHandler.HandleSettleEventPayout(ctx, request)
 	}
 
 	return events.APIGatewayProxyResponse{

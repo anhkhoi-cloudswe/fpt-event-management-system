@@ -1130,6 +1130,14 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			}
 		}
 
+		numTicketsFree := len(bookedIDsFree)
+		if numTicketsFree == 0 {
+			numTicketsFree = 1
+		}
+		if quotaErr := r.EnforceFreeEventQuotaTx(ctx, tx, eventID, numTicketsFree); quotaErr != nil {
+			return 0, 0, quotaErr
+		}
+
 		if err = tx.Commit(); err != nil {
 			return 0, 0, apperrors.DatabaseError(err)
 		}
@@ -1200,6 +1208,17 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway string, amount float64, content string, transferAt string) (string, error) {
 	log := logger.Default().WithContext(ctx)
 	log.Info("SePay Webhook received", "gateway", gateway, "amount", amount, "content", content, "transfer_at", transferAt)
+
+	// 0. Kiểm tra giao dịch nạp tiền ví Organizer (TOPUP)
+	topupRe := regexp.MustCompile(`(?:TOPUP|NAPTIEN)\s*(\d+)`)
+	topupMatches := topupRe.FindStringSubmatch(strings.ToUpper(content))
+	if len(topupMatches) >= 2 {
+		orderIDStr := topupMatches[1]
+		orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
+		if err == nil {
+			return r.ProcessSePayTopup(ctx, gateway, amount, orderID)
+		}
+	}
 
 	// 1. Phân tách chuỗi content để tìm order_id (bill_id)
 	// Quét tìm từ khóa HD, DH, hoặc BILL nằm sát các chữ số cuối cùng của chuỗi nội dung
@@ -1352,6 +1371,19 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 			return "", err
 		}
 		bookedTicketIDs = append(bookedTicketIDs, t.ticketID)
+	}
+
+	// Xử lý khấu trừ hoa hồng nền tảng và cộng số dư tạm giữ (pending_balance) cho Organizer
+	if len(bookedTicketIDs) > 0 && billAmount > 0 {
+		ticketPrices := make(map[int]float64)
+		for _, t := range tickets {
+			var p float64
+			_ = tx.QueryRowContext(ctx, "SELECT price FROM category_ticket WHERE category_ticket_id = $1", t.categoryTicketID).Scan(&p)
+			ticketPrices[t.ticketID] = p
+		}
+		if commErr := r.ProcessPaidOrderCommissionTx(ctx, tx, orderID, eventID, bookedTicketIDs, ticketPrices); commErr != nil {
+			log.Warn("SePay Webhook: Error calculating commission", "error", commErr)
+		}
 	}
 
 	// Commit transaction

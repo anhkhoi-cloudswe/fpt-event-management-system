@@ -297,6 +297,7 @@ export default function Layout() {
         )}
         {user?.role === 'ORGANIZER' && (
           <>
+            {renderLink("/dashboard/organizer/wallet", Wallet, currentLanguage === 'en' ? "Wallet & Revenue" : "Ví & Doanh thu", handleLinkClick, closeMobile)}
             {renderLink("/dashboard/check-in", CheckSquare, currentLanguage === 'en' ? "Check-in" : "Check-in", handleLinkClick, closeMobile)}
             {renderLink("/dashboard/system-config", Sliders, currentLanguage === 'en' ? "Configuration" : "Cấu hình", handleLinkClick, closeMobile)}
           </>
@@ -346,15 +347,19 @@ export default function Layout() {
             </div>
 
             {showWallet && (
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all ${isDarkMode
-                ? 'bg-slate-800 border-slate-700 text-orange-400 font-bold'
-                : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 text-slate-800 font-bold'
-                }`}>
+              <Link
+                to={isOrganizer ? "/dashboard/organizer/wallet" : "/dashboard/bills"}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all hover:scale-105 active:scale-95 ${isDarkMode
+                  ? 'bg-slate-800 border-slate-700 hover:border-orange-500/50 text-orange-400 font-bold'
+                  : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 hover:border-orange-400 text-slate-800 font-bold'
+                  }`}
+                title={isOrganizer ? (currentLanguage === 'en' ? "View Wallet & Revenue" : "Xem Ví & Doanh thu") : (currentLanguage === 'en' ? "View Bills" : "Xem Hóa đơn")}
+              >
                 <Wallet size={16} className="text-orange-500" />
                 <span className="text-xs">
                   {balanceLoading ? '...' : balance.toLocaleString('vi-VN')} đ
                 </span>
-              </div>
+              </Link>
             )}
 
             {/* Clickable User profile summary to toggle popover settings */}

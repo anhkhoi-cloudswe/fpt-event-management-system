@@ -6,9 +6,10 @@
 // - useState: lưu state (selectedEventId, dateRange, stats...)
 // - useEffect: chạy side-effect (fetch API khi token / selectedEventId thay đổi)
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
 // Icon UI (dashboard) từ lucide-react
-import { Calendar, Users, CheckCircle, XCircle, Download, Filter } from 'lucide-react'
+import { Calendar, Users, CheckCircle, XCircle, Download, Filter, Wallet } from 'lucide-react'
 
 // date-fns: format ngày giờ cho đẹp (dùng locale Việt Nam)
 import { format } from 'date-fns'
@@ -896,8 +897,17 @@ export default function Reports() {
   return (
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen py-4 px-4 sm:px-6 lg:px-8">
       {/* ===== Header ===== */}
-      <div className="flex items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Báo cáo tham dự</h1>
+        {user?.role === 'ORGANIZER' && (
+          <Link
+            to="/dashboard/organizer/wallet"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold text-xs rounded-xl shadow-md shadow-orange-500/20 active:scale-95 transition-all w-fit"
+          >
+            <Wallet size={16} />
+            <span>Ví & Doanh thu Sự kiện</span>
+          </Link>
+        )}
       </div>
 
       {/* ===== Overall Statistics (5 cards) ===== */}

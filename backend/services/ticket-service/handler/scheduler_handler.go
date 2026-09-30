@@ -15,19 +15,22 @@ import (
 // Local mode: these endpoints are typically NOT called (goroutine tickers run instead).
 // AWS mode: EventBridge sends a simulated APIGatewayProxyRequest to trigger cleanup.
 type TicketSchedulerHandler struct {
-	pendingCleanup *scheduler.PendingTicketCleanupScheduler
+	pendingCleanup  *scheduler.PendingTicketCleanupScheduler
+	eventSettlement *scheduler.EventSettlementScheduler
 }
 
 // NewTicketSchedulerHandlerWithDB creates the scheduler handler and its underlying schedulers.
 func NewTicketSchedulerHandlerWithDB(dbConn *sql.DB) *TicketSchedulerHandler {
 	return &TicketSchedulerHandler{
-		pendingCleanup: scheduler.NewPendingTicketCleanupScheduler(dbConn, 5),
+		pendingCleanup:  scheduler.NewPendingTicketCleanupScheduler(dbConn, 5),
+		eventSettlement: scheduler.NewEventSettlementScheduler(dbConn, 5),
 	}
 }
 
 // StartSchedulers starts the background goroutine tickers (local mode only).
 func (h *TicketSchedulerHandler) StartSchedulers() {
 	h.pendingCleanup.Start()
+	h.eventSettlement.Start()
 }
 
 // HandlePendingTicketCleanup handles POST /internal/scheduler/pending-ticket-cleanup
@@ -38,6 +41,15 @@ func (h *TicketSchedulerHandler) HandlePendingTicketCleanup(ctx context.Context,
 	}
 	h.pendingCleanup.RunOnce()
 	return ticketSchedulerResponse(http.StatusOK, map[string]string{"status": "ok", "job": "pending-ticket-cleanup"})
+}
+
+// HandleEventSettlement handles POST /internal/scheduler/event-settlement
+func (h *TicketSchedulerHandler) HandleEventSettlement(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	if !isTicketSchedulerCall(request) {
+		return ticketSchedulerResponse(http.StatusForbidden, map[string]string{"error": "internal only"})
+	}
+	h.eventSettlement.RunOnce()
+	return ticketSchedulerResponse(http.StatusOK, map[string]string{"status": "ok", "job": "event-settlement"})
 }
 
 func isTicketSchedulerCall(request events.APIGatewayProxyRequest) bool {
