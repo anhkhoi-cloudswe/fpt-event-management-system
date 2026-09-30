@@ -38,6 +38,7 @@ import PublicEventPage from './pages/events/PublicEventPage.tsx'
 import PublicEventPayment from './pages/events/PublicEventPayment.tsx'
 import AttendanceConfirm from './pages/AttendanceConfirm.tsx'
 import OrganizerWalletPage from './pages/OrganizerWallet.tsx'
+import OrganizerPolicy from './pages/OrganizerPolicy.tsx'
 
 
 import { useState } from 'react'
@@ -280,6 +281,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/guest" element={<PublicRoute><GuestLanding /></PublicRoute>} />
       <Route path="/policy" element={<SystemPolicy />} />
+      <Route path="/organizer-policy" element={<OrganizerPolicy />} />
       {/* Public payment callback routes for VNPay redirects */}
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/payment-failed" element={<PaymentFailed />} />
@@ -330,6 +332,7 @@ function AppRoutes() {
         <Route path="reports" element={<Reports />} />
         <Route path="organizer/wallet" element={<OrganizerWalletPage />} />
         <Route path="wallet" element={<OrganizerWalletPage />} />
+        <Route path="organizer-policy" element={<OrganizerPolicy />} />
         <Route path="report-requests" element={
           <StaffRoute>
             <ReportRequests />
