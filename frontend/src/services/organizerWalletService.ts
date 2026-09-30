@@ -88,6 +88,8 @@ export interface PayoutRequest {
 export interface TopupOrder {
   orderId: number
   amount: number
+  gateway?: string
+  checkoutUrl?: string
   transferContent: string
   bankCode: string
   accountNumber: string

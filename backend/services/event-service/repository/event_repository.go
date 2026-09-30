@@ -3110,6 +3110,19 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 	}
 	log.Printf("[UpdateEventDetails] Event area_id: %v", areaID)
 
+	// If area_id is missing, but event is ONSITE or HYBRID, ensure area and seats!
+	var eventFormat string
+	var eventCapacity int
+	var customVenue sql.NullString
+	_ = tx.QueryRowContext(ctx, "SELECT event_format, COALESCE(max_seats, 100), custom_venue_name FROM Event WHERE event_id = $1", updateReq.EventID).Scan(&eventFormat, &eventCapacity, &customVenue)
+	if (!areaID.Valid || areaID.Int64 <= 0) && eventFormat != "ONLINE" {
+		ensuredAreaID, err := r.ensureAreaAndSeatsForEvent(ctx, tx, updateReq.EventID, eventFormat, customVenue.String, eventCapacity)
+		if err == nil && ensuredAreaID > 0 {
+			areaID = sql.NullInt64{Int64: ensuredAreaID, Valid: true}
+			log.Printf("[UpdateEventDetails] Ensured area_id=%d for event %d", ensuredAreaID, updateReq.EventID)
+		}
+	}
+
 	// Check if there are any existing bookings
 	var bookingCount int
 	checkBookingsQuery := `
@@ -3250,7 +3263,13 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 		mainSpeakerID = speakerIDs[0]
 	}
 
-	updateEventQuery := `UPDATE Event SET banner_url = $1, speaker_id = $2 WHERE event_id = $3`
+	updateEventQuery := `
+		UPDATE Event 
+		SET banner_url = $1, 
+		    speaker_id = $2,
+		    status = CASE WHEN status = 'UPDATING' THEN 'OPEN' ELSE status END
+		WHERE event_id = $3
+	`
 	log.Printf("[SQL_EXECUTE] UPDATE Event ID=%d: speaker_id=%v, banner_url=%v", updateReq.EventID, mainSpeakerID, bannerURL)
 	result, err := tx.ExecContext(ctx, updateEventQuery, bannerURL, mainSpeakerID, updateReq.EventID)
 	if err != nil {
@@ -3463,7 +3482,42 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 				}
 
 				if len(seatIDs) < totalNeeded {
-					return fmt.Errorf("insufficient seats: have %d, need %d", len(seatIDs), totalNeeded)
+					log.Printf("[UpdateEventDetails] Found %d seats, less than needed %d - initializing missing seats", len(seatIDs), totalNeeded)
+					seatsPerRow := 10
+					rowsNeeded := (totalNeeded + seatsPerRow - 1) / seatsPerRow
+					created := 0
+					var values []string
+					var params []interface{}
+					paramIndex := 1
+					for r := 0; created < totalNeeded && r < rowsNeeded; r++ {
+						rowLetter := rowNameFromIndex(r)
+						for c := 1; c <= seatsPerRow && created < totalNeeded; c++ {
+							seatCode := fmt.Sprintf("%s%d", rowLetter, c)
+							values = append(values, fmt.Sprintf("($%d, $%d, $%d, $%d, 'ACTIVE')", paramIndex, paramIndex+1, paramIndex+2, paramIndex+3))
+							params = append(params, areaID.Int64, seatCode, rowLetter, strconv.Itoa(c))
+							paramIndex += 4
+							created++
+						}
+					}
+					if len(values) > 0 {
+						insertSeatsQuery := `INSERT INTO Seat (area_id, seat_code, row_no, col_no, status) VALUES ` + strings.Join(values, ", ") + ` ON CONFLICT (area_id, seat_code) DO NOTHING`
+						_, _ = tx.ExecContext(ctx, insertSeatsQuery, params...)
+					}
+					// Re-fetch seats
+					rows, err = tx.QueryContext(ctx, getSeatIDsQuery, areaID.Int64)
+					if err == nil {
+						seatIDs = []int64{}
+						seatCodes = []string{}
+						for rows.Next() {
+							var sID int64
+							var sCode, rNo, cNo string
+							if err := rows.Scan(&sID, &sCode, &rNo, &cNo); err == nil {
+								seatIDs = append(seatIDs, sID)
+								seatCodes = append(seatCodes, sCode)
+							}
+						}
+						rows.Close()
+					}
 				}
 
 				// Sequential allocation
@@ -4477,6 +4531,88 @@ func (r *EventRepository) DeleteSampleBanner(ctx context.Context, bannerID int) 
 	return nil
 }
 
+// ensureAreaAndSeatsForEvent ensures that an ONSITE or HYBRID event has a valid area_id and initialized seats in Seat table.
+func (r *EventRepository) ensureAreaAndSeatsForEvent(ctx context.Context, tx *sql.Tx, eventID int, format string, customVenue string, capacity int) (int64, error) {
+	if format == "ONLINE" {
+		return 0, nil
+	}
+	if capacity <= 0 {
+		capacity = 100
+	}
+
+	// 1. Check existing area_id on Event
+	var areaID sql.NullInt64
+	err := tx.QueryRowContext(ctx, "SELECT area_id FROM Event WHERE event_id = $1", eventID).Scan(&areaID)
+	if err != nil && err != sql.ErrNoRows {
+		return 0, fmt.Errorf("failed to check event area: %w", err)
+	}
+
+	// 2. If no area, create one in venue_area
+	if !areaID.Valid || areaID.Int64 <= 0 {
+		var venueID int
+		err = tx.QueryRowContext(ctx, "SELECT venue_id FROM venue WHERE venue_name = 'Địa Điểm Tự Do' LIMIT 1").Scan(&venueID)
+		if err != nil {
+			err = tx.QueryRowContext(ctx, "INSERT INTO venue (venue_name, location, status) VALUES ('Địa Điểm Tự Do', 'Tự do ngoài trường', 'AVAILABLE') RETURNING venue_id").Scan(&venueID)
+			if err != nil {
+				_ = tx.QueryRowContext(ctx, "SELECT venue_id FROM venue ORDER BY venue_id ASC LIMIT 1").Scan(&venueID)
+			}
+		}
+
+		areaName := fmt.Sprintf("Khu vực sự kiện #%d", eventID)
+		if strings.TrimSpace(customVenue) != "" {
+			areaName = fmt.Sprintf("%s (#%d)", strings.TrimSpace(customVenue), eventID)
+		}
+
+		var newAreaID int64
+		err = tx.QueryRowContext(ctx, "INSERT INTO venue_area (venue_id, area_name, capacity, status) VALUES ($1, $2, $3, 'AVAILABLE') RETURNING area_id", venueID, areaName, capacity).Scan(&newAreaID)
+		if err != nil {
+			err = tx.QueryRowContext(ctx, "SELECT area_id FROM venue_area WHERE venue_id = $1 AND area_name = $2 LIMIT 1", venueID, areaName).Scan(&newAreaID)
+			if err != nil {
+				return 0, fmt.Errorf("failed to create venue_area: %w", err)
+			}
+		}
+
+		areaID = sql.NullInt64{Int64: newAreaID, Valid: true}
+		_, err = tx.ExecContext(ctx, "UPDATE Event SET area_id = $1 WHERE event_id = $2", newAreaID, eventID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to link area to event: %w", err)
+		}
+		log.Printf("[ensureAreaAndSeatsForEvent] Created/linked area_id=%d for eventID=%d", newAreaID, eventID)
+	}
+
+	// 3. Check existing seats count for this area
+	var seatCount int
+	_ = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM Seat WHERE area_id = $1", areaID.Int64).Scan(&seatCount)
+	if seatCount < capacity {
+		seatsPerRow := 10
+		rowsNeeded := (capacity + seatsPerRow - 1) / seatsPerRow
+		created := 0
+		var values []string
+		var params []interface{}
+		paramIndex := 1
+		for row := 0; created < capacity && row < rowsNeeded; row++ {
+			rowLetter := rowNameFromIndex(row)
+			for col := 1; col <= seatsPerRow && created < capacity; col++ {
+				seatCode := fmt.Sprintf("%s%d", rowLetter, col)
+				values = append(values, fmt.Sprintf("($%d, $%d, $%d, $%d, 'ACTIVE')", paramIndex, paramIndex+1, paramIndex+2, paramIndex+3))
+				params = append(params, areaID.Int64, seatCode, rowLetter, strconv.Itoa(col))
+				paramIndex += 4
+				created++
+			}
+		}
+		if len(values) > 0 {
+			insertSeatsQuery := `INSERT INTO Seat (area_id, seat_code, row_no, col_no, status) VALUES ` + strings.Join(values, ", ") + ` ON CONFLICT (area_id, seat_code) DO NOTHING`
+			_, err = tx.ExecContext(ctx, insertSeatsQuery, params...)
+			if err != nil {
+				return 0, fmt.Errorf("failed to initialize seats for area %d: %w", areaID.Int64, err)
+			}
+			log.Printf("[ensureAreaAndSeatsForEvent] Initialized %d seats for area_id=%d", created, areaID.Int64)
+		}
+	}
+
+	return areaID.Int64, nil
+}
+
 func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int, req *models.CreateEventRequestBody) (int, error) {
 	req.EventFormat = normalizeEventFormat(req.EventFormat)
 	if !isValidEventFormat(req.EventFormat) {
@@ -4495,7 +4631,7 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 			banner_url, status, created_by, created_at,
 			event_format, custom_venue_name, custom_location,
 			org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret
-		) VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, NOW(), $8, $9, $10, $11, $12, $13, $14, $15)
+		) VALUES ($1, $2, $3, $4, $5, $6, 'UPDATING', $7, NOW(), $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING event_id
 	`
 	var eventID int
@@ -4600,6 +4736,62 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 
 			if _, err := tx.ExecContext(ctx, insertTicketQuery, eventID, name, description, roundedPrice, *ticket.MaxQuantity, status); err != nil {
 				return 0, fmt.Errorf("failed to create independent event ticket: %w", err)
+			}
+		}
+	}
+
+	// Ensure area and seats for ONSITE / HYBRID independent event
+	if req.EventFormat != "ONLINE" {
+		cVenue := ""
+		if req.CustomVenueName != nil {
+			cVenue = *req.CustomVenueName
+		}
+		cap := 100
+		if req.ExpectedCapacity != nil && *req.ExpectedCapacity > 0 {
+			cap = *req.ExpectedCapacity
+		}
+		areaID, err := r.ensureAreaAndSeatsForEvent(ctx, tx, eventID, req.EventFormat, cVenue, cap)
+		if err != nil {
+			return 0, fmt.Errorf("failed to setup venue area and seats: %w", err)
+		}
+
+		// If tickets were provided at creation time, allocate them!
+		if len(req.Tickets) > 0 && areaID > 0 {
+			catRows, err := tx.QueryContext(ctx, "SELECT category_ticket_id, name, max_quantity, price FROM category_ticket WHERE event_id = $1 ORDER BY price DESC", eventID)
+			if err == nil {
+				type tAlloc struct {
+					catID int64
+					maxQ  int
+				}
+				var allocs []tAlloc
+				for catRows.Next() {
+					var cid int64
+					var name string
+					var maxQ int
+					var price float64
+					_ = catRows.Scan(&cid, &name, &maxQ, &price)
+					allocs = append(allocs, tAlloc{catID: cid, maxQ: maxQ})
+				}
+				catRows.Close()
+
+				sRows, err := tx.QueryContext(ctx, "SELECT seat_id FROM Seat WHERE area_id = $1 ORDER BY LENGTH(row_no) ASC, row_no ASC, CASE WHEN col_no ~ '^[0-9]+$' THEN col_no::integer ELSE 0 END ASC, seat_code ASC", areaID)
+				if err == nil {
+					var sIDs []int64
+					for sRows.Next() {
+						var sid int64
+						_ = sRows.Scan(&sid)
+						sIDs = append(sIDs, sid)
+					}
+					sRows.Close()
+
+					seatIdx := 0
+					for _, al := range allocs {
+						for q := 0; q < al.maxQ && seatIdx < len(sIDs); q++ {
+							_, _ = tx.ExecContext(ctx, "UPDATE Seat SET category_ticket_id = $1 WHERE seat_id = $2", al.catID, sIDs[seatIdx])
+							seatIdx++
+						}
+					}
+				}
 			}
 		}
 	}
