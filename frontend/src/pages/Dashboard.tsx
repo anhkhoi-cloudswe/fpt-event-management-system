@@ -38,7 +38,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 // Import icon Calendar để hiển thị placeholder / background khi không có banner
 
-import { Calendar, Search } from 'lucide-react'
+import { Calendar, Search, ShieldCheck, Receipt, ArrowRight } from 'lucide-react'
 
 
 
@@ -2168,6 +2168,37 @@ export default function Dashboard() {
       )}
 
 
+
+      {/* ===================== ORGANIZER DASHBOARD FOOTER ===================== */}
+      {user?.role === 'ORGANIZER' && (
+        <div className="mt-14 pt-6 border-t border-slate-200/80 dark:border-slate-800/80">
+          <div className="bg-gradient-to-r from-orange-500/5 via-amber-500/5 to-slate-500/5 dark:from-orange-950/20 dark:via-slate-900 dark:to-slate-950 p-6 rounded-3xl border border-orange-200/60 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3.5 text-center sm:text-left">
+              <div className="w-10 h-10 rounded-2xl bg-orange-500/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 shadow-inner">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                  {currentLanguage === 'en' ? 'FEMS Organizer Financial & Operating Policy' : 'Chính Sách Tài Chính & Vận Hành Ban Tổ Chức'}
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                  {currentLanguage === 'en'
+                    ? 'Learn about platform fee (10% + 1.000đ), Escrow pending balance, automated settlement & payout guidelines.'
+                    : 'Tìm hiểu về biểu phí sàn (10% + 1.000đ), cơ chế ký quỹ (Escrow), tự động quyết toán sau sự kiện & quy trình rút tiền.'}
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/organizer-policy"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-900/40 hover:bg-orange-50 dark:hover:bg-slate-700 shadow-sm active:scale-95 transition-all shrink-0"
+            >
+              <Receipt size={14} />
+              {currentLanguage === 'en' ? 'View Policy Details' : 'Xem Chính Sách Ban Tổ Chức'}
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* ===================== MODAL CHI TIẾT EVENT ===================== */}
 

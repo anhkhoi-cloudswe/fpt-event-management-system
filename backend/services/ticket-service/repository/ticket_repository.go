@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"github.com/fpt-event-services/common/qrcode"
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/ticket-service/models"
+	ticketutils "github.com/fpt-event-services/services/ticket-service/utils"
 )
 
 type UserPenalty struct {
@@ -782,9 +784,95 @@ func (r *TicketRepository) GetBillsByUserIDPaginated(ctx context.Context, userID
 	}, nil
 }
 
-// CreateBankTransferOrder - Tạo đơn hàng thanh toán chuyển khoản ngân hàng (SePay)
-// Trả về order_id (bill_id) và amount
-func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int) (int64, float64, error) {
+// buildBankTransferOrderResponse generates a unified payment response, prioritizing payOS with fallback to SePay
+func (r *TicketRepository) buildBankTransferOrderResponse(ctx context.Context, billID int64, totalAmount float64, createdAt time.Time) (*models.BankTransferOrderResponse, error) {
+	expireTime := createdAt.Add(5 * time.Minute)
+
+	// Free order (0 VND)
+	if totalAmount <= 0 {
+		ticketIDs, _ := r.GetTicketIDsByBillID(ctx, billID)
+		tidsStr := strings.Join(ticketIDs, ",")
+		return &models.BankTransferOrderResponse{
+			OrderID:    billID,
+			Amount:     0,
+			Gateway:    models.GatewaySePay,
+			ExpireAt:   expireTime.Format(time.RFC3339),
+			ExpiresAt:  expireTime.Format(time.RFC3339),
+			CreatedAt:  createdAt.Format(time.RFC3339),
+			ServerTime: time.Now().Format(time.RFC3339),
+			Free:       true,
+			TicketIDs:  tidsStr,
+			SuccessURL: fmt.Sprintf("/dashboard/payment/success?status=success&method=free&ticketIds=%s", url.QueryEscape(tidsStr)),
+		}, nil
+	}
+
+	// 1. Try PayOS first (Primary Gateway)
+	payosSvc := ticketutils.GetPayOSService()
+	if payosSvc.IsConfigured() {
+		frontendURL := strings.TrimRight(os.Getenv("FRONTEND_URL"), "/")
+		if frontendURL == "" {
+			frontendURL = "http://localhost:3000"
+		}
+		returnURL := fmt.Sprintf("%s/dashboard/payment/success?status=success&method=payos&billId=%d", frontendURL, billID)
+		cancelURL := fmt.Sprintf("%s/dashboard/payment/cancel?billId=%d", frontendURL, billID)
+		desc := fmt.Sprintf("FEMS DH%d", billID)
+
+		payosResp, payosErr := payosSvc.CreatePaymentLink(ctx, billID, int(totalAmount), desc, cancelURL, returnURL)
+		if payosErr == nil && payosResp != nil {
+			// Update Bill method to PAYOS
+			_, _ = r.db.ExecContext(ctx, "UPDATE Bill SET payment_method = 'PAYOS' WHERE bill_id = $1", billID)
+
+			return &models.BankTransferOrderResponse{
+				OrderID:       billID,
+				Amount:        totalAmount,
+				Gateway:       models.GatewayPayOS,
+				CheckoutURL:   payosResp.CheckoutUrl,
+				QRCode:        payosResp.QrCode,
+				Bin:           payosResp.Bin,
+				AccountNumber: payosResp.AccountNumber,
+				AccountName:   payosResp.AccountName,
+				PaymentLinkId: payosResp.PaymentLinkId,
+				ExpireAt:      expireTime.Format(time.RFC3339),
+				ExpiresAt:     expireTime.Format(time.RFC3339),
+				CreatedAt:     createdAt.Format(time.RFC3339),
+				ServerTime:    time.Now().Format(time.RFC3339),
+				Free:          false,
+			}, nil
+		}
+
+		logger.Default().WithContext(ctx).Warn("PayOS payment link creation failed, falling back to SePay", "bill_id", billID, "error", payosErr)
+	}
+
+	// 2. Fallback to SePay (Backup Gateway)
+	_, _ = r.db.ExecContext(ctx, "UPDATE Bill SET payment_method = 'SEPAY' WHERE bill_id = $1", billID)
+	bankName := os.Getenv("VITE_BANK_NAME")
+	if bankName == "" {
+		bankName = "MBBank"
+	}
+	bankAcc := os.Getenv("VITE_BANK_ACC")
+	if bankAcc == "" {
+		bankAcc = "2911121319"
+	}
+	transferDesc := fmt.Sprintf("DH%d", billID)
+
+	return &models.BankTransferOrderResponse{
+		OrderID:             billID,
+		Amount:              totalAmount,
+		Gateway:             models.GatewaySePay,
+		BankName:            bankName,
+		AccountNumber:       bankAcc,
+		TransferDescription: transferDesc,
+		ExpireAt:            expireTime.Format(time.RFC3339),
+		ExpiresAt:           expireTime.Format(time.RFC3339),
+		CreatedAt:           createdAt.Format(time.RFC3339),
+		ServerTime:          time.Now().Format(time.RFC3339),
+		Free:                false,
+	}, nil
+}
+
+// CreateBankTransferOrder - Tạo đơn hàng thanh toán chuyển khoản ngân hàng (PayOS mặc định, SePay dự phòng)
+// Trả về BankTransferOrderResponse chứa thông tin thanh toán đầy đủ
+func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, eventID, categoryTicketID int, seatIDs []int) (*models.BankTransferOrderResponse, error) {
 	// Auto release expired bills first (Lazy Expiry Evaluation)
 	r.AutoReleaseExpiredPendingBills(ctx)
 
@@ -794,7 +882,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 	if exists && !penalty.LockedUntil.IsZero() && time.Now().Before(penalty.LockedUntil) {
 		remainingSeconds := int(penalty.LockedUntil.Sub(time.Now()).Seconds())
 		penaltyMutex.RUnlock()
-		return 0, 0, apperrors.BusinessError(fmt.Sprintf("[E4003]|%d", remainingSeconds))
+		return nil, apperrors.BusinessError(fmt.Sprintf("[E4003]|%d", remainingSeconds))
 	}
 	penaltyMutex.RUnlock()
 
@@ -841,14 +929,14 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			var totalAmount float64
 			err := r.db.QueryRowContext(ctx, "SELECT total_amount FROM Bill WHERE bill_id = $1", pendingBillID).Scan(&totalAmount)
 			if err == nil {
-				return pendingBillID, totalAmount, nil
+				return r.buildBankTransferOrderResponse(ctx, pendingBillID, totalAmount, createdAt)
 			}
 		}
 
 		seatsStr := strings.Join(seatCodes, ",")
 		seatIDsStr := strings.Join(seatIDsList, ",")
 
-		return 0, 0, apperrors.BusinessError(fmt.Sprintf("[E4002]|%d|%s|%s|%d|%d|%d", pendingBillID, seatsStr, seatIDsStr, evID, catID, remainingSeconds))
+		return nil, apperrors.BusinessError(fmt.Sprintf("[E4002]|%d|%s|%s|%d|%d|%d", pendingBillID, seatsStr, seatIDsStr, evID, catID, remainingSeconds))
 	}
 
 	log := logger.Default().WithContext(ctx)
@@ -862,7 +950,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 	err := r.db.QueryRowContext(ctx, "SELECT title, status, start_time, event_format FROM Event WHERE event_id = $1", eventID).Scan(&eventTitle, &status, &startTime, &eventFormat)
 	if err != nil {
 		log.Error("Event not found", "event_id", eventID, "error", err)
-		return 0, 0, apperrors.NotFound("Sự kiện")
+		return nil, apperrors.NotFound("Sự kiện")
 	}
 
 	isOnline := strings.ToUpper(eventFormat) == "ONLINE"
@@ -870,15 +958,15 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 	if !isOnline {
 		// Validate số lượng ghế (max 4)
 		if len(seatIDs) == 0 {
-			return 0, 0, apperrors.BusinessError("Vui lòng chọn ít nhất 1 ghế")
+			return nil, apperrors.BusinessError("Vui lòng chọn ít nhất 1 ghế")
 		}
 		if len(seatIDs) > 4 {
-			return 0, 0, apperrors.BusinessError("Chỉ được mua tối đa 4 ghế mỗi lần")
+			return nil, apperrors.BusinessError("Chỉ được mua tối đa 4 ghế mỗi lần")
 		}
 	}
 	if status != "OPEN" {
 		log.Warn("Event not open", "event_id", eventID, "status", status)
-		return 0, 0, apperrors.BusinessError(fmt.Sprintf("Sự kiện không mở bán vé (trạng thái: %s)", status))
+		return nil, apperrors.BusinessError(fmt.Sprintf("Sự kiện không mở bán vé (trạng thái: %s)", status))
 	}
 
 	// Kiểm tra xem event đã bắt đầu chưa
@@ -886,13 +974,13 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 	if now.After(startTime) || now.Equal(startTime) {
 		log.Warn("[BOOKING_SECURITY] User blocked from buying ticket for event that has started",
 			"user_id", userID, "event_id", eventID, "event_start_time", startTime, "current_time", now)
-		return 0, 0, apperrors.BusinessError("Sự kiện đã bắt đầu hoặc kết thúc, không thể đặt vé")
+		return nil, apperrors.BusinessError("Sự kiện đã bắt đầu hoặc kết thúc, không thể đặt vé")
 	}
 
 	// Bắt đầu database transaction để tạo Bill và Tickets đồng thời
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, 0, apperrors.DatabaseError(err)
+		return nil, apperrors.DatabaseError(err)
 	}
 	defer tx.Rollback()
 
@@ -910,7 +998,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 	if isOnline {
 		// Online events don't have seats. We resolve the Category_Ticket directly.
 		if resolvedCategoryTicketID == 0 {
-			return 0, 0, apperrors.BusinessError("Mã loại vé không hợp lệ")
+			return nil, apperrors.BusinessError("Mã loại vé không hợp lệ")
 		}
 		var catName string
 		var catStatus string
@@ -923,10 +1011,10 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 		`, resolvedCategoryTicketID, eventID).Scan(&catName, &catStatus, &pricePerSeat, &maxQty)
 		if err != nil {
 			log.Error("Category ticket not found", "category_ticket_id", resolvedCategoryTicketID, "error", err)
-			return 0, 0, apperrors.NotFound(fmt.Sprintf("Loại vé ID %d", resolvedCategoryTicketID))
+			return nil, apperrors.NotFound(fmt.Sprintf("Loại vé ID %d", resolvedCategoryTicketID))
 		}
 		if catStatus != "ACTIVE" && catStatus != "AVAILABLE" {
-			return 0, 0, apperrors.BusinessError(fmt.Sprintf("Loại vé '%s' không khả dụng", catName))
+			return nil, apperrors.BusinessError(fmt.Sprintf("Loại vé '%s' không khả dụng", catName))
 		}
 
 		var soldCount int
@@ -938,7 +1026,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 		}
 
 		if soldCount >= maxQty {
-			return 0, 0, apperrors.BusinessError(fmt.Sprintf("Ticket Sold Out - Loại vé '%s' đã hết. Còn lại: 0/%d", catName, maxQty))
+			return nil, apperrors.BusinessError(fmt.Sprintf("Ticket Sold Out - Loại vé '%s' đã hết. Còn lại: 0/%d", catName, maxQty))
 		}
 
 		totalAmount = pricePerSeat
@@ -967,13 +1055,13 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			`, eventID, seatID).Scan(&seatStatus, &seatCategoryTicketID, &catName, &catStatus, &pricePerSeat, &maxQty)
 			if err != nil {
 				log.Error("Seat not found", "seat_id", seatID, "error", err)
-				return 0, 0, apperrors.NotFound(fmt.Sprintf("Ghế ID %d", seatID))
+				return nil, apperrors.NotFound(fmt.Sprintf("Ghế ID %d", seatID))
 			}
 			if seatStatus != "ACTIVE" {
-				return 0, 0, apperrors.BusinessError(fmt.Sprintf("Ghế ID %d không khả dụng", seatID))
+				return nil, apperrors.BusinessError(fmt.Sprintf("Ghế ID %d không khả dụng", seatID))
 			}
 			if !seatCategoryTicketID.Valid {
-				return 0, 0, apperrors.BusinessError(fmt.Sprintf("Ghế ID %d chưa được gán loại vé", seatID))
+				return nil, apperrors.BusinessError(fmt.Sprintf("Ghế ID %d chưa được gán loại vé", seatID))
 			}
 
 			currentCategoryTicketID := int(seatCategoryTicketID.Int64)
@@ -984,7 +1072,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			meta, ok := categoryMap[currentCategoryTicketID]
 			if !ok {
 				if !catStatus.Valid || catStatus.String != "ACTIVE" {
-					return 0, 0, apperrors.BusinessError(fmt.Sprintf("Loại vé của ghế ID %d không khả dụng", seatID))
+					return nil, apperrors.BusinessError(fmt.Sprintf("Loại vé của ghế ID %d không khả dụng", seatID))
 				}
 
 				var soldCount int
@@ -1008,10 +1096,10 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			meta.Requested++
 			remaining := meta.MaxQty - meta.SoldCount
 			if remaining <= 0 {
-				return 0, 0, apperrors.BusinessError(fmt.Sprintf("Ticket Sold Out - Loại vé '%s' đã hết. Còn lại: 0/%d", meta.Name, meta.MaxQty))
+				return nil, apperrors.BusinessError(fmt.Sprintf("Ticket Sold Out - Loại vé '%s' đã hết. Còn lại: 0/%d", meta.Name, meta.MaxQty))
 			}
 			if meta.SoldCount+meta.Requested > meta.MaxQty {
-				return 0, 0, apperrors.BusinessError(fmt.Sprintf("Không đủ vé cho loại '%s'. Còn lại: %d, Yêu cầu: %d", meta.Name, remaining, meta.Requested))
+				return nil, apperrors.BusinessError(fmt.Sprintf("Không đủ vé cho loại '%s'. Còn lại: %d, Yêu cầu: %d", meta.Name, remaining, meta.Requested))
 			}
 
 			// RACE CONDITION CHECK: Kiểm tra ghế đã bị giữ/đặt chưa
@@ -1023,11 +1111,11 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			).Scan(&existingTicketCount)
 			if err != nil {
 				log.Error("Error checking existing tickets", "error", err)
-				return 0, 0, apperrors.DatabaseError(err)
+				return nil, apperrors.DatabaseError(err)
 			}
 			if existingTicketCount > 0 {
 				log.Warn("Seat already reserved/booked", "event_id", eventID, "seat_id", seatID)
-				return 0, 0, apperrors.BusinessError(fmt.Sprintf("Ghế ID %d đã được người khác giữ/đặt", seatID))
+				return nil, apperrors.BusinessError(fmt.Sprintf("Ghế ID %d đã được người khác giữ/đặt", seatID))
 			}
 
 			totalAmount += meta.Price
@@ -1046,12 +1134,12 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 				insertErr := tx.QueryRowContext(ctx,
 					"INSERT INTO Wallet (user_id, balance, currency, status) VALUES ($1, 0, 'VND', 'ACTIVE') RETURNING wallet_id", userID).Scan(&walletID64)
 				if insertErr != nil {
-					return 0, 0, apperrors.DatabaseError(insertErr)
+					return nil, apperrors.DatabaseError(insertErr)
 				}
 				walletID = int(walletID64)
 				currentBalance = 0
 			} else {
-				return 0, 0, apperrors.DatabaseError(walletErr)
+				return nil, apperrors.DatabaseError(walletErr)
 			}
 		}
 
@@ -1065,7 +1153,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			walletID, userID, currentBalance, currentBalance, detUUID, fmt.Sprintf("Mua vé miễn phí event %d", eventID),
 		)
 		if walletTxErr != nil {
-			return 0, 0, apperrors.DatabaseError(walletTxErr)
+			return nil, apperrors.DatabaseError(walletTxErr)
 		}
 
 		// 4. Create free bill
@@ -1076,7 +1164,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			userID,
 		).Scan(&freeBillID)
 		if billErr != nil {
-			return 0, 0, apperrors.DatabaseError(billErr)
+			return nil, apperrors.DatabaseError(billErr)
 		}
 
 		bookedIDsFree := make([]int, 0)
@@ -1088,7 +1176,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 				userID, eventID, resolvedCategoryTicketID, freeBillID,
 			).Scan(&tid)
 			if err != nil {
-				return 0, 0, apperrors.DatabaseError(err)
+				return nil, apperrors.DatabaseError(err)
 			}
 
 			qrBase64, qrErr := qrcode.GenerateTicketQRBase64(int(tid), 300)
@@ -1097,7 +1185,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			}
 			_, err = tx.ExecContext(ctx, "UPDATE Ticket SET qr_code_value = $1 WHERE ticket_id = $2", qrBase64, tid)
 			if err != nil {
-				return 0, 0, apperrors.DatabaseError(err)
+				return nil, apperrors.DatabaseError(err)
 			}
 			bookedIDsFree = append(bookedIDsFree, int(tid))
 		} else {
@@ -1105,7 +1193,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 				var seatCategoryTicketID int64
 				err = tx.QueryRowContext(ctx, "SELECT category_ticket_id FROM Seat WHERE seat_id = $1", seatID).Scan(&seatCategoryTicketID)
 				if err != nil {
-					return 0, 0, apperrors.DatabaseError(err)
+					return nil, apperrors.DatabaseError(err)
 				}
 
 				var tid int64
@@ -1115,7 +1203,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 					userID, eventID, seatCategoryTicketID, freeBillID, seatID,
 				).Scan(&tid)
 				if err != nil {
-					return 0, 0, apperrors.DatabaseError(err)
+					return nil, apperrors.DatabaseError(err)
 				}
 
 				qrBase64, qrErr := qrcode.GenerateTicketQRBase64(int(tid), 300)
@@ -1124,19 +1212,27 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 				}
 				_, err = tx.ExecContext(ctx, "UPDATE Ticket SET qr_code_value = $1 WHERE ticket_id = $2", qrBase64, tid)
 				if err != nil {
-					return 0, 0, apperrors.DatabaseError(err)
+					return nil, apperrors.DatabaseError(err)
 				}
 				bookedIDsFree = append(bookedIDsFree, int(tid))
 			}
 		}
 
+		numTicketsFree := len(bookedIDsFree)
+		if numTicketsFree == 0 {
+			numTicketsFree = 1
+		}
+		if quotaErr := r.EnforceFreeEventQuotaTx(ctx, tx, eventID, numTicketsFree); quotaErr != nil {
+			return nil, quotaErr
+		}
+
 		if err = tx.Commit(); err != nil {
-			return 0, 0, apperrors.DatabaseError(err)
+			return nil, apperrors.DatabaseError(err)
 		}
 
 		go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedIDsFree, "0", resolvedCategoryTicketID, int(freeBillID))
 
-		return freeBillID, 0, nil
+		return r.buildBankTransferOrderResponse(ctx, freeBillID, 0, time.Now())
 	}
 
 	// 1. Tạo Bill ở trạng thái PENDING
@@ -1148,7 +1244,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 	).Scan(&billID)
 	if err != nil {
 		log.Error("Failed to create pending bill", "error", err)
-		return 0, 0, apperrors.DatabaseError(err)
+		return nil, apperrors.DatabaseError(err)
 	}
 
 	// 2. Tạo Tickets ở trạng thái PENDING linked với bill_id
@@ -1161,14 +1257,14 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 		).Scan(&pendingTicketID)
 		if err != nil {
 			log.Error("Failed to create pending ticket", "error", err)
-			return 0, 0, apperrors.DatabaseError(err)
+			return nil, apperrors.DatabaseError(err)
 		}
 	} else {
 		for _, seatID := range seatIDs {
 			var seatCategoryTicketID int64
 			err = tx.QueryRowContext(ctx, "SELECT category_ticket_id FROM Seat WHERE seat_id = $1", seatID).Scan(&seatCategoryTicketID)
 			if err != nil {
-				return 0, 0, apperrors.DatabaseError(err)
+				return nil, apperrors.DatabaseError(err)
 			}
 
 			var pendingTicketID int64
@@ -1180,26 +1276,37 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			if err != nil {
 				log.Error("Failed to create pending ticket", "error", err)
 				if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "ticket_event_id_seat_id_key") {
-					return 0, 0, apperrors.BusinessError("Ghế đặt hiện đang nằm trong trạng thái xử lý thanh toán. Vui lòng thử lại sau ít phút hoặc chọn ghế khác!")
+					return nil, apperrors.BusinessError("Ghế đặt hiện đang nằm trong trạng thái xử lý thanh toán. Vui lòng thử lại sau ít phút hoặc chọn ghế khác!")
 				}
-				return 0, 0, apperrors.DatabaseError(err)
+				return nil, apperrors.DatabaseError(err)
 			}
 		}
 	}
 
 	// Commit transaction
 	if err := tx.Commit(); err != nil {
-		return 0, 0, apperrors.DatabaseError(err)
+		return nil, apperrors.DatabaseError(err)
 	}
 
 	log.Info("[BANK_TRANSFER] Order created successfully", "bill_id", billID, "total_amount", totalAmount)
-	return billID, totalAmount, nil
+	return r.buildBankTransferOrderResponse(ctx, billID, totalAmount, time.Now())
 }
 
 // ProcessSePayWebhook - Xử lý webhook từ SePay gửi về
 func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway string, amount float64, content string, transferAt string) (string, error) {
 	log := logger.Default().WithContext(ctx)
 	log.Info("SePay Webhook received", "gateway", gateway, "amount", amount, "content", content, "transfer_at", transferAt)
+
+	// 0. Kiểm tra giao dịch nạp tiền ví Organizer (TOPUP)
+	topupRe := regexp.MustCompile(`(?:TOPUP|NAPTIEN)\s*(\d+)`)
+	topupMatches := topupRe.FindStringSubmatch(strings.ToUpper(content))
+	if len(topupMatches) >= 2 {
+		orderIDStr := topupMatches[1]
+		orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
+		if err == nil {
+			return r.ProcessSePayTopup(ctx, gateway, amount, orderID)
+		}
+	}
 
 	// 1. Phân tách chuỗi content để tìm order_id (bill_id)
 	// Quét tìm từ khóa HD, DH, hoặc BILL nằm sát các chữ số cuối cùng của chuỗi nội dung
@@ -1253,6 +1360,29 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 
 	log.Info("SePay Webhook: Parsed transaction", "order_id", orderID, "amount", amount)
 
+	return r.CompletePaidOrder(ctx, orderID, "SEPAY", amount)
+}
+
+// ProcessPayOSWebhook - Xử lý webhook từ PayOS gửi về
+func (r *TicketRepository) ProcessPayOSWebhook(ctx context.Context, orderCode int64, amount float64, description string) (string, error) {
+	log := logger.Default().WithContext(ctx)
+	log.Info("PayOS Webhook received", "order_code", orderCode, "amount", amount, "desc", description)
+
+	// Kiểm tra nếu là nạp tiền ví Organizer (TOPUP)
+	var paymentMethod string
+	err := r.db.QueryRowContext(ctx, "SELECT payment_method FROM Bill WHERE bill_id = $1", orderCode).Scan(&paymentMethod)
+	if err == nil && paymentMethod == "TOPUP" {
+		return r.ProcessSePayTopup(ctx, "PAYOS", amount, orderCode)
+	}
+
+	return r.CompletePaidOrder(ctx, orderCode, "PAYOS", amount)
+}
+
+// CompletePaidOrder - Xử lý hoàn tất đơn hàng khi thanh toán thành công (hỗ trợ cả PayOS và SePay)
+func (r *TicketRepository) CompletePaidOrder(ctx context.Context, orderID int64, gateway string, amount float64) (string, error) {
+	log := logger.Default().WithContext(ctx)
+	log.Info("CompletePaidOrder: processing payment", "order_id", orderID, "gateway", gateway, "amount", amount)
+
 	// Bắt đầu database transaction
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -1270,7 +1400,7 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 	).Scan(&userID, &billAmount, &paymentStatus)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Warn("SePay Webhook: Order not found", "order_id", orderID)
+			log.Warn("CompletePaidOrder: Order not found", "order_id", orderID)
 			return "", fmt.Errorf("order not found: %d", orderID)
 		}
 		return "", err
@@ -1278,23 +1408,23 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 
 	// Nếu đã PAID thì trả về thành công trực tiếp (idempotency)
 	if paymentStatus == "PAID" {
-		log.Info("SePay Webhook: Order already processed (PAID)", "order_id", orderID)
+		log.Info("CompletePaidOrder: Order already processed (PAID)", "order_id", orderID)
 		return "already_processed", nil
 	}
 
 	// 3. Kiểm tra số tiền chuyển khoản
 	// Do số tiền trong ví dụ là VNĐ nên ta so sánh chính xác phần số nguyên
 	if math.Abs(billAmount-amount) >= 1.0 {
-		return "", fmt.Errorf("sepay amount mismatch: expected %.2f, got %.2f", billAmount, amount)
+		return "", fmt.Errorf("%s amount mismatch: expected %.2f, got %.2f", gateway, billAmount, amount)
 	}
 
 	// 4. Cập nhật trạng thái Bill thành PAID và paid_at = NOW()
 	_, err = tx.ExecContext(ctx,
-		"UPDATE Bill SET payment_status = 'PAID', paid_at = NOW() WHERE bill_id = $1",
-		orderID,
+		"UPDATE Bill SET payment_status = 'PAID', payment_method = $1, paid_at = NOW() WHERE bill_id = $2",
+		gateway, orderID,
 	)
 	if err != nil {
-		log.Error("SePay Webhook: Failed to update bill to PAID", "order_id", orderID, "error", err)
+		log.Error("CompletePaidOrder: Failed to update bill to PAID", "order_id", orderID, "error", err)
 		return "", err
 	}
 
@@ -1324,7 +1454,7 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 	}
 
 	if len(tickets) == 0 {
-		log.Warn("SePay Webhook: No pending tickets found for bill", "bill_id", orderID)
+		log.Warn("CompletePaidOrder: No pending tickets found for bill", "bill_id", orderID)
 	}
 
 	bookedTicketIDs := []int{}
@@ -1338,8 +1468,8 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 		// Tạo QR Code
 		qrBase64, err := qrcode.GenerateTicketQRBase64(t.ticketID, 300)
 		if err != nil {
-			log.Error("SePay Webhook: Failed to generate QR code", "ticket_id", t.ticketID, "error", err)
-			qrBase64 = fmt.Sprintf("SEPAY_QR_%d", t.ticketID)
+			log.Error("CompletePaidOrder: Failed to generate QR code", "ticket_id", t.ticketID, "error", err)
+			qrBase64 = fmt.Sprintf("%s_QR_%d", strings.ToUpper(gateway), t.ticketID)
 		}
 
 		// Update ticket
@@ -1348,10 +1478,23 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 			qrBase64, t.ticketID,
 		)
 		if err != nil {
-			log.Error("SePay Webhook: Failed to update ticket to BOOKED", "ticket_id", t.ticketID, "error", err)
+			log.Error("CompletePaidOrder: Failed to update ticket to BOOKED", "ticket_id", t.ticketID, "error", err)
 			return "", err
 		}
 		bookedTicketIDs = append(bookedTicketIDs, t.ticketID)
+	}
+
+	// Xử lý khấu trừ hoa hồng nền tảng và cộng số dư tạm giữ (pending_balance) cho Organizer
+	if len(bookedTicketIDs) > 0 && billAmount > 0 {
+		ticketPrices := make(map[int]float64)
+		for _, t := range tickets {
+			var p float64
+			_ = tx.QueryRowContext(ctx, "SELECT price FROM category_ticket WHERE category_ticket_id = $1", t.categoryTicketID).Scan(&p)
+			ticketPrices[t.ticketID] = p
+		}
+		if commErr := r.ProcessPaidOrderCommissionTx(ctx, tx, orderID, eventID, bookedTicketIDs, ticketPrices); commErr != nil {
+			log.Warn("CompletePaidOrder: Error calculating commission", "error", commErr)
+		}
 	}
 
 	// Commit transaction
@@ -1363,9 +1506,9 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 	if len(bookedTicketIDs) > 0 {
 		realAmount := fmt.Sprintf("%.0f", billAmount)
 		go r.sendMultipleTicketEmailsAsync(context.Background(), userID, eventID, bookedTicketIDs, realAmount, categoryTicketID, int(orderID))
-		log.Info("SePay Webhook: Successfully processed payment and triggered email sending", "order_id", orderID, "tickets_count", len(bookedTicketIDs))
+		log.Info("CompletePaidOrder: Successfully processed payment and triggered email sending", "order_id", orderID, "gateway", gateway, "tickets_count", len(bookedTicketIDs))
 	} else {
-		log.Info("SePay Webhook: Successfully processed payment but no tickets were updated", "order_id", orderID)
+		log.Info("CompletePaidOrder: Successfully processed payment but no tickets were updated", "order_id", orderID, "gateway", gateway)
 	}
 
 	return "success", nil

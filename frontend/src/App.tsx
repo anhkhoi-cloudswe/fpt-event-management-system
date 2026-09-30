@@ -37,6 +37,8 @@ import Profile from './pages/Profile.tsx'
 import PublicEventPage from './pages/events/PublicEventPage.tsx'
 import PublicEventPayment from './pages/events/PublicEventPayment.tsx'
 import AttendanceConfirm from './pages/AttendanceConfirm.tsx'
+import OrganizerWalletPage from './pages/OrganizerWallet.tsx'
+import OrganizerPolicy from './pages/OrganizerPolicy.tsx'
 
 
 import { useState } from 'react'
@@ -279,6 +281,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/guest" element={<PublicRoute><GuestLanding /></PublicRoute>} />
       <Route path="/policy" element={<SystemPolicy />} />
+      <Route path="/organizer-policy" element={<OrganizerPolicy />} />
       {/* Public payment callback routes for VNPay redirects */}
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/payment-failed" element={<PaymentFailed />} />
@@ -327,6 +330,9 @@ function AppRoutes() {
         {/* organizers route removed */}
         <Route path="manage" element={<AdminDashboard />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="organizer/wallet" element={<OrganizerWalletPage />} />
+        <Route path="wallet" element={<OrganizerWalletPage />} />
+        <Route path="organizer-policy" element={<OrganizerPolicy />} />
         <Route path="report-requests" element={
           <StaffRoute>
             <ReportRequests />
@@ -365,6 +371,14 @@ function ThemeRouteIsolation() {
   const pathname = typeof location?.pathname === 'string' ? location.pathname : ''
 
   useEffect(() => {
+    // Auth routes are dedicated light-theme pages with frosted glass card over campus background
+    const isAuthRoute = pathname === '/login' || pathname === '/signup' || pathname === '/reset-password'
+    if (isAuthRoute) {
+      document.documentElement.classList.remove('dark')
+      window.dispatchEvent(new Event('theme-change'))
+      return
+    }
+
     // Read the user's saved theme preference from localStorage
     const savedTheme = user?.id
       ? localStorage.getItem('theme_user_' + user.id) || localStorage.getItem('theme')
@@ -374,9 +388,6 @@ function ThemeRouteIsolation() {
       ? savedTheme
       : (user?.theme === 'dark' ? 'dark' : 'light')
 
-    // Apply the saved theme on ALL routes — dashboard and public alike.
-    // Previously, public routes always called classList.remove('dark'), wiping out
-    // the user's preferred theme on /guest, /login, /events/:id, etc.
     if (themeToApply === 'dark') {
       document.documentElement.classList.add('dark')
     } else {

@@ -38,19 +38,15 @@ body {
     @apply bg-gray-950 text-white;
   }
 
-  html.dark input,
-  html.dark textarea,
-  html.dark select {
+  html.dark input:not([class*="bg-"]):not([class*="!bg-"]),
+  html.dark textarea:not([class*="bg-"]):not([class*="!bg-"]),
+  html.dark select:not([class*="bg-"]):not([class*="!bg-"]) {
     @apply bg-gray-800 text-white border-gray-700;
   }
 
-  html.dark input::placeholder,
-  html.dark textarea::placeholder {
+  html.dark input:not([class*="placeholder-"])::placeholder,
+  html.dark textarea:not([class*="placeholder-"])::placeholder {
     @apply text-gray-500;
-  }
-
-  html.dark button {
-    @apply dark:text-white;
   }
 }
 
