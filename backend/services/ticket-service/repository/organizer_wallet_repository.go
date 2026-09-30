@@ -1,8 +1,10 @@
 package repository
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/csv"
 	"fmt"
 	"math"
 	"net/url"
@@ -1019,5 +1021,433 @@ func (r *TicketRepository) ProcessSePayTopup(ctx context.Context, gateway string
 
 	log.Info("Successfully processed organizer wallet topup", "user_id", userID, "amount", amount, "bill_id", orderID)
 	return "topup_success", nil
+}
+
+// ============================================================
+// Admin Financial Center Repository Methods
+// ============================================================
+
+// GetAdminFinanceOverview - Lấy 4 chỉ số KPI tài chính toàn sàn
+func (r *TicketRepository) GetAdminFinanceOverview(ctx context.Context) (*models.AdminFinanceOverviewResponse, error) {
+	resp := &models.AdminFinanceOverviewResponse{}
+
+	// 1. Tổng hoa hồng sàn
+	_ = r.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(commission_amount), 0) FROM financial_receipt").Scan(&resp.TotalCommission)
+
+	// 2. Tổng phí hạn ngạch thu từ các sự kiện Free vượt mức
+	_ = r.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(amount), 0) FROM wallet_transaction WHERE type = 'USAGE_FEE'").Scan(&resp.TotalUsageFees)
+
+	// 3. Tổng số dư tạm giữ (escrow locked) và số dư khả dụng toàn bộ ví
+	_ = r.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(pending_balance), 0), COALESCE(SUM(balance), 0) FROM wallet WHERE status = 'ACTIVE'").Scan(
+		&resp.TotalEscrowLocked,
+		&resp.TotalWalletsBalance,
+	)
+
+	return resp, nil
+}
+
+// GetAdminPayouts - Lấy danh sách yêu cầu rút tiền phân trang cho Admin
+func (r *TicketRepository) GetAdminPayouts(ctx context.Context, status string, page, limit int) (*models.AdminPayoutsResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	var whereClauses []string
+	var args []interface{}
+	argIdx := 1
+
+	if status != "" && status != "ALL" {
+		whereClauses = append(whereClauses, fmt.Sprintf("pr.status = $%d", argIdx))
+		args = append(args, strings.ToUpper(status))
+		argIdx++
+	}
+
+	whereSQL := ""
+	if len(whereClauses) > 0 {
+		whereSQL = "WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM payout_request pr %s", whereSQL)
+	var totalRecords int
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&totalRecords); err != nil {
+		return nil, fmt.Errorf("lỗi đếm tổng số yêu cầu rút tiền: %w", err)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT
+			pr.payout_id, pr.user_id, COALESCE(u.full_name, u.email, 'Organizer'), COALESCE(u.email, ''),
+			pr.bank_account_id, COALESCE(oba.bank_code, ''), COALESCE(oba.bank_name, ''),
+			COALESCE(oba.account_number, ''), COALESCE(oba.account_holder_name, ''),
+			pr.amount, pr.status, pr.note, pr.reject_reason,
+			pr.processed_by, COALESCE(adm.full_name, adm.email, ''), pr.processed_at, pr.created_at
+		FROM payout_request pr
+		LEFT JOIN users u ON pr.user_id = u.user_id
+		LEFT JOIN organizer_bank_account oba ON pr.bank_account_id = oba.account_id
+		LEFT JOIN users adm ON pr.processed_by = adm.user_id
+		%s
+		ORDER BY pr.created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, whereSQL, argIdx, argIdx+1)
+
+	args = append(args, limit, offset)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("lỗi truy vấn danh sách yêu cầu rút tiền: %w", err)
+	}
+	defer rows.Close()
+
+	payouts := []models.AdminPayoutItem{}
+	for rows.Next() {
+		var item models.AdminPayoutItem
+		var procName string
+		err := rows.Scan(
+			&item.PayoutID,
+			&item.UserID,
+			&item.OrganizerName,
+			&item.OrganizerEmail,
+			&item.BankAccountID,
+			&item.BankCode,
+			&item.BankName,
+			&item.AccountNumber,
+			&item.AccountHolderName,
+			&item.Amount,
+			&item.Status,
+			&item.Note,
+			&item.RejectReason,
+			&item.ProcessedBy,
+			&procName,
+			&item.ProcessedAt,
+			&item.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("lỗi scan dữ liệu yêu cầu rút tiền: %w", err)
+		}
+		if procName != "" {
+			item.ProcessorName = &procName
+		}
+		payouts = append(payouts, item)
+	}
+
+	totalPages := int(math.Ceil(float64(totalRecords) / float64(limit)))
+	if totalPages < 1 {
+		totalPages = 1
+	}
+
+	return &models.AdminPayoutsResponse{
+		Payouts:      payouts,
+		TotalRecords: totalRecords,
+		CurrentPage:  page,
+		Limit:        limit,
+		TotalPages:   totalPages,
+	}, nil
+}
+
+// ProcessAdminPayout - Xử lý phê duyệt hoàn tất hoặc từ chối lệnh rút tiền
+func (r *TicketRepository) ProcessAdminPayout(ctx context.Context, adminID int, payoutID int, req models.ProcessPayoutRequest) error {
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		return fmt.Errorf("lỗi khởi tạo transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var userID int
+	var amount float64
+	var currentStatus string
+	query := `SELECT user_id, amount, status FROM payout_request WHERE payout_id = $1 FOR UPDATE`
+	err = tx.QueryRowContext(ctx, query, payoutID).Scan(&userID, &amount, &currentStatus)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("không tìm thấy yêu cầu rút tiền #%d", payoutID)
+	} else if err != nil {
+		return fmt.Errorf("lỗi khóa bản ghi yêu cầu rút tiền: %w", err)
+	}
+
+	if currentStatus != "PENDING" && currentStatus != "PROCESSING" {
+		return fmt.Errorf("lệnh rút tiền #%d đã được xử lý trước đó (trạng thái: %s)", payoutID, currentStatus)
+	}
+
+	action := strings.ToUpper(strings.TrimSpace(req.Action))
+
+	if action == "APPROVE" || action == "COMPLETE" {
+		noteUpdate := strings.TrimSpace(req.Note)
+		if req.BankReferenceCode != "" {
+			if noteUpdate != "" {
+				noteUpdate += fmt.Sprintf(" | Mã GD Ngân hàng: %s", req.BankReferenceCode)
+			} else {
+				noteUpdate = fmt.Sprintf("Mã GD Ngân hàng: %s", req.BankReferenceCode)
+			}
+		}
+
+		updateQuery := `
+			UPDATE payout_request
+			SET status = 'COMPLETED',
+				processed_by = $1,
+				processed_at = NOW(),
+				note = CASE WHEN $2 != '' THEN $2 ELSE note END,
+				updated_at = NOW()
+			WHERE payout_id = $3
+		`
+		_, err = tx.ExecContext(ctx, updateQuery, adminID, noteUpdate, payoutID)
+		if err != nil {
+			return fmt.Errorf("lỗi cập nhật trạng thái COMPLETED cho lệnh rút tiền: %w", err)
+		}
+	} else if action == "REJECT" {
+		reason := strings.TrimSpace(req.RejectReason)
+		if reason == "" {
+			reason = "Bị từ chối bởi Quản trị viên"
+		}
+
+		updateQuery := `
+			UPDATE payout_request
+			SET status = 'REJECTED',
+				processed_by = $1,
+				processed_at = NOW(),
+				reject_reason = $2,
+				updated_at = NOW()
+			WHERE payout_id = $3
+		`
+		_, err = tx.ExecContext(ctx, updateQuery, adminID, reason, payoutID)
+		if err != nil {
+			return fmt.Errorf("lỗi cập nhật trạng thái REJECTED cho lệnh rút tiền: %w", err)
+		}
+
+		// Hoàn trả lại số tiền vào available_balance của Organizer
+		var walletID int
+		var currentBalance float64
+		err = tx.QueryRowContext(ctx, "SELECT wallet_id, balance FROM wallet WHERE user_id = $1 FOR UPDATE", userID).Scan(&walletID, &currentBalance)
+		if err != nil {
+			return fmt.Errorf("lỗi khóa ví organizer khi hoàn tiền: %w", err)
+		}
+
+		balanceAfter := currentBalance + amount
+		_, err = tx.ExecContext(ctx, "UPDATE wallet SET balance = balance + $1, updated_at = NOW() WHERE wallet_id = $2", amount, walletID)
+		if err != nil {
+			return fmt.Errorf("lỗi cộng hoàn tiền vào ví organizer: %w", err)
+		}
+
+		// Ghi log sổ cái hoàn trả tiền
+		txLogQuery := `
+			INSERT INTO wallet_transaction (wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description, created_at)
+			VALUES ($1, $2, 'CREDIT', $3, $4, $5, 'PAYOUT', $6, $7, NOW())
+		`
+		txDesc := fmt.Sprintf("Hoàn tiền lệnh rút tiền #%d bị từ chối: %s", payoutID, reason)
+		_, err = tx.ExecContext(ctx, txLogQuery, walletID, userID, amount, currentBalance, balanceAfter, strconv.Itoa(payoutID), txDesc)
+		if err != nil {
+			return fmt.Errorf("lỗi ghi log giao dịch hoàn tiền rút: %w", err)
+		}
+	} else {
+		return fmt.Errorf("hành động không hợp lệ: %s (chỉ chấp nhận APPROVE, COMPLETE, REJECT)", req.Action)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("lỗi commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// GetAdminFinancialReceipts - Lấy danh sách biên lai tài chính phân trang
+func (r *TicketRepository) GetAdminFinancialReceipts(ctx context.Context, page, limit int, search string) (*models.AdminReceiptsResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	var whereClauses []string
+	var args []interface{}
+	argIdx := 1
+
+	if search != "" {
+		s := "%" + strings.ToLower(search) + "%"
+		whereClauses = append(whereClauses, fmt.Sprintf("(LOWER(e.title) LIKE $%d OR LOWER(u.full_name) LIKE $%d OR CAST(fr.order_id AS TEXT) LIKE $%d)", argIdx, argIdx, argIdx))
+		args = append(args, s)
+		argIdx++
+	}
+
+	whereSQL := ""
+	if len(whereClauses) > 0 {
+		whereSQL = "WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	countQuery := fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM financial_receipt fr
+		LEFT JOIN event e ON fr.event_id = e.event_id
+		LEFT JOIN users u ON fr.organizer_id = u.user_id
+		%s
+	`, whereSQL)
+
+	var totalRecords int
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&totalRecords); err != nil {
+		return nil, fmt.Errorf("lỗi đếm tổng biên lai: %w", err)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT
+			fr.receipt_id, fr.order_id, fr.bill_id, fr.ticket_id,
+			fr.event_id, COALESCE(e.title, 'Sự kiện #' || fr.event_id),
+			fr.organizer_id, COALESCE(u.full_name, u.email, 'Organizer #' || fr.organizer_id),
+			fr.gross_amount, fr.system_fee_percentage, fr.fixed_fee,
+			fr.commission_amount, fr.net_amount, fr.currency, fr.created_at
+		FROM financial_receipt fr
+		LEFT JOIN event e ON fr.event_id = e.event_id
+		LEFT JOIN users u ON fr.organizer_id = u.user_id
+		%s
+		ORDER BY fr.created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, whereSQL, argIdx, argIdx+1)
+
+	args = append(args, limit, offset)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("lỗi truy vấn biên lai tài chính: %w", err)
+	}
+	defer rows.Close()
+
+	receipts := []models.AdminReceiptItem{}
+	for rows.Next() {
+		var item models.AdminReceiptItem
+		err := rows.Scan(
+			&item.ReceiptID,
+			&item.OrderID,
+			&item.BillID,
+			&item.TicketID,
+			&item.EventID,
+			&item.EventTitle,
+			&item.OrganizerID,
+			&item.OrganizerName,
+			&item.GrossAmount,
+			&item.SystemFeePercentage,
+			&item.FixedFee,
+			&item.CommissionAmount,
+			&item.NetAmount,
+			&item.Currency,
+			&item.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("lỗi scan biên lai tài chính: %w", err)
+		}
+		receipts = append(receipts, item)
+	}
+
+	totalPages := int(math.Ceil(float64(totalRecords) / float64(limit)))
+	if totalPages < 1 {
+		totalPages = 1
+	}
+
+	return &models.AdminReceiptsResponse{
+		Receipts:     receipts,
+		TotalRecords: totalRecords,
+		CurrentPage:  page,
+		Limit:        limit,
+		TotalPages:   totalPages,
+	}, nil
+}
+
+// ExportAdminFinancialReceiptsCSV - Xuất dữ liệu biên lai tài chính sang CSV (UTF-8 BOM cho Excel)
+func (r *TicketRepository) ExportAdminFinancialReceiptsCSV(ctx context.Context) ([]byte, error) {
+	query := `
+		SELECT
+			fr.receipt_id, fr.order_id, COALESCE(fr.bill_id, 0), COALESCE(fr.ticket_id, 0),
+			fr.event_id, COALESCE(e.title, ''),
+			fr.organizer_id, COALESCE(u.full_name, u.email, ''),
+			fr.gross_amount, fr.system_fee_percentage, fr.fixed_fee,
+			fr.commission_amount, fr.net_amount, fr.currency, fr.created_at
+		FROM financial_receipt fr
+		LEFT JOIN event e ON fr.event_id = e.event_id
+		LEFT JOIN users u ON fr.organizer_id = u.user_id
+		ORDER BY fr.created_at DESC
+		LIMIT 5000
+	`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("lỗi truy vấn xuất CSV: %w", err)
+	}
+	defer rows.Close()
+
+	var buf bytes.Buffer
+	// UTF-8 BOM
+	buf.WriteString("\xef\xbb\xbf")
+
+	writer := csv.NewWriter(&buf)
+
+	// CSV Header
+	headers := []string{
+		"Mã Biên Lai",
+		"Mã Đơn Hàng",
+		"Mã Hóa Đơn",
+		"Mã Vé",
+		"Mã Sự Kiện",
+		"Tên Sự Kiện",
+		"Mã BTC",
+		"Tên Ban Tổ Chức",
+		"Số Tiền Gốc (VND)",
+		"% Phí Sàn",
+		"Phí Cố Định (VND)",
+		"Doanh Thu Sàn Thu (VND)",
+		"Doanh Thu Về Ví BTC (VND)",
+		"Loại Tiền",
+		"Thời Gian Tạo",
+	}
+	if err := writer.Write(headers); err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var receiptID int
+		var orderID int64
+		var billID, ticketID, eventID, orgID int
+		var eventTitle, orgName, currency string
+		var gross, feePct, fixedFee, commission, net float64
+		var createdAt time.Time
+
+		err := rows.Scan(
+			&receiptID, &orderID, &billID, &ticketID,
+			&eventID, &eventTitle,
+			&orgID, &orgName,
+			&gross, &feePct, &fixedFee,
+			&commission, &net, &currency, &createdAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		record := []string{
+			strconv.Itoa(receiptID),
+			strconv.FormatInt(orderID, 10),
+			strconv.Itoa(billID),
+			strconv.Itoa(ticketID),
+			strconv.Itoa(eventID),
+			eventTitle,
+			strconv.Itoa(orgID),
+			orgName,
+			fmt.Sprintf("%.0f", gross),
+			fmt.Sprintf("%.2f%%", feePct),
+			fmt.Sprintf("%.0f", fixedFee),
+			fmt.Sprintf("%.0f", commission),
+			fmt.Sprintf("%.0f", net),
+			currency,
+			createdAt.Format("2006-01-02 15:04:05"),
+		}
+		if err := writer.Write(record); err != nil {
+			return nil, err
+		}
+	}
+
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 

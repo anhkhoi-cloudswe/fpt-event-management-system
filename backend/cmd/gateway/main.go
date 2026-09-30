@@ -74,6 +74,7 @@ var routes = []Route{
 	{"/api/organizer/", "Event"},
 
 	// ========== Ticket Service (8083) ==========
+	{"/api/v1/admin/finance", "Ticket"},
 	{"/api/v1/organizer/wallet", "Ticket"},
 	{"/api/v1/organizer/bank-accounts", "Ticket"},
 	{"/api/v1/organizer/events/", "Ticket"},

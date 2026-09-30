@@ -39,6 +39,7 @@ import PublicEventPayment from './pages/events/PublicEventPayment.tsx'
 import AttendanceConfirm from './pages/AttendanceConfirm.tsx'
 import OrganizerWalletPage from './pages/OrganizerWallet.tsx'
 import OrganizerPolicy from './pages/OrganizerPolicy.tsx'
+import AdminFinancePage from './pages/AdminFinance.tsx'
 
 
 import { useState } from 'react'
@@ -329,6 +330,8 @@ function AppRoutes() {
         <Route path="category-tickets" element={<CategoryTickets />} />
         {/* organizers route removed */}
         <Route path="manage" element={<AdminDashboard />} />
+        <Route path="admin/finance" element={<AdminFinancePage />} />
+        <Route path="finance" element={<AdminFinancePage />} />
         <Route path="reports" element={<Reports />} />
         <Route path="organizer/wallet" element={<OrganizerWalletPage />} />
         <Route path="wallet" element={<OrganizerWalletPage />} />
