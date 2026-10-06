@@ -68,7 +68,7 @@ func (h *AuthInternalHandler) HandleGetUserProfile(ctx context.Context, request 
 	}
 
 	var profile UserProfileDTO
-	query := `SELECT user_id, full_name, email, phone, role FROM Users WHERE user_id = $1`
+	query := `SELECT user_id, full_name, email, COALESCE(phone, ''), role FROM Users WHERE user_id = $1`
 	err = h.db.QueryRowContext(ctx, query, userID).Scan(
 		&profile.UserID, &profile.FullName, &profile.Email, &profile.Phone, &profile.Role,
 	)
@@ -125,7 +125,7 @@ func (h *AuthInternalHandler) HandleGetUserProfiles(ctx context.Context, request
 		args[i] = id
 	}
 
-	query := "SELECT user_id, full_name, email, phone, role FROM Users WHERE user_id IN (" + placeholders + ")"
+	query := "SELECT user_id, full_name, email, COALESCE(phone, ''), role FROM Users WHERE user_id IN (" + placeholders + ")"
 	rows, err := h.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		h.logger.Warn("[INTERNAL_AUTH] Failed to batch get users: %v", err)

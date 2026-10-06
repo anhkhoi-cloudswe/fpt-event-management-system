@@ -133,9 +133,11 @@ type CreatePayoutRequest struct {
 	Note          string  `json:"note"`
 }
 
-// TopupWalletRequest - Body yêu cầu nạp tiền ví
+// TopupWalletRequest - Body yêu cầu nạp tiền ví / mua gói
 type TopupWalletRequest struct {
-	Amount float64 `json:"amount"`
+	Amount   float64 `json:"amount"`
+	TierCode string  `json:"tierCode,omitempty"` // Tuỳ chọn: 'PRO', 'BUSINESS' nếu nạp để mua gói
+	Purpose  string  `json:"purpose,omitempty"`  // Tuỳ chọn: 'TOPUP' hoặc 'SUBSCRIPTION'
 }
 
 // TopupWalletResponse - Kết quả sinh thông tin nạp tiền QR PayOS / SePay

@@ -188,6 +188,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return eventHandler.HandleDisableEvent(ctx, request)
 	case path == "/api/events/daily-quota" && method == "GET":
 		return eventHandler.HandleCheckDailyQuota(ctx, request)
+	case (path == "/api/v1/organizer/limits" || path == "/api/organizer/limits") && method == "GET":
+		return eventHandler.HandleGetOrganizerLimits(ctx, request)
 	// GET /api/events/{id} — path-parameter style (frontend / legacy calls)
 	// Chuyển đổi sang ?id= để tái sử dụng HandleGetEventDetail
 	case strings.HasPrefix(path, "/api/events/") && method == "GET":

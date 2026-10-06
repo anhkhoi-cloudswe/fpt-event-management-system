@@ -1008,6 +1008,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 			SELECT name, status, price, max_quantity
 			FROM Category_Ticket
 			WHERE category_ticket_id = $1 AND event_id = $2
+			FOR UPDATE
 		`, resolvedCategoryTicketID, eventID).Scan(&catName, &catStatus, &pricePerSeat, &maxQty)
 		if err != nil {
 			log.Error("Category ticket not found", "category_ticket_id", resolvedCategoryTicketID, "error", err)
@@ -1297,8 +1298,8 @@ func (r *TicketRepository) ProcessSePayWebhook(ctx context.Context, gateway stri
 	log := logger.Default().WithContext(ctx)
 	log.Info("SePay Webhook received", "gateway", gateway, "amount", amount, "content", content, "transfer_at", transferAt)
 
-	// 0. Kiểm tra giao dịch nạp tiền ví Organizer (TOPUP)
-	topupRe := regexp.MustCompile(`(?:TOPUP|NAPTIEN)\s*(\d+)`)
+	// 0. Kiểm tra giao dịch nạp tiền ví Organizer (TOPUP) hoặc mua gói (SUB)
+	topupRe := regexp.MustCompile(`(?:TOPUP|NAPTIEN|SUB\s+\w+|SUB)\s*(\d+)`)
 	topupMatches := topupRe.FindStringSubmatch(strings.ToUpper(content))
 	if len(topupMatches) >= 2 {
 		orderIDStr := topupMatches[1]
@@ -1368,10 +1369,10 @@ func (r *TicketRepository) ProcessPayOSWebhook(ctx context.Context, orderCode in
 	log := logger.Default().WithContext(ctx)
 	log.Info("PayOS Webhook received", "order_code", orderCode, "amount", amount, "desc", description)
 
-	// Kiểm tra nếu là nạp tiền ví Organizer (TOPUP)
+	// Kiểm tra nếu là nạp tiền ví Organizer (TOPUP) hoặc thanh toán gói dịch vụ (SUBSCRIPTION)
 	var paymentMethod string
 	err := r.db.QueryRowContext(ctx, "SELECT payment_method FROM Bill WHERE bill_id = $1", orderCode).Scan(&paymentMethod)
-	if err == nil && paymentMethod == "TOPUP" {
+	if err == nil && (paymentMethod == "TOPUP" || paymentMethod == "SUBSCRIPTION" || strings.HasPrefix(strings.ToUpper(description), "TOPUP") || strings.HasPrefix(strings.ToUpper(description), "SUB")) {
 		return r.ProcessSePayTopup(ctx, "PAYOS", amount, orderCode)
 	}
 
@@ -1430,7 +1431,7 @@ func (r *TicketRepository) CompletePaidOrder(ctx context.Context, orderID int64,
 
 	// 5. Cập nhật các PENDING tickets của Bill này thành BOOKED kèm QR Code
 	rows, err := tx.QueryContext(ctx,
-		"SELECT ticket_id, event_id, category_ticket_id FROM Ticket WHERE bill_id = $1 AND status = 'PENDING'",
+		"SELECT ticket_id, event_id, category_ticket_id, status FROM Ticket WHERE bill_id = $1 FOR UPDATE",
 		orderID,
 	)
 	if err != nil {
@@ -1442,58 +1443,165 @@ func (r *TicketRepository) CompletePaidOrder(ctx context.Context, orderID int64,
 		ticketID         int
 		eventID          int
 		categoryTicketID int
+		status           string
 	}
-	var tickets []ticketMeta
+	var allTickets []ticketMeta
+	var pendingTickets []ticketMeta
 
 	for rows.Next() {
 		var t ticketMeta
-		if err := rows.Scan(&t.ticketID, &t.eventID, &t.categoryTicketID); err != nil {
+		if err := rows.Scan(&t.ticketID, &t.eventID, &t.categoryTicketID, &t.status); err != nil {
 			return "", err
 		}
-		tickets = append(tickets, t)
-	}
-
-	if len(tickets) == 0 {
-		log.Warn("CompletePaidOrder: No pending tickets found for bill", "bill_id", orderID)
+		allTickets = append(allTickets, t)
+		if t.status == "PENDING" {
+			pendingTickets = append(pendingTickets, t)
+		}
 	}
 
 	bookedTicketIDs := []int{}
 	var eventID int
 	var categoryTicketID int
 
-	for _, t := range tickets {
-		eventID = t.eventID
-		categoryTicketID = t.categoryTicketID
+	if len(pendingTickets) > 0 {
+		// Nhánh bình thường: Có vé PENDING
+		for _, t := range pendingTickets {
+			eventID = t.eventID
+			categoryTicketID = t.categoryTicketID
 
-		// Tạo QR Code
-		qrBase64, err := qrcode.GenerateTicketQRBase64(t.ticketID, 300)
-		if err != nil {
-			log.Error("CompletePaidOrder: Failed to generate QR code", "ticket_id", t.ticketID, "error", err)
-			qrBase64 = fmt.Sprintf("%s_QR_%d", strings.ToUpper(gateway), t.ticketID)
+			qrBase64, err := qrcode.GenerateTicketQRBase64(t.ticketID, 300)
+			if err != nil {
+				log.Error("CompletePaidOrder: Failed to generate QR code", "ticket_id", t.ticketID, "error", err)
+				qrBase64 = fmt.Sprintf("%s_QR_%d", strings.ToUpper(gateway), t.ticketID)
+			}
+
+			_, err = tx.ExecContext(ctx,
+				"UPDATE Ticket SET status = 'BOOKED', qr_code_value = $1 WHERE ticket_id = $2",
+				qrBase64, t.ticketID,
+			)
+			if err != nil {
+				log.Error("CompletePaidOrder: Failed to update ticket to BOOKED", "ticket_id", t.ticketID, "error", err)
+				return "", err
+			}
+			bookedTicketIDs = append(bookedTicketIDs, t.ticketID)
+		}
+	} else if len(allTickets) > 0 {
+		// Nhánh thanh toán đến muộn (vé đã bị chuyển sang EXPIRED/CANCELLED):
+		// Khóa category_ticket FOR UPDATE để kiểm tra còn quota hay không
+		for _, t := range allTickets {
+			eventID = t.eventID
+			categoryTicketID = t.categoryTicketID
+
+			var maxQty, currentSold int
+			errQuota := tx.QueryRowContext(ctx, `
+				SELECT max_quantity, 
+				       (SELECT COUNT(*) FROM Ticket WHERE category_ticket_id = ct.category_ticket_id AND status = 'BOOKED')
+				FROM category_ticket ct 
+				WHERE category_ticket_id = $1
+				FOR UPDATE
+			`, t.categoryTicketID).Scan(&maxQty, &currentSold)
+
+			if errQuota == nil && (maxQty <= 0 || currentSold < maxQty) {
+				// CÒN CHỖ: Cấp lại vé BOOKED
+				qrBase64, errQR := qrcode.GenerateTicketQRBase64(t.ticketID, 300)
+				if errQR != nil {
+					qrBase64 = fmt.Sprintf("%s_QR_%d", strings.ToUpper(gateway), t.ticketID)
+				}
+				_, errUp := tx.ExecContext(ctx, "UPDATE Ticket SET status = 'BOOKED', qr_code_value = $1 WHERE ticket_id = $2", qrBase64, t.ticketID)
+				if errUp == nil {
+					bookedTicketIDs = append(bookedTicketIDs, t.ticketID)
+				}
+			}
 		}
 
-		// Update ticket
-		_, err = tx.ExecContext(ctx,
-			"UPDATE Ticket SET status = 'BOOKED', qr_code_value = $1 WHERE ticket_id = $2 AND status = 'PENDING'",
-			qrBase64, t.ticketID,
-		)
-		if err != nil {
-			log.Error("CompletePaidOrder: Failed to update ticket to BOOKED", "ticket_id", t.ticketID, "error", err)
-			return "", err
+		// Nếu không cấp lại được vé nào (HẾT CHỖ): Tự động hoàn tiền vào Ví FEMS của sinh viên
+		if len(bookedTicketIDs) == 0 && billAmount > 0 {
+			log.Warn("CompletePaidOrder: Late payment and category SOLD OUT - triggering auto-refund to student wallet", "bill_id", orderID, "user_id", userID, "amount", billAmount)
+			
+			var walletID int
+			var balBefore float64
+			errW := tx.QueryRowContext(ctx, "SELECT wallet_id, balance FROM wallet WHERE user_id = $1 FOR UPDATE", userID).Scan(&walletID, &balBefore)
+			if errW != nil {
+				return "", fmt.Errorf("FAIL-CLOSED: không tìm thấy ví sinh viên: %w", errW)
+			}
+			balAfter := balBefore + billAmount
+
+			_, errWallet := tx.ExecContext(ctx, "UPDATE wallet SET balance = $1 WHERE wallet_id = $2", balAfter, walletID)
+			if errWallet != nil {
+				return "", fmt.Errorf("FAIL-CLOSED: không thể hoàn tiền vào ví sinh viên: %w", errWallet)
+			}
+
+			// Ghi nhật ký giao dịch hoàn tiền
+			_, errTx := tx.ExecContext(ctx, `
+				INSERT INTO wallet_transaction (
+					wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description, created_at
+				) VALUES ($1, $2, 'CREDIT', $3, $4, $5, 'REFUND', $6, 'Hoàn tiền vé do thanh toán muộn và sự kiện đã hết chỗ', NOW())
+			`, walletID, userID, billAmount, balBefore, balAfter, fmt.Sprintf("%d", orderID))
+			if errTx != nil {
+				return "", fmt.Errorf("FAIL-CLOSED: không thể ghi nhật ký hoàn tiền: %w", errTx)
+			}
+
+			// Cập nhật trạng thái bill thành REFUNDED
+			_, _ = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'REFUNDED' WHERE bill_id = $1", orderID)
+			
+			if errCommit := tx.Commit(); errCommit != nil {
+				return "", errCommit
+			}
+			return "refunded_due_to_capacity", nil
 		}
-		bookedTicketIDs = append(bookedTicketIDs, t.ticketID)
+	} else if billAmount > 0 {
+		// Nhánh PENDING tickets đã bị xóa hoàn toàn khỏi DB bởi cron job:
+		// Tự động hoàn tiền an toàn vào Ví FEMS
+		log.Warn("CompletePaidOrder: Tickets were cleaned up - triggering auto-refund to student wallet", "bill_id", orderID, "user_id", userID, "amount", billAmount)
+		var walletID int
+		var balBefore float64
+		errW := tx.QueryRowContext(ctx, "SELECT wallet_id, balance FROM wallet WHERE user_id = $1 FOR UPDATE", userID).Scan(&walletID, &balBefore)
+		if errW != nil {
+			return "", fmt.Errorf("FAIL-CLOSED: không tìm thấy ví sinh viên: %w", errW)
+		}
+		balAfter := balBefore + billAmount
+
+		_, errWallet := tx.ExecContext(ctx, "UPDATE wallet SET balance = $1 WHERE wallet_id = $2", balAfter, walletID)
+		if errWallet != nil {
+			return "", fmt.Errorf("FAIL-CLOSED: không thể hoàn tiền vào ví sinh viên: %w", errWallet)
+		}
+		_, errTx := tx.ExecContext(ctx, `
+			INSERT INTO wallet_transaction (
+				wallet_id, user_id, type, amount, balance_before, balance_after, reference_type, reference_id, description, created_at
+			) VALUES ($1, $2, 'CREDIT', $3, $4, $5, 'REFUND', $6, 'Hoàn tiền vé do thanh toán quá hạn đã dọn dẹp', NOW())
+		`, walletID, userID, billAmount, balBefore, balAfter, fmt.Sprintf("%d", orderID))
+		if errTx != nil {
+			return "", fmt.Errorf("FAIL-CLOSED: không thể ghi nhật ký hoàn tiền: %w", errTx)
+		}
+		_, _ = tx.ExecContext(ctx, "UPDATE Bill SET payment_status = 'REFUNDED' WHERE bill_id = $1", orderID)
+		
+		if errCommit := tx.Commit(); errCommit != nil {
+			return "", errCommit
+		}
+		return "refunded_due_to_cleanup", nil
 	}
 
-	// Xử lý khấu trừ hoa hồng nền tảng và cộng số dư tạm giữ (pending_balance) cho Organizer
+	// Xử lý khấu trừ hoa hồng nền tảng và cộng số dư tạm giữ (pending_balance) cho Organizer (FAIL-CLOSED)
 	if len(bookedTicketIDs) > 0 && billAmount > 0 {
-		ticketPrices := make(map[int]float64)
-		for _, t := range tickets {
-			var p float64
-			_ = tx.QueryRowContext(ctx, "SELECT price FROM category_ticket WHERE category_ticket_id = $1", t.categoryTicketID).Scan(&p)
-			ticketPrices[t.ticketID] = p
+		ticketPrices := make(map[int]int64)
+		for _, t := range allTickets {
+			var pStr string
+			// Scan price as string to prevent float64 conversion / rounding error
+			errPrice := tx.QueryRowContext(ctx, "SELECT price::text FROM category_ticket WHERE category_ticket_id = $1", t.categoryTicketID).Scan(&pStr)
+			if errPrice != nil {
+				return "", fmt.Errorf("FAIL-CLOSED: lỗi đọc giá vé danh mục %d: %w", t.categoryTicketID, errPrice)
+			}
+			if idx := strings.Index(pStr, "."); idx != -1 {
+				pStr = pStr[:idx]
+			}
+			pInt, errParse := strconv.ParseInt(pStr, 10, 64)
+			if errParse != nil {
+				return "", fmt.Errorf("FAIL-CLOSED: giá vé '%s' không hợp lệ: %w", pStr, errParse)
+			}
+			ticketPrices[t.ticketID] = pInt
 		}
 		if commErr := r.ProcessPaidOrderCommissionTx(ctx, tx, orderID, eventID, bookedTicketIDs, ticketPrices); commErr != nil {
-			log.Warn("CompletePaidOrder: Error calculating commission", "error", commErr)
+			return "", fmt.Errorf("FAIL-CLOSED: lỗi tính phí hoa hồng và ghi biên lai: %w", commErr)
 		}
 	}
 
@@ -1514,15 +1622,18 @@ func (r *TicketRepository) CompletePaidOrder(ctx context.Context, orderID int64,
 	return "success", nil
 }
 
-// GetPaymentStatus - Lấy trạng thái thanh toán của Bill (SePay)
+// GetPaymentStatus - Lấy trạng thái thanh toán của Bill (Tích hợp SePay và PayOS real-time sync)
 func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) (string, error) {
 	var status string
 	var createdAt time.Time
 	var isExpired bool
+	var totalAmount float64
+	var paymentMethod sql.NullString
+
 	err := r.db.QueryRowContext(ctx,
-		"SELECT payment_status, created_at, (NOW() > created_at + INTERVAL '5 minutes') FROM Bill WHERE bill_id = $1",
+		"SELECT payment_status, created_at, (NOW() > created_at + INTERVAL '5 minutes'), total_amount, payment_method FROM Bill WHERE bill_id = $1",
 		orderID,
-	).Scan(&status, &createdAt, &isExpired)
+	).Scan(&status, &createdAt, &isExpired, &totalAmount, &paymentMethod)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "NOT_FOUND", nil
@@ -1530,10 +1641,41 @@ func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) 
 		return "", err
 	}
 
+	// Nếu trạng thái vẫn PENDING, chủ động kiểm tra trực tiếp qua PayOS API nếu có cấu hình
+	if status == "PENDING" {
+		payosSvc := ticketutils.GetPayOSService()
+		if payosSvc.IsConfigured() {
+			payosData, payosErr := payosSvc.GetPaymentLinkInformation(ctx, orderID)
+			if payosErr == nil && payosData != nil {
+				if payosData.Status == "PAID" {
+					log := logger.Default().WithContext(ctx)
+					log.Info("GetPaymentStatus: PayOS reported PAID for pending bill, auto-reconciling now", "order_id", orderID, "amount_paid", payosData.AmountPaid)
+
+					var pMethod string
+					if paymentMethod.Valid {
+						pMethod = paymentMethod.String
+					}
+
+					var reconcileErr error
+					if pMethod == "TOPUP" || pMethod == "SUBSCRIPTION" {
+						_, reconcileErr = r.ProcessSePayTopup(ctx, "PAYOS", float64(payosData.AmountPaid), orderID)
+					} else {
+						_, reconcileErr = r.CompletePaidOrder(ctx, orderID, "PAYOS", float64(payosData.AmountPaid))
+					}
+
+					if reconcileErr == nil {
+						return "PAID", nil
+					}
+					log.Error("GetPaymentStatus: Failed to auto-reconcile PayOS payment", "error", reconcileErr)
+				}
+			}
+		}
+	}
+
 	// Nếu trạng thái là PENDING và đã quá 5 phút từ lúc tạo đơn
 	if status == "PENDING" && isExpired {
 		log := logger.Default().WithContext(ctx)
-		log.Info("⏳ SePay Order has expired (5m timeout). Canceling bill and updating tickets.", "bill_id", orderID, "created_at", createdAt)
+		log.Info("⏳ Order has expired (5m timeout). Canceling bill and updating tickets.", "bill_id", orderID, "created_at", createdAt)
 
 		// Bắt đầu transaction để cancel Bill và Ticket liên quan
 		tx, err := r.db.BeginTx(ctx, nil)

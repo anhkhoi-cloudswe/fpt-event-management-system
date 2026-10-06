@@ -145,7 +145,7 @@ func (h *TicketHandler) HandleOrganizerWalletTopup(ctx context.Context, request 
 		return createMessageResponse(http.StatusBadRequest, "Invalid JSON body: "+err.Error())
 	}
 
-	resp, err := h.useCase.CreateOrganizerTopupOrder(ctx, userID, req.Amount)
+	resp, err := h.useCase.CreateOrganizerTopupOrder(ctx, userID, req.Amount, req.TierCode)
 	if err != nil {
 		log.Error("HandleOrganizerWalletTopup error: %v", err)
 		return createMessageResponse(http.StatusBadRequest, err.Error())

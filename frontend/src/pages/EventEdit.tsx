@@ -26,6 +26,9 @@ import { uploadEventBanner, validateImageFile } from '../utils/imageUpload'
 import { useToast } from '../contexts/ToastContext'
 // showToast(type, message): hiển thị toast success/error/warning
 
+import UpgradePlanModal from '../components/UpgradePlanModal'
+import { useCapacityGuard } from '../hooks/useCapacityGuard'
+
 // ======================= TYPES =======================
 
 // TicketType: chỉ cho phép 2 loại vé (VIP hoặc STANDARD)
@@ -51,6 +54,16 @@ export default function EventEdit() {
 
   // showToast: hiển thị toast message
   const { showToast } = useToast()
+
+  const {
+    modalOpen,
+    setModalOpen,
+    modalState,
+    checkCapacityExceeded,
+    handleApiPlanRequiredError,
+    isSubmitBlocked,
+    limitsError,
+  } = useCapacityGuard()
 
   // ======================= STATE CHUNG =======================
 
@@ -755,6 +768,19 @@ export default function EventEdit() {
     setIsSubmitting(true)
     setError(null)
 
+    if (isSubmitBlocked) {
+      setError(limitsError || 'Không thể gửi thông tin do không tải được hạn mức tài khoản (/limits lỗi).')
+      showToast('error', limitsError || 'Không thể gửi thông tin do không tải được hạn mức tài khoản')
+      setIsSubmitting(false)
+      return
+    }
+
+    const ticketsSum = tickets.reduce((sum, ticket) => sum + (Number(ticket.maxQuantity) || 0), 0)
+    if (checkCapacityExceeded(eventInfo.maxSeats || 0, ticketsSum, 0)) {
+      setIsSubmitting(false)
+      return
+    }
+
     try {
       // ===== REMOVED: maxQuantity chia hết 10 validation (không hợp lý) =====
 
@@ -836,6 +862,13 @@ export default function EventEdit() {
         bannerUrl: finalBannerUrl,
       }
 
+      const reqCap = eventInfo.maxSeats || 0
+      const currentTicketsSum = tickets.reduce((sum, ticket) => sum + (Number(ticket.maxQuantity) || 0), 0)
+      if (checkCapacityExceeded(reqCap, currentTicketsSum, 0)) {
+        setIsSubmitting(false)
+        return
+      }
+
       console.log('Updating event with:', requestBody)
 
       // ===== CALL API UPDATE =====
@@ -859,6 +892,16 @@ export default function EventEdit() {
         await new Promise(resolve => setTimeout(resolve, 500))
         navigate('/dashboard/events')
       } else {
+        if (response.status === 403) {
+          try {
+            const errData = JSON.parse(responseText)
+            if (errData.error === 'PLAN_REQUIRED' || errData.code === 'PLAN_REQUIRED') {
+              handleApiPlanRequiredError(errData)
+              setIsSubmitting(false)
+              return
+            }
+          } catch (_) {}
+        }
         const errorMessage = responseText || 'Failed to update event'
         showToast('error', errorMessage)
         throw new Error(errorMessage)
@@ -994,7 +1037,7 @@ export default function EventEdit() {
                                     />
                                   ) : (
                                     <div className="w-7 h-7 rounded-full bg-blue-600/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs border border-blue-500/20">
-                                      {sp.fullName.charAt(0).toUpperCase()}
+                                      {(sp.fullName || '').charAt(0).toUpperCase()}
                                     </div>
                                   )}
                                   <div>
@@ -1377,6 +1420,14 @@ export default function EventEdit() {
           </div>
         </div>
       )}
+      {/* Upgrade Plan Modal */}
+      <UpgradePlanModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        requestedCapacity={modalState.requestedCapacity}
+        currentTier={modalState.currentTier}
+        maxAllowed={modalState.maxAllowed}
+      />
     </div>
   )
 }

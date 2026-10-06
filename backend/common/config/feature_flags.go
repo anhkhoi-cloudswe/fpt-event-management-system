@@ -62,6 +62,10 @@ const (
 	// FlagServiceSpecificDB - Bật DB init riêng cho từng service
 	// Ảnh hưởng: Mỗi service tự khởi tạo kết nối DB thay vì dùng chung db.GetDB()
 	FlagServiceSpecificDB = "SERVICE_SPECIFIC_DB"
+
+	// FlagEnableCapacityGating - Bật kiểm tra hạn mức sức chứa sự kiện theo gói/role (Pha 2)
+	// Mặc định false (tắt) để deploy Pha 2 an toàn không chặn người dùng khi Pha 3 (mua gói) chưa merge
+	FlagEnableCapacityGating = "ENABLE_CAPACITY_GATING"
 )
 
 // AllFeatureFlags - Danh sách tất cả feature flags để logging/monitoring
@@ -76,6 +80,7 @@ var AllFeatureFlags = []string{
 	FlagNotificationAPIEnabled,
 	FlagServiceSpecificScheduler,
 	FlagServiceSpecificDB,
+	FlagEnableCapacityGating,
 }
 
 var (

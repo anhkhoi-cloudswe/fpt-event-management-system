@@ -434,3 +434,7 @@ func (uc *EventUseCase) CreateIndependentEvent(ctx context.Context, userID int, 
 func (uc *EventUseCase) GetSampleBannerByID(ctx context.Context, bannerID int) (*models.SampleBanner, error) {
 	return uc.eventRepo.GetSampleBannerByID(ctx, bannerID)
 }
+
+func (uc *EventUseCase) GetOrganizerLimits(ctx context.Context, organizerID int) (*repository.OrganizerLimits, error) {
+	return uc.eventRepo.GetOrganizerLimits(ctx, organizerID)
+}

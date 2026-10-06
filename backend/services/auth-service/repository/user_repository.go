@@ -39,7 +39,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 	}
 
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi')
+		SELECT user_id, full_name, email, COALESCE(phone, ''), password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi')
 		FROM Users
 		WHERE email = $1
 	`
@@ -118,7 +118,7 @@ func (r *UserRepository) CheckLogin(ctx context.Context, email, password string)
 // OPTIMIZED: Removed Wallet column reference - balance now queried from dedicated wallets table
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi')
+		SELECT user_id, full_name, email, COALESCE(phone, ''), password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi')
 		FROM Users
 		WHERE email = $1
 	`
@@ -151,7 +151,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 
 func (r *UserRepository) FindByID(ctx context.Context, userID int) (*models.User, error) {
 	query := `
-		SELECT user_id, full_name, email, phone, password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi')
+		SELECT user_id, full_name, email, COALESCE(phone, ''), password_hash, role, status, created_at, sso_provider, deleted_at, theme, COALESCE(language, 'vi')
 		FROM Users
 		WHERE user_id = $1
 	`
@@ -482,7 +482,7 @@ func (r *UserRepository) SoftDeleteUser(ctx context.Context, userID string) erro
 // KHỚP VỚI Java UsersDAO.getStaffAndOrganizer() - filter by ACTIVE and INACTIVE status
 func (r *UserRepository) FindByRole(ctx context.Context, role string) ([]models.User, error) {
 	query := `
-		SELECT user_id, full_name, email, phone, role, status, created_at, sso_provider, deleted_at, theme
+		SELECT user_id, full_name, email, COALESCE(phone, ''), role, status, created_at, sso_provider, deleted_at, theme
 		FROM Users
 		WHERE role = $1 AND status IN ('ACTIVE', 'INACTIVE')
 		ORDER BY full_name
@@ -683,8 +683,60 @@ func (r *UserRepository) UpdateFullNameByEmail(ctx context.Context, email, fullN
 	return nil
 }
 
+// UpgradeToOrganizer upgrades a STUDENT user to ORGANIZER and creates default FREE subscription if not exists
+func (r *UserRepository) UpgradeToOrganizer(ctx context.Context, userID int, phone string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// 1. Update role to ORGANIZER and update phone if provided
+	var updateQuery string
+	var args []interface{}
+	if phone != "" {
+		updateQuery = `UPDATE Users SET role = 'ORGANIZER', phone = $1, previous_role = 'STUDENT' WHERE user_id = $2 AND role = 'STUDENT'`
+		args = []interface{}{phone, userID}
+	} else {
+		updateQuery = `UPDATE Users SET role = 'ORGANIZER', previous_role = 'STUDENT' WHERE user_id = $1 AND role = 'STUDENT'`
+		args = []interface{}{userID}
+	}
+
+	result, err := tx.ExecContext(ctx, updateQuery, args...)
+	if err != nil {
+		return fmt.Errorf("failed to update user role: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check affected rows: %w", err)
+	}
+	if rows == 0 {
+		return errors.New("chỉ tài khoản Sinh viên (STUDENT) mới có thể nâng cấp lên Ban tổ chức")
+	}
+
+	// 2. Ensure default FREE subscription exists for this organizer
+	var freeTierID int
+	err = tx.QueryRowContext(ctx, `SELECT tier_id FROM subscription_tier WHERE tier_code = 'FREE' LIMIT 1`).Scan(&freeTierID)
+	if err == nil && freeTierID > 0 {
+		// Check if user already has an active subscription
+		var hasActiveSub bool
+		_ = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM user_subscription WHERE user_id = $1 AND status = 'ACTIVE')`, userID).Scan(&hasActiveSub)
+		if !hasActiveSub {
+			// Insert 10-year free subscription
+			insertSubQuery := `
+				INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, auto_renew, amount_paid_vnd)
+				VALUES ($1, $2, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '10 years', false, 0)
+			`
+			_, _ = tx.ExecContext(ctx, insertSubQuery, userID, freeTierID)
+		}
+	}
+
+	return tx.Commit()
+}
+
 // DB returns the underlying database connection for custom queries
 // Use this method when you need to execute queries outside the standard repository methods
 func (r *UserRepository) DB() *sql.DB {
 	return r.db
 }
+

@@ -17,10 +17,12 @@ import {
   EyeOff,
   Lock,
   Info,
-  CheckCircle2
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { TimezoneCombobox } from '../components/TimezoneCombobox'
+import { OrganizerOnboardingModal } from '../components/auth/OrganizerOnboardingModal'
 
 const locales = [
   { value: 'vi', label: 'Tiếng Việt' },
@@ -267,6 +269,7 @@ export default function Profile() {
   // Close account state
   const [showCloseModal, setShowCloseModal] = useState(false)
   const [isClosingAccount, setIsClosingAccount] = useState(false)
+  const [isOrganizerModalOpen, setIsOrganizerModalOpen] = useState(false)
 
   // Error states for phone input
   const [phoneError, setPhoneError] = useState('')
@@ -632,6 +635,16 @@ export default function Profile() {
             <span className="inline-flex self-center px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-500/15">
               {user?.role}
             </span>
+            {user?.role === 'STUDENT' && (
+              <button
+                type="button"
+                onClick={() => setIsOrganizerModalOpen(true)}
+                className="inline-flex items-center gap-1.5 self-center px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white shadow-md shadow-orange-500/20 transition-all cursor-pointer active:scale-95"
+              >
+                <Sparkles size={13} className="animate-pulse" />
+                <span>Nâng cấp Ban tổ chức</span>
+              </button>
+            )}
           </div>
           <p className="text-sm text-slate-400 truncate font-medium flex items-center gap-1.5 justify-center md:justify-start">
             <Mail size={15} className="text-slate-400" />
@@ -1256,6 +1269,12 @@ export default function Profile() {
           </div>
         </div>
       )}
+
+      {/* Organizer Onboarding Modal */}
+      <OrganizerOnboardingModal
+        isOpen={isOrganizerModalOpen}
+        onClose={() => setIsOrganizerModalOpen(false)}
+      />
     </div>
   )
 }

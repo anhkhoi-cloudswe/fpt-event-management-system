@@ -1,13 +1,10 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   ShieldCheck,
-  CircleDollarSign,
   Wallet,
   ArrowLeft,
-  Building2,
   RefreshCw,
-  Clock,
   Sparkles,
   ChevronDown,
   Info,
@@ -16,8 +13,7 @@ import {
   ArrowRight,
   Calculator,
   Landmark,
-  BadgePercent,
-  Receipt
+  BadgePercent
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -39,7 +35,7 @@ type PolicyCategory = {
 
 export default function OrganizerPolicy() {
   const navigate = useNavigate()
-  const { currentLanguage, user } = useAuth()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<string>('pricing')
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
 
@@ -51,6 +47,10 @@ export default function OrganizerPolicy() {
   const calcCommissionPerTicket = calcTicketPrice > 0 ? (calcTicketPrice * 0.10) + 1000 : 0
   const calcTotalCommission = calcCommissionPerTicket * calcQuantity
   const calcOrganizerNet = calcGross - calcTotalCommission
+
+  const toggleFaq = (idx: number) => {
+    setExpandedFaq(prev => (prev === idx ? null : idx))
+  }
 
   const categories: PolicyCategory[] = [
     {

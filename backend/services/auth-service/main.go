@@ -143,7 +143,10 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return authHandler.HandleUpdateTheme(ctx, request)
 	case path == "/api/auth/update-profile" && method == "POST":
 		return authHandler.HandleUpdateProfile(ctx, request)
+	case path == "/api/auth/become-organizer" && method == "POST":
+		return authHandler.HandleBecomeOrganizer(ctx, request)
 	}
+
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: 404,

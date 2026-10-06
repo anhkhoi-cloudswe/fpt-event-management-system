@@ -254,7 +254,7 @@ export default function EventRequests() {
           },
         })
 
-        let eventsMap = new Map()
+        const eventsMap = new Map()
         if (eventsResponse.ok) {
           const eventsData = await eventsResponse.json()
 
@@ -412,7 +412,7 @@ export default function EventRequests() {
    * - Gọi API process để approve/reject
    * - Thành công -> toast + reload list
    */
-  const handleProcessRequest = async (areaId: number, organizerNote: string, rejectReason?: string) => {
+  const handleProcessRequest = async (areaId: number | null, organizerNote: string, rejectReason?: string) => {
     if (!requestToProcess) return
 
     try {

@@ -342,9 +342,9 @@ func (h *EventHandler) HandleCreateEventRequest(ctx context.Context, request eve
 	}
 	userID, _ := strconv.Atoi(userIDStr)
 
-	// Check role (ORGANIZER only)
+	// Check role (ORGANIZER, ADMIN, SCHOOL_ORGANIZER)
 	role := request.Headers["X-User-Role"]
-	if role != "ORGANIZER" && role != "ADMIN" {
+	if role != "ORGANIZER" && role != "ADMIN" && role != "SCHOOL_ORGANIZER" {
 		return createMessageResponse(http.StatusForbidden, "Only ORGANIZER can create event requests")
 	}
 
@@ -395,8 +395,18 @@ func (h *EventHandler) HandleCreateEventRequest(ctx context.Context, request eve
 	// Create event request
 	requestID, err := h.useCase.CreateEventRequest(ctx, userID, &req)
 	if err != nil {
+		var planErr *repository.PlanRequiredError
+		if errors.As(err, &planErr) {
+			return createJSONResponse(http.StatusForbidden, map[string]interface{}{
+				"error":       "PLAN_REQUIRED",
+				"message":     planErr.Message,
+				"maxAllowed":  planErr.MaxAllowed,
+				"requested":   planErr.Requested,
+				"currentTier": planErr.CurrentTier,
+			})
+		}
 		log.Error("HandleCreateEventRequest - Failed to create event request: %v", err)
-		return createMessageResponse(http.StatusInternalServerError, "Error creating event request")
+		return createMessageResponse(http.StatusInternalServerError, "Error creating event request: "+err.Error())
 	}
 
 	log.Info("HandleCreateEventRequest - Created request ID=%d", requestID)
@@ -773,6 +783,16 @@ func (h *EventHandler) HandleUpdateEventRequest(ctx context.Context, request eve
 	// Call use case to update request
 	err := h.useCase.UpdateEventRequest(ctx, userID, &req)
 	if err != nil {
+		var planErr *repository.PlanRequiredError
+		if errors.As(err, &planErr) {
+			return createJSONResponse(http.StatusForbidden, map[string]interface{}{
+				"error":       "PLAN_REQUIRED",
+				"message":     planErr.Message,
+				"maxAllowed":  planErr.MaxAllowed,
+				"requested":   planErr.Requested,
+				"currentTier": planErr.CurrentTier,
+			})
+		}
 		log.Error("UpdateEventRequest failed RequestID=%d: %v", req.RequestID, err)
 		return createMessageResponse(http.StatusInternalServerError, fmt.Sprintf("Error updating event request: %v", err))
 	}
@@ -880,6 +900,17 @@ func (h *EventHandler) HandleUpdateEventDetails(ctx context.Context, request eve
 	// ✅ FIX: Pass role để Repository có thể bypass ownership check cho Admin
 	err = h.useCase.UpdateEventDetails(ctx, userID, role, &req)
 	if err != nil {
+		var planErr *repository.PlanRequiredError
+		if errors.As(err, &planErr) {
+			return createJSONResponse(http.StatusForbidden, map[string]interface{}{
+				"error":       "PLAN_REQUIRED",
+				"message":     planErr.Message,
+				"maxAllowed":  planErr.MaxAllowed,
+				"requested":   planErr.Requested,
+				"currentTier": planErr.CurrentTier,
+			})
+		}
+
 		// Log detailed error for debugging
 		log.Error("UpdateEventDetails failed userID=%d: %v", userID, err)
 
@@ -1601,7 +1632,7 @@ func (h *EventHandler) HandleCreateIndependentEvent(ctx context.Context, request
 	}
 
 	role := request.Headers["X-User-Role"]
-	if role != "ORGANIZER" && role != "ADMIN" {
+	if role != "ORGANIZER" && role != "ADMIN" && role != "SCHOOL_ORGANIZER" {
 		return createMessageResponse(http.StatusForbidden, "Access denied: insufficient role")
 	}
 
@@ -1622,6 +1653,16 @@ func (h *EventHandler) HandleCreateIndependentEvent(ctx context.Context, request
 
 	eventID, err := h.useCase.CreateIndependentEvent(ctx, userID, &req)
 	if err != nil {
+		var planErr *repository.PlanRequiredError
+		if errors.As(err, &planErr) {
+			return createJSONResponse(http.StatusForbidden, map[string]interface{}{
+				"error":       "PLAN_REQUIRED",
+				"message":     planErr.Message,
+				"maxAllowed":  planErr.MaxAllowed,
+				"requested":   planErr.Requested,
+				"currentTier": planErr.CurrentTier,
+			})
+		}
 		log.Error("CreateIndependentEvent error: %v", err)
 		return createMessageResponse(http.StatusInternalServerError, "Internal server error creating independent event: "+err.Error())
 	}
@@ -1631,3 +1672,25 @@ func (h *EventHandler) HandleCreateIndependentEvent(ctx context.Context, request
 		"message": "Independent event created successfully",
 	})
 }
+
+// HandleGetOrganizerLimits - GET /api/v1/organizer/limits hoặc GET /api/organizer/limits
+// Truy vấn hạn mức và gói phí hiệu lực của người tổ chức (Pha 2)
+func (h *EventHandler) HandleGetOrganizerLimits(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	userIDStr := request.Headers["X-User-Id"]
+	if userIDStr == "" {
+		return createMessageResponse(http.StatusUnauthorized, "Unauthorized: User ID not found")
+	}
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil || userID <= 0 {
+		return createMessageResponse(http.StatusUnauthorized, "Unauthorized: invalid user ID")
+	}
+
+	limits, err := h.useCase.GetOrganizerLimits(ctx, userID)
+	if err != nil {
+		log.Error("HandleGetOrganizerLimits error for user %d: %v", userID, err)
+		return createMessageResponse(http.StatusServiceUnavailable, "Lỗi phân giải giới hạn (Fail-Closed): "+err.Error())
+	}
+
+	return createJSONResponse(http.StatusOK, limits)
+}
+

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/fpt-event-services/common/config"
+	"github.com/fpt-event-services/common/policy"
 	"github.com/fpt-event-services/common/storage"
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/event-service/models"
@@ -207,6 +208,31 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 	if currentStatus != "APPROVED" && currentStatus != "UPDATING" && currentStatus != "OPEN" {
 		log.Printf("[DIAGNOSTIC] BI CHAN O DAY DO STATUS KO HOP LE: %s", currentStatus)
 		return fmt.Errorf("Khong the sua vi status dang la %s", currentStatus)
+	}
+
+	// Kiểm tra giới hạn sức chứa theo Gói/Role của Organizer (Pha 2)
+	limits, err := r.GetOrganizerLimits(ctx, requesterID)
+	if err != nil {
+		return err
+	}
+	var ticketTotal int
+	for _, t := range req.Tickets {
+		if mq, ok := t["maxQuantity"].(float64); ok {
+			ticketTotal += int(mq)
+		} else if mqInt, ok := t["maxQuantity"].(int); ok {
+			ticketTotal += mqInt
+		}
+	}
+	eventID := 0
+	if createdEventID.Valid {
+		eventID = int(createdEventID.Int64)
+	}
+	effectiveCapacity, err := CalculateEffectiveCapacity(ctx, tx, eventID, nil, ticketTotal)
+	if err != nil {
+		return err
+	}
+	if err := ValidateCapacityLimit(limits, effectiveCapacity); err != nil {
+		return err
 	}
 
 	if createdEventID.Valid {
@@ -471,6 +497,8 @@ func (r *EventRepository) UpdateEventRequest(ctx context.Context, organizerID in
 				maxQty := 0
 				if mq, ok := ticketData["maxQuantity"].(float64); ok {
 					maxQty = int(mq)
+				} else if mqInt, ok := ticketData["maxQuantity"].(int); ok {
+					maxQty = mqInt
 				}
 				status := "ACTIVE"
 
@@ -809,7 +837,7 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 	// Base query to get all events with joined data
 	baseQuery := `
 		SELECT 
-			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
+			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
 			e.created_by
@@ -822,7 +850,9 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 	var query string
 	var args []interface{}
 
-	if role == "ORGANIZER" {
+	if role == "ADMIN" {
+		query = baseQuery + ` ORDER BY e.start_time DESC`
+	} else if role == "ORGANIZER" {
 		// Organizer should see events they created including active and historical ones.
 		// Include common statuses and also any event that already ended (end_time < NOW()).
 		query = baseQuery + ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','UPDATING','FINISHED') OR e.end_time < NOW())
@@ -936,7 +966,7 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 	// Base query to get all events with joined data
 	baseQuery := `
 		SELECT 
-			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
+			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
 			e.created_by
@@ -949,7 +979,9 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 	var whereClause string
 	var args []interface{}
 
-	if role == "ORGANIZER" {
+	if role == "ADMIN" {
+		whereClause = ``
+	} else if role == "ORGANIZER" {
 		// Organizer should see events they created including active, historical, and cancelled ones.
 		whereClause = ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','CANCELLED','UPDATING','FINISHED') OR e.end_time < NOW())`
 		args = append(args, userID)
@@ -1082,7 +1114,7 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 
 	baseQuery := `
 		SELECT 
-			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
+			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
 			e.created_by
@@ -1094,7 +1126,10 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 	var whereClause string
 	var args []interface{}
 
-	if role == "ORGANIZER" {
+	if role == "ADMIN" {
+		// Admin sees all events across the system
+		whereClause = ``
+	} else if role == "ORGANIZER" {
 		whereClause = ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','CANCELLED','UPDATING','FINISHED') OR e.end_time < NOW())`
 		args = append(args, userID)
 	} else if role == "STAFF" {
@@ -1185,163 +1220,38 @@ func (r *EventRepository) GetEventDetail(ctx context.Context, eventID int) (*mod
 		return r.GetEventDetailComposed(ctx, eventID)
 	}
 
-	{
-		detail, areaID, speakerID, err := r.loadEventDetailCore(ctx, eventID)
-		if err != nil || detail == nil {
-			return detail, err
-		}
-
-		log.Printf("[GetEventDetail] EventID=%d: e.speaker_id from DB = %v (Valid=%v)", eventID, speakerID.Int64, speakerID.Valid)
-
-		if err := r.loadEventDetailVenue(ctx, detail, areaID); err != nil {
-			return nil, err
-		}
-		if err := r.loadEventDetailSpeaker(ctx, detail, speakerID); err != nil {
-			return nil, err
-		}
-		if err := r.loadEventDetailCollections(ctx, detail, eventID); err != nil {
-			return nil, err
-		}
-
-		speakerNameVal := "nil"
-		if detail.SpeakerName != nil {
-			speakerNameVal = *detail.SpeakerName
-		}
-		// Security: Don't log speaker PII; only log metadata.
-		log.Printf("[GetEventDetail] EventID=%d - Event details retrieved (speaker: %s)", eventID, speakerNameVal)
-
-		return detail, nil
+	detail, areaID, speakerID, err := r.loadEventDetailCore(ctx, eventID)
+	if err != nil || detail == nil {
+		return detail, err
 	}
 
-	query := `
-		SELECT
-			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
-			e.area_id, va.area_name, va.floor, va.capacity,
-			v.venue_name, v.location,
-			e.speaker_id, s.full_name, s.bio, s.avatar_url, s.email, s.phone
-		FROM Event e
-		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
-		LEFT JOIN Venue v ON va.venue_id = v.venue_id
-		LEFT JOIN Speaker s ON e.speaker_id = s.speaker_id
-		WHERE e.event_id = $1
-	`
-
-	var detail models.EventDetailDto
-	var description, bannerURL, areaName, floor, venueName, venueLoc, speakerName, speakerBio, speakerAvatar, speakerEmail, speakerPhone sql.NullString
-	var areaID, areaCapacity sql.NullInt64
-	var speakerID sql.NullInt64
-	var startTime, endTime time.Time
-	var maxSeats sql.NullInt64
-	var status sql.NullString
-
-	err := r.db.QueryRowContext(ctx, query, eventID).Scan(
-		&detail.EventID, &detail.Title, &description, &startTime, &endTime, &maxSeats, &status, &bannerURL,
-		&areaID, &areaName, &floor, &areaCapacity,
-		&venueName, &venueLoc,
-		/* speaker */ &speakerID, &speakerName, &speakerBio, &speakerAvatar, &speakerEmail, &speakerPhone,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to query event detail: %w", err)
-	}
-
-	// ✅ DEBUG: Log event.speaker_id từ database
 	log.Printf("[GetEventDetail] EventID=%d: e.speaker_id from DB = %v (Valid=%v)", eventID, speakerID.Int64, speakerID.Valid)
 
-	// Map fields
-	if description.Valid {
-		detail.Description = &description.String
+	if err := r.loadEventDetailVenue(ctx, detail, areaID); err != nil {
+		return nil, err
 	}
-	detail.StartTime = formatTimeToWallClockRFC3339(startTime)
-	detail.EndTime = formatTimeToWallClockRFC3339(endTime)
-	if maxSeats.Valid {
-		detail.MaxSeats = int(maxSeats.Int64)
+	if err := r.loadEventDetailSpeaker(ctx, detail, speakerID); err != nil {
+		return nil, err
 	}
-	if status.Valid {
-		detail.Status = status.String
-	}
-	if bannerURL.Valid {
-		detail.BannerURL = &bannerURL.String
-	}
-	if venueName.Valid {
-		detail.VenueName = &venueName.String
-	}
-	if venueLoc.Valid {
-		detail.VenueLocation = &venueLoc.String
-	}
-	if areaID.Valid {
-		aid := int(areaID.Int64)
-		detail.AreaID = &aid
-	}
-	if areaName.Valid {
-		detail.AreaName = &areaName.String
-	}
-	if floor.Valid {
-		detail.Floor = &floor.String
-	}
-	if areaCapacity.Valid {
-		ac := int(areaCapacity.Int64)
-		detail.AreaCapacity = &ac
-	}
-	if speakerName.Valid {
-		detail.SpeakerName = &speakerName.String
-	}
-	if speakerBio.Valid {
-		detail.SpeakerBio = &speakerBio.String
-	}
-	if speakerAvatar.Valid {
-		detail.SpeakerAvatarURL = &speakerAvatar.String
-	}
-	if speakerEmail.Valid {
-		detail.SpeakerEmail = &speakerEmail.String
-	}
-	if speakerPhone.Valid {
-		detail.SpeakerPhone = &speakerPhone.String
+	if err := r.loadEventDetailCollections(ctx, detail, eventID); err != nil {
+		return nil, err
 	}
 
-	// Load tickets
-	tickets, err := r.GetCategoryTicketsByEventID(ctx, eventID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load category tickets: %w", err)
-	}
-	detail.Tickets = tickets
-
-	// Load seats by area_id (must return all seats in area, including unallocated)
-	if detail.AreaID != nil {
-		seats, err := r.GetSeatsByAreaID(ctx, *detail.AreaID, eventID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load seats: %w", err)
-		}
-		detail.Seats = seats
-	} else {
-		detail.Seats = []models.SeatResponse{}
-	}
-
-	// Check if any bookings exist for event (to indicate locked seating)
-	var bookingCount int
-	err = r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM Ticket WHERE event_id = $1 AND status IN ('PENDING','BOOKED','CHECKED_IN')", eventID).Scan(&bookingCount)
-	if err == nil {
-		has := bookingCount > 0
-		detail.HasBookings = &has
-	}
-
-	// ✅ DEBUG LOG: Log speaker info before returning
 	speakerNameVal := "nil"
 	if detail.SpeakerName != nil {
 		speakerNameVal = *detail.SpeakerName
 	}
-	// Security: Don't log speaker PII; only log metadata
+	// Security: Don't log speaker PII; only log metadata.
 	log.Printf("[GetEventDetail] EventID=%d - Event details retrieved (speaker: %s)", eventID, speakerNameVal)
 
-	return &detail, nil
+	return detail, nil
 }
+
 
 func (r *EventRepository) loadEventDetailCore(ctx context.Context, eventID int) (*models.EventDetailDto, sql.NullInt64, sql.NullInt64, error) {
 	query := `
 		SELECT
-			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
+			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, e.speaker_id, e.created_by, u.full_name,
 			e.event_format, e.custom_venue_name, e.custom_location, e.org_type, e.privacy_status, e.online_meeting_url
 		FROM Event e
@@ -1732,7 +1642,7 @@ func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventList
 
 	query := `
 		SELECT 
-			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
+			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
 			e.created_by
@@ -1833,7 +1743,7 @@ func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page 
 
 	query := `
 		SELECT 
-			e.event_id, e.title, e.description, e.start_time, e.end_time, e.max_seats, e.status, e.banner_url,
+			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
 			e.created_by
@@ -1912,6 +1822,25 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 	req.EventFormat = normalizeEventFormat(req.EventFormat)
 	if !isValidEventFormat(req.EventFormat) {
 		return 0, fmt.Errorf("invalid event format: %s", req.EventFormat)
+	}
+
+	// Kiểm tra giới hạn sức chứa theo Gói/Role của Organizer (Pha 2)
+	limits, err := r.GetOrganizerLimits(ctx, requesterID)
+	if err != nil {
+		return 0, err
+	}
+	var ticketTotal int
+	for _, t := range req.Tickets {
+		if t.MaxQuantity != nil {
+			ticketTotal += *t.MaxQuantity
+		}
+	}
+	effectiveCapacity, err := CalculateEffectiveCapacity(ctx, r.db, 0, req.ExpectedCapacity, ticketTotal)
+	if err != nil {
+		return 0, err
+	}
+	if err := ValidateCapacityLimit(limits, effectiveCapacity); err != nil {
+		return 0, err
 	}
 
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -2824,11 +2753,11 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		var requesterID int
 		var eventFormat, customVenueName, customLocation, bannerURL sql.NullString
 		var orgType, privacyStatus, onlineMeetingURL, onlineMeetingID, onlineMeetingSecret sql.NullString
-
+		var createdEventID sql.NullInt64
 		getRequestQuery := `
 			SELECT title, description, preferred_start_time, preferred_end_time, 
 			       expected_capacity, requester_id, event_format, custom_venue_name, custom_location, banner_url,
-			       org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret
+			       org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret, created_event_id
 			FROM Event_Request 
 			WHERE request_id = $1
 		`
@@ -2836,11 +2765,33 @@ func (r *EventRepository) ProcessEventRequest(ctx context.Context, adminID int, 
 		err := tx.QueryRowContext(ctx, getRequestQuery, req.RequestID).Scan(
 			&requestTitle, &requestDesc, &requestStartTime, &requestEndTime,
 			&requestCapacity, &requesterID, &eventFormat, &customVenueName, &customLocation, &bannerURL,
-			&orgType, &privacyStatus, &onlineMeetingURL, &onlineMeetingID, &onlineMeetingSecret,
+			&orgType, &privacyStatus, &onlineMeetingURL, &onlineMeetingID, &onlineMeetingSecret, &createdEventID,
 		)
 		if err != nil {
 			fmt.Printf("[DB_PROCESS] Failed to get request details: %v\n", err)
 			return fmt.Errorf("failed to get request details: %w", err)
+		}
+
+		// Kiểm tra giới hạn sức chứa HIỆN TẠI của Organizer khi Admin duyệt (Pha 2)
+		limits, err := r.GetOrganizerLimits(ctx, requesterID)
+		if err != nil {
+			return fmt.Errorf("không thể xác thực gói dịch vụ của người tổ chức: %w", err)
+		}
+		var expCap *int
+		if requestCapacity.Valid {
+			c := int(requestCapacity.Int64)
+			expCap = &c
+		}
+		targetEventID := 0
+		if createdEventID.Valid {
+			targetEventID = int(createdEventID.Int64)
+		}
+		effectiveCapacity, err := CalculateEffectiveCapacity(ctx, tx, targetEventID, expCap, 0)
+		if err != nil {
+			return fmt.Errorf("FAIL-CLOSED: lỗi tính toán sức chứa hiệu lực: %w", err)
+		}
+		if err := ValidateCapacityLimit(limits, effectiveCapacity); err != nil {
+			return fmt.Errorf("không thể duyệt: %w", err)
 		}
 
 		formatVal := "ONSITE"
@@ -3059,6 +3010,11 @@ func (r *EventRepository) UpdateEvent(ctx context.Context, req *models.UpdateEve
 	return nil
 }
 
+// CalculateEffectiveEventCapacity tính tổng sức chứa thực tế của sự kiện qua hàm chung toàn hệ thống
+func CalculateEffectiveEventCapacity(ctx context.Context, exec policy.DBExecutor, eventID int) (int, error) {
+	return CalculateEffectiveCapacity(ctx, exec, eventID, nil, 0)
+}
+
 func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, role string, req interface{}) error {
 	// ✅ Cast request to correct type
 	updateReq, ok := req.(*models.UpdateEventDetailsRequest)
@@ -3099,6 +3055,25 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 		return fmt.Errorf("cannot update event with status: %s", currentStatus)
 	}
 
+	// Kiểm tra giới hạn sức chứa theo Gói/Role của Organizer (Pha 2 - Fail-Closed)
+	limits, err := r.GetOrganizerLimits(ctx, eventOwnerID)
+	if err != nil {
+		return fmt.Errorf("FAIL-CLOSED: không thể xác thực gói biểu phí người tổ chức: %w", err)
+	}
+
+	var ticketTotal int
+	for _, t := range updateReq.Tickets {
+		ticketTotal += t.MaxQuantity
+	}
+	effectiveCapacity, err := CalculateEffectiveCapacity(ctx, tx, updateReq.EventID, nil, ticketTotal)
+	if err != nil {
+		return err
+	}
+
+	if err := ValidateCapacityLimit(limits, effectiveCapacity); err != nil {
+		return err
+	}
+
 	log.Printf("[UpdateEventDetails] Event verified. Owner=%d, Status=%s", eventOwnerID, currentStatus)
 
 	// ✅ STEP 1.5: Get area_id and check for existing bookings
@@ -3114,7 +3089,9 @@ func (r *EventRepository) UpdateEventDetails(ctx context.Context, userID int, ro
 	var eventFormat string
 	var eventCapacity int
 	var customVenue sql.NullString
-	_ = tx.QueryRowContext(ctx, "SELECT event_format, COALESCE(max_seats, 100), custom_venue_name FROM Event WHERE event_id = $1", updateReq.EventID).Scan(&eventFormat, &eventCapacity, &customVenue)
+	if err := tx.QueryRowContext(ctx, "SELECT event_format, COALESCE(max_seats, 100), custom_venue_name FROM Event WHERE event_id = $1", updateReq.EventID).Scan(&eventFormat, &eventCapacity, &customVenue); err != nil {
+		return fmt.Errorf("FAIL-CLOSED: lỗi đọc thông tin format/sức chứa event %d: %w", updateReq.EventID, err)
+	}
 	if (!areaID.Valid || areaID.Int64 <= 0) && eventFormat != "ONLINE" {
 		ensuredAreaID, err := r.ensureAreaAndSeatsForEvent(ctx, tx, updateReq.EventID, eventFormat, customVenue.String, eventCapacity)
 		if err == nil && ensuredAreaID > 0 {
@@ -3617,7 +3594,7 @@ func (r *EventRepository) UpdateEventConfig(ctx context.Context, userID int, rol
 		return fmt.Errorf("event not found")
 	}
 
-	// Organizer ownership check
+	// Organizer ownership and capacity limit check
 	if role == "ORGANIZER" {
 		var ownerID int
 		err = r.db.QueryRowContext(ctx,
@@ -3628,6 +3605,18 @@ func (r *EventRepository) UpdateEventConfig(ctx context.Context, userID int, rol
 		}
 		if ownerID != userID {
 			return fmt.Errorf("you are not the owner of this event")
+		}
+
+		limits, err := r.GetOrganizerLimits(ctx, ownerID)
+		if err != nil {
+			return fmt.Errorf("FAIL-CLOSED: không thể xác thực gói biểu phí người tổ chức: %w", err)
+		}
+		effectiveCapacity, err := CalculateEffectiveCapacity(ctx, r.db, updateReq.EventID, nil, 0)
+		if err != nil {
+			return err
+		}
+		if err := ValidateCapacityLimit(limits, effectiveCapacity); err != nil {
+			return err
 		}
 	}
 
@@ -4554,7 +4543,9 @@ func (r *EventRepository) ensureAreaAndSeatsForEvent(ctx context.Context, tx *sq
 		if err != nil {
 			err = tx.QueryRowContext(ctx, "INSERT INTO venue (venue_name, location, status) VALUES ('Địa Điểm Tự Do', 'Tự do ngoài trường', 'AVAILABLE') RETURNING venue_id").Scan(&venueID)
 			if err != nil {
-				_ = tx.QueryRowContext(ctx, "SELECT venue_id FROM venue ORDER BY venue_id ASC LIMIT 1").Scan(&venueID)
+				if errFall := tx.QueryRowContext(ctx, "SELECT venue_id FROM venue ORDER BY venue_id ASC LIMIT 1").Scan(&venueID); errFall != nil {
+					return 0, fmt.Errorf("FAIL-CLOSED: không thể tìm venue mặc định: %w", errFall)
+				}
 			}
 		}
 
@@ -4582,7 +4573,9 @@ func (r *EventRepository) ensureAreaAndSeatsForEvent(ctx context.Context, tx *sq
 
 	// 3. Check existing seats count for this area
 	var seatCount int
-	_ = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM Seat WHERE area_id = $1", areaID.Int64).Scan(&seatCount)
+	if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM Seat WHERE area_id = $1", areaID.Int64).Scan(&seatCount); err != nil {
+		return 0, fmt.Errorf("FAIL-CLOSED: không thể đếm số ghế khu vực %d: %w", areaID.Int64, err)
+	}
 	if seatCount < capacity {
 		seatsPerRow := 10
 		rowsNeeded := (capacity + seatsPerRow - 1) / seatsPerRow
@@ -4617,6 +4610,25 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 	req.EventFormat = normalizeEventFormat(req.EventFormat)
 	if !isValidEventFormat(req.EventFormat) {
 		return 0, fmt.Errorf("invalid event format: %s", req.EventFormat)
+	}
+
+	// Kiểm tra giới hạn sức chứa theo Gói/Role của Organizer (Pha 2)
+	limits, err := r.GetOrganizerLimits(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	var ticketTotal int
+	for _, t := range req.Tickets {
+		if t.MaxQuantity != nil {
+			ticketTotal += *t.MaxQuantity
+		}
+	}
+	effectiveCapacity, err := CalculateEffectiveCapacity(ctx, r.db, 0, req.ExpectedCapacity, ticketTotal)
+	if err != nil {
+		return 0, err
+	}
+	if err := ValidateCapacityLimit(limits, effectiveCapacity); err != nil {
+		return 0, err
 	}
 
 	tx, err := r.db.BeginTx(ctx, nil)

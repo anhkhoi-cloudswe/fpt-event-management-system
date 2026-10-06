@@ -260,9 +260,20 @@ func ensureAuthSessionSchema(dbConn *sql.DB) {
 	if dbConn == nil {
 		return
 	}
-	if _, err := dbConn.Exec(`ALTER TABLE Users ADD COLUMN IF NOT EXISTS active_session_token_id VARCHAR(255) DEFAULT NULL`); err != nil {
-		log.Warn("Failed to ensure active_session_token_id column", "error", err)
+	queries := []string{
+		`ALTER TABLE Users ADD COLUMN IF NOT EXISTS active_session_token_id VARCHAR(255) DEFAULT NULL`,
+		`ALTER TABLE Users ADD COLUMN IF NOT EXISTS sso_provider VARCHAR(50) DEFAULT NULL`,
+		`ALTER TABLE Users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP(6) WITH TIME ZONE DEFAULT NULL`,
+		`ALTER TABLE Users ADD COLUMN IF NOT EXISTS theme VARCHAR(10) DEFAULT 'light'`,
+		`ALTER TABLE Users ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'vi'`,
 	}
+	for _, q := range queries {
+		if _, err := dbConn.Exec(q); err != nil {
+			log.Warn("Failed to execute schema ensure query", "query", q, "error", err)
+		}
+	}
+	// Try adding PENDING_DELETE to user_status_enum if postgres
+	_, _ = dbConn.Exec(`ALTER TYPE user_status_enum ADD VALUE IF NOT EXISTS 'PENDING_DELETE'`)
 }
 
 // verifyRecaptcha verifies reCAPTCHA token if configured
@@ -1654,3 +1665,47 @@ func (h *AuthHandler) HandleUpdateProfile(ctx context.Context, request events.AP
 
 	return createStatusResponse(http.StatusOK, "success", "Cập nhật hồ sơ thành công")
 }
+
+// HandleBecomeOrganizer handles POST /api/auth/become-organizer
+func (h *AuthHandler) HandleBecomeOrganizer(ctx context.Context, request events.APIGatewayProxyRequest) (resp events.APIGatewayProxyResponse, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("CRITICAL PANIC recovered in HandleBecomeOrganizer", "panic", r)
+			resp, err = createStatusResponse(http.StatusInternalServerError, "fail", "Đã xảy ra lỗi hệ thống nghiêm trọng")
+		}
+	}()
+
+	email := request.Headers["X-User-Email"]
+	if email == "" {
+		token := extractToken(request)
+		if token != "" {
+			claims, err := jwt.ValidateToken(token)
+			if err == nil {
+				email = claims.Email
+			}
+		}
+	}
+	if email == "" {
+		return createErrorResponse(http.StatusUnauthorized, "Vui lòng đăng nhập để nâng cấp tài khoản")
+	}
+
+	var req models.BecomeOrganizerRequest
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createStatusResponse(http.StatusBadRequest, "fail", "Invalid request body")
+	}
+
+	authResponse, err := h.useCase.BecomeOrganizer(ctx, email, req)
+	if err != nil {
+		return createStatusResponse(http.StatusBadRequest, "fail", err.Error())
+	}
+
+	responseMap := map[string]interface{}{
+		"success":     true,
+		"status":      "success",
+		"message":     "Chúc mừng bạn đã trở thành Ban tổ chức sự kiện!",
+		"accessToken": authResponse.Token,
+		"user":        authResponse.User,
+	}
+	return responseWithCookies(http.StatusOK, responseMap, authCookies(authResponse))
+}
+

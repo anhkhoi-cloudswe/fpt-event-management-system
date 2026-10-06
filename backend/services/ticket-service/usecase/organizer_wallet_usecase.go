@@ -30,9 +30,9 @@ func (uc *TicketUseCase) GetEventFinancialReport(ctx context.Context, organizerI
 	return uc.ticketRepo.GetEventFinancialReport(ctx, organizerID, eventID)
 }
 
-// CreateOrganizerTopupOrder - Khởi tạo lệnh nạp tiền vào ví Organizer
-func (uc *TicketUseCase) CreateOrganizerTopupOrder(ctx context.Context, userID int, amount float64) (*models.TopupWalletResponse, error) {
-	return uc.ticketRepo.CreateOrganizerTopupOrder(ctx, userID, amount)
+// CreateOrganizerTopupOrder - Khởi tạo lệnh nạp tiền vào ví Organizer / mua gói
+func (uc *TicketUseCase) CreateOrganizerTopupOrder(ctx context.Context, userID int, amount float64, tierCode ...string) (*models.TopupWalletResponse, error) {
+	return uc.ticketRepo.CreateOrganizerTopupOrder(ctx, userID, amount, tierCode...)
 }
 
 // AddOrganizerBankAccount - Thêm tài khoản ngân hàng thụ hưởng cho Organizer

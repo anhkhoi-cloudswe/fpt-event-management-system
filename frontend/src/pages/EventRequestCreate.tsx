@@ -25,6 +25,8 @@ import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadEventBanner, deleteEventBanner, validateImageFile } from '../utils/imageUpload'
 import LocationAutocomplete from '../components/events/LocationAutocomplete'
+import UpgradePlanModal from '../components/UpgradePlanModal'
+import { useCapacityGuard } from '../hooks/useCapacityGuard'
 
 /* ─────────────────────────────────────────────────────────────
    DateTime format helpers
@@ -653,6 +655,15 @@ export default function EventRequestCreate() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const { user, currentLanguage } = useAuth()
+  const {
+    modalOpen,
+    setModalOpen,
+    modalState,
+    checkCapacityExceeded,
+    handleApiPlanRequiredError,
+    isSubmitBlocked,
+    limitsError,
+  } = useCapacityGuard()
 
   const [flowType, setFlowType] = useState<'UNIVERSITY' | 'INDEPENDENT' | null>(null)
   const [eventFormat, setEventFormat] = useState<'ONLINE' | 'ONSITE' | 'HYBRID'>('ONSITE')
@@ -1204,7 +1215,13 @@ export default function EventRequestCreate() {
     e.preventDefault()
     setError(null)
 
-    const cap = parseInt(formData.expectedParticipants)
+    if (isSubmitBlocked) {
+      setError(limitsError || 'Không thể gửi thông tin do không tải được hạn mức tài khoản (/limits lỗi).')
+      showToast('error', limitsError || 'Không thể gửi thông tin do không tải được hạn mức tài khoản')
+      return
+    }
+
+    const cap = parseInt(formData.expectedParticipants) || 0
     const maxRoomCap = getSelectedAreaCapacity()
     
     let maxAllowed = 100
@@ -1227,12 +1244,18 @@ export default function EventRequestCreate() {
       showToast('error', msg)
       return
     }
+
     const independentTickets = flowType === 'INDEPENDENT' ? buildIndependentTickets() : []
     const invalidTicket = independentTickets.find(ticket => Number.isNaN(ticket.price) || ticket.price < 0 || ticket.price > 100000000)
     if (invalidTicket) {
       const msg = 'Ticket price must be between 0 and 100,000,000 VND.'
       setError(msg)
       showToast('error', msg)
+      return
+    }
+
+    const ticketsSum = independentTickets.reduce((s, t) => s + (t.maxQuantity || 0), 0)
+    if (checkCapacityExceeded(cap, ticketsSum, 0)) {
       return
     }
 
@@ -1289,16 +1312,16 @@ export default function EventRequestCreate() {
           ? (formData.customLocation || null)
           : (formData.customLocation || null),
         bannerUrl: bannerUrl || null,
-        // ✅ NEW: Organization type, privacy status, and online meeting info
         orgType: flowType === 'UNIVERSITY' ? 'SCHOOL' : 'FREE',
         privacyStatus: isPublic ? 'PUBLIC' : 'PRIVATE',
         onlineMeetingUrl: (eventFormat === 'ONLINE' || eventFormat === 'HYBRID')
           ? (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink) || null
           : null,
-        onlineMeetingId: null,     // Populated by backend if needed via OAuth API
-        onlineMeetingSecret: null, // Populated by backend if needed via OAuth API
+        onlineMeetingId: null,
+        onlineMeetingSecret: null,
         tickets: flowType === 'INDEPENDENT' ? independentTickets : undefined,
       }
+
       const url = flowType === 'UNIVERSITY' ? '/api/event-requests' : '/api/events/independent'
       const res = await fetch(url, {
         method: 'POST',
@@ -1308,6 +1331,10 @@ export default function EventRequestCreate() {
       })
       if (!res.ok) {
         const ed = await res.json()
+        if (res.status === 403 && (ed.error === 'PLAN_REQUIRED' || ed.code === 'PLAN_REQUIRED')) {
+          handleApiPlanRequiredError(ed)
+          return
+        }
         throw new Error(ed.message || ed.error || 'Thất bại')
       }
       showToast('success', flowType === 'UNIVERSITY' ? 'Đã gửi đề xuất thành công!' : 'Sự kiện đã được tạo thành công!')
@@ -2262,20 +2289,8 @@ export default function EventRequestCreate() {
                       value={tempCapacity}
                       onChange={(e) => {
                         const val = parseInt(e.target.value)
-                        const maxRoomCap = getSelectedAreaCapacity()
-                        let maxCap = 100
-                        if (eventFormat === 'ONLINE') {
-                          maxCap = 100
-                        } else if (eventFormat === 'ONSITE') {
-                          maxCap = maxRoomCap
-                        } else if (eventFormat === 'HYBRID') {
-                          maxCap = 100 + maxRoomCap
-                        }
-                        
                         if (isNaN(val) || val <= 0) {
                           setTempCapacity('')
-                        } else if (val > maxCap) {
-                          setTempCapacity(maxCap.toString())
                         } else {
                           setTempCapacity(val.toString())
                         }
@@ -2311,6 +2326,12 @@ export default function EventRequestCreate() {
                   <button
                     type="button"
                     onClick={() => {
+                      const capVal = parseInt(tempCapacity) || 0
+                      const independentTickets = flowType === 'INDEPENDENT' ? buildIndependentTickets() : []
+                      const ticketsSum = independentTickets.reduce((s, t) => s + (t.maxQuantity || 0), 0)
+                      if (capVal > 0) {
+                        checkCapacityExceeded(capVal, ticketsSum, 0)
+                      }
                       setFormData(prev => ({ ...prev, expectedParticipants: tempCapacity }));
                       setCapacityPopoverOpen(false);
                     }}
@@ -2433,6 +2454,16 @@ export default function EventRequestCreate() {
           </div>
         </div>
       )}
+      {/* ══════════════════════════════════════════════
+          Upgrade Plan Modal for Capacity Limits
+      ══════════════════════════════════════════════ */}
+      <UpgradePlanModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        requestedCapacity={modalState.requestedCapacity}
+        currentTier={modalState.currentTier}
+        maxAllowed={modalState.maxAllowed}
+      />
     </div>
   )
 }

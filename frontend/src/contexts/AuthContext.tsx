@@ -62,9 +62,11 @@ interface AuthContextType {
   login: (email: string, password: string, role: UserRole) => void
   logout: () => void
   refreshUser: (isBackground?: boolean) => Promise<void>
+  becomeOrganizer: (payload: { phone?: string; organizationName?: string; agreePolicy: boolean; recaptchaToken?: string }) => Promise<{ success: boolean; message?: string }>
   currentLanguage: 'vi' | 'en'
   changeLanguage: (lang: 'vi' | 'en') => void
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -393,12 +395,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshUser, isAuthenticated])
 
+  const becomeOrganizer = useCallback(async (payload: { phone?: string; organizationName?: string; agreePolicy: boolean; recaptchaToken?: string }) => {
+    try {
+      const response = await axios.post('/auth/become-organizer', payload, {
+        withCredentials: true,
+      })
+      if (response.data.status === 'success' || response.data.success === true) {
+        const { user: updatedUser, accessToken: newAccessToken } = response.data
+        if (newAccessToken) {
+          setInMemoryToken(newAccessToken)
+        }
+        if (updatedUser) {
+          setUser(updatedUser)
+        } else {
+          await refreshUser()
+        }
+        return { success: true, message: response.data.message || 'Chúc mừng bạn đã trở thành Ban tổ chức sự kiện!' }
+      }
+      return { success: false, message: response.data.message || 'Không thể nâng cấp tài khoản' }
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || err?.message || 'Lỗi khi nâng cấp tài khoản Ban tổ chức'
+      return { success: false, message: errMsg }
+    }
+  }, [refreshUser, setUser])
+
   return (
-    <AuthContext.Provider value={{ user, loading, isLoading: loading, isRefreshing, isAuthenticated, token, setUser, setToken, login, logout, refreshUser, currentLanguage, changeLanguage }}>
+    <AuthContext.Provider value={{ user, loading, isLoading: loading, isRefreshing, isAuthenticated, token, setUser, setToken, login, logout, refreshUser, becomeOrganizer, currentLanguage, changeLanguage }}>
       {children}
     </AuthContext.Provider>
   )
 }
+
 
 export function useAuth() {
   const context = useContext(AuthContext)

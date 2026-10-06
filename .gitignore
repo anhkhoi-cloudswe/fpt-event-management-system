@@ -120,7 +120,11 @@ crash.*.log
 *.log
 *.bak
 *.backup
-Database/
+Database/*
+!Database/migrations/
+!Database/initdb.d/
+Database/backup/
+Database/backup/*
 
 # OS files
 .DS_Store
