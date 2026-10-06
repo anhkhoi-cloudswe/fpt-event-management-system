@@ -527,9 +527,9 @@ export default function GuestLanding() {
         style={{ backgroundColor: 'rgba(11, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}
       >
         {/* Top Logo / Bolt Marker */}
-        <div className="h-20 flex items-center justify-start px-6 gap-4 border-b border-slate-800/60 overflow-hidden">
+        <div className="h-20 flex items-center justify-start px-[22px] gap-4 border-b border-slate-800/60 overflow-hidden">
           <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/20">
-                  <img src="/FEMS_logo.jpg" alt="FPT Event Logo" className="w-5 h-5 object-contain rounded-full" />
+                  <img src="/favicon.svg" alt="FPT Event Logo" className="w-5 h-5 object-contain" />
           </div>
           <span className="font-black text-sm bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 whitespace-nowrap">
             FPT EVENT SYSTEM
@@ -544,7 +544,7 @@ export default function GuestLanding() {
               <button
                 key={item.id}
                 onClick={item.action}
-                className="flex items-center gap-4 py-3.5 px-4 rounded-2xl text-xs font-black transition-all duration-300 text-left w-full group/item text-slate-400 hover:text-white hover:bg-slate-800/50 hover:shadow-lg hover:shadow-orange-500/5 hover:translate-x-1"
+                className="flex items-center gap-4 py-3.5 px-[11px] rounded-2xl text-xs font-black transition-all duration-300 text-left w-full group/item text-slate-400 hover:text-white hover:bg-slate-800/50 hover:shadow-lg hover:shadow-orange-500/5 hover:translate-x-1"
               >
                 <div className="p-2.5 rounded-xl bg-slate-800/30 text-slate-400 group-hover/item:bg-orange-500 group-hover/item:text-white group-hover/item:shadow-lg group-hover/item:shadow-orange-500/20 transition-all duration-300">
                   <Icon className="w-4 h-4" />
@@ -589,7 +589,7 @@ export default function GuestLanding() {
             <div className="flex items-center justify-between pb-6 border-b border-slate-800/60">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg">
-                        <img src="/FEMS_logo.jpg" alt="FPT Event Logo" className="w-5 h-5 object-contain rounded-full" />
+                        <img src="/favicon.svg" alt="FPT Event Logo" className="w-5 h-5 object-contain" />
                 </div>
                 <span className="font-black text-sm bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
                   FPT EVENT
