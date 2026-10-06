@@ -120,11 +120,11 @@ crash.*.log
 *.log
 *.bak
 *.backup
-Database/*
-!Database/migrations/
-!Database/initdb.d/
-Database/backup/
-Database/backup/*
+# Database folder (Strictly ignore all database schemas, dumps, migrations & scripts)
+Database/
+Database/**
+*.sql
+
 
 # OS files
 .DS_Store
