@@ -558,7 +558,7 @@ export default function GuestLanding() {
         </nav>
 
         {/* Footer info in Sidebar */}
-        <div className="p-4 border-t border-slate-800/60 overflow-hidden">
+        <div className="px-[22px] py-4 border-t border-slate-800/60 overflow-hidden">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black text-orange-500 flex-shrink-0 border border-slate-700/55">
               FE
