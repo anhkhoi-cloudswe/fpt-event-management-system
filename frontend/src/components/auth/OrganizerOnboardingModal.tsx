@@ -321,20 +321,6 @@ export const OrganizerOnboardingModal: React.FC<OrganizerOnboardingModalProps> =
           {/* ==================== STEP 1: GUEST REGISTRATION FORM ==================== */}
           {currentStep === 'signup_form' && (
             <form onSubmit={handleGuestSendOtp} className="space-y-4">
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-3">
-                <Zap className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" />
-                <span>
-                  Đăng ký tài khoản nhanh chóng để kích hoạt quyền <strong>Organizer</strong> ngay tức thì. Nếu bạn đã có tài khoản Sinh viên,{' '}
-                  <button
-                    type="button"
-                    onClick={() => navigate('/login')}
-                    className="underline font-bold text-orange-600 dark:text-orange-400 hover:text-orange-700"
-                  >
-                    Đăng nhập tại đây
-                  </button>.
-                </span>
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Email */}
                 <div>
@@ -427,13 +413,13 @@ export const OrganizerOnboardingModal: React.FC<OrganizerOnboardingModalProps> =
                 </div>
               </div>
 
-              {/* reCAPTCHA - Locked until valid Email and Password (min 6 chars) are typed */}
+              {/* reCAPTCHA - Locked until valid Email and Password are typed */}
               {RECAPTCHA_SITE_KEY && (
                 <div className="pt-2 flex flex-col items-center justify-center">
                   {(!email || !email.includes('@') || password.length < 6) ? (
-                    <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs text-center flex items-center justify-center gap-2 w-full max-w-sm">
+                    <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs text-center flex items-center justify-center gap-2 w-full max-w-sm">
                       <Lock className="w-4 h-4 text-orange-500 shrink-0" />
-                      <span>Vui lòng nhập <strong>Email hợp lệ</strong> và <strong>Mật khẩu (≥ 6 ký tự)</strong> để mở khóa reCAPTCHA.</span>
+                      <span>Vui lòng nhập Email và Mật khẩu để mở khóa reCAPTCHA.</span>
                     </div>
                   ) : (
                     <ReCAPTCHA
