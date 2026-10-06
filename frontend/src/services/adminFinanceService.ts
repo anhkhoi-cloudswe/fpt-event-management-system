@@ -61,6 +61,45 @@ export interface AdminReceiptsResponse {
   totalPages: number
 }
 
+export interface SubscriptionSubscriberItem {
+  subscriptionId: number
+  userId: number
+  fullName: string
+  email: string
+  tierCode: string
+  tierName: string
+  status: string
+  amountPaidVnd: number
+  autoRenew: boolean
+  startDate: string
+  endDate: string
+  createdAt: string
+}
+
+export interface SubscriptionTierBreakdown {
+  tierCode: string
+  tierName: string
+  totalBought: number
+  activeUsers: number
+  totalRevenue: number
+}
+
+export interface SubscriptionTrendPoint {
+  date: string
+  totalCount: number
+  totalRevenue: number
+}
+
+export interface AdminSubscriptionAnalyticsResponse {
+  totalSubscribers: number
+  totalRevenueVnd: number
+  totalActivePackages: number
+  totalExpiredPackages: number
+  tierBreakdown: SubscriptionTierBreakdown[]
+  timeline: SubscriptionTrendPoint[]
+  subscribers: SubscriptionSubscriberItem[]
+}
+
 export const adminFinanceService = {
   // Lấy tổng quan 4 chỉ số KPI tài chính sàn
   async getOverview(): Promise<AdminFinanceOverview> {
@@ -117,4 +156,32 @@ export const adminFinanceService = {
     })
     return res.data
   },
+
+  // Lấy toàn bộ phân tích số liệu gói Subscription dành riêng cho Admin
+  async getSubscriptionAnalytics(): Promise<AdminSubscriptionAnalyticsResponse> {
+    const res = await api.get('/v1/admin/finance/subscriptions')
+    return res.data
+  },
+
+  // Lấy danh sách cấu hình các gói dịch vụ (Admin)
+  async getSubscriptionTiers(): Promise<any[]> {
+    const res = await api.get('/v1/admin/subscription-tiers')
+    return res.data
+  },
+
+  // Cập nhật cấu hình gói dịch vụ (Admin CRUD)
+  async updateSubscriptionTier(data: {
+    tierId: number
+    priceVnd: number
+    commissionBps: number
+    maxCapacityLimit: number
+    hasAdvancedReports: boolean
+    isActive: boolean
+    reason: string
+  }): Promise<{ message: string }> {
+    const res = await api.put('/v1/admin/subscription-tiers', data)
+    return res.data
+  },
 }
+
+

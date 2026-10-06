@@ -150,3 +150,11 @@ func (s *PayOSService) VerifyWebhook(ctx context.Context, webhook payos.Webhook)
 	}
 	return nil, fmt.Errorf("unable to parse verified webhook data")
 }
+
+// GetPaymentLinkInformation retrieves live status of an order directly from payOS
+func (s *PayOSService) GetPaymentLinkInformation(ctx context.Context, orderCode int64) (*payos.PaymentLink, error) {
+	if !s.IsConfigured() {
+		return nil, fmt.Errorf("payOS service is not configured")
+	}
+	return s.client.PaymentRequests.Get(ctx, orderCode)
+}

@@ -106,3 +106,12 @@ type PendingRegistration struct {
 	ExpiresAt    time.Time `json:"-"`
 	Attempts     int       `json:"-"`
 }
+
+// BecomeOrganizerRequest represents payload for self-service role upgrade to ORGANIZER
+type BecomeOrganizerRequest struct {
+	Phone            string `json:"phone"`
+	OrganizationName string `json:"organizationName"`
+	AgreePolicy      bool   `json:"agreePolicy"`
+	RecaptchaToken   string `json:"recaptchaToken"`
+}
+

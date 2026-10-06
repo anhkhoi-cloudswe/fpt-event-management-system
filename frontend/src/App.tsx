@@ -40,6 +40,7 @@ import AttendanceConfirm from './pages/AttendanceConfirm.tsx'
 import OrganizerWalletPage from './pages/OrganizerWallet.tsx'
 import OrganizerPolicy from './pages/OrganizerPolicy.tsx'
 import AdminFinancePage from './pages/AdminFinance.tsx'
+import OrganizerSubscriptionPage from './pages/OrganizerSubscription.tsx'
 
 
 import { useState } from 'react'
@@ -296,6 +297,12 @@ function AppRoutes() {
       <Route path="/invite/:token/payment" element={<PublicEventPayment />} />
       <Route path="/attendance/confirm" element={<ProtectedRoute><AttendanceConfirm /></ProtectedRoute>} />
       <Route path="/dashboard/events/:id/page" element={<DashboardEventPageRedirect />} />
+      <Route path="/organizer/subscription" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+        <Route index element={<OrganizerSubscriptionPage />} />
+      </Route>
+      <Route path="/subscription" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+        <Route index element={<OrganizerSubscriptionPage />} />
+      </Route>
 
       <Route
         path="/dashboard"
@@ -334,6 +341,8 @@ function AppRoutes() {
         <Route path="finance" element={<AdminFinancePage />} />
         <Route path="reports" element={<Reports />} />
         <Route path="organizer/wallet" element={<OrganizerWalletPage />} />
+        <Route path="organizer/subscription" element={<OrganizerSubscriptionPage />} />
+        <Route path="subscription" element={<OrganizerSubscriptionPage />} />
         <Route path="wallet" element={<OrganizerWalletPage />} />
         <Route path="organizer-policy" element={<OrganizerPolicy />} />
         <Route path="report-requests" element={

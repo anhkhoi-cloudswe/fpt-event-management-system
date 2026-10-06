@@ -265,25 +265,40 @@ func (r *TicketRepository) GetEventFinancialReport(ctx context.Context, organize
 	return &report, nil
 }
 
-// CreateOrganizerTopupOrder - Khởi tạo lệnh nạp tiền vào ví Organizer qua VietQR / SePay
-func (r *TicketRepository) CreateOrganizerTopupOrder(ctx context.Context, userID int, amount float64) (*models.TopupWalletResponse, error) {
+// CreateOrganizerTopupOrder - Khởi tạo lệnh nạp tiền vào ví Organizer / mua gói qua VietQR / PayOS / SePay
+func (r *TicketRepository) CreateOrganizerTopupOrder(ctx context.Context, userID int, amount float64, tierCode ...string) (*models.TopupWalletResponse, error) {
 	if amount < 10000 {
 		return nil, fmt.Errorf("số tiền nạp tối thiểu là 10.000 VND")
+	}
+
+	selectedTier := ""
+	if len(tierCode) > 0 && strings.TrimSpace(tierCode[0]) != "" {
+		selectedTier = strings.ToUpper(strings.TrimSpace(tierCode[0]))
+	}
+
+	paymentMethod := "TOPUP"
+	if selectedTier != "" {
+		paymentMethod = "SUBSCRIPTION"
 	}
 
 	var billID int64
 	insertBillQuery := `
 		INSERT INTO bill (user_id, total_amount, currency, payment_method, payment_status, created_at)
-		VALUES ($1, $2, 'VND', 'TOPUP', 'PENDING', NOW())
+		VALUES ($1, $2, 'VND', $3, 'PENDING', NOW())
 		RETURNING bill_id
 	`
-	err := r.db.QueryRowContext(ctx, insertBillQuery, userID, amount).Scan(&billID)
+	err := r.db.QueryRowContext(ctx, insertBillQuery, userID, amount, paymentMethod).Scan(&billID)
 	if err != nil {
 		return nil, fmt.Errorf("lỗi khởi tạo hóa đơn nạp tiền: %w", err)
 	}
 
-	// Cú pháp chuyển khoản định dạng: TOPUP <bill_id>
-	transferContent := fmt.Sprintf("TOPUP %d", billID)
+	// Cú pháp chuyển khoản định dạng thông minh: SUB <TIER> <bill_id> hoặc TOPUP <bill_id>
+	var transferContent string
+	if selectedTier != "" {
+		transferContent = fmt.Sprintf("SUB %s %d", selectedTier, billID)
+	} else {
+		transferContent = fmt.Sprintf("TOPUP %d", billID)
+	}
 
 	// 1. Thử tạo link thanh toán qua PayOS (Cổng mặc định)
 	payosSvc := ticketutils.GetPayOSService()
@@ -292,8 +307,14 @@ func (r *TicketRepository) CreateOrganizerTopupOrder(ctx context.Context, userID
 		if frontendURL == "" {
 			frontendURL = "http://localhost:3000"
 		}
-		returnURL := fmt.Sprintf("%s/dashboard/organizer/wallet?status=topup_success&billId=%d", frontendURL, billID)
-		cancelURL := fmt.Sprintf("%s/dashboard/organizer/wallet?status=topup_cancel&billId=%d", frontendURL, billID)
+		var returnURL, cancelURL string
+		if selectedTier != "" {
+			returnURL = fmt.Sprintf("%s/organizer/subscription?status=topup_success&billId=%d&tierCode=%s", frontendURL, billID, selectedTier)
+			cancelURL = fmt.Sprintf("%s/organizer/subscription?status=topup_cancel&billId=%d", frontendURL, billID)
+		} else {
+			returnURL = fmt.Sprintf("%s/dashboard/organizer/wallet?status=topup_success&billId=%d", frontendURL, billID)
+			cancelURL = fmt.Sprintf("%s/dashboard/organizer/wallet?status=topup_cancel&billId=%d", frontendURL, billID)
+		}
 
 		payosResp, payosErr := payosSvc.CreatePaymentLink(ctx, billID, int(amount), transferContent, cancelURL, returnURL)
 		if payosErr == nil && payosResp != nil {
@@ -630,7 +651,7 @@ func (r *TicketRepository) ProcessPaidOrderCommissionTx(
 	billID int64,
 	eventID int,
 	ticketIDs []int,
-	ticketPrices map[int]float64,
+	ticketPrices map[int]int64,
 ) error {
 	log := logger.Default().WithContext(ctx)
 
@@ -643,30 +664,112 @@ func (r *TicketRepository) ProcessPaidOrderCommissionTx(
 		return fmt.Errorf("lỗi truy vấn sự kiện: %w", err)
 	}
 
-	// 2. Đếm số lượng vé đã xuất biên lai trước giao dịch này để phân tầng (Tier 1 vs Tier 2)
+	// 2. Feature Flag: Chuyển sang biểu phí mới (ResolveOrganizerPolicyTx), MẶC ĐỊNH TẮT (legacy)
+	useDynamicFee := os.Getenv("USE_DYNAMIC_FEE_CALCULATION") == "true"
+
+	var dynamicPolicy *ResolvedOrganizerPolicy
+	var fixedFeePerTicket int64 = 1000
+	var minPriceForFixedFee int64 = 20000
+
+	if useDynamicFee {
+		var errPolicy error
+		dynamicPolicy, errPolicy = r.ResolveOrganizerPolicyTx(ctx, tx, organizerID)
+		if errPolicy != nil {
+			log.Error("ProcessPaidOrderCommissionTx: Failed to resolve dynamic policy", "organizer_id", organizerID, "error", errPolicy)
+			return fmt.Errorf("lỗi phân giải biểu phí người tổ chức: %w", errPolicy)
+		}
+
+		// Đọc tham số fixed fee từ platform_system_parameter dưới dạng int64 (FAIL-CLOSED)
+		var fixedFeeParam, minPriceParam string
+		errParam := tx.QueryRowContext(ctx, "SELECT param_value FROM platform_system_parameter WHERE param_key = 'FIXED_FEE_PER_TICKET'").Scan(&fixedFeeParam)
+		if errParam != nil {
+			return fmt.Errorf("FAIL-CLOSED: không đọc được tham số FIXED_FEE_PER_TICKET: %w", errParam)
+		}
+		var errParse error
+		fixedFeePerTicket, errParse = strconv.ParseInt(fixedFeeParam, 10, 64)
+		if errParse != nil || fixedFeePerTicket < 0 {
+			return fmt.Errorf("FAIL-CLOSED: giá trị FIXED_FEE_PER_TICKET không hợp lệ: '%s' (err: %v)", fixedFeeParam, errParse)
+		}
+
+		errParam = tx.QueryRowContext(ctx, "SELECT param_value FROM platform_system_parameter WHERE param_key = 'FIXED_FEE_MIN_TICKET_PRICE'").Scan(&minPriceParam)
+		if errParam != nil {
+			return fmt.Errorf("FAIL-CLOSED: không đọc được tham số FIXED_FEE_MIN_TICKET_PRICE: %w", errParam)
+		}
+		minPriceForFixedFee, errParse = strconv.ParseInt(minPriceParam, 10, 64)
+		if errParse != nil || minPriceForFixedFee < 0 {
+			return fmt.Errorf("FAIL-CLOSED: giá trị FIXED_FEE_MIN_TICKET_PRICE không hợp lệ: '%s' (err: %v)", minPriceParam, errParse)
+		}
+	}
+
+	// Đếm số lượng vé đã xuất biên lai trước giao dịch này (chỉ cần cho chế độ legacy fallback)
 	var previouslySoldPaidCount int
-	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM financial_receipt WHERE event_id = $1", eventID).Scan(&previouslySoldPaidCount)
-	if err != nil {
-		previouslySoldPaidCount = 0
+	if !useDynamicFee {
+		err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM financial_receipt WHERE event_id = $1", eventID).Scan(&previouslySoldPaidCount)
+		if err != nil {
+			previouslySoldPaidCount = 0
+		}
 	}
 
 	var totalNetAmount float64
 	for i, tID := range ticketIDs {
-		price := ticketPrices[tID]
-		if price <= 0 {
+		priceInt := ticketPrices[tID]
+		if priceInt <= 0 {
 			continue // Vé 0đ không sinh hoa hồng vé bán
 		}
 
-		currentTicketNumber := previouslySoldPaidCount + i
-		feePercent, fixedFee, commission, net := CalculateTicketCommission(currentTicketNumber, price, orgType)
-		totalNetAmount += net
+		var feePercent float64
+		var fixedFeeVal, commissionVal, netVal interface{}
+		var grossVal interface{} = priceInt
+		var tierCode, feeSource string
+		var commissionBps, feeConfigVersion int
+
+		if useDynamicFee && dynamicPolicy != nil {
+			// BIỂU PHÍ MỚI (Công thức int64 đầu cuối, không dùng float64/math.Floor):
+			// commission = (price * bps) / 10000 + fixed_fee
+			var applicableFixedFeeInt int64 = 0
+			if priceInt >= minPriceForFixedFee {
+				applicableFixedFeeInt = fixedFeePerTicket
+			}
+
+			percentCommInt := (priceInt * int64(dynamicPolicy.CommissionBps)) / 10000
+			totalCommInt := percentCommInt + applicableFixedFeeInt
+			netInt := priceInt - totalCommInt
+
+			feePercent = float64(dynamicPolicy.CommissionBps) / 100.0
+			fixedFeeVal = applicableFixedFeeInt
+			commissionVal = totalCommInt
+			netVal = netInt
+
+			tierCode = dynamicPolicy.TierCode
+			feeSource = dynamicPolicy.FeeSource
+			commissionBps = dynamicPolicy.CommissionBps
+			feeConfigVersion = dynamicPolicy.ConfigVersion
+
+			totalNetAmount += float64(netInt)
+		} else {
+			// LEGACY FALLBACK (Khi feature flag bị tắt để rollback)
+			currentTicketNumber := previouslySoldPaidCount + i
+			feeP, fFee, comm, n := CalculateTicketCommission(currentTicketNumber, float64(priceInt), orgType)
+			feePercent = feeP
+			fixedFeeVal = fFee
+			commissionVal = comm
+			netVal = n
+
+			tierCode = "LEGACY"
+			feeSource = "LEGACY"
+			commissionBps = int(math.Round(feePercent * 100))
+			feeConfigVersion = 1
+
+			totalNetAmount += n
+		}
 
 		// Chèn bản ghi Financial Receipt bất biến
 		insertReceiptQuery := `
 			INSERT INTO financial_receipt (
 				order_id, bill_id, ticket_id, event_id, organizer_id,
-				gross_amount, system_fee_percentage, fixed_fee, commission_amount, net_amount, currency, created_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'VND', NOW())
+				gross_amount, system_fee_percentage, fixed_fee, commission_amount, net_amount, currency,
+				tier_code, commission_bps, fee_source, fee_config_version, is_reversal, computed_at, created_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'VND', $11, $12, $13, $14, FALSE, NOW(), NOW())
 		`
 		_, err = tx.ExecContext(ctx, insertReceiptQuery,
 			billID,
@@ -674,11 +777,15 @@ func (r *TicketRepository) ProcessPaidOrderCommissionTx(
 			tID,
 			eventID,
 			organizerID,
-			price,
+			grossVal,
 			feePercent,
-			fixedFee,
-			commission,
-			net,
+			fixedFeeVal,
+			commissionVal,
+			netVal,
+			tierCode,
+			commissionBps,
+			feeSource,
+			feeConfigVersion,
 		)
 		if err != nil {
 			log.Error("Failed to insert financial receipt", "ticket_id", tID, "error", err)

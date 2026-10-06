@@ -745,3 +745,45 @@ func (uc *AuthUseCase) UpdateFullName(ctx context.Context, email, fullName strin
 	}
 	return uc.userRepo.UpdateFullNameByEmail(ctx, email, fullName)
 }
+
+// BecomeOrganizer handles self-service role upgrade from STUDENT to ORGANIZER
+func (uc *AuthUseCase) BecomeOrganizer(ctx context.Context, email string, req models.BecomeOrganizerRequest) (*models.AuthResponse, error) {
+	if !req.AgreePolicy {
+		return nil, errors.New("bạn cần đọc và đồng ý với Chính sách & Quy chế Ban tổ chức trước khi nâng cấp")
+	}
+
+	phone := strings.TrimSpace(req.Phone)
+	if phone != "" {
+		if err := validator.GetPhoneError(phone); err != "" {
+			return nil, errors.New(err)
+		}
+	}
+
+	user, err := uc.userRepo.FindByEmail(ctx, email)
+	if err != nil || user == nil {
+		return nil, errors.New("người dùng không tồn tại")
+	}
+
+	if user.Role == "ORGANIZER" {
+		return nil, errors.New("tài khoản của bạn đã là Ban tổ chức (ORGANIZER)")
+	}
+
+	if user.Role != "STUDENT" {
+		return nil, errors.New("chỉ tài khoản Sinh viên mới có thể tự nâng cấp lên Ban tổ chức")
+	}
+
+	// Update in DB
+	err = uc.userRepo.UpgradeToOrganizer(ctx, user.ID, phone)
+	if err != nil {
+		return nil, err
+	}
+
+	// Refresh user object with new role
+	user.Role = "ORGANIZER"
+	if phone != "" {
+		user.Phone = phone
+	}
+
+	return uc.issueFreshSessionTokenPair(ctx, user, false)
+}
+

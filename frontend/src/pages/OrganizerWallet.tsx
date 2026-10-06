@@ -2,16 +2,13 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Wallet,
   ArrowUpRight,
-  ArrowDownLeft,
   Building2,
   Clock,
   CheckCircle2,
-  XCircle,
   Copy,
   Check,
   Plus,
   RefreshCw,
-  FileBarChart,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -80,7 +77,7 @@ export default function OrganizerWalletPage() {
 
   // Payouts state
   const [payouts, setPayouts] = useState<PayoutRequest[]>([])
-  const [payoutPage, setPayoutPage] = useState(1)
+  const [payoutPage] = useState(1)
   const [payoutTotalRecords, setPayoutTotalRecords] = useState(0)
   const [payoutLoading, setPayoutLoading] = useState(false)
 
@@ -570,8 +567,8 @@ export default function OrganizerWalletPage() {
                   transactions.map((tx) => {
                     const isCredit = ['TOPUP', 'EVENT_PAYOUT_RELEASE', 'CREDIT'].includes(tx.type)
                     return (
-                      <tr key={tx.transactionID} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="py-4 px-6 font-mono text-xs text-slate-500">#{tx.transactionID}</td>
+                      <tr key={tx.transactionId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="py-4 px-6 font-mono text-xs text-slate-500">#{tx.transactionId}</td>
                         <td className="py-4 px-6">
                           <span
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${
@@ -709,7 +706,9 @@ export default function OrganizerWalletPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <div>
-              <h3 className="text-sm font-black text-slate-900 dark:text-white">Lịch Sử Rút Tiền Về Ngân Hàng</h3>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                Lịch Sử Rút Tiền Về Ngân Hàng {payoutTotalRecords > 0 ? `(${payoutTotalRecords})` : ''}
+              </h3>
               <p className="text-xs text-slate-400">Các yêu cầu rút tiền từ số dư khả dụng sang tài khoản thụ hưởng.</p>
             </div>
             <button
@@ -887,7 +886,7 @@ export default function OrganizerWalletPage() {
                       </tr>
                     ) : (
                       report.ticketClasses.map((tc) => (
-                        <tr key={tc.categoryTicketID} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                        <tr key={tc.categoryTicketId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                           <td className="py-4 px-6 font-bold text-slate-900 dark:text-white">{tc.name}</td>
                           <td className="py-4 px-6 font-mono text-xs">{formatVND(tc.price)}</td>
                           <td className="py-4 px-6 font-semibold">{tc.quantitySold}</td>

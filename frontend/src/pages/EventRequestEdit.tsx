@@ -29,6 +29,9 @@ import { uploadEventBanner, validateImageFile } from '../utils/imageUpload'
 import { useToast } from '../contexts/ToastContext'
 // showToast(type, message): hiển thị toast success/error/warning
 
+import UpgradePlanModal from '../components/UpgradePlanModal'
+import { useCapacityGuard } from '../hooks/useCapacityGuard'
+
 // ======================= TYPES =======================
 
 // TicketType: chỉ cho phép 2 loại vé (VIP hoặc STANDARD)
@@ -80,6 +83,16 @@ export default function EventRequestEdit() {
 
     // showToast: hiển thị toast message
     const { showToast } = useToast()
+
+    const {
+        modalOpen,
+        setModalOpen,
+        modalState,
+        checkCapacityExceeded,
+        handleApiPlanRequiredError,
+        isSubmitBlocked,
+        limitsError,
+    } = useCapacityGuard()
 
     // ======================= STATE CHUNG =======================
 
@@ -798,6 +811,20 @@ export default function EventRequestEdit() {
         setIsSubmitting(true)
         setError(null)
 
+        if (isSubmitBlocked) {
+            setError(limitsError || 'Không thể gửi thông tin do không tải được hạn mức tài khoản (/limits lỗi).')
+            showToast('error', limitsError || 'Không thể gửi thông tin do không tải được hạn mức tài khoản')
+            setIsSubmitting(false)
+            return
+        }
+
+        const reqCap = eventRequest.expectedCapacity || expectedCapacity || 0
+        const ticketsSum = tickets.reduce((sum, ticket) => sum + (Number(ticket.maxQuantity) || 0), 0)
+        if (checkCapacityExceeded(reqCap, ticketsSum, 0)) {
+            setIsSubmitting(false)
+            return
+        }
+
         // ✅ NEW: Validate datetime fields trước khi submit
         if (!eventRequest.preferredStartTime || !eventRequest.preferredEndTime) {
             setError('Thời gian bắt đầu và kết thúc không được để trống')
@@ -868,6 +895,13 @@ export default function EventRequestEdit() {
                 dryRunRequest.eventId = eventRequest.createdEventId
             }
 
+            const reqCap = eventRequest.expectedCapacity || expectedCapacity || 0
+            const ticketsSum = tickets.reduce((sum, ticket) => sum + (Number(ticket.maxQuantity) || 0), 0)
+            if (checkCapacityExceeded(reqCap, ticketsSum, 0)) {
+                setIsSubmitting(false)
+                return
+            }
+
             const dryRunResponse = await fetch(`/api/event-requests/update`, {
                 method: 'POST',
                 headers: {
@@ -879,6 +913,16 @@ export default function EventRequestEdit() {
 
             if (!dryRunResponse.ok) {
                 // ❌ Dry run failed - validation error, NO uploads happen
+                if (dryRunResponse.status === 403) {
+                    try {
+                        const errData = await dryRunResponse.json()
+                        if (errData.error === 'PLAN_REQUIRED' || errData.code === 'PLAN_REQUIRED') {
+                            handleApiPlanRequiredError(errData)
+                            setIsSubmitting(false)
+                            return
+                        }
+                    } catch (_) {}
+                }
                 const errorText = await dryRunResponse.text()
                 console.error('[STEP 1] DRY RUN FAILED:', errorText)
                 setError(errorText || 'Lỗi kiểm tra thông tin: dữ liệu không hợp lệ')
@@ -1100,7 +1144,7 @@ export default function EventRequestEdit() {
                                                                         />
                                                                     ) : (
                                                                         <div className="w-7 h-7 rounded-full bg-blue-600/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs border border-blue-500/20">
-                                                                            {sp.fullName.charAt(0).toUpperCase()}
+                                                                            {(sp.fullName || '').charAt(0).toUpperCase()}
                                                                         </div>
                                                                     )}
                                                                     <div>
@@ -1519,6 +1563,14 @@ export default function EventRequestEdit() {
                     </div>
                 </div>
             )}
+            {/* Upgrade Plan Modal */}
+            <UpgradePlanModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                requestedCapacity={modalState.requestedCapacity}
+                currentTier={modalState.currentTier}
+                maxAllowed={modalState.maxAllowed}
+            />
         </div>
     )
 }

@@ -145,9 +145,9 @@ func main() {
 	_ = tx.QueryRowContext(ctx, "INSERT INTO ticket (event_id, user_id, category_ticket_id, bill_id, qr_code_value, status) VALUES ($1, $2, $3, $4, 'QR1', 'BOOKED') RETURNING ticket_id", testEventID, organizerID, catTicketID, testBillID).Scan(&ticketID1)
 	_ = tx.QueryRowContext(ctx, "INSERT INTO ticket (event_id, user_id, category_ticket_id, bill_id, qr_code_value, status) VALUES ($1, $2, $3, $4, 'QR2', 'BOOKED') RETURNING ticket_id", testEventID, organizerID, catTicketID, testBillID).Scan(&ticketID2)
 
-	ticketPrices := map[int]float64{
-		ticketID1: 100000.0,
-		ticketID2: 100000.0,
+	ticketPrices := map[int]int64{
+		ticketID1: 100000,
+		ticketID2: 100000,
 	}
 
 	// Tier 1 cho SCHOOL: 4.5% + 1.000đ = 5.500đ -> Net = 94.500đ mỗi vé x 2 = 189.000đ

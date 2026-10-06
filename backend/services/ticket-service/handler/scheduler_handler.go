@@ -15,15 +15,17 @@ import (
 // Local mode: these endpoints are typically NOT called (goroutine tickers run instead).
 // AWS mode: EventBridge sends a simulated APIGatewayProxyRequest to trigger cleanup.
 type TicketSchedulerHandler struct {
-	pendingCleanup  *scheduler.PendingTicketCleanupScheduler
-	eventSettlement *scheduler.EventSettlementScheduler
+	pendingCleanup     *scheduler.PendingTicketCleanupScheduler
+	eventSettlement    *scheduler.EventSettlementScheduler
+	subscriptionExpiry *scheduler.SubscriptionExpiryScheduler
 }
 
 // NewTicketSchedulerHandlerWithDB creates the scheduler handler and its underlying schedulers.
 func NewTicketSchedulerHandlerWithDB(dbConn *sql.DB) *TicketSchedulerHandler {
 	return &TicketSchedulerHandler{
-		pendingCleanup:  scheduler.NewPendingTicketCleanupScheduler(dbConn, 5),
-		eventSettlement: scheduler.NewEventSettlementScheduler(dbConn, 5),
+		pendingCleanup:     scheduler.NewPendingTicketCleanupScheduler(dbConn, 5),
+		eventSettlement:    scheduler.NewEventSettlementScheduler(dbConn, 5),
+		subscriptionExpiry: scheduler.NewSubscriptionExpiryScheduler(dbConn, 60),
 	}
 }
 
@@ -31,6 +33,25 @@ func NewTicketSchedulerHandlerWithDB(dbConn *sql.DB) *TicketSchedulerHandler {
 func (h *TicketSchedulerHandler) StartSchedulers() {
 	h.pendingCleanup.Start()
 	h.eventSettlement.Start()
+	h.subscriptionExpiry.Start()
+}
+
+// HandleSubscriptionExpiry handles POST /internal/scheduler/subscription-expiry
+// Triggered by EventBridge / cron periodically.
+func (h *TicketSchedulerHandler) HandleSubscriptionExpiry(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	if !isTicketSchedulerCall(request) {
+		return ticketSchedulerResponse(http.StatusForbidden, map[string]string{"error": "internal only"})
+	}
+	expired, renewed, err := h.subscriptionExpiry.RunOnce(ctx)
+	if err != nil {
+		return ticketSchedulerResponse(http.StatusInternalServerError, map[string]interface{}{"error": err.Error()})
+	}
+	return ticketSchedulerResponse(http.StatusOK, map[string]interface{}{
+		"status":  "ok",
+		"job":     "subscription-expiry",
+		"expired": expired,
+		"renewed": renewed,
+	})
 }
 
 // HandlePendingTicketCleanup handles POST /internal/scheduler/pending-ticket-cleanup

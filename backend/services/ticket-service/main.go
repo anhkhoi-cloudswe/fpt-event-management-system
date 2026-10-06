@@ -121,6 +121,12 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			return ticketInternalHandler.HandleGetTicketInfo(ctx, request)
 		case path == "/internal/tickets/refund-all-by-event" && method == "POST":
 			return ticketInternalHandler.HandleRefundAllByEvent(ctx, request)
+		case path == "/internal/scheduler/pending-ticket-cleanup" && method == "POST":
+			return ticketSchedulerHandler.HandlePendingTicketCleanup(ctx, request)
+		case path == "/internal/scheduler/event-settlement" && method == "POST":
+			return ticketSchedulerHandler.HandleEventSettlement(ctx, request)
+		case path == "/internal/scheduler/subscription-expiry" && method == "POST":
+			return ticketSchedulerHandler.HandleSubscriptionExpiry(ctx, request)
 		}
 	}
 
@@ -232,6 +238,64 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return ticketHandler.HandleGetAdminFinancialReceipts(ctx, request)
 	case path == "/api/v1/admin/finance/receipts/export" && method == "GET":
 		return ticketHandler.HandleExportAdminFinancialReceipts(ctx, request)
+	case path == "/api/v1/admin/finance/subscriptions" && method == "GET":
+		return ticketHandler.HandleGetAdminSubscriptionAnalytics(ctx, request)
+
+	// ========== Subscription Lifecycle Routes (Pha 3) ==========
+	case path == "/api/v1/subscription/tiers" && method == "GET":
+		return ticketHandler.HandleGetSubscriptionTiers(ctx, request)
+	case path == "/api/v1/subscription/current" && method == "GET":
+		return ticketHandler.HandleGetCurrentSubscription(ctx, request)
+	case path == "/api/v1/subscription/subscribe" && method == "POST":
+		return ticketHandler.HandleSubscribeOrUpgrade(ctx, request)
+	case path == "/api/v1/subscription/preview-upgrade" && method == "POST":
+		return ticketHandler.HandlePreviewUpgrade(ctx, request)
+	case path == "/api/v1/subscription/downgrade" && method == "POST":
+		return ticketHandler.HandleScheduleDowngrade(ctx, request)
+	case path == "/api/v1/subscription/cancel" && method == "POST":
+		return ticketHandler.HandleCancelSubscription(ctx, request)
+	case path == "/api/v1/fee-policy/public-parameters" && method == "GET":
+		return ticketHandler.HandleGetPublicFeeParameters(ctx, request)
+
+	// ========== Admin Fee & Policy Management Routes (Pha 4) ==========
+	case path == "/api/v1/admin/role-policies" && method == "GET":
+		return ticketHandler.HandleGetRoleFeePolicies(ctx, request)
+	case path == "/api/v1/admin/role-policies" && method == "PUT":
+		return ticketHandler.HandleUpdateRoleFeePolicy(ctx, request)
+	case path == "/api/v1/admin/subscription-tiers" && method == "GET":
+		return ticketHandler.HandleGetAdminSubscriptionTiers(ctx, request)
+	case path == "/api/v1/admin/subscription-tiers" && method == "PUT":
+		return ticketHandler.HandleUpdateAdminSubscriptionTier(ctx, request)
+	case path == "/api/v1/admin/fee-overrides" && method == "GET":
+		return ticketHandler.HandleGetFeeOverrides(ctx, request)
+	case path == "/api/v1/admin/fee-overrides" && method == "POST":
+		return ticketHandler.HandleCreateFeeOverride(ctx, request)
+	case path == "/api/v1/admin/fee-overrides" && method == "DELETE":
+		return ticketHandler.HandleDeleteFeeOverride(ctx, request)
+	case path == "/api/v1/admin/users/school-role" && method == "POST":
+		return ticketHandler.HandleAssignSchoolOrganizerRole(ctx, request)
+	case path == "/api/v1/admin/users/school-role" && method == "DELETE":
+		return ticketHandler.HandleRevokeSchoolOrganizerRole(ctx, request)
+	case path == "/api/v1/admin/system-parameters" && method == "GET":
+		return ticketHandler.HandleGetSystemParameters(ctx, request)
+	case path == "/api/v1/admin/system-parameters" && method == "PUT":
+		return ticketHandler.HandleUpdateSystemParameter(ctx, request)
+	case path == "/api/v1/admin/fee-sandbox/simulate" && method == "POST":
+		return ticketHandler.HandleSimulateFeeCalculation(ctx, request)
+	case path == "/api/v1/admin/fee-audit-logs" && method == "GET":
+		return ticketHandler.HandleGetFeeAuditLogs(ctx, request)
+
+	// ========== Event Financial Overview & Advanced Analytics Routes (Pha 5 & 6) ==========
+	case strings.HasPrefix(path, "/api/v1/organizer/events/") && strings.HasSuffix(path, "/financial-overview") && method == "GET":
+		return ticketHandler.HandleGetEventFinancialOverview(ctx, request)
+	case strings.HasPrefix(path, "/api/v1/organizer/events/") && strings.HasSuffix(path, "/check-in-list") && method == "GET":
+		return ticketHandler.HandleGetEventCheckInList(ctx, request)
+	case strings.HasPrefix(path, "/api/v1/organizer/events/") && strings.HasSuffix(path, "/seat-status") && method == "GET":
+		return ticketHandler.HandleGetEventSeatStatus(ctx, request)
+	case strings.HasPrefix(path, "/api/v1/organizer/events/") && strings.HasSuffix(path, "/advanced-analytics") && method == "GET":
+		return ticketHandler.HandleGetEventAdvancedAnalytics(ctx, request)
+	case strings.HasPrefix(path, "/api/v1/organizer/events/") && strings.HasSuffix(path, "/export-csv") && method == "GET":
+		return ticketHandler.HandleExportEventCSV(ctx, request)
 	}
 
 	return events.APIGatewayProxyResponse{

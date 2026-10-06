@@ -1,0 +1,7 @@
+-- DOWN Migration: 03_add_school_organizer_enum.down.sql
+-- GHI CHÚ QUAN TRỌNG:
+-- PostgreSQL không hỗ trợ DROP VALUE khỏi ENUM type (ALTER TYPE ... DROP VALUE).
+-- Việc hoàn trả role của người dùng mang role SCHOOL_ORGANIZER về previous_role
+-- đã được thực thi đầy đủ và an toàn trong 04_subscription_and_dynamic_fees.down.sql
+-- trước khi cột previous_role bị DROP.
+-- File này giữ lại như một checkpoint ghi chú lịch sử migration.

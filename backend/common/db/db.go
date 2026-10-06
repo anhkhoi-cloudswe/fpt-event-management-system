@@ -21,6 +21,27 @@ func isLocal() bool {
 	return os.Getenv("AWS_LAMBDA_FUNCTION_NAME") == "" && os.Getenv("RENDER") != "true"
 }
 
+// maskDSNPassword masks password in postgres DSN for safe logging and error reporting
+func maskDSNPassword(dsn string) string {
+	if u, err := url.Parse(dsn); err == nil && u.User != nil {
+		if pass, hasPass := u.User.Password(); hasPass && pass != "" {
+			return strings.Replace(dsn, ":"+pass+"@", ":******@", 1)
+		}
+	}
+	return dsn
+}
+
+// validateDevDatabaseURL ensures local development does not accidentally connect to production Supabase
+func validateDevDatabaseURL(dsn string) error {
+	if isLocal() && strings.Contains(strings.ToLower(dsn), "supabase.co") {
+		if os.Getenv("ALLOW_REMOTE_DB") != "true" {
+			masked := maskDSNPassword(dsn)
+			return fmt.Errorf("🛡️ [SAFETY GUARD BLOCKED] Phát hiện DB_URL trỏ tới Supabase (%s) trong môi trường Local Dev. Khởi động bị từ chối để bảo vệ dữ liệu Cloud! Vui lòng sử dụng Postgres Local hoặc đặt ALLOW_REMOTE_DB=true nếu thực sự chủ đích", masked)
+		}
+	}
+	return nil
+}
+
 // applyConnectionPool sets connection pool limits appropriate for the runtime.
 // Local: generous limits for concurrent local services.
 // Render Free Tier / AWS Lambda: conservative limits to protect shared DB from connection storms.
@@ -90,7 +111,7 @@ func forceIPv4InDSN(dsn string) string {
 
 	// For URL DSN: postgres://user:pass@host:port/database
 	host := u.Hostname()
-	if host == "" || host == "localhost" || host == "127.0.0.1" {
+	if host == "" || host == "localhost" || host == "127.0.0.1" || host == "host.docker.internal" || host == "fpt-test-postgres" || host == "postgres" || host == "mysql" {
 		return dsn
 	}
 
@@ -269,6 +290,9 @@ func openAndPingDB(dsn string, safeHost string, serviceName string) (*sql.DB, er
 // initDBWithDSN initializes global DB using a full DSN string.
 // Expected format: postgres://username:password@host:port/dbname?sslmode=require
 func initDBWithDSN(dsn string) error {
+	if err := validateDevDatabaseURL(dsn); err != nil {
+		return err
+	}
 	var err error
 	
 	// Force IPv4 to avoid unreachable IPv6 on Render
@@ -363,6 +387,10 @@ func InitServiceDB(serviceName string) (*sql.DB, error) {
 			config.Database,
 			sslmode,
 		)
+	}
+
+	if err := validateDevDatabaseURL(dsn); err != nil {
+		return nil, err
 	}
 
 	// Force IPv4 to avoid unreachable IPv6 on Render

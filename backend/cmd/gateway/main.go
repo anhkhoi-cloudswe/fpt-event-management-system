@@ -58,6 +58,7 @@ var routes = []Route{
 	{"/api/auth/set-sso-password", "Auth"},
 	{"/api/auth/update-theme", "Auth"},
 	{"/api/auth/update-profile", "Auth"},
+	{"/api/auth/become-organizer", "Auth"},
 	{"/api/admin/create-account", "Auth"},
 	{"/api/users/", "Auth"},
 
@@ -71,9 +72,19 @@ var routes = []Route{
 	{"/api/event-requests", "Event"},
 	{"/api/sample-banners", "Event"},
 	{"/api/staff/event-requests", "Event"}, // Specific: before /api/staff/*
+	{"/api/v1/organizer/limits", "Event"},
 	{"/api/organizer/", "Event"},
 
 	// ========== Ticket Service (8083) ==========
+	{"/api/v1/subscription/", "Ticket"},
+	{"/api/v1/fee-policy/", "Ticket"},
+	{"/api/v1/admin/role-policies", "Ticket"},
+	{"/api/v1/admin/subscription-tiers", "Ticket"},
+	{"/api/v1/admin/fee-overrides", "Ticket"},
+	{"/api/v1/admin/users/school-role", "Ticket"},
+	{"/api/v1/admin/system-parameters", "Ticket"},
+	{"/api/v1/admin/fee-sandbox", "Ticket"},
+	{"/api/v1/admin/fee-audit-logs", "Ticket"},
 	{"/api/v1/admin/finance", "Ticket"},
 	{"/api/v1/organizer/wallet", "Ticket"},
 	{"/api/v1/organizer/bank-accounts", "Ticket"},

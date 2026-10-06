@@ -228,3 +228,28 @@ func (h *TicketHandler) HandleExportAdminFinancialReceipts(ctx context.Context, 
 		Body:       string(csvData),
 	}, nil
 }
+
+// HandleGetAdminSubscriptionAnalytics - GET /api/v1/admin/finance/subscriptions
+func (h *TicketHandler) HandleGetAdminSubscriptionAnalytics(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	_, err := requireAdmin(request)
+	if err != nil {
+		if strings.HasPrefix(err.Error(), "Unauthorized") {
+			return createMessageResponse(http.StatusUnauthorized, err.Error())
+		}
+		return createMessageResponse(http.StatusForbidden, err.Error())
+	}
+
+	analytics, err := h.useCase.GetAdminSubscriptionAnalytics(ctx)
+	if err != nil {
+		log.Error("HandleGetAdminSubscriptionAnalytics error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, err.Error())
+	}
+
+	body, _ := json.Marshal(analytics)
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers:    defaultHeaders(),
+		Body:       string(body),
+	}, nil
+}
+

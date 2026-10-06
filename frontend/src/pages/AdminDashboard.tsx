@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { UserPlus, Edit, Trash2, Search, Filter, Users, UserCheck, ShieldAlert, Award, Image as ImageIcon, Plus, X, Upload } from 'lucide-react'
+import { UserPlus, Edit, Trash2, Search, Filter, Users, ShieldAlert, Award, Image as ImageIcon, Plus, X, Upload, DollarSign } from 'lucide-react'
 import ConfirmModal from '../components/common/ConfirmModal'
 import UserFormModal from '../components/admin/UserFormModal'
 import SpeakerFormModal from '../components/admin/SpeakerFormModal'
-import type { User, CreateUserRequest, UpdateUserRequest } from '../types/user'
+import type { CreateUserRequest, UpdateUserRequest } from '../types/user'
 import { uploadEventBanner } from '../utils/imageUpload'
 
 type ActiveTab = 'STUDENT' | 'SPEAKER' | 'INTERNAL' | 'BANNER'
@@ -150,6 +150,7 @@ export default function AdminDashboard() {
       const url = '/api/admin/create-account'
       const method = isCreate ? 'POST' : 'PUT'
       
+      const updateData = data as UpdateUserRequest
       const payload: any = isCreate ? {
         fullName: data.fullName,
         phone: data.phone,
@@ -157,11 +158,11 @@ export default function AdminDashboard() {
         password: (data as CreateUserRequest).password,
         role: data.role
       } : {
-        id: data.userId,
+        id: updateData.userId,
         fullName: data.fullName,
         phone: data.phone,
         role: data.role,
-        status: data.status
+        status: updateData.status
       }
 
       if (!isCreate && (data as any).password) {
@@ -192,7 +193,7 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleDeleteUser = (targetUser: any) => {
+  const _handleDeleteUser = (targetUser: any) => {
     setConfirmType('danger')
     setConfirmMessage(
       `Bạn có chắc chắn muốn xóa người dùng "${targetUser.fullName}" (${targetUser.username})?`
@@ -828,7 +829,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Internal User Form Modal */}
       <UserFormModal
         isOpen={isUserModalOpen}
         onClose={() => {

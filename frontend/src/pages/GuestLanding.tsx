@@ -26,7 +26,8 @@ import { useState, useEffect, useRef } from 'react'
 import { RealtimeClock } from '../components/RealtimeClock'
 
 // Import EventDetailModal and EventDetail types
-import { EventDetailModal } from '../components/events/EventDetailModal'
+import { EventDetailModal } from '../components/events/EventDetailModal'
+import { OrganizerOnboardingModal } from '../components/auth/OrganizerOnboardingModal'
 import type { EventDetail } from '../types/event'
 
 // Import helper để format thời gian theo Vietnam timezone
@@ -128,7 +129,8 @@ export default function GuestLanding() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   // States for Event Detail Modal in Guest Mode (Preserve Scroll Position)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isOrganizerModalOpen, setIsOrganizerModalOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<EventDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
@@ -527,7 +529,7 @@ export default function GuestLanding() {
         {/* Top Logo / Bolt Marker */}
         <div className="h-20 flex items-center justify-start px-6 gap-4 border-b border-slate-800/60 overflow-hidden">
           <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/20">
-            <img src="/favicon.svg" alt="FPT Event Logo" className="w-5 h-5 object-contain" />
+                  <img src="/FEMS_logo.jpg" alt="FPT Event Logo" className="w-5 h-5 object-contain rounded-full" />
           </div>
           <span className="font-black text-sm bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 whitespace-nowrap">
             FPT EVENT SYSTEM
@@ -587,7 +589,7 @@ export default function GuestLanding() {
             <div className="flex items-center justify-between pb-6 border-b border-slate-800/60">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg">
-                  <img src="/favicon.svg" alt="FPT Event Logo" className="w-5 h-5 object-contain" />
+                        <img src="/FEMS_logo.jpg" alt="FPT Event Logo" className="w-5 h-5 object-contain rounded-full" />
                 </div>
                 <span className="font-black text-sm bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
                   FPT EVENT
@@ -701,6 +703,15 @@ export default function GuestLanding() {
 
           {/* CTA buttons */}
           <div className="animate-fade-in-up flex flex-wrap justify-center gap-5 pt-4" style={{ animationDelay: '400ms' }}>
+            {/* Nút Trở thành Ban tổ chức */}
+            <button
+              onClick={() => setIsOrganizerModalOpen(true)}
+              className="group rounded-full bg-slate-900 border border-slate-700 hover:border-orange-500 px-8 py-4 text-base font-bold text-white shadow-xl transition-all duration-300 hover:shadow-orange-500/20 hover:-translate-y-1 hover:scale-[1.02] flex items-center gap-2 cursor-pointer"
+            >
+              <Sparkles className="w-5 h-5 text-orange-500 group-hover:rotate-12 transition-transform" />
+              Trở thành Ban Tổ Chức
+            </button>
+
             {/* Nút đăng nhập -> gọi handleLoginClick */}
             <button
               onClick={handleLoginClick}
@@ -997,7 +1008,35 @@ export default function GuestLanding() {
           )}
         </section>
 
-        {/* ===================== CTA SECTION ===================== */}
+                {/* ===================== ORGANIZER PROMO BANNER ===================== */}
+        <section className="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-8 sm:p-12 border border-slate-800 shadow-2xl">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-500/20 to-amber-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+          <div className="relative flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div className="space-y-4 max-w-2xl text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-bold text-orange-400">
+                <Sparkles className="w-4 h-4 text-orange-400" />
+                Dành cho Câu lạc bộ & Đơn vị tổ chức
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-black tracking-tight leading-tight text-white">
+                Khởi tạo sự kiện của bạn với công nghệ vé thông minh
+              </h2>
+              <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
+                Trở thành Ban tổ chức (Organizer) trong 1 phút. Quản lý check-in QR Code, bán vé tự động và báo cáo tài chính minh bạch cho sự kiện của bạn.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
+              <button
+                onClick={() => setIsOrganizerModalOpen(true)}
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-sm shadow-xl shadow-orange-500/25 hover:shadow-orange-500/40 hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95"
+              >
+                <Sparkles className="w-4 h-4" />
+                Đăng ký Ban Tổ Chức Ngay
+              </button>
+            </div>
+          </div>
+        </section>
+
+{/* ===================== CTA SECTION ===================== */}
         <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 via-orange-500 to-amber-500 p-12 text-center shadow-2xl shadow-orange-500/25 border border-white/10">
           {/* Background pattern trang trí */}
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20"></div>
@@ -1087,6 +1126,12 @@ export default function GuestLanding() {
         </div>
       )}
 
+      {/* ===================== ORGANIZER ONBOARDING MODAL ===================== */}
+      <OrganizerOnboardingModal
+        isOpen={isOrganizerModalOpen}
+        onClose={() => setIsOrganizerModalOpen(false)}
+      />
+
       {/* ===================== EVENT DETAIL MODAL (In-place viewing) ===================== */}
       <EventDetailModal
         isOpen={isDetailOpen}

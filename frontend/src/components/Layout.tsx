@@ -23,7 +23,8 @@ import {
   Ticket,
   Receipt,
   Undo2,
-  DollarSign
+  DollarSign,
+  Sparkles
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useWallet } from '../hooks/useWallet'
@@ -34,6 +35,8 @@ import fptLogoLoading from '../assets/fpt-logo-loading.png'
 import WelcomePasswordModal from './WelcomePasswordModal'
 import AccountRestoreOverlay from './common/AccountRestoreOverlay'
 import { TimezoneCombobox } from './TimezoneCombobox'
+import { subscriptionService, CurrentSubscription } from '../services/subscriptionService'
+import { OrganizerOnboardingModal } from './auth/OrganizerOnboardingModal'
 
 export default function Layout() {
   const { user, logout, refreshUser, currentLanguage } = useAuth()
@@ -52,10 +55,28 @@ export default function Layout() {
     return 'hover-expand'
   })
   const [showModePopover, setShowModePopover] = useState(false)
+  const [isOrganizerModalOpen, setIsOrganizerModalOpen] = useState(false)
 
+  const [currentSub, setCurrentSub] = useState<CurrentSubscription | null>(null)
+
+  // Fetch subscription tier for organizer
   useEffect(() => {
-    if (user?.id) {
-      setSidebarMode((localStorage.getItem('sidebar_mode_' + user.id) as any) || 'hover-expand')
+    if (user?.role === 'ORGANIZER') {
+      const loadSub = async () => {
+        try {
+          const sub = await subscriptionService.getCurrentSubscription()
+          setCurrentSub(sub)
+        } catch (e) {
+          // ignore error
+        }
+      }
+      loadSub()
+      window.addEventListener('subscription-refresh', loadSub)
+      window.addEventListener('wallet-refresh', loadSub)
+      return () => {
+        window.removeEventListener('subscription-refresh', loadSub)
+        window.removeEventListener('wallet-refresh', loadSub)
+      }
     }
   }, [user])
 
@@ -300,6 +321,7 @@ export default function Layout() {
         {user?.role === 'ORGANIZER' && (
           <>
             {renderLink("/dashboard/organizer/wallet", Wallet, currentLanguage === 'en' ? "Wallet & Revenue" : "Ví & Doanh thu", handleLinkClick, closeMobile)}
+            {renderLink("/dashboard/organizer/subscription", Sparkles, currentLanguage === 'en' ? "Subscription" : "Gói dịch vụ", handleLinkClick, closeMobile)}
             {renderLink("/dashboard/check-in", CheckSquare, currentLanguage === 'en' ? "Check-in" : "Check-in", handleLinkClick, closeMobile)}
             {renderLink("/dashboard/system-config", Sliders, currentLanguage === 'en' ? "Configuration" : "Cấu hình", handleLinkClick, closeMobile)}
           </>
@@ -309,6 +331,39 @@ export default function Layout() {
           <>
             {renderLink("/dashboard/my-tickets", Ticket, currentLanguage === 'en' ? "My Tickets" : "Vé của tôi", handleLinkClick, closeMobile)}
             {renderLink("/dashboard/bills", Receipt, currentLanguage === 'en' ? "My Bills" : "Hóa đơn", handleLinkClick, closeMobile)}
+            {/* Student Upgrade to Organizer Banner/Button */}
+            <div className="pt-2 px-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (closeMobile) setMobileMenuOpen(false)
+                  setIsOrganizerModalOpen(true)
+                }}
+                className={`w-full p-3.5 rounded-2xl border text-left transition-all duration-300 group flex items-center gap-3 cursor-pointer shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-95 ${
+                  isDarkMode
+                    ? 'bg-gradient-to-br from-orange-950/40 via-slate-900 to-amber-950/30 border-orange-500/30 text-orange-300 hover:border-orange-400'
+                    : 'bg-gradient-to-br from-orange-500 to-amber-500 border-orange-400 text-white shadow-orange-500/20'
+                }`}
+              >
+                <div className={`p-2 rounded-xl shrink-0 ${isDarkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-white/20 text-white'}`}>
+                  <Sparkles size={18} className="animate-pulse" />
+                </div>
+                <div className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
+                  !closeMobile && sidebarMode === 'collapsed'
+                    ? 'opacity-0 w-0 pointer-events-none'
+                    : !closeMobile && sidebarMode === 'hover-expand'
+                    ? 'opacity-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto w-0 pointer-events-none group-hover/sidebar:pointer-events-auto'
+                    : 'opacity-100 w-auto'
+                }`}>
+                  <p className="text-xs font-black tracking-tight leading-tight">
+                    {currentLanguage === 'en' ? 'Become Organizer' : 'Đăng ký Ban Tổ Chức'}
+                  </p>
+                  <p className={`text-[10px] font-medium leading-none mt-1 opacity-90 ${isDarkMode ? 'text-slate-400' : 'text-orange-100'}`}>
+                    {currentLanguage === 'en' ? 'Create events & sell tickets' : 'Tạo sự kiện & quản lý vé'}
+                  </p>
+                </div>
+              </button>
+            </div>
           </>
         )}
         {isStaff && renderLink("/dashboard/report-requests", Undo2, currentLanguage === 'en' ? "Refund Requests" : "Yêu Cầu Hoàn Tiền", handleLinkClick, closeMobile)}
@@ -347,6 +402,30 @@ export default function Layout() {
             <div className={`hidden sm:block text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               <RealtimeClock />
             </div>
+
+            {isOrganizer && (
+              <Link
+                to="/organizer/subscription"
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-black transition-all hover:scale-105 active:scale-95 ${
+                  currentSub?.tierCode === 'BUSINESS'
+                    ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
+                    : currentSub?.tierCode === 'PRO'
+                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
+                    : isDarkMode
+                    ? 'bg-slate-800 text-slate-300 border-slate-700'
+                    : 'bg-orange-50 text-orange-700 border-orange-200'
+                }`}
+                title="Xem & Nâng cấp Gói dịch vụ"
+              >
+                <Sparkles size={14} className={currentSub?.tierCode === 'PRO' || currentSub?.tierCode === 'BUSINESS' ? 'text-amber-500 animate-pulse' : 'text-slate-400'} />
+                <span className="text-[11px] font-black uppercase tracking-wider">
+                  {currentSub ? `Gói: ${currentSub.tierCode}` : 'Gói: FREE'}
+                </span>
+                {currentSub?.status === 'ACTIVE' && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 ml-0.5 animate-pulse" />
+                )}
+              </Link>
+            )}
 
             {showWallet && (
               <Link
@@ -688,6 +767,12 @@ export default function Layout() {
 
       {/* Welcome popup for first-time Google Sign-In users */}
       <WelcomePasswordModal isOpen={showWelcomeModal} onClose={() => setShowWelcomeModal(false)} />
+
+      {/* Organizer Onboarding Modal */}
+      <OrganizerOnboardingModal
+        isOpen={isOrganizerModalOpen}
+        onClose={() => setIsOrganizerModalOpen(false)}
+      />
     </div>
   )
 }
