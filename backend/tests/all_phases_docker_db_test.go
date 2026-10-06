@@ -33,7 +33,8 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 	defer db.Close()
 
 	if err := db.Ping(); err != nil {
-		t.Fatalf("Docker Postgres không phản hồi: %v", err)
+		t.Skipf("⏭️ [CI SKIP] Docker Postgres local không phản hồi (%v). Bỏ qua integration test trong CI.", err)
+		return
 	}
 
 	ctx := context.Background()

@@ -30,9 +30,15 @@ func TestPhase5_EventReportingAndCheckIn_RealDockerDB(t *testing.T) {
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		t.Fatalf("Không thể mở kết nối tới Docker Postgres: %v", err)
+		t.Skipf("⏭️ [CI SKIP] Không thể mở kết nối DB: %v", err)
+		return
 	}
 	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		t.Skipf("⏭️ [CI SKIP] Docker Postgres local không phản hồi (%v). Bỏ qua integration test trong CI.", err)
+		return
+	}
 
 	ctx := context.Background()
 

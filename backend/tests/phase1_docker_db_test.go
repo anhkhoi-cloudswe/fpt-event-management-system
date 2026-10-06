@@ -51,7 +51,8 @@ func TestPhase1_DockerPostgres_FullLifecycle(t *testing.T) {
 	defer db.Close()
 
 	if err := db.Ping(); err != nil {
-		t.Fatalf("Docker Postgres không phản hồi: %v. Hãy đảm bảo container fpt-test-postgres đang chạy.", err)
+		t.Skipf("⏭️ [CI SKIP] Docker Postgres local không phản hồi (%v). Bỏ qua integration test trong môi trường CI.", err)
+		return
 	}
 	t.Log("✅ Đã kết nối thành công tới Docker Postgres (localhost:5432)!")
 
