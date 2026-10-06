@@ -20,6 +20,20 @@ jobs:
   backend:
     name: Backend Go Test And Build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fpt_event_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: backend
@@ -33,6 +47,10 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      - name: Initialize Test Database Schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d fpt_event_test -f ../Database/initdb.d/01_fpt_event_full_postgres.sql
+
       - name: Download Go dependencies
         run: go mod download
 
@@ -40,7 +58,8 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.CI_JWT_SECRET || 'ci-jwt-secret-must-be-at-least-32-bytes' }}
           INTERNAL_AUTH_TOKEN: ${{ secrets.CI_INTERNAL_AUTH_TOKEN || 'ci-internal-auth-token' }}
-        run: go test ./...
+          DB_URL: postgres://postgres:postgres@localhost:5432/fpt_event_test?sslmode=disable
+        run: go test -p 1 -count=1 -v ./...
 
       - name: Build all Go packages
         env:
