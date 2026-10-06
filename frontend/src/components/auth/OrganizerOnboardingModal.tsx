@@ -427,14 +427,21 @@ export const OrganizerOnboardingModal: React.FC<OrganizerOnboardingModalProps> =
                 </div>
               </div>
 
-              {/* reCAPTCHA */}
+              {/* reCAPTCHA - Locked until valid Email and Password (min 6 chars) are typed */}
               {RECAPTCHA_SITE_KEY && (
-                <div className="pt-2 flex justify-center">
-                  <ReCAPTCHA
-                    ref={recaptchaRef}
-                    sitekey={RECAPTCHA_SITE_KEY}
-                    onChange={(token) => setRecaptchaToken(token)}
-                  />
+                <div className="pt-2 flex flex-col items-center justify-center">
+                  {(!email || !email.includes('@') || password.length < 6) ? (
+                    <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs text-center flex items-center justify-center gap-2 w-full max-w-sm">
+                      <Lock className="w-4 h-4 text-orange-500 shrink-0" />
+                      <span>Vui lòng nhập <strong>Email hợp lệ</strong> và <strong>Mật khẩu (≥ 6 ký tự)</strong> để mở khóa reCAPTCHA.</span>
+                    </div>
+                  ) : (
+                    <ReCAPTCHA
+                      ref={recaptchaRef}
+                      sitekey={RECAPTCHA_SITE_KEY}
+                      onChange={(token) => setRecaptchaToken(token)}
+                    />
+                  )}
                 </div>
               )}
 
