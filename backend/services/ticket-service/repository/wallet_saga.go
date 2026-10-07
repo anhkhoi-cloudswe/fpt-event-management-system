@@ -112,13 +112,19 @@ func (r *TicketRepository) ProcessWalletPaymentSaga(ctx context.Context, userID,
 	log.Info("[SAGA] 🚀 Starting Wallet Payment Saga: user=%d, event=%d, amount=%d, seats=%v",
 		userID, eventID, amount, seatIDs)
 
-	// ===== VALIDATION: CHECK EVENT STATUS (same as monolith) =====
+	// ===== VALIDATION: CHECK EVENT STATUS & CREATOR =====
+	var createdBy int
 	var eventStatus string
 	var startTime time.Time
 	var eventFormat string
-	err := r.db.QueryRowContext(ctx, "SELECT status, start_time, event_format FROM Event WHERE event_id = $1", eventID).Scan(&eventStatus, &startTime, &eventFormat)
+	err := r.db.QueryRowContext(ctx, "SELECT created_by, status, start_time, event_format FROM Event WHERE event_id = $1", eventID).Scan(&createdBy, &eventStatus, &startTime, &eventFormat)
 	if err != nil {
 		return "", fmt.Errorf("event not found")
+	}
+
+	if createdBy == userID {
+		fmt.Printf("[SECURITY] Cảnh báo: User %d cố tình đặt vé cho sự kiện do chính mình tạo (ID: %d)\n", userID, eventID)
+		return "", fmt.Errorf("Bạn là người tạo sự kiện này, không thể tự đăng ký/đặt vé cho chính mình")
 	}
 
 	if eventStatus != "OPEN" {

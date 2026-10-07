@@ -943,14 +943,20 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 	fmt.Printf("[CreateBankTransferOrder] Called - userID=%d, eventID=%d, categoryTicketID=%d, seatIDs=%v\n", userID, eventID, categoryTicketID, seatIDs)
 
 	// Kiểm tra event có tồn tại và đang active không
+	var createdBy int
 	var eventTitle string
 	var status string
 	var startTime time.Time
 	var eventFormat string
-	err := r.db.QueryRowContext(ctx, "SELECT title, status, start_time, event_format FROM Event WHERE event_id = $1", eventID).Scan(&eventTitle, &status, &startTime, &eventFormat)
+	err := r.db.QueryRowContext(ctx, "SELECT created_by, title, status, start_time, event_format FROM Event WHERE event_id = $1", eventID).Scan(&createdBy, &eventTitle, &status, &startTime, &eventFormat)
 	if err != nil {
 		log.Error("Event not found", "event_id", eventID, "error", err)
 		return nil, apperrors.NotFound("Sự kiện")
+	}
+
+	if createdBy == userID {
+		log.Warn("Event creator attempted to buy ticket for own event", "user_id", userID, "event_id", eventID)
+		return nil, apperrors.BusinessError("Bạn là người tạo sự kiện này, không thể tự đăng ký/đặt vé cho chính mình")
 	}
 
 	isOnline := strings.ToUpper(eventFormat) == "ONLINE"

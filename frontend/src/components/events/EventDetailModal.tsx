@@ -504,14 +504,14 @@ export function EventDetailModal({
                     >
                       {eventEnded ? text.ended : text.closed}
                     </button>
-                  ) : activeRole && activeRole !== 'STUDENT' ? (
+                  ) : activeRole === 'STAFF' || activeRole === 'ADMIN' ? (
                     <div className="mt-6 text-center">
                       <button
                         type="button"
                         disabled
                         className="w-full bg-slate-100 dark:bg-neutral-900/50 text-slate-400 dark:text-neutral-500 border border-slate-200 dark:border-white/5 font-semibold py-3 rounded-xl transition-all uppercase tracking-wide cursor-not-allowed text-xs"
                       >
-                        {lang === 'en' ? 'Staff/Organizer accounts cannot buy tickets' : 'Tài khoản BTC/Nhân sự không thể đặt vé'}
+                        {lang === 'en' ? 'Staff/Admin accounts cannot buy tickets' : 'Tài khoản BQT/Nhân sự không thể đặt vé'}
                       </button>
                       <p className="text-[11px] text-slate-500 dark:text-neutral-400 mt-2 font-medium">
                         {lang === 'en' 
@@ -519,11 +519,26 @@ export function EventDetailModal({
                           : '* Vui lòng đăng nhập tài khoản Sinh viên để mua vé tham gia.'}
                       </p>
                     </div>
+                  ) : activeRole === 'ORGANIZER' && user?.id === organizerId ? (
+                    <div className="mt-6 text-center">
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full bg-slate-100 dark:bg-neutral-900/50 text-slate-400 dark:text-neutral-500 border border-slate-200 dark:border-white/5 font-semibold py-3 rounded-xl transition-all uppercase tracking-wide cursor-not-allowed text-xs"
+                      >
+                        {lang === 'en' ? 'You are the organizer of this event' : 'Bạn là ban tổ chức của sự kiện này'}
+                      </button>
+                      <p className="text-[11px] text-slate-500 dark:text-neutral-400 mt-2 font-medium">
+                        {lang === 'en' 
+                          ? '* Organizers cannot register for their own events.' 
+                          : '* Bạn không thể tự đăng ký/đặt vé cho sự kiện do chính mình tạo.'}
+                      </p>
+                    </div>
                   ) : (
                     <button
                       type="button"
                       onClick={() => closeThenNavigate(eventPaymentPath)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-6 transition-all uppercase tracking-wide"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-6 transition-all uppercase tracking-wide cursor-pointer"
                     >
                       {text.register}
                     </button>
