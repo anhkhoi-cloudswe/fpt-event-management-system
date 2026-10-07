@@ -413,13 +413,13 @@ export const OrganizerOnboardingModal: React.FC<OrganizerOnboardingModalProps> =
                 </div>
               </div>
 
-              {/* reCAPTCHA - Locked until valid Email and Password are typed */}
+              {/* reCAPTCHA - Locked until valid Email, Password (min 6 chars) and valid Phone are typed */}
               {RECAPTCHA_SITE_KEY && (
                 <div className="pt-2 flex flex-col items-center justify-center">
-                  {(!email || !email.includes('@') || password.length < 6) ? (
+                  {(!email || !email.includes('@') || password.length < 6 || !validatePhone(phone)) ? (
                     <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs text-center flex items-center justify-center gap-2 w-full max-w-sm">
                       <Lock className="w-4 h-4 text-orange-500 shrink-0" />
-                      <span>Vui lòng nhập Email và Mật khẩu để mở khóa reCAPTCHA.</span>
+                      <span>Vui lòng nhập <strong>Email</strong>, <strong>Mật khẩu</strong> và <strong>Số điện thoại hợp lệ</strong> để mở khóa reCAPTCHA.</span>
                     </div>
                   ) : (
                     <ReCAPTCHA
