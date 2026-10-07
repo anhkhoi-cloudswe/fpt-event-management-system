@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/db"
 	ticketHandler "github.com/fpt-event-services/services/ticket-service/handler"
 	ticketModels "github.com/fpt-event-services/services/ticket-service/models"
 	_ "github.com/lib/pq"
@@ -28,47 +29,40 @@ func TestPhase5_EventReportingAndCheckIn_RealDockerDB(t *testing.T) {
 	}
 	t.Log("🛡️ SAFETY GUARD PASSED: Đang kết nối tới container test an toàn (localhost:5432 / fpt_event_test).")
 
-	db, err := sql.Open("postgres", connStr)
+	testDB, err := sql.Open("postgres", connStr)
 	if err != nil {
 		t.Skipf("⏭️ [CI SKIP] Không thể mở kết nối DB: %v", err)
 		return
 	}
-	defer db.Close()
+	defer testDB.Close()
 
-	if err := db.Ping(); err != nil {
+	if err := testDB.Ping(); err != nil {
 		t.Skipf("⏭️ [CI SKIP] Docker Postgres local không phản hồi (%v). Bỏ qua integration test trong CI.", err)
 		return
+	}
+
+	if err := db.EnsureTestSchema(testDB); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
 	}
 
 	ctx := context.Background()
 
 	// 1. Chạy migration thật từ file (03 -> 04a)
-	candidates := []string{
-		filepath.Join("..", "..", "Database", "migrations"),
-		filepath.Join("..", "Database", "migrations"),
-		filepath.Join("Database", "migrations"),
-	}
-	var migDir string
-	for _, c := range candidates {
-		if _, err := os.Stat(filepath.Join(c, "04a_subscription_and_dynamic_fees.sql")); err == nil {
-			migDir = c
-			break
-		}
-	}
+	migDir := db.FindMigrationsDir()
 	if migDir == "" {
 		t.Fatalf("Không tìm thấy thư mục Database/migrations từ các đường dẫn tương đối!")
 	}
 
 	m03Path := filepath.Join(migDir, "03_add_school_organizer_enum.sql")
 	if m03SQL, err := os.ReadFile(m03Path); err == nil {
-		_, _ = db.ExecContext(ctx, string(m03SQL))
+		_, _ = testDB.ExecContext(ctx, string(m03SQL))
 	}
 	m04aPath := filepath.Join(migDir, "04a_subscription_and_dynamic_fees.sql")
 	if m04aSQL, err := os.ReadFile(m04aPath); err == nil {
-		_, _ = db.ExecContext(ctx, string(m04aSQL))
+		_, _ = testDB.ExecContext(ctx, string(m04aSQL))
 	}
 
-	tHandler := ticketHandler.NewTicketHandlerWithDB(db)
+	tHandler := ticketHandler.NewTicketHandlerWithDB(testDB)
 
 	// Chuẩn bị dữ liệu Seed Test:
 	// Users: 901=ADMIN, 902=ORGANIZER A, 903=ORGANIZER B (Người ngoài), 904=SCHOOL_ORGANIZER, 905=STUDENT
@@ -168,7 +162,7 @@ func TestPhase5_EventReportingAndCheckIn_RealDockerDB(t *testing.T) {
 		INSERT INTO financial_receipt (receipt_id, order_id, bill_id, ticket_id, event_id, organizer_id, gross_amount, system_fee_percentage, fixed_fee, commission_bps, fee_config_version, commission_amount, net_amount, tier_code, fee_source, is_reversal) VALUES
 		(90009, 905901, 9059, 90009, 9001, 902, 75000, 2.50, 1000, 250, 1, 2875, 72125, 'PRO', 'TIER', FALSE);
 	`
-	if _, err := db.ExecContext(ctx, cleanupAndSeedSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, cleanupAndSeedSQL); err != nil {
 		t.Fatalf("Lỗi chuẩn bị dữ liệu Seed cho Pha 5: %v", err)
 	}
 

@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/db"
 	ticketHandler "github.com/fpt-event-services/services/ticket-service/handler"
 	ticketModels "github.com/fpt-event-services/services/ticket-service/models"
 	_ "github.com/lib/pq"
@@ -30,62 +31,55 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 	}
 	t.Log("🛡️ SAFETY GUARD PASSED: Đang kết nối tới container test an toàn (localhost:5432 / fpt_event_test).")
 
-	db, err := sql.Open("postgres", connStr)
+	testDB, err := sql.Open("postgres", connStr)
 	if err != nil {
 		t.Skipf("⏭️ [CI SKIP] Không thể mở kết nối DB: %v", err)
 		return
 	}
-	defer db.Close()
+	defer testDB.Close()
 
-	if err := db.Ping(); err != nil {
+	if err := testDB.Ping(); err != nil {
 		t.Skipf("⏭️ [CI SKIP] Docker Postgres local không phản hồi (%v). Bỏ qua integration test trong CI.", err)
 		return
+	}
+
+	if err := db.EnsureTestSchema(testDB); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
 	}
 
 	ctx := context.Background()
 
 	// 1. Migration
-	candidates := []string{
-		filepath.Join("..", "..", "Database", "migrations"),
-		filepath.Join("..", "Database", "migrations"),
-		filepath.Join("Database", "migrations"),
-	}
-	var migDir string
-	for _, c := range candidates {
-		if _, err := os.Stat(filepath.Join(c, "04a_subscription_and_dynamic_fees.sql")); err == nil {
-			migDir = c
-			break
-		}
-	}
+	migDir := db.FindMigrationsDir()
 	if migDir == "" {
 		t.Fatalf("Không tìm thấy thư mục Database/migrations từ các đường dẫn tương đối!")
 	}
 
 	m03Path := filepath.Join(migDir, "03_add_school_organizer_enum.sql")
 	if m03SQL, err := os.ReadFile(m03Path); err == nil {
-		_, _ = db.ExecContext(ctx, string(m03SQL))
+		_, _ = testDB.ExecContext(ctx, string(m03SQL))
 	}
 	m04aPath := filepath.Join(migDir, "04a_subscription_and_dynamic_fees.sql")
 	m04aSQL, err := os.ReadFile(m04aPath)
 	if err != nil {
 		t.Fatalf("Không thể đọc file migration 04a: %v", err)
 	}
-	if _, err := db.ExecContext(ctx, string(m04aSQL)); err != nil {
-		t.Fatalf("Lỗi thực thi migration 04a: %v", err)
+	if _, err := testDB.ExecContext(ctx, string(m04aSQL)); err != nil {
+		if !strings.Contains(err.Error(), "already exists") {
+			t.Fatalf("Lỗi thực thi migration 04a: %v", err)
+		}
 	}
 
-	handler := ticketHandler.NewTicketHandlerWithDB(db)
+	handler := ticketHandler.NewTicketHandlerWithDB(testDB)
 
 	// Clean test data
-	_, _ = db.ExecContext(ctx, "DELETE FROM fee_audit_log WHERE 1=1")
-	_, _ = db.ExecContext(ctx, "DELETE FROM organizer_fee_override WHERE 1=1")
-	_, _ = db.ExecContext(ctx, "DELETE FROM user_subscription WHERE 1=1")
-	_, _ = db.ExecContext(ctx, "DELETE FROM financial_receipt WHERE 1=1")
-	_, _ = db.ExecContext(ctx, "DELETE FROM bill WHERE 1=1")
-	_, _ = db.ExecContext(ctx, "DELETE FROM ticket WHERE 1=1")
-	_, _ = db.ExecContext(ctx, "DELETE FROM category_ticket WHERE 1=1")
-	_, _ = db.ExecContext(ctx, "DELETE FROM event WHERE 1=1")
-	_, _ = db.ExecContext(ctx, "DELETE FROM users WHERE user_id >= 6000")
+	_, _ = testDB.ExecContext(ctx, "DELETE FROM fee_audit_log WHERE 1=1")
+	_, _ = testDB.ExecContext(ctx, "DELETE FROM organizer_fee_override WHERE 1=1")
+	_, _ = testDB.ExecContext(ctx, "DELETE FROM user_subscription WHERE 1=1")
+	_, _ = testDB.ExecContext(ctx, "DELETE FROM financial_receipt WHERE 1=1")
+	_, _ = testDB.ExecContext(ctx, "DELETE FROM category_ticket WHERE 1=1")
+	_, _ = testDB.ExecContext(ctx, "DELETE FROM event WHERE 1=1")
+	_, _ = testDB.ExecContext(ctx, "DELETE FROM users WHERE user_id >= 6000")
 
 	// Seed Users
 	// 6001: Free Organizer
@@ -106,7 +100,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 		(6007, 'Expired Pro Organizer', 'expired_pro@fpt.edu.vn', 'pass', 'ORGANIZER', 'ACTIVE')
 		ON CONFLICT (user_id) DO UPDATE SET role = EXCLUDED.role, status = 'ACTIVE';
 	`
-	if _, err := db.ExecContext(ctx, usersSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, usersSQL); err != nil {
 		t.Fatalf("Lỗi tạo user test Phase 6: %v", err)
 	}
 
@@ -120,7 +114,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 		(6003, 3, 'ACTIVE', NOW() - INTERVAL '5 days', NOW() + INTERVAL '25 days', 1500000),
 		(6007, 2, 'EXPIRED', NOW() - INTERVAL '40 days', NOW() - INTERVAL '10 days', 500000);
 	`
-	if _, err := db.ExecContext(ctx, subSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, subSQL); err != nil {
 		t.Fatalf("Lỗi tạo subscription test Phase 6: %v", err)
 	}
 
@@ -134,7 +128,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 		(602, 'PRO Tech Conference', 'Description', NOW(), NOW() + INTERVAL '1 day', 6002, false, 'OPEN'),
 		(603, 'Empty Event Pro', 'Description', NOW(), NOW() + INTERVAL '1 day', 6002, false, 'OPEN');
 	`
-	if _, err := db.ExecContext(ctx, eventsSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, eventsSQL); err != nil {
 		t.Fatalf("Lỗi tạo event test Phase 6: %v", err)
 	}
 
@@ -146,7 +140,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 		(6021, 602, 'VIP Ticket', 1000000, 50),
 		(6022, 602, 'Standard Ticket', 500000, 100);
 	`
-	if _, err := db.ExecContext(ctx, catSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, catSQL); err != nil {
 		t.Fatalf("Lỗi tạo category_ticket test Phase 6: %v", err)
 	}
 
@@ -161,7 +155,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 		(6202, 602, 6021, 6001, 'CHECKED_IN', 'QR6202_SECRET_TOKEN', NOW() - INTERVAL '2 hours'),
 		(6203, 602, 6022, 6001, 'CHECKED_IN', 'QR6203_SECRET_TOKEN', NOW() - INTERVAL '1 hour');
 	`
-	if _, err := db.ExecContext(ctx, ticketsSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, ticketsSQL); err != nil {
 		t.Fatalf("Lỗi tạo ticket test Phase 6: %v", err)
 	}
 
@@ -171,7 +165,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 		(6202, 6001, 1000000, 'PAID', NOW() - INTERVAL '1 day'),
 		(6203, 6001, 500000, 'PAID', NOW() - INTERVAL '1 day');
 	`
-	if _, err := db.ExecContext(ctx, billsSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, billsSQL); err != nil {
 		t.Fatalf("Lỗi tạo bill test Phase 6: %v", err)
 	}
 
@@ -181,7 +175,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 		(6202, 6202, 6202, 6202, 602, 6002, 1000000, 2.50, 1000, 250, 1, 26000, 974000, 'PRO', 'TIER', NOW() - INTERVAL '1 day'),
 		(6203, 6203, 6203, 6203, 602, 6002, 500000, 2.50, 1000, 250, 1, 13500, 486500, 'PRO', 'TIER', NOW() - INTERVAL '1 day');
 	`
-	if _, err := db.ExecContext(ctx, receiptsSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, receiptsSQL); err != nil {
 		t.Fatalf("Lỗi tạo financial_receipt test Phase 6: %v", err)
 	}
 
@@ -218,7 +212,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 			INSERT INTO organizer_fee_override (organizer_id, commission_bps, reason, effective_range, created_by)
 			VALUES (6001, 0, 'Sự kiện đặc biệt 0%', tstzrange(NOW() - INTERVAL '1 day', NOW() + INTERVAL '10 days'), 6005);
 		`
-		if _, err := db.ExecContext(ctx, overrideSQL); err != nil {
+		if _, err := testDB.ExecContext(ctx, overrideSQL); err != nil {
 			t.Fatalf("Lỗi tạo fee override test: %v", err)
 		}
 
@@ -241,7 +235,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 	// TC 3: Gói Pro hết hạn bị 403 PAYWALL_REQUIRED
 	// =========================================================================
 	t.Run("TC3_ExpiredSubscription_PaywallRequired", func(t *testing.T) {
-		if _, err := db.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (607, 'Expired Event', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6007, 'OPEN')"); err != nil {
+		if _, err := testDB.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (607, 'Expired Event', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6007, 'OPEN')"); err != nil {
 			t.Fatalf("Lỗi tạo event 607: %v", err)
 		}
 
@@ -333,7 +327,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 		}
 
 		// School Organizer (6004) xem sự kiện của mình
-		if _, err := db.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (604, 'School Festival', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6004, 'OPEN')"); err != nil {
+		if _, err := testDB.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (604, 'School Festival', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6004, 'OPEN')"); err != nil {
 			t.Fatalf("Lỗi tạo event 604: %v", err)
 		}
 		reqSchool := events.APIGatewayProxyRequest{
@@ -433,10 +427,10 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 			Headers:    map[string]string{"x-user-id": "6001"},
 		}
 		// Xóa tạm gói FREE để trigger Fail-Closed khi không thể phân giải chính sách tài khoản mặc định
-		_, _ = db.ExecContext(ctx, "DELETE FROM subscription_tier WHERE tier_code = 'FREE'")
+		_, _ = testDB.ExecContext(ctx, "DELETE FROM subscription_tier WHERE tier_code = 'FREE'")
 		resp, err := handler.HandleGetEventAdvancedAnalytics(ctx, req)
 		// Khôi phục lại dữ liệu FREE tier
-		_, _ = db.ExecContext(ctx, "INSERT INTO subscription_tier (tier_id, tier_code, name, price_vnd, commission_bps, max_capacity_limit, has_advanced_reports, is_active) VALUES (1, 'FREE', 'Gói Miễn Phí', 0, 500, 100, false, true) ON CONFLICT (tier_id) DO NOTHING")
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO subscription_tier (tier_id, tier_code, name, price_vnd, commission_bps, max_capacity_limit, has_advanced_reports, is_active) VALUES (1, 'FREE', 'Gói Miễn Phí', 0, 500, 100, false, true) ON CONFLICT (tier_id) DO NOTHING")
 
 		if err != nil {
 			t.Fatalf("Lỗi handler: %v", err)
@@ -454,7 +448,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 	// TC 8: Test Đối Soát Doanh Thu: Tổng doanh thu theo loại vé = Tổng KPI (gồm biên lai đảo, LEGACY & vé 0đ)
 	// =========================================================================
 	t.Run("TC8_Reconciliation_CategorySumEqualsKPISum_IncludingLegacy", func(t *testing.T) {
-		if _, err := db.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (680, 'Reconciliation Event', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6002, 'OPEN')"); err != nil {
+		if _, err := testDB.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (680, 'Reconciliation Event', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6002, 'OPEN')"); err != nil {
 			t.Fatalf("Lỗi tạo event 680: %v", err)
 		}
 		catSQL := `
@@ -463,7 +457,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 			(6802, 680, 'Standard Pass', 500000, 20),
 			(6803, 680, 'Free Pass', 0, 50);
 		`
-		if _, err := db.ExecContext(ctx, catSQL); err != nil {
+		if _, err := testDB.ExecContext(ctx, catSQL); err != nil {
 			t.Fatalf("Lỗi tạo category_ticket event 680: %v", err)
 		}
 
@@ -474,7 +468,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 			(6803, 680, 6802, 6001, 'CHECKED_IN', 'QR6803'),
 			(6804, 680, 6803, 6001, 'BOOKED', 'QR6804');
 		`
-		if _, err := db.ExecContext(ctx, tSQL); err != nil {
+		if _, err := testDB.ExecContext(ctx, tSQL); err != nil {
 			t.Fatalf("Lỗi tạo ticket event 680: %v", err)
 		}
 
@@ -484,7 +478,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 			(6802, 6001, 1000000, 'REFUNDED', NOW() - INTERVAL '1 day'),
 			(6803, 6001, 500000, 'PAID', NOW() - INTERVAL '1 day');
 		`
-		if _, err := db.ExecContext(ctx, bSQL); err != nil {
+		if _, err := testDB.ExecContext(ctx, bSQL); err != nil {
 			t.Fatalf("Lỗi tạo bill event 680: %v", err)
 		}
 
@@ -496,7 +490,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 			(6803, 6802, 6802, 6802, 680, 6002, -1000000, 2.50, 1000, 250, 1, -26000, -974000, 'PRO', 'TIER', true, NOW() - INTERVAL '12 hours'),
 			(6804, 6803, 6803, 6803, 680, 6002, 500000, 2.50, 1000, 250, 1, 13500, 486500, 'PRO', 'TIER', false, NOW() - INTERVAL '1 day');
 		`
-		if _, err := db.ExecContext(ctx, rSQL); err != nil {
+		if _, err := testDB.ExecContext(ctx, rSQL); err != nil {
 			t.Fatalf("Lỗi tạo financial_receipt event 680: %v", err)
 		}
 
@@ -558,16 +552,16 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 		}
 
 		// Tạo event 690 có title bắt đầu bằng '\t=1+1', category1 bắt đầu bằng '\r@x', category2 là ' =cmd' và biên lai âm -100000
-		if _, err := db.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (690, '\t=1+1 Tabbed Formula', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6002, 'OPEN')"); err != nil {
+		if _, err := testDB.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (690, '\t=1+1 Tabbed Formula', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6002, 'OPEN')"); err != nil {
 			t.Fatalf("Lỗi tạo event 690: %v", err)
 		}
-		if _, err := db.ExecContext(ctx, "INSERT INTO category_ticket (category_ticket_id, event_id, name, price, max_quantity) VALUES (6901, 690, '\r@x Carriage Ticket', 500000, 10), (6902, 690, ' =cmd LeadingSpace', 300000, 5)"); err != nil {
+		if _, err := testDB.ExecContext(ctx, "INSERT INTO category_ticket (category_ticket_id, event_id, name, price, max_quantity) VALUES (6901, 690, '\r@x Carriage Ticket', 500000, 10), (6902, 690, ' =cmd LeadingSpace', 300000, 5)"); err != nil {
 			t.Fatalf("Lỗi tạo category 6901, 6902: %v", err)
 		}
-		if _, err := db.ExecContext(ctx, "INSERT INTO ticket (ticket_id, event_id, category_ticket_id, user_id, status, qr_code_value) VALUES (6901, 690, 6901, 6001, 'REFUNDED', 'QR6901')"); err != nil {
+		if _, err := testDB.ExecContext(ctx, "INSERT INTO ticket (ticket_id, event_id, category_ticket_id, user_id, status, qr_code_value) VALUES (6901, 690, 6901, 6001, 'REFUNDED', 'QR6901')"); err != nil {
 			t.Fatalf("Lỗi tạo ticket 6901: %v", err)
 		}
-		if _, err := db.ExecContext(ctx, "INSERT INTO financial_receipt (receipt_id, order_id, bill_id, ticket_id, event_id, organizer_id, gross_amount, system_fee_percentage, fixed_fee, commission_bps, fee_config_version, commission_amount, net_amount, tier_code, fee_source, is_reversal, created_at) VALUES (6901, 6901, NULL, 6901, 690, 6002, -100000, 2.50, 1000, 250, 1, -2500, -97500, 'PRO', 'TIER', true, NOW())"); err != nil {
+		if _, err := testDB.ExecContext(ctx, "INSERT INTO financial_receipt (receipt_id, order_id, bill_id, ticket_id, event_id, organizer_id, gross_amount, system_fee_percentage, fixed_fee, commission_bps, fee_config_version, commission_amount, net_amount, tier_code, fee_source, is_reversal, created_at) VALUES (6901, 6901, NULL, 6901, 690, 6002, -100000, 2.50, 1000, 250, 1, -2500, -97500, 'PRO', 'TIER', true, NOW())"); err != nil {
 			t.Fatalf("Lỗi tạo receipt 6901: %v", err)
 		}
 

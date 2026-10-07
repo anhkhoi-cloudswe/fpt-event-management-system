@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/config"
+	"github.com/fpt-event-services/common/db"
 	"github.com/fpt-event-services/common/policy"
 	eventHandler "github.com/fpt-event-services/services/event-service/handler"
 	ticketHandler "github.com/fpt-event-services/services/ticket-service/handler"
@@ -30,29 +31,33 @@ func TestNewBackendFeatures_RealDockerDB(t *testing.T) {
 	}
 	t.Log("🛡️ SAFETY GUARD PASSED: Đang kết nối tới container test an toàn (localhost:5432 / fpt_event_test).")
 
-	db, err := sql.Open("postgres", connStr)
+	testDB, err := sql.Open("postgres", connStr)
 	if err != nil {
 		t.Skipf("⏭️ [CI SKIP] Không thể mở kết nối tới Docker Postgres: %v", err)
 		return
 	}
-	defer db.Close()
+	defer testDB.Close()
 
-	if err := db.Ping(); err != nil {
+	if err := testDB.Ping(); err != nil {
 		t.Skipf("⏭️ [CI SKIP] Docker Postgres local không phản hồi (%v). Bỏ qua integration test trong CI.", err)
 		return
+	}
+
+	if err := db.EnsureTestSchema(testDB); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
 	}
 
 	ctx := context.Background()
 
 	// Khởi tạo Handler với DB
-	tHandler := ticketHandler.NewTicketHandlerWithDB(db)
+	tHandler := ticketHandler.NewTicketHandlerWithDB(testDB)
 
 	// Chuẩn bị seed user 9901 và 9902
-	_, _ = db.ExecContext(ctx, "DELETE FROM subscription_payment_log WHERE user_id IN (9901, 9902)")
-	_, _ = db.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id IN (9901, 9902)")
-	_, _ = db.ExecContext(ctx, "DELETE FROM users WHERE user_id IN (9901, 9902)")
+	_, _ = testDB.ExecContext(ctx, "DELETE FROM subscription_payment_log WHERE user_id IN (9901, 9902)")
+	_, _ = testDB.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id IN (9901, 9902)")
+	_, _ = testDB.ExecContext(ctx, "DELETE FROM users WHERE user_id IN (9901, 9902)")
 
-	_, err = db.ExecContext(ctx, `
+	_, err = testDB.ExecContext(ctx, `
 		INSERT INTO users (user_id, email, full_name, password_hash, role, status)
 		VALUES 
 		(9901, 'organizer9901@fpt.edu.vn', 'Organizer 9901', 'hash', 'ORGANIZER', 'ACTIVE'),
@@ -64,7 +69,7 @@ func TestNewBackendFeatures_RealDockerDB(t *testing.T) {
 	}
 
 	t.Run("1_GatingEnabled_Field_In_OrganizerLimits", func(t *testing.T) {
-		pol, err := policy.ResolveOrganizerPolicy(ctx, db, 9901)
+		pol, err := policy.ResolveOrganizerPolicy(ctx, testDB, 9901)
 		if err != nil {
 			t.Fatalf("Lỗi ResolveOrganizerPolicy: %v", err)
 		}
@@ -75,7 +80,7 @@ func TestNewBackendFeatures_RealDockerDB(t *testing.T) {
 		t.Logf("✅ Đạt (Policy Layer): Trường gatingEnabled = %v phản ánh chính xác trạng thái Feature Flag", pol.GatingEnabled)
 
 		// Kiểm tra qua HTTP Endpoint HandleGetOrganizerLimits
-		eHandler := eventHandler.NewEventHandlerWithDB(db)
+		eHandler := eventHandler.NewEventHandlerWithDB(testDB)
 		req := events.APIGatewayProxyRequest{
 			Path:       "/api/v1/organizer/limits",
 			HTTPMethod: "GET",
@@ -130,13 +135,13 @@ func TestNewBackendFeatures_RealDockerDB(t *testing.T) {
 
 		// Case B: User 9902 đang có gói PRO còn đúng 20 ngày -> xem trước BUSINESS (1.000.000)
 		var proTierID int
-		err = db.QueryRowContext(ctx, "SELECT tier_id FROM subscription_tier WHERE tier_code = 'PRO'").Scan(&proTierID)
+		err = testDB.QueryRowContext(ctx, "SELECT tier_id FROM subscription_tier WHERE tier_code = 'PRO'").Scan(&proTierID)
 		if err != nil {
 			t.Fatalf("Không tìm thấy gói PRO trong subscription_tier: %v", err)
 		}
 
 		now := time.Now()
-		_, err = db.ExecContext(ctx, `
+		_, err = testDB.ExecContext(ctx, `
 			INSERT INTO user_subscription (subscription_id, user_id, tier_id, status, start_date, end_date, auto_renew, amount_paid_vnd, prorated_credit_vnd)
 			VALUES (990201, 9902, $1, 'ACTIVE', $2, $3, true, 299000, 0)
 			ON CONFLICT (subscription_id) DO NOTHING

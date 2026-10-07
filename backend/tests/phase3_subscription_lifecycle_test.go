@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fpt-event-services/common/db"
 	ticketModels "github.com/fpt-event-services/services/ticket-service/models"
 	ticketRepo "github.com/fpt-event-services/services/ticket-service/repository"
 	ticketScheduler "github.com/fpt-event-services/services/ticket-service/scheduler"
@@ -29,50 +30,45 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 	}
 	t.Log("🛡️ SAFETY GUARD PASSED: Đang kết nối tới container test an toàn (localhost:5432 / fpt_event_test).")
 
-	db, err := sql.Open("postgres", connStr)
+	testDB, err := sql.Open("postgres", connStr)
 	if err != nil {
 		t.Skipf("⏭️ [CI SKIP] Không thể mở kết nối DB: %v", err)
 		return
 	}
-	defer db.Close()
+	defer testDB.Close()
 
-	if err := db.Ping(); err != nil {
+	if err := testDB.Ping(); err != nil {
 		t.Skipf("⏭️ [CI SKIP] Docker Postgres local không phản hồi (%v). Bỏ qua integration test trong CI.", err)
 		return
 	}
 
+	if err := db.EnsureTestSchema(testDB); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
+	}
+
 	ctx := context.Background()
-	tRepo := ticketRepo.NewTicketRepositoryWithDB(db)
-	sched := ticketScheduler.NewSubscriptionExpiryScheduler(db, 60)
+	tRepo := ticketRepo.NewTicketRepositoryWithDB(testDB)
+	sched := ticketScheduler.NewSubscriptionExpiryScheduler(testDB, 60)
 
 	// 1. Chạy migration thật từ file (03 -> 04a)
-	candidates := []string{
-		filepath.Join("..", "..", "Database", "migrations"),
-		filepath.Join("..", "Database", "migrations"),
-		filepath.Join("Database", "migrations"),
-	}
-	var migDir string
-	for _, c := range candidates {
-		if _, err := os.Stat(filepath.Join(c, "04a_subscription_and_dynamic_fees.sql")); err == nil {
-			migDir = c
-			break
-		}
-	}
+	migDir := db.FindMigrationsDir()
 	if migDir == "" {
 		t.Fatalf("Không tìm thấy thư mục Database/migrations từ các đường dẫn tương đối!")
 	}
 
 	m03Path := filepath.Join(migDir, "03_add_school_organizer_enum.sql")
 	if m03SQL, err := os.ReadFile(m03Path); err == nil {
-		_, _ = db.ExecContext(ctx, string(m03SQL))
+		_, _ = testDB.ExecContext(ctx, string(m03SQL))
 	}
 	m04aPath := filepath.Join(migDir, "04a_subscription_and_dynamic_fees.sql")
 	m04aSQL, err := os.ReadFile(m04aPath)
 	if err != nil {
 		t.Fatalf("Không đọc được file migration 04a: %v", err)
 	}
-	if _, err := db.ExecContext(ctx, string(m04aSQL)); err != nil {
-		t.Fatalf("Lỗi chạy migration 04a: %v", err)
+	if _, err := testDB.ExecContext(ctx, string(m04aSQL)); err != nil {
+		if !strings.Contains(err.Error(), "already exists") {
+			t.Fatalf("Lỗi chạy migration 04a: %v", err)
+		}
 	}
 
 	// Clean up and prepare test users (User IDs: 701..720)
@@ -99,14 +95,14 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		(712, 'User Sub Conc Renewal Same', 'sub.conc.renew.same@fpt.edu.vn', 'hash', 'ORGANIZER', 'ACTIVE')
 		ON CONFLICT (user_id) DO UPDATE SET role = 'ORGANIZER';
 	`
-	if _, err := db.ExecContext(ctx, cleanupSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, cleanupSQL); err != nil {
 		t.Fatalf("Lỗi chuẩn bị fixtures Pha 3: %v", err)
 	}
 
 	// 1. TEST CASE 1: VÍ KHÔNG ĐỦ TIỀN (INT64)
 	t.Run("TC1_Insufficient_Balance_Reject", func(t *testing.T) {
 		const uID = 701
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 50000, 'VND', 'ACTIVE')", uID)
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 50000, 'VND', 'ACTIVE')", uID)
 
 		req := ticketModels.SubscribeRequest{
 			TierCode:  "PRO",
@@ -121,7 +117,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		}
 
 		var balStr string
-		_ = db.QueryRowContext(ctx, "SELECT balance::text FROM wallet WHERE user_id = $1", uID).Scan(&balStr)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance::text FROM wallet WHERE user_id = $1", uID).Scan(&balStr)
 		if !strings.HasPrefix(balStr, "50000") {
 			t.Fatalf("Số dư ví bị thay đổi sai lệch: %v", balStr)
 		}
@@ -131,7 +127,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 	// 2. TEST CASE 2: IDEMPOTENCY THEO REQUEST_ID & RACE (b) 5 GOROUTINE MUA MỚI KHÁC REQUEST_ID => 1 THÀNH CÔNG, 4 CONFLICT 409
 	t.Run("TC2_Idempotency_And_Concurrent_New_Purchase_Conflict", func(t *testing.T) {
 		const uID = 702
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 2000000, 'VND', 'ACTIVE')", uID)
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 2000000, 'VND', 'ACTIVE')", uID)
 
 		reqID := "req-idempotent-replay-001"
 		req := ticketModels.SubscribeRequest{
@@ -146,7 +142,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		}
 
 		var balAfter1 float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID).Scan(&balAfter1)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID).Scan(&balAfter1)
 		if int64(balAfter1) != 2000000-299000 {
 			t.Fatalf("Số dư ví sau lần 1 không khớp: %v", balAfter1)
 		}
@@ -161,14 +157,14 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		}
 
 		var balAfter2 float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID).Scan(&balAfter2)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID).Scan(&balAfter2)
 		if int64(balAfter2) != int64(balAfter1) {
 			t.Fatalf("Lần 2 replay bị trừ tiền ví lặp lại! Trước: %v, Sau: %v", balAfter1, balAfter2)
 		}
 
 		// Race (b): 5 goroutine mua gói mới khác request_id khi chưa có gói => đúng 1 thành công, 4 còn lại nhận 409 Conflict
 		const concUID = 709
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 5000000, 'VND', 'ACTIVE')", concUID)
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 5000000, 'VND', 'ACTIVE')", concUID)
 
 		var wg sync.WaitGroup
 		successCount := 0
@@ -203,7 +199,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		}
 
 		var balConc float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", concUID).Scan(&balConc)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", concUID).Scan(&balConc)
 		if int64(balConc) != 5000000-299000 {
 			t.Fatalf("Ví User 709 không trừ đúng 1 lần 299k: %v", balConc)
 		}
@@ -214,7 +210,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 	// 3. TEST CASE 3: GIA HẠN CỘNG DỒN END_DATE, RACE (a) 5 GOROUTINE CÙNG REQUEST_ID VÀ RACE (c) 5 GOROUTINE KHÁC REQUEST_ID
 	t.Run("TC3_Renew_Same_Tier_Race_Same_And_Diff_RequestId", func(t *testing.T) {
 		const uID = 703
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 2000000, 'VND', 'ACTIVE')", uID)
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 2000000, 'VND', 'ACTIVE')", uID)
 
 		// Mua gói PRO lần 1 (30 ngày)
 		resp1, err := tRepo.SubscribeOrUpgrade(ctx, uID, ticketModels.SubscribeRequest{
@@ -258,14 +254,14 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		}
 
 		var bal float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID).Scan(&bal)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID).Scan(&bal)
 		if int64(bal) != 2000000-299000*2 {
 			t.Fatalf("Số dư ví bị trừ sai lệch sau replay gia hạn: %v", bal)
 		}
 
 		// Race (a): 5 goroutines gia hạn CÙNG request_id => ví chỉ trừ đúng 1 lần (1 thành công + 4 idempotent)
 		const uID712 = 712
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 5000000, 'VND', 'ACTIVE')", uID712)
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 5000000, 'VND', 'ACTIVE')", uID712)
 		_, err = tRepo.SubscribeOrUpgrade(ctx, uID712, ticketModels.SubscribeRequest{
 			TierCode:  "PRO",
 			RequestID: "req-user712-init",
@@ -304,14 +300,14 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		}
 
 		var bal712 float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID712).Scan(&bal712)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID712).Scan(&bal712)
 		if int64(bal712) != 5000000-299000*2 {
 			t.Fatalf("Race (a) ví User 712 bị trừ sai lệch (kỳ vọng trừ đúng 2 kỳ 598k): %v", bal712)
 		}
 
 		// Race (c): 5 goroutines gia hạn KHÁC request_id => cộng dồn đúng 5 lần và ví trừ đúng 5 lần
 		const uID711 = 711
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 5000000, 'VND', 'ACTIVE')", uID711)
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 5000000, 'VND', 'ACTIVE')", uID711)
 		_, err = tRepo.SubscribeOrUpgrade(ctx, uID711, ticketModels.SubscribeRequest{
 			TierCode:  "PRO",
 			RequestID: "req-user711-init",
@@ -350,13 +346,13 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		}
 
 		var totalPaid711 int64
-		_ = db.QueryRowContext(ctx, "SELECT amount_paid_vnd FROM user_subscription WHERE user_id = $1 AND status = 'ACTIVE'", uID711).Scan(&totalPaid711)
+		_ = testDB.QueryRowContext(ctx, "SELECT amount_paid_vnd FROM user_subscription WHERE user_id = $1 AND status = 'ACTIVE'", uID711).Scan(&totalPaid711)
 		if totalPaid711 != 299000*6 {
 			t.Fatalf("Race (c) User 711 tổng tiền 6 kỳ (1 mua + 5 gia hạn) không khớp: %d", totalPaid711)
 		}
 
 		var bal711 float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID711).Scan(&bal711)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID711).Scan(&bal711)
 		if int64(bal711) != 5000000-299000*6 {
 			t.Fatalf("Race (c) ví User 711 bị trừ sai: %v", bal711)
 		}
@@ -367,7 +363,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 	// 4. TEST CASE 4: NÂNG CẤP GIỮA KỲ (PRORATE credit = oldPrice * D / 30)
 	t.Run("TC4_Upgrade_Prorate_Between_Tiers", func(t *testing.T) {
 		const uID = 704
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 3000000, 'VND', 'ACTIVE')", uID)
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 3000000, 'VND', 'ACTIVE')", uID)
 
 		// Giả lập người dùng đã dùng gói PRO được 10 ngày (còn lại đúng 20 ngày)
 		// PRO giá 299.000 đ.
@@ -379,7 +375,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		oldEnd := now.AddDate(0, 0, 20)
 
 		var oldSubID int
-		err := db.QueryRowContext(ctx, `
+		err := testDB.QueryRowContext(ctx, `
 			INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, amount_paid_vnd, created_at, updated_at)
 			VALUES ($1, (SELECT tier_id FROM subscription_tier WHERE tier_code = 'PRO'), 'ACTIVE', $2, $3, 299000, NOW(), NOW())
 			RETURNING subscription_id
@@ -409,14 +405,14 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 
 		// Kiểm tra trạng thái gói cũ chuyển UPGRADED
 		var oldStatus string
-		_ = db.QueryRowContext(ctx, "SELECT status FROM user_subscription WHERE subscription_id = $1", oldSubID).Scan(&oldStatus)
+		_ = testDB.QueryRowContext(ctx, "SELECT status FROM user_subscription WHERE subscription_id = $1", oldSubID).Scan(&oldStatus)
 		if oldStatus != "UPGRADED" {
 			t.Fatalf("Gói cũ không chuyển sang trạng thái UPGRADED: %s", oldStatus)
 		}
 
 		// Kiểm tra số dư ví trừ đúng 800.667 đ
 		var bal float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID).Scan(&bal)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID).Scan(&bal)
 		if int64(bal) != 3000000-800667 {
 			t.Fatalf("Số dư ví không khớp sau nâng cấp: nhận %v, kỳ vọng %d", bal, 3000000-800667)
 		}
@@ -427,7 +423,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 	// 5. TEST CASE 5: HẠ CẤP (ĐẶT LỊCH KỲ KẾ, KHÔNG HOÀN TIỀN)
 	t.Run("TC5_Downgrade_Schedule_Next_Period", func(t *testing.T) {
 		const uID = 705
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 2000000, 'VND', 'ACTIVE')", uID)
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 2000000, 'VND', 'ACTIVE')", uID)
 
 		// Người dùng đang dùng BUSINESS
 		resp, err := tRepo.SubscribeOrUpgrade(ctx, uID, ticketModels.SubscribeRequest{
@@ -457,7 +453,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 			subStatus   string
 			schedTierID sql.NullInt64
 		)
-		err = db.QueryRowContext(ctx, `
+		err = testDB.QueryRowContext(ctx, `
 			SELECT status, scheduled_downgrade_tier_id 
 			FROM user_subscription WHERE subscription_id = $1
 		`, resp.SubscriptionID).Scan(&subStatus, &schedTierID)
@@ -466,7 +462,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		}
 
 		var schedCode string
-		_ = db.QueryRowContext(ctx, "SELECT tier_code FROM subscription_tier WHERE tier_id = $1", schedTierID.Int64).Scan(&schedCode)
+		_ = testDB.QueryRowContext(ctx, "SELECT tier_code FROM subscription_tier WHERE tier_id = $1", schedTierID.Int64).Scan(&schedCode)
 		if schedCode != "PRO" {
 			t.Fatalf("Gói hạ cấp lên lịch không phải PRO: %s", schedCode)
 		}
@@ -477,16 +473,16 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 	t.Run("TC6_Job_Expired_And_Auto_Renew", func(t *testing.T) {
 		// Nhánh A: User 706 (gói PRO hết hạn, auto_renew=true, ví có 500k => tự gia hạn thành công)
 		const uID706 = 706
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 500000, 'VND', 'ACTIVE')", uID706)
-		_, _ = db.ExecContext(ctx, `
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 500000, 'VND', 'ACTIVE')", uID706)
+		_, _ = testDB.ExecContext(ctx, `
 			INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, auto_renew, amount_paid_vnd, created_at, updated_at)
 			VALUES ($1, (SELECT tier_id FROM subscription_tier WHERE tier_code = 'PRO'), 'ACTIVE', NOW() - INTERVAL '31 days', NOW() - INTERVAL '1 day', TRUE, 299000, NOW(), NOW())
 		`, uID706)
 
 		// Nhánh B: User 707 (gói PRO hết hạn, auto_renew=true, ví chỉ có 10k => rơi về FREE, không cấp miễn phí)
 		const uID707 = 707
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 10000, 'VND', 'ACTIVE')", uID707)
-		_, _ = db.ExecContext(ctx, `
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 10000, 'VND', 'ACTIVE')", uID707)
+		_, _ = testDB.ExecContext(ctx, `
 			INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, auto_renew, amount_paid_vnd, created_at, updated_at)
 			VALUES ($1, (SELECT tier_id FROM subscription_tier WHERE tier_code = 'PRO'), 'ACTIVE', NOW() - INTERVAL '31 days', NOW() - INTERVAL '1 day', TRUE, 299000, NOW(), NOW())
 		`, uID707)
@@ -502,7 +498,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 
 		// Kiểm tra User 706 sau lần 1: Ví còn 201k
 		var bal706 float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID706).Scan(&bal706)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID706).Scan(&bal706)
 		if int64(bal706) != 500000-299000 {
 			t.Fatalf("Ví User 706 không trừ đúng 299k: %v", bal706)
 		}
@@ -517,7 +513,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		}
 
 		var bal706After2 float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID706).Scan(&bal706After2)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID706).Scan(&bal706After2)
 		if int64(bal706After2) != 500000-299000 {
 			t.Fatalf("Ví User 706 bị trừ tiền lặp lại ở lần 2! %v", bal706After2)
 		}
@@ -528,12 +524,12 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 	// 7. TEST CASE 7: TIER BỊ TẮT (IS_ACTIVE = FALSE)
 	t.Run("TC7_Disabled_Tier_Protection", func(t *testing.T) {
 		const uID = 708
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 2000000, 'VND', 'ACTIVE')", uID)
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 2000000, 'VND', 'ACTIVE')", uID)
 
 		// Tạm thời vô hiệu hóa gói BUSINESS (is_active = FALSE)
-		_, _ = db.ExecContext(ctx, "UPDATE subscription_tier SET is_active = FALSE WHERE tier_code = 'BUSINESS'")
+		_, _ = testDB.ExecContext(ctx, "UPDATE subscription_tier SET is_active = FALSE WHERE tier_code = 'BUSINESS'")
 		defer func() {
-			_, _ = db.ExecContext(ctx, "UPDATE subscription_tier SET is_active = TRUE WHERE tier_code = 'BUSINESS'")
+			_, _ = testDB.ExecContext(ctx, "UPDATE subscription_tier SET is_active = TRUE WHERE tier_code = 'BUSINESS'")
 		}()
 
 		// Thử mua gói BUSINESS bị tắt => BỊ CHẶN
@@ -550,7 +546,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 
 		// Giả lập user đang có gói BUSINESS còn hạn lúc trước khi bị tắt => Vẫn giữ quyền lợi đến hết kỳ
 		now := time.Now()
-		_, _ = db.ExecContext(ctx, `
+		_, _ = testDB.ExecContext(ctx, `
 			INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, amount_paid_vnd, created_at, updated_at)
 			VALUES ($1, (SELECT tier_id FROM subscription_tier WHERE tier_code = 'BUSINESS'), 'ACTIVE', $2, $3, 1000000, NOW(), NOW())
 		`, uID, now.Add(-5*24*time.Hour), now.Add(25*24*time.Hour))
@@ -569,7 +565,7 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 	// 8. TEST CASE 8: BẬT / TẮT AUTO_RENEW QUA API
 	t.Run("TC8_SetAutoRenew_Toggle", func(t *testing.T) {
 		const uID = 710
-		_, _ = db.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 2000000, 'VND', 'ACTIVE')", uID)
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO wallet (user_id, balance, currency, status) VALUES ($1, 2000000, 'VND', 'ACTIVE')", uID)
 
 		// Mua gói ban đầu với auto_renew = false
 		_, err := tRepo.SubscribeOrUpgrade(ctx, uID, ticketModels.SubscribeRequest{

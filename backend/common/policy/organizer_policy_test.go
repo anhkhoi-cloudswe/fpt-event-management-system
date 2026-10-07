@@ -6,22 +6,26 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fpt-event-services/common/db"
 	"github.com/fpt-event-services/common/policy"
 	_ "github.com/lib/pq"
 )
 
 func getTestDB(t *testing.T) *sql.DB {
 	connStr := "postgres://postgres:postgres@127.0.0.1:5432/fpt_event_test?sslmode=disable"
-	db, err := sql.Open("postgres", connStr)
+	testDB, err := sql.Open("postgres", connStr)
 	if err != nil {
 		t.Skipf("⏭️ [CI SKIP] Không thể kết nối DB local (%v). Bỏ qua test.", err)
 		return nil
 	}
-	if err := db.Ping(); err != nil {
+	if err := testDB.Ping(); err != nil {
 		t.Skipf("⏭️ [CI SKIP] DB Ping thất bại (%v). Bỏ qua test trong môi trường CI.", err)
 		return nil
 	}
-	return db
+	if err := db.EnsureTestSchema(testDB); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
+	}
+	return testDB
 }
 
 // TestResolveOrganizerPolicy_UnitCases kiểm tra toàn diện các quy tắc của ResolveOrganizerPolicy:

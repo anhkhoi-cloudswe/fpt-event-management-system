@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/db"
 	ticketHandler "github.com/fpt-event-services/services/ticket-service/handler"
 	ticketModels "github.com/fpt-event-services/services/ticket-service/models"
 	ticketRepo "github.com/fpt-event-services/services/ticket-service/repository"
@@ -34,52 +35,47 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 	}
 	t.Log("🛡️ SAFETY GUARD PASSED: Đang kết nối tới container test an toàn (localhost:5432 / fpt_event_test).")
 
-	db, err := sql.Open("postgres", connStr)
+	testDB, err := sql.Open("postgres", connStr)
 	if err != nil {
 		t.Skipf("⏭️ [CI SKIP] Không thể mở kết nối DB: %v", err)
 		return
 	}
-	defer db.Close()
+	defer testDB.Close()
 
-	if err := db.Ping(); err != nil {
+	if err := testDB.Ping(); err != nil {
 		t.Skipf("⏭️ [CI SKIP] Docker Postgres local không phản hồi (%v). Bỏ qua integration test trong CI.", err)
 		return
+	}
+
+	if err := db.EnsureTestSchema(testDB); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
 	}
 
 	ctx := context.Background()
 
 	// 1. Chạy migration thật từ file (03 -> 04a)
-	candidates := []string{
-		filepath.Join("..", "..", "Database", "migrations"),
-		filepath.Join("..", "Database", "migrations"),
-		filepath.Join("Database", "migrations"),
-	}
-	var migDir string
-	for _, c := range candidates {
-		if _, err := os.Stat(filepath.Join(c, "04a_subscription_and_dynamic_fees.sql")); err == nil {
-			migDir = c
-			break
-		}
-	}
+	migDir := db.FindMigrationsDir()
 	if migDir == "" {
 		t.Fatalf("Không tìm thấy thư mục Database/migrations từ các đường dẫn tương đối!")
 	}
 
 	m03Path := filepath.Join(migDir, "03_add_school_organizer_enum.sql")
 	if m03SQL, err := os.ReadFile(m03Path); err == nil {
-		_, _ = db.ExecContext(ctx, string(m03SQL))
+		_, _ = testDB.ExecContext(ctx, string(m03SQL))
 	}
 	m04aPath := filepath.Join(migDir, "04a_subscription_and_dynamic_fees.sql")
 	m04aSQL, err := os.ReadFile(m04aPath)
 	if err != nil {
 		t.Fatalf("Không đọc được file migration 04a: %v", err)
 	}
-	if _, err := db.ExecContext(ctx, string(m04aSQL)); err != nil {
-		t.Fatalf("Lỗi chạy migration 04a: %v", err)
+	if _, err := testDB.ExecContext(ctx, string(m04aSQL)); err != nil {
+		if !strings.Contains(err.Error(), "already exists") {
+			t.Fatalf("Lỗi chạy migration 04a: %v", err)
+		}
 	}
 
-	tRepo := ticketRepo.NewTicketRepositoryWithDB(db)
-	tHandler := ticketHandler.NewTicketHandlerWithDB(db)
+	tRepo := ticketRepo.NewTicketRepositoryWithDB(testDB)
+	tHandler := ticketHandler.NewTicketHandlerWithDB(testDB)
 
 	// Chuẩn bị dữ liệu người dùng test (User IDs: 801=ADMIN, 802=ORGANIZER, 803=STUDENT)
 	cleanupSQL := `
@@ -101,7 +97,7 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 		(802, 5000000, 'VND', 'ACTIVE')
 		ON CONFLICT DO NOTHING;
 	`
-	if _, err := db.ExecContext(ctx, cleanupSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, cleanupSQL); err != nil {
 		t.Fatalf("Lỗi chuẩn bị test users: %v", err)
 	}
 
@@ -114,7 +110,7 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 			UPDATE platform_system_parameter SET param_value = '1000' WHERE param_key = 'FIXED_FEE_PER_TICKET';
 			UPDATE platform_system_parameter SET param_value = '20000' WHERE param_key = 'FIXED_FEE_MIN_TICKET_PRICE';
 		`
-		_, _ = db.ExecContext(context.Background(), resetSQL)
+		_, _ = testDB.ExecContext(context.Background(), resetSQL)
 	})
 
 	// -------------------------------------------------------------
@@ -150,7 +146,7 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 		}
 
 		// (c) User có role SUPER_ADMIN hoặc role khác trong DB không được chấp nhận (chỉ ADMIN)
-		_, _ = db.ExecContext(ctx, "INSERT INTO users (user_id, email, full_name, password_hash, role, status) VALUES (804, 'super804@fpt.edu.vn', 'Super Tester', 'hash', 'STAFF', 'ACTIVE') ON CONFLICT (user_id) DO UPDATE SET role = 'STAFF'")
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO users (user_id, email, full_name, password_hash, role, status) VALUES (804, 'super804@fpt.edu.vn', 'Super Tester', 'hash', 'STAFF', 'ACTIVE') ON CONFLICT (user_id) DO UPDATE SET role = 'STAFF'")
 		reqSuper := events.APIGatewayProxyRequest{
 			HTTPMethod: "GET",
 			Path:       "/api/v1/admin/role-policies",
@@ -197,40 +193,40 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 	t.Run("TC3_Version_Increment_And_Concurrency_Audit", func(t *testing.T) {
 		getVer := func() int {
 			var vStr string
-			_ = db.QueryRowContext(ctx, "SELECT param_value FROM platform_system_parameter WHERE param_key = 'FEE_CONFIG_VERSION'").Scan(&vStr)
+			_ = testDB.QueryRowContext(ctx, "SELECT param_value FROM platform_system_parameter WHERE param_key = 'FEE_CONFIG_VERSION'").Scan(&vStr)
 			v, _ := strconv.Atoi(vStr)
 			return v
 		}
 
 		// (a) Test: Dòng FEE_CONFIG_VERSION bị thiếu trong DB => Phải trả về lỗi fail-closed và rollback
-		_, _ = db.ExecContext(ctx, "DELETE FROM platform_system_parameter WHERE param_key = 'FEE_CONFIG_VERSION'")
+		_, _ = testDB.ExecContext(ctx, "DELETE FROM platform_system_parameter WHERE param_key = 'FEE_CONFIG_VERSION'")
 		errMissingVer := tRepo.UpdateRoleFeePolicy(ctx, 801, "SCHOOL_ORGANIZER", 250, -1, true, true, "Thử khi thiếu version")
 		if errMissingVer == nil || !strings.Contains(errMissingVer.Error(), "FEE_CONFIG_VERSION") {
 			t.Fatalf("Thiếu dòng FEE_CONFIG_VERSION phải báo lỗi nhưng lại thành công: %v", errMissingVer)
 		}
 
 		// (b) Test: Giá trị FEE_CONFIG_VERSION là rác / không phải số nguyên dương => Báo lỗi
-		_, _ = db.ExecContext(ctx, "INSERT INTO platform_system_parameter (param_key, param_value, description) VALUES ('FEE_CONFIG_VERSION', 'invalid_string', 'ver test') ON CONFLICT (param_key) DO UPDATE SET param_value = 'invalid_string'")
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO platform_system_parameter (param_key, param_value, description) VALUES ('FEE_CONFIG_VERSION', 'invalid_string', 'ver test') ON CONFLICT (param_key) DO UPDATE SET param_value = 'invalid_string'")
 		errGarbageVer := tRepo.UpdateRoleFeePolicy(ctx, 801, "SCHOOL_ORGANIZER", 250, -1, true, true, "Thử khi version rác")
 		if errGarbageVer == nil || !strings.Contains(errGarbageVer.Error(), "FEE_CONFIG_VERSION") {
 			t.Fatalf("FEE_CONFIG_VERSION là chữ rác phải báo lỗi nhưng lại thành công: %v", errGarbageVer)
 		}
 
-		_, _ = db.ExecContext(ctx, "UPDATE platform_system_parameter SET param_value = '-5' WHERE param_key = 'FEE_CONFIG_VERSION'")
+		_, _ = testDB.ExecContext(ctx, "UPDATE platform_system_parameter SET param_value = '-5' WHERE param_key = 'FEE_CONFIG_VERSION'")
 		errNegVer := tRepo.UpdateRoleFeePolicy(ctx, 801, "SCHOOL_ORGANIZER", 250, -1, true, true, "Thử khi version âm")
 		if errNegVer == nil || !strings.Contains(errNegVer.Error(), "FEE_CONFIG_VERSION") {
 			t.Fatalf("FEE_CONFIG_VERSION âm phải báo lỗi nhưng lại thành công: %v", errNegVer)
 		}
 
 		// Khôi phục version hợp lệ
-		_, _ = db.ExecContext(ctx, "UPDATE platform_system_parameter SET param_value = '10' WHERE param_key = 'FEE_CONFIG_VERSION'")
+		_, _ = testDB.ExecContext(ctx, "UPDATE platform_system_parameter SET param_value = '10' WHERE param_key = 'FEE_CONFIG_VERSION'")
 		vStart := getVer()
 		if vStart != 10 {
 			t.Fatalf("Khôi phục version thất bại: %d", vStart)
 		}
 
 		// (c) Test Concurrency: 10 goroutines sửa đồng thời => SELECT FOR UPDATE tuần tự hóa, version tăng đúng 10, audit log tăng đúng 10 dòng
-		_, _ = db.ExecContext(ctx, "DELETE FROM fee_audit_log WHERE changed_by = 801")
+		_, _ = testDB.ExecContext(ctx, "DELETE FROM fee_audit_log WHERE changed_by = 801")
 		const concurrentCount = 10
 		errChan := make(chan error, concurrentCount)
 
@@ -255,7 +251,7 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 		}
 
 		var auditCount int
-		_ = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM fee_audit_log WHERE changed_by = 801").Scan(&auditCount)
+		_ = testDB.QueryRowContext(ctx, "SELECT COUNT(*) FROM fee_audit_log WHERE changed_by = 801").Scan(&auditCount)
 		if auditCount != concurrentCount {
 			t.Fatalf("Số lượng bản ghi audit log sai: nhận %d, kỳ vọng đúng %d", auditCount, concurrentCount)
 		}
@@ -328,9 +324,9 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 		// 3. Test case yêu cầu: Organizer đang gói PRO (250 bps), override 500 bps không confirmHigher => 422 Unprocessable Entity
 		// Kích hoạt gói PRO cho user 802
 		var tierIDPro int
-		_ = db.QueryRowContext(ctx, "SELECT tier_id FROM subscription_tier WHERE tier_code = 'PRO'").Scan(&tierIDPro)
-		_, _ = db.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = $1", uID)
-		_, errSub := db.ExecContext(ctx, `
+		_ = testDB.QueryRowContext(ctx, "SELECT tier_id FROM subscription_tier WHERE tier_code = 'PRO'").Scan(&tierIDPro)
+		_, _ = testDB.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = $1", uID)
+		_, errSub := testDB.ExecContext(ctx, `
 			INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, auto_renew, amount_paid_vnd, created_at, updated_at)
 			VALUES ($1, $2, 'ACTIVE', NOW() - INTERVAL '1 day', NOW() + INTERVAL '29 days', TRUE, 299000, NOW(), NOW())
 		`, uID, tierIDPro)
@@ -364,7 +360,7 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 		}
 
 		// 4. Test case yêu cầu: Organizer SCHOOL_ORGANIZER chưa có gói (role policy 250 bps), override 500 bps không confirmHigher => 422 Unprocessable Entity
-		_, _ = db.ExecContext(ctx, `
+		_, _ = testDB.ExecContext(ctx, `
 			INSERT INTO users (user_id, email, full_name, password_hash, role, status)
 			VALUES (805, 'schoolorg805@fpt.edu.vn', 'School Org No Tier', 'hash', 'SCHOOL_ORGANIZER', 'ACTIVE')
 			ON CONFLICT (user_id) DO UPDATE SET role = 'SCHOOL_ORGANIZER';
@@ -455,7 +451,7 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 		}
 
 		var role, prevRole string
-		_ = db.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = $1", uID).Scan(&role, &prevRole)
+		_ = testDB.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = $1", uID).Scan(&role, &prevRole)
 		if role != "SCHOOL_ORGANIZER" || prevRole != "ORGANIZER" {
 			t.Fatalf("Dữ liệu sau khi gán sai: role=%s, previous_role=%s", role, prevRole)
 		}
@@ -473,7 +469,7 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 		}
 
 		var roleAfterSecond, prevRoleAfterSecond string
-		_ = db.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = $1", uID).Scan(&roleAfterSecond, &prevRoleAfterSecond)
+		_ = testDB.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = $1", uID).Scan(&roleAfterSecond, &prevRoleAfterSecond)
 		if roleAfterSecond != "SCHOOL_ORGANIZER" || prevRoleAfterSecond != "ORGANIZER" {
 			t.Fatalf("Gán lần hai làm hỏng previous_role: role=%s, previous_role=%s", roleAfterSecond, prevRoleAfterSecond)
 		}
@@ -492,13 +488,13 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 
 		var roleRestored string
 		var prevRoleRestored sql.NullString
-		_ = db.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = $1", uID).Scan(&roleRestored, &prevRoleRestored)
+		_ = testDB.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = $1", uID).Scan(&roleRestored, &prevRoleRestored)
 		if roleRestored != "ORGANIZER" || prevRoleRestored.Valid {
 			t.Fatalf("Sau khi thu hồi: role=%s, previous_role=%v", roleRestored, prevRoleRestored)
 		}
 
 		// (e) Thu hồi khi previous_role là NULL qua HTTP Handler => Vẫn an toàn về 200 OK và phục hồi về ORGANIZER
-		_, _ = db.ExecContext(ctx, "UPDATE users SET role = 'SCHOOL_ORGANIZER', previous_role = NULL WHERE user_id = $1", uID)
+		_, _ = testDB.ExecContext(ctx, "UPDATE users SET role = 'SCHOOL_ORGANIZER', previous_role = NULL WHERE user_id = $1", uID)
 		reqRevokeNullPrev := events.APIGatewayProxyRequest{
 			HTTPMethod: "DELETE",
 			Path:       "/api/v1/admin/users/school-role",
@@ -509,7 +505,7 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 		if respRevokeNullPrev.StatusCode != http.StatusOK {
 			t.Fatalf("Thu hồi khi previous_role NULL qua handler thất bại: %d, body: %s", respRevokeNullPrev.StatusCode, respRevokeNullPrev.Body)
 		}
-		_ = db.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = $1", uID).Scan(&roleRestored, &prevRoleRestored)
+		_ = testDB.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = $1", uID).Scan(&roleRestored, &prevRoleRestored)
 		if roleRestored != "ORGANIZER" || prevRoleRestored.Valid {
 			t.Fatalf("Sau khi thu hồi NULL prev: role=%s, previous_role=%v", roleRestored, prevRoleRestored)
 		}
@@ -567,8 +563,8 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 		const uID = 802
 
 		// 1. Giả lập số dư ví có phần thập phân lẻ (50000.75) => SubscribeOrUpgrade phải từ chối
-		_, _ = db.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = $1", uID)
-		_, _ = db.ExecContext(ctx, "UPDATE wallet SET balance = 50000.75 WHERE user_id = $1", uID)
+		_, _ = testDB.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = $1", uID)
+		_, _ = testDB.ExecContext(ctx, "UPDATE wallet SET balance = 50000.75 WHERE user_id = $1", uID)
 		_, errDec := tRepo.SubscribeOrUpgrade(ctx, uID, ticketModels.SubscribeRequest{
 			TierCode:  "PRO",
 			RequestID: "req-decimal-test-01",
@@ -578,16 +574,16 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 		}
 
 		// Khôi phục số dư ví nguyên vẹn
-		_, _ = db.ExecContext(ctx, "UPDATE wallet SET balance = 2000000 WHERE user_id = $1", uID)
+		_, _ = testDB.ExecContext(ctx, "UPDATE wallet SET balance = 2000000 WHERE user_id = $1", uID)
 
 		// 2. Tạo gói ACTIVE cho user 802 nhưng cấu hình tier BUSINESS có is_active = FALSE
 		var tierIDBusiness int
-		if err := db.QueryRowContext(ctx, "SELECT tier_id FROM subscription_tier WHERE tier_code = 'BUSINESS'").Scan(&tierIDBusiness); err != nil {
+		if err := testDB.QueryRowContext(ctx, "SELECT tier_id FROM subscription_tier WHERE tier_code = 'BUSINESS'").Scan(&tierIDBusiness); err != nil {
 			t.Fatalf("Lỗi truy vấn tier_id BUSINESS: %v", err)
 		}
 
 		// Xóa các subscription cũ của user 802
-		if _, err := db.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = $1", uID); err != nil {
+		if _, err := testDB.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = $1", uID); err != nil {
 			t.Fatalf("Lỗi xóa user_subscription: %v", err)
 		}
 
@@ -596,16 +592,16 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 			INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, auto_renew, amount_paid_vnd, created_at, updated_at)
 			VALUES ($1, $2, 'ACTIVE', NOW() - INTERVAL '35 days', NOW() - INTERVAL '5 days', TRUE, 1000000, NOW(), NOW())
 		`
-		if _, err := db.ExecContext(ctx, insertSubQuery, uID, tierIDBusiness); err != nil {
+		if _, err := testDB.ExecContext(ctx, insertSubQuery, uID, tierIDBusiness); err != nil {
 			t.Fatalf("Lỗi insert gói quá hạn: %v", err)
 		}
 
 		// Vô hiệu hóa tier BUSINESS (is_active = FALSE)
-		if _, err := db.ExecContext(ctx, "UPDATE subscription_tier SET is_active = FALSE WHERE tier_id = $1", tierIDBusiness); err != nil {
+		if _, err := testDB.ExecContext(ctx, "UPDATE subscription_tier SET is_active = FALSE WHERE tier_id = $1", tierIDBusiness); err != nil {
 			t.Fatalf("Lỗi update is_active BUSINESS: %v", err)
 		}
 
-		sched := ticketScheduler.NewSubscriptionExpiryScheduler(db, 60)
+		sched := ticketScheduler.NewSubscriptionExpiryScheduler(testDB, 60)
 		expired, renewed, errJob := sched.RunOnce(ctx)
 		if errJob != nil {
 			t.Fatalf("Job quét hết hạn bị lỗi: %v", errJob)
@@ -617,13 +613,13 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 
 		// Kiểm tra ví không bị trừ 1.000.000 đ
 		var bal float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID).Scan(&bal)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = $1", uID).Scan(&bal)
 		if int64(bal) != 2000000 {
 			t.Fatalf("Gói bị tắt nhưng ví vẫn bị trừ tiền: %v", bal)
 		}
 
 		// Khôi phục lại tier BUSINESS is_active = TRUE
-		_, _ = db.ExecContext(ctx, "UPDATE subscription_tier SET is_active = TRUE WHERE tier_id = $1", tierIDBusiness)
+		_, _ = testDB.ExecContext(ctx, "UPDATE subscription_tier SET is_active = TRUE WHERE tier_id = $1", tierIDBusiness)
 
 		t.Logf("✅ TC8 Đạt: Chặn số dư ví phần thập phân lẻ (fail-closed) và Job hết hạn tuyệt đối KHÔNG gia hạn/trừ tiền các gói is_active=FALSE!")
 	})

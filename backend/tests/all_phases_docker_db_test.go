@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fpt-event-services/common/db"
 	eventRepo "github.com/fpt-event-services/services/event-service/repository"
 	ticketModels "github.com/fpt-event-services/services/ticket-service/models"
 	ticketRepo "github.com/fpt-event-services/services/ticket-service/repository"
@@ -26,20 +27,24 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 	}
 	t.Log("🛡️ SAFETY GUARD PASSED: Đang kết nối tới container test an toàn (localhost:5432 / fpt_event_test).")
 
-	db, err := sql.Open("postgres", connStr)
+	testDB, err := sql.Open("postgres", connStr)
 	if err != nil {
 		t.Fatalf("Không thể mở kết nối tới Docker Postgres: %v", err)
 	}
-	defer db.Close()
+	defer testDB.Close()
 
-	if err := db.Ping(); err != nil {
+	if err := testDB.Ping(); err != nil {
 		t.Skipf("⏭️ [CI SKIP] Docker Postgres local không phản hồi (%v). Bỏ qua integration test trong CI.", err)
 		return
 	}
 
+	if err := db.EnsureTestSchema(testDB); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
+	}
+
 	ctx := context.Background()
-	eRepo := eventRepo.NewEventRepositoryWithDB(db)
-	tRepo := ticketRepo.NewTicketRepositoryWithDB(db)
+	eRepo := eventRepo.NewEventRepositoryWithDB(testDB)
+	tRepo := ticketRepo.NewTicketRepositoryWithDB(testDB)
 
 	// Chuẩn bị dữ liệu mẫu người dùng:
 	// User 10: ORGANIZER A (bắt đầu từ Free)
@@ -65,7 +70,7 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 		(10, 10, 2000000, 'VND', 'ACTIVE')
 		ON CONFLICT (user_id) DO UPDATE SET balance = 2000000;
 	`
-	if _, err := db.ExecContext(ctx, seedUsersSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, seedUsersSQL); err != nil {
 		t.Fatalf("Lỗi chuẩn bị dữ liệu test user & ví: %v", err)
 	}
 
@@ -123,7 +128,7 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 
 		// Kiểm tra số dư ví phải bị trừ đúng 299.000đ (2.000.000 - 299.000 = 1.701.000)
 		var balance float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 10").Scan(&balance)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 10").Scan(&balance)
 		if balance != 1701000 {
 			t.Fatalf("Kỳ vọng số dư ví là 1.701.000đ, nhận: %v", balance)
 		}
@@ -138,7 +143,7 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 		}
 
 		// Tiền ví tuyệt đối không bị trừ thêm lần 2!
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 10").Scan(&balance)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 10").Scan(&balance)
 		if balance != 1701000 {
 			t.Fatalf("Lỗi vi phạm Idempotency: tiền ví bị trừ thêm! Số dư: %v", balance)
 		}
@@ -271,7 +276,7 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 
 		// Xác nhận đã nhận role SCHOOL_ORGANIZER
 		var currentRole, prevRole string
-		_ = db.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = 10").Scan(&currentRole, &prevRole)
+		_ = testDB.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = 10").Scan(&currentRole, &prevRole)
 		if currentRole != "SCHOOL_ORGANIZER" || prevRole != "ORGANIZER" {
 			t.Fatalf("Kỳ vọng role=SCHOOL_ORGANIZER, previous=ORGANIZER; nhận: %s, %s", currentRole, prevRole)
 		}
@@ -285,7 +290,7 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 		// Kiểm tra đã hoàn trả đúng role cũ ORGANIZER và xóa previous_role
 		var afterRole string
 		var afterPrev sql.NullString
-		_ = db.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = 10").Scan(&afterRole, &afterPrev)
+		_ = testDB.QueryRowContext(ctx, "SELECT role, previous_role FROM users WHERE user_id = 10").Scan(&afterRole, &afterPrev)
 		if afterRole != "ORGANIZER" || afterPrev.Valid {
 			t.Fatalf("Kỳ vọng hoàn trả về ORGANIZER và previous_role NULL; nhận: %s, %v", afterRole, afterPrev)
 		}
@@ -298,7 +303,7 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 	t.Run("TC9_TC13_FinancialReportAndPaywall", func(t *testing.T) {
 		// Tạo 1 event mẫu cho Organizer 10
 		var eventID int
-		err := db.QueryRowContext(ctx, `
+		err := testDB.QueryRowContext(ctx, `
 			INSERT INTO event (created_by, title, status, is_settled, start_time, end_time, created_at)
 			VALUES (10, 'Sự kiện đối soát tài chính', 'OPEN', FALSE, NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', NOW())
 			RETURNING event_id
@@ -309,7 +314,7 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 
 		// Tạo category ticket và vé status REFUNDED
 		var categoryID int
-		err = db.QueryRowContext(ctx, `
+		err = testDB.QueryRowContext(ctx, `
 			INSERT INTO category_ticket (event_id, name, price, max_quantity)
 			VALUES ($1, 'Loại vé test', 100000, 50)
 			RETURNING category_ticket_id
@@ -323,7 +328,7 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 			VALUES (99001, $1, $2, 10, 'TCK-REF-99001', 'REFUNDED', NOW())
 			ON CONFLICT (ticket_id) DO UPDATE SET status = EXCLUDED.status;
 		`
-		if _, err := db.ExecContext(ctx, ticketSQL, eventID, categoryID); err != nil {
+		if _, err := testDB.ExecContext(ctx, ticketSQL, eventID, categoryID); err != nil {
 			t.Fatalf("Lỗi chèn ticket REFUNDED: %v", err)
 		}
 
@@ -336,7 +341,7 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 			(99002, 9002, $1, 10, -100000, 5.0, -1000, -5000, -94000, 'VND', 'PRO', 500, 'TIER', 1, TRUE, NOW(), NOW())
 			ON CONFLICT (receipt_id) DO UPDATE SET net_amount = EXCLUDED.net_amount;
 		`
-		if _, err := db.ExecContext(ctx, receiptSQL, eventID); err != nil {
+		if _, err := testDB.ExecContext(ctx, receiptSQL, eventID); err != nil {
 			t.Fatalf("Lỗi chèn receipt: %v", err)
 		}
 
@@ -354,9 +359,9 @@ func TestAllPhases_ComprehensiveLifecycle(t *testing.T) {
 		t.Log("✅ TC9 Đạt: Báo cáo tài chính 3 cột tiền tính đúng từ SUM(net_amount) lịch sử!")
 
 		// 2. Kiểm tra Paywall Báo cáo nâng cao cho tài khoản Organizer 99 ở gói FREE:
-		_, _ = db.ExecContext(ctx, "INSERT INTO users (user_id, full_name, email, password_hash, role, status) VALUES (99, 'Free Org 99', 'free99@fpt.edu.vn', 'hash', 'ORGANIZER', 'ACTIVE') ON CONFLICT (user_id) DO NOTHING")
+		_, _ = testDB.ExecContext(ctx, "INSERT INTO users (user_id, full_name, email, password_hash, role, status) VALUES (99, 'Free Org 99', 'free99@fpt.edu.vn', 'hash', 'ORGANIZER', 'ACTIVE') ON CONFLICT (user_id) DO NOTHING")
 		var eventID99 int
-		if errEv := db.QueryRowContext(ctx, "INSERT INTO event (created_by, org_type, title, status, start_time, end_time) VALUES (99, 'ORGANIZER', 'Event Free 99', 'OPEN', NOW(), NOW() + INTERVAL '1 day') RETURNING event_id").Scan(&eventID99); errEv == nil {
+		if errEv := testDB.QueryRowContext(ctx, "INSERT INTO event (created_by, org_type, title, status, start_time, end_time) VALUES (99, 'ORGANIZER', 'Event Free 99', 'OPEN', NOW(), NOW() + INTERVAL '1 day') RETURNING event_id").Scan(&eventID99); errEv == nil {
 			_, err = tRepo.GetEventAdvancedAnalytics(ctx, eventID99, 99)
 			if err == nil {
 				t.Fatalf("Kỳ vọng chặn Paywall cho user không có gói nâng cao!")

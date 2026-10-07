@@ -117,13 +117,9 @@ crash.*.log
 # Misc
 .env
 .env.*
-*.log
-*.bak
-*.backup
-# Database folder (Strictly ignore all database schemas, dumps, migrations & scripts)
-Database/
-Database/**
-*.sql
+# Build artifacts
+*.zip
+*.tar.gz
 
 
 # OS files

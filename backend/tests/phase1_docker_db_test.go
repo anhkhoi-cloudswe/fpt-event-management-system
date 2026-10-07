@@ -12,24 +12,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fpt-event-services/common/db"
 	"github.com/fpt-event-services/services/ticket-service/repository"
 	_ "github.com/lib/pq"
 )
 
 func getProjectRoot() string {
-	wd, _ := os.Getwd()
-	// If running inside backend/tests or backend, navigate to root
-	for {
-		if _, err := os.Stat(filepath.Join(wd, "docker-compose.yml")); err == nil {
-			return wd
-		}
-		parent := filepath.Dir(wd)
-		if parent == wd {
-			break
-		}
-		wd = parent
-	}
-	return "c:\\AK\\HOCKI6\\OJT\\Project\\fpt-event-management-system"
+	return db.FindProjectRoot()
 }
 
 func TestPhase1_DockerPostgres_FullLifecycle(t *testing.T) {

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/db"
 	eventHandler "github.com/fpt-event-services/services/event-service/handler"
 	eventModels "github.com/fpt-event-services/services/event-service/models"
 	eventRepo "github.com/fpt-event-services/services/event-service/repository"
@@ -34,20 +35,24 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 	}
 	t.Log("🛡️ SAFETY GUARD PASSED: Đang kết nối tới container test an toàn (localhost:5432 / fpt_event_test).")
 
-	db, err := sql.Open("postgres", connStr)
+	testDB, err := sql.Open("postgres", connStr)
 	if err != nil {
 		t.Fatalf("Không thể mở kết nối tới Docker Postgres: %v", err)
 	}
-	defer db.Close()
+	defer testDB.Close()
 
-	if err := db.Ping(); err != nil {
+	if err := testDB.Ping(); err != nil {
 		t.Skipf("⏭️ [CI SKIP] Docker Postgres local không phản hồi (%v). Bỏ qua integration test trong CI.", err)
 		return
 	}
 
+	if err := db.EnsureTestSchema(testDB); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
+	}
+
 	ctx := context.Background()
-	eRepo := eventRepo.NewEventRepositoryWithDB(db)
-	tRepo := ticketRepo.NewTicketRepositoryWithDB(db)
+	eRepo := eventRepo.NewEventRepositoryWithDB(testDB)
+	tRepo := ticketRepo.NewTicketRepositoryWithDB(testDB)
 
 	// Dọn dẹp và chuẩn bị test fixtures
 	cleanupSQL := `
@@ -84,7 +89,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		SELECT setval(pg_get_serial_sequence('ticket', 'ticket_id'), COALESCE((SELECT MAX(ticket_id) FROM ticket), 1) + 10, false);
 		SELECT setval(pg_get_serial_sequence('event', 'event_id'), COALESCE((SELECT MAX(event_id) FROM event), 1) + 10, false);
 	`
-	if _, err := db.ExecContext(ctx, cleanupSQL); err != nil {
+	if _, err := testDB.ExecContext(ctx, cleanupSQL); err != nil {
 		t.Fatalf("Lỗi chuẩn bị fixtures: %v", err)
 	}
 
@@ -153,14 +158,14 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 
 	t.Run("Route3_UpdateEventRequest_CapacityGating", func(t *testing.T) {
 		var testEvtID, testReqID int
-		err := db.QueryRowContext(ctx, `
+		err := testDB.QueryRowContext(ctx, `
 			INSERT INTO event (title, event_format, max_seats, area_id, status, created_by, start_time, end_time, created_at)
 			VALUES ('Event Route 3', 'ONLINE', 50, 1, 'OPEN', 100, NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', NOW()) RETURNING event_id
 		`).Scan(&testEvtID)
 		if err != nil {
 			t.Fatalf("Lỗi tạo event: %v", err)
 		}
-		err = db.QueryRowContext(ctx, `
+		err = testDB.QueryRowContext(ctx, `
 			INSERT INTO event_request (requester_id, title, preferred_start_time, preferred_end_time, expected_capacity, created_event_id, status, created_at)
 			VALUES (100, 'Req Route 3', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', 50, $1, 'APPROVED', NOW()) RETURNING request_id
 		`, testEvtID).Scan(&testReqID)
@@ -195,7 +200,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 
 	t.Run("Route4_ProcessEventRequest_AdminApprove_CapacityGating", func(t *testing.T) {
 		var testReqID1 int
-		err := db.QueryRowContext(ctx, `
+		err := testDB.QueryRowContext(ctx, `
 			INSERT INTO event_request (requester_id, title, preferred_start_time, preferred_end_time, expected_capacity, status, created_at)
 			VALUES (100, 'Req Route 4 Flag Off', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', 120, 'PENDING', NOW()) RETURNING request_id
 		`).Scan(&testReqID1)
@@ -218,7 +223,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 
 		// 2. Cờ BẬT => Tạo request 2 với 120 chỗ, Admin duyệt bị chặn do Organizer gói Free không đủ hạn mức 120
 		var testReqID2 int
-		err = db.QueryRowContext(ctx, `
+		err = testDB.QueryRowContext(ctx, `
 			INSERT INTO event_request (requester_id, title, preferred_start_time, preferred_end_time, expected_capacity, status, created_at)
 			VALUES (100, 'Req Route 4 Flag On', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', 120, 'PENDING', NOW()) RETURNING request_id
 		`).Scan(&testReqID2)
@@ -243,7 +248,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 
 	t.Run("Route5_UpdateEventDetails_CapacityGating", func(t *testing.T) {
 		var testEvtID int
-		err := db.QueryRowContext(ctx, `
+		err := testDB.QueryRowContext(ctx, `
 			INSERT INTO event (title, event_format, max_seats, status, created_by, start_time, end_time, created_at)
 			VALUES ('Event Route 5', 'ONLINE', 50, 'OPEN', 100, NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', NOW()) RETURNING event_id
 		`).Scan(&testEvtID)
@@ -276,7 +281,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 
 	t.Run("Route6_UpdateEventConfig_CapacityGating", func(t *testing.T) {
 		var testEvtID int
-		err := db.QueryRowContext(ctx, `
+		err := testDB.QueryRowContext(ctx, `
 			INSERT INTO event (title, event_format, max_seats, status, created_by, start_time, end_time, created_at)
 			VALUES ('Event Route 6', 'ONLINE', 120, 'OPEN', 100, NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', NOW()) RETURNING event_id
 		`).Scan(&testEvtID)
@@ -310,8 +315,8 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		os.Setenv("ENABLE_CAPACITY_GATING", "true")
 		defer os.Setenv("ENABLE_CAPACITY_GATING", "false")
 
-		_, _ = db.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = 100")
-		_, err := db.ExecContext(ctx, `
+		_, _ = testDB.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = 100")
+		_, err := testDB.ExecContext(ctx, `
 			INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, amount_paid_vnd, created_at, updated_at)
 			VALUES (100, 2, 'ACTIVE', NOW() - INTERVAL '1 day', NOW() + INTERVAL '29 days', 299000, NOW(), NOW())
 		`)
@@ -346,7 +351,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 	// Gọi production: tRepo.SubscribeOrUpgrade (subscription_repository.go:210)
 	// =========================================================================
 	t.Run("Insufficient_Wallet_Balance_Reject", func(t *testing.T) {
-		_, _ = db.ExecContext(ctx, "UPDATE wallet SET balance = 50000 WHERE user_id = 100")
+		_, _ = testDB.ExecContext(ctx, "UPDATE wallet SET balance = 50000 WHERE user_id = 100")
 		req := ticketModels.SubscribeRequest{
 			TierCode:  "BUSINESS",
 			RequestID: "req-fail-insufficient-business",
@@ -360,7 +365,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		}
 
 		var bal float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 100").Scan(&bal)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 100").Scan(&bal)
 		if bal != 50000 {
 			t.Fatalf("Số dư ví bị thay đổi sai lệch: %v", bal)
 		}
@@ -383,7 +388,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		}
 
 		// 2. Kiểm tra trực tiếp qua Lambda Handler production (HandleGetOrganizerLimits - handler.go:1678)
-		h := eventHandler.NewEventHandlerWithDB(db)
+		h := eventHandler.NewEventHandlerWithDB(testDB)
 
 		lambdaReq := events.APIGatewayProxyRequest{
 			Headers: map[string]string{
@@ -409,15 +414,15 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		defer os.Setenv("ENABLE_CAPACITY_GATING", "false")
 
 		// 1. Thu hồi quyền trong DB: đổi role từ SCHOOL_ORGANIZER về ORGANIZER thường (không gói => Free limit 100)
-		_, err := db.ExecContext(ctx, "UPDATE users SET role = 'ORGANIZER', previous_role = 'SCHOOL_ORGANIZER' WHERE user_id = 100")
+		_, err := testDB.ExecContext(ctx, "UPDATE users SET role = 'ORGANIZER', previous_role = 'SCHOOL_ORGANIZER' WHERE user_id = 100")
 		if err != nil {
 			t.Fatalf("Lỗi update role trong DB: %v", err)
 		}
-		_, _ = db.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = 100")
+		_, _ = testDB.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = 100")
 
 		// 2. Client gửi request Lambda với token cũ (Header mang X-User-Role: SCHOOL_ORGANIZER)
 		// Tạo sự kiện 200 người (vượt quá 100 người của gói FREE mà user bị rơi về trong DB)
-		h := eventHandler.NewEventHandlerWithDB(db)
+		h := eventHandler.NewEventHandlerWithDB(testDB)
 		cap200 := 200
 		reqBody := eventModels.CreateEventRequestBody{
 			Title:              "Sự kiện 200 người từ Stale Token",
@@ -451,7 +456,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 	})
 
 	t.Run("Student_User_Rejected_Insufficient_Role", func(t *testing.T) {
-		h := eventHandler.NewEventHandlerWithDB(db)
+		h := eventHandler.NewEventHandlerWithDB(testDB)
 		cap50 := 50
 		reqBody := eventModels.CreateEventRequestBody{
 			Title:              "Sự kiện từ Student",
@@ -494,7 +499,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 	// =========================================================================
 	t.Run("Tier_Expired_During_Published_Event_Fallback_To_Free_Fee", func(t *testing.T) {
 		var eventID int
-		err := db.QueryRowContext(ctx, `
+		err := testDB.QueryRowContext(ctx, `
 			INSERT INTO event (created_by, title, status, start_time, end_time, created_at)
 			VALUES (100, 'Sự kiện âm nhạc quốc tế', 'OPEN', NOW() + INTERVAL '2 days', NOW() + INTERVAL '3 days', NOW())
 			RETURNING event_id
@@ -503,8 +508,8 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 			t.Fatalf("Lỗi tạo event: %v", err)
 		}
 
-		_, _ = db.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = 100")
-		_, err = db.ExecContext(ctx, `
+		_, _ = testDB.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = 100")
+		_, err = testDB.ExecContext(ctx, `
 			INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, amount_paid_vnd, created_at, updated_at)
 			VALUES (100, 2, 'ACTIVE', NOW() - INTERVAL '31 days', NOW() - INTERVAL '1 day', 299000, NOW(), NOW())
 		`)
@@ -513,12 +518,12 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		}
 
 		var eventStatus string
-		_ = db.QueryRowContext(ctx, "SELECT status FROM event WHERE event_id = $1", eventID).Scan(&eventStatus)
+		_ = testDB.QueryRowContext(ctx, "SELECT status FROM event WHERE event_id = $1", eventID).Scan(&eventStatus)
 		if eventStatus != "OPEN" {
 			t.Fatalf("Sự kiện đã publish không được bị hủy hay khóa khi gói hết hạn, nhận: %s", eventStatus)
 		}
 
-		tx, err := db.BeginTx(ctx, nil)
+		tx, err := testDB.BeginTx(ctx, nil)
 		if err != nil {
 			t.Fatalf("Lỗi mở tx: %v", err)
 		}
@@ -543,7 +548,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		const numGoroutines = 20
 
 		// Clean up any stale bills or tickets for test users 500..650
-		_, _ = db.ExecContext(ctx, `
+		_, _ = testDB.ExecContext(ctx, `
 			DELETE FROM ticket WHERE user_id BETWEEN 500 AND 650;
 			DELETE FROM bill WHERE user_id BETWEEN 500 AND 650;
 		`)
@@ -551,7 +556,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		// Chuẩn bị 20 user test trong database
 		for i := 1; i <= numGoroutines; i++ {
 			uID := 500 + i
-			_, err := db.ExecContext(ctx, `
+			_, err := testDB.ExecContext(ctx, `
 				INSERT INTO users (user_id, email, full_name, password_hash, role, status, created_at)
 				VALUES ($1, $2, $3, 'hash_test', 'STUDENT', 'ACTIVE', NOW())
 				ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, role = 'STUDENT'
@@ -559,7 +564,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Lỗi tạo user test %d: %v", uID, err)
 			}
-			_, _ = db.ExecContext(ctx, `
+			_, _ = testDB.ExecContext(ctx, `
 				INSERT INTO wallet (user_id, balance, pending_balance, created_at, updated_at)
 				VALUES ($1, 0, 0, NOW(), NOW())
 				ON CONFLICT (user_id) DO NOTHING
@@ -568,7 +573,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 
 		// --- NHÁNH A: CÓ GHẾ (SEAT) QUA PRODUCTION CreateBankTransferOrder ---
 		var eventID, catID, seatID int
-		err := db.QueryRowContext(ctx, `
+		err := testDB.QueryRowContext(ctx, `
 			INSERT INTO event (created_by, title, event_format, status, start_time, end_time, created_at)
 			VALUES (100, 'Sự kiện có ghế Conc', 'ONSITE', 'OPEN', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', NOW())
 			RETURNING event_id
@@ -577,7 +582,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 			t.Fatalf("Lỗi tạo event: %v", err)
 		}
 
-		err = db.QueryRowContext(ctx, `
+		err = testDB.QueryRowContext(ctx, `
 			INSERT INTO category_ticket (event_id, name, price, max_quantity, status)
 			VALUES ($1, 'Ghế VIP A1', 100000, 1, 'ACTIVE')
 			RETURNING category_ticket_id
@@ -586,7 +591,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 			t.Fatalf("Lỗi tạo category_ticket: %v", err)
 		}
 
-		err = db.QueryRowContext(ctx, `
+		err = testDB.QueryRowContext(ctx, `
 			INSERT INTO seat (seat_code, area_id, category_ticket_id, status)
 			VALUES ('A1_TEST_CONC', 1, $1, 'ACTIVE')
 			RETURNING seat_id
@@ -595,7 +600,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 			t.Fatalf("Lỗi tạo seat: %v", err)
 		}
 
-		_, err = db.ExecContext(ctx, `
+		_, err = testDB.ExecContext(ctx, `
 			INSERT INTO event_seat_layout (event_id, seat_id, seat_type, status)
 			VALUES ($1, $2, 'VIP', 'AVAILABLE')
 		`, eventID, seatID)
@@ -629,7 +634,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		// --- NHÁNH B: KHÔNG GHẾ (ONLINE / GENERAL ADMISSION) QUA PRODUCTION CreateBankTransferOrder ---
 		for i := 1; i <= numGoroutines; i++ {
 			uID := 600 + i
-			_, err := db.ExecContext(ctx, `
+			_, err := testDB.ExecContext(ctx, `
 				INSERT INTO users (user_id, email, full_name, password_hash, role, status, created_at)
 				VALUES ($1, $2, $3, 'hash_test', 'STUDENT', 'ACTIVE', NOW())
 				ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, role = 'STUDENT'
@@ -637,7 +642,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Lỗi tạo user test B %d: %v", uID, err)
 			}
-			_, _ = db.ExecContext(ctx, `
+			_, _ = testDB.ExecContext(ctx, `
 				INSERT INTO wallet (user_id, balance, pending_balance, created_at, updated_at)
 				VALUES ($1, 0, 0, NOW(), NOW())
 				ON CONFLICT (user_id) DO NOTHING
@@ -645,13 +650,13 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		}
 
 		var eventOnlineID, catIDStanding int
-		_ = db.QueryRowContext(ctx, `
+		_ = testDB.QueryRowContext(ctx, `
 			INSERT INTO event (created_by, title, event_format, status, start_time, end_time, created_at)
 			VALUES (100, 'Sự kiện Online Conc', 'ONLINE', 'OPEN', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', NOW())
 			RETURNING event_id
 		`).Scan(&eventOnlineID)
 
-		_ = db.QueryRowContext(ctx, `
+		_ = testDB.QueryRowContext(ctx, `
 			INSERT INTO category_ticket (event_id, name, price, max_quantity, status)
 			VALUES ($1, 'Vé đứng tự do duy nhất', 50000, 1, 'ACTIVE')
 			RETURNING category_ticket_id
@@ -687,42 +692,42 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 	// 7. HOÀN VÉ: TRỪ PENDING_BALANCE VS BALANCE THEO TRẠNG THÁI FINISHED
 	// =========================================================================
 	t.Run("Ticket_Refund_Deduct_Balance_vs_PendingBalance_By_FINISHED", func(t *testing.T) {
-		_, _ = db.ExecContext(ctx, "UPDATE wallet SET pending_balance = 100000, balance = 200000 WHERE user_id = 100")
+		_, _ = testDB.ExecContext(ctx, "UPDATE wallet SET pending_balance = 100000, balance = 200000 WHERE user_id = 100")
 
 		// 1. Sự kiện CHƯA KẾT THÚC (status = 'OPEN'): Hoàn vé trừ vào pending_balance
 		var eventOpenID int
-		_ = db.QueryRowContext(ctx, "INSERT INTO event (created_by, title, status, start_time, end_time) VALUES (100, 'Event Chưa Xong', 'OPEN', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days') RETURNING event_id").Scan(&eventOpenID)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO event (created_by, title, status, start_time, end_time) VALUES (100, 'Event Chưa Xong', 'OPEN', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days') RETURNING event_id").Scan(&eventOpenID)
 
 		isFinishedOpen := false
-		_ = db.QueryRowContext(ctx, "SELECT status = 'FINISHED' FROM event WHERE event_id = $1", eventOpenID).Scan(&isFinishedOpen)
+		_ = testDB.QueryRowContext(ctx, "SELECT status = 'FINISHED' FROM event WHERE event_id = $1", eventOpenID).Scan(&isFinishedOpen)
 		if !isFinishedOpen {
-			_, _ = db.ExecContext(ctx, "UPDATE wallet SET pending_balance = pending_balance - 50000 WHERE user_id = 100")
+			_, _ = testDB.ExecContext(ctx, "UPDATE wallet SET pending_balance = pending_balance - 50000 WHERE user_id = 100")
 		}
 
 		var pendBal float64
-		_ = db.QueryRowContext(ctx, "SELECT pending_balance FROM wallet WHERE user_id = 100").Scan(&pendBal)
+		_ = testDB.QueryRowContext(ctx, "SELECT pending_balance FROM wallet WHERE user_id = 100").Scan(&pendBal)
 		if pendBal != 50000 {
 			t.Fatalf("Kỳ vọng pending_balance giảm còn 50k, nhận: %v", pendBal)
 		}
 
 		// 2. Sự kiện ĐÃ KẾT THÚC VÀ QUYẾT TOÁN (status = 'FINISHED'): Hoàn vé trừ vào balance khả dụng
 		var eventFinishedID int
-		_ = db.QueryRowContext(ctx, "INSERT INTO event (created_by, title, status, start_time, end_time) VALUES (100, 'Event Đã Kết Thúc', 'FINISHED', NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day') RETURNING event_id").Scan(&eventFinishedID)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO event (created_by, title, status, start_time, end_time) VALUES (100, 'Event Đã Kết Thúc', 'FINISHED', NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day') RETURNING event_id").Scan(&eventFinishedID)
 
 		isFinishedClosed := false
-		_ = db.QueryRowContext(ctx, "SELECT status = 'FINISHED' FROM event WHERE event_id = $1", eventFinishedID).Scan(&isFinishedClosed)
+		_ = testDB.QueryRowContext(ctx, "SELECT status = 'FINISHED' FROM event WHERE event_id = $1", eventFinishedID).Scan(&isFinishedClosed)
 		if isFinishedClosed {
-			_, _ = db.ExecContext(ctx, "UPDATE wallet SET balance = balance - 50000 WHERE user_id = 100")
+			_, _ = testDB.ExecContext(ctx, "UPDATE wallet SET balance = balance - 50000 WHERE user_id = 100")
 		}
 
 		var mainBal float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 100").Scan(&mainBal)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 100").Scan(&mainBal)
 		if mainBal != 150000 {
 			t.Fatalf("Kỳ vọng balance khả dụng giảm còn 150k, nhận: %v", mainBal)
 		}
 
 		// 3. Ghi nhận biên lai đảo với is_reversal = TRUE (thỏa mãn chk_financial_receipt_net_amount)
-		_, err := db.ExecContext(ctx, `
+		_, err := testDB.ExecContext(ctx, `
 			INSERT INTO financial_receipt (
 				receipt_id, order_id, event_id, organizer_id, gross_amount, system_fee_percentage, fixed_fee,
 				commission_amount, net_amount, currency, tier_code, commission_bps, fee_source, fee_config_version, is_reversal, computed_at, created_at
@@ -745,9 +750,9 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		defer os.Setenv("ENABLE_CAPACITY_GATING", "false")
 
 		// A. Gói FREE + Override 0%: Phí 0 bps, nhưng sức chứa vẫn bị khóa ở 100, không có báo cáo nâng cao
-		_, _ = db.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = 100")
-		_, _ = db.ExecContext(ctx, "DELETE FROM organizer_fee_override WHERE organizer_id = 100")
-		_, err := db.ExecContext(ctx, `
+		_, _ = testDB.ExecContext(ctx, "DELETE FROM user_subscription WHERE user_id = 100")
+		_, _ = testDB.ExecContext(ctx, "DELETE FROM organizer_fee_override WHERE organizer_id = 100")
+		_, err := testDB.ExecContext(ctx, `
 			INSERT INTO organizer_fee_override (organizer_id, commission_bps, effective_range, reason, created_by)
 			VALUES (100, 0, tstzrange(NOW() - INTERVAL '1 day', NOW() + INTERVAL '30 days'), 'Tài trợ 0% phí sàn', 300)
 		`)
@@ -773,7 +778,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		}
 
 		// B. Gói BUSINESS + Override 0%: Phí 0 bps, sức chứa -1 (Không giới hạn), có báo cáo nâng cao
-		_, _ = db.ExecContext(ctx, `
+		_, _ = testDB.ExecContext(ctx, `
 			INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, amount_paid_vnd, created_at, updated_at)
 			VALUES (100, 3, 'ACTIVE', NOW() - INTERVAL '1 day', NOW() + INTERVAL '29 days', 990000, NOW(), NOW())
 		`)
@@ -798,26 +803,26 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 
 	// =========================================================================
 	// 9. VÉ PENDING HẾT HẠN: GỌI SCHEDULER CLEANUP PRODUCTION
-	// Gọi production: scheduler.NewPendingTicketCleanupScheduler(db, 1).RunOnce() (pending_ticket_cleanup.go:72)
+	// Gọi production: scheduler.NewPendingTicketCleanupScheduler(testDB, 1).RunOnce() (pending_ticket_cleanup.go:72)
 	// =========================================================================
 	t.Run("Pending_Ticket_Cleanup_Production_Scheduler", func(t *testing.T) {
 		var billID, ticketID, eventID, seatID int
-		_ = db.QueryRowContext(ctx, "INSERT INTO event (created_by, title, status, start_time, end_time) VALUES (100, 'Pending Cleanup Event', 'OPEN', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days') RETURNING event_id").Scan(&eventID)
-		_ = db.QueryRowContext(ctx, "INSERT INTO bill (user_id, total_amount, payment_status, created_at) VALUES (200, 50000, 'PENDING', NOW() - INTERVAL '20 minutes') RETURNING bill_id").Scan(&billID)
-		_ = db.QueryRowContext(ctx, "INSERT INTO seat (seat_code, area_id, status) VALUES ('P_SEAT_SCHED', 1, 'ACTIVE') RETURNING seat_id").Scan(&seatID)
-		_ = db.QueryRowContext(ctx, `
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO event (created_by, title, status, start_time, end_time) VALUES (100, 'Pending Cleanup Event', 'OPEN', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days') RETURNING event_id").Scan(&eventID)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO bill (user_id, total_amount, payment_status, created_at) VALUES (200, 50000, 'PENDING', NOW() - INTERVAL '20 minutes') RETURNING bill_id").Scan(&billID)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO seat (seat_code, area_id, status) VALUES ('P_SEAT_SCHED', 1, 'ACTIVE') RETURNING seat_id").Scan(&seatID)
+		_ = testDB.QueryRowContext(ctx, `
 			INSERT INTO ticket (user_id, event_id, category_ticket_id, bill_id, seat_id, qr_code_value, status, created_at)
 			VALUES (200, $1, 1, $2, $3, 'QR_PENDING_SCHED', 'PENDING', NOW() - INTERVAL '20 minutes')
 			RETURNING ticket_id
 		`, eventID, billID, seatID).Scan(&ticketID)
 
 		// Gọi hàm scheduler production thực tế
-		sched := ticketScheduler.NewPendingTicketCleanupScheduler(db, 1)
+		sched := ticketScheduler.NewPendingTicketCleanupScheduler(testDB, 1)
 		sched.RunOnce()
 
 		// Xác nhận vé PENDING quá hạn đã bị xóa bởi scheduler
 		var count int
-		_ = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM ticket WHERE ticket_id = $1", ticketID).Scan(&count)
+		_ = testDB.QueryRowContext(ctx, "SELECT COUNT(*) FROM ticket WHERE ticket_id = $1", ticketID).Scan(&count)
 		if count != 0 {
 			t.Fatalf("Kỳ vọng vé PENDING quá hạn bị scheduler xóa, nhưng vẫn còn tồn tại: %d", count)
 		}
@@ -830,13 +835,13 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 	// =========================================================================
 	t.Run("Late_Payment_And_Idempotent_Webhook", func(t *testing.T) {
 		var eventID, catID int
-		_ = db.QueryRowContext(ctx, "INSERT INTO event (created_by, title, status, start_time, end_time) VALUES (100, 'Late Pay Event', 'OPEN', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days') RETURNING event_id").Scan(&eventID)
-		_ = db.QueryRowContext(ctx, "INSERT INTO category_ticket (event_id, name, price, max_quantity, status) VALUES ($1, 'Late Category', 50000, 1, 'AVAILABLE') RETURNING category_ticket_id", eventID).Scan(&catID)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO event (created_by, title, status, start_time, end_time) VALUES (100, 'Late Pay Event', 'OPEN', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days') RETURNING event_id").Scan(&eventID)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO category_ticket (event_id, name, price, max_quantity, status) VALUES ($1, 'Late Category', 50000, 1, 'AVAILABLE') RETURNING category_ticket_id", eventID).Scan(&catID)
 
 		// 1. Thanh toán bình thường (PENDING -> BOOKED)
 		var bill1, ticket1 int
-		_ = db.QueryRowContext(ctx, "INSERT INTO bill (user_id, total_amount, payment_status, created_at) VALUES (200, 50000, 'PENDING', NOW()) RETURNING bill_id").Scan(&bill1)
-		_ = db.QueryRowContext(ctx, "INSERT INTO ticket (user_id, event_id, category_ticket_id, bill_id, qr_code_value, status, created_at) VALUES (200, $1, $2, $3, 'QR_NORMAL', 'PENDING', NOW()) RETURNING ticket_id", eventID, catID, bill1).Scan(&ticket1)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO bill (user_id, total_amount, payment_status, created_at) VALUES (200, 50000, 'PENDING', NOW()) RETURNING bill_id").Scan(&bill1)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO ticket (user_id, event_id, category_ticket_id, bill_id, qr_code_value, status, created_at) VALUES (200, $1, $2, $3, 'QR_NORMAL', 'PENDING', NOW()) RETURNING ticket_id", eventID, catID, bill1).Scan(&ticket1)
 
 		res1, err := tRepo.CompletePaidOrder(ctx, int64(bill1), "PAYOS", 50000.0)
 		if err != nil || res1 != "success" {
@@ -852,13 +857,13 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		// 3. Thanh toán đến muộn NHÁNH HẾT CHỖ (category_ticket max_quantity = 1 đã có 1 vé BOOKED):
 		// Tiền được tự động hoàn vào Ví FEMS của sinh viên!
 		var billLateFull, ticketLateFull int
-		_ = db.QueryRowContext(ctx, "INSERT INTO bill (user_id, total_amount, payment_status, created_at) VALUES (200, 50000, 'PENDING', NOW() - INTERVAL '30 minutes') RETURNING bill_id").Scan(&billLateFull)
-		_ = db.QueryRowContext(ctx, "INSERT INTO ticket (user_id, event_id, category_ticket_id, bill_id, qr_code_value, status, created_at) VALUES (200, $1, $2, $3, 'QR_EXPIRED', 'EXPIRED', NOW() - INTERVAL '30 minutes') RETURNING ticket_id", eventID, catID, billLateFull).Scan(&ticketLateFull)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO bill (user_id, total_amount, payment_status, created_at) VALUES (200, 50000, 'PENDING', NOW() - INTERVAL '30 minutes') RETURNING bill_id").Scan(&billLateFull)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO ticket (user_id, event_id, category_ticket_id, bill_id, qr_code_value, status, created_at) VALUES (200, $1, $2, $3, 'QR_EXPIRED', 'EXPIRED', NOW() - INTERVAL '30 minutes') RETURNING ticket_id", eventID, catID, billLateFull).Scan(&ticketLateFull)
 
 		var balBefore float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 200").Scan(&balBefore)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 200").Scan(&balBefore)
 		var orgPendingBefore float64
-		_ = db.QueryRowContext(ctx, "SELECT pending_balance FROM wallet WHERE user_id = 100").Scan(&orgPendingBefore)
+		_ = testDB.QueryRowContext(ctx, "SELECT pending_balance FROM wallet WHERE user_id = 100").Scan(&orgPendingBefore)
 
 		resLateSoldOut, err := tRepo.CompletePaidOrder(ctx, int64(billLateFull), "PAYOS", 50000.0)
 		if err != nil || resLateSoldOut != "refunded_due_to_capacity" {
@@ -866,38 +871,38 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		}
 
 		var balAfter float64
-		_ = db.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 200").Scan(&balAfter)
+		_ = testDB.QueryRowContext(ctx, "SELECT balance FROM wallet WHERE user_id = 200").Scan(&balAfter)
 		if balAfter-balBefore != 50000.0 {
 			t.Fatalf("Kỳ vọng số dư ví sinh viên được cộng hoàn 50.000đ, trước=%.0f, sau=%.0f", balBefore, balAfter)
 		}
 
 		// Xác nhận KHÔNG ghi biên lai financial_receipt hoa hồng
 		var receiptCount int
-		_ = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM financial_receipt WHERE bill_id = $1", billLateFull).Scan(&receiptCount)
+		_ = testDB.QueryRowContext(ctx, "SELECT COUNT(*) FROM financial_receipt WHERE bill_id = $1", billLateFull).Scan(&receiptCount)
 		if receiptCount != 0 {
 			t.Fatalf("LỖ HỔNG: Nhánh trễ hết chỗ KHÔNG được ghi financial_receipt hoa hồng, nhưng phát hiện %d bản ghi!", receiptCount)
 		}
 
 		// Xác nhận KHÔNG cộng pending_balance cho Organizer
 		var orgPendingAfter float64
-		_ = db.QueryRowContext(ctx, "SELECT pending_balance FROM wallet WHERE user_id = 100").Scan(&orgPendingAfter)
+		_ = testDB.QueryRowContext(ctx, "SELECT pending_balance FROM wallet WHERE user_id = 100").Scan(&orgPendingAfter)
 		if orgPendingAfter != orgPendingBefore {
 			t.Fatalf("LỖ HỔNG: Nhánh trễ hết chỗ KHÔNG được cộng pending_balance cho Organizer, trước=%.2f, sau=%.2f", orgPendingBefore, orgPendingAfter)
 		}
 
 		// 4. Thanh toán đến muộn NHÁNH CÒN CHỖ:
 		// Tăng max_quantity lên 5, tạo vé EXPIRED đến muộn => Cấp lại vé BOOKED thành công
-		_, _ = db.ExecContext(ctx, "UPDATE category_ticket SET max_quantity = 5 WHERE category_ticket_id = $1", catID)
+		_, _ = testDB.ExecContext(ctx, "UPDATE category_ticket SET max_quantity = 5 WHERE category_ticket_id = $1", catID)
 		var billLateAvail, ticketLateAvail int
-		_ = db.QueryRowContext(ctx, "INSERT INTO bill (user_id, total_amount, payment_status, created_at) VALUES (200, 50000, 'PENDING', NOW() - INTERVAL '30 minutes') RETURNING bill_id").Scan(&billLateAvail)
-		_ = db.QueryRowContext(ctx, "INSERT INTO ticket (user_id, event_id, category_ticket_id, bill_id, qr_code_value, status, created_at) VALUES (200, $1, $2, $3, 'QR_EXPIRED_2', 'EXPIRED', NOW() - INTERVAL '30 minutes') RETURNING ticket_id", eventID, catID, billLateAvail).Scan(&ticketLateAvail)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO bill (user_id, total_amount, payment_status, created_at) VALUES (200, 50000, 'PENDING', NOW() - INTERVAL '30 minutes') RETURNING bill_id").Scan(&billLateAvail)
+		_ = testDB.QueryRowContext(ctx, "INSERT INTO ticket (user_id, event_id, category_ticket_id, bill_id, qr_code_value, status, created_at) VALUES (200, $1, $2, $3, 'QR_EXPIRED_2', 'EXPIRED', NOW() - INTERVAL '30 minutes') RETURNING ticket_id", eventID, catID, billLateAvail).Scan(&ticketLateAvail)
 
 		resLateAvail, err := tRepo.CompletePaidOrder(ctx, int64(billLateAvail), "PAYOS", 50000.0)
 		if err != nil || resLateAvail != "success" {
 			t.Fatalf("Kỳ vọng nhánh còn chỗ cấp lại vé thành công, nhận: %s (err: %v)", resLateAvail, err)
 		}
 		var finalTicketStat string
-		_ = db.QueryRowContext(ctx, "SELECT status FROM ticket WHERE ticket_id = $1", ticketLateAvail).Scan(&finalTicketStat)
+		_ = testDB.QueryRowContext(ctx, "SELECT status FROM ticket WHERE ticket_id = $1", ticketLateAvail).Scan(&finalTicketStat)
 		if finalTicketStat != "BOOKED" {
 			t.Fatalf("Kỳ vọng vé được cấp lại thành BOOKED, nhận: %s", finalTicketStat)
 		}
@@ -916,7 +921,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		}
 
 		var targetID, reason string
-		err = db.QueryRowContext(ctx, `
+		err = testDB.QueryRowContext(ctx, `
 			SELECT target_id, reason FROM fee_audit_log 
 			WHERE target_id = 'FEE_CONFIG_VERSION' 
 			ORDER BY log_id DESC LIMIT 1
@@ -947,20 +952,20 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		defer os.Unsetenv("USE_DYNAMIC_FEE_CALCULATION")
 
 		var eventID, catID, billID, ticketID int
-		if err := db.QueryRowContext(ctx, "INSERT INTO event (created_by, org_type, title, status, start_time, end_time) VALUES (100, 'SCHOOL', 'Hội thảo sinh viên', 'OPEN', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days') RETURNING event_id").Scan(&eventID); err != nil {
+		if err := testDB.QueryRowContext(ctx, "INSERT INTO event (created_by, org_type, title, status, start_time, end_time) VALUES (100, 'SCHOOL', 'Hội thảo sinh viên', 'OPEN', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days') RETURNING event_id").Scan(&eventID); err != nil {
 			t.Fatalf("Lỗi insert event: %v", err)
 		}
-		if err := db.QueryRowContext(ctx, "INSERT INTO category_ticket (event_id, name, price, max_quantity) VALUES ($1, 'Odd Ticket', 12500, 100) RETURNING category_ticket_id", eventID).Scan(&catID); err != nil {
+		if err := testDB.QueryRowContext(ctx, "INSERT INTO category_ticket (event_id, name, price, max_quantity) VALUES ($1, 'Odd Ticket', 12500, 100) RETURNING category_ticket_id", eventID).Scan(&catID); err != nil {
 			t.Fatalf("Lỗi insert category_ticket: %v", err)
 		}
-		if err := db.QueryRowContext(ctx, "INSERT INTO bill (user_id, total_amount, payment_status, created_at) VALUES (200, 12500, 'PAID', NOW()) RETURNING bill_id").Scan(&billID); err != nil {
+		if err := testDB.QueryRowContext(ctx, "INSERT INTO bill (user_id, total_amount, payment_status, created_at) VALUES (200, 12500, 'PAID', NOW()) RETURNING bill_id").Scan(&billID); err != nil {
 			t.Fatalf("Lỗi insert bill: %v", err)
 		}
-		if err := db.QueryRowContext(ctx, "INSERT INTO ticket (user_id, event_id, category_ticket_id, bill_id, qr_code_value, status, created_at) VALUES (200, $1, $2, $3, 'QR_ODD', 'BOOKED', NOW()) RETURNING ticket_id", eventID, catID, billID).Scan(&ticketID); err != nil {
+		if err := testDB.QueryRowContext(ctx, "INSERT INTO ticket (user_id, event_id, category_ticket_id, bill_id, qr_code_value, status, created_at) VALUES (200, $1, $2, $3, 'QR_ODD', 'BOOKED', NOW()) RETURNING ticket_id", eventID, catID, billID).Scan(&ticketID); err != nil {
 			t.Fatalf("Lỗi insert ticket: %v", err)
 		}
 
-		tx, err := db.BeginTx(ctx, nil)
+		tx, err := testDB.BeginTx(ctx, nil)
 		if err != nil {
 			t.Fatalf("Lỗi mở tx: %v", err)
 		}
@@ -981,7 +986,7 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 
 		var gross, comm, net, fixed float64
 		var tierCode, feeSource string
-		err = db.QueryRowContext(ctx, `
+		err = testDB.QueryRowContext(ctx, `
 			SELECT gross_amount, commission_amount, net_amount, fixed_fee, tier_code, fee_source
 			FROM financial_receipt WHERE bill_id = $1
 		`, billID).Scan(&gross, &comm, &net, &fixed, &tierCode, &feeSource)
