@@ -85,8 +85,8 @@ func TestIsValidPassword(t *testing.T) {
 		{"Valid simple", "Pass123", true},
 		{"Valid complex", "Abc@123#XYZ", true},
 		{"Valid with dollar", "Pass123$", true},
-		{"Invalid - no letter", "123456", false},
-		{"Invalid - no digit", "Password", false},
+		{"Valid only numbers", "567890", true},
+		{"Valid only letters", "Password", true},
 		{"Invalid - too short", "Pass1", false},
 		{"Invalid - forbidden char asterisk", "Pass123*", false},
 		{"Invalid - forbidden char tilde", "Pass123~", false},
@@ -156,10 +156,10 @@ func TestGetPasswordError(t *testing.T) {
 		want     string
 	}{
 		{"Valid password", "Pass123", ""},
+		{"Valid only numbers 567890", "567890", ""},
+		{"Valid only letters Password", "Password", ""},
 		{"Empty password", "", "Mật khẩu không được để trống"},
 		{"Too short", "Pass1", "Mật khẩu phải có ít nhất 6 ký tự"},
-		{"No letter", "123456", "Mật khẩu phải chứa ít nhất 1 chữ cái"},
-		{"No digit", "Password", "Mật khẩu phải chứa ít nhất 1 chữ số"},
 	}
 
 	for _, tt := range tests {

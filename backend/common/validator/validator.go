@@ -79,18 +79,12 @@ func IsValidFullName(name string) bool {
 	return FullNamePattern.MatchString(trimmed)
 }
 
-// IsValidPassword validates password strength (khớp ValidationUtil.isValidPassword)
+// IsValidPassword validates password strength (tối thiểu 6 ký tự)
 func IsValidPassword(password string) bool {
 	if password == "" {
 		return false
 	}
 	if !PasswordPattern.MatchString(password) {
-		return false
-	}
-	if !regexp.MustCompile(`[A-Za-z]`).MatchString(password) {
-		return false
-	}
-	if !regexp.MustCompile(`\d`).MatchString(password) {
 		return false
 	}
 	return true
@@ -176,12 +170,6 @@ func GetPasswordError(password string) string {
 	}
 	if len(password) < 6 {
 		return "Mật khẩu phải có ít nhất 6 ký tự"
-	}
-	if !regexp.MustCompile(`[A-Za-z]`).MatchString(password) {
-		return "Mật khẩu phải chứa ít nhất 1 chữ cái"
-	}
-	if !regexp.MustCompile(`\d`).MatchString(password) {
-		return "Mật khẩu phải chứa ít nhất 1 chữ số"
 	}
 	if !IsValidPassword(password) {
 		return "Mật khẩu chỉ được chứa chữ cái, số và ký tự đặc biệt (@#$%^&+=!-)"
