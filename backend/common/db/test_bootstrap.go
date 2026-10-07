@@ -125,6 +125,12 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				settled_at TIMESTAMPTZ
 			);
 
+			CREATE TABLE IF NOT EXISTS event_speaker (
+				event_id INTEGER NOT NULL REFERENCES event(event_id) ON DELETE CASCADE,
+				speaker_id INTEGER NOT NULL REFERENCES speaker(speaker_id) ON DELETE CASCADE,
+				PRIMARY KEY (event_id, speaker_id)
+			);
+
 			CREATE TABLE IF NOT EXISTS event_request (
 				request_id SERIAL PRIMARY KEY,
 				requester_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -249,6 +255,7 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				fee_config_version INTEGER DEFAULT 1,
 				is_reversal BOOLEAN NOT NULL DEFAULT FALSE,
 				reversal_of_receipt_id INTEGER REFERENCES financial_receipt(receipt_id) ON DELETE SET NULL,
+				computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 			);
 
@@ -353,14 +360,44 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				created_at TIMESTAMPTZ DEFAULT NOW()
 			);
 
-			-- Ensure columns exist if table was partially created
+			-- Ensure columns and constraints exist
 			ALTER TABLE users ADD COLUMN IF NOT EXISTS previous_role user_role_enum DEFAULT NULL;
 			ALTER TABLE subscription_tier ADD COLUMN IF NOT EXISTS description TEXT;
 			ALTER TABLE subscription_tier ADD COLUMN IF NOT EXISTS updated_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL;
 			ALTER TABLE role_fee_policy ADD COLUMN IF NOT EXISTS description TEXT;
 			ALTER TABLE role_fee_policy ADD COLUMN IF NOT EXISTS updated_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL;
+			ALTER TABLE financial_receipt ADD COLUMN IF NOT EXISTS computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
-			-- Seed dữ liệu cấu hình mặc định
+			-- Exclusion constraint for fee override overlap
+			DO $$ 
+			BEGIN 
+				IF NOT EXISTS (
+					SELECT 1 FROM pg_constraint WHERE conname = 'uq_organizer_fee_override_no_overlap'
+				) THEN 
+					ALTER TABLE organizer_fee_override 
+					ADD CONSTRAINT uq_organizer_fee_override_no_overlap 
+					EXCLUDE USING gist (organizer_id WITH =, effective_range WITH &&);
+				END IF; 
+			END $$;
+
+			-- Partial unique index for active user subscription
+			CREATE UNIQUE INDEX IF NOT EXISTS uq_user_active_subscription 
+			ON user_subscription (user_id) 
+			WHERE status = 'ACTIVE';
+
+			-- Seed default fixtures (Users, Venue, Area, Parameters, Tiers)
+			INSERT INTO users (user_id, full_name, email, password_hash, role, status) VALUES 
+			(1, 'System Admin', 'admin@fpt.edu.vn', 'hash', 'ADMIN', 'ACTIVE')
+			ON CONFLICT (user_id) DO NOTHING;
+
+			INSERT INTO venue (venue_id, venue_name, location, status) VALUES 
+			(1, 'FPT University Main Hall', 'Khu CNC Hoa Lac', 'AVAILABLE')
+			ON CONFLICT (venue_id) DO NOTHING;
+
+			INSERT INTO venue_area (area_id, venue_id, area_name, floor, capacity, status) VALUES 
+			(1, 1, 'Hall A', 'Floor 1', 500, 'AVAILABLE')
+			ON CONFLICT (area_id) DO NOTHING;
+
 			INSERT INTO subscription_tier (tier_id, tier_code, name, description, price_vnd, commission_bps, max_capacity_limit, has_advanced_reports, is_active)
 			VALUES 
 				(1, 'FREE', 'Gói Miễn Phí', 'Gói mặc định cho tất cả Organizer khi mới tạo tài khoản', 0, 500, 100, FALSE, TRUE),
