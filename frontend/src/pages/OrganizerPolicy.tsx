@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ShieldCheck,
@@ -18,10 +18,12 @@ import {
   Coins,
   TrendingUp,
   Zap,
-  HelpCircle
+  HelpCircle,
+  Crown
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { NumericInput } from '../components/common/NumericInput'
+import { subscriptionService } from '../services/subscriptionService'
 
 type PolicyItem = {
   question: string
@@ -45,12 +47,40 @@ export default function OrganizerPolicy() {
   const [activeTab, setActiveTab] = useState<string>('pricing')
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
 
+  // Dynamic Subscription Tier State
+  const [selectedTier, setSelectedTier] = useState<'FREE' | 'PRO' | 'BUSINESS' | 'SCHOOL_ORGANIZER'>('FREE')
+
   // Interactive Fee Calculator state
   const [calcTicketPrice, setCalcTicketPrice] = useState<number>(100000)
   const [calcQuantity, setCalcQuantity] = useState<number>(50)
 
+  useEffect(() => {
+    if (user?.role === 'ORGANIZER') {
+      subscriptionService.getCurrentSubscription().then(sub => {
+        if (sub?.tierCode && ['FREE', 'PRO', 'BUSINESS', 'SCHOOL_ORGANIZER'].includes(sub.tierCode)) {
+          setSelectedTier(sub.tierCode as any)
+        }
+      }).catch(() => {})
+    }
+  }, [user])
+
+  const getTierCommissionRate = (tier: string) => {
+    switch (tier) {
+      case 'PRO':
+        return 0.05
+      case 'BUSINESS':
+      case 'SCHOOL_ORGANIZER':
+        return 0.025
+      case 'FREE':
+      default:
+        return 0.10
+    }
+  }
+
+  const commissionRate = getTierCommissionRate(selectedTier)
+  const commissionPercentText = (commissionRate * 100).toFixed(1).replace('.0', '') + '%'
   const calcGross = calcTicketPrice * calcQuantity
-  const calcCommissionPerTicket = calcTicketPrice > 0 ? (calcTicketPrice * 0.10) + 1000 : 0
+  const calcCommissionPerTicket = calcTicketPrice > 0 ? (calcTicketPrice * commissionRate) + 1000 : 0
   const calcTotalCommission = calcCommissionPerTicket * calcQuantity
   const calcOrganizerNet = Math.max(0, calcGross - calcTotalCommission)
   const netRatio = calcGross > 0 ? ((calcOrganizerNet / calcGross) * 100).toFixed(1) : '100'
@@ -62,29 +92,30 @@ export default function OrganizerPolicy() {
   const categories: PolicyCategory[] = [
     {
       id: 'pricing',
-      title: 'Biểu Phí & Thu Phí Nền Tảng',
-      badge: '10% + 1.000đ',
-      description: 'Quy chuẩn tính phí dịch vụ, hoa hồng hệ thống trên mỗi giao dịch vé thành công.',
+      title: 'Biểu Phí & Thu Phí Nền Tảng Theo Gói Dịch Vụ',
+      badge: 'Từ 2.5% đến 10%',
+      description: 'Quy chuẩn tính phí dịch vụ, hoa hồng hệ thống dựa theo Gói dịch vụ (Subscription Tier) của Ban tổ chức.',
       icon: BadgePercent,
       highlights: [
-        { label: 'Phí cố định', value: '1.000 đ', desc: 'Phí xử lý giao dịch mỗi vé có thu phí' },
-        { label: 'Phí hoa hồng', value: '10%', desc: 'Tỷ lệ chiết khấu trên giá vé niêm yết' },
-        { label: 'Vé Miễn Phí', value: '0 đ (Free)', desc: 'Hoàn toàn miễn phí trọn đời cho vé 0 VNĐ' }
+        { label: 'Gói Miễn Phí (Free)', value: '10% + 1.000đ', desc: 'Phí mặc định khi chưa nâng cấp gói' },
+        { label: 'Gói Pro & Business', value: '5% - 2.5%', desc: 'Ưu đãi chiết khấu hoa hồng đến 75%' },
+        { label: 'Vé Miễn Phí (0đ)', value: '0 đ (Free)', desc: 'Hoàn toàn miễn phí trọn đời cho vé 0 VNĐ' }
       ],
       rules: [
-        'Công thức tính tiền thực nhận: Doanh thu thực nhận = Giá vé - (Giá vé × 10% + 1.000 VNĐ).',
+        'Công thức tính tiền thực nhận: Doanh thu thực nhận = Giá vé - (Giá vé × % Hoa hồng gói + 1.000 VNĐ).',
+        'Tỷ lệ hoa hồng nền tảng được điều chỉnh linh hoạt theo Gói dịch vụ của Organizer: Gói Free (10%), Gói Pro (5%), Gói Business (2.5%) và Ban tổ chức Trường (2.5%).',
         'Phí hệ thống được tự động trích xuất và lập Biên lai tài chính điện tử (Financial Receipt) ngay tại thời điểm khách hàng thanh toán vé thành công.',
         'Đối với các sự kiện phi lợi nhuận (giá vé 0 VNĐ): Ban tổ chức không phải chịu bất kỳ khoản phí nền tảng hay phí duy trì nào.',
         'Tất cả các khoản phí đều được công khai minh bạch trong báo cáo giao dịch chi tiết trên Ví Ban Tổ Chức.'
       ],
       faqs: [
         {
-          question: 'Phí sàn 10% + 1.000đ được dùng để duy trì những dịch vụ gì?',
+          question: 'Phí sàn hoa hồng được dùng để duy trì những dịch vụ gì?',
           answer: 'Khoản phí này được sử dụng để chi trả cổng thanh toán trực tuyến, hạ tầng máy chủ, hệ thống gửi email vé tự động, mã QR chống gian lận và hỗ trợ kỹ thuật vận hành sự kiện.'
         },
         {
-          question: 'Nếu tôi tạo sự kiện có nhiều loại vé (VIP, Standard) thì phí tính thế nào?',
-          answer: 'Hệ thống tự động áp dụng công thức tính phí độc lập cho từng loại vé dựa trên mệnh giá thực tế của từng vé được xuất ra.'
+          question: 'Tôi nâng cấp gói từ Free lên Pro / Business thì phí hoa hồng áp dụng thế nào?',
+          answer: 'Ngay sau khi nâng cấp thành công, tất cả các vé được xuất ra sau thời điểm nâng cấp sẽ tự động áp dụng mức phí ưu đãi tương ứng của gói mới (5% hoặc 2.5%).'
         }
       ]
     },
@@ -330,13 +361,71 @@ export default function OrganizerPolicy() {
             </div>
             <div className="flex items-center gap-1.5 text-xs font-black px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
               <Coins size={14} className="text-amber-500" />
-              <span>Công thức: [Giá vé - (10% + 1.000đ)] × Số vé</span>
+              <span>Công thức: [Giá vé - ({commissionPercentText} + 1.000đ)] × Số vé</span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-2">
             {/* Input Controls (Left Column) */}
             <div className="lg:col-span-6 space-y-6 bg-slate-50/80 dark:bg-slate-950/60 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+              {/* Subscription Tier Selector */}
+              <div className="space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Crown size={14} className="text-amber-500" />
+                    Chọn Gói Dịch Vụ Tính Phí:
+                  </label>
+                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                    Phí sàn: {commissionPercentText} + 1.000đ/vé
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTier('FREE')}
+                    className={`px-3 py-2.5 rounded-xl text-xs font-black border transition-all ${
+                      selectedTier === 'FREE'
+                        ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/20'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-orange-500/50'
+                    }`}
+                  >
+                    FREE (10%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTier('PRO')}
+                    className={`px-3 py-2.5 rounded-xl text-xs font-black border transition-all ${
+                      selectedTier === 'PRO'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-blue-500/50'
+                    }`}
+                  >
+                    PRO (5%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTier('BUSINESS')}
+                    className={`px-3 py-2.5 rounded-xl text-xs font-black border transition-all ${
+                      selectedTier === 'BUSINESS'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-500/50'
+                    }`}
+                  >
+                    BIZ (2.5%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTier('SCHOOL_ORGANIZER')}
+                    className={`px-3 py-2.5 rounded-xl text-xs font-black border transition-all ${
+                      selectedTier === 'SCHOOL_ORGANIZER'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-emerald-500/50'
+                    }`}
+                  >
+                    SCHOOL (2.5%)
+                  </button>
+                </div>
+              </div>
               {/* Ticket Price Field & Slider */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -426,7 +515,7 @@ export default function OrganizerPolicy() {
 
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                    Phí sàn FEMS (10% + 1.000đ/vé):
+                    Phí sàn FEMS ({commissionPercentText} + 1.000đ/vé):
                   </span>
                   <span className="font-black text-rose-500 text-sm">
                     - {calcTotalCommission.toLocaleString('vi-VN')} đ

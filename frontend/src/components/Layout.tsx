@@ -260,13 +260,24 @@ export default function Layout() {
   const renderLink = (to: string, Icon: any, label: string, onClick?: () => void, isMobile = false, customClass?: string) => {
     const isCollapsed = !isMobile && sidebarMode === 'collapsed'
     const isHoverExpand = !isMobile && sidebarMode === 'hover-expand'
+
+    let linkClass = customClass || getNavLinkClass(to)
+
+    if (isCollapsed) {
+      linkClass = linkClass
+        .replace(/\bpx-4\b/g, 'px-0')
+        .replace(/\bgap-3\b/g, 'gap-0')
+      linkClass += ' justify-center'
+    }
+
     return (
       <Link
         to={to}
         onClick={onClick}
-        className={customClass || getNavLinkClass(to)}
+        title={isCollapsed ? label : undefined}
+        className={linkClass}
       >
-        <div className="flex-shrink-0"><Icon size={18} /></div>
+        <div className="flex-shrink-0 flex items-center justify-center"><Icon size={18} /></div>
         <span className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${isCollapsed
           ? 'opacity-0 w-0 pointer-events-none'
           : isHoverExpand
