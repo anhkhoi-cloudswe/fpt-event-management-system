@@ -21,6 +21,64 @@ func getTestDB(t *testing.T) *sql.DB {
 		t.Skipf("⏭️ [CI SKIP] DB Ping thất bại (%v). Bỏ qua test trong môi trường CI.", err)
 		return nil
 	}
+
+	// Tự động khởi tạo schema cơ bản nếu DB trống (như môi trường CI Container)
+	var exists bool
+	_ = db.QueryRow("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')").Scan(&exists)
+	if !exists {
+		initSQL := `
+			CREATE TABLE IF NOT EXISTS users (
+				user_id SERIAL PRIMARY KEY,
+				email VARCHAR(255) UNIQUE NOT NULL,
+				full_name VARCHAR(255),
+				password_hash VARCHAR(255) NOT NULL,
+				role VARCHAR(50) NOT NULL DEFAULT 'STUDENT',
+				status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+				created_at TIMESTAMPTZ DEFAULT NOW()
+			);
+			CREATE TABLE IF NOT EXISTS subscription_tier (
+				tier_id SERIAL PRIMARY KEY,
+				tier_code VARCHAR(50) UNIQUE NOT NULL,
+				name VARCHAR(100) NOT NULL,
+				price_vnd INT NOT NULL,
+				commission_bps INT NOT NULL,
+				max_capacity_limit INT NOT NULL,
+				has_advanced_reports BOOLEAN NOT NULL DEFAULT FALSE,
+				is_active BOOLEAN NOT NULL DEFAULT TRUE
+			);
+			CREATE TABLE IF NOT EXISTS role_fee_policy (
+				policy_id SERIAL PRIMARY KEY,
+				role_code VARCHAR(50) UNIQUE NOT NULL,
+				commission_bps INT NOT NULL,
+				is_active BOOLEAN NOT NULL DEFAULT TRUE
+			);
+			CREATE TABLE IF NOT EXISTS user_subscription (
+				subscription_id SERIAL PRIMARY KEY,
+				user_id INT NOT NULL,
+				tier_id INT NOT NULL,
+				status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'
+			);
+			CREATE TABLE IF NOT EXISTS organizer_fee_override (
+				override_id SERIAL PRIMARY KEY,
+				organizer_id INT NOT NULL,
+				commission_bps INT NOT NULL
+			);
+			INSERT INTO subscription_tier (tier_id, tier_code, name, price_vnd, commission_bps, max_capacity_limit, has_advanced_reports, is_active)
+			VALUES 
+				(1, 'FREE', 'Gói Miễn Phí', 0, 500, 100, FALSE, TRUE),
+				(2, 'PRO', 'Gói Chuyên Nghiệp', 299000, 250, -1, TRUE, TRUE),
+				(3, 'BUSINESS', 'Gói Doanh Nghiệp', 1000000, 0, -1, TRUE, TRUE)
+			ON CONFLICT (tier_id) DO NOTHING;
+
+			INSERT INTO role_fee_policy (role_code, commission_bps, is_active)
+			VALUES ('SCHOOL_ORGANIZER', 0, TRUE)
+			ON CONFLICT (role_code) DO NOTHING;
+		`
+		if _, err := db.Exec(initSQL); err != nil {
+			t.Logf("Cảnh báo: Không thể khởi tạo schema phụ trợ: %v", err)
+		}
+	}
+
 	return db
 }
 

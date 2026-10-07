@@ -59,11 +59,12 @@ func TestPhase1_DockerPostgres_FullLifecycle(t *testing.T) {
 	ctx := context.Background()
 	rootDir := getProjectRoot()
 
-	// 1. Nạp 01_fpt_event_full_postgres.sql
+	// 1. Nạp 01_fpt_event_full_postgres.sql (Nếu có file dưới local)
 	baseSQLPath := filepath.Join(rootDir, "Database", "initdb.d", "01_fpt_event_full_postgres.sql")
 	baseSQL, err := os.ReadFile(baseSQLPath)
 	if err != nil {
-		t.Fatalf("Không đọc được file 01_fpt_event_full_postgres.sql: %v", err)
+		t.Skipf("⏭️ [CI SKIP] Thư mục Database/ bị ignore trên Git nên không tìm thấy file schema (%v). Bỏ qua test.", err)
+		return
 	}
 	// Tạo các role Supabase (service_role, anon, authenticated) nếu chưa tồn tại (giả lập môi trường Supabase trên Postgres local)
 	initRolesSQL := `
