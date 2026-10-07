@@ -267,17 +267,28 @@ export default function Layout() {
       linkClass = linkClass
         .replace(/\bpx-4\b/g, 'px-0')
         .replace(/\bgap-3\b/g, 'gap-0')
-      linkClass += ' justify-center'
+      if (!linkClass.includes('justify-center')) {
+        linkClass += ' justify-center'
+      }
+    } else if (isHoverExpand) {
+      linkClass = linkClass
+        .replace(/\bpx-4\b/g, 'px-0 group-hover/sidebar:px-4')
+        .replace(/\bgap-3\b/g, 'gap-0 group-hover/sidebar:gap-3')
+      if (!linkClass.includes('justify-center')) {
+        linkClass += ' justify-center group-hover/sidebar:justify-start'
+      }
     }
 
     return (
       <Link
         to={to}
         onClick={onClick}
-        title={isCollapsed ? label : undefined}
+        title={isCollapsed || isHoverExpand ? label : undefined}
         className={linkClass}
       >
-        <div className="flex-shrink-0 flex items-center justify-center"><Icon size={18} /></div>
+        <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
+          <Icon size={18} />
+        </div>
         <span className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${isCollapsed
           ? 'opacity-0 w-0 pointer-events-none'
           : isHoverExpand
@@ -290,18 +301,31 @@ export default function Layout() {
 
   const renderSectionHeader = (title: string, isMobile = false) => {
     const isCollapsed = !isMobile && sidebarMode === 'collapsed'
+    const isHoverExpand = !isMobile && sidebarMode === 'hover-expand'
+
     if (isCollapsed) {
       return <div className="h-px bg-slate-200/60 dark:bg-slate-800/80 my-2 mx-2" />
     }
-    const isHoverExpand = !isMobile && sidebarMode === 'hover-expand'
+
+    if (isHoverExpand) {
+      return (
+        <div className="my-1">
+          <div className="h-px bg-slate-200/60 dark:bg-slate-800/80 mx-2 group-hover/sidebar:hidden" />
+          <div className="hidden group-hover/sidebar:block pt-3 pb-1 px-3">
+            <p className={`text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
+              isDarkMode ? 'text-slate-500' : 'text-slate-400'
+            }`}>
+              {title}
+            </p>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="pt-3 pb-1 px-3">
         <p className={`text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
           isDarkMode ? 'text-slate-500' : 'text-slate-400'
-        } ${
-          isHoverExpand
-            ? 'opacity-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto w-0 overflow-hidden whitespace-nowrap'
-            : ''
         }`}>
           {title}
         </p>
@@ -653,11 +677,11 @@ export default function Layout() {
             ? 'bg-slate-900/90 border-slate-800/80 text-slate-200 shadow-slate-950/20'
             : 'bg-white/80 border-orange-100/60 text-slate-800 shadow-orange-100/10'
           }`}>
-          <div className={`flex-1 py-6 space-y-2 overflow-y-auto transition-all duration-300 ${sidebarMode === 'expanded'
+          <div className={`flex-1 py-6 space-y-2 overflow-y-auto scrollbar-none transition-all duration-300 ${sidebarMode === 'expanded'
             ? 'px-4'
             : sidebarMode === 'hover-expand'
-              ? 'px-3 group-hover/sidebar:px-4'
-              : 'px-3'
+              ? 'px-2.5 group-hover/sidebar:px-4'
+              : 'px-2.5'
             }`}>
             {renderSidebarLinks(false)}
           </div>
