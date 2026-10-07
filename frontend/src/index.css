@@ -156,7 +156,49 @@ body {
   animation: floatLightTwo 20s ease-in-out infinite;
 }
 
-/* Scrollbar None Utility */
+/* Custom Auto-Hiding Sidebar Scrollbar */
+.custom-sidebar-scrollbar {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+.custom-sidebar-scrollbar:hover,
+.custom-sidebar-scrollbar.is-scrolling {
+  scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+}
+
+/* Webkit (Chrome, Edge, Safari) */
+.custom-sidebar-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+  transition: background-color 0.3s ease;
+}
+
+.custom-sidebar-scrollbar:hover::-webkit-scrollbar-thumb,
+.custom-sidebar-scrollbar.is-scrolling::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+}
+
+.dark .custom-sidebar-scrollbar:hover::-webkit-scrollbar-thumb,
+.dark .custom-sidebar-scrollbar.is-scrolling::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(249, 115, 22, 0.85) !important;
+}
+
+/* Scrollbar None Utility for Carousels */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }

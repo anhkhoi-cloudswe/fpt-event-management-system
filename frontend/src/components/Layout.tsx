@@ -26,7 +26,7 @@ import {
   DollarSign,
   Sparkles
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useWallet } from '../hooks/useWallet'
 import { useToast } from '../contexts/ToastContext'
 import { RealtimeClock } from './RealtimeClock'
@@ -56,6 +56,20 @@ export default function Layout() {
   })
   const [showModePopover, setShowModePopover] = useState(false)
   const [isOrganizerModalOpen, setIsOrganizerModalOpen] = useState(false)
+
+  // Sidebar Scrollbar auto-hide indicator state
+  const [isSidebarScrolling, setIsSidebarScrolling] = useState(false)
+  const sidebarScrollTimerRef = useRef<any>(null)
+
+  const handleSidebarScroll = () => {
+    setIsSidebarScrolling(true)
+    if (sidebarScrollTimerRef.current) {
+      clearTimeout(sidebarScrollTimerRef.current)
+    }
+    sidebarScrollTimerRef.current = setTimeout(() => {
+      setIsSidebarScrolling(false)
+    }, 1200)
+  }
 
   const [currentSub, setCurrentSub] = useState<CurrentSubscription | null>(null)
 
@@ -677,12 +691,15 @@ export default function Layout() {
             ? 'bg-slate-900/90 border-slate-800/80 text-slate-200 shadow-slate-950/20'
             : 'bg-white/80 border-orange-100/60 text-slate-800 shadow-orange-100/10'
           }`}>
-          <div className={`flex-1 py-6 space-y-2 overflow-y-auto scrollbar-none transition-all duration-300 ${sidebarMode === 'expanded'
+          <div
+            onScroll={handleSidebarScroll}
+            className={`flex-1 py-6 space-y-2 custom-sidebar-scrollbar ${isSidebarScrolling ? 'is-scrolling' : ''} transition-all duration-300 ${sidebarMode === 'expanded'
             ? 'px-4'
             : sidebarMode === 'hover-expand'
               ? 'px-2.5 group-hover/sidebar:px-4'
               : 'px-2.5'
-            }`}>
+            }`}
+          >
             {renderSidebarLinks(false)}
           </div>
 
