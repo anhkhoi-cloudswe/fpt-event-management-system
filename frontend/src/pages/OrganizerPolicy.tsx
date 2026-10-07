@@ -243,9 +243,10 @@ export default function OrganizerPolicy() {
 
         {/* Premium Hero Header Card */}
         <div className="relative overflow-hidden rounded-3xl p-8 sm:p-12 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white shadow-2xl border border-slate-800/80">
-          {/* Animated Background Glowing Orbs */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse duration-[7000ms]" />
-          <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] bg-gradient-to-tr from-blue-600/15 via-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+          {/* Moving Animated Ambient Light Orbs (Floating orange/amber light) */}
+          <div className="absolute top-0 right-0 w-[550px] h-[550px] bg-gradient-to-br from-orange-500/30 via-amber-400/20 to-yellow-500/10 rounded-full blur-[120px] pointer-events-none animate-float-light-1" />
+          <div className="absolute -bottom-32 -left-32 w-[450px] h-[450px] bg-gradient-to-tr from-amber-500/25 via-orange-600/20 to-rose-500/15 rounded-full blur-[110px] pointer-events-none animate-float-light-2" />
+          <div className="absolute top-1/2 left-1/3 w-[350px] h-[350px] bg-gradient-to-r from-orange-400/15 via-amber-300/15 to-transparent rounded-full blur-[100px] pointer-events-none animate-pulse duration-[8000ms]" />
 
           <div className="relative z-10 space-y-5 max-w-3xl">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-orange-500/20 text-orange-300 border border-orange-500/30 backdrop-blur-xl shadow-inner">
@@ -594,6 +595,9 @@ export default function OrganizerPolicy() {
 
         {/* Bottom Call to Action Card */}
         <div className="relative overflow-hidden rounded-3xl p-8 sm:p-10 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 text-white shadow-2xl flex items-center justify-between gap-6 flex-wrap">
+          {/* Moving Ambient Glowing Light Orbs */}
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-amber-300/30 to-orange-400/20 rounded-full blur-[90px] pointer-events-none animate-float-light-1" />
+          <div className="absolute -bottom-20 -left-20 w-[350px] h-[350px] bg-gradient-to-tr from-yellow-300/25 to-amber-500/20 rounded-full blur-[80px] pointer-events-none animate-float-light-2" />
           <div className="space-y-2 max-w-xl relative z-10">
             <h3 className="text-xl sm:text-2xl font-black">Sẵn sàng trải nghiệm quản lý sự kiện chuyên nghiệp?</h3>
             <p className="text-xs sm:text-sm text-orange-100 font-medium leading-relaxed">
