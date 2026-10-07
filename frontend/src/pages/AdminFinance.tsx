@@ -41,6 +41,7 @@ import {
 } from 'recharts'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
+import { NumericInput } from '../components/common/NumericInput'
 import {
   adminFinanceService,
   AdminFinanceOverview,
@@ -1739,13 +1740,12 @@ export default function AdminFinancePage() {
                 <label className="font-bold text-slate-700 dark:text-slate-300">
                   Giá Gói (VNĐ / Tháng):
                 </label>
-                <input
-                  type="number"
+                <NumericInput
                   disabled={selectedTierForEdit.tierCode === 'FREE'}
                   value={selectedTierForEdit.tierCode === 'FREE' ? 0 : editPriceVnd}
-                  onChange={(e) => setEditPriceVnd(Number(e.target.value))}
-                  placeholder="Ví dụ: 299000"
-                  className="w-full mt-1.5 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white disabled:opacity-50"
+                  onChange={(val) => setEditPriceVnd(val)}
+                  placeholder="299,000"
+                  className="w-full mt-1.5 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white disabled:opacity-50 focus:outline-none focus:border-orange-500"
                 />
                 {selectedTierForEdit.tierCode === 'FREE' && (
                   <p className="text-[11px] text-amber-500 mt-1">Gói FREE mặc định luôn có giá 0 đ.</p>
@@ -1774,12 +1774,11 @@ export default function AdminFinancePage() {
                   <label className="font-bold text-slate-700 dark:text-slate-300">
                     Giới Hạn Sức Chứa:
                   </label>
-                  <input
-                    type="number"
+                  <NumericInput
                     value={editMaxCapacity}
-                    onChange={(e) => setEditMaxCapacity(Number(e.target.value))}
+                    onChange={(val) => setEditMaxCapacity(val)}
                     placeholder="-1: Không giới hạn"
-                    className="w-full mt-1.5 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                    className="w-full mt-1.5 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
                   />
                   <p className="text-[10px] text-slate-400 mt-0.5">-1 là không giới hạn người</p>
                 </div>

@@ -10,6 +10,7 @@ const isPublicRoutePath = (pathname: string) => {
     pathname === '/signup' ||
     pathname === '/reset-password' ||
     pathname === '/policy' ||
+    pathname === '/organizer-policy' ||
     pathname === '/payment-success' ||
     pathname === '/payment-failed' ||
     /^\/events\/[^/]+\/page$/.test(pathname)
@@ -62,7 +63,7 @@ interface AuthContextType {
   login: (email: string, password: string, role: UserRole) => void
   logout: () => void
   refreshUser: (isBackground?: boolean) => Promise<void>
-  becomeOrganizer: (payload: { phone?: string; organizationName?: string; agreePolicy: boolean; recaptchaToken?: string }) => Promise<{ success: boolean; message?: string }>
+  becomeOrganizer: (payload: { phone?: string; organizationName?: string; orgId?: number; agreePolicy: boolean; recaptchaToken?: string }) => Promise<{ success: boolean; message?: string }>
   currentLanguage: 'vi' | 'en'
   changeLanguage: (lang: 'vi' | 'en') => void
 }
@@ -395,7 +396,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshUser, isAuthenticated])
 
-  const becomeOrganizer = useCallback(async (payload: { phone?: string; organizationName?: string; agreePolicy: boolean; recaptchaToken?: string }) => {
+  const becomeOrganizer = useCallback(async (payload: { phone?: string; organizationName?: string; orgId?: number; agreePolicy: boolean; recaptchaToken?: string }) => {
     try {
       const response = await axios.post('/auth/become-organizer', payload, {
         withCredentials: true,

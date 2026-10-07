@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { UserPlus, Edit, Trash2, Search, Filter, Users, ShieldAlert, Award, Image as ImageIcon, Plus, X, Upload, DollarSign } from 'lucide-react'
+import { UserPlus, Edit, Trash2, Search, Filter, Users, ShieldAlert, Award, Image as ImageIcon, Plus, X, Upload, DollarSign, Building2 } from 'lucide-react'
 import ConfirmModal from '../components/common/ConfirmModal'
 import UserFormModal from '../components/admin/UserFormModal'
 import SpeakerFormModal from '../components/admin/SpeakerFormModal'
 import type { CreateUserRequest, UpdateUserRequest } from '../types/user'
 import { uploadEventBanner } from '../utils/imageUpload'
 
-type ActiveTab = 'STUDENT' | 'SPEAKER' | 'INTERNAL' | 'BANNER'
+type ActiveTab = 'STUDENT' | 'SPEAKER' | 'INTERNAL' | 'BANNER' | 'ORGANIZATION'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const [speakers, setSpeakers] = useState<any[]>([])
   const [internalUsers, setInternalUsers] = useState<any[]>([])
   const [sampleBanners, setSampleBanners] = useState<any[]>([])
+  const [organizations, setOrganizations] = useState<any[]>([])
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -44,6 +45,19 @@ export default function AdminDashboard() {
   const [speakerFormMode, setSpeakerFormMode] = useState<'create' | 'edit'>('create')
   const [selectedSpeaker, setSelectedSpeaker] = useState<any | null>(null)
 
+  // Modals for Organization
+  const [isOrgModalOpen, setIsOrgModalOpen] = useState(false)
+  const [orgFormMode, setOrgFormMode] = useState<'create' | 'edit'>('create')
+  const [selectedOrg, setSelectedOrg] = useState<any | null>(null)
+  const [orgFormData, setOrgFormData] = useState({
+    orgCode: '',
+    orgName: '',
+    orgType: 'CLUB',
+    campusCode: 'HCM',
+    description: '',
+    status: 'ACTIVE'
+  })
+
   // Confirmation Modal
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState('')
@@ -54,6 +68,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'ORGANIZER' | 'STAFF'>('ALL')
+  const [campusFilter, setCampusFilter] = useState<string>('ALL')
 
   useEffect(() => {
     fetchData()
@@ -112,23 +127,111 @@ export default function AdminDashboard() {
         speakerList = await speakersResponse.json()
       }
 
-      // 3. Fetch Sample Banners List from Event Service
-      const bannersResponse = await fetch('/api/sample-banners')
-      let bannerList: any[] = []
-      if (bannersResponse.ok) {
-        bannerList = await bannersResponse.json()
+      // 4. Fetch Organizations List from Auth Service
+      const orgsResponse = await fetch('/api/organizations')
+      let orgList: any[] = []
+      if (orgsResponse.ok) {
+        orgList = await orgsResponse.json()
       }
 
       setStudents(studentList)
       setInternalUsers(internalList)
       setSpeakers(speakerList)
       setSampleBanners(bannerList || [])
+      setOrganizations(orgList || [])
     } catch (err: any) {
       console.error('Error fetching dashboard data:', err)
       setError(err.message || 'Lỗi tải dữ liệu người dùng')
     } finally {
       setLoading(false)
     }
+  }
+
+  // --- ORGANIZATION ACTIONS ---
+  const handleOpenCreateOrg = () => {
+    setOrgFormMode('create')
+    setSelectedOrg(null)
+    setOrgFormData({
+      orgCode: '',
+      orgName: '',
+      orgType: 'CLUB',
+      campusCode: 'HCM',
+      description: '',
+      status: 'ACTIVE'
+    })
+    setIsOrgModalOpen(true)
+  }
+
+  const handleOpenEditOrg = (org: any) => {
+    setOrgFormMode('edit')
+    setSelectedOrg(org)
+    setOrgFormData({
+      orgCode: org.orgCode || '',
+      orgName: org.orgName || '',
+      orgType: org.orgType || 'CLUB',
+      campusCode: org.campusCode || 'HCM',
+      description: org.description || '',
+      status: org.status || 'ACTIVE'
+    })
+    setIsOrgModalOpen(true)
+  }
+
+  const handleOrgFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const isCreate = orgFormMode === 'create'
+      const url = '/api/admin/organizations'
+      const method = isCreate ? 'POST' : 'PUT'
+
+      const payload = isCreate
+        ? orgFormData
+        : { orgId: selectedOrg.orgId, ...orgFormData }
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      })
+
+      const result = await response.json().catch(() => ({}))
+
+      if (response.ok) {
+        showToast('success', `${isCreate ? 'Tạo mới' : 'Cập nhật'} Câu lạc bộ / Đơn vị thành công!`)
+        await fetchData()
+        setIsOrgModalOpen(false)
+      } else {
+        throw new Error(result?.error || result?.message || 'Thao tác thất bại')
+      }
+    } catch (err: any) {
+      showToast('error', err.message || 'Lỗi lưu thông tin')
+    }
+  }
+
+  const handleDeleteOrg = (org: any) => {
+    setConfirmType('danger')
+    setConfirmMessage(`Bạn có chắc chắn muốn xóa đơn vị "${org.orgName}" (${org.orgCode})?`)
+    setConfirmAction(() => async () => {
+      try {
+        const response = await fetch(`/api/admin/organizations?id=${org.orgId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        })
+        const result = await response.json().catch(() => ({}))
+        if (response.ok) {
+          showToast('success', 'Xóa đơn vị thành công')
+          await fetchData()
+        } else {
+          showToast('error', result?.error || result?.message || 'Xóa thất bại')
+        }
+      } catch (err: any) {
+        showToast('error', err.message || 'Lỗi hệ thống')
+      } finally {
+        setConfirmOpen(false)
+        setConfirmAction(null)
+      }
+    })
+    setConfirmOpen(true)
   }
 
   // --- INTERNAL USER ACTIONS ---
@@ -490,6 +593,14 @@ export default function AdminDashboard() {
             <Plus size={18} />
             Thêm ảnh mẫu
           </button>
+        ) : activeTab === 'ORGANIZATION' ? (
+          <button
+            onClick={handleOpenCreateOrg}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white rounded-xl shadow-lg shadow-orange-500/20 font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Plus size={18} />
+            Thêm Câu lạc bộ / Đơn vị
+          </button>
         ) : null}
       </div>
 
@@ -529,6 +640,18 @@ export default function AdminDashboard() {
         >
           <ShieldAlert size={16} />
           Nhân sự nội bộ
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('ORGANIZATION'); setSearchTerm(''); setStatusFilter('ALL'); setCampusFilter('ALL'); }}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
+            activeTab === 'ORGANIZATION'
+              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow shadow-orange-500/10'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Building2 size={16} />
+          Câu lạc bộ & Đơn vị
         </button>
 
         <button
@@ -652,6 +775,16 @@ export default function AdminDashboard() {
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tiêu đề</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Danh mục</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Đường dẫn</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Thao tác</th>
+                  </tr>
+                )}
+                {activeTab === 'ORGANIZATION' && (
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mã đơn vị</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tên CLB / Đơn vị</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Loại hình</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cơ sở (Campus)</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trạng thái</th>
                     <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Thao tác</th>
                   </tr>
                 )}
@@ -963,6 +1096,136 @@ export default function AdminDashboard() {
                   disabled={isUploadingBanner}
                 >
                   {isUploadingBanner ? 'Đang lưu...' : 'Thêm ngay'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Organization Modal */}
+      {isOrgModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-lg w-full p-6 space-y-5 text-slate-900 dark:text-white animate-scale-up">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Building2 className="text-orange-500" size={22} />
+                {orgFormMode === 'create' ? 'Tạo mới Câu lạc bộ / Đơn vị' : 'Cập nhật Câu lạc bộ / Đơn vị'}
+              </h3>
+              <button
+                onClick={() => setIsOrgModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleOrgFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                    Mã đơn vị (Code) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={orgFormData.orgCode}
+                    onChange={(e) => setOrgFormData({ ...orgFormData, orgCode: e.target.value.toUpperCase() })}
+                    placeholder="VD: FCODE, JSCLUB"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none uppercase font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                    Loại hình <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={orgFormData.orgType}
+                    onChange={(e) => setOrgFormData({ ...orgFormData, orgType: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none font-semibold"
+                  >
+                    <option value="CLUB">Câu lạc bộ (CLUB)</option>
+                    <option value="FACULTY">Khoa (FACULTY)</option>
+                    <option value="DEPT">Phòng ban (DEPT)</option>
+                    <option value="OTHER">Đơn vị khác (OTHER)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  Tên Câu lạc bộ / Đơn vị <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={orgFormData.orgName}
+                  onChange={(e) => setOrgFormData({ ...orgFormData, orgName: e.target.value })}
+                  placeholder="VD: Câu lạc bộ Lập trình F-Code"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                    Cơ sở (Campus) <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={orgFormData.campusCode}
+                    onChange={(e) => setOrgFormData({ ...orgFormData, campusCode: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none font-semibold"
+                  >
+                    <option value="HCM">TP. Hồ Chí Minh (HCM)</option>
+                    <option value="HL">Hòa Lạc / Hà Nội (HL)</option>
+                    <option value="DN">Đà Nẵng (DN)</option>
+                    <option value="CT">Cần Thơ (CT)</option>
+                    <option value="QNH">Quy Nhơn (QNH)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                    Trạng thái <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={orgFormData.status}
+                    onChange={(e) => setOrgFormData({ ...orgFormData, status: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none font-semibold"
+                  >
+                    <option value="ACTIVE">Hoạt động (ACTIVE)</option>
+                    <option value="INACTIVE">Vô hiệu hóa (INACTIVE)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  Mô tả
+                </label>
+                <textarea
+                  rows={3}
+                  value={orgFormData.description}
+                  onChange={(e) => setOrgFormData({ ...orgFormData, description: e.target.value })}
+                  placeholder="Mô tả tóm tắt về câu lạc bộ hoặc đơn vị..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsOrgModalOpen(false)}
+                  className="w-1/2 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-sm shadow-lg shadow-orange-500/20 transition-all"
+                >
+                  {orgFormMode === 'create' ? 'Tạo mới' : 'Cập nhật'}
                 </button>
               </div>
             </form>

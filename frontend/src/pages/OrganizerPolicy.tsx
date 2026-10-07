@@ -16,6 +16,7 @@ import {
   BadgePercent
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { NumericInput } from '../components/common/NumericInput'
 
 type PolicyItem = {
   question: string
@@ -206,10 +207,16 @@ export default function OrganizerPolicy() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1)
+                } else {
+                  navigate(user ? '/dashboard' : '/guest')
+                }
+              }}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-orange-600 dark:hover:text-orange-400 hover:border-orange-500/50 shadow-sm active:scale-95 transition-all"
             >
-              <ArrowLeft size={14} /> Quay lại Dashboard
+              <ArrowLeft size={14} /> {user ? 'Quay lại Dashboard' : 'Quay lại'}
             </button>
             {user?.role === 'ORGANIZER' && (
               <button
@@ -301,13 +308,12 @@ export default function OrganizerPolicy() {
                   Mệnh giá mỗi vé (VNĐ):
                 </label>
                 <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    step="1000"
+                  <NumericInput
                     value={calcTicketPrice}
-                    onChange={(e) => setCalcTicketPrice(Math.max(0, Number(e.target.value) || 0))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
+                    onChange={(val) => setCalcTicketPrice(val)}
+                    min={0}
+                    placeholder="0"
+                    className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 pr-12"
                   />
                   <span className="absolute right-4 top-2.5 text-xs font-bold text-slate-400">VNĐ</span>
                 </div>
@@ -318,12 +324,12 @@ export default function OrganizerPolicy() {
                   Số lượng vé bán dự kiến:
                 </label>
                 <div className="relative">
-                  <input
-                    type="number"
-                    min="1"
+                  <NumericInput
                     value={calcQuantity}
-                    onChange={(e) => setCalcQuantity(Math.max(1, Number(e.target.value) || 1))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
+                    onChange={(val) => setCalcQuantity(Math.max(1, val))}
+                    min={1}
+                    placeholder="1"
+                    className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 pr-12"
                   />
                   <span className="absolute right-4 top-2.5 text-xs font-bold text-slate-400">Vé</span>
                 </div>

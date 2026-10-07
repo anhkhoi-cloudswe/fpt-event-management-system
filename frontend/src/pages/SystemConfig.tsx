@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { EventConfigModal } from '../components/events/EventConfigModal'
 import Pagination from '../components/common/Pagination'
+import { NumericInput } from '../components/common/NumericInput'
 
 /**
  * Kiểu dữ liệu cấu hình hệ thống
@@ -485,13 +486,13 @@ export default function SystemConfig() {
               </p>
 
               <div className="flex items-center gap-4">
-                <input
-                  type="number"
+                <NumericInput
                   name="checkinAllowedBeforeStartMinutes"
                   value={config.checkinAllowedBeforeStartMinutes}
-                  onChange={handleChange}
-                  min="0"
-                  max="600"
+                  onChange={(val) => setConfig(prev => ({ ...prev, checkinAllowedBeforeStartMinutes: val }))}
+                  min={0}
+                  max={600}
+                  placeholder="0"
                   className="w-32 px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-lg font-bold text-slate-900 dark:text-slate-100 shadow-sm transition-all duration-300"
                 />
                 <span className="text-sm font-bold text-slate-600 dark:text-slate-300">phút trước khi bắt đầu</span>
@@ -536,13 +537,13 @@ export default function SystemConfig() {
               </p>
 
               <div className="flex items-center gap-4">
-                <input
-                  type="number"
+                <NumericInput
                   name="minMinutesAfterStart"
                   value={config.minMinutesAfterStart}
-                  onChange={handleChange}
-                  min="0"
-                  max="600"
+                  onChange={(val) => setConfig(prev => ({ ...prev, minMinutesAfterStart: val }))}
+                  min={0}
+                  max={600}
+                  placeholder="0"
                   className="w-32 px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-lg font-bold text-slate-900 dark:text-slate-100 shadow-sm transition-all duration-300"
                 />
                 <span className="text-sm font-bold text-slate-600 dark:text-slate-300">phút trước khi kết thúc</span>

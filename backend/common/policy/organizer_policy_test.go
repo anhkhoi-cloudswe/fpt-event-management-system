@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	dbcommon "github.com/fpt-event-services/common/db"
 	"github.com/fpt-event-services/common/policy"
 	_ "github.com/lib/pq"
 )
@@ -21,6 +22,12 @@ func getTestDB(t *testing.T) *sql.DB {
 		t.Skipf("⏭️ [CI SKIP] DB Ping thất bại (%v). Bỏ qua test trong môi trường CI.", err)
 		return nil
 	}
+
+	// Tự động khởi tạo schema đầy đủ chuẩn production nếu DB trống
+	if err := dbcommon.EnsureAllTestTablesExists(db); err != nil {
+		t.Logf("Cảnh báo: Không thể khởi tạo schema phụ trợ: %v", err)
+	}
+
 	return db
 }
 

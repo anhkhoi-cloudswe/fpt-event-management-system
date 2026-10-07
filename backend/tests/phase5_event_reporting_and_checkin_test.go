@@ -40,9 +40,13 @@ func TestPhase5_EventReportingAndCheckIn_RealDockerDB(t *testing.T) {
 		return
 	}
 
+	if err := EnsureAllTestTablesExists(db); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
+	}
+
 	ctx := context.Background()
 
-	// 1. Chạy migration thật từ file (03 -> 04a)
+	// 1. Thử nạp migration từ file (nếu có thư mục Database/ dưới local)
 	candidates := []string{
 		filepath.Join("..", "..", "Database", "migrations"),
 		filepath.Join("..", "Database", "migrations"),
@@ -55,17 +59,15 @@ func TestPhase5_EventReportingAndCheckIn_RealDockerDB(t *testing.T) {
 			break
 		}
 	}
-	if migDir == "" {
-		t.Fatalf("Không tìm thấy thư mục Database/migrations từ các đường dẫn tương đối!")
-	}
-
-	m03Path := filepath.Join(migDir, "03_add_school_organizer_enum.sql")
-	if m03SQL, err := os.ReadFile(m03Path); err == nil {
-		_, _ = db.ExecContext(ctx, string(m03SQL))
-	}
-	m04aPath := filepath.Join(migDir, "04a_subscription_and_dynamic_fees.sql")
-	if m04aSQL, err := os.ReadFile(m04aPath); err == nil {
-		_, _ = db.ExecContext(ctx, string(m04aSQL))
+	if migDir != "" {
+		m03Path := filepath.Join(migDir, "03_add_school_organizer_enum.sql")
+		if m03SQL, err := os.ReadFile(m03Path); err == nil {
+			_, _ = db.ExecContext(ctx, string(m03SQL))
+		}
+		m04aPath := filepath.Join(migDir, "04a_subscription_and_dynamic_fees.sql")
+		if m04aSQL, err := os.ReadFile(m04aPath); err == nil {
+			_, _ = db.ExecContext(ctx, string(m04aSQL))
+		}
 	}
 
 	tHandler := ticketHandler.NewTicketHandlerWithDB(db)

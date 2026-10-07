@@ -2,6 +2,7 @@ import React from 'react'
 import { X } from 'lucide-react'
 import { Area } from '../../services/venueService'
 import { createPortal } from 'react-dom'
+import { NumericInput } from '../common/NumericInput'
 
 interface AreaFormModalProps {
   isOpen: boolean
@@ -145,18 +146,17 @@ export default function AreaFormModal({ isOpen, area, venueId, onClose, onSubmit
               <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
                 Tầng *
               </label>
-              <input
-                type="number"
+              <NumericInput
                 required
                 value={formData.floor}
-                onChange={(e) => {
-                  setFormData({ ...formData, floor: parseInt(e.target.value) || 0 })
+                onChange={(val) => {
+                  setFormData({ ...formData, floor: val })
                   setErrors({ ...errors, floor: '' })
                 }}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-all duration-200 ${
                   errors.floor ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'
                 }`}
-                placeholder="Nhập số tầng"
+                placeholder="0"
               />
               {errors.floor && <p className="text-red-500 text-sm mt-1">{errors.floor}</p>}
               <p className="text-gray-500 dark:text-slate-400 text-xs mt-1">Cho phép số âm (ví dụ: -1 cho tầng hầm)</p>
@@ -166,19 +166,18 @@ export default function AreaFormModal({ isOpen, area, venueId, onClose, onSubmit
               <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
                 Sức chứa *
               </label>
-              <input
-                type="number"
+              <NumericInput
                 required
-                min="1"
+                min={1}
                 value={formData.capacity}
-                onChange={(e) => {
-                  setFormData({ ...formData, capacity: parseInt(e.target.value) || 0 })
+                onChange={(val) => {
+                  setFormData({ ...formData, capacity: val })
                   setErrors({ ...errors, capacity: '' })
                 }}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-all duration-200 ${
                   errors.capacity ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'
                 }`}
-                placeholder="Nhập sức chứa"
+                placeholder="100"
               />
               {errors.capacity && <p className="text-red-500 text-sm mt-1">{errors.capacity}</p>}
             </div>

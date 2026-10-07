@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
+import { NumericInput } from '../components/common/NumericInput'
 import { uploadEventBanner, deleteEventBanner, validateImageFile } from '../utils/imageUpload'
 import LocationAutocomplete from '../components/events/LocationAutocomplete'
 import UpgradePlanModal from '../components/UpgradePlanModal'
@@ -2204,13 +2205,13 @@ export default function EventRequestCreate() {
                     </div>
                     <label className={`block text-xs font-bold ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Price</label>
                     <div className={`flex items-center rounded-xl border overflow-hidden ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-neutral-200 bg-neutral-50'}`}>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100000000"
+                      <NumericInput
                         disabled={ticketConfig.onsiteFree}
-                        value={ticketConfig.onsiteFree ? '0' : ticketConfig.onsitePrice}
-                        onChange={(e) => setTicketConfig(prev => ({ ...prev, onsitePrice: e.target.value }))}
+                        value={ticketConfig.onsiteFree ? 0 : ticketConfig.onsitePrice}
+                        onChange={(val) => setTicketConfig(prev => ({ ...prev, onsitePrice: String(val) }))}
+                        min={0}
+                        max={100000000}
+                        placeholder="0"
                         className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold outline-none disabled:opacity-50"
                       />
                       <span className="px-4 text-sm font-bold">VND</span>
@@ -2234,13 +2235,13 @@ export default function EventRequestCreate() {
                     </div>
                     <label className={`block text-xs font-bold ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Price</label>
                     <div className={`flex items-center rounded-xl border overflow-hidden ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-neutral-200 bg-neutral-50'}`}>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100000000"
+                      <NumericInput
                         disabled={ticketConfig.onlineFree}
-                        value={ticketConfig.onlineFree ? '0' : ticketConfig.onlinePrice}
-                        onChange={(e) => setTicketConfig(prev => ({ ...prev, onlinePrice: e.target.value }))}
+                        value={ticketConfig.onlineFree ? 0 : ticketConfig.onlinePrice}
+                        onChange={(val) => setTicketConfig(prev => ({ ...prev, onlinePrice: String(val) }))}
+                        min={0}
+                        max={100000000}
+                        placeholder="0"
                         className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold outline-none disabled:opacity-50"
                       />
                       <span className="px-4 text-sm font-bold">VND</span>
@@ -2284,19 +2285,12 @@ export default function EventRequestCreate() {
                 <div className="flex flex-col gap-2.5">
                   <div className={`flex items-center justify-between py-2.5 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
                     <span className="text-xs font-semibold opacity-70">Số lượng tối đa</span>
-                    <input
-                      type="number"
+                    <NumericInput
                       value={tempCapacity}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value)
-                        if (isNaN(val) || val <= 0) {
-                          setTempCapacity('')
-                        } else {
-                          setTempCapacity(val.toString())
-                        }
-                      }}
-                      min="1"
-                      className={`w-24 text-right !bg-transparent font-bold text-sm focus:outline-none border-b pb-0.5 ${
+                      onChange={(val) => setTempCapacity(val > 0 ? String(val) : '')}
+                      min={1}
+                      placeholder="100"
+                      className={`w-28 text-right !bg-transparent font-bold text-sm focus:outline-none border-b pb-0.5 ${
                         isDarkMode ? 'text-white border-white/10 focus:border-orange-500/50' : 'text-neutral-800 border-neutral-300 focus:border-orange-500/50'
                       }`}
                     />
