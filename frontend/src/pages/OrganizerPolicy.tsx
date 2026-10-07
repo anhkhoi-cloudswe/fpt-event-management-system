@@ -48,32 +48,46 @@ export default function OrganizerPolicy() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
 
   // Dynamic Subscription Tier State
-  const [selectedTier, setSelectedTier] = useState<'FREE' | 'PRO' | 'BUSINESS' | 'SCHOOL_ORGANIZER'>('FREE')
+  const [dbTiers, setDbTiers] = useState<any[]>([])
+  const [selectedTier, setSelectedTier] = useState<string>('FREE')
 
   // Interactive Fee Calculator state
   const [calcTicketPrice, setCalcTicketPrice] = useState<number>(100000)
   const [calcQuantity, setCalcQuantity] = useState<number>(50)
 
   useEffect(() => {
+    subscriptionService.getTiers().then(tiers => {
+      if (Array.isArray(tiers) && tiers.length > 0) {
+        setDbTiers(tiers)
+      }
+    }).catch(err => {
+      console.error('Lỗi tải danh sách gói dịch vụ:', err)
+    })
+
     if (user?.role === 'ORGANIZER') {
       subscriptionService.getCurrentSubscription().then(sub => {
-        if (sub?.tierCode && ['FREE', 'PRO', 'BUSINESS', 'SCHOOL_ORGANIZER'].includes(sub.tierCode)) {
-          setSelectedTier(sub.tierCode as any)
+        if (sub?.tierCode) {
+          setSelectedTier(sub.tierCode)
         }
       }).catch(() => {})
     }
   }, [user])
 
-  const getTierCommissionRate = (tier: string) => {
-    switch (tier) {
+  const getTierCommissionRate = (tierCode: string) => {
+    const matched = dbTiers.find(t => t.tierCode === tierCode)
+    if (matched && matched.commissionBps !== undefined) {
+      return matched.commissionBps / 10000
+    }
+    // Fallback default mapping
+    switch (tierCode) {
       case 'PRO':
-        return 0.05
+        return 0.025
       case 'BUSINESS':
       case 'SCHOOL_ORGANIZER':
-        return 0.025
+        return 0.00
       case 'FREE':
       default:
-        return 0.10
+        return 0.05
     }
   }
 
@@ -380,50 +394,28 @@ export default function OrganizerPolicy() {
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTier('FREE')}
-                    className={`px-3 py-2.5 rounded-xl text-xs font-black border transition-all ${
-                      selectedTier === 'FREE'
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/20'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-orange-500/50'
-                    }`}
-                  >
-                    FREE (10%)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTier('PRO')}
-                    className={`px-3 py-2.5 rounded-xl text-xs font-black border transition-all ${
-                      selectedTier === 'PRO'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-blue-500/50'
-                    }`}
-                  >
-                    PRO (5%)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTier('BUSINESS')}
-                    className={`px-3 py-2.5 rounded-xl text-xs font-black border transition-all ${
-                      selectedTier === 'BUSINESS'
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-500/50'
-                    }`}
-                  >
-                    BIZ (2.5%)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTier('SCHOOL_ORGANIZER')}
-                    className={`px-3 py-2.5 rounded-xl text-xs font-black border transition-all ${
-                      selectedTier === 'SCHOOL_ORGANIZER'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-emerald-500/50'
-                    }`}
-                  >
-                    SCHOOL (2.5%)
-                  </button>
+                  {(dbTiers.length > 0 ? dbTiers : [
+                    { tierCode: 'FREE', name: 'Free', commissionBps: 500 },
+                    { tierCode: 'PRO', name: 'Pro', commissionBps: 250 },
+                    { tierCode: 'BUSINESS', name: 'Business', commissionBps: 0 }
+                  ]).map((t) => {
+                    const isSelected = selectedTier === t.tierCode
+                    const pct = ((t.commissionBps || 0) / 100).toFixed(1).replace('.0', '') + '%'
+                    return (
+                      <button
+                        key={t.tierCode}
+                        type="button"
+                        onClick={() => setSelectedTier(t.tierCode)}
+                        className={`px-3 py-2.5 rounded-xl text-xs font-black border transition-all ${
+                          isSelected
+                            ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/20'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-orange-500/50'
+                        }`}
+                      >
+                        {t.tierCode} ({pct})
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
               {/* Ticket Price Field & Slider */}

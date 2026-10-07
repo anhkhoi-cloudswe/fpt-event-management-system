@@ -182,6 +182,31 @@ export const adminFinanceService = {
     const res = await api.put('/v1/admin/subscription-tiers', data)
     return res.data
   },
+
+  // Tạo gói dịch vụ mới (Admin CRUD)
+  async createSubscriptionTier(data: {
+    tierCode: string
+    name: string
+    description?: string
+    priceVnd: number
+    billingCycle?: string
+    commissionBps: number
+    maxCapacityLimit: number
+    hasAdvancedReports: boolean
+    isActive: boolean
+    reason?: string
+  }): Promise<any> {
+    const res = await api.post('/v1/admin/subscription-tiers', data)
+    return res.data
+  },
+
+  // Xóa gói dịch vụ (Admin CRUD)
+  async deleteSubscriptionTier(tierId: number, reason?: string): Promise<{ message: string }> {
+    const res = await api.delete('/v1/admin/subscription-tiers', {
+      params: { tierId, reason }
+    })
+    return res.data
+  },
 }
 
 

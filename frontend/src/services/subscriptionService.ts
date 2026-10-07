@@ -49,6 +49,19 @@ export interface SubscribeResponse {
   message: string
 }
 
+export interface CreateSubscriptionTierRequest {
+  tierCode: string
+  name: string
+  description?: string
+  priceVnd: number
+  billingCycle?: string
+  commissionBps: number
+  maxCapacityLimit: number
+  hasAdvancedReports: boolean
+  isActive: boolean
+  reason?: string
+}
+
 export const subscriptionService = {
   // GET /api/v1/subscription/tiers
   async getTiers(): Promise<SubscriptionTier[]> {
@@ -87,6 +100,34 @@ export const subscriptionService = {
   // POST /api/v1/subscription/cancel
   async cancelSubscription(): Promise<{ message: string }> {
     const res = await api.post('/v1/subscription/cancel')
+    return res.data?.data || res.data
+  },
+
+  // POST /api/v1/admin/subscription-tiers
+  async createTier(payload: CreateSubscriptionTierRequest): Promise<SubscriptionTier> {
+    const res = await api.post('/v1/admin/subscription-tiers', payload)
+    return res.data?.data || res.data
+  },
+
+  // PUT /api/v1/admin/subscription-tiers
+  async updateTier(payload: {
+    tierId: number
+    priceVnd: number
+    commissionBps: number
+    maxCapacityLimit: number
+    hasAdvancedReports: boolean
+    isActive: boolean
+    reason?: string
+  }): Promise<{ message: string }> {
+    const res = await api.put('/v1/admin/subscription-tiers', payload)
+    return res.data?.data || res.data
+  },
+
+  // DELETE /api/v1/admin/subscription-tiers
+  async deleteTier(tierId: number, reason?: string): Promise<{ message: string }> {
+    const res = await api.delete('/v1/admin/subscription-tiers', {
+      params: { tierId, reason }
+    })
     return res.data?.data || res.data
   },
 }

@@ -289,6 +289,116 @@ func (r *TicketRepository) UpdateSubscriptionTier(
 	return tx.Commit()
 }
 
+// CreateSubscriptionTier - Tạo mới gói dịch vụ
+func (r *TicketRepository) CreateSubscriptionTier(ctx context.Context, adminID int, req models.CreateSubscriptionTierRequest) error {
+	code := strings.ToUpper(strings.TrimSpace(req.TierCode))
+	name := strings.TrimSpace(req.Name)
+	if code == "" || name == "" {
+		return fmt.Errorf("mã gói (tierCode) và tên gói (name) không được để trống")
+	}
+	if req.PriceVND < 0 {
+		return fmt.Errorf("giá gói không được âm")
+	}
+	if req.CommissionBps < 0 || req.CommissionBps > 10000 {
+		return fmt.Errorf("tỷ lệ hoa hồng không hợp lệ (phải từ 0 đến 10.000 bps)")
+	}
+
+	var exists bool
+	err := r.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM subscription_tier WHERE tier_code = $1)", code).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("mã gói '%s' đã tồn tại trong hệ thống", code)
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var newID int
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO subscription_tier (
+			tier_code, name, description, price_vnd, billing_cycle,
+			commission_bps, max_capacity_limit, has_advanced_reports, is_active, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, 'MONTHLY', $5, $6, $7, $8, NOW(), NOW())
+		RETURNING tier_id
+	`, code, name, req.Description, req.PriceVND, req.CommissionBps, req.MaxCapacityLimit, req.HasAdvancedReports, req.IsActive).Scan(&newID)
+	if err != nil {
+		return fmt.Errorf("lỗi tạo gói dịch vụ: %w", err)
+	}
+
+	if _, err := incrementFeeConfigVersionTx(ctx, tx); err != nil {
+		return err
+	}
+
+	newJSON, _ := json.Marshal(req)
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO fee_audit_log (
+			target_entity, target_id, action, old_value, new_value, reason, changed_by, created_at
+		) VALUES ('SUBSCRIPTION_TIER', $1, 'CREATE', '{}'::jsonb, $2::jsonb, 'Tạo gói dịch vụ mới', $3, NOW())
+	`, code, string(newJSON), adminID)
+	if err != nil {
+		return fmt.Errorf("lỗi ghi audit log: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// DeleteSubscriptionTier - Xóa gói dịch vụ tùy chỉnh
+func (r *TicketRepository) DeleteSubscriptionTier(ctx context.Context, adminID int, tierID int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var code string
+	err = tx.QueryRowContext(ctx, "SELECT tier_code FROM subscription_tier WHERE tier_id = $1 FOR UPDATE", tierID).Scan(&code)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("gói dịch vụ ID=%d không tồn tại", tierID)
+		}
+		return err
+	}
+
+	upperCode := strings.ToUpper(code)
+	if upperCode == "FREE" || upperCode == "PRO" || upperCode == "BUSINESS" {
+		return fmt.Errorf("gói mặc định hệ thống (%s) không được phép xóa", code)
+	}
+
+	var count int
+	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM subscription_tier").Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count <= 3 {
+		return fmt.Errorf("không thể xóa gói khi hệ thống chỉ còn 3 gói dịch vụ")
+	}
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM subscription_tier WHERE tier_id = $1", tierID)
+	if err != nil {
+		return fmt.Errorf("lỗi xóa gói dịch vụ: %w", err)
+	}
+
+	if _, err := incrementFeeConfigVersionTx(ctx, tx); err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO fee_audit_log (
+			target_entity, target_id, action, old_value, new_value, reason, changed_by, created_at
+		) VALUES ('SUBSCRIPTION_TIER', $1, 'DELETE', '{}'::jsonb, '{}'::jsonb, 'Xóa gói dịch vụ tùy chỉnh', $2, NOW())
+	`, code, adminID)
+	if err != nil {
+		return fmt.Errorf("lỗi ghi audit log: %w", err)
+	}
+
+	return tx.Commit()
+}
+
 // GetFeeOverrides - Lấy danh sách ưu đãi hoa hồng riêng của Organizer
 func (r *TicketRepository) GetFeeOverrides(ctx context.Context, organizerID *int) ([]models.OrganizerFeeOverride, error) {
 	query := `

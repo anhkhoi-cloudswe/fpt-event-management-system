@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   DollarSign,
   TrendingUp,
@@ -25,6 +25,8 @@ import {
   Sliders,
   Calendar,
   BarChart3,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -106,6 +108,31 @@ export default function AdminFinancePage() {
   const [editIsActive, setEditIsActive] = useState<boolean>(true)
   const [editReason, setEditReason] = useState<string>('')
   const [savingTier, setSavingTier] = useState(false)
+
+  // Tier Creation State
+  const [showCreateTierModal, setShowCreateTierModal] = useState(false)
+  const [newTierCode, setNewTierCode] = useState('')
+  const [newTierName, setNewTierName] = useState('')
+  const [newTierDescription, setNewTierDescription] = useState('')
+  const [newTierPriceVnd, setNewTierPriceVnd] = useState<number>(0)
+  const [newTierCommissionPercent, setNewTierCommissionPercent] = useState<number>(2.5)
+  const [newTierMaxCapacity, setNewTierMaxCapacity] = useState<number>(100)
+  const [newTierHasReports, setNewTierHasReports] = useState<boolean>(false)
+  const [newTierIsActive, setNewTierIsActive] = useState<boolean>(true)
+  const [newTierReason, setNewTierReason] = useState('')
+  const [creatingTier, setCreatingTier] = useState(false)
+
+  // Tier Deletion State
+  const [showDeleteTierModal, setShowDeleteTierModal] = useState(false)
+  const [selectedTierForDelete, setSelectedTierForDelete] = useState<any | null>(null)
+  const [deleteTierReason, setDeleteTierReason] = useState('')
+  const [deletingTier, setDeletingTier] = useState(false)
+
+  // Tier Carousel Drag & Scroll Ref State
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [startX, setStartX] = useState(0)
+  const [scrollLeft, setScrollLeft] = useState(0)
 
   // Payouts State
   const [payouts, setPayouts] = useState<AdminPayoutItem[]>([])
@@ -293,6 +320,116 @@ export default function AdminFinancePage() {
     } finally {
       setSavingTier(false)
     }
+  }
+
+  // Open Create Tier Modal
+  const handleOpenCreateTier = () => {
+    setNewTierCode('')
+    setNewTierName('')
+    setNewTierDescription('')
+    setNewTierPriceVnd(199000)
+    setNewTierCommissionPercent(3.0)
+    setNewTierMaxCapacity(300)
+    setNewTierHasReports(true)
+    setNewTierIsActive(true)
+    setNewTierReason('')
+    setShowCreateTierModal(true)
+  }
+
+  // Create Tier Handler
+  const handleCreateTier = async () => {
+    if (!newTierCode.trim() || !newTierName.trim()) {
+      showToast('error', 'Vui lòng nhập Mã gói và Tên gói dịch vụ')
+      return
+    }
+
+    try {
+      setCreatingTier(true)
+      const commissionBps = Math.round(newTierCommissionPercent * 100)
+      const res = await adminFinanceService.createSubscriptionTier({
+        tierCode: newTierCode.trim().toUpperCase(),
+        name: newTierName.trim(),
+        description: newTierDescription.trim(),
+        priceVnd: newTierPriceVnd,
+        commissionBps,
+        maxCapacityLimit: newTierMaxCapacity,
+        hasAdvancedReports: newTierHasReports,
+        isActive: newTierIsActive,
+        reason: newTierReason.trim() || 'Tạo gói mới từ Admin Dashboard'
+      })
+      showToast('success', res.message || `Tạo gói dịch vụ ${newTierName} thành công!`)
+      setShowCreateTierModal(false)
+      void loadTiers()
+      void loadSubscriptionAnalytics()
+    } catch (err: any) {
+      showToast('error', err?.response?.data?.message || err.message || 'Lỗi khi tạo gói dịch vụ mới')
+    } finally {
+      setCreatingTier(false)
+    }
+  }
+
+  // Open Delete Tier Modal
+  const handleOpenDeleteTier = (tier: any) => {
+    if (['FREE', 'PRO', 'BUSINESS'].includes(tier.tierCode)) {
+      showToast('error', `Gói ${tier.name} (${tier.tierCode}) là gói mặc định của hệ thống - Không thể xóa!`)
+      return
+    }
+    if (tiersList.length <= 3) {
+      showToast('error', 'Không thể xóa khi danh sách chỉ còn 3 gói mặc định!')
+      return
+    }
+    setSelectedTierForDelete(tier)
+    setDeleteTierReason('')
+    setShowDeleteTierModal(true)
+  }
+
+  // Delete Tier Handler
+  const handleDeleteTier = async () => {
+    if (!selectedTierForDelete) return
+
+    try {
+      setDeletingTier(true)
+      const res = await adminFinanceService.deleteSubscriptionTier(
+        selectedTierForDelete.tierId,
+        deleteTierReason.trim() || 'Xóa gói từ Admin Dashboard'
+      )
+      showToast('success', res.message || `Đã xóa gói dịch vụ ${selectedTierForDelete.name} thành công!`)
+      setShowDeleteTierModal(false)
+      setSelectedTierForDelete(null)
+      void loadTiers()
+      void loadSubscriptionAnalytics()
+    } catch (err: any) {
+      showToast('error', err?.response?.data?.message || err.message || 'Lỗi khi xóa gói dịch vụ')
+    } finally {
+      setDeletingTier(false)
+    }
+  }
+
+  // Carousel Navigation & Drag Scroll Helpers
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = direction === 'left' ? -340 : 340
+      scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' })
+    }
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return
+    setIsDragging(true)
+    setStartX(e.pageX - scrollContainerRef.current.offsetLeft)
+    setScrollLeft(scrollContainerRef.current.scrollLeft)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollContainerRef.current) return
+    e.preventDefault()
+    const x = e.pageX - scrollContainerRef.current.offsetLeft
+    const walk = (x - startX) * 1.5
+    scrollContainerRef.current.scrollLeft = scrollLeft - walk
+  }
+
+  const handleMouseUpOrLeave = () => {
+    setIsDragging(false)
   }
 
   // Handle Approve Payout
@@ -993,57 +1130,103 @@ export default function AdminFinancePage() {
             </div>
           </div>
 
-          {/* Tier Configurations (CRUD Gói Dịch Vụ) */}
+          {/* Tier Configurations (CRUD Gói Dịch Vụ - Carousel ngang & Kéo chuột) */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <Sliders size={16} className="text-orange-500" />
                   Cấu Hình Biểu Phí & Quyền Lợi Gói Dịch Vụ (Tier CRUD)
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Quản trị viên có thể điều chỉnh giá bán, % hoa hồng sàn, sức chứa và kích hoạt/vô hiệu hóa các gói.
+                  Quản trị viên có thể Tạo mới, Điều chỉnh giá bán, % hoa hồng, sức chứa và Xóa gói (duy trì tối thiểu 3 gói mặc định).
                 </p>
               </div>
-              <button
-                onClick={() => void loadTiers()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
-              >
-                <RefreshCw size={12} className={loadingTiers ? 'animate-spin' : ''} />
-                Làm mới
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleOpenCreateTier}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer"
+                >
+                  <Plus size={14} />
+                  <span>+ Tạo Gói Dịch Vụ Mới</span>
+                </button>
+
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <button
+                    onClick={() => scrollCarousel('left')}
+                    className="p-1.5 rounded-xl hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
+                    title="Cuộn qua trái"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    onClick={() => scrollCarousel('right')}
+                    className="p-1.5 rounded-xl hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
+                    title="Cuộn qua phải"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => void loadTiers()}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  <RefreshCw size={12} className={loadingTiers ? 'animate-spin' : ''} />
+                  Làm mới
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+            {/* Horizontal Scroll Carousel Container with Mouse Drag */}
+            <div
+              ref={scrollContainerRef}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUpOrLeave}
+              onMouseLeave={handleMouseUpOrLeave}
+              style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+              className="flex gap-4 overflow-x-auto scrollbar-none py-2 px-1 select-none scroll-smooth"
+            >
               {tiersList.map((tier) => {
+                const isCoreTier = ['FREE', 'PRO', 'BUSINESS'].includes(tier.tierCode)
                 const isFree = tier.tierCode === 'FREE'
                 const isPro = tier.tierCode === 'PRO'
                 const isBiz = tier.tierCode === 'BUSINESS'
+                const canDelete = !isCoreTier && tiersList.length > 3
 
                 return (
                   <div
                     key={tier.tierId || tier.tierCode}
-                    className={`relative rounded-3xl border p-5 flex flex-col justify-between transition-all ${
+                    className={`w-80 shrink-0 relative rounded-3xl border p-5 flex flex-col justify-between transition-all shadow-sm ${
                       isBiz
-                        ? 'bg-purple-500/5 border-purple-500/30'
+                        ? 'bg-purple-500/5 border-purple-500/30 hover:border-purple-500/60'
                         : isPro
-                        ? 'bg-amber-500/5 border-amber-500/30'
-                        : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60'
+                        ? 'bg-amber-500/5 border-amber-500/30 hover:border-amber-500/60'
+                        : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 hover:border-slate-400'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase border ${
-                            isBiz
-                              ? 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/40'
-                              : isPro
-                              ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40'
-                              : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600'
-                          }`}
-                        >
-                          {tier.tierCode}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase border ${
+                              isBiz
+                                ? 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/40'
+                                : isPro
+                                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40'
+                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600'
+                            }`}
+                          >
+                            {tier.tierCode}
+                          </span>
+                          {isCoreTier && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                              Mặc định
+                            </span>
+                          )}
+                        </div>
 
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -1056,7 +1239,7 @@ export default function AdminFinancePage() {
                         </span>
                       </div>
 
-                      <h4 className="text-base font-black text-slate-900 dark:text-white mt-3">{tier.name}</h4>
+                      <h4 className="text-base font-black text-slate-900 dark:text-white mt-3 truncate">{tier.name}</h4>
                       <div className="text-xl font-black text-orange-600 dark:text-orange-400 mt-1">
                         {isFree ? '0 đ / vĩnh viễn' : `${formatVND(tier.priceVnd)} / tháng`}
                       </div>
@@ -1083,12 +1266,31 @@ export default function AdminFinancePage() {
                       </div>
                     </div>
 
-                    <div className="mt-5 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <div className="mt-5 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center gap-2">
                       <button
                         onClick={() => handleOpenEditTier(tier)}
-                        className="w-full py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-md shadow-orange-950/20 active:scale-95 transition-all cursor-pointer"
+                        className="flex-1 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-md shadow-orange-950/20 active:scale-95 transition-all cursor-pointer"
                       >
-                        Chỉnh Sửa Cấu Hình Gói
+                        Chỉnh Sửa
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenDeleteTier(tier)}
+                        disabled={!canDelete}
+                        title={
+                          isCoreTier
+                            ? 'Gói mặc định của hệ thống - Không thể xóa'
+                            : tiersList.length <= 3
+                            ? 'Cần duy trì tối thiểu 3 gói'
+                            : 'Xóa gói dịch vụ này'
+                        }
+                        className={`p-2.5 rounded-2xl border transition-all cursor-pointer ${
+                          canDelete
+                            ? 'border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white'
+                            : 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-50'
+                        }`}
+                      >
+                        {isCoreTier ? <Lock size={16} /> : <Trash2 size={16} />}
                       </button>
                     </div>
                   </div>
@@ -1870,6 +2072,213 @@ export default function AdminFinancePage() {
                 className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-xs shadow-lg shadow-orange-950/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
               >
                 {savingTier ? 'Đang lưu...' : 'Lưu Thay Đổi Gói'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tạo Gói Dịch Vụ Mới */}
+      {showCreateTierModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold">
+                  <Plus size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">Tạo Gói Dịch Vụ Mới</h3>
+                  <p className="text-xs text-slate-400">Thêm gói gói cước chiết khấu hoa hồng cho Organizer</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCreateTierModal(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Mã Gói (Code): <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: ENTERPRISE, VIP..."
+                    value={newTierCode}
+                    onChange={(e) => setNewTierCode(e.target.value.toUpperCase())}
+                    className="w-full mt-1.5 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-black uppercase text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Tên Gói Hiển Thị: <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: Gói Doanh Nghiệp VIP"
+                    value={newTierName}
+                    onChange={(e) => setNewTierName(e.target.value)}
+                    className="w-full mt-1.5 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Mô Tả Gói:</label>
+                <input
+                  type="text"
+                  placeholder="Mô tả ưu đãi ngắn gọn cho Ban tổ chức..."
+                  value={newTierDescription}
+                  onChange={(e) => setNewTierDescription(e.target.value)}
+                  className="w-full mt-1.5 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Giá Bán (VNĐ/tháng):</label>
+                  <NumericInput
+                    value={newTierPriceVnd}
+                    onChange={(val) => setNewTierPriceVnd(val)}
+                    placeholder="0"
+                    className="w-full mt-1.5 px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">% Hoa Hồng Sàn:</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={newTierCommissionPercent}
+                    onChange={(e) => setNewTierCommissionPercent(Number(e.target.value))}
+                    className="w-full mt-1.5 px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Sức Chứa Tối Đa:</label>
+                  <NumericInput
+                    value={newTierMaxCapacity}
+                    onChange={(val) => setNewTierMaxCapacity(val)}
+                    placeholder="-1: Vô hạn"
+                    className="w-full mt-1.5 px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <label className="flex items-center gap-2 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newTierHasReports}
+                    onChange={(e) => setNewTierHasReports(e.target.checked)}
+                    className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
+                  />
+                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">Báo Cáo Nâng Cao</span>
+                </label>
+
+                <label className="flex items-center gap-2 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newTierIsActive}
+                    onChange={(e) => setNewTierIsActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">Kích Hoạt Ngay</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 text-[11px] uppercase">Lý do tạo gói:</label>
+                <input
+                  type="text"
+                  placeholder="Ghi chú lý do tạo gói mới..."
+                  value={newTierReason}
+                  onChange={(e) => setNewTierReason(e.target.value)}
+                  className="w-full mt-1 px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                onClick={() => setShowCreateTierModal(false)}
+                className="flex-1 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                onClick={handleCreateTier}
+                disabled={creatingTier || !newTierCode.trim() || !newTierName.trim()}
+                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-xs shadow-lg shadow-orange-950/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {creatingTier ? 'Đang tạo...' : 'Xác Nhận Tạo Gói'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Xóa Gói Dịch Vụ */}
+      {showDeleteTierModal && selectedTierForDelete && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-red-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <div className="p-2.5 rounded-2xl bg-red-500/10 border border-red-500/20">
+                <Trash2 size={24} />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">Xác Nhận Xóa Gói Dịch Vụ</h3>
+                <p className="text-xs text-slate-400">Hành động này sẽ xóa vĩnh viễn gói dịch vụ</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs space-y-1.5">
+              <p className="font-bold text-slate-800 dark:text-slate-200">
+                Bạn có chắc chắn muốn xóa gói{' '}
+                <span className="font-black text-red-600 dark:text-red-400">
+                  {selectedTierForDelete.name} ({selectedTierForDelete.tierCode})
+                </span>
+                ?
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Hệ thống đảm bảo không xóa các gói mặc định và giữ lại tối thiểu 3 gói. Các tài khoản đang dùng gói này sẽ chuyển về gói FREE khi hết hạn.
+              </p>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 dark:text-slate-300 text-xs">Lý do xóa gói:</label>
+              <input
+                type="text"
+                placeholder="Nhập lý do xóa gói dịch vụ..."
+                value={deleteTierReason}
+                onChange={(e) => setDeleteTierReason(e.target.value)}
+                className="w-full mt-1.5 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteTierModal(false)}
+                className="flex-1 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                onClick={handleDeleteTier}
+                disabled={deletingTier}
+                className="flex-1 py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-xs shadow-lg shadow-red-950/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {deletingTier ? 'Đang xóa...' : 'Xóa Gói Vĩnh Viễn'}
               </button>
             </div>
           </div>

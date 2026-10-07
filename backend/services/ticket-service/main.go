@@ -264,8 +264,12 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return ticketHandler.HandleUpdateRoleFeePolicy(ctx, request)
 	case path == "/api/v1/admin/subscription-tiers" && method == "GET":
 		return ticketHandler.HandleGetAdminSubscriptionTiers(ctx, request)
+	case path == "/api/v1/admin/subscription-tiers" && method == "POST":
+		return ticketHandler.HandleCreateAdminSubscriptionTier(ctx, request)
 	case path == "/api/v1/admin/subscription-tiers" && method == "PUT":
 		return ticketHandler.HandleUpdateAdminSubscriptionTier(ctx, request)
+	case path == "/api/v1/admin/subscription-tiers" && method == "DELETE":
+		return ticketHandler.HandleDeleteAdminSubscriptionTier(ctx, request)
 	case path == "/api/v1/admin/fee-overrides" && method == "GET":
 		return ticketHandler.HandleGetFeeOverrides(ctx, request)
 	case path == "/api/v1/admin/fee-overrides" && method == "POST":

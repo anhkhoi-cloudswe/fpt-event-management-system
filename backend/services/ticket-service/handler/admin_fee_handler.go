@@ -125,6 +125,53 @@ func (h *TicketHandler) HandleUpdateAdminSubscriptionTier(ctx context.Context, r
 	})
 }
 
+// HandleCreateAdminSubscriptionTier - POST /api/v1/admin/subscription-tiers
+func (h *TicketHandler) HandleCreateAdminSubscriptionTier(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	adminID, statusCode, err := h.requireAdminDB(ctx, request)
+	if err != nil {
+		return createMessageResponse(statusCode, err.Error())
+	}
+
+	var req models.CreateSubscriptionTierRequest
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Dữ liệu tạo gói dịch vụ không hợp lệ")
+	}
+
+	err = h.useCase.CreateSubscriptionTier(ctx, adminID, req)
+	if err != nil {
+		log.Error("[ADMIN_FEE_HANDLER_ERROR] CreateSubscriptionTier: %v", err)
+		return createMessageResponse(http.StatusBadRequest, err.Error())
+	}
+
+	return createJSONResponse(http.StatusCreated, map[string]string{
+		"message": "Đã tạo gói dịch vụ mới thành công",
+	})
+}
+
+// HandleDeleteAdminSubscriptionTier - DELETE /api/v1/admin/subscription-tiers
+func (h *TicketHandler) HandleDeleteAdminSubscriptionTier(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	adminID, statusCode, err := h.requireAdminDB(ctx, request)
+	if err != nil {
+		return createMessageResponse(statusCode, err.Error())
+	}
+
+	tierIDStr := request.QueryStringParameters["tierId"]
+	if tierIDStr == "" {
+		return createMessageResponse(http.StatusBadRequest, "Thiếu tham số tierId")
+	}
+	tierID, _ := strconv.Atoi(tierIDStr)
+
+	err = h.useCase.DeleteSubscriptionTier(ctx, adminID, tierID)
+	if err != nil {
+		log.Error("[ADMIN_FEE_HANDLER_ERROR] DeleteSubscriptionTier: %v", err)
+		return createMessageResponse(http.StatusBadRequest, err.Error())
+	}
+
+	return createJSONResponse(http.StatusOK, map[string]string{
+		"message": "Đã xóa gói dịch vụ thành công",
+	})
+}
+
 // HandleGetFeeOverrides - GET /api/v1/admin/fee-overrides
 func (h *TicketHandler) HandleGetFeeOverrides(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	if _, statusCode, err := h.requireAdminDB(ctx, request); err != nil {

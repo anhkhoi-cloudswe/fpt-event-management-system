@@ -45,6 +45,18 @@ type SubscriptionTier struct {
 	UpdatedAt          time.Time `json:"updatedAt"`
 }
 
+// CreateSubscriptionTierRequest - Request tạo gói dịch vụ mới
+type CreateSubscriptionTierRequest struct {
+	TierCode           string `json:"tierCode"`
+	Name               string `json:"name"`
+	Description        string `json:"description"`
+	PriceVND           int64  `json:"priceVnd"`
+	CommissionBps      int    `json:"commissionBps"`
+	MaxCapacityLimit   int    `json:"maxCapacityLimit"`
+	HasAdvancedReports bool   `json:"hasAdvancedReports"`
+	IsActive           bool   `json:"isActive"`
+}
+
 // UserSubscription - Bản ghi gói dịch vụ kích hoạt của Organizer
 type UserSubscription struct {
 	SubscriptionID             int        `json:"subscriptionId"`

@@ -66,11 +66,23 @@ func (uc *TicketUseCase) UpdateRoleFeePolicy(
 	return uc.ticketRepo.UpdateRoleFeePolicy(ctx, adminID, roleCode, bps, maxCap, hasReports, isActive, reason)
 }
 
+func (uc *TicketUseCase) CreateSubscriptionTier(
+	ctx context.Context, adminID int, req models.CreateSubscriptionTierRequest,
+) error {
+	return uc.ticketRepo.CreateSubscriptionTier(ctx, adminID, req)
+}
+
 func (uc *TicketUseCase) UpdateSubscriptionTier(
 	ctx context.Context, adminID, tierID int,
 	price int64, bps, maxCap int, hasReports, isActive bool, reason string,
 ) error {
 	return uc.ticketRepo.UpdateSubscriptionTier(ctx, adminID, tierID, price, bps, maxCap, hasReports, isActive, reason)
+}
+
+func (uc *TicketUseCase) DeleteSubscriptionTier(
+	ctx context.Context, adminID, tierID int,
+) error {
+	return uc.ticketRepo.DeleteSubscriptionTier(ctx, adminID, tierID)
 }
 
 func (uc *TicketUseCase) GetFeeOverrides(ctx context.Context, organizerID *int) ([]models.OrganizerFeeOverride, error) {
