@@ -852,15 +852,9 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 
 	if role == "ADMIN" {
 		query = baseQuery + ` ORDER BY e.start_time DESC`
-	} else if role == "ORGANIZER" {
-		// Organizer should see events they created including active and historical ones.
-		// Include common statuses and also any event that already ended (end_time < NOW()).
-		query = baseQuery + ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','UPDATING','FINISHED') OR e.end_time < NOW())
-			ORDER BY e.start_time DESC`
-		args = append(args, userID)
-	} else if role == "STAFF" {
-		// Staff sees OPEN events and events that have already ended
-		query = baseQuery + ` WHERE (e.status = 'OPEN' OR e.end_time < NOW())
+	} else if role == "ORGANIZER" || role == "STAFF" {
+		// Organizer & Staff can see OPEN, CLOSED, UPDATING, FINISHED, and ended events across the system
+		query = baseQuery + ` WHERE (e.status IN ('OPEN','CLOSED','UPDATING','FINISHED') OR e.end_time < NOW())
 			ORDER BY e.start_time DESC`
 	} else {
 		// Public: show open events and historical events (by end_time)
@@ -981,13 +975,9 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 
 	if role == "ADMIN" {
 		whereClause = ``
-	} else if role == "ORGANIZER" {
-		// Organizer should see events they created including active, historical, and cancelled ones.
-		whereClause = ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','CANCELLED','UPDATING','FINISHED') OR e.end_time < NOW())`
-		args = append(args, userID)
-	} else if role == "STAFF" {
-		// Staff sees OPEN, CLOSED, and CANCELLED events
-		whereClause = ` WHERE (e.status IN ('OPEN', 'CLOSED', 'CANCELLED') OR e.end_time < NOW())`
+	} else if role == "ORGANIZER" || role == "STAFF" {
+		// Organizer & Staff see OPEN, CLOSED, UPDATING, FINISHED, and CANCELLED events across the system
+		whereClause = ` WHERE (e.status IN ('OPEN', 'CLOSED', 'CANCELLED', 'UPDATING', 'FINISHED') OR e.end_time < NOW())`
 	} else {
 		// Public: show open events and historical events (by end_time), but NOT cancelled
 		whereClause = ` WHERE (e.status = 'OPEN' OR (e.end_time < NOW() AND e.status != 'CANCELLED')) AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'`
@@ -1129,11 +1119,8 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 	if role == "ADMIN" {
 		// Admin sees all events across the system
 		whereClause = ``
-	} else if role == "ORGANIZER" {
-		whereClause = ` WHERE e.created_by = $1 AND (e.status IN ('OPEN','CLOSED','CANCELLED','UPDATING','FINISHED') OR e.end_time < NOW())`
-		args = append(args, userID)
-	} else if role == "STAFF" {
-		whereClause = ` WHERE (e.status IN ('OPEN', 'CLOSED', 'CANCELLED') OR e.end_time < NOW())`
+	} else if role == "ORGANIZER" || role == "STAFF" {
+		whereClause = ` WHERE (e.status IN ('OPEN', 'CLOSED', 'CANCELLED', 'UPDATING', 'FINISHED') OR e.end_time < NOW())`
 	} else {
 		whereClause = ` WHERE (e.status = 'OPEN' OR (e.end_time < NOW() AND e.status != 'CANCELLED')) AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'`
 	}

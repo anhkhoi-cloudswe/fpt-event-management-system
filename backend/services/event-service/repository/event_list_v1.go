@@ -341,12 +341,8 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 		queryArgs = append(queryArgs, searchPattern, searchPattern, searchPattern)
 	}
 
-	// Add role-based filtering
-	if role == "ORGANIZER" {
-		whereConditions = append(whereConditions, fmt.Sprintf("e.created_by = $%d", len(queryArgs)+1))
-		queryArgs = append(queryArgs, userID)
-	}
-	// If ADMIN or PUBLIC: no additional filter (show all)
+	// Role-based filtering: All roles (including ORGANIZER) can browse public events
+	// If ADMIN, ORGANIZER or PUBLIC: no additional filter (show all)
 
 	// Join all conditions with AND
 	whereClause := strings.Join(whereConditions, " AND ")

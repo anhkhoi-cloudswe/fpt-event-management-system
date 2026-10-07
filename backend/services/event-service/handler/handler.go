@@ -1419,17 +1419,11 @@ func (h *EventHandler) HandleGetEventsByStatusV1(ctx context.Context, request ev
 	log.Debug("HandleGetEventsByStatusV1 - Status=%s Search='%s' Page=%d Limit=%d Role=%s UserID=%d",
 		statusParam, searchParam, page, limit, role, userID)
 
-	// Call usecase with role-based filtering
+	// Call usecase to retrieve events for status/search (All roles including ORGANIZER can view public events)
 	var result *repository.EventListV1Result
 	var err error
 
-	if role == "ORGANIZER" {
-		// Organizer: filter by created_by
-		result, err = h.useCase.GetEventsByStatusV1WithRole(ctx, statusParam, searchParam, page, limit, role, userID)
-	} else {
-		// Admin/Public: no additional filtering
-		result, err = h.useCase.GetEventsByStatusV1(ctx, statusParam, searchParam, page, limit)
-	}
+	result, err = h.useCase.GetEventsByStatusV1(ctx, statusParam, searchParam, page, limit)
 
 	if err != nil {
 		log.Error("HandleGetEventsByStatusV1 - GetEventsByStatusV1 error: %v", err)
