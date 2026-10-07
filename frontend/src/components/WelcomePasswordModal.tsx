@@ -114,7 +114,7 @@ export default function WelcomePasswordModal({ isOpen, onClose }: WelcomePasswor
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-            <p className="text-xs text-slate-500">Mật khẩu tối thiểu 6 ký tự, gồm ít nhất 1 chữ cái và 1 chữ số.</p>
+            <p className="text-xs text-slate-500">Mật khẩu tối thiểu 6 ký tự.</p>
           </div>
 
           {/* Confirm Password Input */}

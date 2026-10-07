@@ -257,7 +257,7 @@ export default function UserFormModal({
                       errors.password ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'
                     }`}
                     disabled={loading}
-                    placeholder="Tối thiểu 6 ký tự, có chữ và số"
+                    placeholder="Tối thiểu 6 ký tự"
                   />
                   <button
                     type="button"

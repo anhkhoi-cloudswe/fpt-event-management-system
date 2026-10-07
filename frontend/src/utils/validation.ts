@@ -41,8 +41,8 @@ const PHONE_PATTERN = /^(\+84|84|0)(3|5|7|8|9)\d{8}$/
 // In JavaScript, we use a broader approach for Unicode letters
 const FULLNAME_PATTERN = /^[a-zA-ZÀ-ỹ .'-]{2,100}$/
 
-// Password pattern - matches backend
-const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@#$%^&+=!\-]{6,}$/
+// Password pattern - matches backend (tối thiểu 6 ký tự)
+const PASSWORD_PATTERN = /^[A-Za-z\d@#$%^&+=!\-]{6,}$/
 
 /**
  * Validate email format
@@ -141,12 +141,6 @@ export const getPasswordError = (password: string): string | null => {
   }
   if (password.length < 6) {
     return 'Mật khẩu phải có ít nhất 6 ký tự'
-  }
-  if (!/(?=.*[A-Za-z])/.test(password)) {
-    return 'Mật khẩu phải chứa ít nhất 1 chữ cái'
-  }
-  if (!/(?=.*\d)/.test(password)) {
-    return 'Mật khẩu phải chứa ít nhất 1 chữ số'
   }
   if (!isValidPassword(password)) {
     return 'Mật khẩu chỉ được chứa chữ cái, số và ký tự đặc biệt (@#$%^&+=!-)'
