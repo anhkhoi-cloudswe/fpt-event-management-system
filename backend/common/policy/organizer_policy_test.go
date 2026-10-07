@@ -27,6 +27,8 @@ func getTestDB(t *testing.T) *sql.DB {
 	_ = db.QueryRow("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')").Scan(&exists)
 	if !exists {
 		initSQL := `
+			CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 			CREATE TABLE IF NOT EXISTS users (
 				user_id SERIAL PRIMARY KEY,
 				email VARCHAR(255) UNIQUE NOT NULL,
@@ -34,35 +36,56 @@ func getTestDB(t *testing.T) *sql.DB {
 				password_hash VARCHAR(255) NOT NULL,
 				role VARCHAR(50) NOT NULL DEFAULT 'STUDENT',
 				status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
-				created_at TIMESTAMPTZ DEFAULT NOW()
+				created_at TIMESTAMPTZ DEFAULT NOW(),
+				previous_role VARCHAR(50) DEFAULT NULL
 			);
 			CREATE TABLE IF NOT EXISTS subscription_tier (
 				tier_id SERIAL PRIMARY KEY,
 				tier_code VARCHAR(50) UNIQUE NOT NULL,
 				name VARCHAR(100) NOT NULL,
-				price_vnd INT NOT NULL,
-				commission_bps INT NOT NULL,
-				max_capacity_limit INT NOT NULL,
+				price_vnd BIGINT NOT NULL DEFAULT 0,
+				billing_cycle VARCHAR(20) NOT NULL DEFAULT 'MONTHLY',
+				commission_bps INT NOT NULL DEFAULT 500,
+				max_capacity_limit INT NOT NULL DEFAULT 100,
 				has_advanced_reports BOOLEAN NOT NULL DEFAULT FALSE,
 				is_active BOOLEAN NOT NULL DEFAULT TRUE
 			);
 			CREATE TABLE IF NOT EXISTS role_fee_policy (
-				policy_id SERIAL PRIMARY KEY,
-				role_code VARCHAR(50) UNIQUE NOT NULL,
-				commission_bps INT NOT NULL,
-				is_active BOOLEAN NOT NULL DEFAULT TRUE
+				role_code VARCHAR(50) PRIMARY KEY,
+				name VARCHAR(100) NOT NULL DEFAULT 'Role Policy',
+				commission_bps INT NOT NULL DEFAULT 250,
+				max_capacity_limit INT NOT NULL DEFAULT -1,
+				has_advanced_reports BOOLEAN NOT NULL DEFAULT TRUE,
+				is_active BOOLEAN NOT NULL DEFAULT TRUE,
+				updated_at TIMESTAMPTZ DEFAULT NOW()
 			);
 			CREATE TABLE IF NOT EXISTS user_subscription (
 				subscription_id SERIAL PRIMARY KEY,
-				user_id INT NOT NULL,
-				tier_id INT NOT NULL,
-				status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'
+				user_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+				tier_id INT NOT NULL REFERENCES subscription_tier(tier_id),
+				status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+				start_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				end_date TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '30 days',
+				auto_renew BOOLEAN NOT NULL DEFAULT FALSE,
+				amount_paid_vnd BIGINT NOT NULL DEFAULT 0,
+				prorated_credit_vnd BIGINT NOT NULL DEFAULT 0
 			);
 			CREATE TABLE IF NOT EXISTS organizer_fee_override (
 				override_id SERIAL PRIMARY KEY,
-				organizer_id INT NOT NULL,
-				commission_bps INT NOT NULL
+				organizer_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+				commission_bps INT NOT NULL,
+				reason TEXT NOT NULL DEFAULT 'Test',
+				effective_range TSTZRANGE NOT NULL DEFAULT tstzrange(NOW(), NOW() + INTERVAL '30 days'),
+				created_by INT,
+				created_at TIMESTAMPTZ DEFAULT NOW()
 			);
+			CREATE TABLE IF NOT EXISTS platform_system_parameter (
+				param_key VARCHAR(50) PRIMARY KEY,
+				param_value VARCHAR(255) NOT NULL,
+				description TEXT,
+				updated_at TIMESTAMPTZ DEFAULT NOW()
+			);
+
 			INSERT INTO subscription_tier (tier_id, tier_code, name, price_vnd, commission_bps, max_capacity_limit, has_advanced_reports, is_active)
 			VALUES 
 				(1, 'FREE', 'Gói Miễn Phí', 0, 500, 100, FALSE, TRUE),
@@ -70,9 +93,13 @@ func getTestDB(t *testing.T) *sql.DB {
 				(3, 'BUSINESS', 'Gói Doanh Nghiệp', 1000000, 0, -1, TRUE, TRUE)
 			ON CONFLICT (tier_id) DO NOTHING;
 
-			INSERT INTO role_fee_policy (role_code, commission_bps, is_active)
-			VALUES ('SCHOOL_ORGANIZER', 0, TRUE)
+			INSERT INTO role_fee_policy (role_code, name, commission_bps, max_capacity_limit, has_advanced_reports, is_active)
+			VALUES ('SCHOOL_ORGANIZER', 'Đơn vị nội bộ FPT', 250, -1, TRUE, TRUE)
 			ON CONFLICT (role_code) DO NOTHING;
+
+			INSERT INTO platform_system_parameter (param_key, param_value, description)
+			VALUES ('FEE_CONFIG_VERSION', '1', 'Current fee version')
+			ON CONFLICT (param_key) DO NOTHING;
 		`
 		if _, err := db.Exec(initSQL); err != nil {
 			t.Logf("Cảnh báo: Không thể khởi tạo schema phụ trợ: %v", err)

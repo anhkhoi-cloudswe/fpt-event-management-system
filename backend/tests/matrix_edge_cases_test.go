@@ -45,6 +45,10 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 		return
 	}
 
+	if err := EnsureAllTestTablesExists(db); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
+	}
+
 	ctx := context.Background()
 	eRepo := eventRepo.NewEventRepositoryWithDB(db)
 	tRepo := ticketRepo.NewTicketRepositoryWithDB(db)

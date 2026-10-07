@@ -46,6 +46,10 @@ func TestPhase4_AdminFeeManagement_RealDockerDB(t *testing.T) {
 		return
 	}
 
+	if err := EnsureAllTestTablesExists(db); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
+	}
+
 	ctx := context.Background()
 
 	// 1. Thử nạp migration từ file (nếu có thư mục Database/ dưới local)

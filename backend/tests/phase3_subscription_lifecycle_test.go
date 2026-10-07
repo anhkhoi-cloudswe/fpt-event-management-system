@@ -41,6 +41,10 @@ func TestPhase3_SubscriptionLifecycle_RealDockerDB(t *testing.T) {
 		return
 	}
 
+	if err := EnsureAllTestTablesExists(db); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
+	}
+
 	ctx := context.Background()
 	tRepo := ticketRepo.NewTicketRepositoryWithDB(db)
 	sched := ticketScheduler.NewSubscriptionExpiryScheduler(db, 60)

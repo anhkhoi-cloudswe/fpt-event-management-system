@@ -42,6 +42,10 @@ func TestNewBackendFeatures_RealDockerDB(t *testing.T) {
 		return
 	}
 
+	if err := EnsureAllTestTablesExists(db); err != nil {
+		t.Fatalf("Lỗi khởi tạo test schema: %v", err)
+	}
+
 	ctx := context.Background()
 
 	// Khởi tạo Handler với DB
