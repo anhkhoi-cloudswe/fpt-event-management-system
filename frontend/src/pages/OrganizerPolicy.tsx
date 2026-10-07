@@ -13,7 +13,12 @@ import {
   ArrowRight,
   Calculator,
   Landmark,
-  BadgePercent
+  BadgePercent,
+  Gift,
+  Coins,
+  TrendingUp,
+  Zap,
+  HelpCircle
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { NumericInput } from '../components/common/NumericInput'
@@ -47,7 +52,8 @@ export default function OrganizerPolicy() {
   const calcGross = calcTicketPrice * calcQuantity
   const calcCommissionPerTicket = calcTicketPrice > 0 ? (calcTicketPrice * 0.10) + 1000 : 0
   const calcTotalCommission = calcCommissionPerTicket * calcQuantity
-  const calcOrganizerNet = calcGross - calcTotalCommission
+  const calcOrganizerNet = Math.max(0, calcGross - calcTotalCommission)
+  const netRatio = calcGross > 0 ? ((calcOrganizerNet / calcGross) * 100).toFixed(1) : '100'
 
   const toggleFaq = (idx: number) => {
     setExpandedFaq(prev => (prev === idx ? null : idx))
@@ -199,12 +205,12 @@ export default function OrganizerPolicy() {
   const activeCategory = categories.find(c => c.id === activeTab) || categories[0]
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-900/5 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8 font-sans selection:bg-orange-500 selection:text-white">
       <div className="max-w-6xl mx-auto space-y-8">
 
-        {/* Top Navigation & Breadcrumb */}
+        {/* Top Navigation Bar */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => {
@@ -214,157 +220,248 @@ export default function OrganizerPolicy() {
                   navigate(user ? '/dashboard' : '/guest')
                 }
               }}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-orange-600 dark:hover:text-orange-400 hover:border-orange-500/50 shadow-sm active:scale-95 transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-orange-600 dark:hover:text-orange-400 hover:border-orange-500/50 shadow-md shadow-slate-200/50 dark:shadow-none active:scale-95 transition-all"
             >
-              <ArrowLeft size={14} /> {user ? 'Quay lại Dashboard' : 'Quay lại'}
+              <ArrowLeft size={16} /> {user ? 'Quay lại Dashboard' : 'Quay lại'}
             </button>
             {user?.role === 'ORGANIZER' && (
               <button
                 type="button"
                 onClick={() => navigate('/dashboard/organizer/wallet')}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/40 text-orange-600 dark:text-orange-400 hover:bg-orange-100 shadow-sm active:scale-95 transition-all"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 active:scale-95 transition-all"
               >
-                <Wallet size={14} /> Quản lý Ví Ban Tổ Chức
+                <Wallet size={16} /> Quản lý Ví Ban Tổ Chức
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-            <span>FEMS Platform</span>
-            <span>•</span>
-            <span className="text-orange-600 dark:text-orange-400 font-bold">Organizer Financial Policy v2.0</span>
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-orange-500/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+            <Zap size={14} className="animate-pulse" />
+            <span>FEMS Platform • Organizer Financial Policy v2.0</span>
           </div>
         </div>
 
-        {/* Hero Header Card */}
-        <div className="relative overflow-hidden rounded-3xl p-8 sm:p-10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white shadow-2xl border border-slate-800">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Premium Hero Header Card */}
+        <div className="relative overflow-hidden rounded-3xl p-8 sm:p-12 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white shadow-2xl border border-slate-800/80">
+          {/* Animated Background Glowing Orbs */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse duration-[7000ms]" />
+          <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] bg-gradient-to-tr from-blue-600/15 via-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 space-y-4 max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-black bg-orange-500/20 text-orange-400 border border-orange-500/30 backdrop-blur-md">
-              <Sparkles size={14} />
-              Chính Sách & Quy Định Vận Hành Tài Chính Ban Tổ Chức
+          <div className="relative z-10 space-y-5 max-w-3xl">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-orange-500/20 text-orange-300 border border-orange-500/30 backdrop-blur-xl shadow-inner">
+              <Sparkles size={14} className="text-amber-400 animate-spin duration-[4000ms]" />
+              CHÍNH SÁCH & QUY ĐỊNH VẬN HÀNH TÀI CHÍNH BAN TỔ CHỨC
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
-              Minh Bạch, An Toàn & Tự Động Quyết Toán
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
+              Minh Bạch, An Toàn &{' '}
+              <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">
+                Tự Động Quyết Toán
+              </span>
             </h1>
             <p className="text-sm sm:text-base text-slate-300 font-medium leading-relaxed">
               Hướng dẫn chi tiết dành cho các Ban Tổ Chức, Câu Lạc Bộ FPT về cấu trúc Phí nền tảng, cơ chế Ký quỹ bảo chứng (Escrow), Quy trình tự động giải phóng doanh thu và Rút tiền về tài khoản ngân hàng.
             </p>
           </div>
 
-          {/* Key Metric Highlights */}
-          <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-8 border-t border-slate-700/60">
-            <div className="bg-slate-800/60 backdrop-blur-md p-4 rounded-2xl border border-slate-700/60">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Phí dịch vụ</p>
-              <p className="text-xl font-black text-orange-400 mt-1">10% + 1.000đ</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Trên vé có thu phí</p>
+          {/* Key Metric Highlights Header Grid */}
+          <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10 pt-8 border-t border-slate-800/80">
+            <div className="bg-slate-900/80 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-slate-800 hover:border-orange-500/50 transition-all group">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-orange-500/10 text-orange-400 group-hover:scale-110 transition-transform">
+                  <BadgePercent size={18} />
+                </div>
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Phí dịch vụ</p>
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-orange-400">10% + 1.000đ</p>
+              <p className="text-[10px] font-bold text-slate-400 mt-1">Trên vé có thu phí</p>
             </div>
-            <div className="bg-slate-800/60 backdrop-blur-md p-4 rounded-2xl border border-slate-700/60">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Vé Miễn Phí</p>
-              <p className="text-xl font-black text-emerald-400 mt-1">0 VNĐ (Free)</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Không mất bất kỳ phí nào</p>
+
+            <div className="bg-slate-900/80 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-slate-800 hover:border-emerald-500/50 transition-all group">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
+                  <Gift size={18} />
+                </div>
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Vé Miễn Phí</p>
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-emerald-400">0 VNĐ (Free)</p>
+              <p className="text-[10px] font-bold text-slate-400 mt-1">Không mất bất kỳ phí nào</p>
             </div>
-            <div className="bg-slate-800/60 backdrop-blur-md p-4 rounded-2xl border border-slate-700/60">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Quyết toán</p>
-              <p className="text-xl font-black text-amber-400 mt-1">Tự Động 100%</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Khi sự kiện FINISHED</p>
+
+            <div className="bg-slate-900/80 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-slate-800 hover:border-amber-500/50 transition-all group">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 group-hover:scale-110 transition-transform">
+                  <RefreshCw size={18} />
+                </div>
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Quyết toán</p>
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-amber-400">Tự Động 100%</p>
+              <p className="text-[10px] font-bold text-slate-400 mt-1">Khi sự kiện FINISHED</p>
             </div>
-            <div className="bg-slate-800/60 backdrop-blur-md p-4 rounded-2xl border border-slate-700/60">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Giải ngân</p>
-              <p className="text-xl font-black text-blue-400 mt-1">24/7 Liên Bank</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Tối thiểu từ 50.000đ</p>
+
+            <div className="bg-slate-900/80 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-slate-800 hover:border-blue-500/50 transition-all group">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
+                  <Landmark size={18} />
+                </div>
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Giải ngân</p>
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-blue-400">24/7 Liên Bank</p>
+              <p className="text-[10px] font-bold text-slate-400 mt-1">Tối thiểu từ 50.000đ</p>
             </div>
           </div>
         </div>
 
-        {/* Live Interactive Fee Calculator Widget */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-orange-500/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold">
-                <Calculator size={20} />
+        {/* Live Interactive Revenue Calculator Widget */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none space-y-6">
+          <div className="flex items-center justify-between flex-wrap gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center font-black shadow-lg shadow-orange-500/30">
+                <Calculator size={24} />
               </div>
               <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
                   Công Cụ Ước Tính Doanh Thu Thực Nhận (Revenue Calculator)
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  Nhập giá vé và số lượng vé dự kiến bán ra để xem chi tiết khoản phí trích xuất và doanh thu thực nhận.
+                  Kéo thanh trượt hoặc nhập giá vé và số lượng để tính toán doanh thu thực nhận lập tức.
                 </p>
               </div>
             </div>
-            <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              Công thức: [Giá vé - (10% + 1.000đ)] × Số vé
-            </span>
+            <div className="flex items-center gap-1.5 text-xs font-black px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              <Coins size={14} className="text-amber-500" />
+              <span>Công thức: [Giá vé - (10% + 1.000đ)] × Số vé</span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            {/* Inputs */}
-            <div className="space-y-4 bg-slate-50 dark:bg-slate-950/60 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Mệnh giá mỗi vé (VNĐ):
-                </label>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-2">
+            {/* Input Controls (Left Column) */}
+            <div className="lg:col-span-6 space-y-6 bg-slate-50/80 dark:bg-slate-950/60 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+              {/* Ticket Price Field & Slider */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Mệnh giá mỗi vé (VNĐ):
+                  </label>
+                  <span className="text-sm font-black text-orange-600 dark:text-orange-400">
+                    {calcTicketPrice.toLocaleString('vi-VN')} đ
+                  </span>
+                </div>
                 <div className="relative">
                   <NumericInput
                     value={calcTicketPrice}
                     onChange={(val) => setCalcTicketPrice(val)}
                     min={0}
                     placeholder="0"
-                    className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 pr-12"
+                    className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-black text-base text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 shadow-inner pr-16"
                   />
-                  <span className="absolute right-4 top-2.5 text-xs font-bold text-slate-400">VNĐ</span>
+                  <span className="absolute right-4 top-3.5 text-xs font-black text-slate-400">VNĐ</span>
+                </div>
+                {/* Interactive Slider */}
+                <input
+                  type="range"
+                  min="0"
+                  max="1000000"
+                  step="10000"
+                  value={calcTicketPrice}
+                  onChange={(e) => setCalcTicketPrice(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                />
+                <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                  <span>0đ (Miễn phí)</span>
+                  <span>500.000đ</span>
+                  <span>1.000.000đ</span>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Số lượng vé bán dự kiến:
-                </label>
+              {/* Quantity Field & Slider */}
+              <div className="space-y-3 pt-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Số lượng vé dự kiến bán ra:
+                  </label>
+                  <span className="text-sm font-black text-orange-600 dark:text-orange-400">
+                    {calcQuantity.toLocaleString('vi-VN')} Vé
+                  </span>
+                </div>
                 <div className="relative">
                   <NumericInput
                     value={calcQuantity}
                     onChange={(val) => setCalcQuantity(Math.max(1, val))}
                     min={1}
                     placeholder="1"
-                    className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 pr-12"
+                    className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-black text-base text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 shadow-inner pr-16"
                   />
-                  <span className="absolute right-4 top-2.5 text-xs font-bold text-slate-400">Vé</span>
+                  <span className="absolute right-4 top-3.5 text-xs font-black text-slate-400">Vé</span>
+                </div>
+                {/* Interactive Quantity Slider */}
+                <input
+                  type="range"
+                  min="1"
+                  max="1000"
+                  step="5"
+                  value={calcQuantity}
+                  onChange={(e) => setCalcQuantity(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                />
+                <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                  <span>1 vé</span>
+                  <span>500 vé</span>
+                  <span>1.000 vé</span>
                 </div>
               </div>
             </div>
 
-            {/* Output Calculation Breakdown */}
-            <div className="space-y-3 bg-gradient-to-br from-orange-500/5 to-amber-500/5 dark:from-orange-950/20 dark:to-slate-900 p-5 rounded-2xl border border-orange-200/60 dark:border-orange-900/40 flex flex-col justify-between">
-              <div className="space-y-2.5 text-xs">
-                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                  <span>Tổng tiền thu từ khán giả (Gross):</span>
-                  <span className="font-bold text-slate-900 dark:text-white text-sm">{calcGross.toLocaleString('vi-VN')} đ</span>
-                </div>
-                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                  <span>Phí sàn FEMS (10% + 1.000đ/vé):</span>
-                  <span className="font-bold text-rose-500 text-sm">- {calcTotalCommission.toLocaleString('vi-VN')} đ</span>
-                </div>
-                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                  <span>Tỷ lệ thực nhận trên tổng doanh thu:</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    {calcGross > 0 ? ((calcOrganizerNet / calcGross) * 100).toFixed(1) : '100'}%
+            {/* Output Breakdown (Right Column) */}
+            <div className="lg:col-span-6 space-y-5 bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-slate-900/10 dark:from-orange-950/40 dark:via-slate-900 dark:to-slate-950 p-6 rounded-2xl border border-orange-500/20 dark:border-orange-500/30 flex flex-col justify-between shadow-inner">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-orange-500/20">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    Tổng doanh thu Gross:
                   </span>
+                  <span className="font-black text-slate-900 dark:text-white text-lg">
+                    {calcGross.toLocaleString('vi-VN')} đ
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                    Phí sàn FEMS (10% + 1.000đ/vé):
+                  </span>
+                  <span className="font-black text-rose-500 text-sm">
+                    - {calcTotalCommission.toLocaleString('vi-VN')} đ
+                  </span>
+                </div>
+
+                {/* Revenue Split Bar Indicator */}
+                <div className="space-y-1.5 pt-2">
+                  <div className="flex justify-between text-[11px] font-black">
+                    <span className="text-emerald-600 dark:text-emerald-400">Thực nhận ({netRatio}%)</span>
+                    <span className="text-rose-500">Phí sàn ({(100 - Number(netRatio)).toFixed(1)}%)</span>
+                  </div>
+                  <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden flex p-0.5 border border-slate-300/50 dark:border-slate-700">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300"
+                      style={{ width: `${netRatio}%` }}
+                    />
+                    <div
+                      className="h-full bg-gradient-to-r from-rose-500 to-pink-500 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.max(0, 100 - Number(netRatio))}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-orange-200/60 dark:border-orange-900/40 flex justify-between items-center">
+              {/* Net Payout Glass Banner */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/15 border border-emerald-500/30 flex justify-between items-center flex-wrap gap-3 backdrop-blur-xl">
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
-                    Ban Tổ Chức Thực Nhận (Net):
+                  <p className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <TrendingUp size={16} /> BAN TỔ CHỨC THỰC NHẬN (NET):
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                    (Được chuyển vào Ví sau khi sự kiện kết thúc)
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 font-bold mt-0.5">
+                    (Giải phóng về Ví sau khi kết thúc sự kiện)
                   </p>
                 </div>
-                <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
                   {calcOrganizerNet.toLocaleString('vi-VN')} đ
                 </p>
               </div>
@@ -384,14 +481,14 @@ export default function OrganizerPolicy() {
                   setActiveTab(cat.id)
                   setExpandedFaq(null)
                 }}
-                className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 transition-all active:scale-95 border ${isActive
-                  ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/20'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-orange-500/40 hover:text-slate-900 dark:hover:text-white'
+                className={`flex items-center gap-2.5 px-5 py-3.5 rounded-2xl font-black text-xs shrink-0 transition-all active:scale-95 border ${isActive
+                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-500 shadow-lg shadow-orange-500/25'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-800 hover:border-orange-500/40 hover:text-slate-900 dark:hover:text-white shadow-sm'
                   }`}
               >
-                <Icon size={16} />
+                <Icon size={18} />
                 <span>{cat.title}</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${isActive
+                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${isActive
                   ? 'bg-white/20 text-white'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                   }`}>
@@ -403,15 +500,15 @@ export default function OrganizerPolicy() {
         </div>
 
         {/* Active Category Content Section */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl space-y-8 animate-fade-in">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 border border-slate-200/80 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none space-y-8 animate-fade-in">
           {/* Section Header */}
           <div className="flex items-start justify-between gap-4 flex-wrap pb-6 border-b border-slate-100 dark:border-slate-800">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex items-center gap-2 text-xs font-black text-orange-600 dark:text-orange-400 uppercase tracking-wider">
-                <activeCategory.icon size={16} />
-                {activeCategory.badge}
+                <activeCategory.icon size={18} />
+                <span>{activeCategory.badge}</span>
               </div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 {activeCategory.title}
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
@@ -423,66 +520,69 @@ export default function OrganizerPolicy() {
           {/* Category Highlight Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {activeCategory.highlights.map((h, i) => (
-              <div key={i} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 space-y-1">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{h.label}</p>
-                <p className="text-lg font-black text-slate-900 dark:text-white">{h.value}</p>
+              <div
+                key={i}
+                className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 space-y-1.5 hover:border-orange-500/40 transition-all shadow-sm"
+              >
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">{h.label}</p>
+                <p className="text-xl font-black text-slate-900 dark:text-white">{h.value}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{h.desc}</p>
               </div>
             ))}
           </div>
 
           {/* Key Rules List */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-              <CheckCircle2 size={16} className="text-emerald-500" />
+          <div className="space-y-4">
+            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <CheckCircle2 size={18} className="text-emerald-500" />
               Quy định chi tiết & Hướng dẫn thực hiện
             </h3>
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {activeCategory.rules.map((rule, idx) => (
                 <div
                   key={idx}
-                  className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800/60 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 leading-relaxed"
+                  className="flex items-start gap-3.5 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200/60 dark:border-slate-800/80 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 leading-relaxed hover:border-orange-500/30 transition-colors shadow-sm"
                 >
-                  <div className="w-5 h-5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                  <div className="w-6 h-6 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5 shadow-md shadow-orange-500/20">
                     {idx + 1}
                   </div>
-                  <span>{rule}</span>
+                  <span className="pt-0.5">{rule}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Interactive FAQs Accordion */}
-          <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-              <Info size={16} className="text-orange-500" />
+          <div className="space-y-4 pt-6 border-t border-slate-100 dark:border-slate-800">
+            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <HelpCircle size={18} className="text-orange-500" />
               Câu hỏi thường gặp (FAQ)
             </h3>
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {activeCategory.faqs.map((faq, fIdx) => {
                 const isOpen = expandedFaq === fIdx
                 return (
                   <div
                     key={fIdx}
-                    className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-colors"
+                    className="border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm"
                   >
                     <button
                       type="button"
                       onClick={() => toggleFaq(fIdx)}
-                      className="w-full flex items-center justify-between p-4 text-left font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      className="w-full flex items-center justify-between p-4 sm:p-5 text-left font-black text-xs sm:text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                     >
-                      <span className="flex items-center gap-2.5">
-                        <span className="text-orange-500 font-black">Q:</span>
+                      <span className="flex items-center gap-3">
+                        <span className="px-2 py-0.5 rounded-md bg-orange-500/10 text-orange-600 dark:text-orange-400 font-black text-xs">Q</span>
                         {faq.question}
                       </span>
                       <ChevronDown
-                        size={16}
-                        className={`text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-orange-500' : ''}`}
+                        size={18}
+                        className={`text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-orange-500' : ''}`}
                       />
                     </button>
                     {isOpen && (
-                      <div className="px-4 pb-4 pt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800/60 leading-relaxed">
-                        <span className="text-emerald-500 font-bold mr-1">Trả lời:</span> {faq.answer}
+                      <div className="px-5 pb-5 pt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800/80 leading-relaxed font-medium">
+                        <span className="font-black text-emerald-600 dark:text-emerald-400 mr-1.5">Trả lời:</span> {faq.answer}
                       </div>
                     )}
                   </div>
@@ -493,20 +593,20 @@ export default function OrganizerPolicy() {
         </div>
 
         {/* Bottom Call to Action Card */}
-        <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-xl flex items-center justify-between gap-6 flex-wrap">
-          <div className="space-y-1 max-w-xl">
-            <h3 className="text-lg sm:text-xl font-black">Sẵn sàng trải nghiệm quản lý sự kiện chuyên nghiệp?</h3>
-            <p className="text-xs sm:text-sm text-orange-100 font-medium">
+        <div className="relative overflow-hidden rounded-3xl p-8 sm:p-10 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 text-white shadow-2xl flex items-center justify-between gap-6 flex-wrap">
+          <div className="space-y-2 max-w-xl relative z-10">
+            <h3 className="text-xl sm:text-2xl font-black">Sẵn sàng trải nghiệm quản lý sự kiện chuyên nghiệp?</h3>
+            <p className="text-xs sm:text-sm text-orange-100 font-medium leading-relaxed">
               Kiểm tra doanh thu sự kiện, quản lý tài khoản ngân hàng và thực hiện yêu cầu rút tiền tại trang Ví Ban Tổ Chức.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="relative z-10 flex items-center gap-3">
             <button
               type="button"
               onClick={() => navigate('/dashboard/organizer/wallet')}
-              className="px-6 py-3 rounded-2xl bg-white text-orange-600 font-black text-xs sm:text-sm shadow-lg hover:bg-orange-50 active:scale-95 transition-all flex items-center gap-2"
+              className="px-6 py-3.5 rounded-2xl bg-white text-orange-600 font-black text-xs sm:text-sm shadow-xl hover:bg-orange-50 hover:scale-105 active:scale-95 transition-all flex items-center gap-2.5"
             >
-              Mở Ví Ban Tổ Chức <ArrowRight size={16} />
+              Mở Ví Ban Tổ Chức <ArrowRight size={18} />
             </button>
           </div>
         </div>
