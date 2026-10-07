@@ -59,6 +59,9 @@ var routes = []Route{
 	{"/api/auth/update-theme", "Auth"},
 	{"/api/auth/update-profile", "Auth"},
 	{"/api/auth/become-organizer", "Auth"},
+	{"/api/auth/organizer-onboard", "Auth"},
+	{"/api/organizations", "Auth"},
+	{"/api/admin/organizations", "Auth"},
 	{"/api/admin/create-account", "Auth"},
 	{"/api/users/", "Auth"},
 

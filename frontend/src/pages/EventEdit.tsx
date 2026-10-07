@@ -28,6 +28,7 @@ import { useToast } from '../contexts/ToastContext'
 
 import UpgradePlanModal from '../components/UpgradePlanModal'
 import { useCapacityGuard } from '../hooks/useCapacityGuard'
+import { NumericInput } from '../components/common/NumericInput'
 
 // ======================= TYPES =======================
 
@@ -1198,12 +1199,12 @@ export default function EventEdit() {
                           <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                             Giá (VNĐ) *
                           </label>
-                          <input
-                            type="number"
+                          <NumericInput
                             value={ticket.price}
-                            onChange={(e) => handleTicketChange(index, 'price', e.target.value)}
+                            onChange={(val) => handleTicketChange(index, 'price', String(val))}
                             required
-                            min="0"
+                            min={0}
+                            placeholder="0"
                             className="w-full px-2.5 py-1 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs"
                           />
                         </div>
@@ -1212,14 +1213,12 @@ export default function EventEdit() {
                           <label className="block text-[10px] font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                             Số lượng tối đa *
                           </label>
-                          <input
-                            type="number"
+                          <NumericInput
                             value={ticket.maxQuantity}
                             readOnly={hasBookings}
-                            onChange={(e) => handleTicketChange(index, 'maxQuantity', e.target.value)}
+                            onChange={(val) => handleTicketChange(index, 'maxQuantity', String(val))}
                             required
-                            min="10"
-                            step="10"
+                            min={10}
                             placeholder="10, 20, ..."
                             className={`w-full px-2.5 py-1 border border-gray-300 dark:border-slate-700 rounded-lg text-xs ${hasBookings
                               ? 'bg-gray-100 dark:bg-slate-800 cursor-not-allowed text-gray-500 dark:text-gray-400'

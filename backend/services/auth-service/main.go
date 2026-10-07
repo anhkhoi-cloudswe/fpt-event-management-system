@@ -145,6 +145,18 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return authHandler.HandleUpdateProfile(ctx, request)
 	case path == "/api/auth/become-organizer" && method == "POST":
 		return authHandler.HandleBecomeOrganizer(ctx, request)
+	case path == "/api/auth/organizer-onboard" && method == "POST":
+		return authHandler.HandleOrganizerOnboard(ctx, request)
+	case path == "/api/auth/organizer-onboard/verify" && method == "POST":
+		return authHandler.HandleOrganizerOnboardVerify(ctx, request)
+	case path == "/api/organizations" && method == "GET":
+		return authHandler.HandleGetOrganizations(ctx, request)
+	case path == "/api/admin/organizations" && method == "POST":
+		return authHandler.HandleAdminCreateOrganization(ctx, request)
+	case strings.HasPrefix(path, "/api/admin/organizations") && method == "PUT":
+		return authHandler.HandleAdminUpdateOrganization(ctx, request)
+	case strings.HasPrefix(path, "/api/admin/organizations") && method == "DELETE":
+		return authHandler.HandleAdminDeleteOrganization(ctx, request)
 	}
 
 

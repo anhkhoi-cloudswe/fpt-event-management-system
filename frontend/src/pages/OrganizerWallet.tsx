@@ -20,6 +20,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+import { NumericInput } from '../components/common/NumericInput'
 import {
   organizerWalletService,
   OrganizerWallet as IOrganizerWallet,
@@ -948,13 +949,11 @@ export default function OrganizerWalletPage() {
                 {/* Custom amount */}
                 <div className="mt-4">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hoặc nhập số tiền tùy ý:</label>
-                  <input
-                    type="number"
+                  <NumericInput
                     value={topupAmount}
-                    onChange={(e) => setTopupAmount(Number(e.target.value))}
-                    min={10000}
-                    step={10000}
-                    className="w-full mt-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-base text-slate-900 dark:text-white"
+                    onChange={(val) => setTopupAmount(val)}
+                    placeholder="10,000"
+                    className="w-full mt-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-base text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
                   />
                 </div>
 
@@ -1112,13 +1111,11 @@ export default function OrganizerWalletPage() {
                   Rút tất cả ({formatVND(wallet?.availableBalance)})
                 </button>
               </div>
-              <input
-                type="number"
+              <NumericInput
                 value={payoutAmount}
-                onChange={(e) => setPayoutAmount(Number(e.target.value))}
-                min={50000}
-                step={10000}
-                className="w-full mt-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-base text-slate-900 dark:text-white"
+                onChange={(val) => setPayoutAmount(val)}
+                placeholder="50,000"
+                className="w-full mt-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-base text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
               />
               <span className="text-[11px] text-slate-400 mt-1 block">Tối thiểu: 50.000 ₫</span>
             </div>

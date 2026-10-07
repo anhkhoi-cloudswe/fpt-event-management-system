@@ -772,8 +772,19 @@ func (uc *AuthUseCase) BecomeOrganizer(ctx context.Context, email string, req mo
 		return nil, errors.New("chỉ tài khoản Sinh viên mới có thể tự nâng cấp lên Ban tổ chức")
 	}
 
+	// Check phone duplicate
+	if phone != "" {
+		phoneExists, err := uc.userRepo.ExistsByPhone(ctx, phone, user.ID)
+		if err != nil {
+			return nil, err
+		}
+		if phoneExists {
+			return nil, errors.New("Số điện thoại này đã được sử dụng bởi một tài khoản khác")
+		}
+	}
+
 	// Update in DB
-	err = uc.userRepo.UpgradeToOrganizer(ctx, user.ID, phone)
+	err = uc.userRepo.UpgradeToOrganizerWithOrg(ctx, user.ID, phone, req.OrgID)
 	if err != nil {
 		return nil, err
 	}
@@ -786,4 +797,278 @@ func (uc *AuthUseCase) BecomeOrganizer(ctx context.Context, email string, req mo
 
 	return uc.issueFreshSessionTokenPair(ctx, user, false)
 }
+
+// GetAllOrganizations returns organization list
+func (uc *AuthUseCase) GetAllOrganizations(ctx context.Context, onlyActive bool) ([]models.Organization, error) {
+	return uc.userRepo.GetAllOrganizations(ctx, onlyActive)
+}
+
+// CreateOrganization creates a new organization
+func (uc *AuthUseCase) CreateOrganization(ctx context.Context, req models.OrganizationRequest) (*models.Organization, error) {
+	if strings.TrimSpace(req.OrgName) == "" {
+		return nil, errors.New("Tên tổ chức/CLB không được để trống")
+	}
+	if strings.TrimSpace(req.OrgCode) == "" {
+		return nil, errors.New("Mã tổ chức/CLB không được để trống")
+	}
+	return uc.userRepo.CreateOrganization(ctx, req)
+}
+
+// UpdateOrganization updates an existing organization
+func (uc *AuthUseCase) UpdateOrganization(ctx context.Context, orgID int, req models.OrganizationRequest) error {
+	if orgID <= 0 {
+		return errors.New("ID tổ chức không hợp lệ")
+	}
+	return uc.userRepo.UpdateOrganization(ctx, orgID, req)
+}
+
+// DeleteOrganization deletes an organization
+func (uc *AuthUseCase) DeleteOrganization(ctx context.Context, orgID int) error {
+	if orgID <= 0 {
+		return errors.New("ID tổ chức không hợp lệ")
+	}
+	return uc.userRepo.DeleteOrganization(ctx, orgID)
+}
+
+// OnboardResult contains outcome of unified organizer onboarding
+type OnboardResult struct {
+	Action      string               `json:"action"` // "DIRECT_UPGRADE", "OTP_SENT", "PASSWORD_REQUIRED", "ROLE_BLOCKED"
+	Message     string               `json:"message"`
+	Role        string               `json:"role,omitempty"`
+	AuthResp    *models.AuthResponse `json:"authResp,omitempty"`
+	OTPCooldown int                  `json:"otpCooldown,omitempty"`
+}
+
+// ProcessOrganizerOnboard handles unified onboarding for guest or existing user
+func (uc *AuthUseCase) ProcessOrganizerOnboard(ctx context.Context, req models.OrganizerOnboardRequest) (*OnboardResult, string, error) {
+	normalizedEmail, err := validator.NormalizeAndValidateEmail(req.Email)
+	if err != nil {
+		return nil, "", err
+	}
+	req.Email = normalizedEmail
+
+	existingUser, err := uc.userRepo.FindByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Validate phone duplicate if phone is provided and not checkOnly
+	if !req.CheckOnly && strings.TrimSpace(req.Phone) != "" {
+		phone := strings.TrimSpace(req.Phone)
+		excludeID := 0
+		if existingUser != nil {
+			excludeID = existingUser.ID
+		}
+		phoneExists, err := uc.userRepo.ExistsByPhone(ctx, phone, excludeID)
+		if err != nil {
+			return nil, "", err
+		}
+		if phoneExists {
+			return nil, "", errors.New("Số điện thoại này đã được sử dụng bởi một tài khoản khác")
+		}
+	}
+
+	// CASE 1: Email does NOT exist -> Guest Registration Flow
+	if existingUser == nil {
+		if req.CheckOnly {
+			if req.Password != "" {
+				if pwdErr := validator.GetPasswordError(req.Password); pwdErr != "" {
+					return nil, "", errors.New(pwdErr)
+				}
+			}
+			return &OnboardResult{
+				Action:  "GUEST_ELIGIBLE",
+				Message: "Email hợp lệ. Hãy tiếp tục điền thông tin tổ chức.",
+			}, "", nil
+		}
+		if req.Password == "" {
+			return nil, "", errors.New("Vui lòng nhập mật khẩu để tạo tài khoản mới")
+		}
+		regReq := models.RegisterRequest{
+			Email:    req.Email,
+			Password: req.Password,
+			FullName: req.FullName,
+			Phone:    req.Phone,
+		}
+		otp, err := uc.GenerateRegisterOTP(ctx, regReq)
+		if err != nil {
+			return nil, "", err
+		}
+		return &OnboardResult{
+			Action:  "OTP_SENT",
+			Message: "Mã OTP xác thực đã được gửi đến email của bạn để hoàn tất tạo tài khoản Ban tổ chức.",
+		}, otp, nil
+	}
+
+	// CASE 2: User exists, check Role
+	if existingUser.Role == "ORGANIZER" {
+		return &OnboardResult{
+			Action:  "ROLE_BLOCKED",
+			Role:    "ORGANIZER",
+			Message: "Tài khoản của bạn đã là Ban tổ chức (ORGANIZER). Vui lòng đăng nhập để vào bảng điều khiển sự kiện.",
+		}, "", nil
+	}
+
+	if existingUser.Role != "STUDENT" {
+		return &OnboardResult{
+			Action:  "ROLE_BLOCKED",
+			Role:    "OTHER",
+			Message: "Tài khoản này không hợp lệ để đăng ký trở thành Ban tổ chức.",
+		}, "", nil
+	}
+
+	if req.CheckOnly {
+		return &OnboardResult{
+			Action:  "STUDENT_ELIGIBLE",
+			Role:    "STUDENT",
+			Message: "Đã tìm thấy tài khoản Sinh viên. Tiếp tục cập nhật thông tin CLB & Số điện thoại.",
+		}, "", nil
+	}
+
+	// CASE 3: User exists and is STUDENT
+	// 3a. If user supplied correct password and not forcing OTP -> Direct Upgrade!
+	if !req.ForceSendOTP && req.Password != "" {
+		authenticatedUser, checkErr := uc.userRepo.CheckLogin(ctx, req.Email, req.Password)
+		if checkErr == nil && authenticatedUser != nil {
+			// Password correct! Update phone and upgrade directly
+			var effectiveOrgID *int = req.OrgID
+			phoneToUse := req.Phone
+			if phoneToUse == "" {
+				phoneToUse = authenticatedUser.Phone
+			}
+			err = uc.userRepo.UpgradeToOrganizerWithOrg(ctx, authenticatedUser.ID, phoneToUse, effectiveOrgID)
+			if err != nil {
+				return nil, "", err
+			}
+			authenticatedUser.Role = "ORGANIZER"
+			if phoneToUse != "" {
+				authenticatedUser.Phone = phoneToUse
+			}
+			authResp, err := uc.issueFreshSessionTokenPair(ctx, authenticatedUser, false)
+			if err != nil {
+				return nil, "", err
+			}
+			return &OnboardResult{
+				Action:   "DIRECT_UPGRADE",
+				Message:  "Xác thực thành công! Tài khoản của bạn đã được nâng cấp lên Ban tổ chức.",
+				Role:     "ORGANIZER",
+				AuthResp: authResp,
+			}, "", nil
+		}
+	}
+
+	// 3b. If password wrong or forceSendOtp requested -> Send OTP to verify email ownership!
+	otpManager := GetOTPManager()
+	if cooldown := otpManager.GetRemainingCooldown(req.Email); cooldown > 0 {
+		return nil, "", &OTPCooldownError{Remaining: int(cooldown)}
+	}
+	otp := otpManager.GenerateOTP(req.Email)
+
+	// Save pending upgrade session in pendingRegistrations
+	pendingRegistrations[req.Email] = &models.PendingRegistration{
+		Email:    req.Email,
+		FullName: req.FullName,
+		Phone:    req.Phone,
+		OTP:      otp,
+	}
+
+	return &OnboardResult{
+		Action:  "OTP_SENT",
+		Message: "Mã OTP xác nhận đã được gửi đến email chính chủ của bạn để nâng cấp.",
+	}, otp, nil
+}
+
+// VerifyOrganizerOnboardOTP verifies OTP for existing student or guest and completes upgrade
+func (uc *AuthUseCase) VerifyOrganizerOnboardOTP(ctx context.Context, req models.OrganizerOnboardVerifyRequest) (*models.AuthResponse, error) {
+	normalizedEmail, err := validator.NormalizeAndValidateEmail(req.Email)
+	if err != nil {
+		return nil, err
+	}
+	req.Email = normalizedEmail
+
+	otpManager := GetOTPManager()
+	valid, message := otpManager.VerifyOTP(req.Email, req.OTP)
+	if !valid {
+		return nil, errors.New(message)
+	}
+
+	existingUser, err := uc.userRepo.FindByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check phone duplicate before final update/creation
+	if strings.TrimSpace(req.Phone) != "" {
+		phone := strings.TrimSpace(req.Phone)
+		excludeID := 0
+		if existingUser != nil {
+			excludeID = existingUser.ID
+		}
+		phoneExists, err := uc.userRepo.ExistsByPhone(ctx, phone, excludeID)
+		if err != nil {
+			return nil, err
+		}
+		if phoneExists {
+			return nil, errors.New("Số điện thoại này đã được sử dụng bởi một tài khoản khác")
+		}
+	}
+
+	if existingUser != nil {
+		// Existing student verified by OTP!
+		if existingUser.Role == "ORGANIZER" {
+			return nil, errors.New("tài khoản của bạn đã là Ban tổ chức (ORGANIZER)")
+		}
+		if existingUser.Role != "STUDENT" {
+			return nil, errors.New("chỉ tài khoản Sinh viên mới có thể tự nâng cấp lên Ban tổ chức")
+		}
+
+		phoneToUse := req.Phone
+		if phoneToUse == "" {
+			phoneToUse = existingUser.Phone
+		}
+		err = uc.userRepo.UpgradeToOrganizerWithOrg(ctx, existingUser.ID, phoneToUse, req.OrgID)
+		if err != nil {
+			return nil, err
+		}
+
+		delete(pendingRegistrations, req.Email)
+		otpManager.Invalidate(req.Email)
+
+		existingUser.Role = "ORGANIZER"
+		if phoneToUse != "" {
+			existingUser.Phone = phoneToUse
+		}
+		return uc.issueFreshSessionTokenPair(ctx, existingUser, false)
+	}
+
+	// Guest user: finalize creation
+	pending, exists := pendingRegistrations[req.Email]
+	if !exists {
+		return nil, errors.New("Không có yêu cầu đăng ký đang chờ")
+	}
+
+	newUser := models.User{
+		FullName: pending.FullName,
+		Phone:    pending.Phone,
+		Email:    pending.Email,
+		Role:     "ORGANIZER",
+		Status:   "ACTIVE",
+	}
+
+	userID, err := uc.userRepo.CreateUserWithHash(ctx, &newUser, pending.PasswordHash)
+	if err != nil {
+		return nil, errors.New("Không thể tạo tài khoản")
+	}
+
+	if req.OrgID != nil && *req.OrgID > 0 {
+		_ = uc.userRepo.UpgradeToOrganizerWithOrg(ctx, userID, pending.Phone, req.OrgID)
+	}
+
+	delete(pendingRegistrations, req.Email)
+	otpManager.Invalidate(req.Email)
+
+	newUser.ID = userID
+	return uc.issueFreshSessionTokenPair(ctx, &newUser, false)
+}
+
 

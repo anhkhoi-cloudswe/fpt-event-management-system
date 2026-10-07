@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useToast } from '../../contexts/ToastContext'
+import { NumericInput } from '../common/NumericInput'
 import {
   Settings, Shield, Zap, Database, ClipboardList, BarChart3,
   Edit2, Trash2, Plus, RefreshCw, ChevronLeft, ChevronRight,
@@ -146,12 +147,21 @@ function LabeledInput({ label, type, value, onChange, placeholder }: {
   return (
     <div>
       <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">{label}</label>
-      <input
-        type={type} value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-slate-800 dark:text-slate-200"
-      />
+      {type === 'number' ? (
+        <NumericInput
+          value={value}
+          onChange={val => onChange(String(val))}
+          placeholder={placeholder || '0'}
+          className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-slate-800 dark:text-slate-200"
+        />
+      ) : (
+        <input
+          type={type} value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-slate-800 dark:text-slate-200"
+        />
+      )}
     </div>
   )
 }

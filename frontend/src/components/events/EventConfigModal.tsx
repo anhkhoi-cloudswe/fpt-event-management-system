@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Settings, Save } from 'lucide-react'
 import { useToast } from '../../contexts/ToastContext'
+import { NumericInput } from '../common/NumericInput'
 
 /**
  * EventConfigModal - Modal cấu hình check-in/check-out cho từng sự kiện
@@ -260,13 +261,13 @@ export function EventConfigModal({
                                         </p>
 
                                         <div className="flex items-center gap-4">
-                                            <input
-                                                type="number"
+                                            <NumericInput
                                                 name="checkinAllowedBeforeStartMinutes"
                                                 value={config.checkinAllowedBeforeStartMinutes}
-                                                onChange={handleChange}
-                                                min="0"
-                                                max="600"
+                                                onChange={(val) => setConfig(prev => ({ ...prev, checkinAllowedBeforeStartMinutes: val, source: 'per-event' }))}
+                                                min={0}
+                                                max={600}
+                                                placeholder="0"
                                                 className="w-32 px-4 py-2 border border-green-300 dark:border-green-800 bg-white dark:bg-slate-950 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-center text-lg font-medium text-slate-900 dark:text-slate-100"
                                             />
                                             <span className="text-gray-600 dark:text-slate-400">phút trước khi bắt đầu</span>
@@ -323,13 +324,13 @@ export function EventConfigModal({
                                         </p>
 
                                         <div className="flex items-center gap-4">
-                                            <input
-                                                type="number"
+                                            <NumericInput
                                                 name="minMinutesAfterStart"
                                                 value={config.minMinutesAfterStart}
-                                                onChange={handleChange}
-                                                min="0"
-                                                max="600"
+                                                onChange={(val) => setConfig(prev => ({ ...prev, minMinutesAfterStart: val, source: 'per-event' }))}
+                                                min={0}
+                                                max={600}
+                                                placeholder="0"
                                                 className="w-32 px-4 py-2 border border-purple-300 dark:border-purple-800 bg-white dark:bg-slate-950 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-center text-lg font-medium text-slate-900 dark:text-slate-100"
                                             />
                                             <span className="text-gray-600 dark:text-slate-400">phút trước khi kết thúc</span>

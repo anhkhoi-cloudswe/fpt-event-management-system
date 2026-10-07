@@ -289,7 +289,7 @@ export default function Layout() {
           {renderLink("/dashboard/events", Calendar, currentLanguage === 'en' ? "Events" : "Sự kiện", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/venues", MapPin, currentLanguage === 'en' ? "Venues" : "Địa Điểm", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/admin/finance", DollarSign, currentLanguage === 'en' ? "Finance & Payouts" : "Tài chính & Quyết toán", handleLinkClick, closeMobile)}
-          {renderLink("/dashboard/manage", Users, currentLanguage === 'en' ? "User Management" : "Quản lý người dùng", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/manage", Users, currentLanguage === 'en' ? "System Management" : "Quản lý hệ thống", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/reports", FileBarChart, currentLanguage === 'en' ? "Reports" : "Báo cáo", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/system-config", Sliders, currentLanguage === 'en' ? "Configuration" : "Cấu hình", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/profile", User, currentLanguage === 'en' ? "Profile" : "Hồ sơ cá nhân", handleLinkClick, closeMobile)}

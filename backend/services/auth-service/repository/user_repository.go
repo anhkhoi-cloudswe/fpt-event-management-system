@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/fpt-event-services/common/hash"
 	"github.com/fpt-event-services/common/logger"
@@ -188,6 +189,30 @@ func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool,
 	err := r.db.QueryRowContext(ctx, query, email).Scan(&count)
 	if err != nil {
 		return false, fmt.Errorf("failed to check email: %w", err)
+	}
+
+	return count > 0, nil
+}
+
+// ExistsByPhone checks if phone number is already used by another user (excluding current user if provided)
+func (r *UserRepository) ExistsByPhone(ctx context.Context, phone string, excludeUserID int) (bool, error) {
+	if phone == "" {
+		return false, nil
+	}
+	var query string
+	var args []interface{}
+	if excludeUserID > 0 {
+		query = `SELECT COUNT(*) FROM Users WHERE phone = $1 AND user_id != $2 AND deleted_at IS NULL`
+		args = []interface{}{phone, excludeUserID}
+	} else {
+		query = `SELECT COUNT(*) FROM Users WHERE phone = $1 AND deleted_at IS NULL`
+		args = []interface{}{phone}
+	}
+
+	var count int
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to check phone: %w", err)
 	}
 
 	return count > 0, nil
@@ -685,21 +710,37 @@ func (r *UserRepository) UpdateFullNameByEmail(ctx context.Context, email, fullN
 
 // UpgradeToOrganizer upgrades a STUDENT user to ORGANIZER and creates default FREE subscription if not exists
 func (r *UserRepository) UpgradeToOrganizer(ctx context.Context, userID int, phone string) error {
+	return r.UpgradeToOrganizerWithOrg(ctx, userID, phone, nil)
+}
+
+// UpgradeToOrganizerWithOrg upgrades a STUDENT user to ORGANIZER with optional org_id
+func (r *UserRepository) UpgradeToOrganizerWithOrg(ctx context.Context, userID int, phone string, orgID *int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	// 1. Update role to ORGANIZER and update phone if provided
+	// 1. Update role to ORGANIZER, phone, and org_id if provided
 	var updateQuery string
 	var args []interface{}
-	if phone != "" {
-		updateQuery = `UPDATE Users SET role = 'ORGANIZER', phone = $1, previous_role = 'STUDENT' WHERE user_id = $2 AND role = 'STUDENT'`
-		args = []interface{}{phone, userID}
+
+	if orgID != nil && *orgID > 0 {
+		if phone != "" {
+			updateQuery = `UPDATE Users SET role = 'ORGANIZER', phone = $1, org_id = $2, previous_role = 'STUDENT' WHERE user_id = $3 AND role = 'STUDENT'`
+			args = []interface{}{phone, *orgID, userID}
+		} else {
+			updateQuery = `UPDATE Users SET role = 'ORGANIZER', org_id = $1, previous_role = 'STUDENT' WHERE user_id = $2 AND role = 'STUDENT'`
+			args = []interface{}{*orgID, userID}
+		}
 	} else {
-		updateQuery = `UPDATE Users SET role = 'ORGANIZER', previous_role = 'STUDENT' WHERE user_id = $1 AND role = 'STUDENT'`
-		args = []interface{}{userID}
+		if phone != "" {
+			updateQuery = `UPDATE Users SET role = 'ORGANIZER', phone = $1, previous_role = 'STUDENT' WHERE user_id = $2 AND role = 'STUDENT'`
+			args = []interface{}{phone, userID}
+		} else {
+			updateQuery = `UPDATE Users SET role = 'ORGANIZER', previous_role = 'STUDENT' WHERE user_id = $1 AND role = 'STUDENT'`
+			args = []interface{}{userID}
+		}
 	}
 
 	result, err := tx.ExecContext(ctx, updateQuery, args...)
@@ -718,11 +759,9 @@ func (r *UserRepository) UpgradeToOrganizer(ctx context.Context, userID int, pho
 	var freeTierID int
 	err = tx.QueryRowContext(ctx, `SELECT tier_id FROM subscription_tier WHERE tier_code = 'FREE' LIMIT 1`).Scan(&freeTierID)
 	if err == nil && freeTierID > 0 {
-		// Check if user already has an active subscription
 		var hasActiveSub bool
 		_ = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM user_subscription WHERE user_id = $1 AND status = 'ACTIVE')`, userID).Scan(&hasActiveSub)
 		if !hasActiveSub {
-			// Insert 10-year free subscription
 			insertSubQuery := `
 				INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, auto_renew, amount_paid_vnd)
 				VALUES ($1, $2, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '10 years', false, 0)
@@ -734,8 +773,86 @@ func (r *UserRepository) UpgradeToOrganizer(ctx context.Context, userID int, pho
 	return tx.Commit()
 }
 
+// GetAllOrganizations fetches active or all organizations
+func (r *UserRepository) GetAllOrganizations(ctx context.Context, onlyActive bool) ([]models.Organization, error) {
+	query := `SELECT org_id, org_name, org_code, org_type, campus_code, logo_url, description, status, created_at FROM organizations`
+	if onlyActive {
+		query += ` WHERE status = 'ACTIVE'`
+	}
+	query += ` ORDER BY org_name ASC`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.Organization
+	for rows.Next() {
+		var o models.Organization
+		if err := rows.Scan(&o.OrgID, &o.OrgName, &o.OrgCode, &o.OrgType, &o.CampusCode, &o.LogoURL, &o.Description, &o.Status, &o.CreatedAt); err != nil {
+			continue
+		}
+		list = append(list, o)
+	}
+	return list, nil
+}
+
+// CreateOrganization creates a new organization entity
+func (r *UserRepository) CreateOrganization(ctx context.Context, req models.OrganizationRequest) (*models.Organization, error) {
+	query := `
+		INSERT INTO organizations (org_name, org_code, org_type, campus_code, logo_url, description, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING org_id, created_at
+	`
+	if req.OrgType == "" {
+		req.OrgType = "CLUB"
+	}
+	if req.CampusCode == "" {
+		req.CampusCode = "HCM"
+	}
+	if req.Status == "" {
+		req.Status = "ACTIVE"
+	}
+
+	var orgID int
+	var createdAt time.Time
+	err := r.db.QueryRowContext(ctx, query, req.OrgName, req.OrgCode, req.OrgType, req.CampusCode, req.LogoURL, req.Description, req.Status).Scan(&orgID, &createdAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.Organization{
+		OrgID:       orgID,
+		OrgName:     req.OrgName,
+		OrgCode:     req.OrgCode,
+		OrgType:     req.OrgType,
+		CampusCode:  req.CampusCode,
+		LogoURL:     req.LogoURL,
+		Description: req.Description,
+		Status:      req.Status,
+		CreatedAt:   createdAt,
+	}, nil
+}
+
+// UpdateOrganization updates an existing organization
+func (r *UserRepository) UpdateOrganization(ctx context.Context, orgID int, req models.OrganizationRequest) error {
+	query := `
+		UPDATE organizations
+		SET org_name = $1, org_code = $2, org_type = $3, campus_code = $4, logo_url = $5, description = $6, status = $7
+		WHERE org_id = $8
+	`
+	_, err := r.db.ExecContext(ctx, query, req.OrgName, req.OrgCode, req.OrgType, req.CampusCode, req.LogoURL, req.Description, req.Status, orgID)
+	return err
+}
+
+// DeleteOrganization soft-deletes or deactivates an organization
+func (r *UserRepository) DeleteOrganization(ctx context.Context, orgID int) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE organizations SET status = 'INACTIVE' WHERE org_id = $1`, orgID)
+	return err
+}
+
 // DB returns the underlying database connection for custom queries
-// Use this method when you need to execute queries outside the standard repository methods
 func (r *UserRepository) DB() *sql.DB {
 	return r.db
 }
