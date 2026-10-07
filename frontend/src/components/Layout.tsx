@@ -332,20 +332,25 @@ export default function Layout() {
             {renderLink("/dashboard/my-tickets", Ticket, currentLanguage === 'en' ? "My Tickets" : "Vé của tôi", handleLinkClick, closeMobile)}
             {renderLink("/dashboard/bills", Receipt, currentLanguage === 'en' ? "My Bills" : "Hóa đơn", handleLinkClick, closeMobile)}
             {/* Student Upgrade to Organizer Banner/Button */}
-            <div className="pt-2 px-1">
+            <div className={`pt-2 ${!closeMobile && sidebarMode === 'collapsed' ? 'px-0' : 'px-1'}`}>
               <button
                 type="button"
                 onClick={() => {
                   if (closeMobile) setMobileMenuOpen(false)
                   setIsOrganizerModalOpen(true)
                 }}
-                className={`w-full p-3.5 rounded-2xl border text-left transition-all duration-300 group flex items-center gap-3 cursor-pointer shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-95 ${
+                title={!closeMobile && sidebarMode === 'collapsed' ? (currentLanguage === 'en' ? 'Become Organizer' : 'Đăng ký Ban Tổ Chức') : undefined}
+                className={`w-full rounded-2xl border text-left transition-all duration-300 group flex items-center cursor-pointer shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-95 overflow-hidden ${
+                  !closeMobile && sidebarMode === 'collapsed'
+                    ? 'justify-center p-3'
+                    : 'gap-3 px-4 py-3'
+                } ${
                   isDarkMode
                     ? 'bg-gradient-to-br from-orange-950/40 via-slate-900 to-amber-950/30 border-orange-500/30 text-orange-300 hover:border-orange-400'
                     : 'bg-gradient-to-br from-orange-500 to-amber-500 border-orange-400 text-white shadow-orange-500/20'
                 }`}
               >
-                <div className={`p-2 rounded-xl shrink-0 ${isDarkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-white/20 text-white'}`}>
+                <div className="flex-shrink-0 flex items-center justify-center">
                   <Sparkles size={18} className="animate-pulse" />
                 </div>
                 <div className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
