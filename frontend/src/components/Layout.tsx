@@ -277,6 +277,27 @@ export default function Layout() {
     )
   }
 
+  const renderSectionHeader = (title: string, isMobile = false) => {
+    const isCollapsed = !isMobile && sidebarMode === 'collapsed'
+    if (isCollapsed) {
+      return <div className="h-px bg-slate-200/60 dark:bg-slate-800/80 my-2 mx-2" />
+    }
+    const isHoverExpand = !isMobile && sidebarMode === 'hover-expand'
+    return (
+      <div className="pt-3 pb-1 px-3">
+        <p className={`text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
+          isDarkMode ? 'text-slate-500' : 'text-slate-400'
+        } ${
+          isHoverExpand
+            ? 'opacity-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto w-0 overflow-hidden whitespace-nowrap'
+            : ''
+        }`}>
+          {title}
+        </p>
+      </div>
+    )
+  }
+
   const renderSidebarLinks = (closeMobile = false) => {
     const handleLinkClick = () => {
       if (closeMobile) setMobileMenuOpen(false)
@@ -297,36 +318,42 @@ export default function Layout() {
       )
     }
 
+    if (isOrganizer) {
+      return (
+        <>
+          {renderLink("/dashboard", LayoutDashboard, currentLanguage === 'en' ? "Dashboard" : "Dashboard", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/events", Calendar, currentLanguage === 'en' ? "Events" : "Sự kiện", handleLinkClick, closeMobile)}
+
+          {renderSectionHeader(currentLanguage === 'en' ? 'Personal Participation' : 'Tham gia cá nhân', closeMobile)}
+          {renderLink("/dashboard/my-tickets", Ticket, currentLanguage === 'en' ? "My Tickets" : "Vé của tôi", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/bills", Receipt, currentLanguage === 'en' ? "My Bills" : "Hóa đơn cá nhân", handleLinkClick, closeMobile)}
+
+          {renderSectionHeader(currentLanguage === 'en' ? 'Organizer Management' : 'Quản lý tổ chức', closeMobile)}
+          {renderLink(
+            "/dashboard/events/create",
+            PlusCircle,
+            currentLanguage === 'en' ? "Create Event" : "Tạo sự kiện",
+            handleLinkClick,
+            closeMobile,
+            "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-extrabold transition-all duration-300 w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white hover:shadow-lg hover:shadow-orange-500/25 active:scale-98"
+          )}
+          {renderLink("/dashboard/event-requests", Undo2, currentLanguage === 'en' ? "My Requests" : "Yêu cầu của tôi", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/check-in", CheckSquare, currentLanguage === 'en' ? "Check-in" : "Check-in QR", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/reports", FileBarChart, currentLanguage === 'en' ? "Reports" : "Báo cáo", handleLinkClick, closeMobile)}
+
+          {renderSectionHeader(currentLanguage === 'en' ? 'Finance & Settings' : 'Tài chính & Cấu hình', closeMobile)}
+          {renderLink("/dashboard/organizer/wallet", Wallet, currentLanguage === 'en' ? "Wallet & Revenue" : "Ví & Doanh thu", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/organizer/subscription", Sparkles, currentLanguage === 'en' ? "Subscription" : "Gói dịch vụ", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/system-config", Sliders, currentLanguage === 'en' ? "Configuration" : "Cấu hình", handleLinkClick, closeMobile)}
+          {renderLink("/dashboard/profile", User, currentLanguage === 'en' ? "Profile" : "Hồ sơ cá nhân", handleLinkClick, closeMobile)}
+        </>
+      )
+    }
+
     return (
       <>
         {renderLink("/dashboard", LayoutDashboard, currentLanguage === 'en' ? "Dashboard" : "Dashboard", handleLinkClick, closeMobile)}
         {renderLink("/dashboard/events", Calendar, currentLanguage === 'en' ? "Events" : "Sự kiện", handleLinkClick, closeMobile)}
-        {isOrganizer && renderLink(
-          "/dashboard/events/create",
-          PlusCircle,
-          currentLanguage === 'en' ? "Create Event" : "Tạo sự kiện",
-          handleLinkClick,
-          closeMobile,
-          "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-extrabold transition-all duration-300 w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white hover:shadow-lg hover:shadow-orange-500/25 active:scale-98"
-        )}
-        {(user?.role === 'ORGANIZER' || isStaff) && renderLink(
-          "/dashboard/event-requests",
-          Undo2,
-          isStaff 
-            ? (currentLanguage === 'en' ? "Request Management" : "Quản lý yêu cầu") 
-            : (currentLanguage === 'en' ? "My Requests" : "Yêu cầu của tôi"),
-          handleLinkClick,
-          closeMobile
-        )}
-        {user?.role === 'ORGANIZER' && (
-          <>
-            {renderLink("/dashboard/organizer/wallet", Wallet, currentLanguage === 'en' ? "Wallet & Revenue" : "Ví & Doanh thu", handleLinkClick, closeMobile)}
-            {renderLink("/dashboard/organizer/subscription", Sparkles, currentLanguage === 'en' ? "Subscription" : "Gói dịch vụ", handleLinkClick, closeMobile)}
-            {renderLink("/dashboard/check-in", CheckSquare, currentLanguage === 'en' ? "Check-in" : "Check-in", handleLinkClick, closeMobile)}
-            {renderLink("/dashboard/system-config", Sliders, currentLanguage === 'en' ? "Configuration" : "Cấu hình", handleLinkClick, closeMobile)}
-          </>
-        )}
-        {isOrganizer && renderLink("/dashboard/reports", FileBarChart, currentLanguage === 'en' ? "Reports" : "Báo cáo", handleLinkClick, closeMobile)}
         {!isOrganizer && !isStaff && (
           <>
             {renderLink("/dashboard/my-tickets", Ticket, currentLanguage === 'en' ? "My Tickets" : "Vé của tôi", handleLinkClick, closeMobile)}
@@ -371,7 +398,12 @@ export default function Layout() {
             </div>
           </>
         )}
-        {isStaff && renderLink("/dashboard/report-requests", Undo2, currentLanguage === 'en' ? "Refund Requests" : "Yêu Cầu Hoàn Tiền", handleLinkClick, closeMobile)}
+        {isStaff && (
+          <>
+            {renderLink("/dashboard/event-requests", Undo2, currentLanguage === 'en' ? "Request Management" : "Quản lý yêu cầu", handleLinkClick, closeMobile)}
+            {renderLink("/dashboard/report-requests", Undo2, currentLanguage === 'en' ? "Refund Requests" : "Yêu Cầu Hoàn Tiền", handleLinkClick, closeMobile)}
+          </>
+        )}
         {renderLink("/dashboard/profile", User, currentLanguage === 'en' ? "Profile" : "Hồ sơ cá nhân", handleLinkClick, closeMobile)}
       </>
     )
