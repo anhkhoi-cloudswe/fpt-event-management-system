@@ -53,7 +53,7 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 		// Thêm enum value SCHOOL_ORGANIZER nếu enum đã tạo trước đó
 		_, _ = db.ExecContext(ctx, "ALTER TYPE user_role_enum ADD VALUE IF NOT EXISTS 'SCHOOL_ORGANIZER';")
 
-		// 3. Tạo toàn bộ bảng theo đúng schema production
+		// 3. Tạo toàn bộ bảng theo đúng schema production chuẩn
 		fullTablesSQL := `
 			CREATE TABLE IF NOT EXISTS users (
 				user_id SERIAL PRIMARY KEY,
@@ -61,8 +61,8 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				email VARCHAR(100) NOT NULL UNIQUE,
 				phone VARCHAR(20),
 				password_hash VARCHAR(255) NOT NULL,
-				role VARCHAR(50) NOT NULL DEFAULT 'STUDENT',
-				status VARCHAR(50) DEFAULT 'ACTIVE',
+				role user_role_enum NOT NULL DEFAULT 'STUDENT',
+				status user_status_enum DEFAULT 'ACTIVE',
 				created_at TIMESTAMPTZ DEFAULT NOW(),
 				wallet NUMERIC(18,2) DEFAULT 0.00,
 				sso_provider VARCHAR(50) DEFAULT NULL,
@@ -70,145 +70,186 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				theme VARCHAR(10) DEFAULT 'light',
 				language VARCHAR(10) DEFAULT 'vi',
 				active_session_token_id VARCHAR(255) DEFAULT NULL,
-				previous_role VARCHAR(50) DEFAULT NULL
+				previous_role user_role_enum DEFAULT NULL
+			);
+
+			CREATE TABLE IF NOT EXISTS speaker (
+				speaker_id SERIAL PRIMARY KEY,
+				full_name VARCHAR(100) NOT NULL,
+				bio TEXT,
+				email VARCHAR(100),
+				phone VARCHAR(20),
+				avatar_url VARCHAR(255)
 			);
 
 			CREATE TABLE IF NOT EXISTS venue (
 				venue_id SERIAL PRIMARY KEY,
-				name VARCHAR(255) NOT NULL,
-				location VARCHAR(255) NOT NULL,
-				status VARCHAR(50) DEFAULT 'AVAILABLE',
-				created_at TIMESTAMPTZ DEFAULT NOW()
+				venue_name VARCHAR(200) NOT NULL,
+				location VARCHAR(255),
+				status venue_status_enum DEFAULT 'AVAILABLE'
 			);
 
 			CREATE TABLE IF NOT EXISTS venue_area (
 				area_id SERIAL PRIMARY KEY,
-				venue_id INT REFERENCES venue(venue_id) ON DELETE CASCADE,
-				name VARCHAR(255) NOT NULL,
-				floor INT DEFAULT 1,
-				total_capacity INT NOT NULL DEFAULT 100,
-				status VARCHAR(50) DEFAULT 'AVAILABLE',
-				created_at TIMESTAMPTZ DEFAULT NOW()
+				venue_id INTEGER NOT NULL REFERENCES venue(venue_id) ON DELETE CASCADE,
+				area_name VARCHAR(200) NOT NULL,
+				floor VARCHAR(50),
+				capacity INTEGER NOT NULL DEFAULT 100,
+				status venue_area_status_enum DEFAULT 'AVAILABLE'
 			);
 
 			CREATE TABLE IF NOT EXISTS event (
 				event_id SERIAL PRIMARY KEY,
-				title VARCHAR(255) NOT NULL,
+				title VARCHAR(200) NOT NULL,
 				description TEXT,
 				start_time TIMESTAMPTZ NOT NULL,
 				end_time TIMESTAMPTZ NOT NULL,
+				speaker_id INTEGER REFERENCES speaker(speaker_id),
+				max_seats INTEGER DEFAULT 0,
+				status event_status_enum NOT NULL DEFAULT 'UPDATING',
+				created_by INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+				created_at TIMESTAMPTZ DEFAULT NOW(),
+				area_id INTEGER REFERENCES venue_area(area_id),
 				banner_url VARCHAR(500),
-				status VARCHAR(50) NOT NULL DEFAULT 'OPEN',
-				created_by INT REFERENCES users(user_id) ON DELETE CASCADE,
-				area_id INT,
-				max_seats INT DEFAULT 0,
-				event_format VARCHAR(50) DEFAULT 'ONSITE',
-				meeting_url VARCHAR(500),
-				passcode VARCHAR(50),
-				organization_type VARCHAR(50) DEFAULT 'FREE',
-				privacy_status VARCHAR(50) DEFAULT 'PUBLIC',
-				is_settled BOOLEAN DEFAULT FALSE,
-				created_at TIMESTAMPTZ DEFAULT NOW()
+				checkin_offset INTEGER DEFAULT 60,
+				checkout_offset INTEGER DEFAULT 30,
+				event_format VARCHAR(50) NOT NULL DEFAULT 'ONSITE',
+				custom_venue_name VARCHAR(200),
+				custom_location VARCHAR(255),
+				org_type organization_type_enum NOT NULL DEFAULT 'SCHOOL',
+				privacy_status privacy_status_enum NOT NULL DEFAULT 'PUBLIC',
+				online_meeting_url VARCHAR(500),
+				online_meeting_id VARCHAR(100),
+				online_meeting_secret VARCHAR(100),
+				is_settled BOOLEAN NOT NULL DEFAULT FALSE,
+				settled_at TIMESTAMPTZ
 			);
 
 			CREATE TABLE IF NOT EXISTS event_request (
 				request_id SERIAL PRIMARY KEY,
-				requester_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-				title VARCHAR(255) NOT NULL,
+				requester_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+				title VARCHAR(200) NOT NULL,
 				description TEXT,
-				preferred_start_time TIMESTAMPTZ NOT NULL,
-				preferred_end_time TIMESTAMPTZ NOT NULL,
-				expected_capacity INT DEFAULT 50,
-				status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
-				organizer_note TEXT,
-				reject_reason TEXT,
-				processed_by INT,
+				preferred_start_time TIMESTAMPTZ,
+				preferred_end_time TIMESTAMPTZ,
+				expected_capacity INTEGER,
+				status event_request_status_enum DEFAULT 'PENDING',
+				created_at TIMESTAMPTZ DEFAULT NOW(),
+				processed_by INTEGER REFERENCES users(user_id),
 				processed_at TIMESTAMPTZ,
-				created_event_id INT,
+				organizer_note VARCHAR(500),
+				created_event_id INTEGER REFERENCES event(event_id),
+				reject_reason TEXT,
+				event_format VARCHAR(50) NOT NULL DEFAULT 'ONSITE',
+				custom_venue_name VARCHAR(200),
+				custom_location VARCHAR(255),
 				banner_url VARCHAR(500),
-				event_format VARCHAR(50) DEFAULT 'ONSITE',
-				meeting_url VARCHAR(500),
-				passcode VARCHAR(50),
-				organization_type VARCHAR(50) DEFAULT 'FREE',
-				privacy_status VARCHAR(50) DEFAULT 'PUBLIC',
-				created_at TIMESTAMPTZ DEFAULT NOW()
+				org_type organization_type_enum NOT NULL DEFAULT 'SCHOOL',
+				privacy_status privacy_status_enum NOT NULL DEFAULT 'PUBLIC',
+				online_meeting_url VARCHAR(500),
+				online_meeting_id VARCHAR(100),
+				online_meeting_secret VARCHAR(100)
 			);
 
 			CREATE TABLE IF NOT EXISTS category_ticket (
 				category_ticket_id SERIAL PRIMARY KEY,
-				event_id INT NOT NULL REFERENCES event(event_id) ON DELETE CASCADE,
-				name VARCHAR(255) NOT NULL,
-				price NUMERIC(18,2) NOT NULL DEFAULT 0.00,
-				max_quantity INT NOT NULL DEFAULT 0,
-				status VARCHAR(50) DEFAULT 'AVAILABLE',
-				description TEXT,
-				created_at TIMESTAMPTZ DEFAULT NOW()
+				event_id INTEGER NOT NULL REFERENCES event(event_id) ON DELETE CASCADE,
+				name VARCHAR(50) NOT NULL,
+				description VARCHAR(255),
+				price NUMERIC(18,2) DEFAULT 0.00,
+				max_quantity INTEGER DEFAULT 0,
+				status category_ticket_status_enum NOT NULL DEFAULT 'AVAILABLE'
 			);
 
 			CREATE TABLE IF NOT EXISTS bill (
 				bill_id SERIAL PRIMARY KEY,
-				user_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-				total_amount NUMERIC(18,2) NOT NULL DEFAULT 0.00,
-				payment_status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
-				payment_method VARCHAR(50) DEFAULT 'PAYOS',
-				created_at TIMESTAMPTZ DEFAULT NOW()
+				user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+				total_amount NUMERIC(18,2) NOT NULL,
+				currency VARCHAR(10) DEFAULT 'VND',
+				payment_method VARCHAR(50),
+				payment_status payment_status_enum DEFAULT 'PENDING',
+				created_at TIMESTAMPTZ DEFAULT NOW(),
+				paid_at TIMESTAMPTZ
 			);
 
 			CREATE TABLE IF NOT EXISTS seat (
 				seat_id SERIAL PRIMARY KEY,
-				seat_code VARCHAR(50) NOT NULL,
-				area_id INT NOT NULL,
-				status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
-				created_at TIMESTAMPTZ DEFAULT NOW()
+				seat_code VARCHAR(20) NOT NULL,
+				row_no VARCHAR(10),
+				col_no VARCHAR(10),
+				status seat_status_enum DEFAULT 'ACTIVE',
+				area_id INTEGER NOT NULL REFERENCES venue_area(area_id),
+				category_ticket_id INTEGER REFERENCES category_ticket(category_ticket_id) ON DELETE SET NULL
 			);
 
 			CREATE TABLE IF NOT EXISTS event_seat_layout (
-				layout_id SERIAL PRIMARY KEY,
-				event_id INT NOT NULL REFERENCES event(event_id) ON DELETE CASCADE,
-				seat_id INT NOT NULL REFERENCES seat(seat_id) ON DELETE CASCADE,
-				status VARCHAR(50) NOT NULL DEFAULT 'AVAILABLE',
-				seat_type VARCHAR(50) NOT NULL DEFAULT 'STANDARD',
-				price NUMERIC(18,2) NOT NULL DEFAULT 0.00,
-				created_at TIMESTAMPTZ DEFAULT NOW()
+				event_id INTEGER NOT NULL REFERENCES event(event_id) ON DELETE CASCADE,
+				seat_id INTEGER NOT NULL REFERENCES seat(seat_id) ON DELETE CASCADE,
+				seat_type seat_type_enum NOT NULL,
+				status seat_layout_status_enum DEFAULT 'AVAILABLE',
+				PRIMARY KEY (event_id, seat_id)
 			);
 
 			CREATE TABLE IF NOT EXISTS ticket (
 				ticket_id SERIAL PRIMARY KEY,
-				user_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-				event_id INT NOT NULL REFERENCES event(event_id) ON DELETE CASCADE,
-				category_ticket_id INT REFERENCES category_ticket(category_ticket_id) ON DELETE CASCADE,
-				bill_id INT REFERENCES bill(bill_id) ON DELETE CASCADE,
-				seat_id INT,
-				qr_code_value VARCHAR(255) NOT NULL,
-				status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
-				created_at TIMESTAMPTZ DEFAULT NOW(),
-				checked_in_at TIMESTAMPTZ,
-				checked_out_at TIMESTAMPTZ
+				event_id INTEGER NOT NULL REFERENCES event(event_id) ON DELETE CASCADE,
+				user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+				category_ticket_id INTEGER NOT NULL REFERENCES category_ticket(category_ticket_id),
+				bill_id INTEGER REFERENCES bill(bill_id) ON DELETE SET NULL,
+				seat_id INTEGER REFERENCES seat(seat_id),
+				qr_code_value TEXT NOT NULL,
+				qr_issued_at TIMESTAMPTZ DEFAULT NOW(),
+				status ticket_status_enum DEFAULT 'BOOKED',
+				checkin_time TIMESTAMPTZ,
+				check_out_time TIMESTAMPTZ,
+				created_at TIMESTAMPTZ DEFAULT NOW()
 			);
 
 			CREATE TABLE IF NOT EXISTS wallet (
 				wallet_id SERIAL PRIMARY KEY,
-				user_id INT UNIQUE NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-				balance NUMERIC(18,2) NOT NULL DEFAULT 0.00,
-				pending_balance NUMERIC(18,2) NOT NULL DEFAULT 0.00,
+				user_id INTEGER NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
+				balance NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+				pending_balance NUMERIC(15,2) NOT NULL DEFAULT 0.00,
 				currency VARCHAR(10) NOT NULL DEFAULT 'VND',
-				status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
-				created_at TIMESTAMPTZ DEFAULT NOW(),
-				updated_at TIMESTAMPTZ DEFAULT NOW()
+				status wallet_status_enum NOT NULL DEFAULT 'ACTIVE',
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 			);
 
 			CREATE TABLE IF NOT EXISTS wallet_transaction (
 				transaction_id SERIAL PRIMARY KEY,
-				wallet_id INT REFERENCES wallet(wallet_id) ON DELETE CASCADE,
-				user_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-				amount NUMERIC(18,2) NOT NULL,
-				balance_before NUMERIC(18,2) NOT NULL DEFAULT 0.00,
-				balance_after NUMERIC(18,2) NOT NULL DEFAULT 0.00,
-				transaction_type VARCHAR(50) NOT NULL,
-				status VARCHAR(50) NOT NULL DEFAULT 'PAID',
+				wallet_id INTEGER NOT NULL REFERENCES wallet(wallet_id),
+				user_id INTEGER NOT NULL REFERENCES users(user_id),
+				type wallet_transaction_type_enum NOT NULL,
+				amount NUMERIC(15,2) NOT NULL,
+				balance_before NUMERIC(15,2) NOT NULL,
+				balance_after NUMERIC(15,2) NOT NULL,
+				reference_type VARCHAR(50),
 				reference_id VARCHAR(100),
 				description TEXT,
-				created_at TIMESTAMPTZ DEFAULT NOW()
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			);
+
+			CREATE TABLE IF NOT EXISTS financial_receipt (
+				receipt_id SERIAL PRIMARY KEY,
+				order_id BIGINT NOT NULL,
+				bill_id INTEGER REFERENCES bill(bill_id) ON DELETE SET NULL,
+				ticket_id INTEGER REFERENCES ticket(ticket_id) ON DELETE SET NULL,
+				event_id INTEGER NOT NULL REFERENCES event(event_id) ON DELETE CASCADE,
+				organizer_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+				gross_amount NUMERIC(15,2) NOT NULL,
+				system_fee_percentage NUMERIC(5,2) NOT NULL DEFAULT 5.00,
+				fixed_fee NUMERIC(15,2) NOT NULL DEFAULT 1000.00,
+				commission_amount NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+				net_amount NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+				currency VARCHAR(10) NOT NULL DEFAULT 'VND',
+				tier_code VARCHAR(50) NOT NULL DEFAULT 'FREE',
+				commission_bps INTEGER NOT NULL DEFAULT 500,
+				fee_source VARCHAR(50) NOT NULL DEFAULT 'TIER',
+				fee_config_version INTEGER DEFAULT 1,
+				is_reversal BOOLEAN NOT NULL DEFAULT FALSE,
+				reversal_of_receipt_id INTEGER REFERENCES financial_receipt(receipt_id) ON DELETE SET NULL,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 			);
 
 			CREATE TABLE IF NOT EXISTS subscription_tier (
@@ -222,7 +263,7 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				max_capacity_limit INTEGER NOT NULL DEFAULT 100,
 				has_advanced_reports BOOLEAN NOT NULL DEFAULT FALSE,
 				is_active BOOLEAN NOT NULL DEFAULT TRUE,
-				updated_by INTEGER,
+				updated_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
 				created_at TIMESTAMPTZ DEFAULT NOW(),
 				updated_at TIMESTAMPTZ DEFAULT NOW()
 			);
@@ -235,7 +276,7 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				max_capacity_limit INTEGER NOT NULL DEFAULT -1,
 				has_advanced_reports BOOLEAN NOT NULL DEFAULT TRUE,
 				is_active BOOLEAN NOT NULL DEFAULT TRUE,
-				updated_by INTEGER,
+				updated_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
 				updated_at TIMESTAMPTZ DEFAULT NOW()
 			);
 
@@ -249,16 +290,16 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				auto_renew BOOLEAN NOT NULL DEFAULT FALSE,
 				amount_paid_vnd BIGINT NOT NULL DEFAULT 0,
 				prorated_credit_vnd BIGINT NOT NULL DEFAULT 0,
-				scheduled_downgrade_tier_id INTEGER,
+				scheduled_downgrade_tier_id INTEGER REFERENCES subscription_tier(tier_id) ON DELETE SET NULL,
 				request_id VARCHAR(100) UNIQUE,
-				bill_id INTEGER,
+				bill_id INTEGER REFERENCES bill(bill_id) ON DELETE SET NULL,
 				created_at TIMESTAMPTZ DEFAULT NOW(),
 				updated_at TIMESTAMPTZ DEFAULT NOW()
 			);
 
 			CREATE TABLE IF NOT EXISTS subscription_payment_log (
 				payment_id SERIAL PRIMARY KEY,
-				subscription_id INTEGER,
+				subscription_id INTEGER REFERENCES user_subscription(subscription_id) ON DELETE CASCADE,
 				user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
 				tier_id INTEGER NOT NULL REFERENCES subscription_tier(tier_id) ON DELETE RESTRICT,
 				action_type VARCHAR(30) NOT NULL,
@@ -276,7 +317,7 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				commission_bps INTEGER NOT NULL,
 				reason TEXT NOT NULL,
 				effective_range TSTZRANGE NOT NULL,
-				created_by INTEGER NOT NULL,
+				created_by INTEGER NOT NULL REFERENCES users(user_id),
 				created_at TIMESTAMPTZ DEFAULT NOW(),
 				updated_at TIMESTAMPTZ DEFAULT NOW()
 			);
@@ -286,7 +327,7 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				param_value VARCHAR(255) NOT NULL,
 				description TEXT,
 				updated_at TIMESTAMPTZ DEFAULT NOW(),
-				updated_by INTEGER
+				updated_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL
 			);
 
 			CREATE TABLE IF NOT EXISTS fee_audit_log (
@@ -297,46 +338,39 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				old_value JSONB,
 				new_value JSONB,
 				reason TEXT NOT NULL,
-				changed_by INTEGER NOT NULL,
+				changed_by INTEGER NOT NULL REFERENCES users(user_id),
 				created_at TIMESTAMPTZ DEFAULT NOW()
 			);
 
-			CREATE TABLE IF NOT EXISTS financial_receipt (
-				receipt_id SERIAL PRIMARY KEY,
-				order_id BIGINT,
-				bill_id INT,
-				ticket_id INT,
-				event_id INT NOT NULL,
-				organizer_id INT NOT NULL,
-				gross_amount NUMERIC(18,2) NOT NULL,
-				system_fee_percentage NUMERIC(5,2) NOT NULL DEFAULT 5.00,
-				fixed_fee NUMERIC(18,2) NOT NULL DEFAULT 0.00,
-				commission_bps INT NOT NULL DEFAULT 500,
-				fee_config_version INT NOT NULL DEFAULT 1,
-				commission_amount NUMERIC(18,2) NOT NULL DEFAULT 0.00,
-				net_amount NUMERIC(18,2) NOT NULL,
-				tier_code VARCHAR(50) NOT NULL DEFAULT 'FREE',
-				fee_source VARCHAR(50) NOT NULL DEFAULT 'TIER',
-				is_reversal BOOLEAN NOT NULL DEFAULT FALSE,
+			CREATE TABLE IF NOT EXISTS platform_expense_ledger (
+				expense_id SERIAL PRIMARY KEY,
+				expense_type VARCHAR(50) NOT NULL,
+				amount BIGINT NOT NULL CHECK (amount > 0),
+				currency VARCHAR(10) NOT NULL DEFAULT 'VND',
+				reference_type VARCHAR(50),
+				reference_id VARCHAR(100),
+				description TEXT,
 				created_at TIMESTAMPTZ DEFAULT NOW()
 			);
 
 			-- Seed dữ liệu cấu hình mặc định
-			INSERT INTO subscription_tier (tier_id, tier_code, name, price_vnd, commission_bps, max_capacity_limit, has_advanced_reports, is_active)
+			INSERT INTO subscription_tier (tier_id, tier_code, name, description, price_vnd, commission_bps, max_capacity_limit, has_advanced_reports, is_active)
 			VALUES 
-				(1, 'FREE', 'Gói Miễn Phí', 0, 500, 100, FALSE, TRUE),
-				(2, 'PRO', 'Gói Chuyên Nghiệp', 299000, 250, -1, TRUE, TRUE),
-				(3, 'BUSINESS', 'Gói Doanh Nghiệp', 1000000, 0, -1, TRUE, TRUE)
+				(1, 'FREE', 'Gói Miễn Phí', 'Gói mặc định cho tất cả Organizer khi mới tạo tài khoản', 0, 500, 100, FALSE, TRUE),
+				(2, 'PRO', 'Gói Chuyên Nghiệp', 'Không giới hạn sức chứa, phí hoa hồng ưu đãi 2.5%, mở khóa báo cáo nâng cao', 299000, 250, -1, TRUE, TRUE),
+				(3, 'BUSINESS', 'Gói Doanh Nghiệp', 'Dành cho các đơn vị lớn, 0% hoa hồng nền tảng, toàn quyền báo cáo và quản lý', 1000000, 0, -1, TRUE, TRUE)
 			ON CONFLICT (tier_id) DO NOTHING;
 
-			INSERT INTO role_fee_policy (role_code, name, commission_bps, max_capacity_limit, has_advanced_reports, is_active)
-			VALUES ('SCHOOL_ORGANIZER', 'Đơn vị nội bộ FPT', 250, -1, TRUE, TRUE)
+			INSERT INTO role_fee_policy (role_code, name, description, commission_bps, max_capacity_limit, has_advanced_reports, is_active)
+			VALUES ('SCHOOL_ORGANIZER', 'Đơn vị nội bộ FPT', 'Chính sách ưu đãi đặc thù cho các ban ngành/CLB trực thuộc Trường', 250, -1, TRUE, TRUE)
 			ON CONFLICT (role_code) DO NOTHING;
 
 			INSERT INTO platform_system_parameter (param_key, param_value, description)
 			VALUES 
 				('FEE_CONFIG_VERSION', '1', 'Phiên bản biểu phí hiện tại'),
-				('SYSTEM_MIN_PAYOUT_AMOUNT', '50000', 'Hạn mức rút tiền tối thiểu')
+				('SYSTEM_MIN_PAYOUT_AMOUNT', '50000', 'Hạn mức rút tiền tối thiểu'),
+				('FIXED_FEE_PER_TICKET', '1000', 'Phí cố định mỗi vé'),
+				('FIXED_FEE_MIN_TICKET_PRICE', '20000', 'Giá vé tối thiểu áp dụng phí cố định')
 			ON CONFLICT (param_key) DO NOTHING;
 		`
 		_, err = db.ExecContext(ctx, fullTablesSQL)
