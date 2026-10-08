@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import GA4AnalyticsDashboard from '../components/analytics/GA4AnalyticsDashboard'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { UserPlus, Edit, Trash2, Search, Filter, Users, ShieldAlert, Award, Image as ImageIcon, Plus, X, Upload, DollarSign, Building2 } from 'lucide-react'
@@ -8,7 +9,7 @@ import SpeakerFormModal from '../components/admin/SpeakerFormModal'
 import type { CreateUserRequest, UpdateUserRequest } from '../types/user'
 import { uploadEventBanner } from '../utils/imageUpload'
 
-type ActiveTab = 'STUDENT' | 'SPEAKER' | 'INTERNAL' | 'BANNER' | 'ORGANIZATION'
+type ActiveTab = 'STUDENT' | 'SPEAKER' | 'INTERNAL' | 'BANNER' | 'ORGANIZATION' | 'ANALYTICS'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
@@ -665,10 +666,35 @@ export default function AdminDashboard() {
           <ImageIcon size={16} />
           Ảnh bìa mẫu
         </button>
+
+        <button
+          onClick={() => setActiveTab('ANALYTICS')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
+            activeTab === 'ANALYTICS'
+              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow shadow-orange-500/10'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
+          }`}
+        >
+          <span>📊</span>
+          GA4 Analytics
+        </button>
       </div>
 
-      {/* Search & Filter Section */}
-      <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-2xl shadow-sm p-4">
+      {/* ===================== GA4 ANALYTICS TAB ===================== */}
+      {activeTab === 'ANALYTICS' && (
+        <div className="space-y-4">
+          <GA4AnalyticsDashboard
+            eventId={null}
+            tierCode={null}
+            role={user?.role}
+          />
+        </div>
+      )}
+
+      {/* Search & Filter Section — hidden for ANALYTICS tab */}
+      {activeTab !== 'ANALYTICS' && (
+        <>
+          <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-2xl shadow-sm p-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="relative w-full md:max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
@@ -960,6 +986,8 @@ export default function AdminDashboard() {
             </table>
           </div>
         </div>
+      )}
+        </>
       )}
 
       <UserFormModal

@@ -15,7 +15,7 @@ export type SubscriptionTierData = SubscriptionTier & {
 interface UpgradePlanModalProps {
   isOpen: boolean
   onClose: () => void
-  type?: 'CAPACITY' | 'REPORTS' | 'GENERAL'
+  type?: 'CAPACITY' | 'REPORTS' | 'GA4' | 'GENERAL'
   requestedCapacity?: number
   currentTier?: string
   maxAllowed?: number
@@ -163,7 +163,7 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
 
         {/* Header */}
         <div className="px-8 pt-8 pb-4 text-center">
-          {type === 'REPORTS' ? (
+          {type === 'REPORTS' || type === 'GA4' ? (
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-3">
               <Sparkles className="w-4 h-4" />
               Tính Năng Dành Cho Gói Nâng Cao
@@ -175,10 +175,18 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
             </div>
           )}
           <h2 id="upgrade-modal-title" className="text-2xl sm:text-3xl font-bold tracking-tight">
-            {type === 'REPORTS' ? 'Mở Khóa Báo Cáo Chuyên Sâu' : 'Yêu Cầu Nâng Cấp Gói Organizer'}
+            {type === 'GA4'
+              ? 'Mở Khóa Google Analytics 4 (GA4)'
+              : type === 'REPORTS'
+              ? 'Mở Khóa Báo Cáo Chuyên Sâu'
+              : 'Yêu Cầu Nâng Cấp Gói Organizer'}
           </h2>
           <p className="mt-2 text-sm text-neutral-400 max-w-xl mx-auto">
-            {type === 'REPORTS' ? (
+            {type === 'GA4' ? (
+              <>
+                Tính năng phân tích lưu lượng truy cập trực tiếp, thiết bị, nguồn truy cập và Real-time người dùng chỉ dành cho gói <span className="font-semibold text-orange-400">PRO</span> hoặc <span className="font-semibold text-amber-400">BUSINESS</span>. Vui lòng nâng cấp tài khoản để mở khóa toàn bộ số liệu.
+              </>
+            ) : type === 'REPORTS' ? (
               <>
                 Tính năng phân tích doanh thu theo giờ, cơ cấu vé và tỷ lệ lấp đầy chuyên sâu chỉ dành cho gói <span className="font-semibold text-orange-400">PRO</span> hoặc <span className="font-semibold text-amber-400">BUSINESS</span>. Vui lòng nâng cấp tài khoản để mở khóa toàn bộ số liệu.
               </>

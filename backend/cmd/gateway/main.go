@@ -66,6 +66,7 @@ var routes = []Route{
 	{"/api/users/", "Auth"},
 
 	// ========== Event Service (8082) ==========
+	{"/api/v1/analytics", "Event"},
 	{"/api/v1/admin/speakers", "Event"},
 	{"/api/v1/admin/sample-banners", "Event"},
 	{"/api/v1/speakers", "Event"},

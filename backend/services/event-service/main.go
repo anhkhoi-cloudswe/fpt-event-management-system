@@ -26,6 +26,7 @@ var (
 	eventHandler          *handler.EventHandler
 	eventInternalHandler  *handler.EventInternalHandler
 	eventSchedulerHandler *handler.EventSchedulerHandler
+	ga4Handler            *handler.GA4Handler
 )
 
 func init() {
@@ -58,6 +59,7 @@ func init() {
 	eventHandler = handler.NewEventHandlerWithDB(dbConn)
 	eventInternalHandler = handler.NewEventInternalHandlerWithDB(dbConn)
 	eventSchedulerHandler = handler.NewEventSchedulerHandlerWithDB(dbConn)
+	ga4Handler = handler.NewGA4Handler(eventHandler)
 }
 
 // Handler routes all API Gateway requests to the appropriate handler
@@ -130,6 +132,14 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	// ========== Public Routes ==========
 	switch {
+	// ========== GA4 Analytics Routes ==========
+	case path == "/api/v1/analytics/system" && method == "GET":
+		return ga4Handler.HandleGetSystemAnalytics(ctx, request)
+	case strings.HasPrefix(path, "/api/v1/analytics/event") && method == "GET":
+		return ga4Handler.HandleGetEventAnalytics(ctx, request)
+	case path == "/api/v1/analytics/realtime" && method == "GET":
+		return ga4Handler.HandleGetRealtimeAnalytics(ctx, request)
+
 	case (path == "/api/v1/admin/speakers" || path == "/api/v1/speakers") && method == "GET":
 		return eventHandler.HandleGetSpeakers(ctx, request)
 	case path == "/api/v1/speakers" && method == "POST":

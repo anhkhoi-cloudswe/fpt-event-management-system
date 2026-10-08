@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import GA4AnalyticsDashboard from '../components/analytics/GA4AnalyticsDashboard'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Calendar,
@@ -106,7 +107,7 @@ export default function Reports() {
   const navigate = useNavigate()
 
   // Tabs: basic = Báo cáo cơ bản | advanced = Báo cáo nâng cao
-  const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic')
+  const [activeTab, setActiveTab] = useState<'basic' | 'advanced' | 'ga4'>('basic')
 
   // UI States
   const [events, setEvents] = useState<EventOption[]>([])
@@ -173,6 +174,7 @@ export default function Reports() {
 
   const [currentSub, setCurrentSub] = useState<CurrentSubscription | null>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false)
+  const [upgradeModalType, setUpgradeModalType] = useState<'REPORTS' | 'GA4'>('REPORTS')
 
   // Fetch current subscription
   useEffect(() => {
@@ -788,6 +790,7 @@ export default function Reports() {
           <button
             onClick={() => {
               if (currentSub && !currentSub.hasAdvancedReports && user?.role !== 'ADMIN') {
+                setUpgradeModalType('REPORTS')
                 setShowUpgradeModal(true)
                 return
               }
@@ -813,7 +816,59 @@ export default function Reports() {
               )}
             </div>
           </button>
+
+          {/* GA4 Analytics Tab */}
+          <button
+            onClick={() => {
+              if (currentSub && currentSub.tierCode === 'FREE' && user?.role !== 'ADMIN') {
+                setUpgradeModalType('GA4')
+                setShowUpgradeModal(true)
+                return
+              }
+              setActiveTab('ga4')
+            }}
+            className={`pb-3.5 font-black text-sm tracking-wide transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+              activeTab === 'ga4'
+                ? 'border-orange-500 text-orange-600 dark:text-orange-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span>📊</span>
+              <span>GA4 Analytics</span>
+              {currentSub && currentSub.tierCode === 'FREE' && user?.role !== 'ADMIN' && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                  <Lock size={10} /> PRO+
+                </span>
+              )}
+              {currentSub && currentSub.tierCode === 'PRO' && user?.role !== 'ADMIN' && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                  PRO
+                </span>
+              )}
+              {(currentSub?.tierCode === 'BUSINESS' || user?.role === 'ADMIN') && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">
+                  {user?.role === 'ADMIN' ? 'ADMIN' : 'BUSINESS'}
+                </span>
+              )}
+            </div>
+          </button>
         </div>
+
+        {/* ===================== TAB GA4: GOOGLE ANALYTICS 4 ===================== */}
+        {activeTab === 'ga4' && (
+          <div className="space-y-4">
+            <GA4AnalyticsDashboard
+              eventId={
+                selectedEventId && selectedEventId !== 'ALL'
+                  ? Number(selectedEventId)
+                  : null
+              }
+              tierCode={currentSub?.tierCode}
+              role={user?.role}
+            />
+          </div>
+        )}
 
         {/* ===================== TAB 1: BÁO CÁO CƠ BẢN ===================== */}
         {activeTab === 'basic' && (
@@ -1929,11 +1984,11 @@ export default function Reports() {
         )}
       </div>
 
-      {/* Modal Nâng Cấp Gói Cho Báo Cáo Nâng Cao */}
+      {/* Modal Nâng Cấp Gói Cho Báo Cáo Nâng Cao & GA4 */}
       <UpgradePlanModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        type="REPORTS"
+        type={upgradeModalType}
         currentTier={currentSub?.tierName || currentSub?.tierCode || 'FREE'}
       />
     </div>

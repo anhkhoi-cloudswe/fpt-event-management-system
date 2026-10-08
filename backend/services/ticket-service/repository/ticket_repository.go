@@ -607,7 +607,7 @@ func (r *TicketRepository) GetCategoryTicketsByEventID(ctx context.Context, even
 func (r *TicketRepository) GetBillsByUserID(ctx context.Context, userID int) ([]models.MyBillResponse, error) {
 	fmt.Printf("[DEBUG] GetBillsByUserID - userID: %d\n", userID)
 
-	// Simplified query - không dùng Bill_Detail vì có thể chưa có bảng hoặc data
+	// Simplified query - Exclude abandoned PENDING subscription and topup bills to avoid log spam
 	query := `
 		SELECT 
 			b.bill_id,
@@ -617,6 +617,7 @@ func (r *TicketRepository) GetBillsByUserID(ctx context.Context, userID int) ([]
 			b.created_at
 		FROM Bill b
 		WHERE b.user_id = $1
+		  AND NOT (b.payment_status = 'PENDING' AND b.payment_method IN ('SUBSCRIPTION', 'TOPUP'))
 		ORDER BY b.created_at DESC
 	`
 
@@ -676,7 +677,11 @@ func (r *TicketRepository) GetBillsByUserIDPaginated(ctx context.Context, userID
 	offset := (page - 1) * limit
 
 	// Build query với WHERE conditions
-	whereConditions := []string{"b.user_id = $1"}
+	// Do not show abandoned PENDING subscription or topup bills in invoice history
+	whereConditions := []string{
+		"b.user_id = $1",
+		"NOT (b.payment_status = 'PENDING' AND b.payment_method IN ('SUBSCRIPTION', 'TOPUP'))",
+	}
 	args := []interface{}{userID}
 
 	// Search theo mã hóa đơn

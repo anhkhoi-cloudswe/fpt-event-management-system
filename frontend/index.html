@@ -28,6 +28,17 @@
   </script>
   <!-- Google reCAPTCHA -->
   <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-1CV5YN8M2Z"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-1CV5YN8M2Z', {
+      page_path: window.location.pathname,
+      send_page_view: true
+    });
+  </script>
 </head>
 
 <body>

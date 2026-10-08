@@ -9,7 +9,8 @@ import {
   X,
   Copy,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Wallet
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import {
@@ -74,6 +75,10 @@ export default function OrganizerSubscriptionPage() {
   const [selectedTierForDowngrade, setSelectedTierForDowngrade] = useState<SubscriptionTier | null>(null)
   const [downgradeSubmitting, setDowngradeSubmitting] = useState(false)
   const [downgradeError, setDowngradeError] = useState<string | null>(null)
+
+  // Wallet Confirmation Modal State
+  const [walletConfirmTier, setWalletConfirmTier] = useState<SubscriptionTier | null>(null)
+  const [walletPaySubmitting, setWalletPaySubmitting] = useState(false)
 
   const [searchParams, setSearchParams] = useSearchParams()
   const handledReturnRef = useRef(false)
@@ -195,30 +200,15 @@ export default function OrganizerSubscriptionPage() {
   // Handle direct payment initiation with PayOS / SePay
   const handleInitiateDirectPayment = async (tier: SubscriptionTier) => {
     const { netPay } = calculateUpgradeCost(tier)
-    setPaymentModalTier(tier)
-    setPaymentError(null)
 
-    // Nếu số dư ví hiện tại đủ thanh toán luôn
+    // Nếu số dư ví hiện tại đủ thanh toán luôn -> Mở Modal Xác Nhận Thanh Toán Ví
     if (balance >= netPay && netPay > 0) {
-      setPaymentSubmitting(true)
-      try {
-        const res = await subscriptionService.subscribeOrUpgrade({
-          tierCode: tier.tierCode,
-          requestId: generateUUID(),
-          autoRenew: true,
-        })
-        showToast('success', res.message || `Nâng cấp lên ${tier.name} thành công!`)
-        emitWalletRefresh()
-        setPaymentModalTier(null)
-        fetchData()
-      } catch (err: any) {
-        const msg = err?.response?.data?.message || err?.message || 'Lỗi xử lý thanh toán ví.'
-        setPaymentError(msg)
-      } finally {
-        setPaymentSubmitting(false)
-      }
+      setWalletConfirmTier(tier)
       return
     }
+
+    setPaymentModalTier(tier)
+    setPaymentError(null)
 
     // Nếu số dư ví chưa đủ hoặc thanh toán trực tiếp qua PayOS QR
     const amountNeeded = netPay > balance ? netPay - balance : netPay
@@ -230,6 +220,28 @@ export default function OrganizerSubscriptionPage() {
       setPaymentError(err?.response?.data?.message || err?.message || 'Lỗi khởi tạo cổng thanh toán payOS')
     } finally {
       setPaymentSubmitting(false)
+    }
+  }
+
+  // Handle actual wallet payment execution after user confirms in modal
+  const handleConfirmWalletPayment = async () => {
+    if (!walletConfirmTier || walletPaySubmitting) return
+    setWalletPaySubmitting(true)
+    try {
+      const res = await subscriptionService.subscribeOrUpgrade({
+        tierCode: walletConfirmTier.tierCode,
+        requestId: generateUUID(),
+        autoRenew: true,
+      })
+      showToast('success', res.message || `Nâng cấp lên ${walletConfirmTier.name} thành công!`)
+      emitWalletRefresh()
+      setWalletConfirmTier(null)
+      fetchData()
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi xử lý thanh toán ví.'
+      showToast('error', msg)
+    } finally {
+      setWalletPaySubmitting(false)
     }
   }
 
@@ -352,7 +364,14 @@ export default function OrganizerSubscriptionPage() {
       features.push('Báo cáo sự kiện cơ bản')
     }
 
-    // 4. Quyền lợi bổ sung nếu có miêu tả
+    // 4. Quyền Google Analytics 4 (GA4) - Chỉ hiển thị cho gói PRO và BUSINESS
+    if (tier.tierCode === 'BUSINESS') {
+      features.push('Google Analytics 4 Toàn Diện + Real-time Users')
+    } else if (tier.tierCode === 'PRO' || tier.hasAdvancedReports) {
+      features.push('Google Analytics 4 (Traffic, Thiết bị, Nguồn)')
+    }
+
+    // 5. Phí cố định nếu có
     if (tier.fixedFeePerTicket && tier.fixedFeePerTicket > 0) {
       features.push(`Phí cố định: ${tier.fixedFeePerTicket.toLocaleString('vi-VN')}đ/vé`)
     }
@@ -709,9 +728,15 @@ export default function OrganizerSubscriptionPage() {
                   Quét mã VietQR bằng app ngân hàng để kích hoạt gói ngay lập tức
                 </p>
 
-                {/* QR Code Container with Vector SVG (100% Reliable Render) */}
-                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 mx-auto w-fit shadow-inner">
-                  {paymentOrder.qrCodeUrl ? (
+                {/* QR Code Container with Vector SVG & Image Support (100% Reliable Render) */}
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 mx-auto w-fit shadow-inner flex items-center justify-center min-w-[210px] min-h-[210px]">
+                  {paymentOrder.qrCodeUrl?.startsWith('http') || paymentOrder.qrCodeUrl?.startsWith('data:image') ? (
+                    <img
+                      src={paymentOrder.qrCodeUrl}
+                      alt="VietQR"
+                      className="w-52 h-52 object-contain"
+                    />
+                  ) : paymentOrder.qrCodeUrl ? (
                     <QRCodeSVG
                       value={paymentOrder.qrCodeUrl}
                       size={200}
@@ -888,6 +913,102 @@ export default function OrganizerSubscriptionPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ══════════════════════════════════════════════════
+          Wallet Payment Confirmation Modal
+      ══════════════════════════════════════════════════ */}
+      {walletConfirmTier && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-7 shadow-2xl space-y-5 text-left">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400">
+                  <Wallet size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">Xác Nhận Thanh Toán Bằng Ví</h3>
+                  <p className="text-[11px] text-slate-500">Tránh thao tác nhầm lẫn khi nâng cấp gói</p>
+                </div>
+              </div>
+              <button
+                disabled={walletPaySubmitting}
+                onClick={() => setWalletConfirmTier(null)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Price Details */}
+            {(() => {
+              const { originalPrice, proratedCredit, netPay } = calculateUpgradeCost(walletConfirmTier)
+              return (
+                <div className="space-y-3">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 space-y-2 text-xs">
+                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                      <span>Gói nâng cấp:</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{walletConfirmTier.name} ({walletConfirmTier.tierCode})</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                      <span>Giá niêm yết:</span>
+                      <span className="font-semibold">{originalPrice.toLocaleString('vi-VN')} đ</span>
+                    </div>
+                    {proratedCredit > 0 && (
+                      <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-semibold">
+                        <span>Khấu trừ gói cũ còn hạn:</span>
+                        <span>-{proratedCredit.toLocaleString('vi-VN')} đ</span>
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center font-black text-sm text-slate-900 dark:text-white">
+                      <span>Số tiền thanh toán:</span>
+                      <span className="text-orange-600 dark:text-orange-400">{netPay.toLocaleString('vi-VN')} đ</span>
+                    </div>
+                  </div>
+
+                  {/* Balance Summary */}
+                  <div className="p-3.5 rounded-2xl bg-orange-50/50 dark:bg-orange-500/10 border border-orange-200/60 dark:border-orange-500/20 text-xs space-y-1.5">
+                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                      <span>Số dư ví hiện tại:</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{balance.toLocaleString('vi-VN')} đ</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                      <span>Số dư còn lại sau thanh toán:</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{(balance - netPay).toLocaleString('vi-VN')} đ</span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2.5 pt-2">
+                    <button
+                      type="button"
+                      disabled={walletPaySubmitting}
+                      onClick={() => setWalletConfirmTier(null)}
+                      className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition cursor-pointer"
+                    >
+                      Hủy Bỏ
+                    </button>
+                    <button
+                      type="button"
+                      disabled={walletPaySubmitting}
+                      onClick={handleConfirmWalletPayment}
+                      className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 disabled:opacity-40 text-white text-xs font-black shadow-md shadow-orange-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {walletPaySubmitting ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          Đang xử lý...
+                        </>
+                      ) : (
+                        'Xác Nhận Thanh Toán'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}
