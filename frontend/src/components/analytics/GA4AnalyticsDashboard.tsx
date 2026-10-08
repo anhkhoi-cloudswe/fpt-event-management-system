@@ -27,7 +27,7 @@ function AnalyticsSection({
   badge?: string
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/80">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500 dark:text-orange-400">
@@ -93,7 +93,7 @@ function OrganizerAnalyticsDashboard({ eventId, tier }: OrganizerAnalyticsProps)
   return (
     <div className="space-y-5">
       {/* Header toolbar */}
-      <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800">
+      <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-2xl bg-slate-50/90 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <DataDisclaimer />
         <div className="flex items-center gap-2 shrink-0 ml-auto">
           {hasAdvanced && (
@@ -192,7 +192,7 @@ function AdminAnalyticsDashboard({ eventId }: { eventId?: number | null }) {
   return (
     <div className="space-y-5">
       {/* Header toolbar */}
-      <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800">
+      <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-2xl bg-slate-50/90 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <DataDisclaimer />
         <div className="flex items-center gap-2 shrink-0 ml-auto">
           <GA4DateRangePicker value={dateRange} onChange={setDateRange} />
@@ -293,26 +293,26 @@ export default function GA4AnalyticsDashboard({
 
   return (
     <div className="space-y-4">
-      {/* Premium Header Card */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 p-5 text-white shadow-xl shadow-orange-500/5">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Light / Dark Mode Adaptive Header Banner */}
+      <div className="relative overflow-hidden rounded-3xl border border-orange-200/80 dark:border-slate-800 bg-gradient-to-r from-white via-orange-50/40 to-amber-50/50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 shadow-lg shadow-orange-500/5 transition-all">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-orange-400/10 dark:bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
             <div className="p-3 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/30">
               <BarChart3 size={22} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-black tracking-wide text-white">
+                <h2 className="text-base font-black tracking-wide text-slate-900 dark:text-white">
                   {isAdmin 
                     ? (eventId ? 'Google Analytics — Thống Kê Sự Kiện (Chế Độ Admin)' : 'Google Analytics — Toàn Hệ Thống')
                     : 'Google Analytics — Trang Sự Kiện'}
                 </h2>
-                <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-orange-400 border border-white/10">
+                <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-white/10 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-white/10">
                   <Sparkles size={10} /> GA4 Data Stream
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
                 {isAdmin
                   ? (eventId ? `Đang phân tích lưu lượng sự kiện #${eventId}` : 'Giám sát toàn diện lưu lượng người dùng và hiệu suất toàn sàn FEMS')
                   : 'Báo cáo lưu lượng truy cập, lượt xem thực tế và nguồn khách hàng quan tâm'}
@@ -323,15 +323,15 @@ export default function GA4AnalyticsDashboard({
           {/* Tier badge */}
           <div className="shrink-0">
             {isAdmin ? (
-              <span className="px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20 uppercase tracking-wider">
+              <span className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20 uppercase tracking-wider">
                 ADMIN ACCESS
               </span>
             ) : (
-              <span className={`text-xs font-black uppercase px-3 py-1 rounded-xl shadow-sm tracking-wider
+              <span className={`text-xs font-black uppercase px-3.5 py-1.5 rounded-xl shadow-sm tracking-wider
                 ${tier === 'FREE'
-                  ? 'bg-slate-800 text-slate-400'
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                   : tier === 'PRO'
-                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30'
                   : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-orange-500/20'
                 }`}>
                 {tier} TIER
