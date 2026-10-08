@@ -225,7 +225,7 @@ export function GA4DeviceChart({ data }: DeviceChartProps) {
   )
 }
 
-// ─── Geography Table ──────────────────────────────────────────────────────────
+// ─── Geography Table (Modern Compact / Dual-column capable) ───────────────────
 interface GeoTableProps {
   data: GA4Geography[]
 }
@@ -235,8 +235,8 @@ export function GA4GeoTable({ data }: GeoTableProps) {
   const total = data.reduce((s, d) => s + d.users, 0)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-1">
-      {data.slice(0, 6).map((d, i) => {
+    <div className="space-y-2 p-1">
+      {data.slice(0, 6).map((d) => {
         const pct = total > 0 ? Math.round((d.users / total) * 100) : 0
         return (
           <div
@@ -276,7 +276,7 @@ export function GA4TopPagesTable({ data }: TopPagesProps) {
 
   return (
     <div className="space-y-2 p-1">
-      {data.slice(0, 8).map((d, i) => {
+      {data.slice(0, 6).map((d, i) => {
         const pct = max > 0 ? Math.round((d.views / max) * 100) : 0
         return (
           <div
@@ -289,7 +289,7 @@ export function GA4TopPagesTable({ data }: TopPagesProps) {
             <span className="text-xs font-mono font-medium text-slate-700 dark:text-slate-300 flex-1 truncate">
               {d.page}
             </span>
-            <div className="w-24 h-2 bg-slate-200/60 dark:bg-slate-700/60 rounded-full overflow-hidden shrink-0 hidden sm:block">
+            <div className="w-20 h-2 bg-slate-200/60 dark:bg-slate-700/60 rounded-full overflow-hidden shrink-0 hidden sm:block">
               <div
                 className="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full"
                 style={{ width: `${pct}%` }}
@@ -307,7 +307,7 @@ export function GA4TopPagesTable({ data }: TopPagesProps) {
   )
 }
 
-// ─── System Traffic Source Bar Chart ─────────────────────────────────────────
+// ─── System Traffic Source Bar Chart (Clean Fixed Tooltip & Cursor) ──────────
 interface SourceBarProps {
   data: GA4TrafficSource[]
 }
@@ -316,7 +316,7 @@ export function GA4SourceBarChart({ data }: SourceBarProps) {
   if (!data?.length) return <EmptyChart label="Chưa có dữ liệu traffic source" />
   return (
     <div className="w-full pt-2">
-      <ResponsiveContainer width="100%" height={200}>
+      <ResponsiveContainer width="100%" height={210}>
         <BarChart data={data.slice(0, 6)} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.12)" vertical={false} />
           <XAxis
@@ -332,12 +332,15 @@ export function GA4SourceBarChart({ data }: SourceBarProps) {
             allowDecimals={false}
           />
           <Tooltip
+            cursor={{ fill: 'rgba(249, 115, 22, 0.08)', radius: 8 }}
             contentStyle={{
-              borderRadius: '12px',
+              borderRadius: '14px',
               backgroundColor: 'rgba(15, 23, 42, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)',
               color: '#fff',
               fontSize: '11px',
+              padding: '8px 12px',
             }}
           />
           <Bar dataKey="users" name="Người dùng" radius={[8, 8, 0, 0]}>

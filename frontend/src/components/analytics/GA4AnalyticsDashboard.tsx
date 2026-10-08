@@ -20,14 +20,16 @@ function AnalyticsSection({
   icon,
   children,
   badge,
+  className,
 }: {
   title: string
   icon: React.ReactNode
   children: React.ReactNode
   badge?: string
+  className?: string
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className={`rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl p-5 shadow-sm hover:shadow-md transition-shadow ${className || ''}`}>
       <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/80">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500 dark:text-orange-400">
@@ -236,12 +238,17 @@ function AdminAnalyticsDashboard({ eventId }: { eventId?: number | null }) {
             <GA4TimelineChart data={systemData.timeline} />
           </AnalyticsSection>
 
-          {/* Top Pages */}
-          {systemData.topPages?.length > 0 && (
-            <AnalyticsSection title="Trang được xem nhiều nhất (Top Landing Pages)" icon={<FileText size={16} />} badge="SYSTEM">
-              <GA4TopPagesTable data={systemData.topPages} />
+          {/* Top Pages + Geography side-by-side (2-Column compact layout) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {systemData.topPages?.length > 0 && (
+              <AnalyticsSection title="Trang được xem nhiều nhất (Top Landing Pages)" icon={<FileText size={16} />} badge="SYSTEM">
+                <GA4TopPagesTable data={systemData.topPages} />
+              </AnalyticsSection>
+            )}
+            <AnalyticsSection title="Địa lý người dùng toàn quốc" icon={<Globe size={16} />}>
+              <GA4GeoTable data={systemData.geography} />
             </AnalyticsSection>
-          )}
+          </div>
 
           {/* Traffic Sources + Devices */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -252,11 +259,6 @@ function AdminAnalyticsDashboard({ eventId }: { eventId?: number | null }) {
               <GA4DeviceChart data={systemData.deviceBreakdown} />
             </AnalyticsSection>
           </div>
-
-          {/* Geography */}
-          <AnalyticsSection title="Địa lý người dùng toàn quốc" icon={<Globe size={16} />}>
-            <GA4GeoTable data={systemData.geography} />
-          </AnalyticsSection>
         </div>
       )}
     </div>
