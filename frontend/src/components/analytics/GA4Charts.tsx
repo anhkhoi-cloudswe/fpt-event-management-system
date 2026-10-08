@@ -57,14 +57,15 @@ export function GA4TimelineChart({ data }: TimelineChartProps) {
           <Tooltip
             contentStyle={{
               borderRadius: '16px',
-              backgroundColor: 'rgba(15, 23, 42, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              backdropFilter: 'blur(12px)',
+              backgroundColor: '#0f172a',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
               boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
-              color: '#fff',
+              color: '#ffffff',
               fontSize: '12px',
               padding: '10px 14px',
             }}
+            itemStyle={{ color: '#ffffff' }}
+            labelStyle={{ color: '#f8fafc', fontWeight: 'bold' }}
             labelFormatter={formatDate}
           />
           <Legend
@@ -136,11 +137,14 @@ export function GA4SourceDonut({ data }: SourceDonutProps) {
               ]}
               contentStyle={{
                 borderRadius: '12px',
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#fff',
+                backgroundColor: '#0f172a',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
                 fontSize: '11px',
+                padding: '8px 12px',
               }}
+              itemStyle={{ color: '#ffffff' }}
+              labelStyle={{ color: '#f8fafc', fontWeight: 'bold' }}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -307,7 +311,7 @@ export function GA4TopPagesTable({ data }: TopPagesProps) {
   )
 }
 
-// ─── System Traffic Source Bar Chart (Clean Fixed Tooltip & Cursor) ──────────
+// ─── System Traffic Source Bar Chart (Explicit High-Contrast Tooltip) ──────────
 interface SourceBarProps {
   data: GA4TrafficSource[]
 }
@@ -333,14 +337,20 @@ export function GA4SourceBarChart({ data }: SourceBarProps) {
           />
           <Tooltip
             cursor={{ fill: 'rgba(249, 115, 22, 0.08)', radius: 8 }}
-            contentStyle={{
-              borderRadius: '14px',
-              backgroundColor: 'rgba(15, 23, 42, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)',
-              color: '#fff',
-              fontSize: '11px',
-              padding: '8px 12px',
+            content={({ active, payload, label }) => {
+              if (active && payload && payload.length) {
+                return (
+                  <div className="rounded-2xl border border-slate-700 bg-slate-900/95 backdrop-blur-md px-3.5 py-2.5 shadow-xl text-white">
+                    <p className="text-xs font-bold text-slate-200 mb-1">{label || '(direct)'}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-orange-500" />
+                      <span className="text-xs text-slate-300">Người dùng:</span>
+                      <span className="text-xs font-black text-white">{payload[0].value}</span>
+                    </div>
+                  </div>
+                )
+              }
+              return null
             }}
           />
           <Bar dataKey="users" name="Người dùng" radius={[8, 8, 0, 0]}>
