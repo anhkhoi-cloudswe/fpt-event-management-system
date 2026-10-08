@@ -240,11 +240,15 @@ export function GA4GeoTable({ data }: GeoTableProps) {
 
   return (
     <div className="space-y-2 p-1">
-      {data.slice(0, 6).map((d) => {
+      {data.slice(0, 6).map((d, i) => {
         const pct = total > 0 ? Math.round((d.users / total) * 100) : 0
+        const countryName = d.country && d.country !== '(not set)' && d.country.trim() !== '' 
+          ? d.country 
+          : 'Chưa xác định (not set)'
+
         return (
           <div
-            key={d.country}
+            key={i}
             className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/30 hover:border-orange-400/40 transition-colors"
           >
             <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 shrink-0">
@@ -252,7 +256,7 @@ export function GA4GeoTable({ data }: GeoTableProps) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{d.country}</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{countryName}</span>
                 <span className="font-extrabold text-slate-900 dark:text-white">{d.users} users</span>
               </div>
               <div className="h-1.5 bg-slate-200/60 dark:bg-slate-700/60 rounded-full overflow-hidden">
