@@ -27,55 +27,69 @@ type TicketPDFData struct {
 	QRCodePngBytes []byte // QR code PNG bytes (không phải Base64)
 }
 
-// toUTF8 restores corrupted Vietnamese text encoding to proper UTF-8
-// cleanText converts Vietnamese UTF-8 characters to ASCII equivalents
+// cleanText converts Vietnamese UTF-8 characters and accents to clean ASCII equivalents
 func cleanText(text string) string {
-	// Vietnamese-specific character mappings (both single codepoints and composed)
-	vietnameseMap := map[string]string{
-		// Lowercase Vietnamese characters
-		"đ": "d", "ð": "d", // U+0111, U+00F0
-		"ơ": "o", // U+01A1
-		"ư": "u", // U+01B0
-		"ă": "a", // U+0103
-		"â": "a", "á": "a", "à": "a", "ả": "a", "ã": "a", "ạ": "a",
-		"ấ": "a", "ầ": "a", "ẩ": "a", "ẫ": "a", "ậ": "a",
-		"ắ": "a", "ằ": "a", "ẳ": "a", "ẵ": "a", "ặ": "a",
-		"é": "e", "è": "e", "ẻ": "e", "ẽ": "e", "ẹ": "e",
-		"ê": "e", "ế": "e", "ề": "e", "ể": "e", "ễ": "e", "ệ": "e",
-		"í": "i", "ì": "i", "ỉ": "i", "ĩ": "i", "ị": "i",
-		"ó": "o", "ò": "o", "ỏ": "o", "õ": "o", "ọ": "o",
-		"ô": "o", "ố": "o", "ồ": "o", "ổ": "o", "ỗ": "o", "ộ": "o",
-		"ớ": "o", "ờ": "o", "ở": "o", "ỡ": "o", "ợ": "o",
-		"ú": "u", "ù": "u", "ủ": "u", "ũ": "u", "ụ": "u",
-		"ứ": "u", "ừ": "u", "ử": "u", "ữ": "u", "ự": "u",
-		"ý": "y", "ỳ": "y", "ỷ": "y", "ỹ": "y", "ỵ": "y",
+	replacements := map[rune]string{
+		// Lowercase
+		'à': "a", 'á': "a", 'ả': "a", 'ã': "a", 'ạ': "a",
+		'ă': "a", 'ằ': "a", 'ắ': "a", 'ẳ': "a", 'ẵ': "a", 'ặ': "a",
+		'â': "a", 'ầ': "a", 'ấ': "a", 'ẩ': "a", 'ẫ': "a", 'ậ': "a",
+		'đ': "d", 'ð': "d",
+		'è': "e", 'é': "e", 'ẻ': "e", 'ẽ': "e", 'ẹ': "e",
+		'ê': "e", 'ề': "e", 'ế': "e", 'ể': "e", 'ễ': "e", 'ệ': "e",
+		'ì': "i", 'í': "i", 'ỉ': "i", 'ĩ': "i", 'ị': "i",
+		'ò': "o", 'ó': "o", 'ỏ': "o", 'õ': "o", 'ọ': "o",
+		'ô': "o", 'ồ': "o", 'ố': "o", 'ổ': "o", 'ỗ': "o", 'ộ': "o",
+		'ơ': "o", 'ờ': "o", 'ớ': "o", 'ở': "o", 'ỡ': "o", 'ợ': "o",
+		'ù': "u", 'ú': "u", 'ủ': "u", 'ũ': "u", 'ụ': "u",
+		'ư': "u", 'ừ': "u", 'ứ': "u", 'ử': "u", 'ữ': "u", 'ự': "u",
+		'ỳ': "y", 'ý': "y", 'ỷ': "y", 'ỹ': "y", 'ỵ': "y",
 
-		// Uppercase Vietnamese characters
-		"Đ": "D", "Ð": "D", // U+0110, U+00D0
-		"Ơ": "O", // U+01A0
-		"Ư": "U", // U+01AF
-		"Ă": "A", // U+0102
-		"Â": "A", "Á": "A", "À": "A", "Ả": "A", "Ã": "A", "Ạ": "A",
-		"Ấ": "A", "Ầ": "A", "Ẩ": "A", "Ẫ": "A", "Ậ": "A",
-		"Ắ": "A", "Ằ": "A", "Ẳ": "A", "Ẵ": "A", "Ặ": "A",
-		"É": "E", "È": "E", "Ẻ": "E", "Ẽ": "E", "Ẹ": "E",
-		"Ê": "E", "Ế": "E", "Ề": "E", "Ể": "E", "Ễ": "E", "Ệ": "E",
-		"Í": "I", "Ì": "I", "Ỉ": "I", "Ĩ": "I", "Ị": "I",
-		"Ó": "O", "Ò": "O", "Ỏ": "O", "Õ": "O", "Ọ": "O",
-		"Ô": "O", "Ố": "O", "Ồ": "O", "Ổ": "O", "Ỗ": "O", "Ộ": "O",
-		"Ớ": "O", "Ờ": "O", "Ở": "O", "Ỡ": "O", "Ợ": "O",
-		"Ú": "U", "Ù": "U", "Ủ": "U", "Ũ": "U", "Ụ": "U",
-		"Ứ": "U", "Ừ": "U", "Ử": "U", "Ữ": "U", "Ự": "U",
-		"Ý": "Y", "Ỳ": "Y", "Ỷ": "Y", "Ỹ": "Y", "Ỵ": "Y",
+		// Uppercase
+		'À': "A", 'Á': "A", 'Ả': "A", 'Ã': "A", 'Ạ': "A",
+		'Ă': "A", 'Ằ': "A", 'Ắ': "A", 'Ẳ': "A", 'Ẵ': "A", 'Ặ': "A",
+		'Â': "A", 'Ầ': "A", 'Ấ': "A", 'Ẩ': "A", 'Ẫ': "A", 'Ậ': "A",
+		'Đ': "D", 'Ð': "D",
+		'È': "E", 'É': "E", 'Ẻ': "E", 'Ẽ': "E", 'Ẹ': "E",
+		'Ê': "E", 'Ề': "E", 'Ế': "E", 'Ể': "E", 'Ễ': "E", 'Ệ': "E",
+		'Ì': "I", 'Í': "I", 'Ỉ': "I", 'Ĩ': "I", 'Ị': "I",
+		'Ò': "O", 'Ó': "O", 'Ỏ': "O", 'Õ': "O", 'Ọ': "O",
+		'Ô': "O", 'Ồ': "O", 'Ố': "O", 'Ổ': "O", 'Ỗ': "O", 'Ộ': "O",
+		'Ơ': "O", 'Ờ': "O", 'Ớ': "O", 'Ở': "O", 'Ỡ': "O", 'Ợ': "O",
+		'Ù': "U", 'Ú': "U", 'Ủ': "U", 'Ũ': "U", 'Ụ': "U",
+		'Ư': "U", 'Ừ': "U", 'Ứ': "U", 'Ử': "U", 'Ữ': "U", 'Ự': "U",
+		'Ỳ': "Y", 'Ý': "Y", 'Ỷ': "Y", 'Ỹ': "Y", 'Ỵ': "Y",
 	}
 
-	result := text
-	// Replace all Vietnamese characters with ASCII equivalents
-	for viet, ascii := range vietnameseMap {
-		result = strings.ReplaceAll(result, viet, ascii)
+	var sb strings.Builder
+	for _, r := range text {
+		// Strip combining diacritical marks (U+0300 - U+036F)
+		if r >= 0x0300 && r <= 0x036F {
+			continue
+		}
+		if repl, ok := replacements[r]; ok {
+			sb.WriteString(repl)
+		} else if r <= 127 {
+			sb.WriteRune(r)
+		} else {
+			// Convert common unicode punctuation to ASCII equivalents
+			switch r {
+			case '–', '—':
+				sb.WriteString("-")
+			case '“', '”', '„':
+				sb.WriteString("\"")
+			case '‘', '’', '‚':
+				sb.WriteString("'")
+			case '…':
+				sb.WriteString("...")
+			case '•':
+				sb.WriteString("*")
+			default:
+				// Omit unsupported multi-byte characters to prevent gofpdf mojibake
+			}
+		}
 	}
-
-	return result
+	return sb.String()
 }
 
 // contains checks if string contains substring
@@ -109,6 +123,14 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	// Extract time range from EventStartTime and EventEndTime
 	timeStr := extractAndFormatTimeRangeFromRFC3339(data.EventStartTime, data.EventEndTime)
 
+	// Clean and normalize all text fields to ASCII to ensure perfect PDF rendering
+	cleanEventName := cleanText(data.EventName)
+	cleanUserName := cleanText(data.UserName)
+	cleanSeatRow := cleanText(data.SeatRow)
+	cleanSeatNumber := cleanText(data.SeatNumber)
+	cleanCategoryName := cleanText(data.CategoryName)
+	cleanTicketCode := cleanText(data.TicketCode)
+
 	// Khởi tạo PDF
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.AddPage()
@@ -122,7 +144,7 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 			ImageType: "PNG",
 			ReadDpi:   false,
 		}
-		imgName := fmt.Sprintf("qr_%s", data.TicketCode)
+		imgName := fmt.Sprintf("qr_%s", cleanTicketCode)
 		pdf.RegisterImageOptionsReader(imgName, imgOpts, bytes.NewReader(data.QRCodePngBytes))
 
 		// QR code center, size 120x120mm (x1.5 larger)
@@ -149,7 +171,7 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	currentY := pdf.GetY()
 	pdf.SetFont("Arial", "B", 21.6) // +20%: 18 → 21.6
 	pdf.SetXY(20, currentY)
-	eventName := data.EventName
+	eventName := cleanEventName
 	if len(eventName) > 25 {
 		eventName = eventName[:22] + "..."
 	}
@@ -173,7 +195,7 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	pdf.CellFormat(85, 7.2, "GUEST:", "", 1, "L", false, 0, "") // +20%: 6 → 7.2
 	pdf.SetFont("Arial", "B", 19.2)                             // +20%: 16 → 19.2
 	pdf.SetX(20)
-	userName := data.UserName
+	userName := cleanUserName
 	if len(userName) > 25 {
 		userName = userName[:22] + "..."
 	}
@@ -184,7 +206,7 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	pdf.SetXY(115, currentY)
 	pdf.CellFormat(75, 7.2, "Location:", "", 1, "L", false, 0, "")
 	venueInfo := data.Address
-	if venueInfo == "Chua xac dinh" || venueInfo == "" {
+	if venueInfo == "Chua xac dinh" || venueInfo == "Chưa xác định" || venueInfo == "" {
 		venueInfo = data.VenueName
 	}
 	// Remove diacritics and clean corrupted UTF-8 from database location
@@ -208,21 +230,21 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	pdf.SetX(20)
 	pdf.CellFormat(40, 10.8, "Seat row:", "", 0, "L", false, 0, "") // +20%: 9 → 10.8
 	pdf.SetFont("Arial", "B", 21.6)                                 // +20%: 18 → 21.6
-	pdf.CellFormat(45, 10.8, data.SeatRow, "", 1, "L", false, 0, "")
+	pdf.CellFormat(45, 10.8, cleanSeatRow, "", 1, "L", false, 0, "")
 
 	// Left column row 2
 	pdf.SetFont("Arial", "", 18)
 	pdf.SetX(20)
 	pdf.CellFormat(40, 10.8, "Ticket type:", "", 0, "L", false, 0, "")
 	pdf.SetFont("Arial", "B", 21.6)
-	pdf.CellFormat(45, 10.8, data.CategoryName, "", 1, "L", false, 0, "")
+	pdf.CellFormat(45, 10.8, cleanCategoryName, "", 1, "L", false, 0, "")
 
 	// Left column row 3
 	pdf.SetFont("Arial", "", 18)
 	pdf.SetX(20)
 	pdf.CellFormat(40, 10.8, "Seat number:", "", 0, "L", false, 0, "")
 	pdf.SetFont("Arial", "B", 21.6)
-	pdf.CellFormat(45, 10.8, data.SeatNumber, "", 1, "L", false, 0, "")
+	pdf.CellFormat(45, 10.8, cleanSeatNumber, "", 1, "L", false, 0, "")
 
 	// Left column row 4 - Price (PHÓNG TO NHẤT - +20%)
 	pdf.SetFont("Arial", "", 18)
@@ -247,7 +269,7 @@ func GenerateTicketPDF(data TicketPDFData) ([]byte, error) {
 	// ========================================
 	pdf.SetFont("Arial", "I", 16.2) // +20%: 13.5 → 16.2
 	pdf.SetTextColor(100, 100, 100)
-	pdf.CellFormat(0, 10.8, fmt.Sprintf("Ticket Code: %s", data.TicketCode), "0", 1, "C", false, 0, "") // +20%: 9 → 10.8
+	pdf.CellFormat(0, 10.8, fmt.Sprintf("Ticket Code: %s", cleanTicketCode), "0", 1, "C", false, 0, "") // +20%: 9 → 10.8
 	pdf.Ln(3.6)                                                                                         // +20%: 3 → 3.6
 
 	// ========================================

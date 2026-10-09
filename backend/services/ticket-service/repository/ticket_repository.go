@@ -1997,13 +1997,27 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 	log.Info("Ticket email dispatch request sent to Notification API", "ticket_id", ticketID)
 }
 
+var emailSentBills sync.Map
+
 // sendMultipleTicketEmailsAsync gửi 1 email với NHIỀU PDF attachments (mỗi vé 1 PDF)
 // Được gọi khi user mua nhiều ghế cùng lúc (max 4 ghế)
 func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, userID, eventID int, ticketIDs []int, totalAmount string, categoryTicketID, billID int) {
 	// ⭐ FIX: luôn dùng background context để tránh lỗi "context canceled" sau khi HTTP redirect
 	bgCtx := context.Background()
 	log := logger.Default().WithContext(bgCtx)
-	log.Info("🔔 STARTING sendMultipleTicketEmailsAsync", "user_id", userID, "ticket_count", len(ticketIDs))
+
+	if billID > 0 {
+		billKey := fmt.Sprintf("bill:%d", billID)
+		if val, loaded := emailSentBills.Load(billKey); loaded {
+			if t, ok := val.(time.Time); ok && time.Since(t) < 2*time.Minute {
+				log.Info("sendMultipleTicketEmailsAsync: Duplicate email dispatch skipped for bill", "bill_id", billID)
+				return
+			}
+		}
+		emailSentBills.Store(billKey, time.Now())
+	}
+
+	log.Info("🔔 STARTING sendMultipleTicketEmailsAsync", "user_id", userID, "ticket_count", len(ticketIDs), "bill_id", billID)
 
 	// Lấy thông tin user
 	var userEmail, userName string

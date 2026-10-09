@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/fpt-event-services/common/email"
@@ -27,10 +30,15 @@ import (
 // Security: Kiểm tra header X-Internal-Call = "true"
 // ============================================================
 
+type dedupEntry struct {
+	timestamp time.Time
+}
+
 // NotificationHandler xử lý notification requests
 type NotificationHandler struct {
 	emailService *email.EmailService
 	logger       *logger.Logger
+	dedupCache   sync.Map
 }
 
 // NewNotificationHandler tạo handler cho Notification Service
@@ -39,6 +47,20 @@ func NewNotificationHandler() *NotificationHandler {
 		emailService: email.NewEmailService(nil),
 		logger:       logger.Default(),
 	}
+}
+
+func (h *NotificationHandler) isDuplicateDispatch(key string) bool {
+	now := time.Now()
+	val, loaded := h.dedupCache.Load(key)
+	if loaded {
+		if entry, ok := val.(dedupEntry); ok {
+			if now.Sub(entry.timestamp) < 2*time.Minute {
+				return true
+			}
+		}
+	}
+	h.dedupCache.Store(key, dedupEntry{timestamp: now})
+	return false
 }
 
 // ============================================================
@@ -240,6 +262,17 @@ func (h *NotificationHandler) HandleSendTicketPDF(ctx context.Context, request e
 
 // handleSingleTicketPDF - Sinh 1 PDF + QR + gửi email
 func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (events.APIGatewayProxyResponse, error) {
+	if data == nil {
+		return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "data is nil"})
+	}
+
+	// Deduplication check: prevent duplicate emails within 2 minutes
+	dedupKey := fmt.Sprintf("single:%s:%d:%s", strings.TrimSpace(strings.ToLower(data.UserEmail)), data.TicketID, data.EventTitle)
+	if h.isDuplicateDispatch(dedupKey) {
+		h.logger.Warn("[NOTIFY] ⚠️ Duplicate single ticket email suppressed for %s (ticketId=%d)", data.UserEmail, data.TicketID)
+		return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true, "message": "duplicate dispatch suppressed"})
+	}
+
 	// Step 1: Generate QR Code
 	qrBase64, err := qrcode.GenerateTicketQRBase64(data.TicketID, 300)
 	if err != nil {
@@ -318,6 +351,22 @@ func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (eve
 
 // handleMultipleTicketsPDF - Sinh nhiều PDF + QR + gửi 1 email
 func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData) (events.APIGatewayProxyResponse, error) {
+	if data == nil {
+		return createNotifyResponse(http.StatusBadRequest, map[string]interface{}{"success": false, "error": "data is nil"})
+	}
+
+	var tidList []string
+	for _, t := range data.Tickets {
+		tidList = append(tidList, strconv.Itoa(t.TicketID))
+	}
+
+	// Deduplication check: prevent duplicate batch emails within 2 minutes
+	dedupKey := fmt.Sprintf("multi:%s:%s:%s", strings.TrimSpace(strings.ToLower(data.UserEmail)), data.EventTitle, strings.Join(tidList, ","))
+	if h.isDuplicateDispatch(dedupKey) {
+		h.logger.Warn("[NOTIFY] ⚠️ Duplicate multiple tickets email suppressed for %s (tickets=%s)", data.UserEmail, strings.Join(tidList, ","))
+		return createNotifyResponse(http.StatusOK, map[string]interface{}{"success": true, "message": "duplicate dispatch suppressed"})
+	}
+
 	var pdfAttachments []email.PDFAttachment
 
 	for _, ticket := range data.Tickets {
