@@ -1390,18 +1390,18 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		var requesterID int
 		var eventFormat, customVenueName, customLocation, bannerURL sql.NullString
 		var orgType, privacyStatus, onlineMeetingURL, onlineMeetingID, onlineMeetingSecret sql.NullString
-
+		var createdEventID sql.NullInt64
 		getRequestQuery := `
 			SELECT title, description, preferred_start_time, preferred_end_time, 
 			       expected_capacity, requester_id, event_format, custom_venue_name, custom_location, banner_url,
-			       org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret
+			       org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret, created_event_id
 			FROM Event_Request 
 			WHERE request_id = $1
 		`
 		err := tx.QueryRowContext(ctx, getRequestQuery, req.RequestID).Scan(
 			&requestTitle, &requestDesc, &requestStartTime, &requestEndTime,
 			&requestCapacity, &requesterID, &eventFormat, &customVenueName, &customLocation, &bannerURL,
-			&orgType, &privacyStatus, &onlineMeetingURL, &onlineMeetingID, &onlineMeetingSecret,
+			&orgType, &privacyStatus, &onlineMeetingURL, &onlineMeetingID, &onlineMeetingSecret, &createdEventID,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to get request details: %w", err)
@@ -1412,20 +1412,20 @@ func (r *EventRepository) ProcessEventRequestComposed(ctx context.Context, admin
 		if err != nil {
 			return fmt.Errorf("FAIL-CLOSED: không thể xác thực gói dịch vụ của người tổ chức: %w", err)
 		}
-		var expCap int
+		var expCap *int
 		if requestCapacity.Valid {
-			expCap = int(requestCapacity.Int64)
+			c := int(requestCapacity.Int64)
+			expCap = &c
 		}
-		var ticketSum int
-		errTicket := tx.QueryRowContext(ctx, `
-			SELECT COALESCE(SUM(max_quantity), 0)
-			FROM event_request_ticket
-			WHERE request_id = $1
-		`, req.RequestID).Scan(&ticketSum)
-		if errTicket == nil && ticketSum > expCap {
-			expCap = ticketSum
+		targetEventID := 0
+		if createdEventID.Valid {
+			targetEventID = int(createdEventID.Int64)
 		}
-		if err := ValidateCapacityLimit(limits, expCap); err != nil {
+		effectiveCapacity, err := CalculateEffectiveCapacity(ctx, tx, targetEventID, expCap, 0)
+		if err != nil {
+			return fmt.Errorf("FAIL-CLOSED: lỗi tính toán sức chứa hiệu lực: %w", err)
+		}
+		if err := ValidateCapacityLimit(limits, effectiveCapacity); err != nil {
 			return fmt.Errorf("không thể duyệt do vượt hạn mức gói: %w", err)
 		}
 
