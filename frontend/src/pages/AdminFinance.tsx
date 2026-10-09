@@ -631,11 +631,6 @@ export default function AdminFinancePage() {
           >
             <Crown size={16} className="text-amber-500" />
             <span>Phân Tích Gói Dịch Vụ (Subscriptions)</span>
-            {subAnalytics && (
-              <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold">
-                {subAnalytics.totalActivePackages} đang dùng
-              </span>
-            )}
           </button>
 
           <button
