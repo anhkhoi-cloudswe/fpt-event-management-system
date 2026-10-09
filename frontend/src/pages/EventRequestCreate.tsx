@@ -1269,9 +1269,10 @@ export default function EventRequestCreate() {
     fetch('/api/sample-banners')
       .then(r => (r.ok ? r.json() : null))
       .then((data: any[] | null) => {
-        if (data?.length) {
+        if (Array.isArray(data) && data.length > 0) {
           setSampleBanners(data)
-          setBannerUrl(data[Math.floor(Math.random() * data.length)].url)
+          const randomItem = data[Math.floor(Math.random() * data.length)]
+          if (randomItem?.url) setBannerUrl(randomItem.url)
         }
       })
       .catch(() => {})
@@ -1299,10 +1300,12 @@ export default function EventRequestCreate() {
 
   /* ── Shuffle banner ── */
   const handleShuffleBanner = () => {
-    if (sampleBanners.length === 0) return
-    const pool = sampleBanners.filter(b => b.url !== bannerUrl)
-    const next = pool.length > 0 ? pool : sampleBanners
-    setBannerUrl(next[Math.floor(Math.random() * next.length)].url)
+    const list = Array.isArray(sampleBanners) ? sampleBanners : []
+    if (list.length === 0) return
+    const pool = list.filter(b => b?.url && b.url !== bannerUrl)
+    const next = pool.length > 0 ? pool : list
+    const selected = next[Math.floor(Math.random() * next.length)]
+    if (selected?.url) setBannerUrl(selected.url)
   }
 
   /* ── Banner Upload Processing ── */
@@ -1537,8 +1540,9 @@ export default function EventRequestCreate() {
     } finally { window.scrollTo({ top: 0, behavior: 'smooth' }); setIsSubmitting(false) }
   }
 
-  const categories      = ['ALL', ...Array.from(new Set(sampleBanners.map(b => b.category).filter(Boolean)))]
-  const filteredBanners = selectedCategory === 'ALL' ? sampleBanners : sampleBanners.filter(b => b.category === selectedCategory)
+  const safeSampleBanners = Array.isArray(sampleBanners) ? sampleBanners : []
+  const categories        = ['ALL', ...Array.from(new Set(safeSampleBanners.map(b => b?.category).filter(Boolean)))]
+  const filteredBanners   = selectedCategory === 'ALL' ? safeSampleBanners : safeSampleBanners.filter(b => b?.category === selectedCategory)
 
   /* ════════════════════════════════════════════════════════════
      RENDER
