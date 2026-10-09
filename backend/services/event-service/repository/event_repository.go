@@ -79,6 +79,95 @@ func validateApprovalArea(format string, areaID *int) error {
 	return nil
 }
 
+func parseMeetingURL(rawURL string) (platform, meetingID, passcode string) {
+	if rawURL == "" {
+		return "", "", ""
+	}
+	urlLower := strings.ToLower(rawURL)
+	if strings.Contains(urlLower, "zoom.us") {
+		platform = "ZOOM"
+		if idx := strings.Index(rawURL, "/j/"); idx != -1 {
+			rem := rawURL[idx+3:]
+			if qIdx := strings.Index(rem, "?"); qIdx != -1 {
+				meetingID = rem[:qIdx]
+				query := rem[qIdx+1:]
+				for _, part := range strings.Split(query, "&") {
+					if strings.HasPrefix(part, "pwd=") {
+						passcode = strings.TrimPrefix(part, "pwd=")
+					}
+				}
+			} else {
+				meetingID = rem
+			}
+		}
+	} else if strings.Contains(urlLower, "meet.google.com") {
+		platform = "GOOGLE"
+		if idx := strings.Index(rawURL, "meet.google.com/"); idx != -1 {
+			rem := rawURL[idx+len("meet.google.com/"):]
+			if qIdx := strings.Index(rem, "?"); qIdx != -1 {
+				rem = rem[:qIdx]
+			}
+			meetingID = strings.Trim(rem, "/")
+		}
+	} else {
+		platform = "CUSTOM"
+	}
+	return
+}
+
+func ensureOnlineMeetingFields(req *models.CreateEventRequestBody) {
+	if req.EventFormat != "ONLINE" && req.EventFormat != "HYBRID" {
+		return
+	}
+
+	// 1. If OnlineMeetingURL is already supplied, auto-extract ID/Secret if missing
+	if req.OnlineMeetingURL != nil && *req.OnlineMeetingURL != "" {
+		_, parsedID, parsedSecret := parseMeetingURL(*req.OnlineMeetingURL)
+		if (req.OnlineMeetingID == nil || *req.OnlineMeetingID == "") && parsedID != "" {
+			req.OnlineMeetingID = &parsedID
+		}
+		if (req.OnlineMeetingSecret == nil || *req.OnlineMeetingSecret == "") && parsedSecret != "" {
+			req.OnlineMeetingSecret = &parsedSecret
+		}
+		return
+	}
+
+	// 2. If no OnlineMeetingURL was supplied, dynamically generate realistic link, ID, and secret
+	isGoogle := (req.CustomLocation != nil && strings.Contains(strings.ToLower(*req.CustomLocation), "google")) ||
+		(req.CustomVenueName != nil && strings.Contains(strings.ToLower(*req.CustomVenueName), "google"))
+	if isGoogle {
+		const chars = "abcdefghijklmnopqrstuvwxyz"
+		randPart := func(n int) string {
+			b := make([]byte, n)
+			for i := range b {
+				b[i] = chars[time.Now().UnixNano()%int64(len(chars))]
+				time.Sleep(5 * time.Nanosecond)
+			}
+			return string(b)
+		}
+		code := fmt.Sprintf("%s-%s-%s", randPart(3), randPart(4), randPart(3))
+		url := fmt.Sprintf("https://meet.google.com/%s", code)
+		emptySecret := ""
+		req.OnlineMeetingURL = &url
+		req.OnlineMeetingID = &code
+		req.OnlineMeetingSecret = &emptySecret
+	} else {
+		n := time.Now().UnixNano()
+		id := fmt.Sprintf("8%010d", (n%9000000000)+1000000000)
+		const secretChars = "23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
+		sb := make([]byte, 6)
+		for i := range sb {
+			sb[i] = secretChars[time.Now().UnixNano()%int64(len(secretChars))]
+			time.Sleep(10 * time.Nanosecond)
+		}
+		pwd := string(sb)
+		url := fmt.Sprintf("https://zoom.us/j/%s?pwd=%s", id, pwd)
+		req.OnlineMeetingURL = &url
+		req.OnlineMeetingID = &id
+		req.OnlineMeetingSecret = &pwd
+	}
+}
+
 // formatTimeToWallClockRFC3339 returns wall-clock time in RFC3339 format without Go timezone interpretation
 // ✅ CRITICAL: Without loc=Asia/Ho_Chi_Minh in DSN, Go reads DATETIME as UTC
 // We read the wall-clock values and just append +07:00 offset
@@ -1854,20 +1943,8 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 		privacyStatus = "PUBLIC"
 	}
 
-	// Default online meeting URL for ONLINE/HYBRID format if not provided
-	if (req.EventFormat == "ONLINE" || req.EventFormat == "HYBRID") && (req.OnlineMeetingURL == nil || *req.OnlineMeetingURL == "") {
-		url := "https://zoom.us/j/123456789"
-		id := "123456789"
-		secret := "abc123"
-		if req.CustomLocation != nil && strings.Contains(strings.ToLower(*req.CustomLocation), "google") {
-			url = "https://meet.google.com/abc-defg-hij"
-			id = "abc-defg-hij"
-			secret = ""
-		}
-		req.OnlineMeetingURL = &url
-		req.OnlineMeetingID = &id
-		req.OnlineMeetingSecret = &secret
-	}
+	// Ensure online meeting info for ONLINE/HYBRID format
+	ensureOnlineMeetingFields(req)
 
 	var requestID int64
 	err = tx.QueryRowContext(ctx, query,
@@ -4650,20 +4727,8 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 		privacyStatus = "PUBLIC"
 	}
 
-	// Default online meeting URL for ONLINE/HYBRID format if not provided
-	if (req.EventFormat == "ONLINE" || req.EventFormat == "HYBRID") && (req.OnlineMeetingURL == nil || *req.OnlineMeetingURL == "") {
-		url := "https://zoom.us/j/123456789"
-		id := "123456789"
-		secret := "abc123"
-		if req.CustomLocation != nil && strings.Contains(strings.ToLower(*req.CustomLocation), "google") {
-			url = "https://meet.google.com/abc-defg-hij"
-			id = "abc-defg-hij"
-			secret = ""
-		}
-		req.OnlineMeetingURL = &url
-		req.OnlineMeetingID = &id
-		req.OnlineMeetingSecret = &secret
-	}
+	// Ensure online meeting info for ONLINE/HYBRID format
+	ensureOnlineMeetingFields(req)
 
 	err = tx.QueryRowContext(ctx, query,
 		req.Title,

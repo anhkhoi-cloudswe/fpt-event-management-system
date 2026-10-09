@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/fpt-event-services/services/event-service/models"
@@ -286,5 +287,84 @@ func TestDefaultValues_SchoolRequest(t *testing.T) {
 
 	if privacyStatus != "PUBLIC" {
 		t.Errorf("Expected default privacy_status=PUBLIC, got %s", privacyStatus)
+	}
+}
+
+// ============================================================
+// Test 9: Realistic Dynamic Online Meeting Generation & Parsing
+// Verifies Zoom and Meet dynamic realistic URLs and field parsing
+// ============================================================
+func TestEnsureOnlineMeetingFields_DynamicRealistic(t *testing.T) {
+	// 1. ONLINE event without meeting URL -> Generates realistic Zoom by default
+	reqZoom := &models.CreateEventRequestBody{
+		Title:       "Dynamic Online Event",
+		EventFormat: "ONLINE",
+	}
+	ensureOnlineMeetingFields(reqZoom)
+	if reqZoom.OnlineMeetingURL == nil || *reqZoom.OnlineMeetingURL == "" {
+		t.Fatal("Expected OnlineMeetingURL to be populated")
+	}
+	if *reqZoom.OnlineMeetingURL == "https://zoom.us/j/123456789" {
+		t.Errorf("OnlineMeetingURL should be dynamic and realistic, not fixed dummy 123456789")
+	}
+	if reqZoom.OnlineMeetingID == nil || len(*reqZoom.OnlineMeetingID) < 10 {
+		t.Errorf("Expected realistic 10-11 digit Zoom ID, got %v", reqZoom.OnlineMeetingID)
+	}
+	if reqZoom.OnlineMeetingSecret == nil || len(*reqZoom.OnlineMeetingSecret) < 6 {
+		t.Errorf("Expected realistic Zoom passcode, got %v", reqZoom.OnlineMeetingSecret)
+	}
+
+	// 2. HYBRID event with Google keyword in location -> Generates realistic Meet
+	googleLoc := "Google Meet session"
+	reqMeet := &models.CreateEventRequestBody{
+		Title:          "Hybrid Meet Event",
+		EventFormat:    "HYBRID",
+		CustomLocation: &googleLoc,
+	}
+	ensureOnlineMeetingFields(reqMeet)
+	if reqMeet.OnlineMeetingURL == nil || *reqMeet.OnlineMeetingURL == "" {
+		t.Fatal("Expected OnlineMeetingURL to be populated")
+	}
+	if *reqMeet.OnlineMeetingURL == "https://meet.google.com/abc-defg-hij" {
+		t.Errorf("OnlineMeetingURL should be dynamic and realistic, not fixed dummy abc-defg-hij")
+	}
+
+	// 2b. ONLINE event with Google keyword in CustomVenueName and nil CustomLocation -> Generates realistic Meet
+	googleVenue := "Google Meet"
+	reqOnlineMeet := &models.CreateEventRequestBody{
+		Title:           "Online Google Event",
+		EventFormat:     "ONLINE",
+		CustomVenueName: &googleVenue,
+	}
+	ensureOnlineMeetingFields(reqOnlineMeet)
+	if reqOnlineMeet.OnlineMeetingURL == nil || !strings.Contains(*reqOnlineMeet.OnlineMeetingURL, "meet.google.com") {
+		t.Errorf("Expected Google Meet URL when CustomVenueName='Google Meet', got %v", reqOnlineMeet.OnlineMeetingURL)
+	}
+
+	// 3. User provides real Zoom URL with ID and pwd -> Auto-parses ID and Secret
+	realZoom := "https://zoom.us/j/84930219485?pwd=SecretPassword123"
+	reqParsed := &models.CreateEventRequestBody{
+		Title:            "User Custom Zoom Event",
+		EventFormat:      "ONLINE",
+		OnlineMeetingURL: &realZoom,
+	}
+	ensureOnlineMeetingFields(reqParsed)
+	if reqParsed.OnlineMeetingID == nil || *reqParsed.OnlineMeetingID != "84930219485" {
+		t.Errorf("Expected parsed ID 84930219485, got %v", reqParsed.OnlineMeetingID)
+	}
+	if reqParsed.OnlineMeetingSecret == nil || *reqParsed.OnlineMeetingSecret != "SecretPassword123" {
+		t.Errorf("Expected parsed Secret SecretPassword123, got %v", reqParsed.OnlineMeetingSecret)
+	}
+
+	// 4. User provides Google Meet URL -> Auto-parses Meet code
+	realMeet := "https://meet.google.com/xyz-uvwx-rst"
+	reqMeetParsed := &models.CreateEventRequestBody{
+		Title:            "User Custom Meet Event",
+		EventFormat:      "ONLINE",
+		OnlineMeetingURL: &realMeet,
+	}
+	ensureOnlineMeetingFields(reqMeetParsed)
+	if reqMeetParsed.OnlineMeetingID == nil || *reqMeetParsed.OnlineMeetingID != "xyz-uvwx-rst" {
+		t.Errorf("Expected parsed Meet ID xyz-uvwx-rst, got %v", reqMeetParsed.OnlineMeetingID)
 	}
 }

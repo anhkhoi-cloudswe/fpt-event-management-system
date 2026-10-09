@@ -20,6 +20,13 @@ import {
   ChevronDown,
   Check,
   Ticket,
+  Copy,
+  ExternalLink,
+  Video,
+  Key,
+  Sparkles,
+  Link2,
+  CalendarCheck,
 } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -698,13 +705,43 @@ export default function EventRequestCreate() {
     return () => observer.disconnect()
   }, [])
 
-  // Online platform oauth integration
-  const [selectedOnlinePlatform, setSelectedOnlinePlatform] = useState<'ZOOM' | 'GOOGLE'>('ZOOM')
+  // Online platform oauth & meeting integration
+  const [selectedOnlinePlatform, setSelectedOnlinePlatform] = useState<'ZOOM' | 'GOOGLE' | 'CUSTOM'>('ZOOM')
+  const [meetingDetails, setMeetingDetails] = useState({
+    url: '',
+    id: '',
+    secret: '',
+    customPlatformName: '',
+  })
   const [connectedPlatforms, setConnectedPlatforms] = useState({
-    zoom: { connected: false, email: '', meetingLink: '' },
-    google: { connected: false, email: '', meetingLink: '' }
+    zoom: { connected: false, email: '', meetingLink: '', meetingId: '', meetingSecret: '' },
+    google: { connected: false, email: '', meetingLink: '', meetingId: '', meetingSecret: '' }
   })
   const [isConnecting, setIsConnecting] = useState(false);
+  const [meetingSchedule, setMeetingSchedule] = useState<{
+    isScheduled: boolean
+    platform: 'ZOOM' | 'GOOGLE' | 'CUSTOM'
+    startTime?: string
+    endTime?: string
+    title?: string
+  } | null>(null)
+
+  const calcMeetingDuration = (startStr: string, endStr: string) => {
+    if (!startStr || !endStr) return '';
+    try {
+      const d1 = new Date(startStr);
+      const d2 = new Date(endStr);
+      if (isNaN(d1.getTime()) || isNaN(d2.getTime()) || d2 <= d1) return '';
+      const diffMins = Math.round((d2.getTime() - d1.getTime()) / 60000);
+      const h = Math.floor(diffMins / 60);
+      const m = diffMins % 60;
+      if (h > 0 && m > 0) return `${h} giờ ${m} phút`;
+      if (h > 0) return `${h} giờ`;
+      return `${m} phút`;
+    } catch {
+      return '';
+    }
+  };
 
   // Listen for OAuth success messages from popup window
   useEffect(() => {
@@ -719,17 +756,36 @@ export default function EventRequestCreate() {
         const platform = event.data.platform; // 'ZOOM' or 'GOOGLE'
         const email = event.data.email || '';
         const meetingLink = event.data.meetingLink || '';
+        const meetingId = event.data.meetingId || '';
+        const meetingSecret = event.data.meetingSecret || '';
 
         setConnectedPlatforms(prev => ({
           ...prev,
           [platform.toLowerCase()]: {
             connected: true,
             email,
-            meetingLink
+            meetingLink,
+            meetingId,
+            meetingSecret,
           }
         }));
+        setMeetingDetails(prev => ({
+          ...prev,
+          url: meetingLink,
+          id: meetingId,
+          secret: meetingSecret,
+          customPlatformName: platform === 'ZOOM' ? 'Zoom' : 'Google Meet',
+        }));
+        setSelectedOnlinePlatform(platform === 'ZOOM' ? 'ZOOM' : 'GOOGLE');
+        setMeetingSchedule({
+          isScheduled: true,
+          platform: platform === 'ZOOM' ? 'ZOOM' : 'GOOGLE',
+          startTime: event.data.scheduledStart || formData.preferredStart,
+          endTime: event.data.scheduledEnd || formData.preferredEnd,
+          title: event.data.scheduledTitle || formData.title,
+        });
         setIsConnecting(false);
-        showToast('success', `Đã kết nối tài khoản ${platform === 'ZOOM' ? 'Zoom' : 'Google Meet'} thành công!`);
+        showToast('success', `Đã kết nối tài khoản ${platform === 'ZOOM' ? 'Zoom' : 'Google Meet'} và lên lịch phòng họp thành công!`);
       } else if (event.data?.type === "OAUTH_ERROR") {
         setIsConnecting(false);
         showToast('error', event.data.error || 'Không thể kết nối tài khoản. Vui lòng thử lại.');
@@ -737,7 +793,7 @@ export default function EventRequestCreate() {
     };
     window.addEventListener("message", handleOAuthMessage);
     return () => window.removeEventListener("message", handleOAuthMessage);
-  }, [showToast]);
+  }, [showToast, formData.preferredStart, formData.preferredEnd, formData.title]);
 
   const handleConnect = (platform: 'zoom' | 'google') => {
     setIsConnecting(true);
@@ -747,7 +803,14 @@ export default function EventRequestCreate() {
     
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
     const redirectUri = `${apiBaseUrl}/api/v1/auth/${platform}/callback`;
-    const connectUrl = `${apiBaseUrl}/api/v1/auth/${platform}/connect?redirect_uri=${encodeURIComponent(redirectUri)}&app_origin=${encodeURIComponent(window.location.origin)}`;
+    const params = new URLSearchParams({
+      redirect_uri: redirectUri,
+      app_origin: window.location.origin,
+      title: formData.title || 'Sự kiện trực tuyến FEMS',
+      start_time: formData.preferredStart ? `${formData.preferredStart}:00` : '',
+      end_time: formData.preferredEnd ? `${formData.preferredEnd}:00` : '',
+    });
+    const connectUrl = `${apiBaseUrl}/api/v1/auth/${platform}/connect?${params.toString()}`;
 
     const popup = window.open(
       connectUrl,
@@ -763,15 +826,113 @@ export default function EventRequestCreate() {
     }, 1000);
   };
 
+  const handleQuickGenerate = (platform: 'zoom' | 'google') => {
+    if (platform === 'zoom') {
+      const zoomId = `8${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+      const pwd = Math.random().toString(36).substring(2, 8);
+      const url = `https://zoom.us/j/${zoomId}?pwd=${pwd}`;
+      setMeetingDetails(prev => ({
+        ...prev,
+        url,
+        id: zoomId,
+        secret: pwd,
+        customPlatformName: 'Zoom Meeting',
+      }));
+      setConnectedPlatforms(prev => ({
+        ...prev,
+        zoom: {
+          connected: true,
+          email: user?.email || 'organizer.zoom@fpt.edu.vn',
+          meetingLink: url,
+          meetingId: zoomId,
+          meetingSecret: pwd,
+        }
+      }));
+      setSelectedOnlinePlatform('ZOOM');
+      setMeetingSchedule({
+        isScheduled: true,
+        platform: 'ZOOM',
+        startTime: formData.preferredStart,
+        endTime: formData.preferredEnd,
+        title: formData.title || 'Sự kiện trực tuyến FEMS',
+      });
+      showToast('success', 'Đã thiết lập link Zoom bảo mật đồng bộ theo lịch trình!');
+    } else {
+      const rLetters = (n: number) => Array.from({ length: n }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join('');
+      const meetId = `${rLetters(3)}-${rLetters(4)}-${rLetters(3)}`;
+      const url = `https://meet.google.com/${meetId}`;
+      setMeetingDetails(prev => ({
+        ...prev,
+        url,
+        id: meetId,
+        secret: '',
+        customPlatformName: 'Google Meet',
+      }));
+      setConnectedPlatforms(prev => ({
+        ...prev,
+        google: {
+          connected: true,
+          email: user?.email || 'organizer.meet@fpt.edu.vn',
+          meetingLink: url,
+          meetingId: meetId,
+          meetingSecret: '',
+        }
+      }));
+      setSelectedOnlinePlatform('GOOGLE');
+      setMeetingSchedule({
+        isScheduled: true,
+        platform: 'GOOGLE',
+        startTime: formData.preferredStart,
+        endTime: formData.preferredEnd,
+        title: formData.title || 'Sự kiện trực tuyến FEMS',
+      });
+      showToast('success', 'Đã thiết lập link Google Meet đồng bộ theo lịch trình!');
+    }
+  };
+
+  const handleMeetingUrlChange = (newUrl: string) => {
+    setMeetingDetails(prev => {
+      const updated = { ...prev, url: newUrl };
+      let matchedPlatform: 'ZOOM' | 'GOOGLE' | 'CUSTOM' = selectedOnlinePlatform;
+      if (/zoom\.us\/j\/(\d+)/i.test(newUrl)) {
+        const m = newUrl.match(/zoom\.us\/j\/(\d+)/i);
+        if (m && m[1]) updated.id = m[1];
+        const pwdMatch = newUrl.match(/[?&]pwd=([a-zA-Z0-9]+)/i);
+        if (pwdMatch && pwdMatch[1]) updated.secret = pwdMatch[1];
+        matchedPlatform = 'ZOOM';
+        setSelectedOnlinePlatform('ZOOM');
+      } else if (/meet\.google\.com\/([a-z0-9-]+)/i.test(newUrl)) {
+        const m = newUrl.match(/meet\.google\.com\/([a-z0-9-]+)/i);
+        if (m && m[1]) updated.id = m[1].split('?')[0];
+        matchedPlatform = 'GOOGLE';
+        setSelectedOnlinePlatform('GOOGLE');
+      }
+      if (newUrl.trim()) {
+        setMeetingSchedule({
+          isScheduled: true,
+          platform: matchedPlatform,
+          startTime: formData.preferredStart,
+          endTime: formData.preferredEnd,
+          title: formData.title,
+        });
+      }
+      return updated;
+    });
+  };
+
   const handleDisconnect = (platform: 'zoom' | 'google') => {
     setConnectedPlatforms(prev => ({
       ...prev,
       [platform]: {
         connected: false,
         email: '',
-        meetingLink: ''
+        meetingLink: '',
+        meetingId: '',
+        meetingSecret: '',
       }
     }));
+    setMeetingDetails({ url: '', id: '', secret: '', customPlatformName: '' });
+    setMeetingSchedule(null);
     showToast('info', `Đã hủy kết nối tài khoản ${platform === 'zoom' ? 'Zoom' : 'Google Meet'}.`);
   };
 
@@ -793,7 +954,11 @@ export default function EventRequestCreate() {
   const [limitCapacity, setLimitCapacity] = useState(true)
   const [tempCapacity, setTempCapacity] = useState('100')
   const capacityPopoverRef = useRef<HTMLDivElement>(null)
-  const getSelectedPlatformLabel = () => selectedOnlinePlatform === 'ZOOM' ? 'Zoom' : 'Google Meet'
+  const getSelectedPlatformLabel = () => {
+    if (selectedOnlinePlatform === 'ZOOM') return 'Zoom Meeting'
+    if (selectedOnlinePlatform === 'GOOGLE') return 'Google Meet'
+    return meetingDetails.customPlatformName || 'Họp trực tuyến'
+  }
 
   const [ticketConfig, setTicketConfig] = useState({
     onlineFree: true,
@@ -818,7 +983,8 @@ export default function EventRequestCreate() {
     if (eventFormat === 'ONLINE') return cap
     if (eventFormat === 'ONSITE') return cap
 
-    const onsiteCap = Math.max(1, Math.min(getSelectedAreaCapacity(), cap - 1))
+    // For HYBRID: divide capacity evenly between onsite and online
+    const onsiteCap = Math.max(1, Math.floor(cap / 2))
     const onlineCap = Math.max(1, cap - onsiteCap)
     return channel === 'ONSITE' ? onsiteCap : onlineCap
   }
@@ -854,9 +1020,9 @@ export default function EventRequestCreate() {
     if (eventFormat === 'ONLINE') {
       maxCap = 100
     } else if (eventFormat === 'ONSITE') {
-      maxCap = maxRoomCap
+      maxCap = flowType === 'UNIVERSITY' ? maxRoomCap : 1000
     } else if (eventFormat === 'HYBRID') {
-      maxCap = 100 + maxRoomCap
+      maxCap = flowType === 'UNIVERSITY' ? (100 + maxRoomCap) : 1000
     }
     
     // Auto-initialize or adjust expectedParticipants / tempCapacity
@@ -1225,13 +1391,13 @@ export default function EventRequestCreate() {
     const cap = parseInt(formData.expectedParticipants) || 0
     const maxRoomCap = getSelectedAreaCapacity()
     
-    let maxAllowed = 100
+    let maxAllowed = 1000
     if (eventFormat === 'ONLINE') {
-      maxAllowed = 100
+      maxAllowed = flowType === 'UNIVERSITY' ? 100 : 1000
     } else if (eventFormat === 'ONSITE') {
-      maxAllowed = maxRoomCap
+      maxAllowed = flowType === 'UNIVERSITY' ? maxRoomCap : 1000
     } else if (eventFormat === 'HYBRID') {
-      maxAllowed = 100 + maxRoomCap
+      maxAllowed = flowType === 'UNIVERSITY' ? (100 + maxRoomCap) : 1000
     }
 
     if (isNaN(cap) || cap < 1 || cap > maxAllowed) {
@@ -1268,15 +1434,39 @@ export default function EventRequestCreate() {
     }
 
     if (eventFormat === 'ONLINE' || eventFormat === 'HYBRID') {
-      const isConnected = selectedOnlinePlatform === 'ZOOM'
-        ? connectedPlatforms.zoom.connected
-        : connectedPlatforms.google.connected
-      if (!isConnected) {
-        const platformName = selectedOnlinePlatform === 'ZOOM' ? 'Zoom' : 'Google Meet'
-        setError(`Vui lòng kết nối tài khoản ${platformName} để lấy link cuộc họp trực tuyến.`)
-        showToast('error', `Vui lòng kết nối tài khoản ${platformName}`)
+      const activeUrl = meetingDetails.url.trim() || 
+        (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink);
+
+      if (!activeUrl) {
+        const msg = currentLanguage === 'en'
+          ? 'Please enter or connect to generate the online meeting link (Zoom / Google Meet).'
+          : 'Vui lòng nhập hoặc kết nối để tạo đường dẫn phòng họp trực tuyến (Zoom / Google Meet).'
+        setError(msg)
+        showToast('error', msg)
         return
       }
+
+      if (!/^https?:\/\/.+/i.test(activeUrl)) {
+        const msg = currentLanguage === 'en'
+          ? 'Meeting URL must start with http:// or https://'
+          : 'Đường dẫn phòng họp phải bắt đầu bằng http:// hoặc https://'
+        setError(msg)
+        showToast('error', msg)
+        return
+      }
+    }
+
+    if (
+      flowType === 'UNIVERSITY' &&
+      (eventFormat === 'ONSITE' || eventFormat === 'HYBRID') &&
+      !selectedCampusAreaId
+    ) {
+      const locationError = currentLanguage === 'en'
+        ? 'Please select a campus room/area for the event.'
+        : 'Vui lòng chọn phòng / khu vực học đường cho sự kiện.'
+      setError(locationError)
+      showToast('error', locationError)
+      return
     }
 
     if (
@@ -1294,6 +1484,13 @@ export default function EventRequestCreate() {
 
     setIsSubmitting(true)
     try {
+      const activeUrl = meetingDetails.url.trim() || 
+        (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink);
+      const activeId = meetingDetails.id.trim() || 
+        (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingId : connectedPlatforms.google.meetingId);
+      const activeSecret = meetingDetails.secret.trim() || 
+        (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingSecret : connectedPlatforms.google.meetingSecret);
+
       const fmt = (s: string) => (s ? s + ':00' : null)
       const body = {
         title: formData.title,
@@ -1304,22 +1501,16 @@ export default function EventRequestCreate() {
         eventFormat,
         customVenueName: eventFormat === 'ONLINE'
           ? getSelectedPlatformLabel()
-          : eventFormat === 'HYBRID'
-          ? (formData.customVenueName || null)
           : (formData.customVenueName || null),
         customLocation: eventFormat === 'ONLINE'
           ? null
-          : eventFormat === 'HYBRID'
-          ? (formData.customLocation || null)
           : (formData.customLocation || null),
         bannerUrl: bannerUrl || null,
         orgType: flowType === 'UNIVERSITY' ? 'SCHOOL' : 'FREE',
         privacyStatus: isPublic ? 'PUBLIC' : 'PRIVATE',
-        onlineMeetingUrl: (eventFormat === 'ONLINE' || eventFormat === 'HYBRID')
-          ? (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink) || null
-          : null,
-        onlineMeetingId: null,
-        onlineMeetingSecret: null,
+        onlineMeetingUrl: (eventFormat === 'ONLINE' || eventFormat === 'HYBRID') ? (activeUrl || null) : null,
+        onlineMeetingId: (eventFormat === 'ONLINE' || eventFormat === 'HYBRID') ? (activeId || null) : null,
+        onlineMeetingSecret: (eventFormat === 'ONLINE' || eventFormat === 'HYBRID') ? (activeSecret || null) : null,
         tickets: flowType === 'INDEPENDENT' ? independentTickets : undefined,
       }
 
@@ -1773,154 +1964,271 @@ export default function EventRequestCreate() {
                   ))}
                 </div>
 
-                {/* Online Platform Connectors — Visibly rendered for ONLINE and HYBRID formats */}
+                {/* Online Platform Connectors & Meeting Details — Rendered for ONLINE and HYBRID formats */}
                 {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (
-                  <div className={`mt-2.5 backdrop-blur-md border rounded-xl p-3 animate-fadeIn flex flex-col gap-2 ${
+                  <div className={`mt-2.5 backdrop-blur-md border rounded-xl p-3.5 animate-fadeIn flex flex-col gap-3 ${
                     isDarkMode ? 'bg-white/[0.03] border-white/[0.08]' : 'bg-neutral-50 border-neutral-200'
                   }`}>
-                    <div className={`flex items-center justify-between pb-1.5 border-b ${isDarkMode ? 'border-white/[0.05]' : 'border-neutral-200'}`}>
-                      <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/50' : 'text-neutral-500'}`}>Nền tảng trực tuyến</span>
-                      <div className={`flex gap-1 p-0.5 rounded-lg border ${isDarkMode ? 'bg-white/[0.04] border-white/[0.06]' : 'bg-neutral-100 border-neutral-200'}`}>
-                        {(['ZOOM', 'GOOGLE'] as const).map(p => (
+                    {/* Header + Platform Selector */}
+                    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b ${
+                      isDarkMode ? 'border-white/[0.06]' : 'border-neutral-200'
+                    }`}>
+                      <div className="flex items-center gap-1.5">
+                        <Video className="w-3.5 h-3.5 text-orange-400" />
+                        <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${
+                          isDarkMode ? 'text-white/60' : 'text-neutral-500'
+                        }`}>
+                          Phòng họp trực tuyến
+                        </span>
+                      </div>
+                      <div className={`flex gap-1 p-0.5 rounded-lg border self-start sm:self-auto ${
+                        isDarkMode ? 'bg-white/[0.04] border-white/[0.06]' : 'bg-neutral-100 border-neutral-200'
+                      }`}>
+                        {(['ZOOM', 'GOOGLE', 'CUSTOM'] as const).map(p => (
                           <button
                             key={p}
                             type="button"
                             onClick={() => setSelectedOnlinePlatform(p)}
-                            className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                            className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
                               selectedOnlinePlatform === p
-                                ? 'bg-[#fb923c] text-white shadow-md'
+                                ? 'bg-orange-600 text-white shadow-md'
                                 : isDarkMode
                                 ? 'text-neutral-400 hover:text-white'
                                 : 'text-neutral-500 hover:text-neutral-800'
                             }`}
                           >
-                            {p === 'ZOOM' ? 'Zoom' : 'Google Meet'}
+                            {p === 'ZOOM' ? 'Zoom' : p === 'GOOGLE' ? 'Google Meet' : 'Tùy chỉnh'}
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    {selectedOnlinePlatform === 'ZOOM' ? (
-                      connectedPlatforms.zoom.connected ? (
-                        /* Connected Zoom */
-                        <div className={`flex items-center justify-between border rounded-xl p-3 animate-fadeIn ${
-                          isDarkMode ? 'bg-emerald-500/[0.04] border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
-                        }`}>
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
-                              <Check className="w-5 h-5" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-neutral-800'}`}>Đã kết nối tài khoản Zoom</p>
-                              <p className={`text-[10px] font-semibold truncate mt-0.5 ${isDarkMode ? 'text-emerald-400/90' : 'text-emerald-600'}`}>
-                                {connectedPlatforms.zoom.email}
-                              </p>
-                            </div>
-                          </div>
+                    {/* Quick Connect / Generate Action Buttons */}
+                    {selectedOnlinePlatform === 'ZOOM' && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={isConnecting}
+                          onClick={() => handleConnect('zoom')}
+                          className="px-3 py-1.5 bg-[#2D8CFF] hover:bg-[#2075db] text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                        >
+                          <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+                            <rect width="24" height="24" rx="5" fill="currentColor" fillOpacity="0.2"/>
+                            <path fillRule="evenodd" clipRule="evenodd" d="M5.5 8C5.5 7.17157 6.17157 6.5 7 6.5H13C13.8284 6.5 14.5 7.17157 14.5 8V11L18.5 8.5V15.5L14.5 13V16C14.5 16.8284 13.8284 17.5 13 17.5H7C6.17157 17.5 5.5 16.8284 5.5 16V8Z" fill="currentColor"/>
+                          </svg>
+                          {isConnecting ? 'Đang kết nối...' : 'Kết nối Zoom OAuth'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickGenerate('zoom')}
+                          className={`px-3 py-1.5 border rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            isDarkMode
+                              ? 'bg-white/[0.05] border-white/10 hover:bg-white/[0.1] text-white'
+                              : 'bg-white border-neutral-300 hover:bg-neutral-100 text-neutral-800 shadow-sm'
+                          }`}
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+                          Tạo nhanh link Zoom
+                        </button>
+                        {connectedPlatforms.zoom.connected && (
                           <button
                             type="button"
                             onClick={() => handleDisconnect('zoom')}
-                            className={`text-[10px] font-bold transition duration-200 cursor-pointer shrink-0 ml-2 ${
-                              isDarkMode ? 'text-white/30 hover:text-red-400' : 'text-neutral-400 hover:text-red-600'
-                            }`}
+                            className="text-[10px] font-semibold text-red-400 hover:text-red-500 ml-auto cursor-pointer"
                           >
-                            Hủy kết nối
+                            Hủy liên kết
                           </button>
-                        </div>
-                      ) : (
-                        /* Unconnected Zoom */
-                        <div className={`flex flex-col gap-3 border rounded-xl p-3.5 animate-fadeIn ${
-                          isDarkMode ? 'bg-white/[0.02] border-white/[0.05]' : 'bg-neutral-50 border-neutral-200'
-                        }`}>
-                          <div className="flex items-start gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
-                              isDarkMode ? 'bg-[#2D8CFF]/10 border-[#2D8CFF]/20' : 'bg-[#2D8CFF]/8 border-[#2D8CFF]/30'
-                            }`}>
-                              <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect width="24" height="24" rx="5" fill="#2D8CFF"/>
-                                <path fillRule="evenodd" clipRule="evenodd" d="M5.5 8C5.5 7.17157 6.17157 6.5 7 6.5H13C13.8284 6.5 14.5 7.17157 14.5 8V11L18.5 8.5V15.5L14.5 13V16C14.5 16.8284 13.8284 17.5 13 17.5H7C6.17157 17.5 5.5 16.8284 5.5 16V8Z" fill="white"/>
-                              </svg>
-                            </div>
-                            <div>
-                              <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-neutral-800'}`}>Zoom Account Link</p>
-                              <p className={`text-[10px] mt-1 leading-normal ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                                Tự động thiết lập cuộc họp trực tuyến Zoom bảo mật cao cho sự kiện này.
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            disabled={isConnecting}
-                            onClick={() => handleConnect('zoom')}
-                            className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-orange-950/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isConnecting && selectedOnlinePlatform === 'ZOOM' ? 'Connecting Zoom...' : 'Connect Zoom Account'}
-                          </button>
-                        </div>
-                      )
-                    ) : (
-                      connectedPlatforms.google.connected ? (
-                        /* Connected Google Meet */
-                        <div className={`flex items-center justify-between border rounded-xl p-3 animate-fadeIn ${
-                          isDarkMode ? 'bg-emerald-500/[0.04] border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
-                        }`}>
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
-                              <Check className="w-5 h-5" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-neutral-800'}`}>Đã kết nối Google Meet</p>
-                              <p className={`text-[10px] font-semibold truncate mt-0.5 ${isDarkMode ? 'text-emerald-400/90' : 'text-emerald-600'}`}>
-                                {connectedPlatforms.google.email}
-                              </p>
-                            </div>
-                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedOnlinePlatform === 'GOOGLE' && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={isConnecting}
+                          onClick={() => handleConnect('google')}
+                          className="px-3 py-1.5 bg-[#00832d] hover:bg-[#007026] text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          {isConnecting ? 'Đang kết nối...' : 'Kết nối Google Meet'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickGenerate('google')}
+                          className={`px-3 py-1.5 border rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            isDarkMode
+                              ? 'bg-white/[0.05] border-white/10 hover:bg-white/[0.1] text-white'
+                              : 'bg-white border-neutral-300 hover:bg-neutral-100 text-neutral-800 shadow-sm'
+                          }`}
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+                          Tạo nhanh link Meet
+                        </button>
+                        {connectedPlatforms.google.connected && (
                           <button
                             type="button"
                             onClick={() => handleDisconnect('google')}
-                            className={`text-[10px] font-bold transition duration-200 cursor-pointer shrink-0 ml-2 ${
-                              isDarkMode ? 'text-white/30 hover:text-red-400' : 'text-neutral-400 hover:text-red-600'
-                            }`}
+                            className="text-[10px] font-semibold text-red-400 hover:text-red-500 ml-auto cursor-pointer"
                           >
-                            Hủy kết nối
+                            Hủy liên kết
                           </button>
-                        </div>
-                      ) : (
-                        /* Unconnected Google Meet */
-                        <div className={`flex flex-col gap-3 border rounded-xl p-3.5 animate-fadeIn ${
-                          isDarkMode ? 'bg-white/[0.02] border-white/[0.05]' : 'bg-neutral-50 border-neutral-200'
-                        }`}>
-                          <div className="flex items-start gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
-                              isDarkMode ? 'bg-white/[0.04] border-white/10' : 'bg-neutral-100 border-neutral-300'
-                            }`}>
-                              <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M0 11.5v5c0 1.38 1.12 2.5 2.5 2.5h5L10 16.5l-2.5-5H0z" fill="#00832d" />
-                                <path d="M0 5v6.5h7.5l2.5-5-2.5-4h-5C1.12 2.5 0 3.62 0 5z" fill="#0066da" />
-                                <path d="M10 2.5L7.5 7.5l2.5 5 7-3.5v-6.5h-7z" fill="#2684fc" />
-                                <path d="M17 9v6.5l7 3.5V5l-7 4z" fill="#00ac47" />
-                                <path d="M10 12.5l-2.5 4v5h5c1.38 0 2.5-1.12 2.5-2.5v-6.5h-5z" fill="#ea4335" />
-                                <path d="M17 2.5h-7v6.5h7v-6.5z" fill="#ffba00" />
-                              </svg>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Custom Platform Name Input */}
+                    {selectedOnlinePlatform === 'CUSTOM' && (
+                      <div className="space-y-1">
+                        <label className={`text-[10px] font-bold ${isDarkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                          Tên nền tảng (Tùy chọn)
+                        </label>
+                        <input
+                          type="text"
+                          value={meetingDetails.customPlatformName}
+                          onChange={(e) => setMeetingDetails(prev => ({ ...prev, customPlatformName: e.target.value }))}
+                          placeholder="Ví dụ: Microsoft Teams, Cisco Webex, Discord..."
+                          className={`w-full border rounded-xl p-2.5 text-xs font-medium focus:outline-none focus:border-orange-500/50 ${
+                            isDarkMode ? 'bg-[#18181b] border-white/10 text-white' : 'bg-white border-neutral-300 text-neutral-800'
+                          }`}
+                        />
+                      </div>
+                    )}
+
+                    {/* Detailed Inputs for Link, ID, Passcode */}
+                    <div className="space-y-2.5">
+                      {/* Meeting URL */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className={`text-[10px] font-bold flex items-center gap-1 ${
+                            isDarkMode ? 'text-neutral-300' : 'text-neutral-700'
+                          }`}>
+                            <Link2 className="w-3 h-3 text-orange-400" />
+                            Đường dẫn tham gia (Meeting URL) <span className="text-orange-500">*</span>
+                          </label>
+                          {meetingDetails.url && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(meetingDetails.url);
+                                  showToast('success', 'Đã sao chép link cuộc họp!');
+                                }}
+                                className={`text-[10px] font-bold flex items-center gap-1 cursor-pointer transition ${
+                                  isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
+                                }`}
+                              >
+                                <Copy className="w-3 h-3" />
+                                Sao chép
+                              </button>
+                              <a
+                                href={meetingDetails.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] font-bold flex items-center gap-0.5 text-orange-400 hover:text-orange-500"
+                              >
+                                Mở thử
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
                             </div>
-                            <div>
-                              <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-neutral-800'}`}>Google Meet Connection</p>
-                              <p className={`text-[10px] mt-1 leading-normal ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                                Tạo link Google Meet trực tuyến bảo mật thông qua đồng bộ hóa lịch Google.
-                              </p>
+                          )}
+                        </div>
+                        <input
+                          type="url"
+                          value={meetingDetails.url}
+                          onChange={(e) => handleMeetingUrlChange(e.target.value)}
+                          placeholder={
+                            selectedOnlinePlatform === 'ZOOM'
+                              ? 'https://zoom.us/j/84930219485?pwd=...'
+                              : selectedOnlinePlatform === 'GOOGLE'
+                              ? 'https://meet.google.com/abc-defg-hij'
+                              : 'https://teams.microsoft.com/...'
+                          }
+                          className={`w-full border rounded-xl p-2.5 text-xs font-semibold focus:outline-none focus:border-orange-500/50 ${
+                            isDarkMode ? 'bg-[#18181b] border-white/10 text-white' : 'bg-white border-neutral-300 text-neutral-800'
+                          }`}
+                        />
+                      </div>
+
+                      {/* Meeting ID & Secret / Passcode */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="space-y-1">
+                          <label className={`text-[10px] font-bold ${isDarkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                            Mã cuộc họp (Meeting ID / Code)
+                          </label>
+                          <input
+                            type="text"
+                            value={meetingDetails.id}
+                            onChange={(e) => setMeetingDetails(prev => ({ ...prev, id: e.target.value }))}
+                            placeholder={selectedOnlinePlatform === 'ZOOM' ? 'Ví dụ: 849 3021 9485' : 'Ví dụ: abc-defg-hij'}
+                            className={`w-full border rounded-xl p-2.5 text-xs font-medium focus:outline-none focus:border-orange-500/50 ${
+                              isDarkMode ? 'bg-[#18181b] border-white/10 text-white' : 'bg-white border-neutral-300 text-neutral-800'
+                            }`}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className={`text-[10px] font-bold flex items-center gap-1 ${
+                            isDarkMode ? 'text-neutral-400' : 'text-neutral-600'
+                          }`}>
+                            <Key className="w-3 h-3 text-orange-400" />
+                            Mật khẩu phòng (Passcode / Secret)
+                          </label>
+                          <input
+                            type="text"
+                            value={meetingDetails.secret}
+                            onChange={(e) => setMeetingDetails(prev => ({ ...prev, secret: e.target.value }))}
+                            placeholder={selectedOnlinePlatform === 'GOOGLE' ? 'Không bắt buộc với Google Meet' : 'Ví dụ: k8X9mP'}
+                            className={`w-full border rounded-xl p-2.5 text-xs font-medium focus:outline-none focus:border-orange-500/50 ${
+                              isDarkMode ? 'bg-[#18181b] border-white/10 text-white' : 'bg-white border-neutral-300 text-neutral-800'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Schedule Confirmation Card */}
+                      {meetingDetails.url && (
+                        <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition ${
+                          isDarkMode ? 'bg-orange-950/20 border-orange-500/20 text-orange-200' : 'bg-orange-50 border-orange-200 text-orange-900'
+                        }`}>
+                          <div className="flex items-start gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500 mt-0.5 shrink-0">
+                              <CalendarCheck className="w-4 h-4" />
+                            </div>
+                            <div className="space-y-0.5">
+                              <div className="text-xs font-bold flex items-center gap-1.5">
+                                <span>Phòng họp đã được lên lịch theo thời gian mong muốn</span>
+                                <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                  Đã book lịch
+                                </span>
+                              </div>
+                              <div className="text-[11px] opacity-90 font-medium">
+                                {formData.preferredStart && formData.preferredEnd ? (
+                                  <span>
+                                    Khung giờ: <b>{formData.preferredStart.replace('T', ' ')}</b> đến <b>{formData.preferredEnd.replace('T', ' ')}</b>
+                                    {calcMeetingDuration(formData.preferredStart, formData.preferredEnd) && (
+                                      <span> ({calcMeetingDuration(formData.preferredStart, formData.preferredEnd)})</span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-500 font-medium">
+                                    💡 Vui lòng hoàn tất ngày giờ bắt đầu và kết thúc bên trên để phòng họp đồng bộ chuẩn xác.
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            disabled={isConnecting}
-                            onClick={() => handleConnect('google')}
-                            className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-orange-950/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isConnecting && selectedOnlinePlatform === 'GOOGLE' ? 'Connecting Google Meet...' : 'Connect Google Meet Account'}
-                          </button>
+                          {formData.preferredStart && formData.preferredEnd && (
+                            <div className="text-[10px] text-right font-semibold text-emerald-500 shrink-0 hidden sm:block">
+                              ✓ Sẵn sàng kích hoạt tự động
+                            </div>
+                          )}
                         </div>
-                      )
-                    )}
+                      )}
+
+                      <p className={`text-[10px] leading-relaxed ${isDarkMode ? 'text-neutral-400/90' : 'text-neutral-500'}`}>
+                        💡 Người tham gia sẽ nhận được đường dẫn và thông tin phòng họp này trên vé điện tử và trang chi tiết sự kiện.
+                      </p>
+                    </div>
                   </div>
                 )}
 

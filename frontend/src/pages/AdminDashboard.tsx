@@ -122,24 +122,43 @@ export default function AdminDashboard() {
       }
 
       // 2. Fetch Speakers List from Event Service
-      const speakersResponse = await fetch('/api/v1/admin/speakers')
       let speakerList: any[] = []
-      if (speakersResponse.ok) {
-        speakerList = await speakersResponse.json()
+      try {
+        const speakersResponse = await fetch('/api/v1/admin/speakers')
+        if (speakersResponse.ok) {
+          speakerList = await speakersResponse.json()
+        }
+      } catch (e) {
+        console.warn('Could not fetch speakers:', e)
+      }
+
+      // 3. Fetch Sample Banners from Event Service
+      let bannerList: any[] = []
+      try {
+        const bannersResponse = await fetch('/api/sample-banners')
+        if (bannersResponse.ok) {
+          bannerList = await bannersResponse.json()
+        }
+      } catch (e) {
+        console.warn('Could not fetch sample banners:', e)
       }
 
       // 4. Fetch Organizations List from Auth Service
-      const orgsResponse = await fetch('/api/organizations')
       let orgList: any[] = []
-      if (orgsResponse.ok) {
-        orgList = await orgsResponse.json()
+      try {
+        const orgsResponse = await fetch('/api/organizations')
+        if (orgsResponse.ok) {
+          orgList = await orgsResponse.json()
+        }
+      } catch (e) {
+        console.warn('Could not fetch organizations:', e)
       }
 
       setStudents(studentList)
       setInternalUsers(internalList)
-      setSpeakers(speakerList)
-      setSampleBanners(bannerList || [])
-      setOrganizations(orgList || [])
+      setSpeakers(Array.isArray(speakerList) ? speakerList : [])
+      setSampleBanners(Array.isArray(bannerList) ? bannerList : [])
+      setOrganizations(Array.isArray(orgList) ? orgList : [])
     } catch (err: any) {
       console.error('Error fetching dashboard data:', err)
       setError(err.message || 'Lỗi tải dữ liệu người dùng')
@@ -529,9 +548,17 @@ export default function AdminDashboard() {
       })
     } else if (activeTab === 'BANNER') {
       return sampleBanners.filter(b => {
-        const matchSearch = b.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        const matchSearch = (b.title && b.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (b.category && b.category.toLowerCase().includes(searchTerm.toLowerCase()))
         return matchSearch
+      })
+    } else if (activeTab === 'ORGANIZATION') {
+      return organizations.filter(org => {
+        const matchSearch = (org.orgName && org.orgName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (org.orgCode && org.orgCode.toLowerCase().includes(searchTerm.toLowerCase()))
+        const matchStatus = statusFilter === 'ALL' || org.status === statusFilter
+        const matchCampus = campusFilter === 'ALL' || org.campusCode === campusFilter
+        return matchSearch && matchStatus && matchCampus
       })
     } else {
       return internalUsers.filter(u => {
@@ -705,6 +732,10 @@ export default function AdminDashboard() {
                   ? "Tìm kiếm diễn giả theo tên, email, sđt..."
                   : activeTab === 'STUDENT'
                   ? "Tìm kiếm sinh viên theo tên, email, sđt..."
+                  : activeTab === 'BANNER'
+                  ? "Tìm kiếm ảnh mẫu theo tiêu đề, danh mục..."
+                  : activeTab === 'ORGANIZATION'
+                  ? "Tìm kiếm CLB / Đơn vị theo tên, mã..."
                   : "Tìm kiếm nhân sự theo tên, username, email..."
               }
               value={searchTerm}
@@ -714,8 +745,26 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
-            {/* Status Filter (Not applicable to Speakers since speakers don't have ACTIVE/INACTIVE state fields currently) */}
-            {activeTab !== 'SPEAKER' && (
+            {/* Campus Filter (Organization tab only) */}
+            {activeTab === 'ORGANIZATION' && (
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <select
+                  value={campusFilter}
+                  onChange={e => setCampusFilter(e.target.value)}
+                  className="px-3.5 py-2 w-full sm:w-auto bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm font-semibold cursor-pointer"
+                >
+                  <option value="ALL">Tất cả cơ sở</option>
+                  <option value="HCM">TP. HCM (HCM)</option>
+                  <option value="HL">Hà Nội (HL)</option>
+                  <option value="DN">Đà Nẵng (DN)</option>
+                  <option value="CT">Cần Thơ (CT)</option>
+                  <option value="QNH">Quy Nhơn (QNH)</option>
+                </select>
+              </div>
+            )}
+
+            {/* Status Filter (Not applicable to Speakers or Banners) */}
+            {activeTab !== 'SPEAKER' && activeTab !== 'BANNER' && (
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Filter size={16} className="text-slate-400" />
                 <select
@@ -982,6 +1031,64 @@ export default function AdminDashboard() {
                     </td>
                   </tr>
                 ))}
+
+                {activeTab === 'ORGANIZATION' && filteredItems.map((org) => (
+                  <tr key={org.orgId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-orange-600 dark:text-orange-400">{org.orgCode}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-3">
+                      {org.logoUrl ? (
+                        <img src={org.logoUrl} alt={org.orgName} className="w-8 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-800 shadow-sm" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-xs">
+                          {org.orgName?.charAt(0)?.toUpperCase() || 'O'}
+                        </div>
+                      )}
+                      <span>{org.orgName}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-bold">
+                      <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
+                        org.orgType === 'CLUB'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400'
+                          : org.orgType === 'FACULTY'
+                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-400'
+                          : org.orgType === 'DEPARTMENT'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400'
+                          : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                      }`}>
+                        {org.orgType === 'CLUB' ? 'Câu lạc bộ' : org.orgType === 'FACULTY' ? 'Khoa / Viện' : org.orgType === 'DEPARTMENT' ? 'Phòng ban' : (org.orgType || 'Khác')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-400">{org.campusCode || 'HCM'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                        org.status === 'ACTIVE'
+                          ? 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400'
+                          : 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${org.status === 'ACTIVE' ? 'bg-green-600' : 'bg-red-600'}`}></span>
+                        {org.status === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu hóa'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleOpenEditOrg(org)}
+                          className="text-blue-500 hover:text-blue-700 p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg transition-all"
+                          title="Sửa đơn vị"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteOrg(org)}
+                          className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-all"
+                          title="Xóa đơn vị"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -1174,9 +1281,9 @@ export default function AdminDashboard() {
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none font-semibold"
                   >
                     <option value="CLUB">Câu lạc bộ (CLUB)</option>
-                    <option value="FACULTY">Khoa (FACULTY)</option>
-                    <option value="DEPT">Phòng ban (DEPT)</option>
-                    <option value="OTHER">Đơn vị khác (OTHER)</option>
+                    <option value="DEPARTMENT">Phòng ban (DEPARTMENT)</option>
+                    <option value="FACULTY">Khoa / Viện (FACULTY)</option>
+                    <option value="EXTERNAL">Đối tác / Đơn vị ngoài (EXTERNAL)</option>
                   </select>
                 </div>
               </div>

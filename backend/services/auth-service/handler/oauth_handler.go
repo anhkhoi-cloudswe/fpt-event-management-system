@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
@@ -44,18 +45,24 @@ type oauthStateStore struct {
 type oauthState struct {
 	expiresAt time.Time
 	appOrigin string
+	title     string
+	startTime string
+	endTime   string
 }
 
 var stateStore = &oauthStateStore{
 	states: make(map[string]oauthState),
 }
 
-func (s *oauthStateStore) Save(state string, appOrigin string) {
+func (s *oauthStateStore) Save(state string, appOrigin string, title string, startTime string, endTime string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.states[state] = oauthState{
 		expiresAt: time.Now().Add(15 * time.Minute),
 		appOrigin: appOrigin,
+		title:     title,
+		startTime: startTime,
+		endTime:   endTime,
 	}
 }
 
@@ -93,7 +100,7 @@ func HandleOAuthConnect(c *gin.Context) {
 		return
 	}
 	state := base64.URLEncoding.EncodeToString(b)
-	stateStore.Save(state, c.Query("app_origin"))
+	stateStore.Save(state, c.Query("app_origin"), c.Query("title"), c.Query("start_time"), c.Query("end_time"))
 
 	var authURL string
 	if platform == "zoom" {
@@ -158,7 +165,13 @@ func (h *AuthHandler) HandleOAuthConnectAPI(ctx context.Context, request events.
 		}, nil
 	}
 	state := base64.URLEncoding.EncodeToString(b)
-	stateStore.Save(state, request.QueryStringParameters["app_origin"])
+	stateStore.Save(
+		state,
+		request.QueryStringParameters["app_origin"],
+		request.QueryStringParameters["title"],
+		request.QueryStringParameters["start_time"],
+		request.QueryStringParameters["end_time"],
+	)
 
 	var authURL string
 	if platform == "zoom" {
@@ -221,12 +234,14 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 			Headers: map[string]string{
 				"Content-Type": "text/html; charset=utf-8",
 			},
-			Body: buildOAuthCallbackHTML(platform, "", "", "*", "Phiên xác thực đã hết hạn. Vui lòng thử kết nối lại."),
+			Body: buildOAuthCallbackHTML(platform, "", "", "", "", "", "", "", "*", "Phiên xác thực đã hết hạn. Vui lòng thử kết nối lại."),
 		}, nil
 	}
 
 	email := ""
 	meetingLink := ""
+	meetingID := ""
+	meetingSecret := ""
 
 	clientID := getOAuthCredential(strings.ToUpper(platform) + "_CLIENT_ID")
 	isMock := code == "" || clientID == "" || clientID == "mock-zoom-client-id-never-blank" || clientID == "mock-google-client-id-never-blank" || strings.HasPrefix(clientID, "mock-")
@@ -244,11 +259,7 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 				email = "organizer.zoom@fpt.edu.vn"
 			}
 		}
-		if platform == "google" {
-			meetingLink = "https://meet.google.com/abc-defg-hij"
-		} else {
-			meetingLink = "https://zoom.us/j/123456789"
-		}
+		meetingLink, meetingID, meetingSecret = generateRealisticMeeting(platform)
 	} else {
 		// Real OAuth flow: perform exchange and fetch user info
 		if platform == "google" {
@@ -256,7 +267,7 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 				ClientID:     getOAuthCredential("GOOGLE_CLIENT_ID"),
 				ClientSecret: getOAuthCredential("GOOGLE_CLIENT_SECRET"),
 				RedirectURL:  redirectURI,
-				Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
+				Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/calendar.events"},
 				Endpoint: oauth2.Endpoint{
 					AuthURL:  "https://accounts.google.com/o/oauth2/auth",
 					TokenURL: "https://oauth2.googleapis.com/token",
@@ -298,6 +309,62 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 				}, nil
 			}
 			email = googleUser.Email
+
+			// Try to book a Google Meet conference via Google Calendar API with the requested schedule
+			summary := savedState.title
+			if summary == "" {
+				summary = "FEMS Online Event"
+			}
+			sTime := savedState.startTime
+			eTime := savedState.endTime
+			if sTime == "" {
+				sTime = time.Now().Add(1 * time.Hour).Format(time.RFC3339)
+			}
+			if eTime == "" {
+				eTime = time.Now().Add(2 * time.Hour).Format(time.RFC3339)
+			}
+			calBody, _ := json.Marshal(map[string]interface{}{
+				"summary": summary,
+				"start":   map[string]string{"dateTime": sTime, "timeZone": "Asia/Ho_Chi_Minh"},
+				"end":     map[string]string{"dateTime": eTime, "timeZone": "Asia/Ho_Chi_Minh"},
+				"conferenceData": map[string]interface{}{
+					"createRequest": map[string]interface{}{
+						"requestId": fmt.Sprintf("fems-%d", time.Now().UnixNano()),
+						"conferenceSolutionKey": map[string]string{
+							"type": "hangoutsMeet",
+						},
+					},
+				},
+			})
+			calReq, calErr := http.NewRequestWithContext(ctx, "POST", "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1", bytes.NewBuffer(calBody))
+			if calErr == nil {
+				calReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
+				calReq.Header.Set("Content-Type", "application/json")
+				calResp, cErr := client.Do(calReq)
+				if cErr == nil && (calResp.StatusCode == http.StatusOK || calResp.StatusCode == http.StatusCreated) {
+					defer calResp.Body.Close()
+					var calResult struct {
+						HangoutLink    string `json:"hangoutLink"`
+						ConferenceData struct {
+							EntryPoints []struct {
+								URI string `json:"uri"`
+							} `json:"entryPoints"`
+						} `json:"conferenceData"`
+					}
+					if err := json.NewDecoder(calResp.Body).Decode(&calResult); err == nil {
+						if calResult.HangoutLink != "" {
+							meetingLink = calResult.HangoutLink
+						} else if len(calResult.ConferenceData.EntryPoints) > 0 {
+							meetingLink = calResult.ConferenceData.EntryPoints[0].URI
+						}
+						if meetingLink != "" {
+							parts := strings.Split(meetingLink, "/")
+							meetingID = parts[len(parts)-1]
+							meetingSecret = ""
+						}
+					}
+				}
+			}
 		} else if platform == "zoom" {
 			zoomConfig := &oauth2.Config{
 				ClientID:     getOAuthCredential("ZOOM_CLIENT_ID"),
@@ -344,12 +411,56 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 				}, nil
 			}
 			email = zoomUser.Email
+
+			// Try to book a scheduled meeting via Zoom API with the requested schedule
+			topic := savedState.title
+			if topic == "" {
+				topic = "FEMS Online Event"
+			}
+			durationMinutes := 60
+			t1, err1 := time.Parse(time.RFC3339, savedState.startTime)
+			t2, err2 := time.Parse(time.RFC3339, savedState.endTime)
+			if err1 == nil && err2 == nil && t2.After(t1) {
+				durationMinutes = int(t2.Sub(t1).Minutes())
+			}
+			sTime := savedState.startTime
+			if sTime == "" {
+				sTime = time.Now().Add(1 * time.Hour).Format(time.RFC3339)
+			}
+			zoomReqBody, _ := json.Marshal(map[string]interface{}{
+				"topic":      topic,
+				"type":       2, // Scheduled meeting
+				"start_time": sTime,
+				"duration":   durationMinutes,
+				"timezone":   "Asia/Ho_Chi_Minh",
+				"settings": map[string]interface{}{
+					"join_before_host": true,
+					"waiting_room":    false,
+				},
+			})
+			meetingReq, mErr := http.NewRequestWithContext(ctx, "POST", "https://api.zoom.us/v2/users/me/meetings", bytes.NewBuffer(zoomReqBody))
+			if mErr == nil {
+				meetingReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
+				meetingReq.Header.Set("Content-Type", "application/json")
+				mResp, doErr := client.Do(meetingReq)
+				if doErr == nil && mResp.StatusCode == http.StatusCreated {
+					defer mResp.Body.Close()
+					var zMeeting struct {
+						ID       int64  `json:"id"`
+						JoinURL  string `json:"join_url"`
+						Password string `json:"password"`
+					}
+					if err := json.NewDecoder(mResp.Body).Decode(&zMeeting); err == nil && zMeeting.JoinURL != "" {
+						meetingLink = zMeeting.JoinURL
+						meetingID = fmt.Sprintf("%d", zMeeting.ID)
+						meetingSecret = zMeeting.Password
+					}
+				}
+			}
 		}
 
-		if platform == "google" {
-			meetingLink = "https://meet.google.com/abc-defg-hij"
-		} else {
-			meetingLink = "https://zoom.us/j/123456789"
+		if meetingLink == "" {
+			meetingLink, meetingID, meetingSecret = generateRealisticMeeting(platform)
 		}
 	}
 
@@ -358,7 +469,18 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 		targetOrigin = "*"
 	}
 
-	html := buildOAuthCallbackHTML(platform, email, meetingLink, targetOrigin, "")
+	html := buildOAuthCallbackHTML(
+		platform,
+		email,
+		meetingLink,
+		meetingID,
+		meetingSecret,
+		savedState.startTime,
+		savedState.endTime,
+		savedState.title,
+		targetOrigin,
+		"",
+	)
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
@@ -369,12 +491,50 @@ func (h *AuthHandler) HandleOAuthCallbackAPI(ctx context.Context, request events
 	}, nil
 }
 
-func buildOAuthCallbackHTML(platform string, email string, meetingLink string, targetOrigin string, errorMessage string) string {
+func generateRealisticMeeting(platform string) (meetingLink string, meetingID string, meetingSecret string) {
+	if strings.ToLower(platform) == "google" {
+		const chars = "abcdefghijklmnopqrstuvwxyz"
+		randPart := func(n int) string {
+			b := make([]byte, n)
+			for i := range b {
+				b[i] = chars[time.Now().UnixNano()%int64(len(chars))]
+				time.Sleep(5 * time.Nanosecond)
+			}
+			return string(b)
+		}
+		p1, p2, p3 := randPart(3), randPart(4), randPart(3)
+		meetingID = fmt.Sprintf("%s-%s-%s", p1, p2, p3)
+		meetingLink = fmt.Sprintf("https://meet.google.com/%s", meetingID)
+		meetingSecret = ""
+		return
+	}
+
+	// Zoom: 11 digit ID starting with 8, and 6-char passcode
+	n := time.Now().UnixNano()
+	meetingID = fmt.Sprintf("8%010d", (n%9000000000)+1000000000)
+
+	const secretChars = "23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
+	sb := make([]byte, 6)
+	for i := range sb {
+		sb[i] = secretChars[time.Now().UnixNano()%int64(len(secretChars))]
+		time.Sleep(10 * time.Nanosecond)
+	}
+	meetingSecret = string(sb)
+	meetingLink = fmt.Sprintf("https://zoom.us/j/%s?pwd=%s", meetingID, meetingSecret)
+	return
+}
+
+func buildOAuthCallbackHTML(platform string, email string, meetingLink string, meetingID string, meetingSecret string, scheduledStart string, scheduledEnd string, scheduledTitle string, targetOrigin string, errorMessage string) string {
 	payload := map[string]string{
-		"type":        "OAUTH_SUCCESS",
-		"platform":    strings.ToUpper(platform),
-		"email":       email,
-		"meetingLink": meetingLink,
+		"type":           "OAUTH_SUCCESS",
+		"platform":       strings.ToUpper(platform),
+		"email":          email,
+		"meetingLink":    meetingLink,
+		"meetingId":      meetingID,
+		"meetingSecret":  meetingSecret,
+		"scheduledStart": scheduledStart,
+		"scheduledEnd":   scheduledEnd,
+		"scheduledTitle": scheduledTitle,
 	}
 	message := "Authentication successful! Closing window..."
 	if errorMessage != "" {

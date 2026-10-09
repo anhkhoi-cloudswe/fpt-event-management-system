@@ -775,7 +775,7 @@ func (r *UserRepository) UpgradeToOrganizerWithOrg(ctx context.Context, userID i
 
 // GetAllOrganizations fetches active or all organizations
 func (r *UserRepository) GetAllOrganizations(ctx context.Context, onlyActive bool) ([]models.Organization, error) {
-	query := `SELECT org_id, org_name, org_code, org_type, campus_code, logo_url, description, status, created_at FROM organizations`
+	query := `SELECT org_id, org_name, org_code, category, campus_code, logo_url, description, status, created_at FROM organizations`
 	if onlyActive {
 		query += ` WHERE status = 'ACTIVE'`
 	}
@@ -801,7 +801,7 @@ func (r *UserRepository) GetAllOrganizations(ctx context.Context, onlyActive boo
 // CreateOrganization creates a new organization entity
 func (r *UserRepository) CreateOrganization(ctx context.Context, req models.OrganizationRequest) (*models.Organization, error) {
 	query := `
-		INSERT INTO organizations (org_name, org_code, org_type, campus_code, logo_url, description, status)
+		INSERT INTO organizations (org_name, org_code, category, campus_code, logo_url, description, status)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING org_id, created_at
 	`
@@ -839,7 +839,7 @@ func (r *UserRepository) CreateOrganization(ctx context.Context, req models.Orga
 func (r *UserRepository) UpdateOrganization(ctx context.Context, orgID int, req models.OrganizationRequest) error {
 	query := `
 		UPDATE organizations
-		SET org_name = $1, org_code = $2, org_type = $3, campus_code = $4, logo_url = $5, description = $6, status = $7
+		SET org_name = $1, org_code = $2, category = $3, campus_code = $4, logo_url = $5, description = $6, status = $7
 		WHERE org_id = $8
 	`
 	_, err := r.db.ExecContext(ctx, query, req.OrgName, req.OrgCode, req.OrgType, req.CampusCode, req.LogoURL, req.Description, req.Status, orgID)
