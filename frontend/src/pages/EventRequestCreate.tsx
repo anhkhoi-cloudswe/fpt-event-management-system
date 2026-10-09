@@ -673,6 +673,16 @@ export default function EventRequestCreate() {
     limitsError,
   } = useCapacityGuard()
 
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    preferredStart: '',
+    preferredEnd: '',
+    expectedParticipants: '',
+    customVenueName: '',
+    customLocation: '',
+  })
+
   const [flowType, setFlowType] = useState<'UNIVERSITY' | 'INDEPENDENT' | null>(null)
   const [eventFormat, setEventFormat] = useState<'ONLINE' | 'ONSITE' | 'HYBRID'>('ONSITE')
 
@@ -747,7 +757,12 @@ export default function EventRequestCreate() {
   useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-      const apiOrigin = new URL(apiBaseUrl, window.location.origin).origin;
+      let apiOrigin = window.location.origin;
+      try {
+        apiOrigin = new URL(apiBaseUrl, window.location.origin).origin;
+      } catch (e) {
+        // Fallback safely to current origin
+      }
       if (event.origin !== window.location.origin && event.origin !== apiOrigin) {
         return;
       }
@@ -935,16 +950,6 @@ export default function EventRequestCreate() {
     setMeetingSchedule(null);
     showToast('info', `Đã hủy kết nối tài khoản ${platform === 'zoom' ? 'Zoom' : 'Google Meet'}.`);
   };
-
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    preferredStart: '',
-    preferredEnd: '',
-    expectedParticipants: '',
-    customVenueName: '',
-    customLocation: '',
-  })
 
   const [descBuffer, setDescBuffer] = useState('')
   const descModalRef = useRef<HTMLDivElement>(null)
