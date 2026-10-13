@@ -10,10 +10,25 @@ input::-webkit-credentials-auto-fill-button {
   display: none !important;
 }
 
+/* Tinh chỉnh trình duyệt autofill để không bị đổi màu nền xanh gắt và nhảy font */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 40px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -146,6 +161,19 @@ body {
   100% {
     transform: translate(0px, 0px) scale(1);
   }
+}
+
+@keyframes spinGlow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-glow {
+  animation: spinGlow 4s linear infinite;
 }
 
 .animate-float-light-1 {

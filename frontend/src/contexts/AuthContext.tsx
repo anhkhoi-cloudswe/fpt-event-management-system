@@ -10,6 +10,8 @@ const isPublicRoutePath = (pathname: string) => {
     pathname === '/signup' ||
     pathname === '/reset-password' ||
     pathname === '/policy' ||
+    pathname === '/terms-and-policies' ||
+    pathname === '/terms' ||
     pathname === '/organizer-policy' ||
     pathname === '/payment-success' ||
     pathname === '/payment-failed' ||
