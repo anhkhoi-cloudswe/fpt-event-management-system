@@ -39,6 +39,7 @@ import PublicEventPayment from './pages/events/PublicEventPayment.tsx'
 import AttendanceConfirm from './pages/AttendanceConfirm.tsx'
 import OrganizerWalletPage from './pages/OrganizerWallet.tsx'
 import OrganizerPolicy from './pages/OrganizerPolicy.tsx'
+import TermsAndPolicies from './pages/TermsAndPolicies.tsx'
 import AdminFinancePage from './pages/AdminFinance.tsx'
 import OrganizerSubscriptionPage from './pages/OrganizerSubscription.tsx'
 
@@ -283,6 +284,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/guest" element={<PublicRoute><GuestLanding /></PublicRoute>} />
       <Route path="/policy" element={<SystemPolicy />} />
+      <Route path="/terms-and-policies" element={<TermsAndPolicies />} />
+      <Route path="/terms" element={<TermsAndPolicies />} />
       <Route path="/organizer-policy" element={<OrganizerPolicy />} />
       {/* Public payment callback routes for VNPay redirects */}
       <Route path="/payment-success" element={<PaymentSuccess />} />

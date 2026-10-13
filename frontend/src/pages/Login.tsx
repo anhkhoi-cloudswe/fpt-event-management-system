@@ -8,8 +8,8 @@ import { useState, useEffect, useRef } from 'react'
 // Link: chuyển trang bằng router (không reload)
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 
-// Icon Eye để toggle hiển thị mật khẩu
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
+// Icon để toggle hiển thị mật khẩu và icon input chìm
+import { Eye, EyeOff, User, KeyRound } from 'lucide-react'
 
 // useAuth: lưu user vào context và refresh user từ backend sau khi cookie được set
 import { useAuth } from '../contexts/AuthContext'
@@ -475,164 +475,39 @@ export default function Login() {
   // ===================== UI RENDER =====================
 
   return (
-    <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 relative" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
+    <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 py-8 sm:py-10 relative overflow-y-auto" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
       {/* Card login */}
-      <div className="bg-white/75 backdrop-blur-lg p-10 rounded-[32px] shadow-2xl w-full max-w-md border border-white/40 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900">
-        {/* Floating Escape Link */}
-        <Link 
-          to="/" 
-          className="absolute left-6 top-6 flex items-center gap-1 text-slate-900 hover:text-orange-600 font-extrabold text-[11px] transition-colors duration-200 uppercase tracking-wider"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Quay lại Trang chủ</span>
-        </Link>
-
+      <div className="bg-white/95 backdrop-blur-xl p-6 sm:p-7 rounded-[28px] shadow-2xl w-full max-w-[400px] border border-white/60 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900 my-auto">
         {/* Header logo + tiêu đề */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-3.5">
-            <Link to="/" className="cursor-pointer transition-opacity duration-200 hover:opacity-80">
+        <div className="text-center mb-4">
+          <div className="flex justify-center mb-1.5">
+            <Link to="/" title="Về trang chủ" className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 inline-block">
               <img
-                src={fptLogo}
-                alt="FPT Education"
-                className="h-16 w-auto cursor-pointer transition-opacity duration-200 hover:opacity-80"
+                src="/favicon.png"
+                alt="FEMS Logo"
+                className="h-12 w-12 rounded-2xl object-cover shadow-md shadow-orange-500/20 border border-orange-100"
               />
             </Link>
           </div>
-          <h2 className="text-lg font-black text-slate-900">Đăng Nhập FPT Event</h2>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Đăng nhập</h2>
         </div>
 
         {lockoutCountdown > 0 && (
-          <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center">
-            <p className="text-xs font-black uppercase tracking-wide text-amber-700">Dang khoa dang nhap tam thoi</p>
-            <p className="mt-1 text-2xl font-black tabular-nums text-amber-800">{formatCountdown(lockoutCountdown)}</p>
+          <div className="mb-3 rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2 text-center">
+            <p className="text-[11px] font-black uppercase tracking-wide text-amber-700">Dang khoa dang nhap tam thoi</p>
+            <p className="mt-0.5 text-xl font-black tabular-nums text-amber-800">{formatCountdown(lockoutCountdown)}</p>
           </div>
         )}
 
-        {/* Form login */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Input Email */}
-          <div className="space-y-1.5">
-            <label htmlFor="email" className="block text-xs font-extrabold text-slate-900 uppercase tracking-wide pl-1">
-              Địa chỉ Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              placeholder="email@fpt.edu.vn"
-              required
-              disabled={loading || lockoutCountdown > 0}
-              className={`w-full px-4 py-3 !bg-slate-50 !text-slate-900 border border-slate-200 rounded-2xl outline-none font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:!bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
-                emailError 
-                  ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
-                  : ''
-              }`}
-            />
-            <div className="min-h-[24px] mt-1 transition-all duration-200 ease-in-out">
-              <span className={`text-xs text-red-500 block pl-1 font-medium transition-opacity duration-200 ${emailError ? 'opacity-100 animate-shake' : 'opacity-0 pointer-events-none'}`}>
-                {emailError || 'Placeholder'}
-              </span>
-            </div>
-            {emailCheckLoading && (
-              <p className="text-slate-500 text-xs mt-1 pl-1 font-medium">Checking email...</p>
-            )}
-          </div>
-
-          {/* Input Password */}
-          <div className="space-y-1.5">
-            <label htmlFor="password" className="block text-xs font-extrabold text-slate-900 uppercase tracking-wide pl-1">
-              Mật khẩu
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="Nhập mật khẩu"
-                required
-                disabled={loading || lockoutCountdown > 0}
-                className={`w-full px-4 py-3 pr-10 !bg-slate-50 !text-slate-900 border border-slate-200 rounded-2xl outline-none font-semibold placeholder-slate-500 text-sm shadow-sm transition-all duration-300 hover:border-slate-300 focus:!bg-white focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 ${
-                  passwordError 
-                    ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
-                    : ''
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={loading || lockoutCountdown > 0}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors focus:outline-none"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            {passwordError && (
-              <p className="text-red-500 text-xs mt-1 pl-1 font-medium animate-shake">{passwordError}</p>
-            )}
-          </div>
-
-          {/* reCAPTCHA checkbox */}
-          {RECAPTCHA_SITE_KEY && (
-            <fieldset
-              disabled={!canUseRecaptcha}
-              className={`flex justify-center border border-slate-200 rounded-2xl p-2.5 bg-slate-50 ${canUseRecaptcha ? '' : 'opacity-50 pointer-events-none'}`}
-            >
-              <ReCAPTCHA
-                ref={recaptchaRef}
-                sitekey={RECAPTCHA_SITE_KEY}
-                onChange={(token) => {
-                  console.log('reCAPTCHA onChange token (first 40 chars):', token ? token.slice(0, 40) : null)
-                  setRecaptchaToken(token)
-                  setError('')
-                }}
-                onExpired={() => {
-                  console.log('reCAPTCHA expired')
-                  setRecaptchaToken(null)
-                }}
-              />
-            </fieldset>
-          )}
-
-          {/* Button submit */}
-          <button
-            type="submit"
-            disabled={loading || lockoutCountdown > 0 || !recaptchaToken}
-            className="w-full bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 text-white py-3.5 px-4 rounded-2xl hover:shadow-lg hover:shadow-orange-500/25 focus:outline-none font-extrabold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 shadow-md"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg
-                  className="animate-spin h-5 w-5 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Đang kết nối...
-              </span>
-            ) : (
-              'Đăng nhập'
-            )}
-          </button>
-
-          {/* Nút đăng nhập Google */}
+        {/* Nút đăng nhập Google đặt trên đầu như tham khảo */}
+        <div className="mb-3">
           <button
             type="button"
             onClick={signInWithGoogle}
             disabled={loading || lockoutCountdown > 0}
-            className="!mt-3 w-full flex items-center justify-center gap-2.5 !bg-white border border-slate-200 hover:border-slate-300 !text-slate-700 py-3.5 px-4 rounded-2xl hover:!bg-slate-50 font-extrabold text-sm shadow-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-98 hover:shadow"
+            className="w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200/90 hover:border-slate-400 text-slate-700 py-2.5 px-4 rounded-xl hover:bg-slate-50 font-bold text-xs sm:text-sm shadow-xs transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99"
           >
-            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-.1.84-2.45 2.4l3.8 2.94c2.22-2.05 3.7-5.07 3.7-9.19z"
@@ -650,21 +525,165 @@ export default function Login() {
                 d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.4 0 3.25 2.7 1.24 6.64l3.93 3.08c.96-2.9 3.65-5.05 6.83-5.05z"
               />
             </svg>
-            <span className="!text-slate-700 font-extrabold text-sm">Đăng nhập bằng Google</span>
+            <span className="text-slate-800 font-extrabold text-xs sm:text-sm">Đăng nhập bằng Google</span>
           </button>
 
-          {/* Reset Password & Sign Up */}
-          <div className="flex flex-col gap-2 items-center text-center !mt-2">
-            <Link to="/reset-password" className="text-sm font-black text-slate-900 hover:text-orange-600 transition-colors">
-              Quên mật khẩu?
-            </Link>
-            <div className="text-xs font-semibold text-slate-900 border-t border-slate-200/60 w-full pt-3 mt-1.5">
-              Chưa có tài khoản?{' '}
-              <Link to="/signup" className="text-sm font-black text-slate-900 hover:text-orange-600 transition-colors">
-                Đăng ký ngay
+          {/* Dải phân cách 'hoặc' */}
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-slate-200"></div>
+            <span className="flex-shrink mx-3 text-[11px] font-semibold text-slate-400">hoặc</span>
+            <div className="flex-grow border-t border-slate-200"></div>
+          </div>
+        </div>
+
+        {/* Form login */}
+        <form onSubmit={handleSubmit} className="space-y-2.5">
+          {/* Input Email với icon chìm như Hình 3 */}
+          <div>
+            <div className="relative flex items-center">
+              <span className="absolute left-3.5 text-slate-400 pointer-events-none transition-colors">
+                <User size={18} className="stroke-[1.75]" />
+              </span>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="Email hoặc số điện thoại"
+                required
+                disabled={loading || lockoutCountdown > 0}
+                autoComplete="username"
+                className={`w-full pl-10 pr-3.5 py-2.5 bg-white text-slate-900 border border-slate-200/90 rounded-xl outline-none font-medium placeholder-slate-400 text-sm shadow-2xs transition-all duration-200 hover:border-slate-300 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 ${
+                  emailError 
+                    ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
+                    : ''
+                }`}
+              />
+            </div>
+            {emailError && (
+              <span className="text-xs text-red-500 block pl-1 mt-0.5 font-medium animate-shake">
+                {emailError}
+              </span>
+            )}
+            {emailCheckLoading && (
+              <p className="text-slate-500 text-xs mt-0.5 pl-1 font-medium">Checking email...</p>
+            )}
+          </div>
+
+          {/* Input Password với icon chìm như Hình 3 */}
+          <div>
+            <div className="relative flex items-center">
+              <span className="absolute left-3.5 text-slate-400 pointer-events-none transition-colors">
+                <KeyRound size={18} className="stroke-[1.75]" />
+              </span>
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Mật khẩu"
+                required
+                autoComplete="current-password"
+                disabled={loading || lockoutCountdown > 0}
+                className={`w-full pl-10 pr-10 py-2.5 bg-white text-slate-900 border border-slate-200/90 rounded-xl outline-none font-medium placeholder-slate-400 text-sm shadow-2xs transition-all duration-200 hover:border-slate-300 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 ${
+                  passwordError 
+                    ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
+                    : ''
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={loading || lockoutCountdown > 0}
+                className="absolute right-3 text-slate-400 hover:text-slate-700 transition-colors focus:outline-none"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {passwordError && (
+              <p className="text-red-500 text-xs mt-0.5 pl-1 font-medium animate-shake">{passwordError}</p>
+            )}
+
+            {/* Quên mật khẩu đặt bên dưới phải của ô mật khẩu chuẩn theo Hình 1 */}
+            <div className="flex justify-end mt-1 pr-1">
+              <Link to="/reset-password" className="text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors">
+                Quên mật khẩu?
               </Link>
             </div>
           </div>
+
+          {/* reCAPTCHA checkbox */}
+          {RECAPTCHA_SITE_KEY && (
+            <fieldset
+              disabled={!canUseRecaptcha}
+              className={`flex justify-center border border-slate-200/80 rounded-xl p-1.5 bg-slate-50/70 scale-95 origin-center ${canUseRecaptcha ? '' : 'opacity-50 pointer-events-none'}`}
+            >
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey={RECAPTCHA_SITE_KEY}
+                onChange={(token) => {
+                  setRecaptchaToken(token)
+                  setError('')
+                }}
+                onExpired={() => {
+                  setRecaptchaToken(null)
+                }}
+              />
+            </fieldset>
+          )}
+
+          {/* Button submit */}
+          <button
+            type="submit"
+            disabled={loading || lockoutCountdown > 0 || !recaptchaToken}
+            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white py-3 px-4 rounded-xl hover:shadow-lg hover:shadow-orange-500/25 focus:outline-none font-black text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99 shadow-md mt-0.5"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg
+                  className="animate-spin h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Đang xử lý...
+              </span>
+            ) : (
+              'Đăng nhập'
+            )}
+          </button>
+
+          {/* Đăng ký ngay luôn hiển thị màu cam FPT */}
+          <div className="text-center pt-1">
+            <span className="text-xs font-semibold text-slate-600">
+              Bạn chưa có tài khoản?{' '}
+              <Link to="/signup" className="text-xs font-black text-orange-600 hover:text-orange-700 transition-colors">
+                Đăng ký ngay
+              </Link>
+            </span>
+          </div>
+
+          {/* Điều khoản dưới chân form */}
+          <p className="text-[11px] text-center text-slate-400 font-medium px-1 pt-0.5 leading-normal">
+            Bằng việc đăng nhập tài khoản, bạn đồng ý với{' '}
+            <Link to="/terms-and-policies?tab=terms" target="_blank" className="text-orange-600 hover:underline font-bold">
+              Điều khoản
+            </Link>{' '}
+            &{' '}
+            <Link to="/terms-and-policies?tab=privacy" target="_blank" className="text-orange-600 hover:underline font-bold">
+              Chính sách bảo mật
+            </Link>{' '}
+            của FEMS.
+          </p>
         </form>
       </div>
     </div>
