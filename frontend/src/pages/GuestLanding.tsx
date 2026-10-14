@@ -538,9 +538,9 @@ export default function GuestLanding() {
             className="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300"
           ></div>
 
-          {/* Mobile Drawer Panel: Chiều rộng ôm vừa vặn mép phải cụm logo và chữ dài nhất, đồng bộ 100% size logo với ngoài navbar */}
+          {/* Mobile Drawer Panel: Chiều rộng ôm sát vừa khít chữ dài nhất "Quy định & Chính sách" (w-[220px]) */}
           <aside
-            className="fixed inset-y-0 left-0 w-[270px] max-w-[78vw] text-slate-100 shadow-2xl flex flex-col px-3 pb-6 z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right"
+            className="fixed inset-y-0 left-0 w-[220px] max-w-[60vw] text-slate-100 shadow-2xl flex flex-col px-3 pb-6 z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right"
             style={{ backgroundColor: 'rgba(11, 15, 25, 0.96)', backdropFilter: 'blur(24px)' }}
           >
             {/* Header of Drawer: Giữ icon 3 gạch (Menu) và Cụm logo đồng bộ 100% size và vị trí với navbar */}
@@ -581,7 +581,7 @@ export default function GuestLanding() {
                       setIsMobileMenuOpen(false)
                       item.action(e)
                     }}
-                    className="group/item flex items-center gap-2.5 py-2.5 px-2.5 rounded-xl text-xs font-black transition-all duration-300 text-left w-full hover:bg-slate-800/60 active:scale-98"
+                    className="group/item flex items-center gap-2.5 py-2.5 px-2 rounded-xl text-xs font-black transition-all duration-300 text-left w-full hover:bg-slate-800/60 active:scale-98"
                   >
                     <div className="p-2 rounded-lg bg-slate-800/50 text-slate-300 group-hover/item:bg-orange-500 group-hover/item:text-white group-hover/item:shadow-md group-hover/item:shadow-orange-500/20 transition-all duration-300 shrink-0">
                       <Icon className="w-4 h-4" />
@@ -595,8 +595,8 @@ export default function GuestLanding() {
             </nav>
 
             {/* Footer of Drawer */}
-            <div className="pt-6 border-t border-slate-800/60 text-xs text-slate-500 font-semibold space-y-1">
-              <p>FEMS - FPT Event Management System</p>
+            <div className="pt-4 border-t border-slate-800/60 text-[10px] text-slate-500 font-medium space-y-0.5 leading-tight">
+              <p className="truncate">FEMS - FPT Event Management</p>
               <p>© {new Date().getFullYear()} All rights reserved.</p>
             </div>
           </aside>
