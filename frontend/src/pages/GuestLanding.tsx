@@ -1,5 +1,7 @@
 // Import Link để điều hướng trong SPA, useNavigate để chuyển trang bằng code
 import { Link, useNavigate } from 'react-router-dom'
+import { LumaFloatingCards } from '../components/landing/LumaFloatingCards'
+import { FooterConstellationBackground } from '../components/landing/FooterConstellationBackground'
 
 // Import icon dùng cho UI (trang landing nhìn đẹp, có biểu tượng)
 import {
@@ -128,6 +130,17 @@ export default function GuestLanding() {
 
   // showLoading: bật/tắt overlay loading khi bấm đăng nhập
   const [showLoading, setShowLoading] = useState(false)
+
+  // isScrolled: theo dõi trạng thái scroll để navbar luôn giữ cố định và trong suốt kính mờ mượt mà
+  const [isScrolled, setIsScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   // isMobileMenuOpen: control drawer on mobile/tablet
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -527,7 +540,7 @@ export default function GuestLanding() {
   // =========================== JSX RENDER ===========================
   return (
     // Background gradient toàn trang
-    <div id="top" className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 transition-all duration-500">
+    <div id="top" className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 transition-all duration-500 relative overflow-x-hidden">
 
       {/* ===================== MOBILE DRAWER ===================== */}
       {isMobileMenuOpen && (
@@ -538,40 +551,32 @@ export default function GuestLanding() {
             className="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300"
           ></div>
 
-          {/* Mobile Drawer Panel: Chiều rộng ôm sát vừa khít chữ dài nhất "Quy định & Chính sách" (w-[220px]) */}
+          {/* Mobile Drawer Panel */}
           <aside
-            className="fixed inset-y-0 left-0 w-[220px] max-w-[60vw] text-slate-100 shadow-2xl flex flex-col px-3 pb-6 z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right"
+            className="fixed inset-y-0 left-0 w-72 text-slate-100 shadow-2xl flex flex-col p-6 z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right"
             style={{ backgroundColor: 'rgba(11, 15, 25, 0.96)', backdropFilter: 'blur(24px)' }}
           >
-            {/* Header of Drawer: Giữ icon 3 gạch (Menu) và Cụm logo đồng bộ 100% size và vị trí với navbar */}
-            <div className="flex items-center gap-1.5 sm:gap-4 h-16 border-b border-slate-800/60 shrink-0">
+            {/* Header of Drawer */}
+            <div className="flex items-center justify-between pb-6 border-b border-slate-800/60">
+              <div className="flex items-center gap-2.5">
+                <div className="relative flex-shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center border border-slate-700/80 shadow-md overflow-hidden">
+                    <img src="/favicon.png" alt="FEMS Logo" className="w-full h-full object-contain" />
+                  </div>
+                </div>
+                <span className="text-slate-400 font-light text-base select-none">×</span>
+                <img src={fptLogo} alt="FPT Education" className="h-8 w-auto object-contain" />
+              </div>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1.5 rounded-lg text-slate-300 hover:text-orange-500 hover:bg-slate-800/60 transition-colors shrink-0"
-                aria-label="Đóng menu"
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
               >
-                <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
+                <X className="w-5 h-5" />
               </button>
-
-              <div className="flex items-center gap-2 sm:gap-4 shrink min-w-0">
-                <img
-                  src="/favicon.png"
-                  alt="FEMS Logo"
-                  className="h-8 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 shrink-0 drop-shadow-xs"
-                />
-                <span className="text-slate-300 font-light text-base sm:text-xl md:text-2xl select-none leading-none shrink-0">
-                  ×
-                </span>
-                <img
-                  src={fptLogo}
-                  alt="FPT University"
-                  className="h-7 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 shrink-0 brightness-110"
-                />
-              </div>
             </div>
 
             {/* Navigation links */}
-            <nav className="flex-1 flex flex-col gap-1.5 mt-5 overflow-y-auto">
+            <nav className="flex-1 flex flex-col gap-2 mt-6">
               {sidebarItems.map((item) => {
                 const Icon = item.icon
                 return (
@@ -581,12 +586,12 @@ export default function GuestLanding() {
                       setIsMobileMenuOpen(false)
                       item.action(e)
                     }}
-                    className="group/item flex items-center gap-2.5 py-2.5 px-2 rounded-xl text-xs font-black transition-all duration-300 text-left w-full hover:bg-slate-800/60 active:scale-98"
+                    className="group/item flex items-center gap-4 py-3.5 px-3.5 rounded-2xl text-xs font-black transition-all duration-300 text-left w-full hover:bg-slate-800/60 active:scale-98"
                   >
-                    <div className="p-2 rounded-lg bg-slate-800/50 text-slate-300 group-hover/item:bg-orange-500 group-hover/item:text-white group-hover/item:shadow-md group-hover/item:shadow-orange-500/20 transition-all duration-300 shrink-0">
+                    <div className="p-2.5 rounded-xl bg-slate-800/50 text-slate-300 group-hover/item:bg-orange-500 group-hover/item:text-white group-hover/item:shadow-lg group-hover/item:shadow-orange-500/20 transition-all duration-300">
                       <Icon className="w-4 h-4" />
                     </div>
-                    <span className="font-bold text-xs text-slate-200 group-hover/item:text-white transition-colors truncate">
+                    <span className="font-extrabold text-sm text-slate-200 group-hover/item:text-white transition-colors">
                       {item.label}
                     </span>
                   </button>
@@ -595,8 +600,8 @@ export default function GuestLanding() {
             </nav>
 
             {/* Footer of Drawer */}
-            <div className="pt-4 border-t border-slate-800/60 text-[10px] text-slate-500 font-medium space-y-0.5 leading-tight">
-              <p className="truncate">FEMS - FPT Event Management</p>
+            <div className="pt-6 border-t border-slate-800/60 text-xs text-slate-500 font-semibold space-y-1">
+              <p>FEMS - FPT Event Management System</p>
               <p>© {new Date().getFullYear()} All rights reserved.</p>
             </div>
           </aside>
@@ -604,9 +609,18 @@ export default function GuestLanding() {
       )}
 
       {/* ===================== TOP HORIZONTAL HEADER ===================== */}
-      {/* Sticky header thanh ngang full-width */}
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 border-b border-orange-500/10 bg-white/80 backdrop-blur-md shadow-xs transition-all duration-300">
+      {/* Fixed header luôn giữ cố định ở trên đỉnh khi cuộn trang, trong suốt kính mờ (transparent glassmorphism) */}
+      <header
+        className={`fixed top-0 inset-x-0 w-full z-40 transition-all duration-300 ${
+          isScrolled
+            ? 'bg-white/40 backdrop-blur-xl border-b border-orange-500/15 shadow-sm shadow-orange-500/5'
+            : 'bg-white/20 backdrop-blur-md border-b border-orange-500/10'
+        }`}
+        style={{
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+        }}
+      >
         <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
 
           {/* Left: Mobile Toggle & Co-branded Logos [FEMS Logo] × [FPT University Logo] */}
@@ -620,16 +634,16 @@ export default function GuestLanding() {
             </button>
 
             {/* Co-branded Logos */}
-            <Link to="/" className="flex items-center gap-2 sm:gap-4 group shrink min-w-0">
+            <Link to="/" className="flex items-center gap-1.5 sm:gap-4 group shrink min-w-0">
               {/* FEMS Logo */}
               <img
                 src="/favicon.png"
                 alt="FEMS Logo"
-                className="h-8 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-xs"
+                className="h-7 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
               />
 
               {/* Dấu x kết nối hợp tác / co-branding */}
-              <span className="text-slate-300 font-light text-base sm:text-xl md:text-2xl select-none leading-none shrink-0">
+              <span className="text-slate-300 font-light text-sm sm:text-xl md:text-2xl select-none leading-none shrink-0">
                 ×
               </span>
 
@@ -637,7 +651,7 @@ export default function GuestLanding() {
               <img
                 src={fptLogo}
                 alt="FPT University"
-                className="h-7 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
+                className="h-6 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
               />
             </Link>
           </div>
@@ -687,60 +701,64 @@ export default function GuestLanding() {
       </header>
 
       {/* ===================== MAIN ===================== */}
-      <main className="mx-auto max-w-7xl space-y-24 px-6 py-16">
+      <main className="mx-auto max-w-7xl space-y-12 sm:space-y-24 px-4 sm:px-6 pt-16 sm:pt-20 pb-8 sm:pb-16">
 
         {/* ===================== HERO SECTION ===================== */}
-        <section className="min-h-[calc(100vh-8rem)] flex flex-col justify-center items-center text-center py-10 relative overflow-hidden">
-          {/* Badge nhỏ phía trên */}
-          <div className="animate-fade-in-up inline-flex items-center gap-2 rounded-full border border-orange-400/35 bg-orange-50/80 backdrop-blur-sm px-5 py-2 text-xs font-bold uppercase tracking-[0.2em] text-orange-600 shadow-sm transition-all duration-300 mb-6" style={{ animationDelay: '100ms' }}>
-            <TrendingUp className="w-4 h-4 text-orange-500" />
-            Nền tảng quản lý sự kiện
-          </div>
+        <section className="min-h-0 sm:min-h-[calc(100vh-8rem)] flex flex-col justify-start sm:justify-center items-center text-center pt-1 pb-4 sm:py-10 relative z-10">
+          {/* Luma Floating Event Cards chỉ cho Desktop (bố trí ôm tròn xung quanh text) */}
+          <LumaFloatingCards view="desktop" />
 
-          {/* Title */}
-          <h1 className="animate-fade-in-up text-5xl font-extrabold leading-tight sm:text-6xl lg:text-7xl tracking-tight mb-6" style={{ animationDelay: '200ms' }}>
-            <span className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 bg-clip-text text-transparent">
-              Tổ chức
-            </span>
-            <br />
-            <span className="text-gray-900">Sự Kiện FPT Education</span>
-          </h1>
-
-          {/* Subtitle */}
-          <p className="animate-fade-in-up mx-auto max-w-3xl text-lg text-gray-600 sm:text-xl leading-relaxed mb-8" style={{ animationDelay: '300ms' }}>
-            Dành cho Ban tổ chức, Bộ phận truyền thông và Câu lạc bộ trong hệ
-            thống FPT Education. Dễ dàng đăng ký tham gia, quản lý sự kiện.
-          </p>
-
-          {/* CTA buttons */}
-          <div className="animate-fade-in-up flex flex-wrap justify-center gap-5 pt-2" style={{ animationDelay: '400ms' }}>
-            {/* Nút Trở thành Ban tổ chức */}
-            <button
-              onClick={() => setIsOrganizerModalOpen(true)}
-              className="group rounded-full bg-slate-900 border border-slate-700 hover:border-orange-500 px-8 py-4 text-base font-bold text-white shadow-xl transition-all duration-300 hover:shadow-orange-500/20 hover:-translate-y-1 hover:scale-[1.02] flex items-center gap-2 cursor-pointer"
+          {/* Foreground Hero Content */}
+          <div className="flex flex-col items-center max-w-4xl relative z-10 w-full px-2">
+            {/* Logo/Badge "fems" phong cách Luma.com đồng bộ mobile & laptop - Không cho copy */}
+            <div
+              className="animate-fade-in-up select-none pointer-events-none mb-2 sm:mb-5 flex items-center justify-center gap-1.5 opacity-55"
+              style={{ animationDelay: '100ms', userSelect: 'none', WebkitUserSelect: 'none' }}
             >
-              <Sparkles className="w-5 h-5 text-orange-500 group-hover:rotate-12 transition-transform" />
-              Trở thành Ban Tổ Chức
-            </button>
-
-            {/* Nút đăng nhập -> gọi handleLoginClick */}
-            <button
-              onClick={handleLoginClick}
-              className="group rounded-full bg-gradient-to-r from-orange-600 to-orange-500 px-8 py-4 text-base font-bold text-white shadow-xl shadow-orange-500/30 transition-all duration-300 hover:shadow-2xl hover:shadow-orange-500/50 hover:-translate-y-1 hover:scale-[1.02]"
-            >
-              <span className="flex items-center gap-2">
-                Đăng nhập để bắt đầu
-                <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+              <span className="text-xl sm:text-2xl font-bold lowercase tracking-tight text-slate-500 font-sans">
+                fems
               </span>
-            </button>
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 fill-slate-400" />
+            </div>
 
-            {/* Nút Xem sự kiện nổi bật với cuộn mượt mà */}
-            <button
-              onClick={() => scrollToSection("events")}
-              className="rounded-full border border-orange-200 bg-white/80 backdrop-blur-sm px-8 py-4 text-base font-bold text-gray-700 shadow-md transition-all duration-300 hover:border-orange-500 hover:text-orange-600 hover:shadow-lg hover:-translate-y-1 hover:scale-[1.02] cursor-pointer"
-            >
-              Xem sự kiện nổi bật
-            </button>
+            {/* Title */}
+            <h1 className="animate-fade-in-up text-3xl sm:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-2 sm:mb-6" style={{ animationDelay: '200ms' }}>
+              <span className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 bg-clip-text text-transparent">
+                Tổ chức
+              </span>
+              <br />
+              <span className="text-gray-900">Sự Kiện FPT Education</span>
+            </h1>
+
+            {/* Subtitle */}
+            <p className="animate-fade-in-up mx-auto max-w-2xl text-sm sm:text-lg text-gray-600 leading-relaxed mb-4 sm:mb-8 px-2 sm:px-4" style={{ animationDelay: '300ms' }}>
+              Dành cho Ban tổ chức, Bộ phận truyền thông và Câu lạc bộ. Dễ dàng
+              đăng ký tham gia, quản lý sự kiện.
+            </p>
+
+            {/* CTA buttons: Tinh giản, loại bỏ 'Đăng nhập để bắt đầu', làm gọn nút và nút 'Khám phá sự kiện' kiểu Luma */}
+            <div className="animate-fade-in-up flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 pt-1 w-full max-w-md sm:max-w-none" style={{ animationDelay: '400ms' }}>
+              {/* Nút chính: Trở thành Ban tổ chức (Phong cách nút đen pill như 'Create Your First Event') */}
+              <button
+                onClick={() => setIsOrganizerModalOpen(true)}
+                className="group w-auto rounded-full bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-orange-500/80 px-7 sm:px-8 py-3 sm:py-3.5 text-sm sm:text-base font-bold text-white shadow-xl transition-all duration-300 hover:shadow-orange-500/20 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-orange-400 group-hover:rotate-12 transition-transform" />
+                <span>Trở thành Ban Tổ Chức</span>
+              </button>
+
+              {/* Nút phụ: Khám phá sự kiện phong cách Luma (text + arrow 'Discover Events ->') */}
+              <button
+                onClick={() => scrollToSection("events")}
+                className="group inline-flex items-center gap-1.5 px-4 py-2 text-sm sm:text-base font-bold text-slate-600 hover:text-orange-600 transition-colors duration-200 cursor-pointer"
+              >
+                <span>Xem sự kiện nổi bật</span>
+                <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </button>
+            </div>
+
+            {/* Luma Floating Event Cards chỉ cho Mobile: Bố cục collage thông minh như hình 4 */}
+            <LumaFloatingCards view="mobile" />
           </div>
         </section>
 
@@ -1110,8 +1128,11 @@ export default function GuestLanding() {
       </main>
 
       {/* ===================== PRO SAAS FOOTER (Tham khảo Hình 2, 3, 4) ===================== */}
-      <footer className="mt-28 border-t border-slate-800/80 bg-slate-950 text-slate-300 pt-16 pb-12">
-        <div className="mx-auto max-w-7xl px-6 space-y-12">
+      <footer className="mt-28 border-t border-slate-800/80 bg-slate-950 text-slate-300 pt-16 pb-12 relative overflow-hidden">
+        {/* Constellation background nhẹ nhàng tinh tế chỉ dành riêng cho footer (Hình 1) */}
+        <FooterConstellationBackground />
+
+        <div className="mx-auto max-w-7xl px-6 space-y-12 relative z-10">
           {/* Top Row: Brand, Info, Social & Policies */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10">
             {/* Col 1: Brand & Channels (4 cols) */}
