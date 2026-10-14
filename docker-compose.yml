@@ -156,6 +156,8 @@ services:
         SERVICE: event-service
         BUILD_PATH: ./services/event-service
     container_name: fpt-event
+    volumes:
+      - ./backend/config:/app/config
     <<: *service-defaults
     environment:
       LOCAL_PORT: "8082"
