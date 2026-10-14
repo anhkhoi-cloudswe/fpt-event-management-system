@@ -448,22 +448,22 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 py-3 sm:py-6 relative overflow-y-auto" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
-      <div className="bg-white/95 backdrop-blur-xl p-5 sm:p-7 rounded-[26px] shadow-2xl w-full max-w-[390px] border border-white/60 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900 my-auto">
+    <div className="min-h-[100dvh] w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-3 sm:px-4 py-2 sm:py-6 relative overflow-y-auto" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
+      <div className="bg-white/95 backdrop-blur-xl p-4 sm:p-7 rounded-[24px] sm:rounded-[26px] shadow-2xl w-full max-w-[375px] sm:max-w-[390px] border border-white/60 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900 my-auto">
         {step === 'form' ? (
           <>
             {/* Header logo FEMS + Tiêu đề */}
-            <div className="text-center mb-3">
+            <div className="text-center mb-2 sm:mb-3">
               <div className="flex justify-center mb-1">
                 <Link to="/" title="Về trang chủ" className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 inline-block">
                   <img
                     src="/favicon.png"
                     alt="FEMS Logo"
-                    className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl object-cover shadow-md shadow-orange-500/20 border border-orange-100"
+                    className="h-9 w-9 sm:h-12 sm:w-12 rounded-2xl object-cover shadow-md shadow-orange-500/20 border border-orange-100"
                   />
                 </Link>
               </div>
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Đăng ký tài khoản</h2>
+              <h2 className="text-base sm:text-xl font-black text-slate-900 tracking-tight">Đăng ký tài khoản</h2>
             </div>
 
             {/* Google Signup Button đặt trên đầu */}

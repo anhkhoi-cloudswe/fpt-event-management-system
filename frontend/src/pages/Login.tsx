@@ -475,37 +475,37 @@ export default function Login() {
   // ===================== UI RENDER =====================
 
   return (
-    <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 py-3 sm:py-6 relative overflow-y-auto" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
+    <div className="min-h-[100dvh] w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-3 sm:px-4 py-2 sm:py-6 relative overflow-y-auto" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
       {/* Card login */}
-      <div className="bg-white/95 backdrop-blur-xl p-5 sm:p-7 rounded-[26px] shadow-2xl w-full max-w-[390px] border border-white/60 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900 my-auto">
+      <div className="bg-white/95 backdrop-blur-xl p-4 sm:p-7 rounded-[24px] sm:rounded-[26px] shadow-2xl w-full max-w-[375px] sm:max-w-[390px] border border-white/60 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900 my-auto">
         {/* Header logo + tiêu đề */}
-        <div className="text-center mb-3">
+        <div className="text-center mb-2 sm:mb-3">
           <div className="flex justify-center mb-1">
             <Link to="/" title="Về trang chủ" className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 inline-block">
               <img
                 src="/favicon.png"
                 alt="FEMS Logo"
-                className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl object-cover shadow-md shadow-orange-500/20 border border-orange-100"
+                className="h-9 w-9 sm:h-12 sm:w-12 rounded-2xl object-cover shadow-md shadow-orange-500/20 border border-orange-100"
               />
             </Link>
           </div>
-          <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Đăng nhập</h2>
+          <h2 className="text-base sm:text-xl font-black text-slate-900 tracking-tight">Đăng nhập</h2>
         </div>
 
         {lockoutCountdown > 0 && (
-          <div className="mb-3 rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2 text-center">
-            <p className="text-[11px] font-black uppercase tracking-wide text-amber-700">Dang khoa dang nhap tam thoi</p>
-            <p className="mt-0.5 text-xl font-black tabular-nums text-amber-800">{formatCountdown(lockoutCountdown)}</p>
+          <div className="mb-2.5 rounded-2xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-center">
+            <p className="text-[10px] font-black uppercase tracking-wide text-amber-700">Dang khoa dang nhap tam thoi</p>
+            <p className="mt-0.5 text-lg font-black tabular-nums text-amber-800">{formatCountdown(lockoutCountdown)}</p>
           </div>
         )}
 
         {/* Nút đăng nhập Google đặt trên đầu như tham khảo */}
-        <div className="mb-3">
+        <div className="mb-2 sm:mb-3">
           <button
             type="button"
             onClick={signInWithGoogle}
             disabled={loading || lockoutCountdown > 0}
-            className="w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200/90 hover:border-slate-400 text-slate-700 py-2.5 px-4 rounded-xl hover:bg-slate-50 font-bold text-xs sm:text-sm shadow-xs transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99"
+            className="w-full flex items-center justify-center gap-2 bg-white border border-slate-200/90 hover:border-slate-400 text-slate-700 py-2 sm:py-2.5 px-3 rounded-xl hover:bg-slate-50 font-bold text-xs sm:text-sm shadow-xs transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99"
           >
             <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
               <path
@@ -529,20 +529,20 @@ export default function Login() {
           </button>
 
           {/* Dải phân cách 'hoặc' */}
-          <div className="relative flex py-2 items-center">
+          <div className="relative flex py-1 sm:py-2 items-center">
             <div className="flex-grow border-t border-slate-200"></div>
-            <span className="flex-shrink mx-3 text-[11px] font-semibold text-slate-400">hoặc</span>
+            <span className="flex-shrink mx-2 sm:mx-3 text-[10px] sm:text-[11px] font-semibold text-slate-400">hoặc</span>
             <div className="flex-grow border-t border-slate-200"></div>
           </div>
         </div>
 
         {/* Form login */}
-        <form onSubmit={handleSubmit} className="space-y-2.5">
+        <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-2.5">
           {/* Input Email với icon chìm như Hình 3 */}
           <div>
             <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-slate-400 pointer-events-none transition-colors">
-                <User size={18} className="stroke-[1.75]" />
+              <span className="absolute left-3 text-slate-400 pointer-events-none transition-colors">
+                <User size={16} className="stroke-[1.75]" />
               </span>
               <input
                 id="email"
@@ -554,7 +554,7 @@ export default function Login() {
                 required
                 disabled={loading || lockoutCountdown > 0}
                 autoComplete="username"
-                className={`w-full pl-10 pr-3.5 py-2.5 bg-white text-slate-900 border border-slate-200/90 rounded-xl outline-none font-medium placeholder-slate-400 text-sm shadow-2xs transition-all duration-200 hover:border-slate-300 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 ${
+                className={`w-full pl-9 pr-3 py-2 sm:py-2.5 bg-white text-slate-900 border border-slate-200/90 rounded-xl outline-none font-medium placeholder-slate-400 text-xs sm:text-sm shadow-2xs transition-all duration-200 hover:border-slate-300 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 ${
                   emailError 
                     ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
                     : ''
@@ -562,20 +562,20 @@ export default function Login() {
               />
             </div>
             {emailError && (
-              <span className="text-xs text-red-500 block pl-1 mt-0.5 font-medium animate-shake">
+              <span className="text-[11px] text-red-500 block pl-1 mt-0.5 font-medium animate-shake">
                 {emailError}
               </span>
             )}
             {emailCheckLoading && (
-              <p className="text-slate-500 text-xs mt-0.5 pl-1 font-medium">Checking email...</p>
+              <p className="text-slate-500 text-[11px] mt-0.5 pl-1 font-medium">Checking email...</p>
             )}
           </div>
 
           {/* Input Password với icon chìm như Hình 3 */}
           <div>
             <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-slate-400 pointer-events-none transition-colors">
-                <KeyRound size={18} className="stroke-[1.75]" />
+              <span className="absolute left-3 text-slate-400 pointer-events-none transition-colors">
+                <KeyRound size={16} className="stroke-[1.75]" />
               </span>
               <input
                 id="password"
@@ -587,7 +587,7 @@ export default function Login() {
                 required
                 autoComplete="current-password"
                 disabled={loading || lockoutCountdown > 0}
-                className={`w-full pl-10 pr-10 py-2.5 bg-white text-slate-900 border border-slate-200/90 rounded-xl outline-none font-medium placeholder-slate-400 text-sm shadow-2xs transition-all duration-200 hover:border-slate-300 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 ${
+                className={`w-full pl-9 pr-9 py-2 sm:py-2.5 bg-white text-slate-900 border border-slate-200/90 rounded-xl outline-none font-medium placeholder-slate-400 text-xs sm:text-sm shadow-2xs transition-all duration-200 hover:border-slate-300 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 ${
                   passwordError 
                     ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
                     : ''
@@ -599,16 +599,16 @@ export default function Login() {
                 disabled={loading || lockoutCountdown > 0}
                 className="absolute right-3 text-slate-400 hover:text-slate-700 transition-colors focus:outline-none"
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
             {passwordError && (
-              <p className="text-red-500 text-xs mt-0.5 pl-1 font-medium animate-shake">{passwordError}</p>
+              <p className="text-red-500 text-[11px] mt-0.5 pl-1 font-medium animate-shake">{passwordError}</p>
             )}
 
-            {/* Quên mật khẩu đặt bên dưới phải của ô mật khẩu chuẩn theo Hình 1 */}
-            <div className="flex justify-end mt-1 pr-1">
-              <Link to="/reset-password" className="text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors">
+            {/* Quên mật khẩu đặt bên dưới phải của ô mật khẩu */}
+            <div className="flex justify-end mt-0.5 pr-1">
+              <Link to="/reset-password" className="text-[11px] sm:text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors">
                 Quên mật khẩu?
               </Link>
             </div>
@@ -618,7 +618,7 @@ export default function Login() {
           {RECAPTCHA_SITE_KEY && (
             <fieldset
               disabled={!canUseRecaptcha}
-              className={`flex justify-center border border-slate-200/80 rounded-xl p-1 bg-slate-50/70 scale-[0.88] sm:scale-95 origin-center my-[-4px] ${canUseRecaptcha ? '' : 'opacity-50 pointer-events-none'}`}
+              className={`flex justify-center border border-slate-200/80 rounded-xl p-0.5 bg-slate-50/70 scale-[0.82] sm:scale-95 origin-center my-[-8px] sm:my-[-4px] ${canUseRecaptcha ? '' : 'opacity-50 pointer-events-none'}`}
             >
               <ReCAPTCHA
                 ref={recaptchaRef}
@@ -638,12 +638,12 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading || lockoutCountdown > 0 || !recaptchaToken}
-            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white py-2.5 sm:py-3 px-4 rounded-xl hover:shadow-lg hover:shadow-orange-500/25 focus:outline-none font-black text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99 shadow-md mt-0.5"
+            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white py-2 sm:py-2.5 px-4 rounded-xl hover:shadow-lg hover:shadow-orange-500/25 focus:outline-none font-black text-xs sm:text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99 shadow-md"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <svg
-                  className="animate-spin h-5 w-5 text-white"
+                  className="animate-spin h-4 w-4 text-white"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -664,16 +664,16 @@ export default function Login() {
 
           {/* Đăng ký ngay luôn hiển thị màu cam FPT */}
           <div className="text-center pt-0.5">
-            <span className="text-xs font-semibold text-slate-600">
+            <span className="text-[11px] sm:text-xs font-semibold text-slate-600">
               Bạn chưa có tài khoản?{' '}
-              <Link to="/signup" className="text-xs font-black text-orange-600 hover:text-orange-700 transition-colors">
+              <Link to="/signup" className="text-[11px] sm:text-xs font-black text-orange-600 hover:text-orange-700 transition-colors">
                 Đăng ký ngay
               </Link>
             </span>
           </div>
 
           {/* Điều khoản dưới chân form */}
-          <p className="text-[10px] sm:text-[11px] text-center text-slate-400 font-medium px-1 pt-0.5 leading-normal">
+          <p className="text-[9.5px] sm:text-[11px] text-center text-slate-400 font-medium px-1 leading-tight">
             Bằng việc đăng nhập tài khoản, bạn đồng ý với{' '}
             <Link to="/terms-and-policies?tab=terms" target="_blank" className="text-orange-600 hover:underline font-bold">
               Điều khoản
