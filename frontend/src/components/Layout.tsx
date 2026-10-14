@@ -478,8 +478,20 @@ export default function Layout() {
             >
               <Menu size={20} />
             </button>
-            <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-85 transition-opacity">
-              <img src={fptLogo} alt="FPT Education" className="h-10 w-auto" />
+            <Link to="/dashboard" className="flex items-center gap-1.5 sm:gap-3 group shrink min-w-0 hover:opacity-95 transition-opacity">
+              <img
+                src="/favicon.png"
+                alt="FEMS Logo"
+                className="h-8 sm:h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-xs"
+              />
+              <span className="text-slate-300 dark:text-slate-600 font-light text-base sm:text-lg select-none leading-none shrink-0">
+                ×
+              </span>
+              <img
+                src={fptLogo}
+                alt="FPT University"
+                className="h-7 sm:h-8 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
+              />
             </Link>
           </div>
 
@@ -798,19 +810,31 @@ export default function Layout() {
               ? 'bg-slate-900 border-slate-800 text-slate-200'
               : 'bg-white border-orange-100 text-slate-800'
               }`}>
-              <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200/50 dark:border-slate-800/60">
+              <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200/50 dark:border-slate-800/60">
                 <Link
                   to="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3"
+                  className="flex items-center gap-2 group shrink min-w-0"
                 >
-                  <img src={fptLogo} alt="FPT Education" className="h-10 w-auto" />
+                  <img
+                    src="/favicon.png"
+                    alt="FEMS Logo"
+                    className="h-8 w-auto object-contain shrink-0 drop-shadow-xs"
+                  />
+                  <span className="text-slate-300 dark:text-slate-600 font-light text-base select-none leading-none shrink-0">
+                    ×
+                  </span>
+                  <img
+                    src={fptLogo}
+                    alt="FPT University"
+                    className="h-7 w-auto object-contain shrink-0"
+                  />
                 </Link>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-orange-500 transition-colors"
                 >
-                  <X size={20} />
+                  <Menu size={20} />
                 </button>
               </div>
               <div className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
