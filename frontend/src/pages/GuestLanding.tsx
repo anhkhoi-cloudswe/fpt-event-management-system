@@ -538,12 +538,12 @@ export default function GuestLanding() {
             className="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300"
           ></div>
 
-          {/* Mobile Drawer Panel: Thu gọn chỉ chiếm khoảng một nửa màn hình (w-[230px] max-w-[62vw]), sát với chữ dài nhất */}
+          {/* Mobile Drawer Panel: Chiều rộng ôm vừa vặn mép phải cụm logo và chữ dài nhất, đồng bộ 100% size logo với ngoài navbar */}
           <aside
-            className="fixed inset-y-0 left-0 w-[232px] max-w-[64vw] text-slate-100 shadow-2xl flex flex-col px-3 pb-6 z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right"
+            className="fixed inset-y-0 left-0 w-[270px] max-w-[78vw] text-slate-100 shadow-2xl flex flex-col px-3 pb-6 z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right"
             style={{ backgroundColor: 'rgba(11, 15, 25, 0.96)', backdropFilter: 'blur(24px)' }}
           >
-            {/* Header of Drawer: Giữ icon 3 gạch (Menu) cùng vị trí như màn hình chính để bấm đóng/mở tại cùng 1 vị trí */}
+            {/* Header of Drawer: Giữ icon 3 gạch (Menu) và Cụm logo đồng bộ 100% size và vị trí với navbar */}
             <div className="flex items-center gap-1.5 sm:gap-4 h-16 border-b border-slate-800/60 shrink-0">
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -553,10 +553,20 @@ export default function GuestLanding() {
                 <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
 
-              <div className="flex items-center gap-1.5 shrink min-w-0">
-                <img src="/favicon.png" alt="FEMS Logo" className="h-7 w-auto object-contain drop-shadow shrink-0" />
-                <span className="text-slate-500 font-light text-sm select-none leading-none shrink-0">×</span>
-                <img src={fptLogo} alt="FPT Education" className="h-6 w-auto object-contain brightness-110 shrink-0" />
+              <div className="flex items-center gap-2 sm:gap-4 shrink min-w-0">
+                <img
+                  src="/favicon.png"
+                  alt="FEMS Logo"
+                  className="h-8 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 shrink-0 drop-shadow-xs"
+                />
+                <span className="text-slate-300 font-light text-base sm:text-xl md:text-2xl select-none leading-none shrink-0">
+                  ×
+                </span>
+                <img
+                  src={fptLogo}
+                  alt="FPT University"
+                  className="h-7 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 shrink-0 brightness-110"
+                />
               </div>
             </div>
 

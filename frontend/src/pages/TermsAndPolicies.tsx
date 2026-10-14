@@ -1001,18 +1001,18 @@ export default function TermsAndPolicies() {
                 {currentSection.content}
               </div>
 
-              {/* Prev / Next Navigation Cards (cùng 1 hàng layout trên mobile và desktop) */}
-              <div className="mt-10 pt-6 border-t border-slate-200/80 dark:border-slate-800 grid grid-cols-2 gap-2 sm:gap-4">
+              {/* Prev / Next Navigation Cards (cùng 1 hàng layout, mở rộng chiều cao để hiển thị trọn vẹn 100% nội dung) */}
+              <div className="mt-10 pt-6 border-t border-slate-200/80 dark:border-slate-800 grid grid-cols-2 gap-2.5 sm:gap-4 items-stretch">
                 {/* Previous Button Card (nửa bên trái) */}
                 {prevTab ? (
                   <button
                     onClick={() => setSearchParams({ tab: prevTab.id })}
-                    className="w-full min-w-0 p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-orange-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-orange-500 hover:shadow-md transition-all flex items-center gap-1.5 sm:gap-3 text-left group overflow-hidden"
+                    className="w-full min-w-0 min-h-[76px] sm:min-h-[84px] p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-orange-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-orange-500 hover:shadow-md transition-all flex items-center gap-1.5 sm:gap-3 text-left group"
                   >
-                    <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 group-hover:-translate-x-0.5 transition-all shrink-0" />
-                    <div className="flex flex-col min-w-0 overflow-hidden">
-                      <span className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-tight">PREVIOUS</span>
-                      <span className="text-[11px] sm:text-sm font-black text-orange-600 dark:text-orange-400 group-hover:text-orange-700 transition-colors line-clamp-1 leading-snug break-words">
+                    <ChevronLeft className="w-4 h-4 text-orange-500 group-hover:-translate-x-0.5 transition-all shrink-0" />
+                    <div className="flex flex-col min-w-0 flex-1 justify-center">
+                      <span className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-tight mb-0.5">PREVIOUS</span>
+                      <span className="text-xs sm:text-sm font-black text-orange-600 dark:text-orange-400 group-hover:text-orange-700 transition-colors leading-snug break-words">
                         {prevTab.title}
                       </span>
                     </div>
@@ -1025,15 +1025,15 @@ export default function TermsAndPolicies() {
                 {nextTab ? (
                   <button
                     onClick={() => setSearchParams({ tab: nextTab.id })}
-                    className="w-full min-w-0 p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-orange-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-orange-500 hover:shadow-md transition-all flex items-center justify-between text-right group ml-auto overflow-hidden"
+                    className="w-full min-w-0 min-h-[76px] sm:min-h-[84px] p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-orange-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-orange-500 hover:shadow-md transition-all flex items-center justify-between text-right group ml-auto"
                   >
-                    <div className="flex flex-col items-end min-w-0 w-full mr-1 sm:mr-3 overflow-hidden">
-                      <span className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-tight">NEXT</span>
-                      <span className="text-[11px] sm:text-sm font-black text-orange-600 dark:text-orange-400 group-hover:text-orange-700 transition-colors line-clamp-1 leading-snug break-words">
+                    <div className="flex flex-col items-end min-w-0 flex-1 justify-center mr-1.5 sm:mr-3">
+                      <span className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-tight mb-0.5">NEXT</span>
+                      <span className="text-xs sm:text-sm font-black text-orange-600 dark:text-orange-400 group-hover:text-orange-700 transition-colors leading-snug break-words">
                         {nextTab.title}
                       </span>
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-orange-500 group-hover:translate-x-0.5 transition-all shrink-0" />
                   </button>
                 ) : (
                   <div />
