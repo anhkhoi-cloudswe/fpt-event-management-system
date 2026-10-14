@@ -475,21 +475,21 @@ export default function Login() {
   // ===================== UI RENDER =====================
 
   return (
-    <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 py-8 sm:py-10 relative overflow-y-auto" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
+    <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 py-3 sm:py-6 relative overflow-y-auto" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
       {/* Card login */}
-      <div className="bg-white/95 backdrop-blur-xl p-6 sm:p-7 rounded-[28px] shadow-2xl w-full max-w-[400px] border border-white/60 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900 my-auto">
+      <div className="bg-white/95 backdrop-blur-xl p-5 sm:p-7 rounded-[26px] shadow-2xl w-full max-w-[390px] border border-white/60 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900 my-auto">
         {/* Header logo + tiêu đề */}
-        <div className="text-center mb-4">
-          <div className="flex justify-center mb-1.5">
+        <div className="text-center mb-3">
+          <div className="flex justify-center mb-1">
             <Link to="/" title="Về trang chủ" className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 inline-block">
               <img
                 src="/favicon.png"
                 alt="FEMS Logo"
-                className="h-12 w-12 rounded-2xl object-cover shadow-md shadow-orange-500/20 border border-orange-100"
+                className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl object-cover shadow-md shadow-orange-500/20 border border-orange-100"
               />
             </Link>
           </div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">Đăng nhập</h2>
+          <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Đăng nhập</h2>
         </div>
 
         {lockoutCountdown > 0 && (
@@ -618,7 +618,7 @@ export default function Login() {
           {RECAPTCHA_SITE_KEY && (
             <fieldset
               disabled={!canUseRecaptcha}
-              className={`flex justify-center border border-slate-200/80 rounded-xl p-1.5 bg-slate-50/70 scale-95 origin-center ${canUseRecaptcha ? '' : 'opacity-50 pointer-events-none'}`}
+              className={`flex justify-center border border-slate-200/80 rounded-xl p-1 bg-slate-50/70 scale-[0.88] sm:scale-95 origin-center my-[-4px] ${canUseRecaptcha ? '' : 'opacity-50 pointer-events-none'}`}
             >
               <ReCAPTCHA
                 ref={recaptchaRef}
@@ -638,7 +638,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading || lockoutCountdown > 0 || !recaptchaToken}
-            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white py-3 px-4 rounded-xl hover:shadow-lg hover:shadow-orange-500/25 focus:outline-none font-black text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99 shadow-md mt-0.5"
+            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white py-2.5 sm:py-3 px-4 rounded-xl hover:shadow-lg hover:shadow-orange-500/25 focus:outline-none font-black text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-99 shadow-md mt-0.5"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -663,7 +663,7 @@ export default function Login() {
           </button>
 
           {/* Đăng ký ngay luôn hiển thị màu cam FPT */}
-          <div className="text-center pt-1">
+          <div className="text-center pt-0.5">
             <span className="text-xs font-semibold text-slate-600">
               Bạn chưa có tài khoản?{' '}
               <Link to="/signup" className="text-xs font-black text-orange-600 hover:text-orange-700 transition-colors">
@@ -673,7 +673,7 @@ export default function Login() {
           </div>
 
           {/* Điều khoản dưới chân form */}
-          <p className="text-[11px] text-center text-slate-400 font-medium px-1 pt-0.5 leading-normal">
+          <p className="text-[10px] sm:text-[11px] text-center text-slate-400 font-medium px-1 pt-0.5 leading-normal">
             Bằng việc đăng nhập tài khoản, bạn đồng ý với{' '}
             <Link to="/terms-and-policies?tab=terms" target="_blank" className="text-orange-600 hover:underline font-bold">
               Điều khoản

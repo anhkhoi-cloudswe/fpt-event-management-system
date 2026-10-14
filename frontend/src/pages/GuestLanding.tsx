@@ -597,30 +597,31 @@ export default function GuestLanding() {
 
       {/* ===================== TOP HORIZONTAL HEADER ===================== */}
       {/* Sticky header thanh ngang full-width */}
+      {/* Top Header */}
       <header className="sticky top-0 z-40 border-b border-orange-500/10 bg-white/80 backdrop-blur-md shadow-xs transition-all duration-300">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
 
           {/* Left: Mobile Toggle & Co-branded Logos [FEMS Logo] × [FPT University Logo] */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-4 shrink min-w-0">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden p-2 rounded-xl text-slate-600 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+              className="md:hidden p-1.5 rounded-lg text-slate-600 hover:text-orange-600 hover:bg-orange-50 transition-colors shrink-0"
               aria-label="Menu"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
 
             {/* Co-branded Logos */}
-            <Link to="/" className="flex items-center gap-3 sm:gap-4 group">
-              {/* FEMS Logo - Tăng kích thước bằng với FPT logo, nét và nổi bật */}
+            <Link to="/" className="flex items-center gap-1.5 sm:gap-4 group shrink min-w-0">
+              {/* FEMS Logo */}
               <img
                 src="/favicon.png"
                 alt="FEMS Logo"
-                className="h-10 sm:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-7 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
               />
 
               {/* Dấu x kết nối hợp tác / co-branding */}
-              <span className="text-slate-300 font-light text-xl sm:text-2xl select-none leading-none">
+              <span className="text-slate-300 font-light text-sm sm:text-xl md:text-2xl select-none leading-none shrink-0">
                 ×
               </span>
 
@@ -628,7 +629,7 @@ export default function GuestLanding() {
               <img
                 src={fptLogo}
                 alt="FPT University"
-                className="h-10 sm:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-6 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
               />
             </Link>
           </div>
@@ -662,16 +663,16 @@ export default function GuestLanding() {
           </nav>
 
           {/* Right: Clock and Nút đăng nhập */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <div className="hidden xl:block">
               <RealtimeClock />
             </div>
             <button
               onClick={handleLoginClick}
-              className="rounded-full bg-gradient-to-r from-orange-600 to-orange-500 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-white shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-1.5 group"
+              className="rounded-full bg-gradient-to-r from-orange-600 to-orange-500 px-3.5 py-1.5 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-1 sm:gap-1.5 group shrink-0"
             >
               <span>Đăng nhập</span>
-              <LogIn className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+              <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
             </button>
           </div>
         </div>
