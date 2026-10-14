@@ -547,12 +547,10 @@ export default function GuestLanding() {
             <div className="flex items-center justify-between pb-6 border-b border-slate-800/60">
               <div className="flex items-center gap-2.5">
                 <div className="relative flex-shrink-0">
-                  <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center border border-slate-700/80 shadow-md overflow-hidden">
-                    <img src="/favicon.png" alt="FEMS Logo" className="w-full h-full object-contain" />
-                  </div>
+                  <img src="/favicon.png" alt="FEMS Logo" className="w-10 h-10 object-contain drop-shadow" />
                 </div>
-                <span className="text-slate-400 font-light text-base select-none">×</span>
-                <img src={fptLogo} alt="FPT Education" className="h-8 w-auto object-contain" />
+                <span className="text-slate-500 font-light text-base select-none">×</span>
+                <img src={fptLogo} alt="FPT Education" className="h-8 w-auto object-contain brightness-110" />
               </div>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -612,16 +610,16 @@ export default function GuestLanding() {
             </button>
 
             {/* Co-branded Logos */}
-            <Link to="/" className="flex items-center gap-1.5 sm:gap-4 group shrink min-w-0">
+            <Link to="/" className="flex items-center gap-2 sm:gap-4 group shrink min-w-0">
               {/* FEMS Logo */}
               <img
                 src="/favicon.png"
                 alt="FEMS Logo"
-                className="h-7 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
+                className="h-8 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-xs"
               />
 
               {/* Dấu x kết nối hợp tác / co-branding */}
-              <span className="text-slate-300 font-light text-sm sm:text-xl md:text-2xl select-none leading-none shrink-0">
+              <span className="text-slate-300 font-light text-base sm:text-xl md:text-2xl select-none leading-none shrink-0">
                 ×
               </span>
 
@@ -629,7 +627,7 @@ export default function GuestLanding() {
               <img
                 src={fptLogo}
                 alt="FPT University"
-                className="h-6 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
+                className="h-7 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
               />
             </Link>
           </div>

@@ -573,19 +573,19 @@ export default function TermsAndPolicies() {
           
           {/* Left: Logo FEMS × FPT University chuẩn trang chủ + Tên Docs */}
           <div className="flex items-center gap-2 sm:gap-4 shrink min-w-0">
-            <Link to="/" className="flex items-center gap-1.5 sm:gap-4 group shrink min-w-0">
+            <Link to="/" className="flex items-center gap-2 sm:gap-4 group shrink min-w-0">
               <img
                 src="/favicon.png"
                 alt="FEMS Logo"
-                className="h-7 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
+                className="h-8 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-xs"
               />
-              <span className="text-slate-300 font-light text-sm sm:text-xl md:text-2xl select-none leading-none shrink-0">
+              <span className="text-slate-300 font-light text-base sm:text-xl md:text-2xl select-none leading-none shrink-0">
                 ×
               </span>
               <img
                 src={fptLogo}
                 alt="FPT Education"
-                className="h-6 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
+                className="h-7 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
               />
             </Link>
             <span className="h-5 w-px bg-slate-300 dark:bg-slate-700 hidden md:block"></span>
@@ -595,7 +595,7 @@ export default function TermsAndPolicies() {
           </div>
 
           {/* Right: Search box mở Popup (Hình 3) & Đồng hồ Realtime & Nút Đăng nhập */}
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
             <div className="relative hidden md:block">
               <button
                 onClick={() => setIsSearchOpen(true)}
@@ -614,10 +614,10 @@ export default function TermsAndPolicies() {
             {/* Mobile search icon button */}
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="md:hidden p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-orange-600 transition-colors"
+              className="md:hidden p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-orange-600 transition-colors"
               aria-label="Tìm kiếm"
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-3.5 h-3.5" />
             </button>
 
             <div className="hidden xl:block">
@@ -1001,42 +1001,42 @@ export default function TermsAndPolicies() {
                 {currentSection.content}
               </div>
 
-              {/* Prev / Next Navigation Cards (tham khảo chính xác Hình 1 & Hình 2) */}
-              <div className="mt-14 pt-8 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Prev / Next Navigation Cards (cùng 1 hàng layout trên mobile và desktop) */}
+              <div className="mt-10 pt-6 border-t border-slate-200/80 dark:border-slate-800 grid grid-cols-2 gap-2.5 sm:gap-4">
                 {/* Previous Button Card (nửa bên trái) */}
                 {prevTab ? (
                   <button
                     onClick={() => setSearchParams({ tab: prevTab.id })}
-                    className="w-full sm:w-1/2 p-4 rounded-2xl border border-orange-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-orange-500 hover:shadow-md transition-all flex items-center gap-3 text-left group"
+                    className="w-full p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-orange-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-orange-500 hover:shadow-md transition-all flex items-center gap-1.5 sm:gap-3 text-left group"
                   >
-                    <ChevronLeft className="w-4 h-4 text-orange-500 group-hover:-translate-x-0.5 transition-all shrink-0" />
+                    <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 group-hover:-translate-x-0.5 transition-all shrink-0" />
                     <div className="flex flex-col min-w-0">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">PREVIOUS</span>
-                      <span className="text-sm font-black text-orange-600 dark:text-orange-400 group-hover:text-orange-700 transition-colors truncate">
+                      <span className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-tight">PREVIOUS</span>
+                      <span className="text-xs sm:text-sm font-black text-orange-600 dark:text-orange-400 group-hover:text-orange-700 transition-colors truncate">
                         {prevTab.title}
                       </span>
                     </div>
                   </button>
                 ) : (
-                  <div className="hidden sm:block sm:w-1/2" />
+                  <div />
                 )}
 
                 {/* Next Button Card (nửa bên phải) */}
                 {nextTab ? (
                   <button
                     onClick={() => setSearchParams({ tab: nextTab.id })}
-                    className="w-full sm:w-1/2 p-4 rounded-2xl border border-orange-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-orange-500 hover:shadow-md transition-all flex items-center justify-between text-right group ml-auto"
+                    className="w-full p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-orange-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-orange-500 hover:shadow-md transition-all flex items-center justify-between text-right group ml-auto"
                   >
-                    <div className="flex flex-col items-end min-w-0 w-full mr-3">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">NEXT</span>
-                      <span className="text-sm font-black text-orange-600 dark:text-orange-400 group-hover:text-orange-700 transition-colors truncate">
+                    <div className="flex flex-col items-end min-w-0 w-full mr-1.5 sm:mr-3">
+                      <span className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-tight">NEXT</span>
+                      <span className="text-xs sm:text-sm font-black text-orange-600 dark:text-orange-400 group-hover:text-orange-700 transition-colors truncate">
                         {nextTab.title}
                       </span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-orange-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                    <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 group-hover:translate-x-0.5 transition-all shrink-0" />
                   </button>
                 ) : (
-                  <div className="hidden sm:block sm:w-1/2" />
+                  <div />
                 )}
               </div>
             </div>
