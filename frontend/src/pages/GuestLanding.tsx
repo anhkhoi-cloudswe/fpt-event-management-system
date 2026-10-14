@@ -1,7 +1,10 @@
-// Import Link để điều hướng trong SPA, useNavigate để chuyển trang bằng code
 import { Link, useNavigate } from 'react-router-dom'
 import { LumaFloatingCards } from '../components/landing/LumaFloatingCards'
 import { FooterConstellationBackground } from '../components/landing/FooterConstellationBackground'
+import { GuestVideoShowcase } from '../components/landing/GuestVideoShowcase'
+import { TrustedByBrandMarquee } from '../components/landing/TrustedByBrandMarquee'
+import { frontendConfigService } from '../services/frontendConfigService'
+import type { FrontendConfigData } from '../types/frontendConfig'
 
 // Import icon dùng cho UI (trang landing nhìn đẹp, có biểu tượng)
 import {
@@ -252,7 +255,20 @@ export default function GuestLanding() {
   const [hoveredEventId, setHoveredEventId] = useState<number | null>(null)
 
   // isMouseInEvents: cờ đánh dấu đang hover vùng events (để khóa scroll body)
-  const [isMouseInEvents, setIsMouseInEvents] = useState(false)
+  // Frontend configuration state (videos, section visibility)
+  const [frontendConfig, setFrontendConfig] = useState<FrontendConfigData | null>(null)
+
+  useEffect(() => {
+    const fetchFrontendConfig = async () => {
+      try {
+        const cfg = await frontendConfigService.getConfig()
+        setFrontendConfig(cfg)
+      } catch (err) {
+        console.error('Failed to load frontend config, using defaults:', err)
+      }
+    }
+    fetchFrontendConfig()
+  }, [])
 
   /**
    * useEffect 1: fetchEvents khi mount
@@ -430,18 +446,14 @@ export default function GuestLanding() {
 
   /**
    * handleMouseEnterEvents / handleMouseLeaveEvents:
-   * - Khi chuột vào vùng events: khóa scroll body (overflow hidden)
-   *   mục tiêu: user dùng wheel sẽ chỉ scroll ngang carousel, không làm trang chạy dọc
-   * - Khi chuột rời: mở lại scroll body
+   * Giữ trạng thái hover tự nhiên mà không can thiệp khóa scroll của document.body để trải nghiệm cuộn trang luôn mượt mà.
    */
   const handleMouseEnterEvents = () => {
     setIsMouseInEvents(true)
-    document.body.style.overflow = 'hidden'
   }
 
   const handleMouseLeaveEvents = () => {
     setIsMouseInEvents(false)
-    document.body.style.overflow = 'auto'
   }
 
   /**
@@ -706,7 +718,7 @@ export default function GuestLanding() {
         {/* ===================== HERO SECTION ===================== */}
         <section className="min-h-0 sm:min-h-[calc(100vh-8rem)] flex flex-col justify-start sm:justify-center items-center text-center pt-1 pb-4 sm:py-10 relative z-10">
           {/* Luma Floating Event Cards chỉ cho Desktop (bố trí ôm tròn xung quanh text) */}
-          <LumaFloatingCards view="desktop" />
+          <LumaFloatingCards view="desktop" customImages={frontendConfig?.heroImages} />
 
           {/* Foreground Hero Content */}
           <div className="flex flex-col items-center max-w-4xl relative z-10 w-full px-2">
@@ -758,9 +770,19 @@ export default function GuestLanding() {
             </div>
 
             {/* Luma Floating Event Cards chỉ cho Mobile: Bố cục collage thông minh như hình 4 */}
-            <LumaFloatingCards view="mobile" />
+            <LumaFloatingCards view="mobile" customImages={frontendConfig?.heroImages} />
           </div>
         </section>
+
+        {/* ===================== VIDEO SHOWCASE SECTION (Điều chỉnh bởi Admin) ===================== */}
+        {frontendConfig && frontendConfig.sections?.videos !== false && Array.isArray(frontendConfig.videos) && frontendConfig.videos.length > 0 && (
+          <GuestVideoShowcase
+            videos={frontendConfig.videos}
+            badge={frontendConfig.videoShowcaseBadge}
+            title={frontendConfig.videoShowcaseTitle}
+            subtitle={frontendConfig.videoShowcaseSubtitle}
+          />
+        )}
 
         {/* ===================== EVENTS SECTION ===================== */}
         {/* id="events" để anchor link #events kéo tới */}
@@ -981,6 +1003,14 @@ export default function GuestLanding() {
           )}
         </section>
 
+
+        {/* ===================== BRAND PARTNERS MARQUEE SECTION (Trusted By Brands) ===================== */}
+        {frontendConfig && frontendConfig.sections?.brands !== false && (
+          <TrustedByBrandMarquee
+            title={frontendConfig.brandSectionTitle || 'Được tin tưởng và đồng hành bởi'}
+            subtitle={frontendConfig.brandSectionSubtitle || '300+ đối tác, doanh nghiệp & tổ chức câu lạc bộ'}
+          />
+        )}
 
         {/* ===================== STATS SECTION ===================== */}
         {/* ref={statsRef} để IntersectionObserver bắt được khi section vào viewport */}

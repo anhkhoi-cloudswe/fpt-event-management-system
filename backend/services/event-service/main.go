@@ -188,6 +188,10 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return eventHandler.HandleUpdateEventConfig(ctx, request)
 	case path == "/api/events/config" && method == "GET":
 		return eventHandler.HandleGetEventConfig(ctx, request)
+	case path == "/api/events/frontend-config" && method == "GET":
+		return eventHandler.HandleGetFrontendConfig(ctx, request)
+	case path == "/api/events/frontend-config" && method == "POST":
+		return eventHandler.HandleUpdateFrontendConfig(ctx, request)
 	case path == "/api/events/stats" && method == "GET":
 		return eventHandler.HandleGetEventStats(ctx, request)
 	case path == "/api/events/available-areas" && method == "GET":

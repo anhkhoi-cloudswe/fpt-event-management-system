@@ -62,8 +62,11 @@ const EVENT_POSTER_POOL = [
   }
 ]
 
+import { HeroImageItem } from '../../types/frontendConfig'
+
 interface LumaFloatingCardsProps {
   view?: 'desktop' | 'mobile' | 'both'
+  customImages?: HeroImageItem[]
 }
 
 /**
@@ -72,21 +75,49 @@ interface LumaFloatingCardsProps {
  * - Desktop: Phân bổ dàn trải đều đặn tự nhiên 2 bên cánh màn hình laptop, chân ảnh mờ êm dịu tệp màu nền website
  * - Mobile: Bố cục 5 hình so le tỉ lệ chuẩn (hàng sau 3 ảnh, hàng trước 2 ảnh không đè lên nhau, thấy trọn vẹn cả 5 ảnh)
  */
-export const LumaFloatingCards: React.FC<LumaFloatingCardsProps> = ({ view = 'both' }) => {
+export const LumaFloatingCards: React.FC<LumaFloatingCardsProps> = ({ view = 'both', customImages }) => {
   const [cards, setCards] = useState(EVENT_POSTER_POOL)
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    // Xáo trộn ngẫu nhiên các thẻ mỗi lần tải trang để giao diện luôn tươi mới
-    const shuffled = [...EVENT_POSTER_POOL].sort(() => 0.5 - Math.random())
-    setCards(shuffled)
+    // Nếu customImages được truyền vào:
+    // - Nếu là mảng có phần tử -> shuffle ngẫu nhiên vị trí mỗi lần refresh
+    // - Nếu là mảng rỗng [] (admin đã xóa hết ảnh) -> rỗng []
+    // - Nếu undefined/null -> dùng pool mặc định đã được shuffle ngẫu nhiên
+    let list: Array<{ id: number; title: string; image: string }> = []
+
+    if (customImages !== undefined && customImages !== null) {
+      if (customImages.length > 0) {
+        // Thuật toán Fisher-Yates shuffle để xáo trộn ngẫu nhiên hoàn toàn các vị trí ảnh
+        const cloned = customImages.map((img, idx) => ({
+          id: idx + 1,
+          title: img.title,
+          image: img.image,
+        }))
+        for (let i = cloned.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[cloned[i], cloned[j]] = [cloned[j], cloned[i]]
+        }
+        list = cloned
+      }
+    } else {
+      // Shuffle pool mặc định
+      const cloned = [...EVENT_POSTER_POOL]
+      for (let i = cloned.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[cloned[i], cloned[j]] = [cloned[j], cloned[i]]
+      }
+      list = cloned
+    }
+
+    setCards(list)
 
     const timer = setTimeout(() => {
       setIsLoaded(true)
     }, 550)
 
     return () => clearTimeout(timer)
-  }, [])
+  }, [customImages])
 
   // Vị trí phân bổ 10 poster chuẩn phong cách Luma trải dàn 2 bên cánh, kích thước đan xen Lớn / Vừa / Nhỏ sinh động (giữ trung tâm thoáng đãng không che chữ)
   const desktopCards = [
@@ -178,7 +209,7 @@ export const LumaFloatingCards: React.FC<LumaFloatingCardsProps> = ({ view = 'bo
   return (
     <>
       {/* ==================== DESKTOP FLOATING CARDS (Trải dàn đều 2 bên cánh như Luma Laptop) ==================== */}
-      {showDesktop && (
+      {showDesktop && cards.length > 0 && (
         <div className="hidden md:block absolute inset-0 pointer-events-none select-none z-0 overflow-hidden">
           {/* Keyframe animation lơ lửng bồng bềnh tự nhiên */}
           <style>{`
@@ -277,7 +308,7 @@ export const LumaFloatingCards: React.FC<LumaFloatingCardsProps> = ({ view = 'bo
       )}
 
       {/* ==================== MOBILE CARDS COLLAGE (Bố trí chuẩn xác 100% theo spec Luma 552x400) ==================== */}
-      {showMobile && (
+      {showMobile && cards.length > 0 && (
         <div className="md:hidden w-full max-w-[552px] mx-auto mt-4 pointer-events-none select-none">
           <LumaMobileCollage items={cards} isLoaded={isLoaded} />
         </div>

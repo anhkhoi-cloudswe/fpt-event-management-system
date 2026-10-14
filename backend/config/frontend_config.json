@@ -1,0 +1,329 @@
+{
+  "videos": [
+    {
+      "id": "v-1791977146947",
+      "title": "[Teaser] FEMS – Trải nghiệm quản lý sự kiện All In One | Coming Soon!",
+      "description": "Đây là một sản phẩm dành cho môn Khởi nghiệp được thực hiện bởi team FEMS (Anh Khôi - Leader)",
+      "url": "https://youtu.be/2e_pwvIoFnk",
+      "order": 1
+    }
+  ],
+  "videoShowcaseBadge": "Kênh truyền thông FEMS",
+  "videoShowcaseTitle": "Sôi Động \u0026 Sáng Tạo Tại FPT Education",
+  "videoShowcaseSubtitle": "Cảm nhận năng lượng nhiệt huyết từ các chương trình, hoạt động văn hóa và lễ hội bùng nổ.",
+  "heroImages": [
+    {
+      "id": "h-1791981470300",
+      "title": "FPT AI \u0026 Tech Hackathon 2026",
+      "image": "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format\u0026fit=crop\u0026w=500\u0026q=80",
+      "order": 1
+    },
+    {
+      "id": "h-1791981627787",
+      "title": "FPT University Career Day 2026",
+      "image": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format\u0026fit=crop\u0026w=500\u0026q=80",
+      "order": 2
+    },
+    {
+      "id": "h-1791981642873",
+      "title": "Vovinam Championship Final Cup",
+      "image": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format\u0026fit=crop\u0026w=500\u0026q=80",
+      "order": 3
+    },
+    {
+      "id": "h-1791981654899",
+      "title": "Design \u0026 Creative Media Showcase",
+      "image": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format\u0026fit=crop\u0026w=500\u0026q=80",
+      "order": 4
+    },
+    {
+      "id": "h-1791981706578",
+      "title": "Startup \u0026 Business Pitching Arena",
+      "image": "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format\u0026fit=crop\u0026w=500\u0026q=80",
+      "order": 5
+    },
+    {
+      "id": "h-1791981715997",
+      "title": "FPT Esports Championship Valorant",
+      "image": "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format\u0026fit=crop\u0026w=500\u0026q=80",
+      "order": 6
+    },
+    {
+      "id": "h-1791981734312",
+      "title": "Sport Cars",
+      "image": "https://images.unsplash.com/photo-1764693756667-4174c98d9c5c?q=80\u0026w=764\u0026auto=format\u0026fit=crop\u0026ixlib=rb-4.1.0\u0026ixid=NHwxMjA3fDA%3D",
+      "order": 7
+    },
+    {
+      "id": "h-1791981786203",
+      "title": "Drone Racing Arena",
+      "image": "https://images.unsplash.com/photo-1508444845599-5c89863b1c44?q=80\u0026w=1169\u0026auto=format\u0026fit=crop\u0026ixlib=rb-4.1.0\u0026ixid=NHwxMjA3fDA%3D",
+      "order": 8
+    }
+  ],
+  "brands": [
+    {
+      "id": "b-1",
+      "name": "FE Credit",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/fe-credit.webp",
+      "website": "https://fecredit.com.vn",
+      "order": 1
+    },
+    {
+      "id": "b-2",
+      "name": "TPBank",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/tp-bank.webp",
+      "website": "https://tpb.vn",
+      "order": 2
+    },
+    {
+      "id": "b-3",
+      "name": "MoMo",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/momo.webp",
+      "website": "https://momo.vn",
+      "order": 3
+    },
+    {
+      "id": "b-4",
+      "name": "VietCredit",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/viet-credit.webp",
+      "website": "https://vietcredit.vn",
+      "order": 4
+    },
+    {
+      "id": "b-5",
+      "name": "VNPAY",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/vnpay.webp",
+      "website": "https://vnpay.vn",
+      "order": 5
+    },
+    {
+      "id": "b-6",
+      "name": "moneyveo",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/moneyveo.webp",
+      "website": "https://moneyveo.vn",
+      "order": 6
+    },
+    {
+      "id": "b-7",
+      "name": "Sacombank",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/sacombank.webp",
+      "website": "https://sacombank.com.vn",
+      "order": 7
+    },
+    {
+      "id": "b-8",
+      "name": "Mirae Asset",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/mirae.webp",
+      "website": "https://mafc.com.vn",
+      "order": 8
+    },
+    {
+      "id": "b-9",
+      "name": "HDBank",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/hd-bank.webp",
+      "website": "https://hdbank.com.vn",
+      "order": 9
+    },
+    {
+      "id": "b-10",
+      "name": "Viettel",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/viettel.webp",
+      "website": "https://viettel.vn",
+      "order": 10
+    },
+    {
+      "id": "b-11",
+      "name": "Mobifone",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/mobifone.webp",
+      "website": "https://mobifone.vn",
+      "order": 11
+    },
+    {
+      "id": "b-12",
+      "name": "Gtel",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/gtel.webp",
+      "website": "https://gtel.com.vn",
+      "order": 12
+    },
+    {
+      "id": "b-13",
+      "name": "Shopee",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/shopee.webp",
+      "website": "https://shopee.vn",
+      "order": 13
+    },
+    {
+      "id": "b-14",
+      "name": "Sendo",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/sendo.webp",
+      "website": "https://sendo.vn",
+      "order": 14
+    },
+    {
+      "id": "b-15",
+      "name": "Vietnamnet",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/viet-nam-net.webp",
+      "website": "https://vietnamnet.vn",
+      "order": 15
+    },
+    {
+      "id": "b-16",
+      "name": "Người Đưa Tin",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/nguoi-dua-tin.webp",
+      "website": "https://nguoiduatin.vn",
+      "order": 16
+    },
+    {
+      "id": "b-17",
+      "name": "Nhịp Cầu Đầu Tư",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/nhip-cau-dau-tu.webp",
+      "website": "https://nhipcaudautu.vn",
+      "order": 17
+    },
+    {
+      "id": "b-18",
+      "name": "Tuổi Trẻ",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/tuoi-tre.webp",
+      "website": "https://tuoitre.vn",
+      "order": 18
+    },
+    {
+      "id": "b-19",
+      "name": "Việt Báo",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/viet-bao.webp",
+      "website": "https://vietbao.vn",
+      "order": 19
+    },
+    {
+      "id": "b-20",
+      "name": "Dân Trí",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/dan-tri.webp",
+      "website": "https://dantri.com.vn",
+      "order": 20
+    },
+    {
+      "id": "b-21",
+      "name": "SAVIS",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/savis.webp",
+      "website": "https://savis.vn",
+      "order": 21
+    },
+    {
+      "id": "b-22",
+      "name": "SMARTNet",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/smartnet.webp",
+      "website": "https://smartnetvn.com.vn",
+      "order": 22
+    },
+    {
+      "id": "b-23",
+      "name": "Tinh Vân Group",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/tinh-van.webp",
+      "website": "https://tinhvan.com",
+      "order": 23
+    },
+    {
+      "id": "b-24",
+      "name": "Base.vn",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/base.webp",
+      "website": "https://base.vn",
+      "order": 24
+    },
+    {
+      "id": "b-25",
+      "name": "Beatvn",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/beat-vn.webp",
+      "website": "https://beat.vn",
+      "order": 25
+    },
+    {
+      "id": "b-26",
+      "name": "Vie Channel",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/vie.webp",
+      "website": "https://viechannel.vn",
+      "order": 26
+    },
+    {
+      "id": "b-27",
+      "name": "King News",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/king-news.webp",
+      "website": "https://kingnews.vn",
+      "order": 27
+    },
+    {
+      "id": "b-28",
+      "name": "VTV",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/vtv.webp",
+      "website": "https://vtv.vn",
+      "order": 28
+    },
+    {
+      "id": "b-29",
+      "name": "BRT",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/brt.webp",
+      "website": "http://brt.vn",
+      "order": 29
+    },
+    {
+      "id": "b-30",
+      "name": "Gia Lai",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/gia-lai.webp",
+      "website": "https://gialaitv.vn",
+      "order": 30
+    },
+    {
+      "id": "b-31",
+      "name": "Bộ Thông Tin \u0026 Truyền Thông",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/bo-thong-tin-va-truyen-thong.webp",
+      "website": "https://mic.gov.vn",
+      "order": 31
+    },
+    {
+      "id": "b-32",
+      "name": "Hà Tĩnh",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/ha-tinh.webp",
+      "website": "https://hatinhtv.vn",
+      "order": 32
+    },
+    {
+      "id": "b-33",
+      "name": "Cổng Thông Tin Điện Tử",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/cong-thong-tin-dien-tu.webp",
+      "website": "https://chinhphu.vn",
+      "order": 33
+    },
+    {
+      "id": "b-34",
+      "name": "California Fitness",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/california.webp",
+      "website": "https://cali.vn",
+      "order": 34
+    },
+    {
+      "id": "b-35",
+      "name": "Rainmaker",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/rainmaker.webp",
+      "website": "https://rainmaker.com",
+      "order": 35
+    },
+    {
+      "id": "b-36",
+      "name": "Bộ Xây Dựng",
+      "logoUrl": "https://media-frontend.vbee.vn/images/partner/bo-xay-dung.webp",
+      "website": "https://moc.gov.vn",
+      "order": 36
+    }
+  ],
+  "brandSectionTitle": "Được tin tưởng và đánh giá cao bởi",
+  "brandSectionSubtitle": "100+ đối tác, doanh nghiệp \u0026 tổ chức câu lạc bộ",
+  "sections": {
+    "hero": true,
+    "videos": true,
+    "brands": true,
+    "events": true,
+    "stats": true,
+    "features": true,
+    "footer": true
+  }
+}

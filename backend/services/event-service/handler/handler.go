@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/common/logger"
 	"github.com/fpt-event-services/common/utils"
 	"github.com/fpt-event-services/services/event-service/models"
@@ -1039,6 +1040,41 @@ func (h *EventHandler) HandleGetEventConfig(ctx context.Context, request events.
 	}
 
 	return createJSONResponse(http.StatusOK, configResp)
+}
+
+// ============================================================
+// HandleGetFrontendConfig - GET /api/events/frontend-config
+// Lấy cấu hình frontend cho trang guest (public)
+// ============================================================
+func (h *EventHandler) HandleGetFrontendConfig(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	cfg := config.LoadFrontendConfig()
+	return createJSONResponse(http.StatusOK, cfg)
+}
+
+// ============================================================
+// HandleUpdateFrontendConfig - POST /api/events/frontend-config
+// Cập nhật cấu hình frontend (ADMIN only)
+// ============================================================
+func (h *EventHandler) HandleUpdateFrontendConfig(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	role := request.Headers["X-User-Role"]
+	if role != "ADMIN" {
+		return createMessageResponse(http.StatusForbidden, "Only Admin can update frontend config")
+	}
+
+	var req config.FrontendConfig
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid request body")
+	}
+
+	if err := config.SaveFrontendConfig(&req); err != nil {
+		log.Error("SaveFrontendConfig failed: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Failed to save frontend config")
+	}
+
+	return createJSONResponse(http.StatusOK, map[string]interface{}{
+		"message": "Frontend config updated successfully",
+		"data":    req,
+	})
 }
 
 // ============================================================
