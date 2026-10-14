@@ -352,31 +352,22 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 relative" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
-      <div className="bg-white/75 backdrop-blur-lg p-10 rounded-[32px] shadow-2xl w-full max-w-md border border-white/40 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900">
-        {/* Floating Escape Link */}
-        <Link 
-          to="/" 
-          className="absolute left-6 top-6 flex items-center gap-1 text-slate-900 hover:text-orange-600 font-extrabold text-[11px] transition-colors duration-200 uppercase tracking-wider"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Quay lại Trang chủ</span>
-        </Link>
-
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-3.5">
-            <Link to="/" className="cursor-pointer transition-opacity duration-200 hover:opacity-80">
+    <div className="min-h-[100dvh] w-full bg-cover bg-center bg-no-repeat flex items-center justify-center px-3 sm:px-4 py-2 sm:py-6 relative overflow-y-auto" style={{ backgroundImage: `url('/assets/dai-hoc-fpt-tp-hcm-1-CHc59Hy_.jpeg')` }}>
+      <div className="bg-white/95 backdrop-blur-xl p-4 sm:p-7 rounded-[24px] sm:rounded-[26px] shadow-2xl w-full max-w-[375px] sm:max-w-[390px] border border-white/60 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900 my-auto">
+        <div className="text-center mb-3 sm:mb-4">
+          <div className="flex justify-center mb-1.5 sm:mb-2">
+            <Link to="/" title="Về trang chủ" className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 inline-block">
               <img
-                src={fptLogo}
-                alt="FPT Education"
-                className="h-16 w-auto cursor-pointer transition-opacity duration-200 hover:opacity-80"
+                src="/favicon.png"
+                alt="FEMS Logo"
+                className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl object-cover shadow-md shadow-orange-500/20 border border-orange-100"
               />
             </Link>
           </div>
-          <h1 className="text-lg font-black text-slate-900">
+          <h1 className="text-base sm:text-xl font-black text-slate-900 tracking-tight">
             {step === 'email' ? 'Đặt lại mật khẩu' : 'Xác thực OTP'}
           </h1>
-          <p className="text-xs font-semibold text-slate-600 mt-1">
+          <p className="text-xs font-semibold text-slate-600 mt-0.5 sm:mt-1">
             {step === 'email' ? 'Nhập email trường để nhận mã OTP xác thực' : 'Nhập mã OTP và thiết lập mật khẩu mới'}
           </p>
         </div>

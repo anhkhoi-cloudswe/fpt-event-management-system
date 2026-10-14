@@ -480,12 +480,12 @@ export default function Login() {
       <div className="bg-white/95 backdrop-blur-xl p-4 sm:p-7 rounded-[24px] sm:rounded-[26px] shadow-2xl w-full max-w-[375px] sm:max-w-[390px] border border-white/60 transform transition-all duration-300 relative z-10 animate-fade-in-up text-slate-900 my-auto">
         {/* Header logo + tiêu đề */}
         <div className="text-center mb-2 sm:mb-3">
-          <div className="flex justify-center mb-1">
+          <div className="flex justify-center mb-1.5 sm:mb-2">
             <Link to="/" title="Về trang chủ" className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 inline-block">
               <img
                 src="/favicon.png"
                 alt="FEMS Logo"
-                className="h-9 w-9 sm:h-12 sm:w-12 rounded-2xl object-cover shadow-md shadow-orange-500/20 border border-orange-100"
+                className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl object-cover shadow-md shadow-orange-500/20 border border-orange-100"
               />
             </Link>
           </div>
