@@ -690,15 +690,15 @@ export default function GuestLanding() {
       <main className="mx-auto max-w-7xl space-y-24 px-6 py-16">
 
         {/* ===================== HERO SECTION ===================== */}
-        <section className="space-y-10 text-center pt-8 overflow-hidden">
+        <section className="min-h-[calc(100vh-8rem)] flex flex-col justify-center items-center text-center py-10 relative overflow-hidden">
           {/* Badge nhỏ phía trên */}
-          <div className="animate-fade-in-up inline-flex items-center gap-2 rounded-full border border-orange-400/35 bg-orange-50/80 backdrop-blur-sm px-5 py-2 text-xs font-bold uppercase tracking-[0.2em] text-orange-600 shadow-sm transition-all duration-300" style={{ animationDelay: '100ms' }}>
+          <div className="animate-fade-in-up inline-flex items-center gap-2 rounded-full border border-orange-400/35 bg-orange-50/80 backdrop-blur-sm px-5 py-2 text-xs font-bold uppercase tracking-[0.2em] text-orange-600 shadow-sm transition-all duration-300 mb-6" style={{ animationDelay: '100ms' }}>
             <TrendingUp className="w-4 h-4 text-orange-500" />
             Nền tảng quản lý sự kiện
           </div>
 
           {/* Title */}
-          <h1 className="animate-fade-in-up text-5xl font-extrabold leading-tight sm:text-6xl lg:text-7xl tracking-tight" style={{ animationDelay: '200ms' }}>
+          <h1 className="animate-fade-in-up text-5xl font-extrabold leading-tight sm:text-6xl lg:text-7xl tracking-tight mb-6" style={{ animationDelay: '200ms' }}>
             <span className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 bg-clip-text text-transparent">
               Tổ chức
             </span>
@@ -707,13 +707,13 @@ export default function GuestLanding() {
           </h1>
 
           {/* Subtitle */}
-          <p className="animate-fade-in-up mx-auto max-w-3xl text-lg text-gray-600 sm:text-xl leading-relaxed" style={{ animationDelay: '300ms' }}>
+          <p className="animate-fade-in-up mx-auto max-w-3xl text-lg text-gray-600 sm:text-xl leading-relaxed mb-8" style={{ animationDelay: '300ms' }}>
             Dành cho Ban tổ chức, Bộ phận truyền thông và Câu lạc bộ trong hệ
             thống FPT Education. Dễ dàng đăng ký tham gia, quản lý sự kiện.
           </p>
 
           {/* CTA buttons */}
-          <div className="animate-fade-in-up flex flex-wrap justify-center gap-5 pt-4" style={{ animationDelay: '400ms' }}>
+          <div className="animate-fade-in-up flex flex-wrap justify-center gap-5 pt-2" style={{ animationDelay: '400ms' }}>
             {/* Nút Trở thành Ban tổ chức */}
             <button
               onClick={() => setIsOrganizerModalOpen(true)}
