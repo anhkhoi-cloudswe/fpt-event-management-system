@@ -563,32 +563,52 @@ export default function GuestLanding() {
             className="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300"
           ></div>
 
-          {/* Mobile Drawer Panel */}
+          {/* Mobile Drawer Panel - Tinh chỉnh độ rộng ôm sát chữ dài nhất */}
           <aside
-            className="fixed inset-y-0 left-0 w-72 text-slate-100 shadow-2xl flex flex-col p-6 z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right"
-            style={{ backgroundColor: 'rgba(11, 15, 25, 0.96)', backdropFilter: 'blur(24px)' }}
+            className="fixed inset-y-0 left-0 w-max max-w-[85vw] min-w-[250px] text-slate-100 shadow-2xl flex flex-col z-50 transition-all duration-500 ease-in-out border-r border-slate-800/80 animate-fade-in-right"
+            style={{ backgroundColor: 'rgba(11, 15, 25, 0.98)', backdropFilter: 'blur(24px)' }}
           >
-            {/* Header of Drawer */}
-            <div className="flex items-center justify-between pb-6 border-b border-slate-800/60">
-              <div className="flex items-center gap-2.5">
-                <div className="relative flex-shrink-0">
-                  <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center border border-slate-700/80 shadow-md overflow-hidden">
-                    <img src="/favicon.png" alt="FEMS Logo" className="w-full h-full object-contain" />
-                  </div>
-                </div>
-                <span className="text-slate-400 font-light text-base select-none">×</span>
-                <img src={fptLogo} alt="FPT Education" className="h-8 w-auto object-contain" />
-              </div>
+            {/* Header of Drawer: Chuẩn kích thước và vị trí khớp 100% với Top Header trang chủ */}
+            <div className="h-16 flex items-center gap-2 px-3 border-b border-slate-800/60 shrink-0">
+              {/* Nút 3 gạch ở vị trí đầu tiên khớp vị trí với nút 3 gạch ngoài header chính */}
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+                className="p-2 rounded-xl text-slate-300 hover:text-orange-400 hover:bg-slate-800/80 transition-colors shrink-0"
+                aria-label="Đóng menu"
               >
-                <X className="w-5 h-5" />
+                <Menu className="w-6 h-6" />
               </button>
+
+              {/* Cụm logo đồng bộ tuyệt đối kích thước với ngoài trang chủ */}
+              <div className="flex items-center gap-2 group shrink-0">
+                {/* FEMS Logo trong suốt, không nền trắng, không viền, giữ đúng size icon */}
+                <div className="w-10 h-10 p-1 flex items-center justify-center shrink-0">
+                  <img
+                    src="/favicon.png"
+                    alt="FEMS Logo"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+
+                {/* Dấu × kết nối hợp tác */}
+                <span className="text-slate-400 font-light text-base select-none leading-none shrink-0">
+                  ×
+                </span>
+
+                {/* FPT University Logo */}
+                <img
+                  src={fptLogo}
+                  alt="FPT Education"
+                  className="h-8 w-auto object-contain shrink-0"
+                />
+              </div>
+
+              {/* Vạch kẻ phải ôm sát sau khi cụm logo kết thúc */}
+              <div className="h-6 w-px bg-slate-700/80 ml-1 shrink-0" />
             </div>
 
-            {/* Navigation links */}
-            <nav className="flex-1 flex flex-col gap-2 mt-6">
+            {/* Navigation links - ôm sát chữ dài nhất */}
+            <nav className="flex-1 flex flex-col gap-1.5 px-3 py-4 overflow-y-auto">
               {sidebarItems.map((item) => {
                 const Icon = item.icon
                 return (
@@ -598,12 +618,12 @@ export default function GuestLanding() {
                       setIsMobileMenuOpen(false)
                       item.action(e)
                     }}
-                    className="group/item flex items-center gap-4 py-3.5 px-3.5 rounded-2xl text-xs font-black transition-all duration-300 text-left w-full hover:bg-slate-800/60 active:scale-98"
+                    className="group/item flex items-center gap-3 py-3 px-3 rounded-2xl text-xs font-black transition-all duration-300 text-left w-full hover:bg-slate-800/60 active:scale-98"
                   >
-                    <div className="p-2.5 rounded-xl bg-slate-800/50 text-slate-300 group-hover/item:bg-orange-500 group-hover/item:text-white group-hover/item:shadow-lg group-hover/item:shadow-orange-500/20 transition-all duration-300">
+                    <div className="p-2 rounded-xl bg-slate-800/50 text-slate-300 group-hover/item:bg-orange-500 group-hover/item:text-white group-hover/item:shadow-lg group-hover/item:shadow-orange-500/20 transition-all duration-300 shrink-0">
                       <Icon className="w-4 h-4" />
                     </div>
-                    <span className="font-extrabold text-sm text-slate-200 group-hover/item:text-white transition-colors">
+                    <span className="font-extrabold text-sm text-slate-200 group-hover/item:text-white transition-colors whitespace-nowrap pr-2">
                       {item.label}
                     </span>
                   </button>
@@ -612,9 +632,9 @@ export default function GuestLanding() {
             </nav>
 
             {/* Footer of Drawer */}
-            <div className="pt-6 border-t border-slate-800/60 text-xs text-slate-500 font-semibold space-y-1">
-              <p>FEMS - FPT Event Management System</p>
-              <p>© {new Date().getFullYear()} All rights reserved.</p>
+            <div className="px-3.5 py-4 border-t border-slate-800/60 text-[10.5px] text-slate-400 font-medium leading-relaxed shrink-0">
+              <p className="truncate font-semibold text-slate-300">FEMS – FPT Event Management System</p>
+              <p className="text-slate-500">© {new Date().getFullYear()} All rights reserved.</p>
             </div>
           </aside>
         </div>
@@ -636,36 +656,41 @@ export default function GuestLanding() {
         <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
 
           {/* Left: Mobile Toggle & Co-branded Logos [FEMS Logo] × [FPT University Logo] */}
-          <div className="flex items-center gap-1.5 sm:gap-4 shrink min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden p-1.5 rounded-lg text-slate-600 hover:text-orange-600 hover:bg-orange-50 transition-colors shrink-0"
+              className="md:hidden p-2 rounded-xl text-slate-700 hover:text-orange-600 hover:bg-orange-50 transition-colors shrink-0"
               aria-label="Menu"
             >
-              <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Menu className="w-6 h-6" />
             </button>
 
             {/* Co-branded Logos */}
-            <Link to="/" className="flex items-center gap-1.5 sm:gap-4 group shrink min-w-0">
-              {/* FEMS Logo */}
-              <img
-                src="/favicon.png"
-                alt="FEMS Logo"
-                className="h-7 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
-              />
+            <Link to="/" className="flex items-center gap-2 sm:gap-2.5 group shrink-0">
+              {/* FEMS Logo trong suốt, bỏ viền trắng ngoài theo yêu cầu */}
+              <div className="w-10 h-10 p-1 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
+                <img
+                  src="/favicon.png"
+                  alt="FEMS Logo"
+                  className="w-full h-full object-contain"
+                />
+              </div>
 
               {/* Dấu x kết nối hợp tác / co-branding */}
-              <span className="text-slate-300 font-light text-sm sm:text-xl md:text-2xl select-none leading-none shrink-0">
+              <span className="text-slate-400 font-light text-base select-none leading-none shrink-0">
                 ×
               </span>
 
               {/* FPT University Logo */}
               <img
                 src={fptLogo}
-                alt="FPT University"
-                className="h-6 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
+                alt="FPT Education"
+                className="h-8 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
               />
             </Link>
+
+            {/* Vạch kẻ phải ôm sát sau khi cụm logo kết thúc */}
+            <div className="h-6 sm:h-7 w-px bg-slate-300/80 dark:bg-slate-700/80 ml-1 sm:ml-2 shrink-0" />
           </div>
 
           {/* Center: Desktop Horizontal Navigation */}
