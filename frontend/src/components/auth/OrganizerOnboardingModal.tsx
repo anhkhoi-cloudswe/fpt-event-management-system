@@ -531,7 +531,7 @@ export const OrganizerOnboardingModal: React.FC<OrganizerOnboardingModalProps> =
           </button>
 
           <div className="relative flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center p-1.5 shadow-lg border border-white/30 shrink-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center shrink-0">
               <img
                 src="/favicon_original.png"
                 alt="FEMS Logo"
