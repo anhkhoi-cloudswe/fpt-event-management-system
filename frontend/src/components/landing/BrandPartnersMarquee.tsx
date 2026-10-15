@@ -257,11 +257,17 @@ export const BrandPartnersMarquee: React.FC<BrandPartnersMarqueeProps> = ({
             display: flex;
             width: max-content;
             animation: marqueeLeftToRight 36s linear infinite;
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
           }
           .animate-marquee-rtl {
             display: flex;
             width: max-content;
             animation: marqueeRightToLeft 40s linear infinite;
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
           }
           .marquee-wrapper:hover .animate-marquee-ltr,
           .marquee-wrapper:hover .animate-marquee-rtl {

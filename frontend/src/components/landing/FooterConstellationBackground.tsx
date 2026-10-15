@@ -15,8 +15,27 @@ export const FooterConstellationBackground: React.FC = () => {
     if (!ctx) return
 
     let animationFrameId: number
+    let isVisible = true
     let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth)
     let height = (canvas.height = canvas.parentElement?.clientHeight || 450)
+
+    // Tối ưu hóa: Chỉ render canvas khi footer thực sự nằm trong màn hình nhìn thấy (Viewport)
+    // Tránh tiêu hao CPU/GPU khi người dùng đang xem video hoặc lướt ở phần trên trang
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          isVisible = entry.isIntersecting
+          if (isVisible) {
+            cancelAnimationFrame(animationFrameId)
+            render()
+          }
+        })
+      },
+      { threshold: 0.05 }
+    )
+    if (canvas.parentElement) {
+      observer.observe(canvas.parentElement)
+    }
 
     const handleResize = () => {
       if (!canvas || !canvas.parentElement) return
@@ -223,7 +242,9 @@ export const FooterConstellationBackground: React.FC = () => {
         }
       }
 
-      animationFrameId = requestAnimationFrame(render)
+      if (isVisible) {
+        animationFrameId = requestAnimationFrame(render)
+      }
     }
 
     render()
@@ -231,6 +252,7 @@ export const FooterConstellationBackground: React.FC = () => {
     return () => {
       cancelAnimationFrame(animationFrameId)
       clearInterval(meteorTimer)
+      observer.disconnect()
       window.removeEventListener('resize', handleResize)
     }
   }, [])

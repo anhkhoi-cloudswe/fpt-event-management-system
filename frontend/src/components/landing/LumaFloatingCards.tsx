@@ -211,54 +211,54 @@ export const LumaFloatingCards: React.FC<LumaFloatingCardsProps> = ({ view = 'bo
       {/* ==================== DESKTOP FLOATING CARDS (Trải dàn đều 2 bên cánh như Luma Laptop) ==================== */}
       {showDesktop && cards.length > 0 && (
         <div className="hidden md:block absolute inset-0 pointer-events-none select-none z-0 overflow-hidden">
-          {/* Keyframe animation lơ lửng bồng bềnh tự nhiên */}
+          {/* Keyframe animation lơ lửng bồng bềnh tự nhiên với tối ưu GPU 60fps */}
           <style>{`
             @keyframes lumaFloat1 {
               0%, 100% {
-                transform: translateY(0px);
+                transform: translate3d(0, 0px, 0);
               }
               50% {
-                transform: translateY(-8px);
+                transform: translate3d(0, -8px, 0);
               }
             }
             @keyframes lumaFloat2 {
               0%, 100% {
-                transform: translateY(0px);
+                transform: translate3d(0, 0px, 0);
               }
               50% {
-                transform: translateY(8px);
+                transform: translate3d(0, 8px, 0);
               }
             }
             @keyframes lumaFloat3 {
               0%, 100% {
-                transform: translateY(0px);
+                transform: translate3d(0, 0px, 0);
               }
               50% {
-                transform: translateY(-6px);
+                transform: translate3d(0, -6px, 0);
               }
             }
             @keyframes lumaFloat4 {
               0%, 100% {
-                transform: translateY(0px);
+                transform: translate3d(0, 0px, 0);
               }
               50% {
-                transform: translateY(7px);
+                transform: translate3d(0, 7px, 0);
               }
             }
             @keyframes mobileFloat1 {
               0%, 100% {
-                transform: translateY(0px);
+                transform: translate3d(0, 0px, 0);
               }
               50% {
-                transform: translateY(-4px);
+                transform: translate3d(0, -4px, 0);
               }
             }
             @keyframes mobileFloat2 {
               0%, 100% {
-                transform: translateY(0px);
+                transform: translate3d(0, 0px, 0);
               }
               50% {
-                transform: translateY(4px);
+                transform: translate3d(0, 4px, 0);
               }
             }
           `}</style>

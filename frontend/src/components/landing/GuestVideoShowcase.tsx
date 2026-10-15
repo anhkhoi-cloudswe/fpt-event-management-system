@@ -140,10 +140,10 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
 
       {/* ================= TH 1: CHỈ CÓ 1 VIDEO DUY NHẤT ================= */}
       {sortedVideos.length === 1 && (
-        <div className="max-w-4xl mx-auto rounded-[28px] sm:rounded-[36px] overflow-hidden border border-white/60 bg-white/40 backdrop-blur-xl p-3 sm:p-5 shadow-[0_20px_60px_-15px_rgba(249,115,22,0.18)] transition-all duration-300">
-          <div className="relative w-full aspect-video rounded-[20px] sm:rounded-[28px] overflow-hidden bg-slate-950 shadow-inner transform-gpu">
+        <div className="max-w-4xl mx-auto rounded-[28px] sm:rounded-[36px] overflow-hidden border border-white/60 bg-white/70 sm:bg-white/50 backdrop-blur-md p-3 sm:p-5 shadow-[0_20px_50px_-15px_rgba(249,115,22,0.15)] transition-all duration-300 will-change-transform">
+          <div className="relative w-full aspect-video rounded-[20px] sm:rounded-[28px] overflow-hidden bg-slate-950 shadow-inner transform-gpu contain-paint">
             {isDirect ? (
-              <video src={embedUrl} controls preload="metadata" className="w-full h-full object-contain" />
+              <video src={embedUrl} controls preload="metadata" className="w-full h-full object-contain transform-gpu" />
             ) : (
               <iframe
                 src={embedUrl}
@@ -176,11 +176,11 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
             return (
               <div
                 key={vid.id}
-                className="rounded-[28px] overflow-hidden border border-white/60 bg-white/40 backdrop-blur-xl p-3 sm:p-4 shadow-xl hover:shadow-2xl transition-all duration-300 transform-gpu"
+                className="rounded-[28px] overflow-hidden border border-white/60 bg-white/70 sm:bg-white/50 backdrop-blur-md p-3 sm:p-4 shadow-xl hover:shadow-2xl transition-all duration-300 transform-gpu will-change-transform"
               >
-                <div className="relative w-full aspect-video rounded-[20px] overflow-hidden bg-slate-950">
+                <div className="relative w-full aspect-video rounded-[20px] overflow-hidden bg-slate-950 contain-paint transform-gpu">
                   {vidData.isDirect ? (
-                    <video src={vidData.embedUrl} controls preload="metadata" className="w-full h-full object-contain" />
+                    <video src={vidData.embedUrl} controls preload="metadata" className="w-full h-full object-contain transform-gpu" />
                   ) : (
                     <iframe
                       src={vidData.embedUrl}
@@ -209,10 +209,10 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
       {sortedVideos.length > 2 && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           {/* CỘT TRÁI (Lớn): Video tiêu điểm đang được chọn phát */}
-          <div className="lg:col-span-8 rounded-[28px] sm:rounded-[36px] overflow-hidden border border-white/60 bg-white/40 backdrop-blur-xl p-3 sm:p-5 shadow-[0_20px_50px_-10px_rgba(249,115,22,0.18)]">
-            <div className="relative w-full aspect-video rounded-[20px] sm:rounded-[28px] overflow-hidden bg-slate-950 shadow-inner transform-gpu">
+          <div className="lg:col-span-8 rounded-[28px] sm:rounded-[36px] overflow-hidden border border-white/60 bg-white/70 sm:bg-white/50 backdrop-blur-md p-3 sm:p-5 shadow-[0_20px_50px_-10px_rgba(249,115,22,0.15)] will-change-transform">
+            <div className="relative w-full aspect-video rounded-[20px] sm:rounded-[28px] overflow-hidden bg-slate-950 shadow-inner transform-gpu contain-paint">
               {isDirect ? (
-                <video src={embedUrl} controls preload="metadata" className="w-full h-full object-contain" />
+                <video src={embedUrl} controls preload="metadata" className="w-full h-full object-contain transform-gpu" />
               ) : (
                 <iframe
                   key={embedUrl}
