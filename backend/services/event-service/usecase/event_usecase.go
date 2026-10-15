@@ -438,3 +438,11 @@ func (uc *EventUseCase) GetSampleBannerByID(ctx context.Context, bannerID int) (
 func (uc *EventUseCase) GetOrganizerLimits(ctx context.Context, organizerID int) (*repository.OrganizerLimits, error) {
 	return uc.eventRepo.GetOrganizerLimits(ctx, organizerID)
 }
+
+func (uc *EventUseCase) GetLandingPageConfig(ctx context.Context) (*config.FrontendConfig, error) {
+	return uc.eventRepo.GetLandingPageConfig(ctx)
+}
+
+func (uc *EventUseCase) SaveLandingPageConfig(ctx context.Context, cfg *config.FrontendConfig, updatedBy int) error {
+	return uc.eventRepo.SaveLandingPageConfig(ctx, cfg, updatedBy)
+}

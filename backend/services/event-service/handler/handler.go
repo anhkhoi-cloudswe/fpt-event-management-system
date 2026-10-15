@@ -1044,16 +1044,23 @@ func (h *EventHandler) HandleGetEventConfig(ctx context.Context, request events.
 
 // ============================================================
 // HandleGetFrontendConfig - GET /api/events/frontend-config
-// Lấy cấu hình frontend cho trang guest (public)
+// Lấy cấu hình frontend cho trang guest (public) từ Database (landing_page_config)
 // ============================================================
 func (h *EventHandler) HandleGetFrontendConfig(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// 1. Thử lấy cấu hình từ Database trước
+	dbCfg, err := h.useCase.GetLandingPageConfig(ctx)
+	if err == nil && dbCfg != nil {
+		return createJSONResponse(http.StatusOK, dbCfg)
+	}
+
+	// 2. Nếu DB chưa có hoặc lỗi kết nối, fallback sang config file/SSM mặc định
 	cfg := config.LoadFrontendConfig()
 	return createJSONResponse(http.StatusOK, cfg)
 }
 
 // ============================================================
 // HandleUpdateFrontendConfig - POST /api/events/frontend-config
-// Cập nhật cấu hình frontend (ADMIN only)
+// Cập nhật cấu hình frontend (ADMIN only) vào Database (landing_page_config)
 // ============================================================
 func (h *EventHandler) HandleUpdateFrontendConfig(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	role := request.Headers["X-User-Role"]
@@ -1061,18 +1068,30 @@ func (h *EventHandler) HandleUpdateFrontendConfig(ctx context.Context, request e
 		return createMessageResponse(http.StatusForbidden, "Only Admin can update frontend config")
 	}
 
+	userIDStr := request.Headers["X-User-Id"]
+	userID := 0
+	if id, err := strconv.Atoi(userIDStr); err == nil {
+		userID = id
+	}
+
 	var req config.FrontendConfig
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
 		return createMessageResponse(http.StatusBadRequest, "Invalid request body")
 	}
 
-	if err := config.SaveFrontendConfig(&req); err != nil {
-		log.Error("SaveFrontendConfig failed: %v", err)
-		return createMessageResponse(http.StatusInternalServerError, "Failed to save frontend config")
+	// 1. Lưu vào Database (landing_page_config) để persist vĩnh viễn trên Supabase/PostgreSQL
+	if err := h.useCase.SaveLandingPageConfig(ctx, &req, userID); err != nil {
+		log.Error("SaveLandingPageConfig to DB failed: %v", err)
+		// Fallback: nếu lỗi lưu DB thì vẫn lưu file/SSM để không làm đứt mạch người dùng
+		_ = config.SaveFrontendConfig(&req)
+		return createMessageResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to save frontend config to database: %v", err))
 	}
 
+	// 2. Đồng bộ luôn vào file/in-memory cache để các tiến trình local luôn khớp
+	_ = config.SaveFrontendConfig(&req)
+
 	return createJSONResponse(http.StatusOK, map[string]interface{}{
-		"message": "Frontend config updated successfully",
+		"message": "Frontend config updated and persisted to database successfully",
 		"data":    req,
 	})
 }
