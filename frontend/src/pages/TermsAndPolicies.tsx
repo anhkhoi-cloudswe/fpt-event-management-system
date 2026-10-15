@@ -571,24 +571,33 @@ export default function TermsAndPolicies() {
       <header className="sticky top-0 z-40 border-b border-orange-500/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-xs transition-all duration-300">
         <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
           
-          {/* Left: Logo FEMS × FPT University chuẩn trang chủ + Tên Docs */}
-          <div className="flex items-center gap-2 sm:gap-4 shrink min-w-0">
-            <Link to="/" className="flex items-center gap-2 sm:gap-4 group shrink min-w-0">
-              <img
-                src="/favicon.png"
-                alt="FEMS Logo"
-                className="h-8 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-xs"
-              />
-              <span className="text-slate-300 font-light text-base sm:text-xl md:text-2xl select-none leading-none shrink-0">
+          {/* Left: Logo FEMS × FPT University đồng bộ 100% với trang chủ /guest */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink min-w-0">
+            <Link to="/" className="flex items-center gap-2 sm:gap-2.5 group shrink-0">
+              {/* FEMS Logo trong suốt, đồng bộ size với /guest */}
+              <div className="w-10 h-10 p-1 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
+                <img
+                  src="/favicon.png"
+                  alt="FEMS Logo"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+
+              {/* Dấu x kết nối hợp tác / co-branding */}
+              <span className="text-slate-400 font-light text-base select-none leading-none shrink-0">
                 ×
               </span>
+
+              {/* FPT University Logo */}
               <img
                 src={fptLogo}
                 alt="FPT Education"
-                className="h-7 sm:h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
+                className="h-8 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
               />
             </Link>
-            <span className="h-5 w-px bg-slate-300 dark:bg-slate-700 hidden md:block"></span>
+
+            {/* Vạch kẻ phải ôm sát sau khi cụm logo kết thúc */}
+            <div className="h-6 sm:h-7 w-px bg-slate-300/80 dark:bg-slate-700/80 ml-1 sm:ml-2 shrink-0" />
             <span className="font-extrabold text-xs sm:text-base text-slate-800 dark:text-white hidden md:block truncate">
               Chính sách & điều khoản
             </span>
