@@ -531,8 +531,12 @@ export const OrganizerOnboardingModal: React.FC<OrganizerOnboardingModalProps> =
           </button>
 
           <div className="relative flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/30 shrink-0">
-              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-amber-100 drop-shadow-md" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center p-1.5 shadow-lg border border-white/30 shrink-0">
+              <img
+                src="/favicon_original.png"
+                alt="FEMS Logo"
+                className="w-full h-full object-contain drop-shadow-md"
+              />
             </div>
             <div>
               <div className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white bg-black/20 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/20">
