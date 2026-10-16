@@ -7,8 +7,9 @@ import type {
   GA4DeviceBreakdown,
   GA4TrafficSource,
   GA4Geography,
+  GA4BrowserBreakdown,
 } from '../../services/analyticsService'
-import { Smartphone, Monitor, Tablet, Globe, ArrowUpRight, TrendingUp, Layers } from 'lucide-react'
+import { Smartphone, Monitor, Tablet, Globe, ArrowUpRight, TrendingUp, Layers, MapPin, Compass } from 'lucide-react'
 
 const PALETTE = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4']
 
@@ -25,10 +26,13 @@ function formatDate(yyyymmdd: string): string {
 export function GA4TimelineChart({ data }: TimelineChartProps) {
   if (!data?.length) return <EmptyChart label="Chưa có dữ liệu timeline" />
 
+  // Ensure chronological order (left to right)
+  const sortedData = [...data].sort((a, b) => a.date.localeCompare(b.date))
+
   return (
     <div className="w-full pt-2">
       <ResponsiveContainer width="100%" height={260}>
-        <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+        <AreaChart data={sortedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <defs>
             <linearGradient id="pageViewsGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#f97316" stopOpacity={0.35} />
@@ -364,6 +368,90 @@ export function GA4SourceBarChart({ data }: SourceBarProps) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+    </div>
+  )
+}
+
+// ─── City Table (Detailed Local Geography) ───────────────────────────────────
+interface CityTableProps {
+  data: GA4Geography[]
+}
+
+export function GA4CityTable({ data }: CityTableProps) {
+  if (!data?.length) return <EmptyChart label="Chưa có dữ liệu thành phố" />
+  const total = data.reduce((s, d) => s + d.users, 0)
+
+  return (
+    <div className="space-y-2 p-1">
+      {data.slice(0, 6).map((d, i) => {
+        const pct = total > 0 ? Math.round((d.users / total) * 100) : 0
+        const cityName = d.city && d.city !== '(not set)' && d.city.trim() !== '' 
+          ? d.city 
+          : 'Chưa xác định'
+
+        return (
+          <div
+            key={i}
+            className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/30 hover:border-orange-400/40 transition-colors"
+          >
+            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+              <MapPin size={14} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{cityName}</span>
+                <span className="font-extrabold text-slate-900 dark:text-white">{d.users} users</span>
+              </div>
+              <div className="h-1.5 bg-slate-200/60 dark:bg-slate-700/60 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Browser Breakdown Chart ──────────────────────────────────────────────────
+interface BrowserChartProps {
+  data: GA4BrowserBreakdown[]
+}
+
+export function GA4BrowserChart({ data }: BrowserChartProps) {
+  if (!data?.length) return <EmptyChart label="Chưa có dữ liệu trình duyệt" />
+  const total = data.reduce((s, d) => s + d.users, 0)
+
+  return (
+    <div className="space-y-3 p-2">
+      {data.slice(0, 5).map((d, i) => {
+        const pct = total > 0 ? Math.round((d.users / total) * 100) : 0
+        const color = PALETTE[(i + 2) % PALETTE.length]
+        return (
+          <div key={d.browser} className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300">
+                <span className="p-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  <Compass size={13} />
+                </span>
+                {d.browser}
+              </span>
+              <span className="font-extrabold text-slate-900 dark:text-white">
+                {d.users} <span className="text-[10px] font-normal text-slate-400">({pct}%)</span>
+              </span>
+            </div>
+            <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${pct}%`, backgroundColor: color }}
+              />
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

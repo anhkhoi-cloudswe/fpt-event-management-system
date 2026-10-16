@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { Calendar, ChevronDown } from 'lucide-react'
-import { format, subDays } from 'date-fns'
+import {
+  format,
+  subDays,
+  startOfWeek,
+  startOfMonth,
+  startOfYear,
+} from 'date-fns'
 
 export interface DateRange {
   startDate: string
@@ -13,12 +19,6 @@ interface GA4DateRangePickerProps {
   onChange: (range: DateRange) => void
   disabled?: boolean
 }
-
-const PRESETS: { label: string; days: number }[] = [
-  { label: '7 ngày', days: 7 },
-  { label: '30 ngày', days: 30 },
-  { label: '90 ngày', days: 90 },
-]
 
 function toISO(date: Date): string {
   return format(date, 'yyyy-MM-dd')
@@ -33,15 +33,59 @@ export function buildPresetRange(days: number, label: string): DateRange {
   }
 }
 
+interface PresetOption {
+  label: string
+  getRange: () => DateRange
+}
+
+const PRESET_OPTIONS: PresetOption[] = [
+  {
+    label: 'Hôm nay',
+    getRange: () => {
+      const now = new Date()
+      return { startDate: toISO(now), endDate: toISO(now), label: 'Hôm nay' }
+    },
+  },
+  {
+    label: 'Hôm qua',
+    getRange: () => {
+      const y = subDays(new Date(), 1)
+      return { startDate: toISO(y), endDate: toISO(y), label: 'Hôm qua' }
+    },
+  },
+  {
+    label: '7 ngày qua',
+    getRange: () => buildPresetRange(7, '7 ngày qua'),
+  },
+  {
+    label: '30 ngày qua',
+    getRange: () => buildPresetRange(30, '30 ngày qua'),
+  },
+  {
+    label: 'Tháng này',
+    getRange: () => {
+      const now = new Date()
+      return { startDate: toISO(startOfMonth(now)), endDate: toISO(now), label: 'Tháng này' }
+    },
+  },
+  {
+    label: 'Năm nay',
+    getRange: () => {
+      const now = new Date()
+      return { startDate: toISO(startOfYear(now)), endDate: toISO(now), label: 'Năm nay' }
+    },
+  },
+]
+
 export default function GA4DateRangePicker({ value, onChange, disabled }: GA4DateRangePickerProps) {
   const [open, setOpen] = useState(false)
   const [customStart, setCustomStart] = useState(value.startDate)
   const [customEnd, setCustomEnd] = useState(value.endDate)
   const [isCustom, setIsCustom] = useState(false)
 
-  const handlePreset = (days: number, label: string) => {
+  const handleSelectPreset = (p: PresetOption) => {
     setIsCustom(false)
-    onChange(buildPresetRange(days, label))
+    onChange(p.getRange())
     setOpen(false)
   }
 
@@ -67,17 +111,17 @@ export default function GA4DateRangePicker({ value, onChange, disabled }: GA4Dat
         <div className="absolute right-0 top-full mt-1.5 z-50 w-56 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl p-2">
           {/* Presets */}
           <div className="space-y-0.5 mb-2">
-            {PRESETS.map((p) => (
+            {PRESET_OPTIONS.map((p) => (
               <button
                 key={p.label}
-                onClick={() => handlePreset(p.days, p.label)}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer
+                onClick={() => handleSelectPreset(p)}
+                className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer
                   ${value.label === p.label && !isCustom
-                    ? 'bg-orange-500 text-white'
+                    ? 'bg-orange-500 text-white font-bold'
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
               >
-                {p.label} qua
+                {p.label}
               </button>
             ))}
           </div>

@@ -6,6 +6,18 @@
       "description": "Đây là một sản phẩm dành cho môn Khởi nghiệp được thực hiện bởi team FEMS (Anh Khôi - Leader)",
       "url": "https://youtu.be/2e_pwvIoFnk",
       "order": 1
+    },
+    {
+      "id": "v-1792137280419",
+      "title": "[FEMS] Giải bài toán trùng lịch phòng ốc | 16-10-2026",
+      "url": "https://youtu.be/sta1pgs3oXM",
+      "order": 2
+    },
+    {
+      "id": "v-1792137387103",
+      "title": "Ngày thật thảnh thơi",
+      "url": "https://youtu.be/6oa9kzNY-Rw",
+      "order": 3
     }
   ],
   "videoShowcaseBadge": "Kênh truyền thông FEMS",

@@ -188,6 +188,35 @@ export default function GA4MetricCards({ summary, realtimeUsers, hasAdvanced }: 
             <span className="text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">Trang / Phiên</span>
           </div>
         </div>
+
+        {/* Average Engagement Time */}
+        {summary.avgEngagementTime !== undefined && summary.avgEngagementTime > 0 && (
+          <div className="rounded-2xl border border-indigo-200/70 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-950/20 p-3.5 backdrop-blur-sm hover:border-indigo-400 transition-colors col-span-2 md:col-span-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                  <Activity size={14} />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Thời gian tương tác trung bình (User Engagement Time)
+                  </span>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                    Thời lượng trung bình khách truy cập dừng lại và tương tác trên website
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-xl font-black text-slate-900 dark:text-white">
+                  {Math.floor(summary.avgEngagementTime / 60)}p {Math.round(summary.avgEngagementTime % 60)}s
+                </span>
+                <span className="block text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                  {Math.round(summary.avgEngagementTime)} giây / phiên
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

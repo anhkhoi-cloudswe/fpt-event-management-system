@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Play, ChevronLeft, ChevronRight, Video as VideoIcon, ExternalLink } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Video as VideoIcon, ExternalLink } from 'lucide-react'
 import { GuestVideoItem } from '../../types/frontendConfig'
 
 interface GuestVideoShowcaseProps {
@@ -81,24 +81,6 @@ export const getEmbedUrl = (url: string): { embedUrl: string; isDirect: boolean 
   }
 }
 
-/**
- * Trích xuất ảnh thumbnail tự động nếu là YouTube
- */
-export const getAutoThumbnail = (video: GuestVideoItem): string => {
-  if (video.thumbnailUrl && video.thumbnailUrl.trim()) {
-    return video.thumbnailUrl.trim()
-  }
-  const ytShortsMatch = video.url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/i)
-  if (ytShortsMatch && ytShortsMatch[1]) {
-    return `https://img.youtube.com/vi/${ytShortsMatch[1]}/hqdefault.jpg`
-  }
-  const ytMatch = video.url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i)
-  if (ytMatch && ytMatch[1]) {
-    return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`
-  }
-  return ''
-}
-
 export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
   videos,
   badge = 'Thước Phim Sự Kiện',
@@ -110,12 +92,18 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
   // Sắp xếp video theo thứ tự order đã được admin kéo thả
   const sortedVideos = [...videos].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
   const [currentIndex, setCurrentIndex] = useState<number>(0)
-  const [isPlayingCurrent, setIsPlayingCurrent] = useState<boolean>(false)
 
-  // Touch & Swipe gesture handling
+  // Mobile Native Scroll Container Ref
+  const mobileScrollRef = useRef<HTMLDivElement>(null)
+  const isProgrammaticScrollRef = useRef<boolean>(false)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Touch flick & velocity tracking refs
+  const touchStartTimeRef = useRef<number>(0)
   const touchStartXRef = useRef<number>(0)
+  const touchStartYRef = useRef<number>(0)
   const touchEndXRef = useRef<number>(0)
-  const isDraggingRef = useRef<boolean>(false)
+  const isSwipeGestureRef = useRef<boolean | null>(null)
 
   // Clamp index if list changes
   useEffect(() => {
@@ -124,11 +112,27 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
     }
   }, [sortedVideos.length, currentIndex])
 
-  // Reset playing status whenever switching active video
+  // Select video index with instant smooth sync
   const handleSelectIndex = useCallback((newIndex: number) => {
     if (newIndex < 0 || newIndex >= sortedVideos.length) return
     setCurrentIndex(newIndex)
-    setIsPlayingCurrent(false)
+
+    // Sync mobile scroll container if on mobile screen
+    if (mobileScrollRef.current) {
+      const container = mobileScrollRef.current
+      const child = container.children[newIndex] as HTMLElement
+      if (child) {
+        isProgrammaticScrollRef.current = true
+        container.scrollTo({
+          left: child.offsetLeft - (container.clientWidth - child.clientWidth) / 2,
+          behavior: 'smooth',
+        })
+        if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
+        scrollTimeoutRef.current = setTimeout(() => {
+          isProgrammaticScrollRef.current = false
+        }, 400)
+      }
+    }
   }, [sortedVideos.length])
 
   const handlePrev = useCallback(() => {
@@ -153,99 +157,236 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handlePrev, handleNext])
 
-  // Touch events for mobile swipe
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.targetTouches[0].clientX
-    touchEndXRef.current = e.targetTouches[0].clientX
-    isDraggingRef.current = true
-  }
+  // Native Mobile Scroll Listener with zero-lag index synchronization
+  const handleMobileScroll = () => {
+    if (isProgrammaticScrollRef.current || !mobileScrollRef.current) return
+    const container = mobileScrollRef.current
+    const scrollLeft = container.scrollLeft
+    const width = container.clientWidth
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDraggingRef.current) return
-    touchEndXRef.current = e.targetTouches[0].clientX
-  }
+    // Calculate nearest card in view
+    let nearestIndex = 0
+    let minDistance = Infinity
 
-  const handleTouchEnd = () => {
-    if (!isDraggingRef.current) return
-    isDraggingRef.current = false
-    const diff = touchStartXRef.current - touchEndXRef.current
-    const minSwipeDistance = 50
-    if (diff > minSwipeDistance) {
-      handleNext()
-    } else if (diff < -minSwipeDistance) {
-      handlePrev()
+    for (let i = 0; i < container.children.length; i++) {
+      const child = container.children[i] as HTMLElement
+      const childCenter = child.offsetLeft + child.clientWidth / 2
+      const containerCenter = scrollLeft + width / 2
+      const dist = Math.abs(childCenter - containerCenter)
+      if (dist < minDistance) {
+        minDistance = dist
+        nearestIndex = i
+      }
+    }
+
+    if (nearestIndex !== currentIndex) {
+      setCurrentIndex(nearestIndex)
     }
   }
 
-  const activeVideo = sortedVideos[currentIndex] || sortedVideos[0]
+  // Touch flick detection: handles light quick flicks effortlessly
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartTimeRef.current = Date.now()
+    touchStartXRef.current = e.targetTouches[0].clientX
+    touchStartYRef.current = e.targetTouches[0].clientY
+    touchEndXRef.current = e.targetTouches[0].clientX
+    isSwipeGestureRef.current = null
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const currentX = e.targetTouches[0].clientX
+    const currentY = e.targetTouches[0].clientY
+    touchEndXRef.current = currentX
+
+    if (isSwipeGestureRef.current === null) {
+      const diffX = Math.abs(currentX - touchStartXRef.current)
+      const diffY = Math.abs(currentY - touchStartYRef.current)
+      if (diffX > 6 || diffY > 6) {
+        isSwipeGestureRef.current = diffX > diffY
+      }
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (isSwipeGestureRef.current) {
+      const deltaX = touchStartXRef.current - touchEndXRef.current
+      const deltaTime = Math.max(1, Date.now() - touchStartTimeRef.current)
+      const velocity = Math.abs(deltaX) / deltaTime // px/ms
+
+      // Low threshold: either distance > 30px or a quick flick (velocity > 0.35 px/ms and distance > 15px)
+      const isQuickFlick = velocity > 0.35 && Math.abs(deltaX) > 15
+      const isDragSwipe = Math.abs(deltaX) > 30
+
+      if (isQuickFlick || isDragSwipe) {
+        if (deltaX > 0) {
+          handleNext()
+        } else {
+          handlePrev()
+        }
+      }
+    }
+    isSwipeGestureRef.current = null
+  }
+
   const isSingle = sortedVideos.length === 1
 
   return (
-    <section className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16 overflow-hidden">
+    <section className="relative w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-16 overflow-hidden">
       {/* Background Decorative Ambient Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-orange-500/15 via-amber-500/10 to-transparent blur-[120px] rounded-full pointer-events-none -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] sm:w-[600px] h-[250px] sm:h-[350px] bg-gradient-to-tr from-orange-500/15 via-amber-500/10 to-transparent blur-[90px] sm:blur-[120px] rounded-full pointer-events-none -z-10" />
 
       {/* Header section (Badge, Title, Subtitle) */}
-      <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-12 space-y-2 sm:space-y-3">
+      <div className="text-center max-w-3xl mx-auto mb-6 sm:mb-12 space-y-2 sm:space-y-3 px-2">
         {badge && (
-          <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-orange-600 shadow-xs">
+          <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-[11px] sm:text-xs font-black uppercase tracking-widest text-orange-600 shadow-xs">
             <VideoIcon className="w-3.5 h-3.5" />
             <span>{badge}</span>
           </div>
         )}
         {title && (
-          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
+          <h2 className="text-xl xs:text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-snug sm:leading-tight">
             {title}
           </h2>
         )}
         {subtitle && (
-          <p className="text-xs sm:text-base font-semibold text-slate-600">
+          <p className="text-xs sm:text-base font-semibold text-slate-600 leading-relaxed max-w-xl mx-auto">
             {subtitle}
           </p>
         )}
       </div>
 
-      {/* ================= COVERFLOW / HORIZONTAL CAROUSEL CONTAINER ================= */}
+      {/* ========================================================================= */}
+      {/* 1. MOBILE VIEW (<768px): CSS Scroll-Snap Native Track (Clean Viewport 1-Click Play) */}
+      {/* ========================================================================= */}
       <div
-        className="relative w-full py-4 select-none"
+        className="block md:hidden w-full select-none"
+        style={{ touchAction: 'pan-y' }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Navigation Arrows (Desktop & Tablet) */}
+        <div
+          ref={mobileScrollRef}
+          onScroll={handleMobileScroll}
+          className="flex gap-4 overflow-x-auto overflow-y-hidden px-4 py-3 scrollbar-hide"
+          style={{
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            scrollBehavior: 'smooth',
+          }}
+        >
+          {sortedVideos.map((video, idx) => {
+            const isCenter = idx === currentIndex
+            const { embedUrl, isDirect } = getEmbedUrl(video.url)
+
+            return (
+              <div
+                key={video.id}
+                style={{
+                  scrollSnapAlign: 'center',
+                  scrollSnapStop: 'always',
+                  flexShrink: 0,
+                  transition: 'transform 350ms cubic-bezier(0.25, 1, 0.35, 1), opacity 350ms ease, box-shadow 350ms ease',
+                }}
+                className={`w-[88vw] max-w-[420px] rounded-[24px] overflow-hidden border ${
+                  isCenter
+                    ? 'border-orange-500/35 bg-white/95 dark:bg-slate-900/95 shadow-[0_15px_35px_-10px_rgba(249,115,22,0.22)] scale-100 opacity-100'
+                    : 'border-white/60 bg-white/75 dark:bg-slate-900/75 opacity-65 scale-[0.97]'
+                } backdrop-blur-xl p-2.5`}
+              >
+                {/* 100% Clean Video Viewport (No obstructive overlays on top of video) */}
+                <div className="relative w-full aspect-video rounded-[18px] overflow-hidden bg-slate-950 shadow-inner">
+                  {isDirect ? (
+                    <video
+                      src={embedUrl}
+                      controls
+                      preload="metadata"
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <iframe
+                      src={embedUrl}
+                      title={video.title}
+                      loading="lazy"
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  )}
+                </div>
+
+                {/* Clean Title & Description (No redundant floating badges or status tags) */}
+                <div className="pt-2.5 px-1.5 text-left">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className={`text-xs sm:text-sm font-black tracking-tight line-clamp-1 flex-1 ${
+                      isCenter ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'
+                    }`}>
+                      {video.title}
+                    </h3>
+                    <a
+                      href={video.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Mở video trong tab mới"
+                      className="p-1 -mt-0.5 rounded-full text-slate-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-slate-800 transition-colors shrink-0"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+
+                  {video.description && (
+                    <p className={`mt-1 text-[10.5px] font-semibold line-clamp-2 leading-relaxed ${
+                      isCenter ? 'text-slate-600 dark:text-slate-400' : 'text-slate-400 dark:text-slate-500'
+                    }`}>
+                      {video.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. DESKTOP & TABLET VIEW (>=768px): 3D Perspective Coverflow (Clean Viewport 1-Click Play) */}
+      {/* ========================================================================= */}
+      <div className="hidden md:block relative w-full py-4 select-none">
+        {/* Navigation Arrows with high-contrast Orange Hover */}
         {!isSingle && (
           <>
             <button
               onClick={handlePrev}
               disabled={currentIndex === 0}
               aria-label="Previous video"
-              className={`absolute left-2 sm:left-4 lg:left-8 top-1/2 -translate-y-1/2 z-30 w-11 h-11 sm:w-13 sm:h-13 rounded-full flex items-center justify-center backdrop-blur-xl border transition-all duration-300 shadow-xl cursor-pointer ${
+              className={`absolute left-2 sm:left-4 lg:left-6 top-1/2 -translate-y-1/2 z-40 w-11 h-11 sm:w-13 sm:h-13 rounded-full flex items-center justify-center backdrop-blur-xl border transition-all duration-300 shadow-xl cursor-pointer group ${
                 currentIndex === 0
-                  ? 'bg-white/30 text-slate-400 border-white/20 opacity-0 pointer-events-none'
-                  : 'bg-white/90 hover:bg-white text-slate-800 hover:text-orange-600 border-white/80 hover:scale-110 active:scale-95 shadow-orange-500/10'
+                  ? 'bg-white/40 text-slate-300 border-white/20 opacity-0 pointer-events-none'
+                  : 'bg-white/95 hover:bg-orange-600 text-slate-700 hover:text-white border-white/90 hover:border-orange-500 hover:scale-110 active:scale-95 shadow-orange-500/20'
               }`}
             >
-              <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
+              <ChevronLeft className="w-6 h-6 stroke-[2.5] transition-transform duration-300 group-hover:-translate-x-0.5" />
             </button>
 
             <button
               onClick={handleNext}
               disabled={currentIndex === sortedVideos.length - 1}
               aria-label="Next video"
-              className={`absolute right-2 sm:right-4 lg:right-8 top-1/2 -translate-y-1/2 z-30 w-11 h-11 sm:w-13 sm:h-13 rounded-full flex items-center justify-center backdrop-blur-xl border transition-all duration-300 shadow-xl cursor-pointer ${
+              className={`absolute right-2 sm:right-4 lg:right-6 top-1/2 -translate-y-1/2 z-40 w-11 h-11 sm:w-13 sm:h-13 rounded-full flex items-center justify-center backdrop-blur-xl border transition-all duration-300 shadow-xl cursor-pointer group ${
                 currentIndex === sortedVideos.length - 1
-                  ? 'bg-white/30 text-slate-400 border-white/20 opacity-0 pointer-events-none'
-                  : 'bg-white/90 hover:bg-white text-slate-800 hover:text-orange-600 border-white/80 hover:scale-110 active:scale-95 shadow-orange-500/10'
+                  ? 'bg-white/40 text-slate-300 border-white/20 opacity-0 pointer-events-none'
+                  : 'bg-white/95 hover:bg-orange-600 text-slate-700 hover:text-white border-white/90 hover:border-orange-500 hover:scale-110 active:scale-95 shadow-orange-500/20'
               }`}
             >
-              <ChevronRight className="w-6 h-6 stroke-[2.5]" />
+              <ChevronRight className="w-6 h-6 stroke-[2.5] transition-transform duration-300 group-hover:translate-x-0.5" />
             </button>
           </>
         )}
 
         {/* 3D Perspective Stage Area */}
         <div
-          className="relative w-full h-[260px] xs:h-[300px] sm:h-[400px] md:h-[480px] lg:h-[540px] flex items-center justify-center overflow-visible"
+          className="relative w-full h-[460px] md:h-[540px] lg:h-[600px] flex items-center justify-center overflow-visible"
           style={{ perspective: '1200px' }}
         >
           {sortedVideos.map((video, idx) => {
@@ -255,7 +396,6 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
             const isRight = offset === 1
             const isVisible = Math.abs(offset) <= 2
 
-            // Calculate precise 3D Coverflow positioning
             let translateX = 0
             let scale = 1
             let zIndex = 20
@@ -265,17 +405,17 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
             if (isCenter) {
               translateX = 0
               scale = 1
-              zIndex = 25
+              zIndex = 30
               opacity = 1
               rotateY = 0
             } else if (isLeft) {
-              translateX = -68 // % translate left peek
+              translateX = -68
               scale = 0.84
               zIndex = 15
               opacity = 0.65
               rotateY = 14
             } else if (isRight) {
-              translateX = 68 // % translate right peek
+              translateX = 68
               scale = 0.84
               zIndex = 15
               opacity = 0.65
@@ -301,14 +441,10 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
             }
 
             const { embedUrl, isDirect } = getEmbedUrl(video.url)
-            const thumbnail = getAutoThumbnail(video)
 
             return (
               <div
                 key={video.id}
-                onClick={() => {
-                  if (!isCenter) handleSelectIndex(idx)
-                }}
                 style={{
                   transform: `translateX(${translateX}%) scale(${scale}) rotateY(${rotateY}deg)`,
                   zIndex,
@@ -318,102 +454,65 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
                   willChange: 'transform, opacity',
                   transformStyle: 'preserve-3d',
                 }}
-                className={`absolute w-[86%] sm:w-[76%] md:w-[68%] lg:w-[62%] max-w-[820px] rounded-[24px] sm:rounded-[36px] overflow-hidden border border-white/70 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-2.5 sm:p-4 shadow-[0_20px_50px_-15px_rgba(249,115,22,0.18)] ${
+                className={`absolute w-[76%] md:w-[68%] lg:w-[62%] max-w-[820px] rounded-[36px] overflow-hidden border border-white/75 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl p-3 sm:p-4 shadow-[0_20px_50px_-15px_rgba(249,115,22,0.18)] ${
                   !isCenter ? 'cursor-pointer hover:opacity-90' : ''
                 }`}
               >
-                {/* Video Screen / Player Container */}
-                <div className="relative w-full aspect-video rounded-[18px] sm:rounded-[28px] overflow-hidden bg-slate-950 shadow-inner group">
-                  {/* If Center and User has clicked Play -> Show Live Iframe / Video */}
-                  {isCenter && isPlayingCurrent ? (
-                    isDirect ? (
-                      <video
-                        src={embedUrl}
-                        controls
-                        autoPlay
-                        preload="metadata"
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <iframe
-                        src={`${embedUrl}&autoplay=1`}
-                        title={video.title}
-                        loading="lazy"
-                        className="w-full h-full border-0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                      />
-                    )
+                {/* 100% Clean Video Viewport (No obstructive badges inside video frame) */}
+                <div className="relative w-full aspect-video rounded-[28px] overflow-hidden bg-slate-950 shadow-inner group">
+                  {isDirect ? (
+                    <video
+                      src={embedUrl}
+                      controls
+                      preload="metadata"
+                      className="w-full h-full object-contain"
+                    />
                   ) : (
-                    /* Thumbnail preview with stylish Play Button */
+                    <iframe
+                      src={embedUrl}
+                      title={video.title}
+                      loading="lazy"
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  )}
+
+                  {/* Cinematic Click-to-Focus Overlay for Non-Center Cards */}
+                  {!isCenter && (
                     <div
-                      className="relative w-full h-full cursor-pointer flex items-center justify-center group"
-                      onClick={() => {
-                        if (isCenter) {
-                          setIsPlayingCurrent(true)
-                        } else {
-                          handleSelectIndex(idx)
-                        }
-                      }}
+                      onClick={() => handleSelectIndex(idx)}
+                      className="absolute inset-0 z-20 bg-slate-950/40 backdrop-blur-[1.5px] transition-opacity duration-500 cursor-pointer hover:bg-slate-950/20 flex items-center justify-center"
                     >
-                      {thumbnail ? (
-                        <img
-                          src={thumbnail}
-                          alt={video.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950 text-white p-4">
-                          <VideoIcon className="w-12 h-12 text-orange-500/60 mb-2 animate-pulse" />
-                          <span className="text-xs font-bold text-slate-400">Xem video sự kiện</span>
-                        </div>
-                      )}
-
-                      {/* Ambient Gradient overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity group-hover:opacity-90" />
-
-                      {/* Ripple pulsing play button */}
-                      <div className="relative z-10 flex items-center justify-center">
-                        <div className="absolute w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-orange-500/30 animate-ping duration-[2500ms]" />
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 text-white flex items-center justify-center shadow-xl shadow-orange-600/40 group-hover:scale-110 active:scale-95 transition-transform duration-300">
-                          <Play className="w-6 h-6 sm:w-7 sm:h-7 fill-white ml-1" />
-                        </div>
-                      </div>
-
-                      {/* Badge Video Order */}
-                      <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-[10px] sm:text-xs font-black uppercase tracking-wider text-white shadow-xs">
-                        Video #{idx + 1}
-                      </div>
-
-                      {/* Quick external link button */}
-                      <a
-                        href={video.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        title="Mở tab mới"
-                        className="absolute top-3 right-3 p-2 rounded-full bg-black/50 hover:bg-black/80 text-white/80 hover:text-white backdrop-blur-md transition-colors"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
+                      <span className="text-xs font-bold text-white/90 bg-black/60 px-3.5 py-1.5 rounded-full border border-white/20 shadow-md">
+                        Bấm để chuyển
+                      </span>
                     </div>
                   )}
                 </div>
 
-                {/* Video Info (Title & Description) */}
-                <div className="pt-3 sm:pt-4 px-2 sm:px-3 text-left">
-                  <div className="flex items-center gap-2 mb-1">
-                    {isCenter && (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs">
-                        Tiêu điểm
-                      </span>
-                    )}
-                    <h3 className="text-sm sm:text-lg font-black text-slate-900 dark:text-white tracking-tight line-clamp-1">
+                {/* Clean Title & Description (No redundant floating badges or status tags) */}
+                <div className="pt-3.5 px-3 text-left transition-opacity duration-500">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className={`text-base sm:text-lg font-black tracking-tight line-clamp-1 flex-1 ${
+                      isCenter ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'
+                    }`}>
                       {video.title}
                     </h3>
+                    <a
+                      href={video.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Mở video trong tab mới"
+                      className="p-1.5 -mt-0.5 rounded-full text-slate-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-slate-800 transition-colors shrink-0"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
                   </div>
                   {video.description && (
-                    <p className="text-[11px] sm:text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                    <p className={`mt-1 text-xs sm:text-[13px] font-semibold line-clamp-2 leading-relaxed ${
+                      isCenter ? 'text-slate-600 dark:text-slate-400' : 'text-slate-400 dark:text-slate-500'
+                    }`}>
                       {video.description}
                     </p>
                   )}
@@ -422,30 +521,32 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
             )
           })}
         </div>
-
-        {/* Carousel Pagination Dots & Progress Indicator */}
-        {!isSingle && (
-          <div className="mt-6 flex flex-col items-center gap-3">
-            <div className="flex items-center gap-2">
-              {sortedVideos.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSelectIndex(i)}
-                  aria-label={`Go to video ${i + 1}`}
-                  className={`h-2 sm:h-2.5 rounded-full transition-all duration-500 cursor-pointer ${
-                    i === currentIndex
-                      ? 'w-8 sm:w-10 bg-gradient-to-r from-orange-500 to-amber-500 shadow-md shadow-orange-500/30'
-                      : 'w-2 sm:w-2.5 bg-slate-300 dark:bg-slate-700 hover:bg-orange-300'
-                  }`}
-                />
-              ))}
-            </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-              {currentIndex + 1} / {sortedVideos.length}
-            </p>
-          </div>
-        )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* 3. PAGINATION DOTS & COUNTER (Synchronized instantly on both Mobile & Desktop) */}
+      {/* ========================================================================= */}
+      {!isSingle && (
+        <div className="mt-3 sm:mt-6 flex flex-col items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-2.5 p-1 sm:p-1.5 rounded-full bg-white/70 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 backdrop-blur-md shadow-xs">
+            {sortedVideos.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => handleSelectIndex(i)}
+                aria-label={`Go to video ${i + 1}`}
+                className={`h-2 sm:h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                  i === currentIndex
+                    ? 'w-7 sm:w-11 bg-gradient-to-r from-orange-500 to-amber-500 shadow-md shadow-orange-500/40 ring-2 ring-orange-400/30'
+                    : 'w-2 sm:w-2.5 bg-slate-300 dark:bg-slate-600 hover:bg-orange-300 dark:hover:bg-orange-500'
+                }`}
+              />
+            ))}
+          </div>
+          <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+            Video {currentIndex + 1} / {sortedVideos.length}
+          </p>
+        </div>
+      )}
     </section>
   )
 }

@@ -105,10 +105,10 @@ function LoadingScreen() {
         <h1 className="text-2xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-400 uppercase">
           FPT Event System
         </h1>
-        
+
         {/* Progress Bar Container */}
         <div className="w-48 h-1 bg-slate-800 rounded-full mt-6 overflow-hidden relative">
-          <div 
+          <div
             className="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all duration-300 ease-out"
             style={{ width: `${progress}%` }}
           />
@@ -126,9 +126,9 @@ function LoadingScreen() {
               <p className="text-[11px] font-semibold text-amber-400/90 leading-relaxed">
                 💡 Máy chủ Cloud tự động tạm nghỉ khi không có người truy cập để tiết kiệm tài nguyên. Quá trình khởi động có thể mất từ 30 giây đến 1 phút.
               </p>
-              
+
               <div className="mt-4 flex flex-col gap-2">
-                <button 
+                <button
                   onClick={() => {
                     window.location.href = '/guest';
                   }}
@@ -136,8 +136,8 @@ function LoadingScreen() {
                 >
                   Bỏ qua & Xem dưới tư cách Khách
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => {
                     window.location.reload();
                   }}

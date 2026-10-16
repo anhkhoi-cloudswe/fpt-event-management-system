@@ -113,6 +113,7 @@ export default function SignUp() {
   // Google OAuth registration
   const googleRegister = useGoogleLogin({
     flow: 'auth-code',
+    prompt: 'select_account',
     onSuccess: async (codeResponse) => {
       setLoading(true)
       setError('')

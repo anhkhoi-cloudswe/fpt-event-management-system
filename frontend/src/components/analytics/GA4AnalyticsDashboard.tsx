@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BarChart3, RefreshCw, Info, TrendingUp, Globe, Smartphone, FileText, Sparkles, Layers } from 'lucide-react'
+import { BarChart3, RefreshCw, Info, TrendingUp, Globe, Smartphone, FileText, Sparkles, Layers, MapPin, Compass } from 'lucide-react'
 import GA4LockedOverlay from './GA4LockedOverlay'
 import GA4MetricCards from './GA4MetricCards'
 import GA4DateRangePicker, { buildPresetRange, type DateRange } from './GA4DateRangePicker'
@@ -8,6 +8,8 @@ import {
   GA4SourceDonut,
   GA4DeviceChart,
   GA4GeoTable,
+  GA4CityTable,
+  GA4BrowserChart,
   GA4TopPagesTable,
   GA4SourceBarChart,
 } from './GA4Charts'
@@ -156,10 +158,17 @@ function OrganizerAnalyticsDashboard({ eventId, tier }: OrganizerAnalyticsProps)
             </AnalyticsSection>
           </div>
 
-          {/* Geography */}
-          <AnalyticsSection title="Phân bố địa lý người xem" icon={<Globe size={16} />}>
-            <GA4GeoTable data={data.geography} />
-          </AnalyticsSection>
+          {/* Geography & Cities */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <AnalyticsSection title="Phân bố địa lý người xem" icon={<Globe size={16} />}>
+              <GA4GeoTable data={data.geography} />
+            </AnalyticsSection>
+            {data.cities && data.cities.length > 0 && (
+              <AnalyticsSection title="Tỉnh / Thành phố truy cập" icon={<MapPin size={16} />}>
+                <GA4CityTable data={data.cities} />
+              </AnalyticsSection>
+            )}
+          </div>
 
           {/* Advanced: locked for PRO */}
           {!hasAdvanced && (
@@ -258,6 +267,20 @@ function AdminAnalyticsDashboard({ eventId }: { eventId?: number | null }) {
             <AnalyticsSection title="Thiết bị người dùng (Devices)" icon={<Smartphone size={16} />}>
               <GA4DeviceChart data={systemData.deviceBreakdown} />
             </AnalyticsSection>
+          </div>
+
+          {/* Cities + Browsers */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {systemData.cities && systemData.cities.length > 0 && (
+              <AnalyticsSection title="Tỉnh / Thành phố truy cập (Cities)" icon={<MapPin size={16} />}>
+                <GA4CityTable data={systemData.cities} />
+              </AnalyticsSection>
+            )}
+            {systemData.browserBreakdown && systemData.browserBreakdown.length > 0 && (
+              <AnalyticsSection title="Trình duyệt phổ biến (Browsers)" icon={<Compass size={16} />}>
+                <GA4BrowserChart data={systemData.browserBreakdown} />
+              </AnalyticsSection>
+            )}
           </div>
         </div>
       )}

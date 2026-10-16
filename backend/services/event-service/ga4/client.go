@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -34,11 +35,12 @@ type ServiceAccountCredentials struct {
 
 // Data models matching frontend expectations
 type GA4Summary struct {
-	PageViews   int     `json:"pageViews"`
-	ActiveUsers int     `json:"activeUsers"`
-	Sessions    int     `json:"sessions"`
-	BounceRate  float64 `json:"bounceRate"`
-	Conversions int     `json:"conversions"`
+	PageViews         int     `json:"pageViews"`
+	ActiveUsers       int     `json:"activeUsers"`
+	Sessions          int     `json:"sessions"`
+	BounceRate        float64 `json:"bounceRate"`
+	Conversions       int     `json:"conversions"`
+	AvgEngagementTime float64 `json:"avgEngagementTime"` // In seconds
 }
 
 type GA4TimelinePoint struct {
@@ -59,6 +61,12 @@ type GA4TrafficSource struct {
 
 type GA4Geography struct {
 	Country string `json:"country"`
+	City    string `json:"city,omitempty"`
+	Users   int    `json:"users"`
+}
+
+type GA4BrowserBreakdown struct {
+	Browser string `json:"browser"`
 	Users   int    `json:"users"`
 }
 
@@ -72,16 +80,18 @@ type GA4Realtime struct {
 }
 
 type GA4AnalyticsResponse struct {
-	Summary         GA4Summary           `json:"summary"`
-	Timeline        []GA4TimelinePoint   `json:"timeline"`
-	DeviceBreakdown []GA4DeviceBreakdown `json:"deviceBreakdown"`
-	TopSources      []GA4TrafficSource   `json:"topSources"`
-	Geography       []GA4Geography       `json:"geography"`
-	TopPages        []GA4TopPage         `json:"topPages,omitempty"`
-	Realtime        *GA4Realtime         `json:"realtime,omitempty"`
-	IsConfigured    bool                 `json:"isConfigured"`
-	IsSampleData    bool                 `json:"isSampleData"`
-	Notice          string               `json:"notice,omitempty"`
+	Summary          GA4Summary            `json:"summary"`
+	Timeline         []GA4TimelinePoint    `json:"timeline"`
+	DeviceBreakdown  []GA4DeviceBreakdown  `json:"deviceBreakdown"`
+	BrowserBreakdown []GA4BrowserBreakdown `json:"browserBreakdown,omitempty"`
+	TopSources       []GA4TrafficSource    `json:"topSources"`
+	Geography        []GA4Geography        `json:"geography"`
+	Cities           []GA4Geography        `json:"cities,omitempty"`
+	TopPages         []GA4TopPage          `json:"topPages,omitempty"`
+	Realtime         *GA4Realtime          `json:"realtime,omitempty"`
+	IsConfigured     bool                  `json:"isConfigured"`
+	IsSampleData     bool                  `json:"isSampleData"`
+	Notice           string                `json:"notice,omitempty"`
 }
 
 // Client manages connection & tokens to Google Analytics Data API
@@ -252,7 +262,22 @@ type runReportRequest struct {
 	Dimensions      []dimension       `json:"dimensions"`
 	Metrics         []metric          `json:"metrics"`
 	DimensionFilter *filterExpression `json:"dimensionFilter,omitempty"`
+	OrderBys        []orderBy         `json:"orderBys,omitempty"`
 	Limit           int               `json:"limit,omitempty"`
+}
+
+type orderBy struct {
+	Dimension *dimensionOrderBy `json:"dimension,omitempty"`
+	Metric    *metricOrderBy    `json:"metric,omitempty"`
+	Desc      bool              `json:"desc"`
+}
+
+type dimensionOrderBy struct {
+	DimensionName string `json:"dimensionName"`
+}
+
+type metricOrderBy struct {
+	MetricName string `json:"metricName"`
 }
 
 type dateRange struct {
@@ -402,7 +427,7 @@ func (c *Client) FetchSystemAnalytics(ctx context.Context, startDate, endDate st
 		return c.GenerateSampleAnalytics(startDate, endDate, "Hệ thống đang hiển thị dữ liệu mô phỏng do GA4_PROPERTY_ID chưa được cấu hình."), nil
 	}
 
-	// 1. Fetch Timeline (date)
+	// 1. Fetch Timeline (date) sorted ascending by date
 	timelineReq := runReportRequest{
 		DateRanges: []dateRange{{StartDate: startDate, EndDate: endDate}},
 		Dimensions: []dimension{{Name: "date"}},
@@ -412,6 +437,10 @@ func (c *Client) FetchSystemAnalytics(ctx context.Context, startDate, endDate st
 			{Name: "sessions"},
 			{Name: "bounceRate"},
 			{Name: "conversions"},
+			{Name: "userEngagementDuration"},
+		},
+		OrderBys: []orderBy{
+			{Dimension: &dimensionOrderBy{DimensionName: "date"}, Desc: false},
 		},
 	}
 	timelineResp, err := c.RunReport(ctx, timelineReq)
@@ -420,17 +449,19 @@ func (c *Client) FetchSystemAnalytics(ctx context.Context, startDate, endDate st
 	}
 
 	resp := &GA4AnalyticsResponse{
-		Timeline:        make([]GA4TimelinePoint, 0),
-		DeviceBreakdown: make([]GA4DeviceBreakdown, 0),
-		TopSources:      make([]GA4TrafficSource, 0),
-		Geography:       make([]GA4Geography, 0),
-		TopPages:        make([]GA4TopPage, 0),
-		IsConfigured:    true,
-		IsSampleData:    false,
+		Timeline:         make([]GA4TimelinePoint, 0),
+		DeviceBreakdown:  make([]GA4DeviceBreakdown, 0),
+		BrowserBreakdown: make([]GA4BrowserBreakdown, 0),
+		TopSources:       make([]GA4TrafficSource, 0),
+		Geography:        make([]GA4Geography, 0),
+		Cities:           make([]GA4Geography, 0),
+		TopPages:         make([]GA4TopPage, 0),
+		IsConfigured:     true,
+		IsSampleData:     false,
 	}
 
 	var totalViews, totalUsers, totalSessions, totalConversions int
-	var bounceRateSum float64
+	var bounceRateSum, totalEngagementDuration float64
 
 	for _, row := range timelineResp.Rows {
 		dateStr := ""
@@ -442,12 +473,17 @@ func (c *Client) FetchSystemAnalytics(ctx context.Context, startDate, endDate st
 		sess, _ := strconv.Atoi(row.MetricValues[2].Value)
 		br, _ := strconv.ParseFloat(row.MetricValues[3].Value, 64)
 		conv, _ := strconv.Atoi(row.MetricValues[4].Value)
+		engDuration := 0.0
+		if len(row.MetricValues) > 5 {
+			engDuration, _ = strconv.ParseFloat(row.MetricValues[5].Value, 64)
+		}
 
 		totalViews += views
 		totalUsers += users
 		totalSessions += sess
 		bounceRateSum += br
 		totalConversions += conv
+		totalEngagementDuration += engDuration
 
 		resp.Timeline = append(resp.Timeline, GA4TimelinePoint{
 			Date:        dateStr,
@@ -456,18 +492,28 @@ func (c *Client) FetchSystemAnalytics(ctx context.Context, startDate, endDate st
 		})
 	}
 
+	// Always guarantee timeline is sorted ascending by date (YYYYMMDD)
+	sort.Slice(resp.Timeline, func(i, j int) bool {
+		return resp.Timeline[i].Date < resp.Timeline[j].Date
+	})
+
 	rowCount := len(timelineResp.Rows)
 	avgBounceRate := 0.0
 	if rowCount > 0 {
 		avgBounceRate = bounceRateSum / float64(rowCount)
 	}
+	avgEngagementTime := 0.0
+	if totalSessions > 0 {
+		avgEngagementTime = totalEngagementDuration / float64(totalSessions)
+	}
 
 	resp.Summary = GA4Summary{
-		PageViews:   totalViews,
-		ActiveUsers: totalUsers,
-		Sessions:    totalSessions,
-		BounceRate:  avgBounceRate,
-		Conversions: totalConversions,
+		PageViews:         totalViews,
+		ActiveUsers:       totalUsers,
+		Sessions:          totalSessions,
+		BounceRate:        avgBounceRate,
+		Conversions:       totalConversions,
+		AvgEngagementTime: avgEngagementTime,
 	}
 
 	// 2. Fetch Devices
@@ -484,6 +530,25 @@ func (c *Client) FetchSystemAnalytics(ctx context.Context, startDate, endDate st
 				resp.DeviceBreakdown = append(resp.DeviceBreakdown, GA4DeviceBreakdown{
 					Device: row.DimensionValues[0].Value,
 					Users:  u,
+				})
+			}
+		}
+	}
+
+	// 2b. Fetch Browsers
+	browserReq := runReportRequest{
+		DateRanges: []dateRange{{StartDate: startDate, EndDate: endDate}},
+		Dimensions: []dimension{{Name: "browser"}},
+		Metrics:    []metric{{Name: "activeUsers"}},
+		Limit:      5,
+	}
+	if bResp, err := c.RunReport(ctx, browserReq); err == nil {
+		for _, row := range bResp.Rows {
+			if len(row.DimensionValues) > 0 && len(row.MetricValues) > 0 {
+				u, _ := strconv.Atoi(row.MetricValues[0].Value)
+				resp.BrowserBreakdown = append(resp.BrowserBreakdown, GA4BrowserBreakdown{
+					Browser: row.DimensionValues[0].Value,
+					Users:   u,
 				})
 			}
 		}
@@ -508,7 +573,7 @@ func (c *Client) FetchSystemAnalytics(ctx context.Context, startDate, endDate st
 		}
 	}
 
-	// 4. Fetch Geography
+	// 4. Fetch Geography (Country)
 	geoReq := runReportRequest{
 		DateRanges: []dateRange{{StartDate: startDate, EndDate: endDate}},
 		Dimensions: []dimension{{Name: "country"}},
@@ -522,6 +587,29 @@ func (c *Client) FetchSystemAnalytics(ctx context.Context, startDate, endDate st
 				resp.Geography = append(resp.Geography, GA4Geography{
 					Country: row.DimensionValues[0].Value,
 					Users:   u,
+				})
+			}
+		}
+	}
+
+	// 4b. Fetch Geography (Cities)
+	cityReq := runReportRequest{
+		DateRanges: []dateRange{{StartDate: startDate, EndDate: endDate}},
+		Dimensions: []dimension{{Name: "city"}},
+		Metrics:    []metric{{Name: "activeUsers"}},
+		Limit:      6,
+	}
+	if cResp, err := c.RunReport(ctx, cityReq); err == nil {
+		for _, row := range cResp.Rows {
+			if len(row.DimensionValues) > 0 && len(row.MetricValues) > 0 {
+				u, _ := strconv.Atoi(row.MetricValues[0].Value)
+				cityName := row.DimensionValues[0].Value
+				if cityName == "(not set)" || cityName == "" {
+					continue
+				}
+				resp.Cities = append(resp.Cities, GA4Geography{
+					City:  cityName,
+					Users: u,
 				})
 			}
 		}
@@ -588,6 +676,10 @@ func (c *Client) FetchEventAnalytics(ctx context.Context, eventID int, startDate
 			{Name: "sessions"},
 			{Name: "bounceRate"},
 			{Name: "conversions"},
+			{Name: "userEngagementDuration"},
+		},
+		OrderBys: []orderBy{
+			{Dimension: &dimensionOrderBy{DimensionName: "date"}, Desc: false},
 		},
 	}
 
@@ -601,12 +693,13 @@ func (c *Client) FetchEventAnalytics(ctx context.Context, eventID int, startDate
 		DeviceBreakdown: make([]GA4DeviceBreakdown, 0),
 		TopSources:      make([]GA4TrafficSource, 0),
 		Geography:       make([]GA4Geography, 0),
+		Cities:          make([]GA4Geography, 0),
 		IsConfigured:    true,
 		IsSampleData:    false,
 	}
 
 	var totalViews, totalUsers, totalSessions, totalConversions int
-	var bounceRateSum float64
+	var bounceRateSum, totalEngagementDuration float64
 
 	for _, row := range timelineResp.Rows {
 		dateStr := ""
@@ -618,12 +711,17 @@ func (c *Client) FetchEventAnalytics(ctx context.Context, eventID int, startDate
 		sess, _ := strconv.Atoi(row.MetricValues[2].Value)
 		br, _ := strconv.ParseFloat(row.MetricValues[3].Value, 64)
 		conv, _ := strconv.Atoi(row.MetricValues[4].Value)
+		engDuration := 0.0
+		if len(row.MetricValues) > 5 {
+			engDuration, _ = strconv.ParseFloat(row.MetricValues[5].Value, 64)
+		}
 
 		totalViews += views
 		totalUsers += users
 		totalSessions += sess
 		bounceRateSum += br
 		totalConversions += conv
+		totalEngagementDuration += engDuration
 
 		resp.Timeline = append(resp.Timeline, GA4TimelinePoint{
 			Date:        dateStr,
@@ -632,18 +730,28 @@ func (c *Client) FetchEventAnalytics(ctx context.Context, eventID int, startDate
 		})
 	}
 
+	// Always guarantee timeline is sorted ascending by date (YYYYMMDD)
+	sort.Slice(resp.Timeline, func(i, j int) bool {
+		return resp.Timeline[i].Date < resp.Timeline[j].Date
+	})
+
 	rowCount := len(timelineResp.Rows)
 	avgBounceRate := 0.0
 	if rowCount > 0 {
 		avgBounceRate = bounceRateSum / float64(rowCount)
 	}
+	avgEngagementTime := 0.0
+	if totalSessions > 0 {
+		avgEngagementTime = totalEngagementDuration / float64(totalSessions)
+	}
 
 	resp.Summary = GA4Summary{
-		PageViews:   totalViews,
-		ActiveUsers: totalUsers,
-		Sessions:    totalSessions,
-		BounceRate:  avgBounceRate,
-		Conversions: totalConversions,
+		PageViews:         totalViews,
+		ActiveUsers:       totalUsers,
+		Sessions:          totalSessions,
+		BounceRate:        avgBounceRate,
+		Conversions:       totalConversions,
+		AvgEngagementTime: avgEngagementTime,
 	}
 
 	return resp, nil
@@ -664,17 +772,24 @@ func (c *Client) GenerateSampleAnalytics(startDate, endDate, notice string) *GA4
 
 	return &GA4AnalyticsResponse{
 		Summary: GA4Summary{
-			PageViews:   890,
-			ActiveUsers: 285,
-			Sessions:    340,
-			BounceRate:  0.34,
-			Conversions: 42,
+			PageViews:         890,
+			ActiveUsers:       285,
+			Sessions:          340,
+			BounceRate:        0.34,
+			Conversions:       42,
+			AvgEngagementTime: 125.4, // ~2 mins 5 secs
 		},
 		Timeline: timeline,
 		DeviceBreakdown: []GA4DeviceBreakdown{
 			{Device: "mobile", Users: 180},
 			{Device: "desktop", Users: 95},
 			{Device: "tablet", Users: 10},
+		},
+		BrowserBreakdown: []GA4BrowserBreakdown{
+			{Browser: "Chrome", Users: 195},
+			{Browser: "Safari", Users: 55},
+			{Browser: "Edge", Users: 20},
+			{Browser: "Firefox", Users: 15},
 		},
 		TopSources: []GA4TrafficSource{
 			{Source: "facebook.com", Users: 120},
@@ -686,6 +801,12 @@ func (c *Client) GenerateSampleAnalytics(startDate, endDate, notice string) *GA4
 			{Country: "Vietnam", Users: 270},
 			{Country: "United States", Users: 10},
 			{Country: "Japan", Users: 5},
+		},
+		Cities: []GA4Geography{
+			{City: "Ho Chi Minh City", Users: 165},
+			{City: "Hanoi", Users: 68},
+			{City: "Da Nang", Users: 25},
+			{City: "Can Tho", Users: 12},
 		},
 		TopPages: []GA4TopPage{
 			{Page: "/events", Views: 340},

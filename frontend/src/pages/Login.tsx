@@ -430,7 +430,7 @@ export default function Login() {
       await handleLogin()
     } catch (err: any) {
       console.error('Login Error (submit):', err)
-      
+
       let errorMessage = 'Có lỗi xảy ra. Vui lòng thử lại!'
       if (err.message) {
         errorMessage = err.message
@@ -554,11 +554,10 @@ export default function Login() {
                 required
                 disabled={loading || lockoutCountdown > 0}
                 autoComplete="username"
-                className={`w-full pl-9 pr-3 py-2 sm:py-2.5 bg-white text-slate-900 border border-slate-200/90 rounded-xl outline-none font-medium placeholder-slate-400 text-xs sm:text-sm shadow-2xs transition-all duration-200 hover:border-slate-300 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 ${
-                  emailError 
-                    ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
+                className={`w-full pl-9 pr-3 py-2 sm:py-2.5 bg-white text-slate-900 border border-slate-200/90 rounded-xl outline-none font-medium placeholder-slate-400 text-xs sm:text-sm shadow-2xs transition-all duration-200 hover:border-slate-300 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 ${emailError
+                    ? 'border-red-500 focus:ring-2 focus:ring-red-500'
                     : ''
-                }`}
+                  }`}
               />
             </div>
             {emailError && (
@@ -587,11 +586,10 @@ export default function Login() {
                 required
                 autoComplete="current-password"
                 disabled={loading || lockoutCountdown > 0}
-                className={`w-full pl-9 pr-9 py-2 sm:py-2.5 bg-white text-slate-900 border border-slate-200/90 rounded-xl outline-none font-medium placeholder-slate-400 text-xs sm:text-sm shadow-2xs transition-all duration-200 hover:border-slate-300 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 ${
-                  passwordError 
-                    ? 'border-red-500 focus:ring-2 focus:ring-red-500' 
+                className={`w-full pl-9 pr-9 py-2 sm:py-2.5 bg-white text-slate-900 border border-slate-200/90 rounded-xl outline-none font-medium placeholder-slate-400 text-xs sm:text-sm shadow-2xs transition-all duration-200 hover:border-slate-300 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 ${passwordError
+                    ? 'border-red-500 focus:ring-2 focus:ring-red-500'
                     : ''
-                }`}
+                  }`}
               />
               <button
                 type="button"

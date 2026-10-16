@@ -8,6 +8,7 @@ export interface GA4Summary {
   sessions: number
   bounceRate: number
   conversions: number
+  avgEngagementTime?: number // Seconds
 }
 
 export interface GA4TimelinePoint {
@@ -21,13 +22,19 @@ export interface GA4DeviceBreakdown {
   users: number
 }
 
+export interface GA4BrowserBreakdown {
+  browser: string
+  users: number
+}
+
 export interface GA4TrafficSource {
   source: string
   users: number
 }
 
 export interface GA4Geography {
-  country: string
+  country?: string
+  city?: string
   users: number
 }
 
@@ -35,8 +42,10 @@ export interface GA4EventAnalytics {
   summary: GA4Summary
   timeline: GA4TimelinePoint[]
   deviceBreakdown: GA4DeviceBreakdown[]
+  browserBreakdown?: GA4BrowserBreakdown[]
   topSources: GA4TrafficSource[]
   geography: GA4Geography[]
+  cities?: GA4Geography[]
   realtime?: { activeUsers: number }
 }
 
