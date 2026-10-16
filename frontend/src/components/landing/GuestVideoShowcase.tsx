@@ -352,7 +352,7 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
       {/* ========================================================================= */}
       {/* 2. DESKTOP & TABLET VIEW (>=768px): 3D Perspective Coverflow (Clean Viewport 1-Click Play) */}
       {/* ========================================================================= */}
-      <div className="hidden md:block relative w-full py-4 select-none">
+      <div className="hidden md:block relative w-full pt-1 pb-2 select-none">
         {/* Navigation Arrows with high-contrast Orange Hover */}
         {!isSingle && (
           <>
@@ -384,9 +384,9 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
           </>
         )}
 
-        {/* 3D Perspective Stage Area */}
+        {/* 3D Perspective Stage Area (Snug height fitting video cards without bloated gap) */}
         <div
-          className="relative w-full h-[460px] md:h-[540px] lg:h-[600px] flex items-center justify-center overflow-visible"
+          className="relative w-full h-[380px] md:h-[460px] lg:h-[510px] flex items-center justify-center overflow-visible"
           style={{ perspective: '1200px' }}
         >
           {sortedVideos.map((video, idx) => {
@@ -527,8 +527,8 @@ export const GuestVideoShowcase: React.FC<GuestVideoShowcaseProps> = ({
       {/* 3. PAGINATION DOTS & COUNTER (Synchronized instantly on both Mobile & Desktop) */}
       {/* ========================================================================= */}
       {!isSingle && (
-        <div className="mt-3 sm:mt-6 flex flex-col items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-2 sm:gap-2.5 p-1 sm:p-1.5 rounded-full bg-white/70 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 backdrop-blur-md shadow-xs">
+        <div className="mt-2 sm:mt-1 flex flex-col items-center gap-1 sm:gap-1.5">
+          <div className="flex items-center gap-1.5 sm:gap-2 p-1 rounded-full bg-white/70 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 backdrop-blur-md shadow-xs">
             {sortedVideos.map((_, i) => (
               <button
                 key={i}
