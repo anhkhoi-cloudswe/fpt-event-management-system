@@ -8,4 +8,4 @@ Allow: /events/
 Disallow: /dashboard/
 Disallow: /api/
 
-Sitemap: https://fems.id.vn/sitemap.xml
+Sitemap: https://www.fems.id.vn/sitemap.xml
