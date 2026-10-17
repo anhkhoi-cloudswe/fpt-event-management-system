@@ -1300,16 +1300,6 @@ export default function GuestLanding() {
               © {new Date().getFullYear()} FEMS - FPT Event Management System. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
-              <Link to="/terms-and-policies?tab=terms" className="hover:text-slate-400 transition-colors">
-                Điều khoản
-              </Link>
-              <Link to="/terms-and-policies?tab=privacy" className="hover:text-slate-400 transition-colors">
-                Bảo mật
-              </Link>
-              <Link to="/terms-and-policies?tab=payment" className="hover:text-slate-400 transition-colors">
-                Thanh toán
-              </Link>
-              <span className="text-slate-600">|</span>
               <span className="text-slate-500">OJT Project: Nguyen Hoang Anh Khoi (SE194466)</span>
             </div>
           </div>
