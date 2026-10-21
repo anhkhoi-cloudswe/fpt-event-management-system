@@ -178,6 +178,8 @@ type EventListItem struct {
 
 	OrganizerID *int `json:"organizerId"`
 
+	OrganizerName *string `json:"organizerName,omitempty"`
+
 	// ✅ NEW: Sold out check fields
 
 	SeatsBooked *int `json:"seatsBooked"`

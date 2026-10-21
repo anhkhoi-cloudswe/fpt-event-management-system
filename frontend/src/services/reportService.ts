@@ -156,7 +156,7 @@ export const reportService = {
   },
 
   // GET /api/events (Lấy danh sách sự kiện - Admin thấy tất cả, Organizer chỉ lấy sự kiện do chính họ tạo)
-  async getEventOptions(userId?: number, role?: string): Promise<{ id: number; title: string; startTime?: string; status?: string; organizerId?: number; organizerName?: string; organizerEmail?: string }[]> {
+  async getEventOptions(userId?: number, role?: string): Promise<{ id: number; title: string; startTime?: string; endTime?: string; status?: string; organizerId?: number; organizerName?: string; organizerEmail?: string }[]> {
     const res = await api.get('/events?page=1&limit=200')
     const raw = res.data?.data || res.data
     const list = Array.isArray(raw) ? raw : []
@@ -173,9 +173,10 @@ export const reportService = {
       id: ev.eventId || ev.id,
       title: ev.title,
       startTime: ev.startTime,
+      endTime: ev.endTime,
       status: ev.status,
       organizerId: ev.createdBy || ev.userId || ev.organizerId || (ev.organizer?.userId) || 0,
-      organizerName: ev.organizerName || ev.organizer?.fullName || ev.createdByName || (ev.createdBy ? `Organizer #${ev.createdBy}` : 'Hệ thống FEMS'),
+      organizerName: ev.organizerName || ev.organizer?.fullName || ev.createdByName || (ev.createdBy ? `Organizer #${ev.createdBy}` : ''),
       organizerEmail: ev.organizerEmail || ev.organizer?.email || '',
     }))
   },

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Calendar,
   Users,
+  User2,
   Download,
   Wallet,
   Lock,
@@ -96,10 +97,36 @@ type EventOption = {
   id: number
   title: string
   startTime?: string
+  endTime?: string
   status?: string
   organizerId?: number
   organizerName?: string
   organizerEmail?: string
+}
+
+// Helper định dạng lịch trình sự kiện: HH:mm (DD/MM/YYYY) - HH:mm (DD/MM/YYYY)
+function formatEventSchedule(startStr?: string, endStr?: string): string {
+  if (!startStr) return ''
+  const s = new Date(startStr)
+  if (isNaN(s.getTime())) return ''
+
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const sDate = `${pad(s.getDate())}/${pad(s.getMonth() + 1)}/${s.getFullYear()}`
+  const sTime = `${pad(s.getHours())}:${pad(s.getMinutes())}`
+
+  if (!endStr) {
+    return `${sTime} (${sDate})`
+  }
+
+  const e = new Date(endStr)
+  if (isNaN(e.getTime())) {
+    return `${sTime} (${sDate})`
+  }
+
+  const eDate = `${pad(e.getDate())}/${pad(e.getMonth() + 1)}/${e.getFullYear()}`
+  const eTime = `${pad(e.getHours())}:${pad(e.getMinutes())}`
+
+  return `${sTime} (${sDate}) - ${eTime} (${eDate})`
 }
 
 export default function Reports() {
@@ -196,7 +223,37 @@ export default function Reports() {
       try {
         const res = await reportService.getEventOptions(user?.id, user?.role)
         if (res && res.length > 0) {
-          setEvents(res)
+          // Lọc sắp xếp: Sự kiện sắp tới / đang diễn ra gần nhất lên đầu tiên, sau đó là sự kiện vừa qua gần nhất
+          const now = Date.now()
+          const sorted = [...res].sort((a, b) => {
+            const timeA = a.startTime ? new Date(a.startTime).getTime() : 0
+            const timeB = b.startTime ? new Date(b.startTime).getTime() : 0
+
+            // Cả hai đều không có ngày giờ
+            if (!timeA && !timeB) return b.id - a.id
+            if (!timeA) return 1
+            if (!timeB) return -1
+
+            const diffA = timeA - now
+            const diffB = timeB - now
+
+            const isUpcomingA = diffA >= 0
+            const isUpcomingB = diffB >= 0
+
+            // Nếu một bên sắp diễn ra, một bên đã qua -> Sự kiện sắp diễn ra gần nhất xếp trước
+            if (isUpcomingA && !isUpcomingB) return -1
+            if (!isUpcomingA && isUpcomingB) return 1
+
+            // Cả hai đều sắp diễn ra -> Sự kiện nào gần thời điểm hiện tại nhất xếp trước (tăng dần theo thời gian)
+            if (isUpcomingA && isUpcomingB) {
+              return diffA - diffB
+            }
+
+            // Cả hai đều đã qua -> Sự kiện nào vừa mới kết thúc gần đây nhất xếp trước (giảm dần theo thời gian)
+            return timeB - timeA
+          })
+
+          setEvents(sorted)
           if (!selectedEventId) {
             // Mặc định chọn mục Toàn bộ sự kiện hoặc sự kiện đầu tiên
             setSelectedEventId('ALL')
@@ -705,10 +762,10 @@ export default function Reports() {
           </div>
 
           {/* Combobox Dropdown */}
-          <div ref={dropdownRef} className="relative w-full md:w-88">
+          <div ref={dropdownRef} className="relative w-full md:w-[500px]">
             <input
               type="text"
-              placeholder="🔍 Tìm kiếm hoặc chọn sự kiện..."
+              placeholder="🔍 Tìm kiếm sự kiện theo tên hoặc ID..."
               value={isDropdownOpen ? searchInput : selectedEventTitle}
               onChange={(e) => {
                 setSearchInput(e.target.value)
@@ -718,55 +775,96 @@ export default function Reports() {
                 setSearchInput('')
                 setIsDropdownOpen(true)
               }}
-              className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/30 shadow-inner"
+              className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/30 shadow-inner placeholder:font-normal placeholder:text-slate-400"
             />
             {isDropdownOpen && (
-              <div className="absolute z-30 left-0 right-0 top-full mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="absolute z-30 left-0 right-0 top-full mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-h-[380px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
                 {/* Mục 1: Toàn bộ sự kiện (Tổng hợp) */}
                 <button
                   onClick={() => handleSelectEvent({ id: 'ALL', title: user?.role === 'ADMIN' ? 'Toàn bộ sự kiện trên hệ thống' : 'Toàn bộ sự kiện của bạn' })}
-                  className={`w-full text-left px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition text-xs flex items-center justify-between cursor-pointer border-b border-orange-100 dark:border-slate-800 ${
+                  className={`w-full text-left px-4 py-3 hover:bg-orange-50/80 dark:hover:bg-orange-950/30 transition text-xs flex items-center justify-between cursor-pointer border-b border-orange-100 dark:border-slate-800 ${
                     selectedEventId === 'ALL'
-                      ? 'bg-orange-50/90 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 font-black'
+                      ? 'bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 font-black border-l-4 border-l-orange-500'
                       : 'text-slate-800 dark:text-slate-200 font-bold'
                   }`}
                 >
-                  <span className="flex items-center gap-2 truncate">
-                    <span>📊</span>
-                    <span>{user?.role === 'ADMIN' ? 'Toàn bộ sự kiện trên hệ thống (Tổng hợp)' : 'Toàn bộ sự kiện của bạn (Tổng hợp)'}</span>
+                  <span className="flex items-center gap-2.5 truncate">
+                    <span className="text-base">📊</span>
+                    <span className="text-sm font-bold">{user?.role === 'ADMIN' ? 'Toàn bộ sự kiện trên hệ thống (Tổng hợp)' : 'Toàn bộ sự kiện của bạn (Tổng hợp)'}</span>
                   </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold shrink-0 font-mono">
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 font-extrabold shrink-0 font-mono border border-orange-500/20">
                     ALL ({events.length})
                   </span>
                 </button>
 
                 {eventsLoading ? (
-                  <div className="p-4 text-center text-xs text-slate-400 font-medium">Đang tải danh sách sự kiện...</div>
+                  <div className="p-6 text-center text-xs text-slate-400 font-medium flex items-center justify-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin text-orange-500" />
+                    <span>Đang tải danh sách sự kiện...</span>
+                  </div>
                 ) : filteredEvents.length === 0 ? (
-                  <div className="p-4 text-center text-xs text-slate-400 font-medium">Không tìm thấy sự kiện phù hợp</div>
+                  <div className="p-6 text-center text-xs text-slate-400 font-medium">Không tìm thấy sự kiện phù hợp</div>
                 ) : (
-                  filteredEvents.map((ev) => (
-                    <button
-                      key={ev.id}
-                      onClick={() => handleSelectEvent(ev)}
-                      className={`w-full text-left px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition text-xs flex items-center justify-between cursor-pointer ${
-                        String(ev.id) === selectedEventId ? 'bg-orange-50/80 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 font-black' : 'text-slate-700 dark:text-slate-200 font-medium'
-                      }`}
-                    >
-                      <div className="truncate pr-2">
-                        <div className="truncate font-bold text-slate-900 dark:text-white">{ev.title}</div>
-                        {/* Chỉ Admin mới cần xem thông tin Organizer */}
-                        {user?.role === 'ADMIN' && ev.organizerName && (
-                          <div className="text-[11px] text-slate-400 mt-0.5 truncate">
-                            <span>{ev.organizerName}</span>
+                  filteredEvents.map((ev) => {
+                    const scheduleText = formatEventSchedule(ev.startTime, ev.endTime)
+                    const isSelected = String(ev.id) === selectedEventId
+                    const isEnded = ev.endTime && new Date(ev.endTime).getTime() < Date.now()
+
+                    return (
+                      <button
+                        key={ev.id}
+                        onClick={() => handleSelectEvent(ev)}
+                        className={`w-full text-left px-4 py-3 transition-all duration-150 flex items-start justify-between gap-3 cursor-pointer group ${
+                          isSelected
+                            ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 font-bold border-l-4 border-l-orange-500'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          {/* 1. Tiêu đề sự kiện (Tăng độ tương phản, rõ nét) */}
+                          <div className={`text-sm tracking-tight truncate leading-snug ${
+                            isSelected ? 'font-black text-orange-600 dark:text-orange-400' : 'font-bold text-slate-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors'
+                          }`}>
+                            {ev.title}
                           </div>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-[10px] text-slate-400 font-mono block">#{ev.id}</span>
-                      </div>
-                    </button>
-                  ))
+
+                          {/* 2. Dòng thời gian diễn ra sự kiện */}
+                          {scheduleText && (
+                            <div className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-medium mt-1">
+                              <Clock size={12} className="text-orange-500 shrink-0" />
+                              <span>{scheduleText}</span>
+                            </div>
+                          )}
+
+                          {/* 3. Badge Organizer (Chỉ ADMIN): Luôn đồng bộ nằm ngay bên dưới thời gian */}
+                          {user?.role === 'ADMIN' && ev.organizerName && (
+                            <div className="mt-1">
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 shrink-0">
+                                <User2 size={11} className="text-slate-400 dark:text-slate-500" />
+                                <span className="truncate max-w-[220px]">{ev.organizerName}</span>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 4. Cột bên phải: Mã ID và Trạng thái */}
+                        <div className="flex flex-col items-end gap-1.5 shrink-0 pt-0.5">
+                          <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
+                            #{ev.id}
+                          </span>
+                          {isEnded ? (
+                            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/90 border border-slate-200/50 dark:border-slate-700/50 px-2 py-0.5 rounded-full">
+                              Đã kết thúc
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/50 px-2 py-0.5 rounded-full">
+                              Đang mở
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })
                 )}
               </div>
             )}

@@ -929,10 +929,11 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
-			e.created_by
+			e.created_by, u.full_name
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
+		LEFT JOIN Users u ON e.created_by = u.user_id
 	`
 
 	// Add role-based filters
@@ -960,7 +961,7 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 	var openEvents, closedEvents []models.EventListItem
 	for rows.Next() {
 		var item models.EventListItem
-		var description, bannerURL, areaName, floor, venueName, venueLoc sql.NullString
+		var description, bannerURL, areaName, floor, venueName, venueLoc, organizerName sql.NullString
 		var areaID, createdBy sql.NullInt64
 		var startTime, endTime time.Time
 
@@ -968,7 +969,7 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 			&item.EventID, &item.Title, &description, &startTime, &endTime, &item.MaxSeats, &item.Status, &bannerURL,
 			&areaID, &areaName, &floor,
 			&venueName, &venueLoc,
-			&createdBy,
+			&createdBy, &organizerName,
 		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to scan event: %w", err)
@@ -1002,6 +1003,9 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 		}
 		if createdBy.Valid {
 			item.OrganizerID = pointer(int(createdBy.Int64))
+		}
+		if organizerName.Valid {
+			item.OrganizerName = &organizerName.String
 		}
 
 		// Classify events into open vs closed/historical.
@@ -1196,10 +1200,11 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
-			e.created_by
+			e.created_by, u.full_name
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
+		LEFT JOIN Users u ON e.created_by = u.user_id
 	`
 
 	var whereClause string
@@ -1238,7 +1243,7 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 	var items []models.EventListItem
 	for rows.Next() {
 		var item models.EventListItem
-		var description, bannerURL, areaName, floor, venueName, venueLoc sql.NullString
+		var description, bannerURL, areaName, floor, venueName, venueLoc, organizerName sql.NullString
 		var areaID, createdBy sql.NullInt64
 		var startTime, endTime time.Time
 
@@ -1246,7 +1251,7 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 			&item.EventID, &item.Title, &description, &startTime, &endTime, &item.MaxSeats, &item.Status, &bannerURL,
 			&areaID, &areaName, &floor,
 			&venueName, &venueLoc,
-			&createdBy,
+			&createdBy, &organizerName,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan event: %w", err)
@@ -1278,6 +1283,9 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 		}
 		if createdBy.Valid {
 			item.OrganizerID = pointer(int(createdBy.Int64))
+		}
+		if organizerName.Valid {
+			item.OrganizerName = &organizerName.String
 		}
 
 		items = append(items, item)
