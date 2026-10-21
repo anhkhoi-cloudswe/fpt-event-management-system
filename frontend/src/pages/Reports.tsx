@@ -852,13 +852,17 @@ export default function Reports() {
                           <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
                             #{ev.id}
                           </span>
-                          {isEnded ? (
-                            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/90 border border-slate-200/50 dark:border-slate-700/50 px-2 py-0.5 rounded-full">
-                              Đã kết thúc
+                          {ev.status === 'CANCELLED' ? (
+                            <span className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200/70 dark:border-rose-800/50 px-2 py-0.5 rounded-full">
+                              Đã hủy
                             </span>
-                          ) : (
+                          ) : ev.status === 'OPEN' && !isEnded ? (
                             <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/50 px-2 py-0.5 rounded-full">
                               Đang mở
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/90 border border-slate-200/50 dark:border-slate-700/50 px-2 py-0.5 rounded-full">
+                              {ev.status === 'FINISHED' || isEnded ? 'Đã kết thúc' : ev.status === 'CLOSED' ? 'Đã đóng' : ev.status || 'Đã kết thúc'}
                             </span>
                           )}
                         </div>
