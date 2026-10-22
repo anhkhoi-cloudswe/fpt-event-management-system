@@ -234,29 +234,42 @@ function MultiTierSnapshotModal({
 
   const safeTotalFee = totalPlatformFee || 0
   const safeTicketCount = ticketCount || 0
-  const safeFixedFee = (fixedFee !== undefined && fixedFee > 0)
+  const safeFixedFee = (fixedFee !== undefined && fixedFee !== null && fixedFee >= 0)
     ? fixedFee
     : (safeTotalFee > 0 ? Math.min(safeTotalFee, safeTicketCount * 1000) : 0)
-  const safeCommFee = (commFee !== undefined && commFee > 0)
+  const safeCommFee = (commFee !== undefined && commFee !== null && commFee >= 0)
     ? commFee
     : Math.max(0, safeTotalFee - safeFixedFee)
 
   const effectiveBreakdowns = (tierBreakdowns && tierBreakdowns.length > 0)
     ? tierBreakdowns.map((item) => {
-        const itemTotal = item.totalFee || 0
         const itemTickets = item.ticketCount || 0
-        const itemFixed = (item.fixedFee !== undefined && item.fixedFee > 0)
+        const itemFixed = (item.fixedFee !== undefined && item.fixedFee !== null && item.fixedFee >= 0)
           ? item.fixedFee
-          : (itemTotal > 0 ? Math.min(itemTotal, itemTickets * 1000) : 0)
-        const itemComm = (item.commissionFee !== undefined && item.commissionFee > 0)
+          : (itemTickets > 0 ? itemTickets * 1000 : 0)
+        let itemComm = (item.commissionFee !== undefined && item.commissionFee !== null && item.commissionFee >= 0)
           ? item.commissionFee
-          : Math.max(0, itemTotal - itemFixed)
+          : Math.max(0, (item.totalFee || 0) - itemFixed)
         const resolvedTierCode = (item.tierCode === 'LEGACY' && tierCode && tierCode !== 'LEGACY')
           ? tierCode
           : (item.tierCode || tierCode || 'FREE')
+
+        let rate = (item.commissionRatePercent !== undefined && item.commissionRatePercent !== null)
+          ? item.commissionRatePercent
+          : (commRate ?? 5.0)
+
+        // Đối với gói BUSINESS hoặc tỷ lệ cấu hình 0%, hoa hồng sàn là 0% (0đ), chỉ tính phí cố định nếu có
+        if (resolvedTierCode === 'BUSINESS' || rate === 0) {
+          rate = 0.0
+          itemComm = 0
+        }
+
+        const itemTotal = itemComm + itemFixed
+
         return {
           ...item,
           tierCode: resolvedTierCode,
+          commissionRatePercent: rate,
           fixedFee: itemFixed,
           commissionFee: itemComm,
           totalFee: itemTotal,
@@ -264,11 +277,11 @@ function MultiTierSnapshotModal({
       })
     : [{
         tierCode: tierCode || 'FREE',
-        commissionRatePercent: (commRate !== undefined && commRate !== null) ? commRate : 5.0,
+        commissionRatePercent: (tierCode === 'BUSINESS' || commRate === 0) ? 0.0 : ((commRate !== undefined && commRate !== null) ? commRate : 5.0),
         ticketCount: safeTicketCount,
-        commissionFee: safeCommFee,
+        commissionFee: (tierCode === 'BUSINESS' || commRate === 0) ? 0 : safeCommFee,
         fixedFee: safeFixedFee,
-        totalFee: safeTotalFee,
+        totalFee: (tierCode === 'BUSINESS' || commRate === 0) ? safeFixedFee : safeTotalFee,
       }]
 
   const totalComm = effectiveBreakdowns.reduce((sum, item) => sum + (item.commissionFee || 0), 0)
@@ -1418,13 +1431,17 @@ export default function Reports() {
                     ? bSingleTier.tierCode
                     : (rawTierCode === 'LEGACY' ? (currentSub?.tierCode || 'FREE') : rawTierCode)
 
-                  const bCommRate = bSingleTier?.commissionRatePercent !== undefined && bSingleTier.commissionRatePercent !== null
+                  let bCommRate = bSingleTier?.commissionRatePercent !== undefined && bSingleTier.commissionRatePercent !== null
                     ? bSingleTier.commissionRatePercent
                     : (financialOverview?.commissionRatePercent !== undefined && financialOverview?.commissionRatePercent !== null
                       ? financialOverview.commissionRatePercent
                       : ((currentSub?.commissionBps !== undefined && currentSub?.commissionBps !== null)
                         ? currentSub.commissionBps / 100
-                        : 5))
+                        : (bTierCode === 'BUSINESS' ? 0 : 5)))
+                  if (bTierCode === 'BUSINESS') {
+                    bCommRate = (currentSub?.commissionBps !== undefined && currentSub?.commissionBps !== null) ? (currentSub.commissionBps / 100) : 0
+                  }
+
                   const bFixedFeePerTicket = financialOverview?.fixedFeePerTicket ?? 1000
 
                   // Phân rã cụ thể số tiền hoa hồng & phí cố định
@@ -1434,11 +1451,22 @@ export default function Reports() {
                       ? bSingleTier.fixedFee
                       : (bPlatformFee > 0 ? Math.min(bPlatformFee, bTicketsSold * bFixedFeePerTicket) : 0))
 
-                  const bCommFee = (financialOverview?.totalCommissionFee !== undefined && financialOverview.totalCommissionFee >= 0 && (financialOverview.totalCommissionFee + bFixedFee === bPlatformFee))
+                  let bCommFee = (financialOverview?.totalCommissionFee !== undefined && financialOverview.totalCommissionFee >= 0 && (financialOverview.totalCommissionFee + bFixedFee === bPlatformFee))
                     ? financialOverview.totalCommissionFee
                     : (bSingleTier?.commissionFee !== undefined && bSingleTier.commissionFee >= 0
                       ? bSingleTier.commissionFee
                       : Math.max(0, bPlatformFee - bFixedFee))
+
+                  if (bTierCode === 'BUSINESS' && bCommRate === 0) {
+                    bCommFee = 0
+                  }
+
+                  const effectiveBPlatformFee = (bTierCode === 'BUSINESS' && bCommRate === 0 && (!bHasMultiTier || bTierBreakdowns.length <= 1))
+                    ? bFixedFee
+                    : bPlatformFee
+                  const effectiveBNet = (bTierCode === 'BUSINESS' && bCommRate === 0 && (!bHasMultiTier || bTierBreakdowns.length <= 1))
+                    ? (bGross - effectiveBPlatformFee)
+                    : bNet
                   
                   // Số lượng vé áp dụng phí cố định linh hoạt theo thực tế
                   const bFeeTicketCount = (bFixedFee > 0 && bFixedFeePerTicket > 0)
@@ -1510,11 +1538,11 @@ export default function Reports() {
                           </div>
                           <div className="mt-3">
                             <div className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight leading-none text-amber-600 dark:text-amber-400">
-                              {formatVndShort(bPlatformFee)}
+                              {formatVndShort(effectiveBPlatformFee)}
                             </div>
                             <div className="h-6 flex items-center flex-nowrap whitespace-nowrap text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2">
                               <span className="shrink-0 whitespace-nowrap">Chi tiết:&nbsp;</span>
-                              <span className="font-extrabold text-amber-600 dark:text-amber-400 shrink-0 whitespace-nowrap">{formatVndFull(bPlatformFee)}</span>
+                              <span className="font-extrabold text-amber-600 dark:text-amber-400 shrink-0 whitespace-nowrap">{formatVndFull(effectiveBPlatformFee)}</span>
                               <button
                                 type="button"
                                 onClick={() => setShowTierBreakdownModal(true)}
@@ -1616,11 +1644,11 @@ export default function Reports() {
                           </div>
                           <div className="mt-3">
                             <div className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight leading-none text-emerald-600 dark:text-emerald-400">
-                              {formatVndShort(bNet)}
+                              {formatVndShort(effectiveBNet)}
                             </div>
                             <div className="h-6 flex items-center text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-300 mt-2">
                               <span>Thực nhận:&nbsp;</span>
-                              <span className="font-extrabold text-emerald-800 dark:text-emerald-200">{formatVndFull(bNet)}</span>
+                              <span className="font-extrabold text-emerald-800 dark:text-emerald-200">{formatVndFull(effectiveBNet)}</span>
                             </div>
                           </div>
                         </div>
@@ -1636,7 +1664,7 @@ export default function Reports() {
                           <div className="h-6 flex items-center justify-between text-rose-500">
                             <span className="font-semibold">Khấu trừ phí nền tảng:</span>
                             <span className="font-black text-xs sm:text-[13px] tracking-tight text-rose-600 dark:text-rose-400">
-                              -{formatVndFull(bPlatformFee)}
+                              -{formatVndFull(effectiveBPlatformFee)}
                             </span>
                           </div>
                         </div>
@@ -2159,7 +2187,7 @@ export default function Reports() {
                     ? aSingleTier.tierCode
                     : (rawATierCode === 'LEGACY' ? (currentSub?.tierCode || 'FREE') : rawATierCode)
 
-                  const aCommRate = aSingleTier?.commissionRatePercent !== undefined && aSingleTier.commissionRatePercent !== null
+                  let aCommRate = aSingleTier?.commissionRatePercent !== undefined && aSingleTier.commissionRatePercent !== null
                     ? aSingleTier.commissionRatePercent
                     : (advancedData?.commissionRatePercent !== undefined && advancedData?.commissionRatePercent !== null
                       ? advancedData.commissionRatePercent
@@ -2167,7 +2195,11 @@ export default function Reports() {
                         ? financialOverview.commissionRatePercent
                         : ((currentSub?.commissionBps !== undefined && currentSub?.commissionBps !== null)
                           ? currentSub.commissionBps / 100
-                          : 5)))
+                          : (aTierCode === 'BUSINESS' ? 0 : 5))))
+                  if (aTierCode === 'BUSINESS') {
+                    aCommRate = (currentSub?.commissionBps !== undefined && currentSub?.commissionBps !== null) ? (currentSub.commissionBps / 100) : 0
+                  }
+
                   const aFixedFeePerTicket = advancedData?.fixedFeePerTicket ?? financialOverview?.fixedFeePerTicket ?? 1000
 
                   // Phân rã cụ thể số tiền hoa hồng & phí cố định
@@ -2178,7 +2210,8 @@ export default function Reports() {
                       : (aSingleTier?.fixedFee !== undefined && aSingleTier.fixedFee > 0
                         ? aSingleTier.fixedFee
                         : (aPlatformFee > 0 ? Math.min(aPlatformFee, aTicketsSold * aFixedFeePerTicket) : 0)))
-                  const aCommFee = (advancedData?.totalCommissionFee !== undefined && advancedData.totalCommissionFee >= 0 && (advancedData.totalCommissionFee + aFixedFee === aPlatformFee))
+
+                  let aCommFee = (advancedData?.totalCommissionFee !== undefined && advancedData.totalCommissionFee >= 0 && (advancedData.totalCommissionFee + aFixedFee === aPlatformFee))
                     ? advancedData.totalCommissionFee
                     : ((financialOverview?.totalCommissionFee !== undefined && financialOverview.totalCommissionFee >= 0 && (financialOverview.totalCommissionFee + aFixedFee === aPlatformFee))
                       ? financialOverview.totalCommissionFee
@@ -2186,6 +2219,17 @@ export default function Reports() {
                         ? aSingleTier.commissionFee
                         : Math.max(0, aPlatformFee - aFixedFee)))
 
+                  if (aTierCode === 'BUSINESS' && aCommRate === 0) {
+                    aCommFee = 0
+                  }
+
+                  const effectiveAPlatformFee = (aTierCode === 'BUSINESS' && aCommRate === 0 && (!aHasMultiTier || aTierBreakdowns.length <= 1))
+                    ? aFixedFee
+                    : aPlatformFee
+                  const effectiveANet = (aTierCode === 'BUSINESS' && aCommRate === 0 && (!aHasMultiTier || aTierBreakdowns.length <= 1))
+                    ? (aGross - effectiveAPlatformFee)
+                    : aNet
+                  
                   // Số lượng vé áp dụng phí cố định linh hoạt theo thực tế
                   const aFeeTicketCount = (aFixedFee > 0 && aFixedFeePerTicket > 0)
                     ? Math.round(aFixedFee / aFixedFeePerTicket)
@@ -2256,11 +2300,11 @@ export default function Reports() {
                           </div>
                           <div className="mt-3">
                             <div className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight leading-none text-amber-600 dark:text-amber-400">
-                              {formatVndShort(aPlatformFee)}
+                              {formatVndShort(effectiveAPlatformFee)}
                             </div>
                             <div className="h-6 flex items-center flex-nowrap whitespace-nowrap text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2">
                               <span className="shrink-0 whitespace-nowrap">Chi tiết:&nbsp;</span>
-                              <span className="font-extrabold text-amber-600 dark:text-amber-400 shrink-0 whitespace-nowrap">{formatVndFull(aPlatformFee)}</span>
+                              <span className="font-extrabold text-amber-600 dark:text-amber-400 shrink-0 whitespace-nowrap">{formatVndFull(effectiveAPlatformFee)}</span>
                               <button
                                 type="button"
                                 onClick={() => setShowTierBreakdownModal(true)}
@@ -2362,11 +2406,11 @@ export default function Reports() {
                           </div>
                           <div className="mt-3">
                             <div className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight leading-none text-emerald-600 dark:text-emerald-400">
-                              {formatVndShort(aNet)}
+                              {formatVndShort(effectiveANet)}
                             </div>
                             <div className="h-6 flex items-center text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-300 mt-2">
                               <span>Thực nhận:&nbsp;</span>
-                              <span className="font-extrabold text-emerald-800 dark:text-emerald-200">{formatVndFull(aNet)}</span>
+                              <span className="font-extrabold text-emerald-800 dark:text-emerald-200">{formatVndFull(effectiveANet)}</span>
                             </div>
                           </div>
                         </div>
@@ -2382,7 +2426,7 @@ export default function Reports() {
                           <div className="h-6 flex items-center justify-between text-rose-500">
                             <span className="font-semibold">Khấu trừ phí nền tảng:</span>
                             <span className="font-black text-xs sm:text-[13px] tracking-tight text-rose-600 dark:text-rose-400">
-                              -{formatVndFull(aPlatformFee)}
+                              -{formatVndFull(effectiveAPlatformFee)}
                             </span>
                           </div>
                         </div>
@@ -3424,19 +3468,40 @@ export default function Reports() {
             : (financialOverview?.tierBreakdowns || [])
         }
         totalPlatformFee={
-          activeTab === 'advanced'
-            ? (isPaywallRequired ? MOCK_ADVANCED_DATA.totalPlatformFee : (advancedData?.totalPlatformFee || financialOverview?.totalPlatformFee || 0))
-            : (financialOverview?.totalPlatformFee || 0)
+          (() => {
+            const rawTCode = activeTab === 'advanced'
+              ? (advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
+              : (financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
+            const tCode = rawTCode === 'LEGACY' ? (currentSub?.tierCode || 'FREE') : rawTCode
+            const fFee = activeTab === 'advanced'
+              ? (advancedData?.totalFixedFee ?? ((advancedData?.totalTicketsSold || 0) * 1000))
+              : (financialOverview?.totalFixedFee ?? ((financialOverview?.totalTicketsSold || 0) * 1000))
+            const pFee = activeTab === 'advanced'
+              ? (isPaywallRequired ? MOCK_ADVANCED_DATA.totalPlatformFee : (advancedData?.totalPlatformFee ?? financialOverview?.totalPlatformFee ?? 0))
+              : (financialOverview?.totalPlatformFee ?? 0)
+            if (tCode === 'BUSINESS' && fFee > 0 && pFee > fFee) return fFee
+            return pFee
+          })()
         }
         tierCode={
-          activeTab === 'advanced'
-            ? (advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
-            : (financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
+          (() => {
+            const rawTCode = activeTab === 'advanced'
+              ? (advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
+              : (financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
+            return rawTCode === 'LEGACY' ? (currentSub?.tierCode || 'FREE') : rawTCode
+          })()
         }
         commRate={
-          activeTab === 'advanced'
-            ? (advancedData?.commissionRatePercent ?? financialOverview?.commissionRatePercent ?? 5)
-            : (financialOverview?.commissionRatePercent ?? 5)
+          (() => {
+            const rawTCode = activeTab === 'advanced'
+              ? (advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
+              : (financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
+            const tCode = rawTCode === 'LEGACY' ? (currentSub?.tierCode || 'FREE') : rawTCode
+            if (tCode === 'BUSINESS') return (currentSub?.commissionBps !== undefined ? currentSub.commissionBps / 100 : 0)
+            return activeTab === 'advanced'
+              ? (advancedData?.commissionRatePercent ?? financialOverview?.commissionRatePercent ?? 5)
+              : (financialOverview?.commissionRatePercent ?? 5)
+          })()
         }
         ticketCount={
           activeTab === 'advanced'
@@ -3444,14 +3509,21 @@ export default function Reports() {
             : (financialOverview?.totalTicketsSold ?? 0)
         }
         commFee={
-          activeTab === 'advanced'
-            ? (advancedData?.totalCommissionFee || (advancedData?.totalPlatformFee ? Math.max(0, advancedData.totalPlatformFee - (advancedData?.totalFixedFee || ((advancedData?.totalTicketsSold || 0) * 1000))) : 0))
-            : (financialOverview?.totalCommissionFee || (financialOverview?.totalPlatformFee ? Math.max(0, financialOverview.totalPlatformFee - (financialOverview?.totalFixedFee || ((financialOverview?.totalTicketsSold || 0) * 1000))) : 0))
+          (() => {
+            const rawTCode = activeTab === 'advanced'
+              ? (advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
+              : (financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
+            const tCode = rawTCode === 'LEGACY' ? (currentSub?.tierCode || 'FREE') : rawTCode
+            if (tCode === 'BUSINESS') return 0
+            return activeTab === 'advanced'
+              ? (advancedData?.totalCommissionFee ?? (advancedData?.totalPlatformFee ? Math.max(0, advancedData.totalPlatformFee - (advancedData?.totalFixedFee || ((advancedData?.totalTicketsSold || 0) * 1000))) : 0))
+              : (financialOverview?.totalCommissionFee ?? (financialOverview?.totalPlatformFee ? Math.max(0, financialOverview.totalPlatformFee - (financialOverview?.totalFixedFee || ((financialOverview?.totalTicketsSold || 0) * 1000))) : 0))
+          })()
         }
         fixedFee={
           activeTab === 'advanced'
-            ? (advancedData?.totalFixedFee || (advancedData?.totalPlatformFee ? Math.min(advancedData.totalPlatformFee, (advancedData?.totalTicketsSold || 0) * 1000) : 0))
-            : (financialOverview?.totalFixedFee || (financialOverview?.totalPlatformFee ? Math.min(financialOverview.totalPlatformFee, (financialOverview?.totalTicketsSold || 0) * 1000) : 0))
+            ? (advancedData?.totalFixedFee ?? (advancedData?.totalPlatformFee ? Math.min(advancedData.totalPlatformFee, (advancedData?.totalTicketsSold || 0) * 1000) : 0))
+            : (financialOverview?.totalFixedFee ?? (financialOverview?.totalPlatformFee ? Math.min(financialOverview.totalPlatformFee, (financialOverview?.totalTicketsSold || 0) * 1000) : 0))
         }
       />
 

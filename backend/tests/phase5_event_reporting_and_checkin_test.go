@@ -77,11 +77,12 @@ func TestPhase5_EventReportingAndCheckIn_RealDockerDB(t *testing.T) {
 	// Users: 901=ADMIN, 902=ORGANIZER A, 903=ORGANIZER B (Người ngoài), 904=SCHOOL_ORGANIZER, 905=STUDENT
 	// Event 9001 (Owner 902), Event 9002 (Owner 904), Event 9003 (Owner 902 - Empty Event)
 	cleanupAndSeedSQL := `
-		DELETE FROM financial_receipt WHERE event_id IN (9001, 9002, 9003, 9005) OR organizer_id BETWEEN 900 AND 920;
-		DELETE FROM ticket WHERE event_id IN (9001, 9002, 9003, 9005) OR user_id BETWEEN 900 AND 920;
+		DELETE FROM financial_receipt WHERE event_id IN (9001, 9002, 9003, 9005, 9006) OR organizer_id BETWEEN 900 AND 920;
+		DELETE FROM ticket WHERE event_id IN (9001, 9002, 9003, 9005, 9006) OR user_id BETWEEN 900 AND 920;
 		DELETE FROM bill WHERE user_id BETWEEN 900 AND 920;
-		DELETE FROM category_ticket WHERE event_id IN (9001, 9002, 9003, 9005) OR event_id IN (SELECT event_id FROM event WHERE created_by BETWEEN 900 AND 920);
-		DELETE FROM event WHERE event_id IN (9001, 9002, 9003, 9005) OR created_by BETWEEN 900 AND 920;
+		DELETE FROM category_ticket WHERE event_id IN (9001, 9002, 9003, 9005, 9006) OR event_id IN (SELECT event_id FROM event WHERE created_by BETWEEN 900 AND 920);
+		DELETE FROM event WHERE event_id IN (9001, 9002, 9003, 9005, 9006) OR created_by BETWEEN 900 AND 920;
+		DELETE FROM user_subscription WHERE user_id BETWEEN 900 AND 920;
 		DELETE FROM users WHERE user_id BETWEEN 900 AND 920;
 
 		INSERT INTO users (user_id, email, full_name, password_hash, role, status) VALUES 
@@ -89,8 +90,16 @@ func TestPhase5_EventReportingAndCheckIn_RealDockerDB(t *testing.T) {
 		(902, 'org902@fpt.edu.vn', 'Organizer Owner A', 'hash', 'ORGANIZER', 'ACTIVE'),
 		(903, 'org903@fpt.edu.vn', 'Organizer Other B', 'hash', 'ORGANIZER', 'ACTIVE'),
 		(904, 'school904@fpt.edu.vn', 'School Organizer C', 'hash', 'SCHOOL_ORGANIZER', 'ACTIVE'),
-		(905, 'student905@fpt.edu.vn', 'Student Buyer', 'hash', 'STUDENT', 'ACTIVE')
+		(905, 'student905@fpt.edu.vn', 'Student Buyer', 'hash', 'STUDENT', 'ACTIVE'),
+		(906, 'bus906@fpt.edu.vn', 'Business Organizer', 'hash', 'ORGANIZER', 'ACTIVE')
 		ON CONFLICT (user_id) DO UPDATE SET role = EXCLUDED.role;
+
+		-- Gán gói BUSINESS cho user 906
+		INSERT INTO user_subscription (user_id, tier_id, status, start_date, end_date, amount_paid_vnd) VALUES
+		(906, 3, 'ACTIVE', NOW() - INTERVAL '5 days', NOW() + INTERVAL '25 days', 1500000)
+		ON CONFLICT DO NOTHING;
+
+		SELECT setval(pg_get_serial_sequence('financial_receipt', 'receipt_id'), GREATEST(COALESCE((SELECT MAX(receipt_id) FROM financial_receipt), 1), 100000));
 
 		-- Tạo sự kiện 9001 (Owner 902)
 		INSERT INTO event (event_id, title, start_time, end_time, created_by, status, is_settled, created_at)
@@ -537,5 +546,163 @@ func TestPhase5_EventReportingAndCheckIn_RealDockerDB(t *testing.T) {
 		}
 
 		t.Logf("✅ TC5 ĐẠT TUYỆT ĐỐI KỊCH BẢN USER: Gross=220k (Gốc 270k - Hoàn 50k), Phí=14.900đ (gồm hoa hồng 9.900đ + cố định 5.000đ), Net=205.100đ, Vé bán=5, Vé hoàn=1!")
+	})
+
+	// -------------------------------------------------------------
+	// TC6: KỊCH BẢN THỰC TẾ GÓI BUSINESS: HOA HỒNG SÀN 0%
+	// 5 VÉ VIP 50K + 1 VÉ STD 20K = 270K, 1 VÉ VIP ĐƯỢC HOÀN (-50K)
+	// GROSS = 220K, HOA HỒNG = 0Đ (0%), PHÍ CỐ ĐỊNH = 5.000Đ, TỔNG PHÍ = 5.000Đ (5,0k), NET = 215.000Đ
+	// -------------------------------------------------------------
+	t.Run("TC6_UserScenario_BusinessTier_0PercentCommission_50k_VIP_Refund", func(t *testing.T) {
+		eventID := 9006
+		organizerID := 906 // ORGANIZER Gói BUSINESS (0% commission_bps = 0, 1000 fixed fee)
+
+		// Dọn dẹp và chuẩn bị dữ liệu sự kiện 9006
+		_, _ = db.ExecContext(ctx, "DELETE FROM financial_receipt WHERE event_id = $1", eventID)
+		_, _ = db.ExecContext(ctx, "DELETE FROM ticket WHERE event_id = $1", eventID)
+		_, _ = db.ExecContext(ctx, "DELETE FROM category_ticket WHERE event_id = $1", eventID)
+		_, _ = db.ExecContext(ctx, "DELETE FROM event WHERE event_id = $1", eventID)
+		defer func() {
+			_, _ = db.ExecContext(ctx, "DELETE FROM financial_receipt WHERE event_id = $1", eventID)
+			_, _ = db.ExecContext(ctx, "DELETE FROM ticket WHERE event_id = $1", eventID)
+			_, _ = db.ExecContext(ctx, "DELETE FROM category_ticket WHERE event_id = $1", eventID)
+			_, _ = db.ExecContext(ctx, "DELETE FROM event WHERE event_id = $1", eventID)
+		}()
+
+		_, err := db.ExecContext(ctx, `
+			INSERT INTO event (event_id, title, start_time, end_time, created_by, status, is_settled, created_at)
+			VALUES ($1, 'Business Event 220k Net 215k', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', $2, 'OPEN', FALSE, NOW())
+		`, eventID, organizerID)
+		if err != nil {
+			t.Fatalf("Không tạo được event: %v", err)
+		}
+
+		_, err = db.ExecContext(ctx, `
+			INSERT INTO category_ticket (category_ticket_id, event_id, name, price, max_quantity) VALUES
+			(9610, $1, 'VIP', 50000, 100),
+			(9611, $1, 'STANDARD', 20000, 100)
+		`, eventID)
+		if err != nil {
+			t.Fatalf("Không tạo được category_ticket: %v", err)
+		}
+
+		// Tạo 5 vé VIP @ 50k (Vé 9601..9605) và 1 vé STANDARD @ 20k (Vé 9606)
+		// Biên lai gốc giả định từ legacy (4.5% + 1k) để test khả năng tự sửa chữa về 0% theo gói Business
+		for i := 1; i <= 5; i++ {
+			tID := 9600 + i
+			status := "CHECKED_IN"
+			if i == 1 {
+				status = "REFUNDED" // Vé 1 bị hoàn tiền
+			}
+			_, _ = db.ExecContext(ctx, `
+				INSERT INTO ticket (ticket_id, event_id, category_ticket_id, user_id, qr_code_value, status, created_at)
+				VALUES ($1, $2, 9610, 905, $3, $4, NOW())
+			`, tID, eventID, fmt.Sprintf("QR-BUS-VIP-%d", i), status)
+
+			_, _ = db.ExecContext(ctx, `
+				INSERT INTO financial_receipt (
+					receipt_id, order_id, bill_id, ticket_id, event_id, organizer_id,
+					gross_amount, system_fee_percentage, fixed_fee, commission_bps,
+					fee_config_version, commission_amount, net_amount, tier_code, fee_source, is_reversal
+				) VALUES (
+					$1, $2, NULL, $3, $4, $5,
+					50000, 4.50, 1000, 450,
+					1, 3250, 46750, 'LEGACY', 'LEGACY', FALSE
+				)
+			`, 96000+i, 96000+i, tID, eventID, organizerID)
+		}
+
+		// Vé 9606 (STANDARD @ 20k)
+		_, _ = db.ExecContext(ctx, `
+			INSERT INTO ticket (ticket_id, event_id, category_ticket_id, user_id, qr_code_value, status, created_at)
+			VALUES (9606, $1, 9611, 905, 'QR-BUS-STD-6', 'BOOKED', NOW())
+		`, eventID)
+		_, _ = db.ExecContext(ctx, `
+			INSERT INTO financial_receipt (
+				receipt_id, order_id, bill_id, ticket_id, event_id, organizer_id,
+				gross_amount, system_fee_percentage, fixed_fee, commission_bps,
+				fee_config_version, commission_amount, net_amount, tier_code, fee_source, is_reversal
+			) VALUES (
+				96006, 96006, NULL, 9606, $1, $2,
+				20000, 4.50, 1000, 450,
+				1, 1900, 18100, 'LEGACY', 'LEGACY', FALSE
+			)
+		`, eventID, organizerID)
+
+		// Gọi Handler GetEventFinancialOverview
+		reqOverview := events.APIGatewayProxyRequest{
+			HTTPMethod: "GET",
+			Path:       fmt.Sprintf("/api/v1/organizer/events/%d/financial-overview", eventID),
+			Headers:    map[string]string{"X-User-Id": fmt.Sprintf("%d", organizerID)},
+		}
+		respOverview, err := tHandler.HandleGetEventFinancialOverview(ctx, reqOverview)
+		if err != nil || respOverview.StatusCode != http.StatusOK {
+			t.Fatalf("Gọi financial-overview thất bại: %v, body: %s", err, respOverview.Body)
+		}
+
+		var ov ticketModels.EventFinancialOverview
+		_ = json.Unmarshal([]byte(respOverview.Body), &ov)
+
+		// 1. Doanh thu gốc trước hoàn tiền: 270,000đ
+		if ov.TotalOriginalGross != 270000 {
+			t.Errorf("TotalOriginalGross sai: nhận %d, kỳ vọng 270000", ov.TotalOriginalGross)
+		}
+
+		// 2. Tiền hoàn: 50,000đ
+		if ov.TotalRefundAmount != 50000 {
+			t.Errorf("TotalRefundAmount sai: nhận %d, kỳ vọng 50000", ov.TotalRefundAmount)
+		}
+
+		// 3. Gross sau hoàn: 220,000đ
+		if ov.TotalGrossRevenue != 220000 {
+			t.Errorf("TotalGrossRevenue sai: nhận %d, kỳ vọng 220000", ov.TotalGrossRevenue)
+		}
+
+		// 4. Gói BUSINESS: Hoa hồng = 0đ (0.0%), Phí cố định = 5.000đ -> Phí sàn = 5.000đ
+		if ov.TierCode != "BUSINESS" {
+			t.Errorf("TierCode sai: nhận %s, kỳ vọng BUSINESS", ov.TierCode)
+		}
+		if ov.CommissionRatePercent != 0.0 {
+			t.Errorf("CommissionRatePercent sai: nhận %f, kỳ vọng 0.0", ov.CommissionRatePercent)
+		}
+		if ov.TotalCommissionFee != 0 {
+			t.Errorf("TotalCommissionFee sai: nhận %d, kỳ vọng 0", ov.TotalCommissionFee)
+		}
+		if ov.TotalFixedFee != 5000 {
+			t.Errorf("TotalFixedFee sai: nhận %d, kỳ vọng 5000", ov.TotalFixedFee)
+		}
+		if ov.TotalPlatformFee != 5000 {
+			t.Errorf("TotalPlatformFee sai: nhận %d, kỳ vọng 5000", ov.TotalPlatformFee)
+		}
+		if ov.TotalPlatformFeeFormatted != "5k" && ov.TotalPlatformFeeFormatted != "5,0k" {
+			t.Errorf("TotalPlatformFeeFormatted sai: nhận %s, kỳ vọng '5k'", ov.TotalPlatformFeeFormatted)
+		}
+
+		// 5. Net thực nhận: 220.000 - 5.000 = 215.000đ
+		if ov.TotalNetProfit != 215000 {
+			t.Errorf("TotalNetProfit sai: nhận %d, kỳ vọng 215000", ov.TotalNetProfit)
+		}
+		if ov.TotalNetFormatted != "215k" {
+			t.Errorf("TotalNetFormatted sai: nhận %s, kỳ vọng '215k'", ov.TotalNetFormatted)
+		}
+
+		// 6. Số vé bán = 5, vé hoàn = 1
+		if ov.TotalTicketsSold != 5 {
+			t.Errorf("TotalTicketsSold sai: nhận %d, kỳ vọng 5", ov.TotalTicketsSold)
+		}
+		if ov.TotalTicketsRefunded != 1 {
+			t.Errorf("TotalTicketsRefunded sai: nhận %d, kỳ vọng 1", ov.TotalTicketsRefunded)
+		}
+
+		// 7. Modal Phân tầng: Phải có 1 breakdown cho BUSINESS 0% hoa hồng và 5.000đ tổng phí
+		if len(ov.TierBreakdowns) != 1 {
+			t.Fatalf("Số lượng TierBreakdowns sai: nhận %d, kỳ vọng 1", len(ov.TierBreakdowns))
+		}
+		tb := ov.TierBreakdowns[0]
+		if tb.TierCode != "BUSINESS" || tb.CommissionRatePercent != 0.0 || tb.CommissionFee != 0 || tb.FixedFee != 5000 || tb.TotalFee != 5000 {
+			t.Errorf("Breakdown BUSINESS không hợp lệ: %+v", tb)
+		}
+
+		t.Logf("✅ TC6 ĐẠT TUYỆT ĐỐI GÓI BUSINESS: Gross=220k, Hoa hồng=0đ (0%%), Phí cố định=5.000đ, Tổng phí=5.000đ (5,0k), Thực nhận Net=215.000đ (215k), Breakdown chuẩn xác 10/10!")
 	})
 }

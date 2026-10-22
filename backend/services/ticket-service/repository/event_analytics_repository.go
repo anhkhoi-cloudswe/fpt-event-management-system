@@ -95,7 +95,35 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 		return nil, err
 	}
 
-	// 0. Tự động kiểm tra và chèn biên lai đảo (Reversal Receipt) cho các vé đã REFUNDED nhưng chưa có biên lai đảo
+	// 0. Phân giải thông tin gói dịch vụ & công thức hoa hồng hiệu lực của Organizer (FAIL-CLOSED)
+	tierCode := "FREE"
+	commissionBps := 500
+	var fixedFeePerTicket int64 = 1000
+
+	pol, errPol := policy.ResolveOrganizerPolicy(ctx, r.db, ownerID)
+	if errPol == nil && pol != nil {
+		tierCode = pol.TierCode
+		commissionBps = pol.CommissionBps
+	}
+
+	var fixedFeeStr string
+	if errParam := r.db.QueryRowContext(ctx, "SELECT param_value FROM platform_system_parameter WHERE param_key = 'FIXED_FEE_PER_TICKET'").Scan(&fixedFeeStr); errParam == nil {
+		if ff, errParse := strconv.ParseInt(fixedFeeStr, 10, 64); errParse == nil && ff >= 0 {
+			fixedFeePerTicket = ff
+		}
+	}
+
+	commPercent := float64(commissionBps) / 100.0
+
+	// Đồng bộ hóa sequence để tránh lỗi duplicate key nếu có dữ liệu chèn id thủ công
+	_, _ = r.db.ExecContext(ctx, `
+		SELECT setval(
+			pg_get_serial_sequence('financial_receipt', 'receipt_id'),
+			GREATEST(COALESCE((SELECT MAX(receipt_id) FROM financial_receipt), 1), 1)
+		)
+	`)
+
+	// 1. Tự động kiểm tra và chèn biên lai đảo (Reversal Receipt) cho các vé đã REFUNDED nhưng chưa có biên lai đảo
 	healQuery := `
 		INSERT INTO financial_receipt (
 			order_id, bill_id, ticket_id, event_id, organizer_id,
@@ -125,7 +153,36 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 		fmt.Printf("[HEAL_QUERY_ERROR] event %d: %v\n", eventID, healErr)
 	}
 
-	// 1. Doanh thu từ financial_receipt (Chỉ tính bill PAID hoặc REFUNDED + biên lai bill_id NULL; loại bỏ PENDING, FAILED)
+	// 2. Tự động tái tính toán & chuẩn hóa các biên lai cũ (LEGACY hoặc lệch % hoa hồng theo gói dịch vụ thực tế của Organizer)
+	if tierCode != "" && tierCode != "LEGACY" {
+		healTierQuery := `
+			UPDATE financial_receipt
+			SET 
+				tier_code = $1,
+				commission_bps = $2,
+				system_fee_percentage = $3,
+				fee_source = 'TIER',
+				commission_amount = CASE 
+					WHEN is_reversal THEN -((ABS(gross_amount) * $2) / 10000 + (CASE WHEN ABS(gross_amount) >= 20000 THEN ABS(fixed_fee) ELSE 0 END))
+					ELSE ((gross_amount * $2) / 10000 + (CASE WHEN gross_amount >= 20000 THEN ABS(fixed_fee) ELSE 0 END))
+				END,
+				net_amount = CASE 
+					WHEN is_reversal THEN -(ABS(gross_amount) - ((ABS(gross_amount) * $2) / 10000 + (CASE WHEN ABS(gross_amount) >= 20000 THEN ABS(fixed_fee) ELSE 0 END)))
+					ELSE gross_amount - ((gross_amount * $2) / 10000 + (CASE WHEN gross_amount >= 20000 THEN ABS(fixed_fee) ELSE 0 END))
+				END
+			WHERE event_id = $4 
+			  AND (
+				tier_code = 'LEGACY' 
+				OR fee_source = 'LEGACY' 
+				OR tier_code IS NULL 
+				OR (tier_code = $1 AND ABS(system_fee_percentage - $3) > 0.001)
+				OR ((SELECT COUNT(DISTINCT fr2.tier_code) FROM financial_receipt fr2 WHERE fr2.event_id = $4) <= 1 AND tier_code != 'SCHOOL')
+			  )
+		`
+		_, _ = r.db.ExecContext(ctx, healTierQuery, tierCode, commissionBps, commPercent, eventID)
+	}
+
+	// 3. Doanh thu từ financial_receipt (Chỉ tính bill PAID hoặc REFUNDED + biên lai bill_id NULL; loại bỏ PENDING, FAILED)
 	overviewQuery := `
 		SELECT 
 			COALESCE(SUM(CASE WHEN NOT fr.is_reversal THEN fr.gross_amount ELSE 0 END), 0)::BIGINT AS original_gross,
@@ -133,8 +190,8 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 			COALESCE(SUM(fr.gross_amount), 0)::BIGINT AS net_gross,
 			COALESCE(SUM(fr.commission_amount), 0)::BIGINT AS total_platform_fee,
 			COALESCE(SUM(fr.net_amount), 0)::BIGINT AS total_net,
-			COALESCE(SUM(CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END), 0)::BIGINT AS total_fixed_fee,
-			COALESCE(SUM(fr.commission_amount - (CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END)), 0)::BIGINT AS total_commission_fee
+			COALESCE(SUM(CASE WHEN fr.is_reversal THEN -ABS(fr.fixed_fee) ELSE ABS(fr.fixed_fee) END), 0)::BIGINT AS total_fixed_fee,
+			COALESCE(SUM(fr.commission_amount - (CASE WHEN fr.is_reversal THEN -ABS(fr.fixed_fee) ELSE ABS(fr.fixed_fee) END)), 0)::BIGINT AS total_commission_fee
 		FROM financial_receipt fr
 		LEFT JOIN bill b ON fr.bill_id = b.bill_id
 		WHERE fr.event_id = $1
@@ -148,7 +205,7 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 		return nil, fmt.Errorf("lỗi tổng hợp doanh thu tài chính: %w", err)
 	}
 
-	// 2. Số vé đã bán đếm từ bảng ticket (dùng chung tập trạng thái BOOKED, CHECKED_IN, CHECKED_OUT)
+	// 4. Số vé đã bán đếm từ bảng ticket (dùng chung tập trạng thái BOOKED, CHECKED_IN, CHECKED_OUT)
 	var ticketsSold int
 	ticketCountQuery := `
 		SELECT COUNT(*) 
@@ -161,7 +218,7 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 		return nil, fmt.Errorf("lỗi đếm số vé đã bán từ bảng ticket: %w", err)
 	}
 
-	// 3. Số vé hoàn đếm từ bảng ticket (status = 'REFUNDED')
+	// 5. Số vé hoàn đếm từ bảng ticket (status = 'REFUNDED')
 	var refundedCount int
 	refundCountQuery := `
 		SELECT COUNT(*)
@@ -190,40 +247,7 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 		}
 	}
 
-	// 4. Phân giải thông tin gói dịch vụ & công thức hoa hồng
-	tierCode := "FREE"
-	commissionBps := 500
-	var fixedFeePerTicket int64 = 1000
-
-	pol, errPol := policy.ResolveOrganizerPolicy(ctx, r.db, ownerID)
-	if errPol == nil && pol != nil {
-		tierCode = pol.TierCode
-		commissionBps = pol.CommissionBps
-	}
-
-	var fixedFeeStr string
-	if errParam := r.db.QueryRowContext(ctx, "SELECT param_value FROM platform_system_parameter WHERE param_key = 'FIXED_FEE_PER_TICKET'").Scan(&fixedFeeStr); errParam == nil {
-		if ff, errParse := strconv.ParseInt(fixedFeeStr, 10, 64); errParse == nil && ff >= 0 {
-			fixedFeePerTicket = ff
-		}
-	}
-
-	commPercent := float64(commissionBps) / 100.0
-
-	var formula string
-	if platformFee <= 0 {
-		formula = fmt.Sprintf("Miễn phí nền tảng 0đ (Gói %s)", tierCode)
-	} else if totalFixedFee > 0 && totalCommFee > 0 {
-		formula = fmt.Sprintf("Hoa hồng %.1f%% (%s) + Phí cố định %s (%s)",
-			commPercent, models.FormatCurrencyVND(totalCommFee),
-			models.FormatCurrencyVND(totalFixedFee), tierCode)
-	} else if totalFixedFee > 0 {
-		formula = fmt.Sprintf("Phí cố định %s (%s)", models.FormatCurrencyVND(totalFixedFee), tierCode)
-	} else {
-		formula = fmt.Sprintf("Hoa hồng %.1f%% (%s)", commPercent, tierCode)
-	}
-
-	// 5. Phân tầng hoa hồng theo từng giai đoạn gói dịch vụ (Multi-tier snapshot)
+	// 6. Phân tầng hoa hồng theo từng giai đoạn gói dịch vụ (Multi-tier snapshot)
 	tierBreakdowns := make([]models.FeeTierBreakdown, 0)
 	tierQuery := `
 		SELECT 
@@ -233,8 +257,8 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 			 COUNT(DISTINCT CASE WHEN fr.is_reversal THEN fr.ticket_id END))::INT AS net_ticket_count,
 			COALESCE(SUM(fr.gross_amount), 0)::BIGINT AS gross_amount,
 			COALESCE(SUM(fr.commission_amount), 0)::BIGINT AS total_platform_fee,
-			COALESCE(SUM(CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END), 0)::BIGINT AS fixed_fee,
-			COALESCE(SUM(fr.commission_amount - (CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END)), 0)::BIGINT AS commission_fee
+			COALESCE(SUM(CASE WHEN fr.is_reversal THEN -ABS(fr.fixed_fee) ELSE ABS(fr.fixed_fee) END), 0)::BIGINT AS fixed_fee,
+			COALESCE(SUM(fr.commission_amount - (CASE WHEN fr.is_reversal THEN -ABS(fr.fixed_fee) ELSE ABS(fr.fixed_fee) END)), 0)::BIGINT AS commission_fee
 		FROM financial_receipt fr
 		LEFT JOIN bill b ON fr.bill_id = b.bill_id
 		WHERE fr.event_id = $1
@@ -257,18 +281,33 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 				if tb.TierCode == "LEGACY" && tierCode != "" && tierCode != "LEGACY" {
 					tb.TierCode = tierCode
 				}
+				if tb.TierCode == "BUSINESS" && commissionBps == 0 {
+					tb.CommissionRatePercent = 0.0
+					tb.CommissionFee = 0
+					tb.TotalFee = tb.FixedFee
+				}
 				tierBreakdowns = append(tierBreakdowns, tb)
 			}
 		}
 	}
 
-	// Self-healing: Cập nhật các biên lai có tier_code 'LEGACY' sang tierCode thực tế của Organizer
-	if tierCode != "" && tierCode != "LEGACY" {
-		_, _ = r.db.ExecContext(ctx, `
-			UPDATE financial_receipt 
-			SET tier_code = $1 
-			WHERE event_id = $2 AND (tier_code = 'LEGACY' OR tier_code IS NULL)
-		`, tierCode, eventID)
+	if tierCode == "BUSINESS" && commissionBps == 0 && len(tierBreakdowns) <= 1 {
+		totalCommFee = 0
+		platformFee = totalFixedFee
+		net = netGross - platformFee
+	}
+
+	var formula string
+	if platformFee <= 0 {
+		formula = fmt.Sprintf("Miễn phí nền tảng 0đ (Gói %s)", tierCode)
+	} else if totalFixedFee > 0 && totalCommFee > 0 {
+		formula = fmt.Sprintf("Hoa hồng %.1f%% (%s) + Phí cố định %s (%s)",
+			commPercent, models.FormatCurrencyVND(totalCommFee),
+			models.FormatCurrencyVND(totalFixedFee), tierCode)
+	} else if totalFixedFee > 0 {
+		formula = fmt.Sprintf("Phí cố định %s (%s)", models.FormatCurrencyVND(totalFixedFee), tierCode)
+	} else {
+		formula = fmt.Sprintf("Hoa hồng %.1f%% (%s)", commPercent, tierCode)
 	}
 
 	if len(tierBreakdowns) > 1 {
@@ -493,6 +532,38 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 		}
 	}
 
+	// 3. Phân giải thông tin gói dịch vụ & công thức hoa hồng của Organizer
+	tierCode := "FREE"
+	commissionBps := 500
+	var fixedFeePerTicket int64 = 1000
+
+	var ownerID int
+	_ = r.db.QueryRowContext(ctx, "SELECT created_by FROM event WHERE event_id = $1", eventID).Scan(&ownerID)
+	if ownerID > 0 {
+		pol, errPol := policy.ResolveOrganizerPolicy(ctx, r.db, ownerID)
+		if errPol == nil && pol != nil {
+			tierCode = pol.TierCode
+			commissionBps = pol.CommissionBps
+		}
+	}
+
+	var fixedFeeStr string
+	if errParam := r.db.QueryRowContext(ctx, "SELECT param_value FROM platform_system_parameter WHERE param_key = 'FIXED_FEE_PER_TICKET'").Scan(&fixedFeeStr); errParam == nil {
+		if ff, errParse := strconv.ParseInt(fixedFeeStr, 10, 64); errParse == nil && ff >= 0 {
+			fixedFeePerTicket = ff
+		}
+	}
+
+	commPercent := float64(commissionBps) / 100.0
+
+	// Đồng bộ hóa sequence để tránh lỗi duplicate key nếu có dữ liệu chèn id thủ công
+	_, _ = r.db.ExecContext(ctx, `
+		SELECT setval(
+			pg_get_serial_sequence('financial_receipt', 'receipt_id'),
+			GREATEST(COALESCE((SELECT MAX(receipt_id) FROM financial_receipt), 1), 1)
+		)
+	`)
+
 	// 0. Tự động kiểm tra và chèn biên lai đảo (Reversal Receipt) cho các vé đã REFUNDED
 	healQuery := `
 		INSERT INTO financial_receipt (
@@ -521,6 +592,35 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 	`
 	_, _ = r.db.ExecContext(ctx, healQuery, eventID)
 
+	// Tự động tái tính toán & chuẩn hóa các biên lai cũ theo gói dịch vụ của Organizer
+	if tierCode != "" && tierCode != "LEGACY" {
+		healTierQuery := `
+			UPDATE financial_receipt
+			SET 
+				tier_code = $1,
+				commission_bps = $2,
+				system_fee_percentage = $3,
+				fee_source = 'TIER',
+				commission_amount = CASE 
+					WHEN is_reversal THEN -((ABS(gross_amount) * $2) / 10000 + (CASE WHEN ABS(gross_amount) >= 20000 THEN ABS(fixed_fee) ELSE 0 END))
+					ELSE ((gross_amount * $2) / 10000 + (CASE WHEN gross_amount >= 20000 THEN ABS(fixed_fee) ELSE 0 END))
+				END,
+				net_amount = CASE 
+					WHEN is_reversal THEN -(ABS(gross_amount) - ((ABS(gross_amount) * $2) / 10000 + (CASE WHEN ABS(gross_amount) >= 20000 THEN ABS(fixed_fee) ELSE 0 END)))
+					ELSE gross_amount - ((gross_amount * $2) / 10000 + (CASE WHEN gross_amount >= 20000 THEN ABS(fixed_fee) ELSE 0 END))
+				END
+			WHERE event_id = $4 
+			  AND (
+				tier_code = 'LEGACY' 
+				OR fee_source = 'LEGACY' 
+				OR tier_code IS NULL 
+				OR (tier_code = $1 AND ABS(system_fee_percentage - $3) > 0.001)
+				OR ((SELECT COUNT(DISTINCT fr2.tier_code) FROM financial_receipt fr2 WHERE fr2.event_id = $4) <= 1 AND tier_code != 'SCHOOL')
+			  )
+		`
+		_, _ = r.db.ExecContext(ctx, healTierQuery, tierCode, commissionBps, commPercent, eventID)
+	}
+
 	// 4. Doanh thu tổng hợp từ financial_receipt (chỉ bill PAID, REFUNDED hoặc NULL; gồm biên lai đảo)
 	overviewQuery := `
 		SELECT 
@@ -529,8 +629,8 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 			COALESCE(SUM(fr.gross_amount), 0)::BIGINT AS net_gross,
 			COALESCE(SUM(fr.commission_amount), 0)::BIGINT AS total_platform_fee,
 			COALESCE(SUM(fr.net_amount), 0)::BIGINT AS total_net,
-			COALESCE(SUM(CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END), 0)::BIGINT AS total_fixed_fee,
-			COALESCE(SUM(fr.commission_amount - (CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END)), 0)::BIGINT AS total_commission_fee
+			COALESCE(SUM(CASE WHEN fr.is_reversal THEN -ABS(fr.fixed_fee) ELSE ABS(fr.fixed_fee) END), 0)::BIGINT AS total_fixed_fee,
+			COALESCE(SUM(fr.commission_amount - (CASE WHEN fr.is_reversal THEN -ABS(fr.fixed_fee) ELSE ABS(fr.fixed_fee) END)), 0)::BIGINT AS total_commission_fee
 		FROM financial_receipt fr
 		LEFT JOIN bill b ON fr.bill_id = b.bill_id
 		WHERE fr.event_id = $1
@@ -819,29 +919,11 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 		}
 	}
 
-	// 13. Phân giải thông tin gói dịch vụ & công thức hoa hồng
-	tierCode := "FREE"
-	commissionBps := 500
-	var fixedFeePerTicket int64 = 1000
-
-	var ownerID int
-	_ = r.db.QueryRowContext(ctx, "SELECT created_by FROM event WHERE event_id = $1", eventID).Scan(&ownerID)
-	if ownerID > 0 {
-		pol, errPol := policy.ResolveOrganizerPolicy(ctx, r.db, ownerID)
-		if errPol == nil && pol != nil {
-			tierCode = pol.TierCode
-			commissionBps = pol.CommissionBps
-		}
+	if tierCode == "BUSINESS" && commissionBps == 0 {
+		totalCommFee = 0
+		platformFee = totalFixedFee
+		net = gross - platformFee
 	}
-
-	var fixedFeeStr string
-	if errParam := r.db.QueryRowContext(ctx, "SELECT param_value FROM platform_system_parameter WHERE param_key = 'FIXED_FEE_PER_TICKET'").Scan(&fixedFeeStr); errParam == nil {
-		if ff, errParse := strconv.ParseInt(fixedFeeStr, 10, 64); errParse == nil && ff >= 0 {
-			fixedFeePerTicket = ff
-		}
-	}
-
-	commPercent := float64(commissionBps) / 100.0
 
 	var formula string
 	if platformFee <= 0 {
