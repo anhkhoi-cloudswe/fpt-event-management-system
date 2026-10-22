@@ -23,6 +23,9 @@ import {
   CheckCircle2,
   Percent,
   Ticket,
+  ShieldAlert,
+  FileText,
+  XCircle,
 } from 'lucide-react'
 import {
   BarChart,
@@ -86,6 +89,62 @@ const MOCK_ADVANCED_DATA: EventAdvancedAnalyticsResponse = {
     { hour: 11, count: 85 },
     { hour: 13, count: 30 },
     { hour: 14, count: 20 },
+  ],
+  refundAuditList: [
+    {
+      reportId: 101,
+      ticketId: 501,
+      ticketCode: 'TKT-VIP-***88',
+      categoryName: 'Vé VIP',
+      refundAmount: 300000,
+      refundFormatted: '300.000đ',
+      requesterName: 'Nguyễn Văn Minh',
+      requesterEmail: 'minhnv@fpt.edu.vn',
+      reasonTitle: 'Trùng lịch thi đột xuất',
+      reasonDetail: 'Em bị trùng lịch thi cuối kỳ môn SWP391 vào chiều thứ 7 nên xin phép hủy vé hoàn tiền.',
+      status: 'APPROVED',
+      processedByName: 'Staff Ban Tổ Chức',
+      processedAt: '2026-10-04T14:30:00Z',
+      createdAt: '2026-10-03T10:15:00Z',
+    },
+    {
+      reportId: 102,
+      ticketId: 502,
+      ticketCode: 'TKT-STD-***12',
+      categoryName: 'Vé Tiêu chuẩn',
+      refundAmount: 100000,
+      refundFormatted: '100.000đ',
+      requesterName: 'Trần Thị Thu Thảo',
+      requesterEmail: 'thaott@gmail.com',
+      reasonTitle: 'Sự kiện dời thời gian',
+      reasonDetail: 'Thời gian dời sang khung giờ tối em không kịp di chuyển từ cơ sở khác về.',
+      status: 'APPROVED',
+      processedByName: 'Admin Hệ Thống',
+      processedAt: '2026-10-05T09:10:00Z',
+      createdAt: '2026-10-04T16:20:00Z',
+    },
+    {
+      reportId: 103,
+      ticketId: 503,
+      ticketCode: 'TKT-VIP-***99',
+      categoryName: 'Vé VIP',
+      refundAmount: 300000,
+      refundFormatted: '300.000đ',
+      requesterName: 'Lê Hoàng Nam',
+      requesterEmail: 'namlh@fpt.edu.vn',
+      reasonTitle: 'Lý do sức khỏe cá nhân',
+      reasonDetail: 'Sốt cao không thể tham dự sự kiện trực tiếp được.',
+      status: 'REJECTED',
+      processedByName: 'Staff Ban Tổ Chức',
+      processedAt: '2026-10-05T11:00:00Z',
+      createdAt: '2026-10-05T08:00:00Z',
+    },
+  ],
+  refundReasons: [
+    { reason: 'Trùng lịch thi đột xuất', count: 12 },
+    { reason: 'Sự kiện dời thời gian', count: 8 },
+    { reason: 'Lý do sức khỏe cá nhân', count: 5 },
+    { reason: 'Mua nhầm hạng vé', count: 3 },
   ],
   hasAdvancedReports: false,
 }
@@ -206,7 +265,8 @@ export default function Reports() {
   const [hourlyDateFilter, setHourlyDateFilter] = useState<string>('ALL')
   const [hourlyRangeFilter, setHourlyRangeFilter] = useState<'ALL' | 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT'>('ALL')
 
-  // Pagination for Check-In list
+  // Ticket list Filter & Pagination
+  const [ticketStatusFilter, setTicketStatusFilter] = useState<'ALL' | 'BOOKED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'REFUNDED'>('ALL')
   const [checkInPage, setCheckInPage] = useState<number>(1)
   const checkInLimit = 10
 
@@ -612,6 +672,24 @@ export default function Reports() {
             count: hourlyOutCount[Number(h)],
           }))
 
+          // Merge refund audit list & reasons
+          const combinedRefundList: any[] = []
+          const refundReasonMap: Record<string, number> = {}
+
+          validResults.forEach((adv) => {
+            ;(adv.refundAuditList || []).forEach((item) => {
+              combinedRefundList.push(item)
+            })
+            ;(adv.refundReasons || []).forEach((r) => {
+              refundReasonMap[r.reason] = (refundReasonMap[r.reason] || 0) + r.count
+            })
+          })
+
+          const combinedRefundReasons = Object.entries(refundReasonMap).map(([reason, count]) => ({
+            reason,
+            count,
+          }))
+
           setAdvancedData({
             eventId: 0,
             title: user?.role === 'ADMIN' ? 'Toàn bộ sự kiện trên hệ thống' : 'Toàn bộ sự kiện của bạn',
@@ -631,6 +709,8 @@ export default function Reports() {
             categoryBreakdown: combinedCategoryBreakdown,
             hourlyCheckIns: combinedHourly,
             hourlyCheckOuts: combinedHourlyOut,
+            refundAuditList: combinedRefundList,
+            refundReasons: combinedRefundReasons,
             hasAdvancedReports: true,
           })
         } catch (err) {
@@ -724,15 +804,16 @@ export default function Reports() {
   }
 
   // Khử trùng lặp vé (Deduplicate) và lấy trạng thái mới nhất cho mỗi vé
-  // Thứ tự ưu tiên trạng thái: Đã Check-out (cao nhất) > Đã Check-in > Đã Hoàn Vé > Đã Mua
+  // Thứ tự ưu tiên trạng thái: Đã Hoàn Tiền (REFUNDED - Ưu tiên tuyệt đối) > Đã Check-out > Đã Check-in > Đã Mua
   const uniqueCheckIns = useMemo(() => {
     const map = new Map<string, EventCheckInItem>()
 
     // Hàm chấm điểm độ ưu tiên của trạng thái
+    // Nếu vé đã bị hoàn tiền (REFUNDED), đây là trạng thái cuối cùng cao nhất không bị che lấp bởi checkin cũ
     const getStatusScore = (item: EventCheckInItem) => {
+      if (item.status === 'REFUNDED') return 10
       if (item.status === 'CHECKED_OUT' || !!item.checkedOutAt) return 4
       if (item.status === 'CHECKED_IN' || !!item.checkedInAt) return 3
-      if (item.status === 'REFUNDED') return 2
       return 1 // BOOKED, PAID, etc.
     }
 
@@ -770,6 +851,9 @@ export default function Reports() {
           if (!existing.checkedOutAt && item.checkedOutAt) {
             existing.checkedOutAt = item.checkedOutAt
           }
+          if (!existing.seatCode && item.seatCode) {
+            existing.seatCode = item.seatCode
+          }
         }
       }
     })
@@ -777,9 +861,28 @@ export default function Reports() {
     return Array.from(map.values())
   }, [checkIns])
 
-  // Phân trang danh sách Check-In sau khi đã khử trùng lặp
-  const totalCheckInPages = Math.ceil(uniqueCheckIns.length / checkInLimit) || 1
-  const paginatedCheckIns = uniqueCheckIns.slice(
+  // Tổng số tiền hoàn từ các vé REFUNDED trong danh sách vé
+  const totalRefundAmount = useMemo(() => {
+    return uniqueCheckIns
+      .filter((x) => x.status === 'REFUNDED')
+      .reduce((acc, curr) => acc + (curr.priceVnd || 0), 0)
+  }, [uniqueCheckIns])
+
+  // Lọc theo trạng thái vé (Tất cả / Đã Mua / Đã Check-in / Đã Check-out / Đã Hoàn Tiền)
+  const filteredCheckIns = useMemo(() => {
+    if (ticketStatusFilter === 'ALL') return uniqueCheckIns
+    return uniqueCheckIns.filter((item) => {
+      if (ticketStatusFilter === 'REFUNDED') return item.status === 'REFUNDED'
+      if (ticketStatusFilter === 'CHECKED_OUT') return item.status !== 'REFUNDED' && (item.status === 'CHECKED_OUT' || !!item.checkedOutAt)
+      if (ticketStatusFilter === 'CHECKED_IN') return item.status !== 'REFUNDED' && !item.checkedOutAt && (item.status === 'CHECKED_IN' || !!item.checkedInAt)
+      if (ticketStatusFilter === 'BOOKED') return item.status !== 'REFUNDED' && !item.checkedInAt && !item.checkedOutAt
+      return true
+    })
+  }, [uniqueCheckIns, ticketStatusFilter])
+
+  // Phân trang danh sách Check-In sau khi đã khử trùng lặp và lọc
+  const totalCheckInPages = Math.ceil(filteredCheckIns.length / checkInLimit) || 1
+  const paginatedCheckIns = filteredCheckIns.slice(
     (checkInPage - 1) * checkInLimit,
     checkInPage * checkInLimit
   )
@@ -1092,6 +1195,16 @@ export default function Reports() {
                       <p className="text-xs font-semibold text-slate-400 dark:text-slate-400 mt-1">
                         Chi tiết: {formatVndFull(financialOverview?.totalGrossRevenue || 0)}
                       </p>
+                      {totalRefundAmount > 0 && (
+                        <div className="mt-2 pt-2 border-t border-blue-500/20 flex items-center justify-between text-[11px] whitespace-nowrap">
+                          <span className="text-rose-500 font-semibold">
+                            Đã trừ hoàn tiền:
+                          </span>
+                          <span className="text-rose-600 dark:text-rose-400 font-black font-mono">
+                            -{formatVndFull(totalRefundAmount)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1303,16 +1416,23 @@ export default function Reports() {
                                 </div>
                               </div>
 
-                              {/* Ô Còn lại */}
-                              <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-xs">
-                                <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Còn Trống</span>
-                                <div className="mt-1 flex items-baseline gap-1">
-                                  <span className="text-xl font-black text-blue-600 dark:text-blue-400">
-                                    {cat.remainingSeats}
-                                  </span>
-                                  <span className="text-[11px] font-semibold text-slate-400">chỗ</span>
-                                </div>
-                              </div>
+                              {/* Ô Hoàn tiền */}
+                              {(() => {
+                                const refundedCount = uniqueCheckIns.filter(
+                                  (x) => x.status === 'REFUNDED' && (x.categoryTicketId === cat.categoryTicketId || x.categoryName === cat.categoryName)
+                                ).length
+                                return (
+                                  <div className="p-3 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 shadow-xs">
+                                    <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block uppercase tracking-wider">Hoàn Tiền</span>
+                                    <div className="mt-1 flex items-baseline gap-1">
+                                      <span className="text-xl font-black text-rose-600 dark:text-rose-400">
+                                        {refundedCount}
+                                      </span>
+                                      <span className="text-[11px] font-semibold text-rose-600/70">vé</span>
+                                    </div>
+                                  </div>
+                                )
+                              })()}
 
                               {/* Ô Check-in */}
                               <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 shadow-xs">
@@ -1371,7 +1491,7 @@ export default function Reports() {
 
                 {/* Danh sách Check-In thời gian thực (Hiển thị đầy đủ Giá vé, Check-in & Check-out) */}
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                     <div>
                       <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                         <Users className="w-4 h-4 text-orange-500" />
@@ -1381,28 +1501,73 @@ export default function Reports() {
                         Hiển thị chi tiết số tiền mua vé, vị trí ghế và lịch sử Check-In / Check-Out theo thời gian thực.
                       </p>
                     </div>
+
+                    {/* Bộ lọc trạng thái vé nhanh: Tất cả / Đã mua / Đã check-in / Đã check-out / Đã hoàn tiền */}
+                    <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 self-start md:self-auto">
+                      {(
+                        [
+                          { key: 'ALL', label: 'Tất cả', count: uniqueCheckIns.length },
+                          { key: 'BOOKED', label: 'Đã Mua', count: uniqueCheckIns.filter((x) => x.status !== 'REFUNDED' && !x.checkedInAt && !x.checkedOutAt).length },
+                          { key: 'CHECKED_IN', label: 'Check-in', count: uniqueCheckIns.filter((x) => x.status !== 'REFUNDED' && !x.checkedOutAt && (x.status === 'CHECKED_IN' || !!x.checkedInAt)).length },
+                          { key: 'CHECKED_OUT', label: 'Check-out', count: uniqueCheckIns.filter((x) => x.status !== 'REFUNDED' && (x.status === 'CHECKED_OUT' || !!x.checkedOutAt)).length },
+                          { key: 'REFUNDED', label: 'Đã Hoàn Tiền', count: uniqueCheckIns.filter((x) => x.status === 'REFUNDED').length },
+                        ] as const
+                      ).map((tab) => {
+                        const isActive = ticketStatusFilter === tab.key
+                        return (
+                          <button
+                            key={tab.key}
+                            type="button"
+                            onClick={() => {
+                              setTicketStatusFilter(tab.key)
+                              setCheckInPage(1)
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                              isActive
+                                ? tab.key === 'REFUNDED'
+                                  ? 'bg-rose-500 text-white shadow-xs'
+                                  : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                            }`}
+                          >
+                            <span>{tab.label}</span>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                                isActive
+                                  ? tab.key === 'REFUNDED'
+                                    ? 'bg-rose-600 text-white'
+                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100'
+                                  : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400'
+                              }`}
+                            >
+                              {tab.count}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
                     <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-                      <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                      <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
                         <tr>
-                          <th className="py-3.5 px-4">#</th>
+                          <th className="py-3.5 px-4 w-12">#</th>
                           <th className="py-3.5 px-4">Mã vé</th>
                           <th className="py-3.5 px-4">Người tham dự</th>
                           <th className="py-3.5 px-4">Hạng vé</th>
                           <th className="py-3.5 px-4 text-right">Giá Tiền Đã Mua</th>
                           <th className="py-3.5 px-4 text-center">Mã ghế</th>
-                          <th className="py-3.5 px-4 text-center">Trạng thái</th>
-                          <th className="py-3.5 px-4">Thời gian Check-in</th>
-                          <th className="py-3.5 px-4">Thời gian Check-out</th>
+                          <th className="py-3.5 px-4 text-center min-w-[120px]">Trạng thái</th>
+                          <th className="py-3.5 px-4 whitespace-nowrap">Thời gian Check-in</th>
+                          <th className="py-3.5 px-4 whitespace-nowrap">Thời gian Check-out</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {paginatedCheckIns.length === 0 ? (
                           <tr>
                             <td colSpan={9} className="py-12 text-center text-slate-400 font-medium">
-                              Chưa có lượt vé hoặc dữ liệu check-in nào cho sự kiện này.
+                              Chưa có lượt vé hoặc dữ liệu nào phù hợp với bộ lọc hiện tại.
                             </td>
                           </tr>
                         ) : (
@@ -1412,50 +1577,54 @@ export default function Reports() {
                             const isRefunded = item.status === 'REFUNDED'
                             return (
                               <tr key={item.ticketId || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition">
-                                <td className="py-3.5 px-4 text-slate-400 font-bold">
+                                <td className="py-3.5 px-4 text-slate-400 font-bold whitespace-nowrap">
                                   {(checkInPage - 1) * checkInLimit + idx + 1}
                                 </td>
-                                <td className="py-3.5 px-4 font-mono font-black text-orange-600 dark:text-orange-400">
+                                <td className="py-3.5 px-4 font-mono font-black text-orange-600 dark:text-orange-400 whitespace-nowrap">
                                   {item.ticketCode || '—'}
                                 </td>
                                 <td className="py-3.5 px-4">
-                                  <div className="font-bold text-slate-900 dark:text-white">{item.attendeeName || 'Khách tham dự'}</div>
+                                  <div className="font-bold text-slate-900 dark:text-white whitespace-nowrap">{item.attendeeName || 'Khách tham dự'}</div>
                                   <div className="text-[11px] text-slate-400">{item.attendeeEmail || '-'}</div>
                                 </td>
-                                <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-slate-200">
+                                <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
                                   {item.categoryName || '-'}
                                 </td>
-                                <td className="py-3.5 px-4 text-right font-black text-slate-900 dark:text-white">
-                                  {item.priceVnd !== undefined && item.priceVnd > 0 ? (
+                                <td className="py-3.5 px-4 text-right font-black text-slate-900 dark:text-white whitespace-nowrap">
+                                  {isRefunded ? (
+                                    <span className="text-rose-600 dark:text-rose-400 font-black">
+                                      -{formatVndFull(item.priceVnd || 0)}
+                                    </span>
+                                  ) : item.priceVnd !== undefined && item.priceVnd > 0 ? (
                                     <span className="text-emerald-600 dark:text-emerald-400">{formatVndFull(item.priceVnd)}</span>
                                   ) : (
                                     <span className="text-slate-400 font-normal">Miễn phí (0đ)</span>
                                   )}
                                 </td>
-                                <td className="py-3.5 px-4 text-center">
+                                <td className="py-3.5 px-4 text-center whitespace-nowrap">
                                   {item.seatCode ? (
                                     <span className="px-2.5 py-1 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 font-mono font-black border border-orange-500/20">
                                       {item.seatCode}
                                     </span>
                                   ) : (
-                                    <span className="text-slate-400">-</span>
+                                    <span className="text-slate-400 font-medium">Tự do</span>
                                   )}
                                 </td>
-                                <td className="py-3.5 px-4 text-center">
-                                  {isCheckedOut ? (
-                                    <span className="px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] border border-indigo-500/30">
+                                <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                  {isRefunded ? (
+                                    <span className="inline-block px-3 py-1 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 font-black text-[11px] border border-rose-500/30 whitespace-nowrap">
+                                      Đã Hoàn Tiền
+                                    </span>
+                                  ) : isCheckedOut ? (
+                                    <span className="inline-block px-3 py-1 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold text-[11px] border border-indigo-500/30 whitespace-nowrap">
                                       Đã Check-out
                                     </span>
                                   ) : isCheckedIn ? (
-                                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] border border-emerald-500/30">
+                                    <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] border border-emerald-500/30 whitespace-nowrap">
                                       Đã Check-in
                                     </span>
-                                  ) : isRefunded ? (
-                                    <span className="px-2.5 py-1 rounded-full bg-red-500/15 text-red-600 dark:text-red-400 font-bold text-[10px] border border-red-500/30">
-                                      Đã Hoàn Tiền
-                                    </span>
                                   ) : (
-                                    <span className="px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[10px] border border-blue-500/30">
+                                    <span className="inline-block px-3 py-1 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[11px] border border-blue-500/30 whitespace-nowrap">
                                       Đã Mua
                                     </span>
                                   )}
@@ -1573,6 +1742,187 @@ export default function Reports() {
                     </button>
                   </div>
                 )}
+
+                {/* 3 Cột Tiền Tài Chính Sự Kiện: Gross, Phí, Thực Nhận trong Báo Cáo Nâng Cao */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Cột 1: Doanh thu thanh toán (Gross) */}
+                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border border-blue-500/30 p-5 shadow-lg shadow-blue-500/5">
+                    <div className="flex items-center justify-between text-blue-600 dark:text-blue-400">
+                      <span className="text-xs font-bold uppercase tracking-wider">Doanh thu thanh toán (Gross)</span>
+                      <div className="p-2.5 rounded-2xl bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                        <DollarSign size={20} />
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                        {formatVndShort(advancedData?.totalGrossRevenue ?? financialOverview?.totalGrossRevenue ?? 0)}
+                      </div>
+                      <p className="text-xs font-semibold text-slate-400 dark:text-slate-400 mt-1">
+                        Chi tiết: {formatVndFull(advancedData?.totalGrossRevenue ?? financialOverview?.totalGrossRevenue ?? 0)}
+                      </p>
+                      {totalRefundAmount > 0 && (
+                        <div className="mt-2 pt-2 border-t border-blue-500/20 flex items-center justify-between text-[11px] whitespace-nowrap">
+                          <span className="text-rose-500 font-semibold">
+                            Đã trừ hoàn tiền:
+                          </span>
+                          <span className="text-rose-600 dark:text-rose-400 font-black font-mono">
+                            -{formatVndFull(totalRefundAmount)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Cột 2: Phí nền tảng */}
+                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/15 via-orange-500/5 to-transparent border border-amber-500/30 p-5 shadow-lg shadow-amber-500/5">
+                    <div className="flex items-center justify-between text-amber-600 dark:text-amber-400">
+                      <span className="text-xs font-bold uppercase tracking-wider">Phí Nền Tảng (Hoa hồng + Cố định)</span>
+                      <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                        <TrendingUp size={20} />
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
+                        {formatVndShort(advancedData?.totalPlatformFee ?? financialOverview?.totalPlatformFee ?? 0)}
+                      </div>
+                      <p className="text-xs font-semibold text-slate-400 dark:text-slate-400 mt-1">
+                        {formatVndFull(advancedData?.totalPlatformFee ?? financialOverview?.totalPlatformFee ?? 0)} (đã gồm phí cố định)
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Cột 3: Thực nhận (Net Profit) - ĐIỂM NHẤN QUAN TRỌNG NHẤT */}
+                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-transparent border-2 border-emerald-500/40 p-5 shadow-xl shadow-emerald-500/10">
+                    <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                      <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                        <Wallet size={16} /> Doanh Thu Thực Nhận (Net)
+                      </span>
+                      <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black text-xs">
+                        NET
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                        {formatVndShort(advancedData?.totalNetProfit ?? financialOverview?.totalNetProfit ?? 0)}
+                      </div>
+                      <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mt-1">
+                        Thực nhận: {formatVndFull(advancedData?.totalNetProfit ?? financialOverview?.totalNetProfit ?? 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5 Chỉ Số Tổng Quan Hoạt Động (Vé, Hoàn, Sức chứa, Check-in, Check-out) */}
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                  {/* KPI 1: Vé đã bán */}
+                  <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
+                        Vé Đã Bán
+                      </span>
+                      <div className="p-2 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-slate-200 transition-colors">
+                        <Ticket size={16} />
+                      </div>
+                    </div>
+                    <div className="my-2">
+                      <div className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+                        {advancedData?.totalTicketsSold ?? financialOverview?.totalTicketsSold ?? 0}
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">Loại vé:</span>
+                      <span className="font-semibold text-slate-600 dark:text-slate-300">Có phí & Miễn phí</span>
+                    </div>
+                  </div>
+
+                  {/* KPI 2: Vé hoàn trả */}
+                  <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-rose-100 dark:border-rose-950/40 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold tracking-wider text-rose-500 dark:text-rose-400 uppercase">
+                        Vé Hoàn Trả
+                      </span>
+                      <div className="p-2 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400">
+                        <RefreshCw size={16} />
+                      </div>
+                    </div>
+                    <div className="my-2">
+                      <div className="text-3xl sm:text-4xl font-black tracking-tight text-rose-600 dark:text-rose-400">
+                        {financialOverview?.totalTicketsRefunded ?? 0}
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">Trạng thái:</span>
+                      <span className="font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md">REFUNDED</span>
+                    </div>
+                  </div>
+
+                  {/* KPI 3: Tổng sức chứa */}
+                  <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-blue-100 dark:border-blue-950/40 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold tracking-wider text-blue-600 dark:text-blue-400 uppercase">
+                        Tổng Sức Chứa
+                      </span>
+                      <div className="p-2 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+                        <Armchair size={16} />
+                      </div>
+                    </div>
+                    <div className="my-2">
+                      <div className="text-3xl sm:text-4xl font-black tracking-tight text-blue-600 dark:text-blue-400">
+                        {advancedData?.totalCapacity || seatStatus?.totalCapacity || 0}
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">Còn trống:</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        {seatStatus?.totalRemaining ?? Math.max(0, (advancedData?.totalCapacity || 0) - (advancedData?.totalTicketsSold || 0))} <span className="font-normal text-slate-400">chỗ</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* KPI 4: Đã Check-In */}
+                  <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-950/40 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1">
+                        Đã Check-In
+                      </span>
+                      <div className="p-2 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+                        <LogIn size={16} />
+                      </div>
+                    </div>
+                    <div className="my-2">
+                      <div className="text-3xl sm:text-4xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
+                        {advancedData?.checkedInTickets ?? seatStatus?.totalCheckedIn ?? 0}
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">Theo dõi:</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Thời gian thực
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* KPI 5: Đã Check-Out */}
+                  <div className="col-span-2 lg:col-span-1 relative overflow-hidden bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-950/40 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold tracking-wider text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1">
+                        Đã Check-Out
+                      </span>
+                      <div className="p-2 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+                        <LogOut size={16} />
+                      </div>
+                    </div>
+                    <div className="my-2">
+                      <div className="text-3xl sm:text-4xl font-black tracking-tight text-indigo-600 dark:text-indigo-400">
+                        {seatStatus?.totalCheckedOut ?? (advancedData?.hourlyCheckOuts?.reduce((acc, curr) => acc + curr.count, 0) || 0)}
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">Tiến trình:</span>
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400">Đã rời sự kiện</span>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Top Action Bar: CSV Export */}
                 <div className="flex items-center justify-between">
@@ -2096,31 +2446,11 @@ export default function Reports() {
                               ))}
                             </select>
                           </div>
-
-                          <div className="flex items-center gap-3 text-xs font-bold">
-                            <span className="text-slate-400">
-                              Lượt vào:{' '}
-                              <strong className="text-violet-600 dark:text-violet-400 font-black">
-                                {seatStatus?.totalCheckedIn || 0}
-                              </strong>
-                            </span>
-                            <span className="text-slate-400">
-                              Lượt ra:{' '}
-                              <strong className="text-emerald-600 dark:text-emerald-400 font-black">
-                                {seatStatus?.totalCheckedOut || 0}
-                              </strong>
-                            </span>
-                          </div>
                         </div>
                       </div>
 
-                      {/* Hourly Calculation based on Filter */}
-                      {(() => {
-                        let baseIn = advancedData?.hourlyCheckIns || []
-                        let baseOut = advancedData?.hourlyCheckOuts || []
-
-                        // Nếu lọc theo ngày cụ thể từ danh sách checkIns
-                        if (hourlyDateFilter !== 'ALL') {
+                        {/* Tính toán dữ liệu check-in / check-out từ danh sách thực tế của sự kiện */}
+                        {(() => {
                           const countInByHour: Record<number, number> = {}
                           const countOutByHour: Record<number, number> = {}
                           for (let h = 0; h < 24; h++) {
@@ -2128,59 +2458,87 @@ export default function Reports() {
                             countOutByHour[h] = 0
                           }
 
-                          checkIns.forEach((c) => {
-                            const pad = (n: number) => String(n).padStart(2, '0')
-                            if (c.checkedInAt) {
-                              const dIn = new Date(c.checkedInAt)
-                              const inDateStr = `${dIn.getFullYear()}-${pad(dIn.getMonth() + 1)}-${pad(dIn.getDate())}`
-                              if (inDateStr === hourlyDateFilter) {
-                                countInByHour[dIn.getHours()] = (countInByHour[dIn.getHours()] || 0) + 1
+                          let totalInCount = 0
+                          let totalOutCount = 0
+
+                          // Nếu có danh sách checkIns từ bảng vé
+                          if (checkIns.length > 0) {
+                            checkIns.forEach((c) => {
+                              const pad = (n: number) => String(n).padStart(2, '0')
+                              // Nếu vé đã check-in nhưng checkin_time bị rỗng (do dữ liệu cũ/test), dùng createdAt
+                              const effectiveInTime = c.checkedInAt || (c.status === 'CHECKED_IN' || c.status === 'CHECKED_OUT' ? c.createdAt : undefined)
+                              if (effectiveInTime) {
+                                const dIn = new Date(effectiveInTime)
+                                if (!isNaN(dIn.getTime())) {
+                                  const inDateStr = `${dIn.getFullYear()}-${pad(dIn.getMonth() + 1)}-${pad(dIn.getDate())}`
+                                  if (hourlyDateFilter === 'ALL' || inDateStr === hourlyDateFilter) {
+                                    countInByHour[dIn.getHours()] = (countInByHour[dIn.getHours()] || 0) + 1
+                                    totalInCount++
+                                  }
+                                }
                               }
-                            }
-                            if (c.checkedOutAt) {
-                              const dOut = new Date(c.checkedOutAt)
-                              const outDateStr = `${dOut.getFullYear()}-${pad(dOut.getMonth() + 1)}-${pad(dOut.getDate())}`
-                              if (outDateStr === hourlyDateFilter) {
-                                countOutByHour[dOut.getHours()] = (countOutByHour[dOut.getHours()] || 0) + 1
+                              if (c.checkedOutAt) {
+                                const dOut = new Date(c.checkedOutAt)
+                                if (!isNaN(dOut.getTime())) {
+                                  const outDateStr = `${dOut.getFullYear()}-${pad(dOut.getMonth() + 1)}-${pad(dOut.getDate())}`
+                                  if (hourlyDateFilter === 'ALL' || outDateStr === hourlyDateFilter) {
+                                    countOutByHour[dOut.getHours()] = (countOutByHour[dOut.getHours()] || 0) + 1
+                                    totalOutCount++
+                                  }
+                                }
                               }
-                            }
+                            })
+                          } else {
+                            // Fallback nếu không có checkIns (dùng aggregation từ advancedData)
+                            ;(advancedData?.hourlyCheckIns || []).forEach((item) => {
+                              countInByHour[item.hour] = item.count
+                              totalInCount += item.count
+                            })
+                            ;(advancedData?.hourlyCheckOuts || []).forEach((item) => {
+                              countOutByHour[item.hour] = item.count
+                              totalOutCount += item.count
+                            })
+                          }
+
+                          // Ghép 24 giờ
+                          const combinedHours = Array.from({ length: 24 }, (_, h) => ({
+                            hour: h,
+                            checkInCount: countInByHour[h] || 0,
+                            checkOutCount: countOutByHour[h] || 0,
+                          }))
+
+                          // Lọc theo khung giờ / buổi
+                          const filteredHourly = combinedHours.filter((item) => {
+                            if (hourlyRangeFilter === 'ALL') return true
+                            if (hourlyRangeFilter === 'MORNING') return item.hour >= 6 && item.hour < 12
+                            if (hourlyRangeFilter === 'AFTERNOON') return item.hour >= 12 && item.hour < 18
+                            if (hourlyRangeFilter === 'EVENING') return item.hour >= 18 && item.hour <= 23
+                            if (hourlyRangeFilter === 'NIGHT') return item.hour >= 0 && item.hour < 6
+                            return true
                           })
 
-                          baseIn = Object.keys(countInByHour).map((h) => ({
-                            hour: Number(h),
-                            count: countInByHour[Number(h)],
-                          }))
-                          baseOut = Object.keys(countOutByHour).map((h) => ({
-                            hour: Number(h),
-                            count: countOutByHour[Number(h)],
-                          }))
-                        }
+                          const inViewIn = filteredHourly.reduce((acc, curr) => acc + curr.checkInCount, 0)
+                          const inViewOut = filteredHourly.reduce((acc, curr) => acc + curr.checkOutCount, 0)
+                          const totalInView = inViewIn + inViewOut
 
-                        // Ghép dữ liệu cho từng giờ
-                        const combinedHours = Array.from({ length: 24 }, (_, h) => {
-                          const inItem = baseIn.find((x) => x.hour === h)
-                          const outItem = baseOut.find((x) => x.hour === h)
-                          return {
-                            hour: h,
-                            checkInCount: inItem ? inItem.count : 0,
-                            checkOutCount: outItem ? outItem.count : 0,
-                          }
-                        })
+                          return (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-end gap-3 text-xs font-bold -mt-2 mb-1">
+                                <span className="text-slate-400">
+                                  Lượt vào:{' '}
+                                  <strong className="text-violet-600 dark:text-violet-400 font-black">
+                                    {hourlyRangeFilter === 'ALL' ? totalInCount : inViewIn}
+                                  </strong>
+                                </span>
+                                <span className="text-slate-400">
+                                  Lượt ra:{' '}
+                                  <strong className="text-emerald-600 dark:text-emerald-400 font-black">
+                                    {hourlyRangeFilter === 'ALL' ? totalOutCount : inViewOut}
+                                  </strong>
+                                </span>
+                              </div>
 
-                        // Lọc theo khung giờ / buổi
-                        const filteredHourly = combinedHours.filter((item) => {
-                          if (hourlyRangeFilter === 'ALL') return true
-                          if (hourlyRangeFilter === 'MORNING') return item.hour >= 6 && item.hour < 12
-                          if (hourlyRangeFilter === 'AFTERNOON') return item.hour >= 12 && item.hour < 18
-                          if (hourlyRangeFilter === 'EVENING') return item.hour >= 18 && item.hour <= 23
-                          if (hourlyRangeFilter === 'NIGHT') return item.hour >= 0 && item.hour < 6
-                          return true
-                        })
-
-                        const totalInView = filteredHourly.reduce((acc, curr) => acc + curr.checkInCount + curr.checkOutCount, 0)
-
-                        return (
-                          <div className="h-64 w-full my-2">
+                              <div className="h-64 w-full my-2">
                             {totalInView === 0 && (seatStatus?.totalCheckedIn || 0) === 0 && (seatStatus?.totalCheckedOut || 0) === 0 ? (
                               <div className="h-full flex items-center justify-center text-xs text-slate-400 font-medium">
                                 Chưa có lượt khách nào thực hiện check-in hoặc check-out trong khung giờ này.
@@ -2226,9 +2584,10 @@ export default function Reports() {
                               </ResponsiveContainer>
                             )}
                           </div>
-                        )
-                      })()}
-                    </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
 
                     {/* Cột 3: Biểu Đồ Tròn Tỷ Lệ Check-In vs Check-Out */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
@@ -2317,9 +2676,242 @@ export default function Reports() {
                       </div>
                     </div>
                   </div>
-                </div>
-              </>
-            )}
+
+                  {/* Nhật Ký & Phân Tích Chuyên Sâu Đơn Hoàn Tiền (Audit Trail & Risk Analytics - Gói PRO) */}
+                  <div className="lg:col-span-2 space-y-6 pt-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400">
+                                <ShieldAlert className="w-5 h-5" />
+                              </span>
+                              <div>
+                                <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                  <span>Nhật Ký & Phân Tích Đơn Hoàn Trả</span>
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">
+                                    PRO FEATURE
+                                  </span>
+                                </h3>
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                  Theo dõi trực quan ai đã gửi đơn hoàn tiền, lý do là gì, người phê duyệt và thời gian giải quyết đối soát.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-1.5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
+                            <span>Tổng đơn ghi nhận:</span>
+                            <span className="text-sm font-black text-rose-600 dark:text-rose-400">
+                              {(advancedData?.refundAuditList || []).length}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Top: 2 Biểu Đồ Thống Kê Phân Tích Lý Do & Tỷ Lệ Giải Quyết */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          {/* Biểu đồ tròn phân loại lý do hoàn tiền */}
+                          <div className="md:col-span-1 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                            <div>
+                              <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                <PieChartIcon className="w-3.5 h-3.5 text-rose-500" />
+                                <span>Tỷ Lệ Lý Do Hoàn Trả</span>
+                              </h4>
+                              <p className="text-[10px] text-slate-400 mt-0.5">Phân loại nguyên nhân người mua hủy vé</p>
+                            </div>
+
+                            {(() => {
+                              const reasons = advancedData?.refundReasons || []
+                              const hasReasons = reasons.length > 0 && reasons.some((r) => r.count > 0)
+
+                              if (!hasReasons) {
+                                return (
+                                  <div className="h-44 flex items-center justify-center text-xs text-slate-400 text-center">
+                                    Chưa phát sinh đơn hoàn tiền cho sự kiện này.
+                                  </div>
+                                )
+                              }
+
+                              const chartData = reasons.map((r, idx) => ({
+                                name: r.reason,
+                                value: r.count,
+                                fill: DONUT_COLORS[idx % DONUT_COLORS.length],
+                              }))
+
+                              return (
+                                <div className="h-44 w-full my-1">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                      <Pie
+                                        data={chartData}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={36}
+                                        outerRadius={58}
+                                        paddingAngle={3}
+                                      >
+                                        {chartData.map((entry, index) => (
+                                          <Cell key={`cell-reason-${index}`} fill={entry.fill} />
+                                        ))}
+                                      </Pie>
+                                      <Tooltip
+                                        contentStyle={{
+                                          backgroundColor: '#0f172a',
+                                          borderColor: '#334155',
+                                          borderRadius: '0.75rem',
+                                          color: '#f8fafc',
+                                          fontSize: '11px',
+                                        }}
+                                        formatter={(val: any) => [`${val} đơn`, 'Số lượng']}
+                                      />
+                                    </PieChart>
+                                  </ResponsiveContainer>
+                                </div>
+                              )
+                            })()}
+
+                            <div className="space-y-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                              {(advancedData?.refundReasons || []).slice(0, 4).map((r, i) => (
+                                <div key={r.reason} className="flex items-center justify-between text-[11px]">
+                                  <div className="flex items-center gap-1.5 truncate pr-2">
+                                    <span
+                                      className="w-2 h-2 rounded-full shrink-0"
+                                      style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                                    />
+                                    <span className="text-slate-600 dark:text-slate-300 truncate">{r.reason}</span>
+                                  </div>
+                                  <span className="font-bold text-slate-800 dark:text-slate-200">{r.count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Bảng Chi Tiết Audit Trail Các Đơn Hoàn Trả */}
+                          <div className="md:col-span-2 overflow-x-auto">
+                            {(advancedData?.refundAuditList || []).length === 0 ? (
+                              <div className="h-full min-h-[220px] flex flex-col items-center justify-center p-8 text-center rounded-2xl bg-slate-50/50 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-800">
+                                <FileText className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-2" />
+                                <p className="text-xs font-bold text-slate-500">Không có đơn hoàn trả nào</p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">
+                                  Tất cả vé tham dự đều được thanh toán và giữ chỗ ổn định.
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                                <table className="w-full text-left text-xs border-collapse">
+                                  <thead>
+                                    <tr className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+                                      <th className="py-3 px-3.5 font-bold">Người làm đơn</th>
+                                      <th className="py-3 px-3.5 font-bold">Hạng vé / Mã vé</th>
+                                      <th className="py-3 px-3.5 font-bold">Lý do hoàn trả</th>
+                                      <th className="py-3 px-3.5 font-bold">Tiền hoàn</th>
+                                      <th className="py-3 px-3.5 font-bold">Người duyệt</th>
+                                      <th className="py-3 px-3.5 font-bold text-center">Trạng thái</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                                    {(advancedData?.refundAuditList || []).map((audit) => {
+                                      const isApproved = audit.status === 'APPROVED'
+                                      const isRejected = audit.status === 'REJECTED'
+                                      const pTime = audit.processedAt
+                                        ? new Date(audit.processedAt).toLocaleString('vi-VN', {
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                          })
+                                        : '—'
+
+                                      return (
+                                        <tr
+                                          key={audit.reportId}
+                                          className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                                        >
+                                          {/* Người làm đơn */}
+                                          <td className="py-3 px-3.5">
+                                            <div className="font-bold text-slate-900 dark:text-white truncate max-w-[140px]">
+                                              {audit.requesterName || 'Người mua'}
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
+                                              {audit.requesterEmail || `ID #${audit.reportId}`}
+                                            </div>
+                                          </td>
+
+                                          {/* Hạng vé / Mã vé */}
+                                          <td className="py-3 px-3.5">
+                                            <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate max-w-[120px]">
+                                              {audit.categoryName}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 font-mono">
+                                              {audit.ticketCode || `#${audit.ticketId}`}
+                                            </span>
+                                          </td>
+
+                                          {/* Lý do hoàn */}
+                                          <td className="py-3 px-3.5">
+                                            <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                                              {audit.reasonTitle || 'Hoàn vé'}
+                                            </div>
+                                            {audit.reasonDetail && (
+                                              <p className="text-[10px] text-slate-400 truncate max-w-[180px] line-clamp-1">
+                                                {audit.reasonDetail}
+                                              </p>
+                                            )}
+                                          </td>
+
+                                          {/* Tiền hoàn */}
+                                          <td className="py-3 px-3.5">
+                                            <span className="font-bold text-rose-600 dark:text-rose-400">
+                                              -{audit.refundFormatted || `${audit.refundAmount.toLocaleString('vi-VN')}đ`}
+                                            </span>
+                                          </td>
+
+                                          {/* Người duyệt & Ngày duyệt */}
+                                          <td className="py-3 px-3.5">
+                                            <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[130px]">
+                                              {audit.processedByName || (isApproved ? 'Hệ thống / Staff' : 'Chưa xử lý')}
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 whitespace-nowrap">
+                                              {pTime}
+                                            </div>
+                                          </td>
+
+                                          {/* Trạng thái */}
+                                          <td className="py-3 px-3.5 text-center">
+                                            {isApproved ? (
+                                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                                <CheckCircle2 className="w-3 h-3" />
+                                                <span>Đã duyệt</span>
+                                              </span>
+                                            ) : isRejected ? (
+                                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
+                                                <XCircle className="w-3 h-3" />
+                                                <span>Từ chối</span>
+                                              </span>
+                                            ) : (
+                                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                                <Clock className="w-3 h-3" />
+                                                <span>Chờ duyệt</span>
+                                              </span>
+                                            )}
+                                          </td>
+                                        </tr>
+                                      )
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
           </div>
         )}
       </div>

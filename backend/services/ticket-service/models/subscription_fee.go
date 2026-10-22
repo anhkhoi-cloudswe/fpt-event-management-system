@@ -413,6 +413,30 @@ type DailySalesPoint struct {
 	NetFormatted   string `json:"netFormatted"`
 }
 
+// RefundAuditItem - Nhật ký chi tiết đơn hoàn tiền cho gói PRO (Audit Trail)
+type RefundAuditItem struct {
+	ReportID       int        `json:"reportId"`
+	TicketID       int        `json:"ticketId"`
+	TicketCode     string     `json:"ticketCode"`
+	CategoryName   string     `json:"categoryName"`
+	RefundAmount   int64      `json:"refundAmount"`
+	RefundFormatted string    `json:"refundFormatted"`
+	RequesterName  string     `json:"requesterName"`
+	RequesterEmail string     `json:"requesterEmail"`
+	ReasonTitle    string     `json:"reasonTitle"`
+	ReasonDetail   string     `json:"reasonDetail"`
+	Status         string     `json:"status"`
+	ProcessedByName string    `json:"processedByName,omitempty"`
+	ProcessedAt    *time.Time `json:"processedAt,omitempty"`
+	CreatedAt      time.Time  `json:"createdAt"`
+}
+
+// RefundReasonCount - Phân loại lý do hoàn tiền cho biểu đồ gói PRO
+type RefundReasonCount struct {
+	Reason string `json:"reason"`
+	Count  int    `json:"count"`
+}
+
 // EventAdvancedAnalyticsResponse - Báo cáo nâng cao đa chiều dành riêng cho gói Pro / Business / School Organizer / Admin (Pha 6)
 type EventAdvancedAnalyticsResponse struct {
 	EventID                   int                      `json:"eventId"`
@@ -433,6 +457,8 @@ type EventAdvancedAnalyticsResponse struct {
 	CategoryBreakdown         []CategorySalesBreakdown `json:"categoryBreakdown"`
 	HourlyCheckIns            []HourlyCheckInPoint     `json:"hourlyCheckIns"`
 	HourlyCheckOuts           []HourlyCheckInPoint     `json:"hourlyCheckOuts"`
+	RefundAuditList           []RefundAuditItem        `json:"refundAuditList"`
+	RefundReasons             []RefundReasonCount      `json:"refundReasons"`
 	HasAdvancedReports        bool                     `json:"hasAdvancedReports"`
 }
 

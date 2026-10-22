@@ -91,6 +91,28 @@ export interface DailySalesPoint {
   netFormatted: string
 }
 
+export interface RefundAuditItem {
+  reportId: number
+  ticketId: number
+  ticketCode: string
+  categoryName: string
+  refundAmount: number
+  refundFormatted: string
+  requesterName: string
+  requesterEmail: string
+  reasonTitle: string
+  reasonDetail: string
+  status: string
+  processedByName?: string
+  processedAt?: string
+  createdAt: string
+}
+
+export interface RefundReasonCount {
+  reason: string
+  count: number
+}
+
 export interface EventAdvancedAnalyticsResponse {
   eventId: number
   title: string
@@ -110,6 +132,8 @@ export interface EventAdvancedAnalyticsResponse {
   categoryBreakdown: CategorySalesBreakdown[]
   hourlyCheckIns: HourlyCheckInPoint[]
   hourlyCheckOuts?: HourlyCheckInPoint[]
+  refundAuditList?: RefundAuditItem[]
+  refundReasons?: RefundReasonCount[]
   hasAdvancedReports: boolean
 }
 

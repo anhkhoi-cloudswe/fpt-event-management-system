@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/fpt-event-services/common/policy"
@@ -560,6 +561,80 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 		fillRate = math.Round((float64(ticketsSold)/float64(totalCapacity))*10000) / 100
 	}
 
+	// 12. Lấy danh sách Đơn Hoàn Tiền (Audit Trail) & Thống kê lý do hoàn tiền (Gói PRO)
+	refundAuditList := make([]models.RefundAuditItem, 0)
+	refundReasons := make([]models.RefundReasonCount, 0)
+
+	auditQuery := `
+		SELECT 
+			r.report_id,
+			r.ticket_id,
+			COALESCE(t.qr_code_value, '') AS ticket_code,
+			COALESCE(ct.name, '') AS category_name,
+			COALESCE(r.refund_amount, ct.price, 0)::BIGINT AS refund_amount,
+			COALESCE(u.full_name, '') AS requester_name,
+			COALESCE(u.email, '') AS requester_email,
+			COALESCE(r.title, '') AS reason_title,
+			COALESCE(r.description, '') AS reason_detail,
+			COALESCE(r.status::text, 'PENDING') AS status,
+			COALESCE(u2.full_name, '') AS processed_by_name,
+			r.processed_at,
+			r.created_at
+		FROM report r
+		JOIN ticket t ON t.ticket_id = r.ticket_id
+		LEFT JOIN category_ticket ct ON ct.category_ticket_id = t.category_ticket_id
+		LEFT JOIN users u ON u.user_id = r.user_id
+		LEFT JOIN users u2 ON u2.user_id = r.processed_by
+		WHERE t.event_id = $1
+		ORDER BY r.created_at DESC
+	`
+	aRows, aErr := r.db.QueryContext(ctx, auditQuery, eventID)
+	if aErr == nil {
+		defer aRows.Close()
+		reasonMap := make(map[string]int)
+		for aRows.Next() {
+			var it models.RefundAuditItem
+			var rawCode string
+			var processedAt sql.NullTime
+			if err := aRows.Scan(
+				&it.ReportID,
+				&it.TicketID,
+				&rawCode,
+				&it.CategoryName,
+				&it.RefundAmount,
+				&it.RequesterName,
+				&it.RequesterEmail,
+				&it.ReasonTitle,
+				&it.ReasonDetail,
+				&it.Status,
+				&it.ProcessedByName,
+				&processedAt,
+				&it.CreatedAt,
+			); err == nil {
+				it.TicketCode = models.MaskTicketCode(rawCode)
+				it.RefundFormatted = models.FormatCurrencyVND(it.RefundAmount)
+				if processedAt.Valid {
+					it.ProcessedAt = &processedAt.Time
+				}
+				refundAuditList = append(refundAuditList, it)
+
+				// Phân loại lý do
+				normReason := strings.TrimSpace(it.ReasonTitle)
+				if normReason == "" {
+					normReason = "Khác"
+				}
+				reasonMap[normReason]++
+			}
+		}
+
+		for rName, rCnt := range reasonMap {
+			refundReasons = append(refundReasons, models.RefundReasonCount{
+				Reason: rName,
+				Count:  rCnt,
+			})
+		}
+	}
+
 	return &models.EventAdvancedAnalyticsResponse{
 		EventID:                   eventID,
 		Title:                     title,
@@ -579,6 +654,8 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 		CategoryBreakdown:         categories,
 		HourlyCheckIns:            hourlyCheckIns,
 		HourlyCheckOuts:           hourlyCheckOuts,
+		RefundAuditList:           refundAuditList,
+		RefundReasons:             refundReasons,
 		HasAdvancedReports:        true,
 	}, nil
 }
