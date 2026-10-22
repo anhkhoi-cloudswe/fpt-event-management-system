@@ -123,10 +123,18 @@ function formatEventSchedule(startStr?: string, endStr?: string): string {
     return `${sTime} (${sDate})`
   }
 
-  const eDate = `${pad(e.getDate())}/${pad(e.getMonth() + 1)}/${e.getFullYear()}`
-  const eTime = `${pad(e.getHours())}:${pad(e.getMinutes())}`
-
   return `${sTime} (${sDate}) - ${eTime} (${eDate})`
+}
+
+// Helper định dạng ngày giờ chuẩn: HH:MM (DD/MM/YYYY)
+function formatDateTime(dateStr?: string | null): string {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return '-'
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const dateFormatted = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
+  const timeFormatted = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${timeFormatted} (${dateFormatted})`
 }
 
 export default function Reports() {
@@ -712,9 +720,63 @@ export default function Reports() {
     }
   }
 
-  // Phân trang danh sách Check-In
-  const totalCheckInPages = Math.ceil(checkIns.length / checkInLimit) || 1
-  const paginatedCheckIns = checkIns.slice(
+  // Khử trùng lặp vé (Deduplicate) và lấy trạng thái mới nhất cho mỗi vé
+  // Thứ tự ưu tiên trạng thái: Đã Check-out (cao nhất) > Đã Check-in > Đã Hoàn Vé > Đã Mua
+  const uniqueCheckIns = useMemo(() => {
+    const map = new Map<string, EventCheckInItem>()
+
+    // Hàm chấm điểm độ ưu tiên của trạng thái
+    const getStatusScore = (item: EventCheckInItem) => {
+      if (item.status === 'CHECKED_OUT' || !!item.checkedOutAt) return 4
+      if (item.status === 'CHECKED_IN' || !!item.checkedInAt) return 3
+      if (item.status === 'REFUNDED') return 2
+      return 1 // BOOKED, PAID, etc.
+    }
+
+    checkIns.forEach((item) => {
+      // Khóa phân biệt: nếu có seatCode (ghế cố định) thì gom theo mã ghế + category + attendee, hoặc theo ticketId / ticketCode
+      const key = item.seatCode
+        ? `${item.seatCode}-${item.categoryName || ''}-${item.attendeeEmail || item.attendeeName || ''}`
+        : item.ticketId
+        ? String(item.ticketId)
+        : item.ticketCode || `${item.attendeeEmail}-${item.categoryName}`
+
+      if (!map.has(key)) {
+        map.set(key, { ...item })
+      } else {
+        const existing = map.get(key)!
+        const currentScore = getStatusScore(item)
+        const existingScore = getStatusScore(existing)
+
+        // Nếu bản ghi hiện tại có mức độ tiến triển cao hơn hoặc cập nhật mới hơn
+        if (currentScore > existingScore) {
+          map.set(key, {
+            ...existing,
+            ...item,
+            // Giữ lại checkedInAt nếu bản ghi sau thiếu nhưng bản ghi trước có
+            checkedInAt: item.checkedInAt || existing.checkedInAt,
+            checkedOutAt: item.checkedOutAt || existing.checkedOutAt,
+            seatCode: item.seatCode || existing.seatCode,
+            ticketCode: item.ticketCode || existing.ticketCode,
+          })
+        } else {
+          // Bổ sung các mốc thời gian nếu bản ghi hiện có đang bị thiếu
+          if (!existing.checkedInAt && item.checkedInAt) {
+            existing.checkedInAt = item.checkedInAt
+          }
+          if (!existing.checkedOutAt && item.checkedOutAt) {
+            existing.checkedOutAt = item.checkedOutAt
+          }
+        }
+      }
+    })
+
+    return Array.from(map.values())
+  }, [checkIns])
+
+  // Phân trang danh sách Check-In sau khi đã khử trùng lặp
+  const totalCheckInPages = Math.ceil(uniqueCheckIns.length / checkInLimit) || 1
+  const paginatedCheckIns = uniqueCheckIns.slice(
     (checkInPage - 1) * checkInLimit,
     checkInPage * checkInLimit
   )
@@ -1310,7 +1372,7 @@ export default function Reports() {
                     <div>
                       <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                         <Users className="w-4 h-4 text-orange-500" />
-                        <span>Danh Sách Người Mua Vé & Check-In ({checkIns.length} vé)</span>
+                        <span>Danh Sách Người Mua Vé & Check-In ({uniqueCheckIns.length} vé)</span>
                       </h3>
                       <p className="text-[11px] text-slate-400 mt-0.5">
                         Hiển thị chi tiết số tiền mua vé, vị trí ghế và lịch sử Check-In / Check-Out theo thời gian thực.
@@ -1342,10 +1404,11 @@ export default function Reports() {
                           </tr>
                         ) : (
                           paginatedCheckIns.map((item, idx) => {
-                            const isCheckedIn = item.status === 'CHECKED_IN' || !!item.checkedInAt
+                            const isCheckedOut = item.status === 'CHECKED_OUT' || !!item.checkedOutAt
+                            const isCheckedIn = !isCheckedOut && (item.status === 'CHECKED_IN' || !!item.checkedInAt)
                             const isRefunded = item.status === 'REFUNDED'
                             return (
-                              <tr key={item.ticketId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition">
+                              <tr key={item.ticketId || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition">
                                 <td className="py-3.5 px-4 text-slate-400 font-bold">
                                   {(checkInPage - 1) * checkInLimit + idx + 1}
                                 </td>
@@ -1376,13 +1439,17 @@ export default function Reports() {
                                   )}
                                 </td>
                                 <td className="py-3.5 px-4 text-center">
-                                  {isCheckedIn ? (
+                                  {isCheckedOut ? (
+                                    <span className="px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] border border-indigo-500/30">
+                                      Đã Check-out
+                                    </span>
+                                  ) : isCheckedIn ? (
                                     <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] border border-emerald-500/30">
                                       Đã Check-in
                                     </span>
                                   ) : isRefunded ? (
                                     <span className="px-2.5 py-1 rounded-full bg-red-500/15 text-red-600 dark:text-red-400 font-bold text-[10px] border border-red-500/30">
-                                      Đã Hoàn Vé
+                                      Đã Hoàn Tiền
                                     </span>
                                   ) : (
                                     <span className="px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[10px] border border-blue-500/30">
@@ -1392,8 +1459,8 @@ export default function Reports() {
                                 </td>
                                 <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-medium">
                                   {item.checkedInAt ? (
-                                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                                      {new Date(item.checkedInAt).toLocaleString('vi-VN')}
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono text-[11px]">
+                                      {formatDateTime(item.checkedInAt)}
                                     </span>
                                   ) : (
                                     <span className="text-slate-400">-</span>
@@ -1401,8 +1468,8 @@ export default function Reports() {
                                 </td>
                                 <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-medium">
                                   {item.checkedOutAt ? (
-                                    <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
-                                      {new Date(item.checkedOutAt).toLocaleString('vi-VN')}
+                                    <span className="text-indigo-600 dark:text-indigo-400 font-semibold font-mono text-[11px]">
+                                      {formatDateTime(item.checkedOutAt)}
                                     </span>
                                   ) : (
                                     <span className="text-slate-400">-</span>
