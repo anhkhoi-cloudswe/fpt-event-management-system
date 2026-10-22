@@ -465,6 +465,36 @@ func (h *TicketInternalHandler) HandleRefundTicket(ctx context.Context, request 
 		})
 	}
 
+	// Ghi nhận Biên lai đảo (Reversal Receipt) vào financial_receipt theo nguyên tắc Dual-Entry Ledger
+	reversalInsertQuery := `
+		INSERT INTO financial_receipt (
+			order_id, bill_id, ticket_id, event_id, organizer_id,
+			gross_amount, system_fee_percentage, fixed_fee, commission_amount,
+			net_amount, currency, tier_code, commission_bps, fee_source,
+			fee_config_version, is_reversal, reversal_of_receipt_id,
+			computed_at, created_at
+		)
+		SELECT 
+			fr.order_id, fr.bill_id, fr.ticket_id, fr.event_id, fr.organizer_id,
+			-fr.gross_amount, fr.system_fee_percentage, fr.fixed_fee, -fr.commission_amount,
+			-fr.net_amount, fr.currency, fr.tier_code, fr.commission_bps, fr.fee_source,
+			fr.fee_config_version, TRUE, fr.receipt_id,
+			NOW(), NOW()
+		FROM financial_receipt fr
+		WHERE fr.ticket_id = $1 AND fr.is_reversal = FALSE
+		  AND NOT EXISTS (
+			  SELECT 1 FROM financial_receipt rev 
+			  WHERE rev.reversal_of_receipt_id = fr.receipt_id 
+			     OR (rev.ticket_id = fr.ticket_id AND rev.is_reversal = TRUE)
+		  )
+		ORDER BY fr.receipt_id DESC LIMIT 1
+	`
+	if _, revErr := h.db.ExecContext(ctx, reversalInsertQuery, req.TicketID); revErr != nil {
+		h.logger.Warn("[INTERNAL_TICKET] ⚠️ Failed to insert reversal receipt for ticket %d: %v", req.TicketID, revErr)
+	} else {
+		h.logger.Info("[INTERNAL_TICKET] ✅ Reversal receipt recorded for ticket %d", req.TicketID)
+	}
+
 	h.logger.Info("[INTERNAL_TICKET] ✅ RefundTicket: ticketId=%d, previousStatus=%s → REFUNDED", req.TicketID, currentStatus)
 	return createTicketInternalResponse(http.StatusOK, TicketRefundResponse{
 		Success:        true,
@@ -526,6 +556,8 @@ func (h *TicketInternalHandler) HandleRevertRefund(ctx context.Context, request 
 	}
 
 	h.logger.Info("[INTERNAL_TICKET] ✅ RevertRefund: ticketId=%d → %s (compensation)", req.TicketID, targetStatus)
+	// Xóa biên lai đảo khi hoàn tác refund
+	_, _ = h.db.ExecContext(ctx, "DELETE FROM financial_receipt WHERE ticket_id = $1 AND is_reversal = TRUE", req.TicketID)
 	return createTicketInternalResponse(http.StatusOK, TicketRefundResponse{
 		Success:  true,
 		TicketID: req.TicketID,
@@ -818,6 +850,27 @@ func (h *TicketInternalHandler) HandleRefundAllByEvent(ctx context.Context, requ
 			tx.Rollback()
 			continue // Concurrently changed
 		}
+
+		// Ghi nhận Biên lai đảo (Reversal Receipt) vào financial_receipt
+		_, _ = tx.ExecContext(ctx, `
+			INSERT INTO financial_receipt (
+				order_id, bill_id, ticket_id, event_id, organizer_id,
+				gross_amount, system_fee_percentage, fixed_fee, commission_amount,
+				net_amount, currency, tier_code, commission_bps, fee_source,
+				fee_config_version, is_reversal, reversal_of_receipt_id,
+				computed_at, created_at
+			)
+			SELECT 
+				fr.order_id, fr.bill_id, fr.ticket_id, fr.event_id, fr.organizer_id,
+				-fr.gross_amount, fr.system_fee_percentage, fr.fixed_fee, -fr.commission_amount,
+				-fr.net_amount, fr.currency, fr.tier_code, fr.commission_bps, fr.fee_source,
+				fr.fee_config_version, TRUE, fr.receipt_id,
+				NOW(), NOW()
+			FROM financial_receipt fr
+			WHERE fr.ticket_id = $1 AND fr.is_reversal = FALSE
+			ORDER BY fr.receipt_id DESC LIMIT 1
+			ON CONFLICT DO NOTHING
+		`, t.TicketID)
 
 		// Ensure wallet exists for user
 		tx.ExecContext(ctx, "INSERT INTO Wallet (user_id, balance) VALUES ($1, 0) ON CONFLICT (user_id) DO NOTHING", t.UserID)

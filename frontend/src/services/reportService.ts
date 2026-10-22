@@ -7,6 +7,10 @@ export interface EventFinancialOverview {
   organizerName?: string
   totalGrossRevenue: number
   totalGrossFormatted: string
+  totalOriginalGross?: number
+  totalOriginalGrossFormatted?: string
+  totalRefundAmount?: number
+  totalRefundAmountFormatted?: string
   totalPlatformFee: number
   totalPlatformFeeFormatted: string
   totalNetProfit: number
@@ -16,6 +20,24 @@ export interface EventFinancialOverview {
   currency: string
   isSettled: boolean
   createdAt: string
+  tierCode?: string
+  commissionBps?: number
+  commissionRatePercent?: number
+  fixedFeePerTicket?: number
+  totalFixedFee?: number
+  totalCommissionFee?: number
+  feeCalculationFormula?: string
+  tierBreakdowns?: FeeTierBreakdown[]
+}
+
+export interface FeeTierBreakdown {
+  tierCode: string
+  commissionRatePercent: number
+  ticketCount: number
+  grossAmount: number
+  commissionFee: number
+  fixedFee: number
+  totalFee: number
 }
 
 export interface EventCheckInItem {
@@ -135,6 +157,18 @@ export interface EventAdvancedAnalyticsResponse {
   refundAuditList?: RefundAuditItem[]
   refundReasons?: RefundReasonCount[]
   hasAdvancedReports: boolean
+  totalOriginalGross?: number
+  totalOriginalGrossFormatted?: string
+  totalRefundAmount?: number
+  totalRefundAmountFormatted?: string
+  tierCode?: string
+  commissionBps?: number
+  commissionRatePercent?: number
+  fixedFeePerTicket?: number
+  totalFixedFee?: number
+  totalCommissionFee?: number
+  feeCalculationFormula?: string
+  tierBreakdowns?: FeeTierBreakdown[]
 }
 
 export const reportService = {

@@ -26,6 +26,10 @@ import {
   ShieldAlert,
   FileText,
   XCircle,
+  Layers,
+  ShieldCheck,
+  Info,
+  X,
 } from 'lucide-react'
 import {
   BarChart,
@@ -147,6 +151,10 @@ const MOCK_ADVANCED_DATA: EventAdvancedAnalyticsResponse = {
     { reason: 'Mua nhầm hạng vé', count: 3 },
   ],
   hasAdvancedReports: false,
+  tierBreakdowns: [
+    { tierCode: 'FREE', commissionRatePercent: 5.0, ticketCount: 200, grossAmount: 25000000, commissionFee: 1250000, fixedFee: 200000, totalFee: 1450000 },
+    { tierCode: 'PRO', commissionRatePercent: 2.5, ticketCount: 150, grossAmount: 20000000, commissionFee: 500000, fixedFee: 150000, totalFee: 650000 },
+  ],
 }
 
 // Bảng màu cho Chart
@@ -197,6 +205,213 @@ function formatDateTime(dateStr?: string | null): string {
   const dateFormatted = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
   const timeFormatted = `${pad(d.getHours())}:${pad(d.getMinutes())}`
   return `${timeFormatted} (${dateFormatted})`
+}
+
+interface MultiTierSnapshotModalProps {
+  isOpen: boolean
+  onClose: () => void
+  tierBreakdowns: any[]
+  totalPlatformFee: number
+  tierCode?: string
+  commRate?: number
+  ticketCount?: number
+  commFee?: number
+  fixedFee?: number
+}
+
+function MultiTierSnapshotModal({
+  isOpen,
+  onClose,
+  tierBreakdowns,
+  totalPlatformFee,
+  tierCode,
+  commRate,
+  ticketCount,
+  commFee,
+  fixedFee,
+}: MultiTierSnapshotModalProps) {
+  if (!isOpen) return null
+
+  const safeTotalFee = totalPlatformFee || 0
+  const safeTicketCount = ticketCount || 0
+  const safeFixedFee = (fixedFee !== undefined && fixedFee > 0)
+    ? fixedFee
+    : (safeTotalFee > 0 ? Math.min(safeTotalFee, safeTicketCount * 1000) : 0)
+  const safeCommFee = (commFee !== undefined && commFee > 0)
+    ? commFee
+    : Math.max(0, safeTotalFee - safeFixedFee)
+
+  const effectiveBreakdowns = (tierBreakdowns && tierBreakdowns.length > 0)
+    ? tierBreakdowns.map((item) => {
+        const itemTotal = item.totalFee || 0
+        const itemTickets = item.ticketCount || 0
+        const itemFixed = (item.fixedFee !== undefined && item.fixedFee > 0)
+          ? item.fixedFee
+          : (itemTotal > 0 ? Math.min(itemTotal, itemTickets * 1000) : 0)
+        const itemComm = (item.commissionFee !== undefined && item.commissionFee > 0)
+          ? item.commissionFee
+          : Math.max(0, itemTotal - itemFixed)
+        return {
+          ...item,
+          fixedFee: itemFixed,
+          commissionFee: itemComm,
+          totalFee: itemTotal,
+        }
+      })
+    : [{
+        tierCode: tierCode || 'FREE',
+        commissionRatePercent: commRate ?? 5.0,
+        ticketCount: safeTicketCount,
+        commissionFee: safeCommFee,
+        fixedFee: safeFixedFee,
+        totalFee: safeTotalFee,
+      }]
+
+  const totalComm = effectiveBreakdowns.reduce((sum, item) => sum + (item.commissionFee || 0), 0)
+  const totalFixed = effectiveBreakdowns.reduce((sum, item) => sum + (item.fixedFee || 0), 0)
+  const totalCalc = effectiveBreakdowns.reduce((sum, item) => sum + (item.totalFee || 0), 0)
+  const totalTickets = effectiveBreakdowns.reduce((sum, item) => sum + (item.ticketCount || 0), 0)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+      <div 
+        className="relative w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent flex items-center justify-between">
+          <div className="flex items-center gap-3.5 sm:gap-4">
+            <img
+              src="/favicon.png"
+              alt="FEMS Favicon"
+              className="w-12 h-12 sm:w-14 sm:h-14 object-contain rounded-2xl shrink-0 shadow-md"
+            />
+            <div>
+              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                Đối Soát Phí Nền Tảng
+              </h3>
+              <p className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                Minh bạch phí dịch vụ theo snapshot biên lai bất biến
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+          {/* Nguyên lý bảo vệ quyền lợi */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-transparent border border-blue-500/20 flex items-start gap-3 text-xs">
+            <div className="p-2 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="font-extrabold text-xs sm:text-[13px] text-blue-700 dark:text-blue-300">
+                Cơ chế Snapshot Receipt bất biến theo từng vé
+              </div>
+              <p className="leading-relaxed text-slate-600 dark:text-slate-300 text-[11px] sm:text-xs">
+                Mỗi vé được chốt tỷ lệ hoa hồng cố định tại thời điểm thanh toán. Khi nâng cấp gói (ví dụ <strong className="text-amber-600 dark:text-amber-400">FREE 5%</strong> → <strong className="text-purple-600 dark:text-purple-400">PRO 2.5%</strong>), các vé thanh toán trước đó vẫn giữ nguyên 5%, các vé sau áp dụng 2.5%, không bị hồi tố.
+              </p>
+            </div>
+          </div>
+
+          {/* Table Breakdown - Không cần cuộn ngang */}
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm bg-white dark:bg-slate-900">
+            <table className="w-full text-left text-[11px] sm:text-xs">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="py-2.5 px-2.5 sm:px-3 whitespace-nowrap">Giai đoạn</th>
+                  <th className="py-2.5 px-1 sm:px-2 text-center whitespace-nowrap">Tỷ lệ</th>
+                  <th className="py-2.5 px-1 sm:px-2 text-center whitespace-nowrap">Số vé</th>
+                  <th className="py-2.5 px-2 sm:px-3 text-right whitespace-nowrap">Hoa hồng</th>
+                  <th className="py-2.5 px-2 sm:px-3 text-right whitespace-nowrap">Phí cố định</th>
+                  <th className="py-2.5 px-2.5 sm:px-3 text-right whitespace-nowrap font-black">Tổng phí</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
+                {effectiveBreakdowns.map((tb, idx) => {
+                  const badgeClass = 
+                    tb.tierCode === 'PRO'
+                      ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30'
+                      : tb.tierCode === 'BUSINESS'
+                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                      : tb.tierCode === 'SCHOOL'
+                      ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30'
+                      : tb.tierCode === 'LEGACY'
+                      ? 'bg-amber-500/15 text-amber-800 dark:text-amber-200 border-amber-500/30'
+                      : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+
+                  return (
+                    <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-2.5 px-2.5 sm:px-3 whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          <span className="font-extrabold text-slate-900 dark:text-white">GĐ {idx + 1}:</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-black border uppercase tracking-tight ${badgeClass}`}>
+                            Gói {tb.tierCode}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-1 sm:px-2 text-center font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                        {tb.commissionRatePercent}%
+                      </td>
+                      <td className="py-2.5 px-1 sm:px-2 text-center font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                        {tb.ticketCount} vé
+                      </td>
+                      <td className="py-2.5 px-2 sm:px-3 text-right text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        {formatVndFull(tb.commissionFee)}
+                      </td>
+                      <td className="py-2.5 px-2 sm:px-3 text-right text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        {formatVndFull(tb.fixedFee)}
+                      </td>
+                      <td className="py-2.5 px-2.5 sm:px-3 text-right font-black text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                        {formatVndFull(tb.totalFee)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot className="bg-slate-50 dark:bg-slate-800/90 font-black border-t-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                <tr>
+                  <td colSpan={2} className="py-2.5 px-2.5 sm:px-3 uppercase text-[10px] sm:text-[11px] tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    Tổng cộng
+                  </td>
+                  <td className="py-2.5 px-1 sm:px-2 text-center text-slate-900 dark:text-white whitespace-nowrap">
+                    {totalTickets} vé
+                  </td>
+                  <td className="py-2.5 px-2 sm:px-3 text-right text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                    {formatVndFull(totalComm)}
+                  </td>
+                  <td className="py-2.5 px-2 sm:px-3 text-right text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                    {formatVndFull(totalFixed)}
+                  </td>
+                  <td className="py-2.5 px-2.5 sm:px-3 text-right text-xs sm:text-sm text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                    {formatVndFull(totalPlatformFee || totalCalc)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shadow-sm cursor-pointer"
+          >
+            Đã hiểu & Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function Reports() {
@@ -273,6 +488,7 @@ export default function Reports() {
   const [currentSub, setCurrentSub] = useState<CurrentSubscription | null>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false)
   const [upgradeModalType, setUpgradeModalType] = useState<'REPORTS' | 'GA4'>('REPORTS')
+  const [showTierBreakdownModal, setShowTierBreakdownModal] = useState<boolean>(false)
 
   // Fetch current subscription
   useEffect(() => {
@@ -1178,74 +1394,235 @@ export default function Reports() {
               </div>
             ) : (
               <>
-                {/* 3 Cột Tiền Tài Chính Sự Kiện: Gross, Phí, Thực Nhận với Điểm Nhấn Cao Cấp */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Cột 1: Doanh thu thanh toán (Gross) */}
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border border-blue-500/30 p-5 shadow-lg shadow-blue-500/5">
-                    <div className="flex items-center justify-between text-blue-600 dark:text-blue-400">
-                      <span className="text-xs font-bold uppercase tracking-wider">Doanh thu thanh toán (Gross)</span>
-                      <div className="p-2.5 rounded-2xl bg-blue-500/20 text-blue-600 dark:text-blue-400">
-                        <DollarSign size={20} />
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                        {formatVndShort(financialOverview?.totalGrossRevenue || 0)}
-                      </div>
-                      <p className="text-xs font-semibold text-slate-400 dark:text-slate-400 mt-1">
-                        Chi tiết: {formatVndFull(financialOverview?.totalGrossRevenue || 0)}
-                      </p>
-                      {totalRefundAmount > 0 && (
-                        <div className="mt-2 pt-2 border-t border-blue-500/20 flex items-center justify-between text-[11px] whitespace-nowrap">
-                          <span className="text-rose-500 font-semibold">
-                            Đã trừ hoàn tiền:
-                          </span>
-                          <span className="text-rose-600 dark:text-rose-400 font-black font-mono">
-                            -{formatVndFull(totalRefundAmount)}
-                          </span>
+                {/* 3 Cột Tiền Tài Chính Sự Kiện: Gross, Phí, Thực Nhận Chuẩn Đồng Nhất 10/10 */}
+                {(() => {
+                  const bGross = financialOverview?.totalGrossRevenue || 0
+                  const bPlatformFee = financialOverview?.totalPlatformFee || 0
+                  const bNet = financialOverview?.totalNetProfit || 0
+                  const bRefundAmount = financialOverview?.totalRefundAmount ?? totalRefundAmount
+                  const bRefundCount = financialOverview?.totalTicketsRefunded || 0
+                  const bOriginalGross = financialOverview?.totalOriginalGross || (bGross + bRefundAmount)
+                  const bTicketsSold = financialOverview?.totalTicketsSold || 0
+                  const bTierCode = financialOverview?.tierCode || currentSub?.tierCode || 'FREE'
+                  const bCommRate = financialOverview?.commissionRatePercent ?? (currentSub?.commissionBps ? currentSub.commissionBps / 100 : 5)
+                  const bFixedFeePerTicket = financialOverview?.fixedFeePerTicket ?? 1000
+
+                  // Phân rã cụ thể số tiền hoa hồng & phí cố định
+                  const bFixedFee = (financialOverview?.totalFixedFee !== undefined && financialOverview.totalFixedFee > 0)
+                    ? financialOverview.totalFixedFee
+                    : (bPlatformFee > 0 ? Math.min(bPlatformFee, bTicketsSold * bFixedFeePerTicket) : 0)
+                  const bCommFee = (financialOverview?.totalCommissionFee !== undefined && financialOverview.totalCommissionFee >= 0 && (financialOverview.totalCommissionFee + bFixedFee === bPlatformFee))
+                    ? financialOverview.totalCommissionFee
+                    : Math.max(0, bPlatformFee - bFixedFee)
+                  
+                  // Số lượng vé áp dụng phí cố định linh hoạt theo thực tế
+                  const bFeeTicketCount = (bFixedFee > 0 && bFixedFeePerTicket > 0)
+                    ? Math.round(bFixedFee / bFixedFeePerTicket)
+                    : (bTicketsSold || 0)
+
+                  // Dữ liệu phân rã giai đoạn gói (Multi-tier snapshot)
+                  const bTierBreakdowns = financialOverview?.tierBreakdowns || []
+                  const bHasMultiTier = bTierBreakdowns.length > 1
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
+                      {/* Cột 1: Doanh thu thanh toán (Gross) */}
+                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border border-blue-500/30 p-5 sm:p-6 shadow-lg shadow-blue-500/5 flex flex-col justify-between h-full">
+                        <div>
+                          <div className="h-9 flex items-center justify-between text-blue-600 dark:text-blue-400">
+                            <span className="text-xs font-bold uppercase tracking-wider">Doanh thu thanh toán (Gross)</span>
+                            <div className="p-2 rounded-2xl bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                              <DollarSign size={18} />
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <div className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight leading-none text-slate-900 dark:text-white">
+                              {formatVndShort(bGross)}
+                            </div>
+                            <div className="h-6 flex items-center text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2">
+                              <span>Thực tế:&nbsp;</span>
+                              <span className="font-extrabold text-slate-800 dark:text-slate-200">{formatVndFull(bGross)}</span>
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Cột 2: Phí nền tảng */}
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/15 via-orange-500/5 to-transparent border border-amber-500/30 p-5 shadow-lg shadow-amber-500/5">
-                    <div className="flex items-center justify-between text-amber-600 dark:text-amber-400">
-                      <span className="text-xs font-bold uppercase tracking-wider">Phí Nền Tảng (Hoa hồng + Cố định)</span>
-                      <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                        <TrendingUp size={20} />
+                        {/* Phân rã đối soát doanh thu */}
+                        <div className="mt-4 pt-3.5 border-t border-blue-500/20 space-y-1.5 text-xs">
+                          <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                            <span>Doanh thu gốc ban đầu:</span>
+                            <span className="font-extrabold text-slate-700 dark:text-slate-200 text-xs sm:text-[13px] tracking-tight">
+                              {formatVndFull(bOriginalGross)}
+                            </span>
+                          </div>
+                          <div className="h-6 flex items-center justify-between">
+                            {(bRefundAmount > 0 || bRefundCount > 0) ? (
+                              <>
+                                <span className="text-rose-500 font-semibold flex items-center gap-1.5">
+                                  <span>Đã trừ hoàn trả</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700 dark:text-rose-300 font-black text-[11px] leading-tight border border-rose-500/30">
+                                    {bRefundCount || 1} vé
+                                  </span>
+                                  <span>:</span>
+                                </span>
+                                <span className="text-rose-600 dark:text-rose-400 font-black text-xs sm:text-[13px] tracking-tight">
+                                  -{formatVndFull(bRefundAmount)}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-slate-400 dark:text-slate-500">Đã trừ hoàn trả:</span>
+                                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-[13px]">0đ (Không có hoàn trả)</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-3">
-                      <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
-                        {formatVndShort(financialOverview?.totalPlatformFee || 0)}
-                      </div>
-                      <p className="text-xs font-semibold text-slate-400 dark:text-slate-400 mt-1">
-                        {formatVndFull(financialOverview?.totalPlatformFee || 0)} (đã gồm phí cố định)
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Cột 3: Thực nhận (Net Profit) - ĐIỂM NHẤN QUAN TRỌNG NHẤT */}
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-transparent border-2 border-emerald-500/40 p-5 shadow-xl shadow-emerald-500/10">
-                    <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
-                      <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
-                        <Wallet size={16} /> Doanh Thu Thực Nhận (Net)
-                      </span>
-                      <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black text-xs">
-                        NET
+                      {/* Cột 2: Phí nền tảng */}
+                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/15 via-orange-500/5 to-transparent border border-amber-500/30 p-5 sm:p-6 shadow-lg shadow-amber-500/5 flex flex-col justify-between h-full">
+                        <div>
+                          <div className="h-9 flex items-center justify-between text-amber-600 dark:text-amber-400">
+                            <span className="text-xs font-bold uppercase tracking-wider">Phí Nền Tảng (Hoa hồng + Cố định)</span>
+                            <div className="p-2 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                              <TrendingUp size={18} />
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <div className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight leading-none text-amber-600 dark:text-amber-400">
+                              {formatVndShort(bPlatformFee)}
+                            </div>
+                            <div className="h-6 flex items-center flex-nowrap whitespace-nowrap text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2">
+                              <span className="shrink-0 whitespace-nowrap">Chi tiết:&nbsp;</span>
+                              <span className="font-extrabold text-amber-600 dark:text-amber-400 shrink-0 whitespace-nowrap">{formatVndFull(bPlatformFee)}</span>
+                              <button
+                                type="button"
+                                onClick={() => setShowTierBreakdownModal(true)}
+                                className="ml-1.5 sm:ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-200 border border-amber-500/30 text-[10px] sm:text-[11px] font-black uppercase tracking-tight whitespace-nowrap shrink-0 transition-all cursor-pointer shadow-sm"
+                                title="Nhấn để xem bảng đối soát chi tiết"
+                              >
+                                {bHasMultiTier ? (
+                                  <>
+                                    <span>Gói {bTierBreakdowns[0].tierCode} → {bTierBreakdowns[bTierBreakdowns.length - 1].tierCode} · Đối soát</span>
+                                    <ArrowUpRight size={10} className="shrink-0" />
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>Gói {bTierCode} · Đối soát</span>
+                                    <ArrowUpRight size={10} className="shrink-0" />
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Phân rã cụ thể số tiền hoa hồng & phí cố định */}
+                        <div className="mt-4 pt-3.5 border-t border-amber-500/20 space-y-1.5 text-xs">
+                          {bHasMultiTier ? (
+                            <>
+                              <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                                <span className="flex items-center gap-1.5 truncate max-w-[65%]">
+                                  <span>GĐ 1</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black text-[11px] leading-tight border border-amber-500/30">
+                                    {bTierBreakdowns[0].commissionRatePercent}% {bTierBreakdowns[0].tierCode}
+                                  </span>
+                                  <span className="text-slate-400">•</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black text-[11px] leading-tight border border-amber-500/30">
+                                    {bTierBreakdowns[0].ticketCount} vé
+                                  </span>
+                                  <span>:</span>
+                                </span>
+                                <span className="font-extrabold text-amber-700 dark:text-amber-300 text-xs sm:text-[13px] tracking-tight">
+                                  {formatVndFull(bTierBreakdowns[0].totalFee)}
+                                </span>
+                              </div>
+                              <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                                <span className="flex items-center gap-1.5 truncate max-w-[65%]">
+                                  <span>GĐ 2</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 font-black text-[11px] leading-tight border border-purple-500/30">
+                                    {bTierBreakdowns[1].commissionRatePercent}% {bTierBreakdowns[1].tierCode}
+                                  </span>
+                                  <span className="text-slate-400">•</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 font-black text-[11px] leading-tight border border-purple-500/30">
+                                    {bTierBreakdowns[1].ticketCount} vé
+                                  </span>
+                                  <span>:</span>
+                                </span>
+                                <span className="font-extrabold text-purple-700 dark:text-purple-300 text-xs sm:text-[13px] tracking-tight">
+                                  {formatVndFull(bTierBreakdowns[1].totalFee)}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                                <span className="flex items-center gap-1.5">
+                                  <span>Hoa hồng</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black text-[11px] leading-tight border border-amber-500/30">
+                                    {bCommRate}% {bTierCode}
+                                  </span>
+                                  <span>:</span>
+                                </span>
+                                <span className="font-extrabold text-amber-700 dark:text-amber-300 text-xs sm:text-[13px] tracking-tight">
+                                  {formatVndFull(bCommFee)}
+                                </span>
+                              </div>
+                              <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                                <span className="flex items-center gap-1.5">
+                                  <span>Phí cố định hệ thống</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black text-[11px] leading-tight border border-amber-500/30">
+                                    {bFeeTicketCount} vé
+                                  </span>
+                                  <span>:</span>
+                                </span>
+                                <span className="font-extrabold text-amber-700 dark:text-amber-300 text-xs sm:text-[13px] tracking-tight">
+                                  {formatVndFull(bFixedFee)}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Cột 3: Thực nhận (Net Profit) */}
+                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-transparent border border-emerald-500/40 p-5 sm:p-6 shadow-xl shadow-emerald-500/10 flex flex-col justify-between h-full">
+                        <div>
+                          <div className="h-9 flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                            <span className="text-xs font-black uppercase tracking-wider">Doanh Thu Thực Nhận (Net)</span>
+                            <div className="p-2 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                              <Wallet size={18} />
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <div className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight leading-none text-emerald-600 dark:text-emerald-400">
+                              {formatVndShort(bNet)}
+                            </div>
+                            <div className="h-6 flex items-center text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-300 mt-2">
+                              <span>Thực nhận:&nbsp;</span>
+                              <span className="font-extrabold text-emerald-800 dark:text-emerald-200">{formatVndFull(bNet)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Phân rã đối soát thực nhận */}
+                        <div className="mt-4 pt-3.5 border-t border-emerald-500/20 space-y-1.5 text-xs">
+                          <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                            <span>Doanh thu thanh toán (Gross):</span>
+                            <span className="font-extrabold text-slate-700 dark:text-slate-200 text-xs sm:text-[13px] tracking-tight">
+                              {formatVndFull(bGross)}
+                            </span>
+                          </div>
+                          <div className="h-6 flex items-center justify-between text-rose-500">
+                            <span className="font-semibold">Khấu trừ phí nền tảng:</span>
+                            <span className="font-black text-xs sm:text-[13px] tracking-tight text-rose-600 dark:text-rose-400">
+                              -{formatVndFull(bPlatformFee)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
-                        {formatVndShort(financialOverview?.totalNetProfit || 0)}
-                      </div>
-                      <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mt-1">
-                        Thực nhận: {formatVndFull(financialOverview?.totalNetProfit || 0)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                  )
+                })()}
 
                 {/* 5 Chỉ Số Tổng Quan Hoạt Động (Vé, Hoàn, Sức chứa, Check-in, Check-out) - Visual Hierarchy Pro Max */}
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -1743,74 +2120,239 @@ export default function Reports() {
                   </div>
                 )}
 
-                {/* 3 Cột Tiền Tài Chính Sự Kiện: Gross, Phí, Thực Nhận trong Báo Cáo Nâng Cao */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Cột 1: Doanh thu thanh toán (Gross) */}
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border border-blue-500/30 p-5 shadow-lg shadow-blue-500/5">
-                    <div className="flex items-center justify-between text-blue-600 dark:text-blue-400">
-                      <span className="text-xs font-bold uppercase tracking-wider">Doanh thu thanh toán (Gross)</span>
-                      <div className="p-2.5 rounded-2xl bg-blue-500/20 text-blue-600 dark:text-blue-400">
-                        <DollarSign size={20} />
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                        {formatVndShort(advancedData?.totalGrossRevenue ?? financialOverview?.totalGrossRevenue ?? 0)}
-                      </div>
-                      <p className="text-xs font-semibold text-slate-400 dark:text-slate-400 mt-1">
-                        Chi tiết: {formatVndFull(advancedData?.totalGrossRevenue ?? financialOverview?.totalGrossRevenue ?? 0)}
-                      </p>
-                      {totalRefundAmount > 0 && (
-                        <div className="mt-2 pt-2 border-t border-blue-500/20 flex items-center justify-between text-[11px] whitespace-nowrap">
-                          <span className="text-rose-500 font-semibold">
-                            Đã trừ hoàn tiền:
-                          </span>
-                          <span className="text-rose-600 dark:text-rose-400 font-black font-mono">
-                            -{formatVndFull(totalRefundAmount)}
-                          </span>
+                {/* 3 Cột Tiền Tài Chính Sự Kiện: Gross, Phí, Thực Nhận trong Báo Cáo Nâng Cao Chuẩn Đồng Nhất 10/10 */}
+                {(() => {
+                  const aGross = advancedData?.totalGrossRevenue ?? financialOverview?.totalGrossRevenue ?? 0
+                  const aPlatformFee = advancedData?.totalPlatformFee ?? financialOverview?.totalPlatformFee ?? 0
+                  const aNet = advancedData?.totalNetProfit ?? financialOverview?.totalNetProfit ?? 0
+                  const aRefundAmount = advancedData?.totalRefundAmount ?? financialOverview?.totalRefundAmount ?? totalRefundAmount
+                  const aRefundCount = advancedData?.totalTicketsRefunded ?? financialOverview?.totalTicketsRefunded ?? 0
+                  const aOriginalGross = advancedData?.totalOriginalGross || financialOverview?.totalOriginalGross || (aGross + aRefundAmount)
+                  const aTicketsSold = financialOverview?.totalTicketsSold || 0
+                  const aTierCode = advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE'
+                  const aCommRate = advancedData?.commissionRatePercent ?? financialOverview?.commissionRatePercent ?? (currentSub?.commissionBps ? currentSub.commissionBps / 100 : 5)
+                  const aFixedFeePerTicket = advancedData?.fixedFeePerTicket ?? financialOverview?.fixedFeePerTicket ?? 1000
+
+                  // Phân rã cụ thể số tiền hoa hồng & phí cố định
+                  const aFixedFee = (advancedData?.totalFixedFee !== undefined && advancedData.totalFixedFee > 0)
+                    ? advancedData.totalFixedFee
+                    : ((financialOverview?.totalFixedFee !== undefined && financialOverview.totalFixedFee > 0)
+                      ? financialOverview.totalFixedFee
+                      : (aPlatformFee > 0 ? Math.min(aPlatformFee, aTicketsSold * aFixedFeePerTicket) : 0))
+                  const aCommFee = (advancedData?.totalCommissionFee !== undefined && advancedData.totalCommissionFee >= 0 && (advancedData.totalCommissionFee + aFixedFee === aPlatformFee))
+                    ? advancedData.totalCommissionFee
+                    : ((financialOverview?.totalCommissionFee !== undefined && financialOverview.totalCommissionFee >= 0 && (financialOverview.totalCommissionFee + aFixedFee === aPlatformFee))
+                      ? financialOverview.totalCommissionFee
+                      : Math.max(0, aPlatformFee - aFixedFee))
+
+                  // Số lượng vé áp dụng phí cố định linh hoạt theo thực tế
+                  const aFeeTicketCount = (aFixedFee > 0 && aFixedFeePerTicket > 0)
+                    ? Math.round(aFixedFee / aFixedFeePerTicket)
+                    : (aTicketsSold || 0)
+
+                  // Dữ liệu phân rã giai đoạn gói (Multi-tier snapshot)
+                  const aTierBreakdowns = (isPaywallRequired ? MOCK_ADVANCED_DATA.tierBreakdowns : (advancedData?.tierBreakdowns || financialOverview?.tierBreakdowns)) || []
+                  const aHasMultiTier = aTierBreakdowns.length > 1
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
+                      {/* Cột 1: Doanh thu thanh toán (Gross) */}
+                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border border-blue-500/30 p-5 sm:p-6 shadow-lg shadow-blue-500/5 flex flex-col justify-between h-full">
+                        <div>
+                          <div className="h-9 flex items-center justify-between text-blue-600 dark:text-blue-400">
+                            <span className="text-xs font-bold uppercase tracking-wider">Doanh thu thanh toán (Gross)</span>
+                            <div className="p-2 rounded-2xl bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                              <DollarSign size={18} />
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <div className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight leading-none text-slate-900 dark:text-white">
+                              {formatVndShort(aGross)}
+                            </div>
+                            <div className="h-6 flex items-center text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2">
+                              <span>Thực tế:&nbsp;</span>
+                              <span className="font-extrabold text-slate-800 dark:text-slate-200">{formatVndFull(aGross)}</span>
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Cột 2: Phí nền tảng */}
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/15 via-orange-500/5 to-transparent border border-amber-500/30 p-5 shadow-lg shadow-amber-500/5">
-                    <div className="flex items-center justify-between text-amber-600 dark:text-amber-400">
-                      <span className="text-xs font-bold uppercase tracking-wider">Phí Nền Tảng (Hoa hồng + Cố định)</span>
-                      <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                        <TrendingUp size={20} />
+                        {/* Phân rã đối soát doanh thu */}
+                        <div className="mt-4 pt-3.5 border-t border-blue-500/20 space-y-1.5 text-xs">
+                          <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                            <span>Doanh thu gốc ban đầu:</span>
+                            <span className="font-extrabold text-slate-700 dark:text-slate-200 text-xs sm:text-[13px] tracking-tight">
+                              {formatVndFull(aOriginalGross)}
+                            </span>
+                          </div>
+                          <div className="h-6 flex items-center justify-between">
+                            {(aRefundAmount > 0 || aRefundCount > 0) ? (
+                              <>
+                                <span className="text-rose-500 font-semibold flex items-center gap-1.5">
+                                  <span>Đã trừ hoàn trả</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700 dark:text-rose-300 font-black text-[11px] leading-tight border border-rose-500/30">
+                                    {aRefundCount || 1} vé
+                                  </span>
+                                  <span>:</span>
+                                </span>
+                                <span className="text-rose-600 dark:text-rose-400 font-black text-xs sm:text-[13px] tracking-tight">
+                                  -{formatVndFull(aRefundAmount)}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-slate-400 dark:text-slate-500">Đã trừ hoàn trả:</span>
+                                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-[13px]">0đ (Không có hoàn trả)</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-3">
-                      <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
-                        {formatVndShort(advancedData?.totalPlatformFee ?? financialOverview?.totalPlatformFee ?? 0)}
-                      </div>
-                      <p className="text-xs font-semibold text-slate-400 dark:text-slate-400 mt-1">
-                        {formatVndFull(advancedData?.totalPlatformFee ?? financialOverview?.totalPlatformFee ?? 0)} (đã gồm phí cố định)
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Cột 3: Thực nhận (Net Profit) - ĐIỂM NHẤN QUAN TRỌNG NHẤT */}
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-transparent border-2 border-emerald-500/40 p-5 shadow-xl shadow-emerald-500/10">
-                    <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
-                      <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
-                        <Wallet size={16} /> Doanh Thu Thực Nhận (Net)
-                      </span>
-                      <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black text-xs">
-                        NET
+                      {/* Cột 2: Phí nền tảng */}
+                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/15 via-orange-500/5 to-transparent border border-amber-500/30 p-5 sm:p-6 shadow-lg shadow-amber-500/5 flex flex-col justify-between h-full">
+                        <div>
+                          <div className="h-9 flex items-center justify-between text-amber-600 dark:text-amber-400">
+                            <span className="text-xs font-bold uppercase tracking-wider">Phí Nền Tảng (Hoa hồng + Cố định)</span>
+                            <div className="p-2 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                              <TrendingUp size={18} />
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <div className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight leading-none text-amber-600 dark:text-amber-400">
+                              {formatVndShort(aPlatformFee)}
+                            </div>
+                            <div className="h-6 flex items-center flex-nowrap whitespace-nowrap text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2">
+                              <span className="shrink-0 whitespace-nowrap">Chi tiết:&nbsp;</span>
+                              <span className="font-extrabold text-amber-600 dark:text-amber-400 shrink-0 whitespace-nowrap">{formatVndFull(aPlatformFee)}</span>
+                              <button
+                                type="button"
+                                onClick={() => setShowTierBreakdownModal(true)}
+                                className="ml-1.5 sm:ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-200 border border-amber-500/30 text-[10px] sm:text-[11px] font-black uppercase tracking-tight whitespace-nowrap shrink-0 transition-all cursor-pointer shadow-sm"
+                                title="Nhấn để xem bảng đối soát chi tiết"
+                              >
+                                {aHasMultiTier ? (
+                                  <>
+                                    <span>Gói {aTierBreakdowns[0].tierCode} → {aTierBreakdowns[aTierBreakdowns.length - 1].tierCode} · Đối soát</span>
+                                    <ArrowUpRight size={10} className="shrink-0" />
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>Gói {aTierCode} · Đối soát</span>
+                                    <ArrowUpRight size={10} className="shrink-0" />
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Phân rã cụ thể số tiền hoa hồng & phí cố định */}
+                        <div className="mt-4 pt-3.5 border-t border-amber-500/20 space-y-1.5 text-xs">
+                          {aHasMultiTier ? (
+                            <>
+                              <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                                <span className="flex items-center gap-1.5 truncate max-w-[65%]">
+                                  <span>GĐ 1</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black text-[11px] leading-tight border border-amber-500/30">
+                                    {aTierBreakdowns[0].commissionRatePercent}% {aTierBreakdowns[0].tierCode}
+                                  </span>
+                                  <span className="text-slate-400">•</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black text-[11px] leading-tight border border-amber-500/30">
+                                    {aTierBreakdowns[0].ticketCount} vé
+                                  </span>
+                                  <span>:</span>
+                                </span>
+                                <span className="font-extrabold text-amber-700 dark:text-amber-300 text-xs sm:text-[13px] tracking-tight">
+                                  {formatVndFull(aTierBreakdowns[0].totalFee)}
+                                </span>
+                              </div>
+                              <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                                <span className="flex items-center gap-1.5 truncate max-w-[65%]">
+                                  <span>GĐ 2</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 font-black text-[11px] leading-tight border border-purple-500/30">
+                                    {aTierBreakdowns[1].commissionRatePercent}% {aTierBreakdowns[1].tierCode}
+                                  </span>
+                                  <span className="text-slate-400">•</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 font-black text-[11px] leading-tight border border-purple-500/30">
+                                    {aTierBreakdowns[1].ticketCount} vé
+                                  </span>
+                                  <span>:</span>
+                                </span>
+                                <span className="font-extrabold text-purple-700 dark:text-purple-300 text-xs sm:text-[13px] tracking-tight">
+                                  {formatVndFull(aTierBreakdowns[1].totalFee)}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                                <span className="flex items-center gap-1.5">
+                                  <span>Hoa hồng</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black text-[11px] leading-tight border border-amber-500/30">
+                                    {aCommRate}% {aTierCode}
+                                  </span>
+                                  <span>:</span>
+                                </span>
+                                <span className="font-extrabold text-amber-700 dark:text-amber-300 text-xs sm:text-[13px] tracking-tight">
+                                  {formatVndFull(aCommFee)}
+                                </span>
+                              </div>
+                              <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                                <span className="flex items-center gap-1.5">
+                                  <span>Phí cố định hệ thống</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black text-[11px] leading-tight border border-amber-500/30">
+                                    {aFeeTicketCount} vé
+                                  </span>
+                                  <span>:</span>
+                                </span>
+                                <span className="font-extrabold text-amber-700 dark:text-amber-300 text-xs sm:text-[13px] tracking-tight">
+                                  {formatVndFull(aFixedFee)}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Cột 3: Thực nhận (Net Profit) */}
+                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-transparent border border-emerald-500/40 p-5 sm:p-6 shadow-xl shadow-emerald-500/10 flex flex-col justify-between h-full">
+                        <div>
+                          <div className="h-9 flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                            <span className="text-xs font-black uppercase tracking-wider">Doanh Thu Thực Nhận (Net)</span>
+                            <div className="p-2 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                              <Wallet size={18} />
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <div className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight leading-none text-emerald-600 dark:text-emerald-400">
+                              {formatVndShort(aNet)}
+                            </div>
+                            <div className="h-6 flex items-center text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-300 mt-2">
+                              <span>Thực nhận:&nbsp;</span>
+                              <span className="font-extrabold text-emerald-800 dark:text-emerald-200">{formatVndFull(aNet)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Phân rã đối soát thực nhận */}
+                        <div className="mt-4 pt-3.5 border-t border-emerald-500/20 space-y-1.5 text-xs">
+                          <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
+                            <span>Doanh thu thanh toán (Gross):</span>
+                            <span className="font-extrabold text-slate-700 dark:text-slate-200 text-xs sm:text-[13px] tracking-tight">
+                              {formatVndFull(aGross)}
+                            </span>
+                          </div>
+                          <div className="h-6 flex items-center justify-between text-rose-500">
+                            <span className="font-semibold">Khấu trừ phí nền tảng:</span>
+                            <span className="font-black text-xs sm:text-[13px] tracking-tight text-rose-600 dark:text-rose-400">
+                              -{formatVndFull(aPlatformFee)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
-                        {formatVndShort(advancedData?.totalNetProfit ?? financialOverview?.totalNetProfit ?? 0)}
-                      </div>
-                      <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mt-1">
-                        Thực nhận: {formatVndFull(advancedData?.totalNetProfit ?? financialOverview?.totalNetProfit ?? 0)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                  )
+                })()}
 
                 {/* 5 Chỉ Số Tổng Quan Hoạt Động (Vé, Hoàn, Sức chứa, Check-in, Check-out) */}
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -2708,204 +3250,123 @@ export default function Reports() {
                           </div>
                         </div>
 
-                        {/* Top: 2 Biểu Đồ Thống Kê Phân Tích Lý Do & Tỷ Lệ Giải Quyết */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          {/* Biểu đồ tròn phân loại lý do hoàn tiền */}
-                          <div className="md:col-span-1 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-                            <div>
-                              <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                                <PieChartIcon className="w-3.5 h-3.5 text-rose-500" />
-                                <span>Tỷ Lệ Lý Do Hoàn Trả</span>
-                              </h4>
-                              <p className="text-[10px] text-slate-400 mt-0.5">Phân loại nguyên nhân người mua hủy vé</p>
+                        {/* Bảng Chi Tiết Audit Trail Các Đơn Hoàn Trả (Toàn Chiều Rộng) */}
+                        <div className="w-full overflow-x-auto">
+                          {(advancedData?.refundAuditList || []).length === 0 ? (
+                            <div className="h-full min-h-[220px] flex flex-col items-center justify-center p-8 text-center rounded-2xl bg-slate-50/50 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-800">
+                              <FileText className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-2" />
+                              <p className="text-xs font-bold text-slate-500">Không có đơn hoàn trả nào</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                Tất cả vé tham dự đều được thanh toán và giữ chỗ ổn định.
+                              </p>
                             </div>
+                          ) : (
+                            <div className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                              <table className="w-full text-left text-xs border-collapse">
+                                <thead>
+                                  <tr className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+                                    <th className="py-3 px-4 font-bold">Người làm đơn</th>
+                                    <th className="py-3 px-4 font-bold">Hạng vé / Mã vé</th>
+                                    <th className="py-3 px-4 font-bold">Lý do hoàn trả</th>
+                                    <th className="py-3 px-4 font-bold">Tiền hoàn</th>
+                                    <th className="py-3 px-4 font-bold">Người duyệt</th>
+                                    <th className="py-3 px-4 font-bold text-center">Trạng thái</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                                  {(advancedData?.refundAuditList || []).map((audit) => {
+                                    const isApproved = audit.status === 'APPROVED'
+                                    const isRejected = audit.status === 'REJECTED'
+                                    const pTime = audit.processedAt
+                                      ? new Date(audit.processedAt).toLocaleString('vi-VN', {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: 'numeric',
+                                        })
+                                      : '—'
 
-                            {(() => {
-                              const reasons = advancedData?.refundReasons || []
-                              const hasReasons = reasons.length > 0 && reasons.some((r) => r.count > 0)
-
-                              if (!hasReasons) {
-                                return (
-                                  <div className="h-44 flex items-center justify-center text-xs text-slate-400 text-center">
-                                    Chưa phát sinh đơn hoàn tiền cho sự kiện này.
-                                  </div>
-                                )
-                              }
-
-                              const chartData = reasons.map((r, idx) => ({
-                                name: r.reason,
-                                value: r.count,
-                                fill: DONUT_COLORS[idx % DONUT_COLORS.length],
-                              }))
-
-                              return (
-                                <div className="h-44 w-full my-1">
-                                  <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                      <Pie
-                                        data={chartData}
-                                        dataKey="value"
-                                        nameKey="name"
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={36}
-                                        outerRadius={58}
-                                        paddingAngle={3}
+                                    return (
+                                      <tr
+                                        key={audit.reportId}
+                                        className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
                                       >
-                                        {chartData.map((entry, index) => (
-                                          <Cell key={`cell-reason-${index}`} fill={entry.fill} />
-                                        ))}
-                                      </Pie>
-                                      <Tooltip
-                                        contentStyle={{
-                                          backgroundColor: '#0f172a',
-                                          borderColor: '#334155',
-                                          borderRadius: '0.75rem',
-                                          color: '#f8fafc',
-                                          fontSize: '11px',
-                                        }}
-                                        formatter={(val: any) => [`${val} đơn`, 'Số lượng']}
-                                      />
-                                    </PieChart>
-                                  </ResponsiveContainer>
-                                </div>
-                              )
-                            })()}
+                                        {/* Người làm đơn */}
+                                        <td className="py-3 px-4">
+                                          <div className="font-bold text-slate-900 dark:text-white">
+                                            {audit.requesterName || 'Người mua'}
+                                          </div>
+                                          <div className="text-[11px] text-slate-400">
+                                            {audit.requesterEmail || `ID #${audit.reportId}`}
+                                          </div>
+                                        </td>
 
-                            <div className="space-y-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                              {(advancedData?.refundReasons || []).slice(0, 4).map((r, i) => (
-                                <div key={r.reason} className="flex items-center justify-between text-[11px]">
-                                  <div className="flex items-center gap-1.5 truncate pr-2">
-                                    <span
-                                      className="w-2 h-2 rounded-full shrink-0"
-                                      style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
-                                    />
-                                    <span className="text-slate-600 dark:text-slate-300 truncate">{r.reason}</span>
-                                  </div>
-                                  <span className="font-bold text-slate-800 dark:text-slate-200">{r.count}</span>
-                                </div>
-                              ))}
+                                        {/* Hạng vé / Mã vé */}
+                                        <td className="py-3 px-4">
+                                          <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+                                            {audit.categoryName}
+                                          </span>
+                                          <span className="text-[11px] text-slate-400 font-mono">
+                                            {audit.ticketCode || `#${audit.ticketId}`}
+                                          </span>
+                                        </td>
+
+                                        {/* Lý do hoàn */}
+                                        <td className="py-3 px-4">
+                                          <div className="font-semibold text-slate-800 dark:text-slate-200">
+                                            {audit.reasonTitle || 'Hoàn vé'}
+                                          </div>
+                                          {audit.reasonDetail && (
+                                            <p className="text-[11px] text-slate-400 mt-0.5">
+                                              {audit.reasonDetail}
+                                            </p>
+                                          )}
+                                        </td>
+
+                                        {/* Tiền hoàn */}
+                                        <td className="py-3 px-4 whitespace-nowrap">
+                                          <span className="font-bold text-rose-600 dark:text-rose-400">
+                                            -{audit.refundFormatted || `${audit.refundAmount.toLocaleString('vi-VN')}đ`}
+                                          </span>
+                                        </td>
+
+                                        {/* Người duyệt & Ngày duyệt */}
+                                        <td className="py-3 px-4">
+                                          <div className="font-semibold text-slate-800 dark:text-slate-200">
+                                            {audit.processedByName || (isApproved ? 'Hệ thống / Staff' : 'Chưa xử lý')}
+                                          </div>
+                                          <div className="text-[11px] text-slate-400 whitespace-nowrap">
+                                            {pTime}
+                                          </div>
+                                        </td>
+
+                                        {/* Trạng thái */}
+                                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                                          {isApproved ? (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                              <CheckCircle2 className="w-3 h-3" />
+                                              <span>Đã duyệt</span>
+                                            </span>
+                                          ) : isRejected ? (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
+                                              <XCircle className="w-3 h-3" />
+                                              <span>Từ chối</span>
+                                            </span>
+                                          ) : (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                              <Clock className="w-3 h-3" />
+                                              <span>Chờ duyệt</span>
+                                            </span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
                             </div>
-                          </div>
-
-                          {/* Bảng Chi Tiết Audit Trail Các Đơn Hoàn Trả */}
-                          <div className="md:col-span-2 overflow-x-auto">
-                            {(advancedData?.refundAuditList || []).length === 0 ? (
-                              <div className="h-full min-h-[220px] flex flex-col items-center justify-center p-8 text-center rounded-2xl bg-slate-50/50 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-800">
-                                <FileText className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-2" />
-                                <p className="text-xs font-bold text-slate-500">Không có đơn hoàn trả nào</p>
-                                <p className="text-[11px] text-slate-400 mt-0.5">
-                                  Tất cả vé tham dự đều được thanh toán và giữ chỗ ổn định.
-                                </p>
-                              </div>
-                            ) : (
-                              <div className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-                                <table className="w-full text-left text-xs border-collapse">
-                                  <thead>
-                                    <tr className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
-                                      <th className="py-3 px-3.5 font-bold">Người làm đơn</th>
-                                      <th className="py-3 px-3.5 font-bold">Hạng vé / Mã vé</th>
-                                      <th className="py-3 px-3.5 font-bold">Lý do hoàn trả</th>
-                                      <th className="py-3 px-3.5 font-bold">Tiền hoàn</th>
-                                      <th className="py-3 px-3.5 font-bold">Người duyệt</th>
-                                      <th className="py-3 px-3.5 font-bold text-center">Trạng thái</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                                    {(advancedData?.refundAuditList || []).map((audit) => {
-                                      const isApproved = audit.status === 'APPROVED'
-                                      const isRejected = audit.status === 'REJECTED'
-                                      const pTime = audit.processedAt
-                                        ? new Date(audit.processedAt).toLocaleString('vi-VN', {
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric',
-                                          })
-                                        : '—'
-
-                                      return (
-                                        <tr
-                                          key={audit.reportId}
-                                          className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
-                                        >
-                                          {/* Người làm đơn */}
-                                          <td className="py-3 px-3.5">
-                                            <div className="font-bold text-slate-900 dark:text-white truncate max-w-[140px]">
-                                              {audit.requesterName || 'Người mua'}
-                                            </div>
-                                            <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
-                                              {audit.requesterEmail || `ID #${audit.reportId}`}
-                                            </div>
-                                          </td>
-
-                                          {/* Hạng vé / Mã vé */}
-                                          <td className="py-3 px-3.5">
-                                            <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate max-w-[120px]">
-                                              {audit.categoryName}
-                                            </span>
-                                            <span className="text-[10px] text-slate-400 font-mono">
-                                              {audit.ticketCode || `#${audit.ticketId}`}
-                                            </span>
-                                          </td>
-
-                                          {/* Lý do hoàn */}
-                                          <td className="py-3 px-3.5">
-                                            <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
-                                              {audit.reasonTitle || 'Hoàn vé'}
-                                            </div>
-                                            {audit.reasonDetail && (
-                                              <p className="text-[10px] text-slate-400 truncate max-w-[180px] line-clamp-1">
-                                                {audit.reasonDetail}
-                                              </p>
-                                            )}
-                                          </td>
-
-                                          {/* Tiền hoàn */}
-                                          <td className="py-3 px-3.5">
-                                            <span className="font-bold text-rose-600 dark:text-rose-400">
-                                              -{audit.refundFormatted || `${audit.refundAmount.toLocaleString('vi-VN')}đ`}
-                                            </span>
-                                          </td>
-
-                                          {/* Người duyệt & Ngày duyệt */}
-                                          <td className="py-3 px-3.5">
-                                            <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[130px]">
-                                              {audit.processedByName || (isApproved ? 'Hệ thống / Staff' : 'Chưa xử lý')}
-                                            </div>
-                                            <div className="text-[10px] text-slate-400 whitespace-nowrap">
-                                              {pTime}
-                                            </div>
-                                          </td>
-
-                                          {/* Trạng thái */}
-                                          <td className="py-3 px-3.5 text-center">
-                                            {isApproved ? (
-                                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                                <CheckCircle2 className="w-3 h-3" />
-                                                <span>Đã duyệt</span>
-                                              </span>
-                                            ) : isRejected ? (
-                                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
-                                                <XCircle className="w-3 h-3" />
-                                                <span>Từ chối</span>
-                                              </span>
-                                            ) : (
-                                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                                                <Clock className="w-3 h-3" />
-                                                <span>Chờ duyệt</span>
-                                              </span>
-                                            )}
-                                          </td>
-                                        </tr>
-                                      )
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2915,6 +3376,47 @@ export default function Reports() {
           </div>
         )}
       </div>
+
+      {/* Modal Bảng Đối Soát Phân Tầng Đa Giai Đoạn Gói */}
+      <MultiTierSnapshotModal
+        isOpen={showTierBreakdownModal}
+        onClose={() => setShowTierBreakdownModal(false)}
+        tierBreakdowns={
+          activeTab === 'advanced'
+            ? ((isPaywallRequired ? MOCK_ADVANCED_DATA.tierBreakdowns : (advancedData?.tierBreakdowns || financialOverview?.tierBreakdowns)) || [])
+            : (financialOverview?.tierBreakdowns || [])
+        }
+        totalPlatformFee={
+          activeTab === 'advanced'
+            ? (isPaywallRequired ? MOCK_ADVANCED_DATA.totalPlatformFee : (advancedData?.totalPlatformFee || financialOverview?.totalPlatformFee || 0))
+            : (financialOverview?.totalPlatformFee || 0)
+        }
+        tierCode={
+          activeTab === 'advanced'
+            ? (advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
+            : (financialOverview?.tierCode || currentSub?.tierCode || 'FREE')
+        }
+        commRate={
+          activeTab === 'advanced'
+            ? (advancedData?.commissionRatePercent ?? financialOverview?.commissionRatePercent ?? 5)
+            : (financialOverview?.commissionRatePercent ?? 5)
+        }
+        ticketCount={
+          activeTab === 'advanced'
+            ? (advancedData?.totalTicketsSold ?? financialOverview?.totalTicketsSold ?? 0)
+            : (financialOverview?.totalTicketsSold ?? 0)
+        }
+        commFee={
+          activeTab === 'advanced'
+            ? (advancedData?.totalCommissionFee || (advancedData?.totalPlatformFee ? Math.max(0, advancedData.totalPlatformFee - (advancedData?.totalFixedFee || ((advancedData?.totalTicketsSold || 0) * 1000))) : 0))
+            : (financialOverview?.totalCommissionFee || (financialOverview?.totalPlatformFee ? Math.max(0, financialOverview.totalPlatformFee - (financialOverview?.totalFixedFee || ((financialOverview?.totalTicketsSold || 0) * 1000))) : 0))
+        }
+        fixedFee={
+          activeTab === 'advanced'
+            ? (advancedData?.totalFixedFee || (advancedData?.totalPlatformFee ? Math.min(advancedData.totalPlatformFee, (advancedData?.totalTicketsSold || 0) * 1000) : 0))
+            : (financialOverview?.totalFixedFee || (financialOverview?.totalPlatformFee ? Math.min(financialOverview.totalPlatformFee, (financialOverview?.totalTicketsSold || 0) * 1000) : 0))
+        }
+      />
 
       {/* Modal Nâng Cấp Gói Cho Báo Cáo Nâng Cao & GA4 */}
       <UpgradePlanModal

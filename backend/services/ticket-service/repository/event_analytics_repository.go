@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -94,19 +95,55 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 		return nil, err
 	}
 
+	// 0. Tự động kiểm tra và chèn biên lai đảo (Reversal Receipt) cho các vé đã REFUNDED nhưng chưa có biên lai đảo
+	healQuery := `
+		INSERT INTO financial_receipt (
+			order_id, bill_id, ticket_id, event_id, organizer_id,
+			gross_amount, system_fee_percentage, fixed_fee, commission_amount,
+			net_amount, currency, tier_code, commission_bps, fee_source,
+			fee_config_version, is_reversal, reversal_of_receipt_id,
+			computed_at, created_at
+		)
+		SELECT 
+			fr.order_id, fr.bill_id, fr.ticket_id, fr.event_id, fr.organizer_id,
+			-fr.gross_amount, fr.system_fee_percentage, fr.fixed_fee, -fr.commission_amount,
+			-fr.net_amount, fr.currency, fr.tier_code, fr.commission_bps, fr.fee_source,
+			fr.fee_config_version, TRUE, fr.receipt_id,
+			NOW(), NOW()
+		FROM financial_receipt fr
+		JOIN ticket t ON fr.ticket_id = t.ticket_id
+		WHERE fr.event_id = $1
+		  AND fr.is_reversal = FALSE
+		  AND t.status = 'REFUNDED'
+		  AND NOT EXISTS (
+			  SELECT 1 FROM financial_receipt rev 
+			  WHERE rev.reversal_of_receipt_id = fr.receipt_id 
+			     OR (rev.ticket_id = fr.ticket_id AND rev.is_reversal = TRUE)
+		  )
+	`
+	if _, healErr := r.db.ExecContext(ctx, healQuery, eventID); healErr != nil {
+		fmt.Printf("[HEAL_QUERY_ERROR] event %d: %v\n", eventID, healErr)
+	}
+
 	// 1. Doanh thu từ financial_receipt (Chỉ tính bill PAID hoặc REFUNDED + biên lai bill_id NULL; loại bỏ PENDING, FAILED)
 	overviewQuery := `
 		SELECT 
-			COALESCE(SUM(fr.gross_amount), 0)::BIGINT AS total_gross,
+			COALESCE(SUM(CASE WHEN NOT fr.is_reversal THEN fr.gross_amount ELSE 0 END), 0)::BIGINT AS original_gross,
+			COALESCE(SUM(CASE WHEN fr.is_reversal THEN ABS(fr.gross_amount) ELSE 0 END), 0)::BIGINT AS refund_gross,
+			COALESCE(SUM(fr.gross_amount), 0)::BIGINT AS net_gross,
 			COALESCE(SUM(fr.commission_amount), 0)::BIGINT AS total_platform_fee,
-			COALESCE(SUM(fr.net_amount), 0)::BIGINT AS total_net
+			COALESCE(SUM(fr.net_amount), 0)::BIGINT AS total_net,
+			COALESCE(SUM(CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END), 0)::BIGINT AS total_fixed_fee,
+			COALESCE(SUM(fr.commission_amount - (CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END)), 0)::BIGINT AS total_commission_fee
 		FROM financial_receipt fr
 		LEFT JOIN bill b ON fr.bill_id = b.bill_id
 		WHERE fr.event_id = $1
 		  AND (fr.bill_id IS NULL OR b.payment_status IN ('PAID', 'REFUNDED'))
 	`
-	var gross, platformFee, net int64
-	err = r.db.QueryRowContext(ctx, overviewQuery, eventID).Scan(&gross, &platformFee, &net)
+	var originalGross, refundGross, netGross, platformFee, net, totalFixedFee, totalCommFee int64
+	err = r.db.QueryRowContext(ctx, overviewQuery, eventID).Scan(
+		&originalGross, &refundGross, &netGross, &platformFee, &net, &totalFixedFee, &totalCommFee,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("lỗi tổng hợp doanh thu tài chính: %w", err)
 	}
@@ -137,22 +174,123 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 		return nil, fmt.Errorf("lỗi đếm số vé hoàn từ bảng ticket: %w", err)
 	}
 
+	if refundGross == 0 && refundedCount > 0 {
+		var fallbackRefund int64
+		_ = r.db.QueryRowContext(ctx, `
+			SELECT COALESCE(SUM(ct.price), 0)::BIGINT
+			FROM ticket t
+			JOIN category_ticket ct ON t.category_ticket_id = ct.category_ticket_id
+			WHERE t.event_id = $1 AND t.status = 'REFUNDED'
+		`, eventID).Scan(&fallbackRefund)
+		if fallbackRefund > 0 {
+			refundGross = fallbackRefund
+			if originalGross < netGross+refundGross {
+				originalGross = netGross + refundGross
+			}
+		}
+	}
+
+	// 4. Phân giải thông tin gói dịch vụ & công thức hoa hồng
+	tierCode := "FREE"
+	commissionBps := 500
+	var fixedFeePerTicket int64 = 1000
+
+	pol, errPol := policy.ResolveOrganizerPolicy(ctx, r.db, ownerID)
+	if errPol == nil && pol != nil {
+		tierCode = pol.TierCode
+		commissionBps = pol.CommissionBps
+	}
+
+	var fixedFeeStr string
+	if errParam := r.db.QueryRowContext(ctx, "SELECT param_value FROM platform_system_parameter WHERE param_key = 'FIXED_FEE_PER_TICKET'").Scan(&fixedFeeStr); errParam == nil {
+		if ff, errParse := strconv.ParseInt(fixedFeeStr, 10, 64); errParse == nil && ff >= 0 {
+			fixedFeePerTicket = ff
+		}
+	}
+
+	commPercent := float64(commissionBps) / 100.0
+
+	var formula string
+	if platformFee <= 0 {
+		formula = fmt.Sprintf("Miễn phí nền tảng 0đ (Gói %s)", tierCode)
+	} else if totalFixedFee > 0 && totalCommFee > 0 {
+		formula = fmt.Sprintf("Hoa hồng %.1f%% (%s) + Phí cố định %s (%s)",
+			commPercent, models.FormatCurrencyVND(totalCommFee),
+			models.FormatCurrencyVND(totalFixedFee), tierCode)
+	} else if totalFixedFee > 0 {
+		formula = fmt.Sprintf("Phí cố định %s (%s)", models.FormatCurrencyVND(totalFixedFee), tierCode)
+	} else {
+		formula = fmt.Sprintf("Hoa hồng %.1f%% (%s)", commPercent, tierCode)
+	}
+
+	// 5. Phân tầng hoa hồng theo từng giai đoạn gói dịch vụ (Multi-tier snapshot)
+	tierBreakdowns := make([]models.FeeTierBreakdown, 0)
+	tierQuery := `
+		SELECT 
+			COALESCE(fr.tier_code, 'FREE') AS tier_code,
+			COALESCE(fr.system_fee_percentage, 0.0)::FLOAT AS commission_percent,
+			(COUNT(DISTINCT CASE WHEN NOT fr.is_reversal THEN fr.ticket_id END) - 
+			 COUNT(DISTINCT CASE WHEN fr.is_reversal THEN fr.ticket_id END))::INT AS net_ticket_count,
+			COALESCE(SUM(fr.gross_amount), 0)::BIGINT AS gross_amount,
+			COALESCE(SUM(fr.commission_amount), 0)::BIGINT AS total_platform_fee,
+			COALESCE(SUM(CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END), 0)::BIGINT AS fixed_fee,
+			COALESCE(SUM(fr.commission_amount - (CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END)), 0)::BIGINT AS commission_fee
+		FROM financial_receipt fr
+		LEFT JOIN bill b ON fr.bill_id = b.bill_id
+		WHERE fr.event_id = $1
+		  AND (fr.bill_id IS NULL OR b.payment_status IN ('PAID', 'REFUNDED'))
+		GROUP BY COALESCE(fr.tier_code, 'FREE'), COALESCE(fr.system_fee_percentage, 0.0)
+		ORDER BY MIN(fr.created_at) ASC
+	`
+	tRows, errT := r.db.QueryContext(ctx, tierQuery, eventID)
+	if errT == nil {
+		defer tRows.Close()
+		for tRows.Next() {
+			var tb models.FeeTierBreakdown
+			if errScan := tRows.Scan(
+				&tb.TierCode, &tb.CommissionRatePercent, &tb.TicketCount,
+				&tb.GrossAmount, &tb.TotalFee, &tb.FixedFee, &tb.CommissionFee,
+			); errScan == nil {
+				if tb.TicketCount < 0 {
+					tb.TicketCount = 0
+				}
+				tierBreakdowns = append(tierBreakdowns, tb)
+			}
+		}
+	}
+
+	if len(tierBreakdowns) > 1 {
+		formula = fmt.Sprintf("Áp dụng %d giai đoạn nâng cấp gói (Đổi gói giữa chừng)", len(tierBreakdowns))
+	}
+
 	return &models.EventFinancialOverview{
-		EventID:                   eventID,
-		Title:                     title,
-		OrganizerID:               ownerID,
-		OrganizerName:             ownerName,
-		TotalGrossRevenue:         gross,
-		TotalGrossFormatted:       models.FormatCurrencyVND(gross),
-		TotalPlatformFee:          platformFee,
-		TotalPlatformFeeFormatted: models.FormatCurrencyVND(platformFee),
-		TotalNetProfit:            net,
-		TotalNetFormatted:         models.FormatCurrencyVND(net),
-		TotalTicketsSold:          ticketsSold,
-		TotalTicketsRefunded:      refundedCount,
-		Currency:                  "VND",
-		IsSettled:                 isSettled,
-		CreatedAt:                 createdAt,
+		EventID:                     eventID,
+		Title:                       title,
+		OrganizerID:                 ownerID,
+		OrganizerName:               ownerName,
+		TotalGrossRevenue:           netGross,
+		TotalGrossFormatted:         models.FormatCurrencyVND(netGross),
+		TotalOriginalGross:          originalGross,
+		TotalOriginalGrossFormatted: models.FormatCurrencyVND(originalGross),
+		TotalRefundAmount:           refundGross,
+		TotalRefundAmountFormatted:  models.FormatCurrencyVND(refundGross),
+		TotalPlatformFee:            platformFee,
+		TotalPlatformFeeFormatted:   models.FormatCurrencyVND(platformFee),
+		TotalNetProfit:              net,
+		TotalNetFormatted:           models.FormatCurrencyVND(net),
+		TotalTicketsSold:            ticketsSold,
+		TotalTicketsRefunded:        refundedCount,
+		Currency:                    "VND",
+		IsSettled:                   isSettled,
+		CreatedAt:                   createdAt,
+		TierCode:                    tierCode,
+		CommissionBps:               commissionBps,
+		CommissionRatePercent:       commPercent,
+		FixedFeePerTicket:           fixedFeePerTicket,
+		TotalFixedFee:               totalFixedFee,
+		TotalCommissionFee:          totalCommFee,
+		FeeCalculationFormula:       formula,
+		TierBreakdowns:              tierBreakdowns,
 	}, nil
 }
 
@@ -343,19 +481,53 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 		}
 	}
 
+	// 0. Tự động kiểm tra và chèn biên lai đảo (Reversal Receipt) cho các vé đã REFUNDED
+	healQuery := `
+		INSERT INTO financial_receipt (
+			order_id, bill_id, ticket_id, event_id, organizer_id,
+			gross_amount, system_fee_percentage, fixed_fee, commission_amount,
+			net_amount, currency, tier_code, commission_bps, fee_source,
+			fee_config_version, is_reversal, reversal_of_receipt_id,
+			computed_at, created_at
+		)
+		SELECT 
+			fr.order_id, fr.bill_id, fr.ticket_id, fr.event_id, fr.organizer_id,
+			-fr.gross_amount, fr.system_fee_percentage, fr.fixed_fee, -fr.commission_amount,
+			-fr.net_amount, fr.currency, fr.tier_code, fr.commission_bps, fr.fee_source,
+			fr.fee_config_version, TRUE, fr.receipt_id,
+			NOW(), NOW()
+		FROM financial_receipt fr
+		JOIN ticket t ON fr.ticket_id = t.ticket_id
+		WHERE fr.event_id = $1
+		  AND fr.is_reversal = FALSE
+		  AND t.status = 'REFUNDED'
+		  AND NOT EXISTS (
+			  SELECT 1 FROM financial_receipt rev 
+			  WHERE rev.reversal_of_receipt_id = fr.receipt_id 
+			     OR (rev.ticket_id = fr.ticket_id AND rev.is_reversal = TRUE)
+		  )
+	`
+	_, _ = r.db.ExecContext(ctx, healQuery, eventID)
+
 	// 4. Doanh thu tổng hợp từ financial_receipt (chỉ bill PAID, REFUNDED hoặc NULL; gồm biên lai đảo)
 	overviewQuery := `
 		SELECT 
-			COALESCE(SUM(fr.gross_amount), 0)::BIGINT AS total_gross,
+			COALESCE(SUM(CASE WHEN NOT fr.is_reversal THEN fr.gross_amount ELSE 0 END), 0)::BIGINT AS original_gross,
+			COALESCE(SUM(CASE WHEN fr.is_reversal THEN ABS(fr.gross_amount) ELSE 0 END), 0)::BIGINT AS refund_gross,
+			COALESCE(SUM(fr.gross_amount), 0)::BIGINT AS net_gross,
 			COALESCE(SUM(fr.commission_amount), 0)::BIGINT AS total_platform_fee,
-			COALESCE(SUM(fr.net_amount), 0)::BIGINT AS total_net
+			COALESCE(SUM(fr.net_amount), 0)::BIGINT AS total_net,
+			COALESCE(SUM(CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END), 0)::BIGINT AS total_fixed_fee,
+			COALESCE(SUM(fr.commission_amount - (CASE WHEN fr.is_reversal THEN -fr.fixed_fee ELSE fr.fixed_fee END)), 0)::BIGINT AS total_commission_fee
 		FROM financial_receipt fr
 		LEFT JOIN bill b ON fr.bill_id = b.bill_id
 		WHERE fr.event_id = $1
 		  AND (fr.bill_id IS NULL OR b.payment_status IN ('PAID', 'REFUNDED'))
 	`
-	var gross, platformFee, net int64
-	err = r.db.QueryRowContext(ctx, overviewQuery, eventID).Scan(&gross, &platformFee, &net)
+	var originalGross, refundGross, gross, platformFee, net, totalFixedFee, totalCommFee int64
+	err = r.db.QueryRowContext(ctx, overviewQuery, eventID).Scan(
+		&originalGross, &refundGross, &gross, &platformFee, &net, &totalFixedFee, &totalCommFee,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("lỗi tổng hợp doanh thu tài chính: %w", err)
 	}
@@ -635,28 +807,76 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 		}
 	}
 
+	// 13. Phân giải thông tin gói dịch vụ & công thức hoa hồng
+	tierCode := "FREE"
+	commissionBps := 500
+	var fixedFeePerTicket int64 = 1000
+
+	var ownerID int
+	_ = r.db.QueryRowContext(ctx, "SELECT created_by FROM event WHERE event_id = $1", eventID).Scan(&ownerID)
+	if ownerID > 0 {
+		pol, errPol := policy.ResolveOrganizerPolicy(ctx, r.db, ownerID)
+		if errPol == nil && pol != nil {
+			tierCode = pol.TierCode
+			commissionBps = pol.CommissionBps
+		}
+	}
+
+	var fixedFeeStr string
+	if errParam := r.db.QueryRowContext(ctx, "SELECT param_value FROM platform_system_parameter WHERE param_key = 'FIXED_FEE_PER_TICKET'").Scan(&fixedFeeStr); errParam == nil {
+		if ff, errParse := strconv.ParseInt(fixedFeeStr, 10, 64); errParse == nil && ff >= 0 {
+			fixedFeePerTicket = ff
+		}
+	}
+
+	commPercent := float64(commissionBps) / 100.0
+
+	var formula string
+	if platformFee <= 0 {
+		formula = fmt.Sprintf("Miễn phí nền tảng 0đ (Gói %s)", tierCode)
+	} else if totalFixedFee > 0 && totalCommFee > 0 {
+		formula = fmt.Sprintf("Hoa hồng %.1f%% (%s) + Phí cố định %s (%s)",
+			commPercent, models.FormatCurrencyVND(totalCommFee),
+			models.FormatCurrencyVND(totalFixedFee), tierCode)
+	} else if totalFixedFee > 0 {
+		formula = fmt.Sprintf("Phí cố định %s (%s)", models.FormatCurrencyVND(totalFixedFee), tierCode)
+	} else {
+		formula = fmt.Sprintf("Hoa hồng %.1f%% (%s)", commPercent, tierCode)
+	}
+
 	return &models.EventAdvancedAnalyticsResponse{
-		EventID:                   eventID,
-		Title:                     title,
-		TotalGrossRevenue:         gross,
-		TotalGrossFormatted:       models.FormatCurrencyVND(gross),
-		TotalPlatformFee:          platformFee,
-		TotalPlatformFeeFormatted: models.FormatCurrencyVND(platformFee),
-		TotalNetProfit:            net,
-		TotalNetFormatted:         models.FormatCurrencyVND(net),
-		TotalTicketsSold:          ticketsSold,
-		CheckedInTickets:          checkedInCount,
-		CheckInRatePercent:        checkInRate,
-		AverageOrderValue:         aov,
-		TotalCapacity:             totalCapacity,
-		FillRatePercent:           fillRate,
-		Timeline:                  timeline,
-		CategoryBreakdown:         categories,
-		HourlyCheckIns:            hourlyCheckIns,
-		HourlyCheckOuts:           hourlyCheckOuts,
-		RefundAuditList:           refundAuditList,
-		RefundReasons:             refundReasons,
-		HasAdvancedReports:        true,
+		EventID:                     eventID,
+		Title:                       title,
+		TotalGrossRevenue:           gross,
+		TotalGrossFormatted:         models.FormatCurrencyVND(gross),
+		TotalOriginalGross:          originalGross,
+		TotalOriginalGrossFormatted: models.FormatCurrencyVND(originalGross),
+		TotalRefundAmount:           refundGross,
+		TotalRefundAmountFormatted:  models.FormatCurrencyVND(refundGross),
+		TotalPlatformFee:            platformFee,
+		TotalPlatformFeeFormatted:   models.FormatCurrencyVND(platformFee),
+		TotalNetProfit:              net,
+		TotalNetFormatted:           models.FormatCurrencyVND(net),
+		TotalTicketsSold:            ticketsSold,
+		CheckedInTickets:            checkedInCount,
+		CheckInRatePercent:          checkInRate,
+		AverageOrderValue:           aov,
+		TotalCapacity:               totalCapacity,
+		FillRatePercent:             fillRate,
+		Timeline:                    timeline,
+		CategoryBreakdown:           categories,
+		HourlyCheckIns:              hourlyCheckIns,
+		HourlyCheckOuts:             hourlyCheckOuts,
+		RefundAuditList:             refundAuditList,
+		RefundReasons:               refundReasons,
+		HasAdvancedReports:          true,
+		TierCode:                    tierCode,
+		CommissionBps:               commissionBps,
+		CommissionRatePercent:       commPercent,
+		FixedFeePerTicket:           fixedFeePerTicket,
+		TotalFixedFee:               totalFixedFee,
+		TotalCommissionFee:          totalCommFee,
+		FeeCalculationFormula:       formula,
 	}, nil
 }
 

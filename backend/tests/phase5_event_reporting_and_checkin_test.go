@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -76,11 +77,11 @@ func TestPhase5_EventReportingAndCheckIn_RealDockerDB(t *testing.T) {
 	// Users: 901=ADMIN, 902=ORGANIZER A, 903=ORGANIZER B (Người ngoài), 904=SCHOOL_ORGANIZER, 905=STUDENT
 	// Event 9001 (Owner 902), Event 9002 (Owner 904), Event 9003 (Owner 902 - Empty Event)
 	cleanupAndSeedSQL := `
-		DELETE FROM financial_receipt WHERE event_id IN (9001, 9002, 9003) OR organizer_id BETWEEN 900 AND 920;
-		DELETE FROM ticket WHERE event_id IN (9001, 9002, 9003) OR user_id BETWEEN 900 AND 920;
+		DELETE FROM financial_receipt WHERE event_id IN (9001, 9002, 9003, 9005) OR organizer_id BETWEEN 900 AND 920;
+		DELETE FROM ticket WHERE event_id IN (9001, 9002, 9003, 9005) OR user_id BETWEEN 900 AND 920;
 		DELETE FROM bill WHERE user_id BETWEEN 900 AND 920;
-		DELETE FROM category_ticket WHERE event_id IN (9001, 9002, 9003);
-		DELETE FROM event WHERE event_id IN (9001, 9002, 9003) OR created_by BETWEEN 900 AND 920;
+		DELETE FROM category_ticket WHERE event_id IN (9001, 9002, 9003, 9005) OR event_id IN (SELECT event_id FROM event WHERE created_by BETWEEN 900 AND 920);
+		DELETE FROM event WHERE event_id IN (9001, 9002, 9003, 9005) OR created_by BETWEEN 900 AND 920;
 		DELETE FROM users WHERE user_id BETWEEN 900 AND 920;
 
 		INSERT INTO users (user_id, email, full_name, password_hash, role, status) VALUES 
@@ -392,5 +393,149 @@ func TestPhase5_EventReportingAndCheckIn_RealDockerDB(t *testing.T) {
 		}
 
 		t.Logf("✅ TC4 Đạt: Báo cáo tài chính và Trạng thái ghế dùng chung tập trạng thái 'đã bán' ('BOOKED','CHECKED_IN','CHECKED_OUT') và khớp số liệu tuyệt đối (%d vé)!", overview.TotalTicketsSold)
+	})
+
+	// -------------------------------------------------------------
+	// TC5: KỊCH BẢN THỰC TẾ USER: 5 VÉ VIP 50K + 1 VÉ STD 20K = 270K
+	// 1 VÉ VIP ĐƯỢC HOÀN (-50K) -> GROSS THỰC NHẬN = 220K, PHÍ = 14.9K, NET = 205.1K
+	// -------------------------------------------------------------
+	t.Run("TC5_UserScenario_50k_VIP_Refund_Deduction_And_Fee_Formula", func(t *testing.T) {
+		eventID := 9005
+		organizerID := 904 // SCHOOL_ORGANIZER (4.5% commission, 1000 fixed fee)
+
+		// Dọn dẹp và chuẩn bị dữ liệu sự kiện 9005
+		_, _ = db.ExecContext(ctx, "DELETE FROM financial_receipt WHERE event_id = $1", eventID)
+		_, _ = db.ExecContext(ctx, "DELETE FROM ticket WHERE event_id = $1", eventID)
+		_, _ = db.ExecContext(ctx, "DELETE FROM category_ticket WHERE event_id = $1", eventID)
+		_, _ = db.ExecContext(ctx, "DELETE FROM event WHERE event_id = $1", eventID)
+		defer func() {
+			_, _ = db.ExecContext(ctx, "DELETE FROM financial_receipt WHERE event_id = $1", eventID)
+			_, _ = db.ExecContext(ctx, "DELETE FROM ticket WHERE event_id = $1", eventID)
+			_, _ = db.ExecContext(ctx, "DELETE FROM category_ticket WHERE event_id = $1", eventID)
+			_, _ = db.ExecContext(ctx, "DELETE FROM event WHERE event_id = $1", eventID)
+		}()
+
+		_, err := db.ExecContext(ctx, `
+			INSERT INTO event (event_id, title, start_time, end_time, created_by, status, is_settled, created_at)
+			VALUES ($1, 'User Test Event 270k', NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', $2, 'OPEN', FALSE, NOW())
+		`, eventID, organizerID)
+		if err != nil {
+			t.Fatalf("Không tạo được event: %v", err)
+		}
+
+		_, err = db.ExecContext(ctx, `
+			INSERT INTO category_ticket (category_ticket_id, event_id, name, price, max_quantity) VALUES
+			(9510, $1, 'VIP', 50000, 100),
+			(9511, $1, 'STANDARD', 20000, 100)
+		`, eventID)
+		if err != nil {
+			t.Fatalf("Không tạo được category_ticket: %v", err)
+		}
+
+		// Tạo 5 vé VIP @ 50k (Vé 9501..9505) và 1 vé STANDARD @ 20k (Vé 9506)
+		// Phí cho vé 50k: 50.000 * 4.5% + 1.000 = 3.250đ -> Net: 46.750đ
+		// Phí cho vé 20k: 20.000 * 4.5% + 1.000 = 1.900đ -> Net: 18.100đ
+		for i := 1; i <= 5; i++ {
+			tID := 9500 + i
+			status := "CHECKED_IN"
+			if i == 1 {
+				status = "REFUNDED" // Vé 1 bị hoàn tiền
+			}
+			_, _ = db.ExecContext(ctx, `
+				INSERT INTO ticket (ticket_id, event_id, category_ticket_id, user_id, qr_code_value, status, created_at)
+				VALUES ($1, $2, 9510, 905, $3, $4, NOW())
+			`, tID, eventID, fmt.Sprintf("QR-VIP-%d", i), status)
+
+			// Ghi biên lai gốc ban đầu (+50k)
+			_, _ = db.ExecContext(ctx, `
+				INSERT INTO financial_receipt (
+					receipt_id, order_id, bill_id, ticket_id, event_id, organizer_id,
+					gross_amount, system_fee_percentage, fixed_fee, commission_bps,
+					fee_config_version, commission_amount, net_amount, tier_code, fee_source, is_reversal
+				) VALUES (
+					$1, $2, NULL, $3, $4, $5,
+					50000, 4.50, 1000, 450,
+					1, 3250, 46750, 'SCHOOL', 'ROLE', FALSE
+				)
+			`, 95000+i, 95000+i, tID, eventID, organizerID)
+		}
+
+		// Vé 9506 (STANDARD @ 20k)
+		_, _ = db.ExecContext(ctx, `
+			INSERT INTO ticket (ticket_id, event_id, category_ticket_id, user_id, qr_code_value, status, created_at)
+			VALUES (9506, $1, 9511, 905, 'QR-STD-6', 'BOOKED', NOW())
+		`, eventID)
+		_, _ = db.ExecContext(ctx, `
+			INSERT INTO financial_receipt (
+				receipt_id, order_id, bill_id, ticket_id, event_id, organizer_id,
+				gross_amount, system_fee_percentage, fixed_fee, commission_bps,
+				fee_config_version, commission_amount, net_amount, tier_code, fee_source, is_reversal
+			) VALUES (
+				95006, 95006, NULL, 9506, $1, $2,
+				20000, 4.50, 1000, 450,
+				1, 1900, 18100, 'SCHOOL', 'ROLE', FALSE
+			)
+		`, eventID, organizerID)
+
+		// Lưu ý: Vé 9501 là REFUNDED nhưng chưa có biên lai đảo trong DB ban đầu.
+		// Gọi Handler GetEventFinancialOverview để kiểm tra tính tự động sửa chữa (Self-Healing) & đối soát chính xác:
+		reqOverview := events.APIGatewayProxyRequest{
+			HTTPMethod: "GET",
+			Path:       fmt.Sprintf("/api/v1/organizer/events/%d/financial-overview", eventID),
+			Headers:    map[string]string{"X-User-Id": "901"}, // Admin
+		}
+		respOverview, err := tHandler.HandleGetEventFinancialOverview(ctx, reqOverview)
+		if err != nil || respOverview.StatusCode != http.StatusOK {
+			t.Fatalf("Gọi financial-overview thất bại: %v, body: %s", err, respOverview.Body)
+		}
+
+		var ov ticketModels.EventFinancialOverview
+		_ = json.Unmarshal([]byte(respOverview.Body), &ov)
+
+		// 1. Doanh thu gốc trước khi hoàn tiền: 50k * 5 + 20k = 270,000đ
+		if ov.TotalOriginalGross != 270000 {
+			t.Errorf("TotalOriginalGross sai: nhận %d, kỳ vọng 270000", ov.TotalOriginalGross)
+		}
+
+		// 2. Tiền vé đã hoàn trả: 50,000đ
+		if ov.TotalRefundAmount != 50000 {
+			t.Errorf("TotalRefundAmount sai: nhận %d, kỳ vọng 50000", ov.TotalRefundAmount)
+		}
+
+		// 3. Doanh thu thanh toán thực tế (Gross sau khi trừ hoàn tiền): 270k - 50k = 220,000đ (220k)
+		if ov.TotalGrossRevenue != 220000 {
+			t.Errorf("TotalGrossRevenue (Gross thực) sai: nhận %d, kỳ vọng 220000", ov.TotalGrossRevenue)
+		}
+		if ov.TotalGrossFormatted != "220k" {
+			t.Errorf("TotalGrossFormatted sai: nhận %s, kỳ vọng '220k'", ov.TotalGrossFormatted)
+		}
+
+		// 4. Phí sàn sau khi trừ hoàn tiền: 18.150 - 3.250 = 14.900đ (14,9k)
+		if ov.TotalPlatformFee != 14900 {
+			t.Errorf("TotalPlatformFee sai: nhận %d, kỳ vọng 14900", ov.TotalPlatformFee)
+		}
+
+		// 5. Thực nhận Net: 220.000 - 14.900 = 205.100đ
+		if ov.TotalNetProfit != 205100 {
+			t.Errorf("TotalNetProfit sai: nhận %d, kỳ vọng 205100", ov.TotalNetProfit)
+		}
+
+		// 6. Số vé đã bán (5 vé hợp lệ, 1 vé hoàn)
+		if ov.TotalTicketsSold != 5 {
+			t.Errorf("TotalTicketsSold sai: nhận %d, kỳ vọng 5", ov.TotalTicketsSold)
+		}
+		if ov.TotalTicketsRefunded != 1 {
+			t.Errorf("TotalTicketsRefunded sai: nhận %d, kỳ vọng 1", ov.TotalTicketsRefunded)
+		}
+
+		// 7. Phí cố định và hoa hồng chi tiết
+		if ov.TotalFixedFee != 5000 { // 5 vé * 1000
+			t.Errorf("TotalFixedFee sai: nhận %d, kỳ vọng 5000", ov.TotalFixedFee)
+		}
+		if ov.TotalCommissionFee != 9900 { // 220.000 * 4.5% = 9.900đ
+			t.Errorf("TotalCommissionFee sai: nhận %d, kỳ vọng 9900", ov.TotalCommissionFee)
+		}
+
+		t.Logf("✅ TC5 ĐẠT TUYỆT ĐỐI KỊCH BẢN USER: Gross=220k (Gốc 270k - Hoàn 50k), Phí=14.900đ (gồm hoa hồng 9.900đ + cố định 5.000đ), Net=205.100đ, Vé bán=5, Vé hoàn=1!")
 	})
 }

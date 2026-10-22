@@ -317,21 +317,44 @@ func FormatCurrencyVND(amount int64) string {
 
 // EventFinancialOverview - Tổng quan 3 cột tiền tài chính sự kiện (Pha 5)
 type EventFinancialOverview struct {
-	EventID                   int       `json:"eventId"`
-	Title                     string    `json:"title"`
-	OrganizerID               int       `json:"organizerId,omitempty"`
-	OrganizerName             string    `json:"organizerName,omitempty"`
-	TotalGrossRevenue         int64     `json:"totalGrossRevenue"`        // Cột 1: Doanh thu thanh toán (gross)
-	TotalGrossFormatted       string    `json:"totalGrossFormatted"`      // Định dạng: 299k, 1,5 triệu
-	TotalPlatformFee          int64     `json:"totalPlatformFee"`         // Cột 2: Phí hoa hồng (commission_amount, ĐÃ gồm fixed_fee, không cộng lại)
-	TotalPlatformFeeFormatted string    `json:"totalPlatformFeeFormatted"`
-	TotalNetProfit            int64     `json:"totalNetProfit"`           // Cột 3: Doanh thu thực nhận (net)
-	TotalNetFormatted         string    `json:"totalNetFormatted"`
-	TotalTicketsSold          int       `json:"totalTicketsSold"`         // Đếm từ bảng ticket (trừ REFUNDED, gồm vé miễn phí)
-	TotalTicketsRefunded      int       `json:"totalTicketsRefunded"`
-	Currency                  string    `json:"currency"`
-	IsSettled                 bool      `json:"isSettled"`
-	CreatedAt                 time.Time `json:"createdAt"`
+	EventID                     int       `json:"eventId"`
+	Title                       string    `json:"title"`
+	OrganizerID                 int       `json:"organizerId,omitempty"`
+	OrganizerName               string    `json:"organizerName,omitempty"`
+	TotalGrossRevenue           int64     `json:"totalGrossRevenue"`           // Cột 1: Doanh thu thanh toán thực tế (Gross sau khi đã trừ hoàn tiền)
+	TotalGrossFormatted         string    `json:"totalGrossFormatted"`         // Định dạng: 220k, 1,5 triệu
+	TotalOriginalGross          int64     `json:"totalOriginalGross"`          // Doanh thu gốc trước khi hoàn tiền (270.000đ)
+	TotalOriginalGrossFormatted string    `json:"totalOriginalGrossFormatted"` // Định dạng: 270k
+	TotalRefundAmount           int64     `json:"totalRefundAmount"`           // Tiền vé đã hoàn trả (50.000đ)
+	TotalRefundAmountFormatted  string    `json:"totalRefundAmountFormatted"`  // Định dạng: 50k
+	TotalPlatformFee            int64     `json:"totalPlatformFee"`            // Cột 2: Phí hoa hồng thực tế sau khi trừ hoàn (14.900đ)
+	TotalPlatformFeeFormatted   string    `json:"totalPlatformFeeFormatted"`
+	TotalNetProfit              int64     `json:"totalNetProfit"`              // Cột 3: Doanh thu thực nhận Net (205.100đ)
+	TotalNetFormatted           string    `json:"totalNetFormatted"`
+	TotalTicketsSold            int       `json:"totalTicketsSold"`            // Đếm từ bảng ticket (trừ REFUNDED, gồm vé miễn phí)
+	TotalTicketsRefunded        int       `json:"totalTicketsRefunded"`
+	Currency                    string    `json:"currency"`
+	IsSettled                   bool      `json:"isSettled"`
+	CreatedAt                   time.Time `json:"createdAt"`
+	TierCode                    string    `json:"tierCode,omitempty"`                 // FREE, PRO, BUSINESS, SCHOOL
+	CommissionBps               int       `json:"commissionBps,omitempty"`            // 500 = 5%, 250 = 2.5%, 0 = 0%, 450 = 4.5%
+	CommissionRatePercent       float64   `json:"commissionRatePercent,omitempty"`    // 5.0, 2.5, 0.0, 4.5
+	FixedFeePerTicket           int64     `json:"fixedFeePerTicket,omitempty"`        // 1000đ/vé
+	TotalFixedFee               int64     `json:"totalFixedFee,omitempty"`            // Tổng phí cố định (5.000đ)
+	TotalCommissionFee          int64     `json:"totalCommissionFee,omitempty"`       // Tổng hoa hồng % (9.900đ)
+	FeeCalculationFormula       string             `json:"feeCalculationFormula,omitempty"`    // Phép toán mô tả chi tiết
+	TierBreakdowns              []FeeTierBreakdown `json:"tierBreakdowns,omitempty"`          // Phân tầng hoa hồng theo từng giai đoạn gói
+}
+
+// FeeTierBreakdown - Chi tiết hoa hồng và phí theo từng giai đoạn gói dịch vụ (Multi-tier snapshot)
+type FeeTierBreakdown struct {
+	TierCode              string  `json:"tierCode"`              // FREE, PRO, BUSINESS, SCHOOL
+	CommissionRatePercent float64 `json:"commissionRatePercent"` // 5.0, 2.5, 0.0, 4.5
+	TicketCount           int     `json:"ticketCount"`           // Số vé ròng áp dụng trong giai đoạn này
+	GrossAmount           int64   `json:"grossAmount"`           // Doanh thu vé giai đoạn này
+	CommissionFee         int64   `json:"commissionFee"`         // Tiền hoa hồng % giai đoạn này
+	FixedFee              int64   `json:"fixedFee"`              // Tiền phí cố định giai đoạn này
+	TotalFee              int64   `json:"totalFee"`              // Tổng phí giai đoạn này
 }
 
 // EventCheckInItem - Chi tiết vé trong danh sách check-in thời gian thực (Pha 5)
@@ -439,27 +462,38 @@ type RefundReasonCount struct {
 
 // EventAdvancedAnalyticsResponse - Báo cáo nâng cao đa chiều dành riêng cho gói Pro / Business / School Organizer / Admin (Pha 6)
 type EventAdvancedAnalyticsResponse struct {
-	EventID                   int                      `json:"eventId"`
-	Title                     string                   `json:"title"`
-	TotalGrossRevenue         int64                    `json:"totalGrossRevenue"`
-	TotalGrossFormatted       string                   `json:"totalGrossFormatted"`
-	TotalPlatformFee          int64                    `json:"totalPlatformFee"`
-	TotalPlatformFeeFormatted string                   `json:"totalPlatformFeeFormatted"`
-	TotalNetProfit            int64                    `json:"totalNetProfit"`
-	TotalNetFormatted         string                   `json:"totalNetFormatted"`
-	TotalTicketsSold          int                      `json:"totalTicketsSold"`
-	CheckedInTickets          int                      `json:"checkedInTickets"`
-	CheckInRatePercent        float64                  `json:"checkInRatePercent"`
-	AverageOrderValue         int64                    `json:"averageOrderValue"`
-	TotalCapacity             int                      `json:"totalCapacity"`
-	FillRatePercent           float64                  `json:"fillRatePercent"`
-	Timeline                  []DailySalesPoint        `json:"timeline"`
-	CategoryBreakdown         []CategorySalesBreakdown `json:"categoryBreakdown"`
-	HourlyCheckIns            []HourlyCheckInPoint     `json:"hourlyCheckIns"`
-	HourlyCheckOuts           []HourlyCheckInPoint     `json:"hourlyCheckOuts"`
-	RefundAuditList           []RefundAuditItem        `json:"refundAuditList"`
-	RefundReasons             []RefundReasonCount      `json:"refundReasons"`
-	HasAdvancedReports        bool                     `json:"hasAdvancedReports"`
+	EventID                     int                      `json:"eventId"`
+	Title                       string                   `json:"title"`
+	TotalGrossRevenue           int64                    `json:"totalGrossRevenue"`           // Gross sau khi đã trừ hoàn tiền
+	TotalGrossFormatted         string                   `json:"totalGrossFormatted"`
+	TotalOriginalGross          int64                    `json:"totalOriginalGross,omitempty"`
+	TotalOriginalGrossFormatted string                   `json:"totalOriginalGrossFormatted,omitempty"`
+	TotalRefundAmount           int64                    `json:"totalRefundAmount,omitempty"`
+	TotalRefundAmountFormatted  string                   `json:"totalRefundAmountFormatted,omitempty"`
+	TotalPlatformFee            int64                    `json:"totalPlatformFee"`
+	TotalPlatformFeeFormatted   string                   `json:"totalPlatformFeeFormatted"`
+	TotalNetProfit              int64                    `json:"totalNetProfit"`
+	TotalNetFormatted           string                   `json:"totalNetFormatted"`
+	TotalTicketsSold            int                      `json:"totalTicketsSold"`
+	CheckedInTickets            int                      `json:"checkedInTickets"`
+	CheckInRatePercent          float64                  `json:"checkInRatePercent"`
+	AverageOrderValue           int64                    `json:"averageOrderValue"`
+	TotalCapacity               int                      `json:"totalCapacity"`
+	FillRatePercent             float64                  `json:"fillRatePercent"`
+	Timeline                    []DailySalesPoint        `json:"timeline"`
+	CategoryBreakdown           []CategorySalesBreakdown `json:"categoryBreakdown"`
+	HourlyCheckIns              []HourlyCheckInPoint     `json:"hourlyCheckIns"`
+	HourlyCheckOuts             []HourlyCheckInPoint     `json:"hourlyCheckOuts"`
+	RefundAuditList             []RefundAuditItem        `json:"refundAuditList"`
+	RefundReasons               []RefundReasonCount      `json:"refundReasons"`
+	HasAdvancedReports          bool                     `json:"hasAdvancedReports"`
+	TierCode                    string                   `json:"tierCode,omitempty"`
+	CommissionBps               int                      `json:"commissionBps,omitempty"`
+	CommissionRatePercent       float64                  `json:"commissionRatePercent,omitempty"`
+	FixedFeePerTicket           int64                    `json:"fixedFeePerTicket,omitempty"`
+	TotalFixedFee               int64                    `json:"totalFixedFee,omitempty"`
+	TotalCommissionFee          int64                    `json:"totalCommissionFee,omitempty"`
+	FeeCalculationFormula       string                   `json:"feeCalculationFormula,omitempty"`
 }
 
 // PreviewUpgradeRequest - Yêu cầu tính thử chi phí nâng cấp gói

@@ -1137,6 +1137,31 @@ func (r *ReportRepository) processReportMonolith(ctx context.Context, reportID, 
 		return result, nil
 	}
 
+	// Ghi nhận Biên lai đảo (Reversal Receipt) vào financial_receipt theo nguyên tắc Dual-Entry Ledger
+	_, _ = tx.ExecContext(ctx, `
+		INSERT INTO financial_receipt (
+			order_id, bill_id, ticket_id, event_id, organizer_id,
+			gross_amount, system_fee_percentage, fixed_fee, commission_amount,
+			net_amount, currency, tier_code, commission_bps, fee_source,
+			fee_config_version, is_reversal, reversal_of_receipt_id,
+			computed_at, created_at
+		)
+		SELECT 
+			fr.order_id, fr.bill_id, fr.ticket_id, fr.event_id, fr.organizer_id,
+			-fr.gross_amount, fr.system_fee_percentage, fr.fixed_fee, -fr.commission_amount,
+			-fr.net_amount, fr.currency, fr.tier_code, fr.commission_bps, fr.fee_source,
+			fr.fee_config_version, TRUE, fr.receipt_id,
+			NOW(), NOW()
+		FROM financial_receipt fr
+		WHERE fr.ticket_id = $1 AND fr.is_reversal = FALSE
+		  AND NOT EXISTS (
+			  SELECT 1 FROM financial_receipt rev 
+			  WHERE rev.reversal_of_receipt_id = fr.receipt_id 
+			     OR (rev.ticket_id = fr.ticket_id AND rev.is_reversal = TRUE)
+		  )
+		ORDER BY fr.receipt_id DESC LIMIT 1
+	`, ticketID)
+
 	// 7) Update Report → APPROVED
 	query = `
 		UPDATE Report
