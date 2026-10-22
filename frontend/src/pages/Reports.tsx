@@ -2207,10 +2207,13 @@ export default function Reports() {
                                     }}
                                     itemStyle={{ color: '#f8fafc' }}
                                     labelStyle={{ color: '#94a3b8', fontWeight: 600 }}
-                                    formatter={(val: any, name: any) => [
-                                      `${val} lượt`,
-                                      name === 'checkInCount' ? 'Lượt Check-in (Vào)' : 'Lượt Check-out (Ra)',
-                                    ]}
+                                    formatter={(val: any, name: any, item: any) => {
+                                      const isCheckIn = name === 'checkInCount' || name === 'Check-in (Vào)' || item?.dataKey === 'checkInCount'
+                                      return [
+                                        `${val} lượt`,
+                                        isCheckIn ? 'Lượt Check-in (Vào)' : 'Lượt Check-out (Ra)',
+                                      ]
+                                    }}
                                     labelFormatter={(label) => `Khung giờ: ${label}:00 - ${Number(label) + 1}:00`}
                                   />
                                   <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
