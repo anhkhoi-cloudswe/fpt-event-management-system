@@ -123,6 +123,9 @@ function formatEventSchedule(startStr?: string, endStr?: string): string {
     return `${sTime} (${sDate})`
   }
 
+  const eDate = `${pad(e.getDate())}/${pad(e.getMonth() + 1)}/${e.getFullYear()}`
+  const eTime = `${pad(e.getHours())}:${pad(e.getMinutes())}`
+
   return `${sTime} (${sDate}) - ${eTime} (${eDate})`
 }
 
