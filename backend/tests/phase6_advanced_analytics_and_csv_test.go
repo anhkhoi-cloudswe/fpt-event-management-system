@@ -82,6 +82,8 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 	_, _ = db.ExecContext(ctx, "DELETE FROM ticket WHERE 1=1")
 	_, _ = db.ExecContext(ctx, "DELETE FROM bill WHERE 1=1")
 	_, _ = db.ExecContext(ctx, "DELETE FROM category_ticket WHERE 1=1")
+	_, _ = db.ExecContext(ctx, "UPDATE event_request SET created_event_id = NULL WHERE 1=1")
+	_, _ = db.ExecContext(ctx, "DELETE FROM event_seat_layout WHERE 1=1")
 	_, _ = db.ExecContext(ctx, "DELETE FROM event WHERE 1=1")
 	_, _ = db.ExecContext(ctx, "DELETE FROM users WHERE user_id >= 6000")
 
@@ -239,6 +241,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 	// TC 3: Gói Pro hết hạn bị 403 PAYWALL_REQUIRED
 	// =========================================================================
 	t.Run("TC3_ExpiredSubscription_PaywallRequired", func(t *testing.T) {
+		_, _ = db.ExecContext(ctx, "DELETE FROM event WHERE event_id = 607")
 		if _, err := db.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (607, 'Expired Event', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6007, 'OPEN')"); err != nil {
 			t.Fatalf("Lỗi tạo event 607: %v", err)
 		}
@@ -331,6 +334,7 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 		}
 
 		// School Organizer (6004) xem sự kiện của mình
+		_, _ = db.ExecContext(ctx, "DELETE FROM event WHERE event_id = 604")
 		if _, err := db.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (604, 'School Festival', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6004, 'OPEN')"); err != nil {
 			t.Fatalf("Lỗi tạo event 604: %v", err)
 		}
@@ -452,6 +456,11 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 	// TC 8: Test Đối Soát Doanh Thu: Tổng doanh thu theo loại vé = Tổng KPI (gồm biên lai đảo, LEGACY & vé 0đ)
 	// =========================================================================
 	t.Run("TC8_Reconciliation_CategorySumEqualsKPISum_IncludingLegacy", func(t *testing.T) {
+		_, _ = db.ExecContext(ctx, "DELETE FROM financial_receipt WHERE event_id = 680")
+		_, _ = db.ExecContext(ctx, "DELETE FROM ticket WHERE event_id = 680")
+		_, _ = db.ExecContext(ctx, "DELETE FROM category_ticket WHERE event_id = 680")
+		_, _ = db.ExecContext(ctx, "DELETE FROM bill WHERE bill_id IN (6801, 6802, 6803)")
+		_, _ = db.ExecContext(ctx, "DELETE FROM event WHERE event_id = 680")
 		if _, err := db.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (680, 'Reconciliation Event', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6002, 'OPEN')"); err != nil {
 			t.Fatalf("Lỗi tạo event 680: %v", err)
 		}
@@ -556,6 +565,10 @@ func TestPhase6_AdvancedAnalyticsAndCSV_RealDockerDB(t *testing.T) {
 		}
 
 		// Tạo event 690 có title bắt đầu bằng '\t=1+1', category1 bắt đầu bằng '\r@x', category2 là ' =cmd' và biên lai âm -100000
+		_, _ = db.ExecContext(ctx, "DELETE FROM financial_receipt WHERE event_id = 690")
+		_, _ = db.ExecContext(ctx, "DELETE FROM ticket WHERE event_id = 690")
+		_, _ = db.ExecContext(ctx, "DELETE FROM category_ticket WHERE event_id = 690")
+		_, _ = db.ExecContext(ctx, "DELETE FROM event WHERE event_id = 690")
 		if _, err := db.ExecContext(ctx, "INSERT INTO event (event_id, title, description, start_time, end_time, created_by, status) VALUES (690, '\t=1+1 Tabbed Formula', 'Desc', NOW(), NOW() + INTERVAL '1 day', 6002, 'OPEN')"); err != nil {
 			t.Fatalf("Lỗi tạo event 690: %v", err)
 		}

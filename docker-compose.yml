@@ -218,6 +218,7 @@ services:
       SQS_QUEUE_URL: ${SQS_QUEUE_URL}
       # ⏰ Time Machine Environment (read from .env for synchronized testing)
       SYSTEM_TIME_OVERRIDE: ${SYSTEM_TIME_OVERRIDE}
+      USE_DYNAMIC_FEE_CALCULATION: ${USE_DYNAMIC_FEE_CALCULATION:-true}
       # 🕐 Timezone synchronization (database and service)
       TZ: Asia/Ho_Chi_Minh
     depends_on:

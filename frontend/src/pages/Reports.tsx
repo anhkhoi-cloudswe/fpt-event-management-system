@@ -251,8 +251,12 @@ function MultiTierSnapshotModal({
         const itemComm = (item.commissionFee !== undefined && item.commissionFee > 0)
           ? item.commissionFee
           : Math.max(0, itemTotal - itemFixed)
+        const resolvedTierCode = (item.tierCode === 'LEGACY' && tierCode && tierCode !== 'LEGACY')
+          ? tierCode
+          : (item.tierCode || tierCode || 'FREE')
         return {
           ...item,
+          tierCode: resolvedTierCode,
           fixedFee: itemFixed,
           commissionFee: itemComm,
           totalFee: itemTotal,
@@ -260,7 +264,7 @@ function MultiTierSnapshotModal({
       })
     : [{
         tierCode: tierCode || 'FREE',
-        commissionRatePercent: commRate ?? 5.0,
+        commissionRatePercent: (commRate !== undefined && commRate !== null) ? commRate : 5.0,
         ticketCount: safeTicketCount,
         commissionFee: safeCommFee,
         fixedFee: safeFixedFee,
@@ -1403,26 +1407,43 @@ export default function Reports() {
                   const bRefundCount = financialOverview?.totalTicketsRefunded || 0
                   const bOriginalGross = financialOverview?.totalOriginalGross || (bGross + bRefundAmount)
                   const bTicketsSold = financialOverview?.totalTicketsSold || 0
-                  const bTierCode = financialOverview?.tierCode || currentSub?.tierCode || 'FREE'
-                  const bCommRate = financialOverview?.commissionRatePercent ?? (currentSub?.commissionBps ? currentSub.commissionBps / 100 : 5)
+                  // Dữ liệu phân rã giai đoạn gói (Multi-tier snapshot)
+                  const bTierBreakdowns = financialOverview?.tierBreakdowns || []
+                  const bHasMultiTier = bTierBreakdowns.length > 1
+                  const bSingleTier = bTierBreakdowns.length === 1 ? bTierBreakdowns[0] : null
+
+                  // Xác định TierCode và tỷ lệ hoa hồng chuẩn xác, ưu tiên snapshot của vé thực tế
+                  const rawTierCode = financialOverview?.tierCode || currentSub?.tierCode || 'FREE'
+                  const bTierCode = (bSingleTier?.tierCode && bSingleTier.tierCode !== 'LEGACY')
+                    ? bSingleTier.tierCode
+                    : (rawTierCode === 'LEGACY' ? (currentSub?.tierCode || 'FREE') : rawTierCode)
+
+                  const bCommRate = bSingleTier?.commissionRatePercent !== undefined && bSingleTier.commissionRatePercent !== null
+                    ? bSingleTier.commissionRatePercent
+                    : (financialOverview?.commissionRatePercent !== undefined && financialOverview?.commissionRatePercent !== null
+                      ? financialOverview.commissionRatePercent
+                      : ((currentSub?.commissionBps !== undefined && currentSub?.commissionBps !== null)
+                        ? currentSub.commissionBps / 100
+                        : 5))
                   const bFixedFeePerTicket = financialOverview?.fixedFeePerTicket ?? 1000
 
                   // Phân rã cụ thể số tiền hoa hồng & phí cố định
                   const bFixedFee = (financialOverview?.totalFixedFee !== undefined && financialOverview.totalFixedFee > 0)
                     ? financialOverview.totalFixedFee
-                    : (bPlatformFee > 0 ? Math.min(bPlatformFee, bTicketsSold * bFixedFeePerTicket) : 0)
+                    : (bSingleTier?.fixedFee !== undefined && bSingleTier.fixedFee > 0
+                      ? bSingleTier.fixedFee
+                      : (bPlatformFee > 0 ? Math.min(bPlatformFee, bTicketsSold * bFixedFeePerTicket) : 0))
+
                   const bCommFee = (financialOverview?.totalCommissionFee !== undefined && financialOverview.totalCommissionFee >= 0 && (financialOverview.totalCommissionFee + bFixedFee === bPlatformFee))
                     ? financialOverview.totalCommissionFee
-                    : Math.max(0, bPlatformFee - bFixedFee)
+                    : (bSingleTier?.commissionFee !== undefined && bSingleTier.commissionFee >= 0
+                      ? bSingleTier.commissionFee
+                      : Math.max(0, bPlatformFee - bFixedFee))
                   
                   // Số lượng vé áp dụng phí cố định linh hoạt theo thực tế
                   const bFeeTicketCount = (bFixedFee > 0 && bFixedFeePerTicket > 0)
                     ? Math.round(bFixedFee / bFixedFeePerTicket)
                     : (bTicketsSold || 0)
-
-                  // Dữ liệu phân rã giai đoạn gói (Multi-tier snapshot)
-                  const bTierBreakdowns = financialOverview?.tierBreakdowns || []
-                  const bHasMultiTier = bTierBreakdowns.length > 1
 
                   return (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
@@ -2128,9 +2149,25 @@ export default function Reports() {
                   const aRefundAmount = advancedData?.totalRefundAmount ?? financialOverview?.totalRefundAmount ?? totalRefundAmount
                   const aRefundCount = advancedData?.totalTicketsRefunded ?? financialOverview?.totalTicketsRefunded ?? 0
                   const aOriginalGross = advancedData?.totalOriginalGross || financialOverview?.totalOriginalGross || (aGross + aRefundAmount)
-                  const aTicketsSold = financialOverview?.totalTicketsSold || 0
-                  const aTierCode = advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE'
-                  const aCommRate = advancedData?.commissionRatePercent ?? financialOverview?.commissionRatePercent ?? (currentSub?.commissionBps ? currentSub.commissionBps / 100 : 5)
+                  // Dữ liệu phân rã giai đoạn gói (Multi-tier snapshot)
+                  const aTierBreakdowns = (isPaywallRequired ? MOCK_ADVANCED_DATA.tierBreakdowns : (advancedData?.tierBreakdowns || financialOverview?.tierBreakdowns)) || []
+                  const aHasMultiTier = aTierBreakdowns.length > 1
+                  const aSingleTier = aTierBreakdowns.length === 1 ? aTierBreakdowns[0] : null
+
+                  const rawATierCode = advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE'
+                  const aTierCode = (aSingleTier?.tierCode && aSingleTier.tierCode !== 'LEGACY')
+                    ? aSingleTier.tierCode
+                    : (rawATierCode === 'LEGACY' ? (currentSub?.tierCode || 'FREE') : rawATierCode)
+
+                  const aCommRate = aSingleTier?.commissionRatePercent !== undefined && aSingleTier.commissionRatePercent !== null
+                    ? aSingleTier.commissionRatePercent
+                    : (advancedData?.commissionRatePercent !== undefined && advancedData?.commissionRatePercent !== null
+                      ? advancedData.commissionRatePercent
+                      : (financialOverview?.commissionRatePercent !== undefined && financialOverview?.commissionRatePercent !== null
+                        ? financialOverview.commissionRatePercent
+                        : ((currentSub?.commissionBps !== undefined && currentSub?.commissionBps !== null)
+                          ? currentSub.commissionBps / 100
+                          : 5)))
                   const aFixedFeePerTicket = advancedData?.fixedFeePerTicket ?? financialOverview?.fixedFeePerTicket ?? 1000
 
                   // Phân rã cụ thể số tiền hoa hồng & phí cố định
@@ -2138,21 +2175,21 @@ export default function Reports() {
                     ? advancedData.totalFixedFee
                     : ((financialOverview?.totalFixedFee !== undefined && financialOverview.totalFixedFee > 0)
                       ? financialOverview.totalFixedFee
-                      : (aPlatformFee > 0 ? Math.min(aPlatformFee, aTicketsSold * aFixedFeePerTicket) : 0))
+                      : (aSingleTier?.fixedFee !== undefined && aSingleTier.fixedFee > 0
+                        ? aSingleTier.fixedFee
+                        : (aPlatformFee > 0 ? Math.min(aPlatformFee, aTicketsSold * aFixedFeePerTicket) : 0)))
                   const aCommFee = (advancedData?.totalCommissionFee !== undefined && advancedData.totalCommissionFee >= 0 && (advancedData.totalCommissionFee + aFixedFee === aPlatformFee))
                     ? advancedData.totalCommissionFee
                     : ((financialOverview?.totalCommissionFee !== undefined && financialOverview.totalCommissionFee >= 0 && (financialOverview.totalCommissionFee + aFixedFee === aPlatformFee))
                       ? financialOverview.totalCommissionFee
-                      : Math.max(0, aPlatformFee - aFixedFee))
+                      : (aSingleTier?.commissionFee !== undefined && aSingleTier.commissionFee >= 0
+                        ? aSingleTier.commissionFee
+                        : Math.max(0, aPlatformFee - aFixedFee)))
 
                   // Số lượng vé áp dụng phí cố định linh hoạt theo thực tế
                   const aFeeTicketCount = (aFixedFee > 0 && aFixedFeePerTicket > 0)
                     ? Math.round(aFixedFee / aFixedFeePerTicket)
                     : (aTicketsSold || 0)
-
-                  // Dữ liệu phân rã giai đoạn gói (Multi-tier snapshot)
-                  const aTierBreakdowns = (isPaywallRequired ? MOCK_ADVANCED_DATA.tierBreakdowns : (advancedData?.tierBreakdowns || financialOverview?.tierBreakdowns)) || []
-                  const aHasMultiTier = aTierBreakdowns.length > 1
 
                   return (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">

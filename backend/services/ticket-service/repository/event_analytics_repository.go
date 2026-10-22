@@ -254,9 +254,21 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 				if tb.TicketCount < 0 {
 					tb.TicketCount = 0
 				}
+				if tb.TierCode == "LEGACY" && tierCode != "" && tierCode != "LEGACY" {
+					tb.TierCode = tierCode
+				}
 				tierBreakdowns = append(tierBreakdowns, tb)
 			}
 		}
+	}
+
+	// Self-healing: Cập nhật các biên lai có tier_code 'LEGACY' sang tierCode thực tế của Organizer
+	if tierCode != "" && tierCode != "LEGACY" {
+		_, _ = r.db.ExecContext(ctx, `
+			UPDATE financial_receipt 
+			SET tier_code = $1 
+			WHERE event_id = $2 AND (tier_code = 'LEGACY' OR tier_code IS NULL)
+		`, tierCode, eventID)
 	}
 
 	if len(tierBreakdowns) > 1 {

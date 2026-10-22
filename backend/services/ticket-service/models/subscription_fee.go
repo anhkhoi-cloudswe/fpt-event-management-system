@@ -336,14 +336,14 @@ type EventFinancialOverview struct {
 	Currency                    string    `json:"currency"`
 	IsSettled                   bool      `json:"isSettled"`
 	CreatedAt                   time.Time `json:"createdAt"`
-	TierCode                    string    `json:"tierCode,omitempty"`                 // FREE, PRO, BUSINESS, SCHOOL
-	CommissionBps               int       `json:"commissionBps,omitempty"`            // 500 = 5%, 250 = 2.5%, 0 = 0%, 450 = 4.5%
-	CommissionRatePercent       float64   `json:"commissionRatePercent,omitempty"`    // 5.0, 2.5, 0.0, 4.5
-	FixedFeePerTicket           int64     `json:"fixedFeePerTicket,omitempty"`        // 1000đ/vé
-	TotalFixedFee               int64     `json:"totalFixedFee,omitempty"`            // Tổng phí cố định (5.000đ)
-	TotalCommissionFee          int64     `json:"totalCommissionFee,omitempty"`       // Tổng hoa hồng % (9.900đ)
-	FeeCalculationFormula       string             `json:"feeCalculationFormula,omitempty"`    // Phép toán mô tả chi tiết
-	TierBreakdowns              []FeeTierBreakdown `json:"tierBreakdowns,omitempty"`          // Phân tầng hoa hồng theo từng giai đoạn gói
+	TierCode                    string             `json:"tierCode,omitempty"`              // FREE, PRO, BUSINESS, SCHOOL
+	CommissionBps               int                `json:"commissionBps"`                   // 500 = 5%, 250 = 2.5%, 0 = 0%, 450 = 4.5%
+	CommissionRatePercent       float64            `json:"commissionRatePercent"`           // 5.0, 2.5, 0.0, 4.5
+	FixedFeePerTicket           int64              `json:"fixedFeePerTicket"`               // 1000đ/vé
+	TotalFixedFee               int64              `json:"totalFixedFee"`                   // Tổng phí cố định (5.000đ)
+	TotalCommissionFee          int64              `json:"totalCommissionFee"`              // Tổng hoa hồng % (9.900đ)
+	FeeCalculationFormula       string             `json:"feeCalculationFormula,omitempty"` // Phép toán mô tả chi tiết
+	TierBreakdowns              []FeeTierBreakdown `json:"tierBreakdowns"`                  // Phân tầng hoa hồng theo từng giai đoạn gói
 }
 
 // FeeTierBreakdown - Chi tiết hoa hồng và phí theo từng giai đoạn gói dịch vụ (Multi-tier snapshot)

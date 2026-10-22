@@ -664,8 +664,8 @@ func (r *TicketRepository) ProcessPaidOrderCommissionTx(
 		return fmt.Errorf("lỗi truy vấn sự kiện: %w", err)
 	}
 
-	// 2. Feature Flag: Chuyển sang biểu phí mới (ResolveOrganizerPolicyTx), MẶC ĐỊNH TẮT (legacy)
-	useDynamicFee := os.Getenv("USE_DYNAMIC_FEE_CALCULATION") == "true"
+	// 2. Feature Flag: Chuyển sang biểu phí mới (ResolveOrganizerPolicyTx), MẶC ĐỊNH BẬT (trừ khi cố ý tắt bằng "false" để rollback)
+	useDynamicFee := os.Getenv("USE_DYNAMIC_FEE_CALCULATION") != "false"
 
 	var dynamicPolicy *ResolvedOrganizerPolicy
 	var fixedFeePerTicket int64 = 1000
