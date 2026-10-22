@@ -109,6 +109,7 @@ export interface EventAdvancedAnalyticsResponse {
   timeline: DailySalesPoint[]
   categoryBreakdown: CategorySalesBreakdown[]
   hourlyCheckIns: HourlyCheckInPoint[]
+  hourlyCheckOuts?: HourlyCheckInPoint[]
   hasAdvancedReports: boolean
 }
 

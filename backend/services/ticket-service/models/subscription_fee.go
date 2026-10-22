@@ -432,6 +432,7 @@ type EventAdvancedAnalyticsResponse struct {
 	Timeline                  []DailySalesPoint        `json:"timeline"`
 	CategoryBreakdown         []CategorySalesBreakdown `json:"categoryBreakdown"`
 	HourlyCheckIns            []HourlyCheckInPoint     `json:"hourlyCheckIns"`
+	HourlyCheckOuts           []HourlyCheckInPoint     `json:"hourlyCheckOuts"`
 	HasAdvancedReports        bool                     `json:"hasAdvancedReports"`
 }
 

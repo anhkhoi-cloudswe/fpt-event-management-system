@@ -478,18 +478,18 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 		return nil, fmt.Errorf("lỗi trong vòng lặp xu hướng bán vé: %w", err)
 	}
 
-	// 10. Check-in theo khung giờ (Hourly Check-ins, 0 - 23h)
-	hourlyMap := make(map[int]int)
-	hourlyQuery := `
+	// 10. Check-in & Check-out theo khung giờ (0 - 23h theo múi giờ Việt Nam Asia/Ho_Chi_Minh GMT+7)
+	hourlyCheckInMap := make(map[int]int)
+	hourlyCheckInQuery := `
 		SELECT 
-			EXTRACT(HOUR FROM checkin_time)::INT AS hour_num,
+			EXTRACT(HOUR FROM (checkin_time AT TIME ZONE 'Asia/Ho_Chi_Minh'))::INT AS hour_num,
 			COUNT(*) AS count
 		FROM ticket
 		WHERE event_id = $1
 		  AND checkin_time IS NOT NULL
-		GROUP BY EXTRACT(HOUR FROM checkin_time)
+		GROUP BY EXTRACT(HOUR FROM (checkin_time AT TIME ZONE 'Asia/Ho_Chi_Minh'))
 	`
-	hRows, err := r.db.QueryContext(ctx, hourlyQuery, eventID)
+	hRows, err := r.db.QueryContext(ctx, hourlyCheckInQuery, eventID)
 	if err != nil {
 		return nil, fmt.Errorf("lỗi đọc thống kê check-in theo khung giờ: %w", err)
 	}
@@ -500,17 +500,49 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 		if err := hRows.Scan(&h, &c); err != nil {
 			return nil, fmt.Errorf("lỗi scan dòng check-in theo khung giờ: %w", err)
 		}
-		hourlyMap[h] = c
+		hourlyCheckInMap[h] = c
 	}
 	if err := hRows.Err(); err != nil {
 		return nil, fmt.Errorf("lỗi trong vòng lặp check-in theo khung giờ: %w", err)
 	}
 
+	hourlyCheckOutMap := make(map[int]int)
+	hourlyCheckOutQuery := `
+		SELECT 
+			EXTRACT(HOUR FROM (check_out_time AT TIME ZONE 'Asia/Ho_Chi_Minh'))::INT AS hour_num,
+			COUNT(*) AS count
+		FROM ticket
+		WHERE event_id = $1
+		  AND check_out_time IS NOT NULL
+		GROUP BY EXTRACT(HOUR FROM (check_out_time AT TIME ZONE 'Asia/Ho_Chi_Minh'))
+	`
+	hoRows, err := r.db.QueryContext(ctx, hourlyCheckOutQuery, eventID)
+	if err != nil {
+		return nil, fmt.Errorf("lỗi đọc thống kê check-out theo khung giờ: %w", err)
+	}
+	defer hoRows.Close()
+
+	for hoRows.Next() {
+		var h, c int
+		if err := hoRows.Scan(&h, &c); err != nil {
+			return nil, fmt.Errorf("lỗi scan dòng check-out theo khung giờ: %w", err)
+		}
+		hourlyCheckOutMap[h] = c
+	}
+	if err := hoRows.Err(); err != nil {
+		return nil, fmt.Errorf("lỗi trong vòng lặp check-out theo khung giờ: %w", err)
+	}
+
 	hourlyCheckIns := make([]models.HourlyCheckInPoint, 24)
+	hourlyCheckOuts := make([]models.HourlyCheckInPoint, 24)
 	for h := 0; h < 24; h++ {
 		hourlyCheckIns[h] = models.HourlyCheckInPoint{
 			Hour:  h,
-			Count: hourlyMap[h],
+			Count: hourlyCheckInMap[h],
+		}
+		hourlyCheckOuts[h] = models.HourlyCheckInPoint{
+			Hour:  h,
+			Count: hourlyCheckOutMap[h],
 		}
 	}
 
@@ -546,6 +578,7 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 		Timeline:                  timeline,
 		CategoryBreakdown:         categories,
 		HourlyCheckIns:            hourlyCheckIns,
+		HourlyCheckOuts:           hourlyCheckOuts,
 		HasAdvancedReports:        true,
 	}, nil
 }

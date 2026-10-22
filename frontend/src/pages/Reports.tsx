@@ -500,9 +500,13 @@ export default function Reports() {
           const timelineMap: Record<string, { ticketsSold: number; grossRevenue: number; platformFee: number; netProfit: number }> = {}
           // Tổng hợp Category Breakdown
           const catBreakdownMap: Record<string, CategorySalesBreakdown> = {}
-          // Tổng hợp Hourly Check-in
+          // Tổng hợp Hourly Check-in & Check-out
           const hourlyCount: Record<number, number> = {}
-          for (let h = 0; h < 24; h++) hourlyCount[h] = 0
+          const hourlyOutCount: Record<number, number> = {}
+          for (let h = 0; h < 24; h++) {
+            hourlyCount[h] = 0
+            hourlyOutCount[h] = 0
+          }
 
           let totalGross = 0
           let totalFee = 0
@@ -560,9 +564,12 @@ export default function Reports() {
               catBreakdownMap[key].netProfit += cat.netProfit || 0
             })
 
-            // Merge hourly check-in
+            // Merge hourly check-in & check-out
             ;(adv.hourlyCheckIns || []).forEach((h) => {
               hourlyCount[h.hour] = (hourlyCount[h.hour] || 0) + h.count
+            })
+            ;(adv.hourlyCheckOuts || []).forEach((h) => {
+              hourlyOutCount[h.hour] = (hourlyOutCount[h.hour] || 0) + h.count
             })
           })
 
@@ -589,6 +596,10 @@ export default function Reports() {
             hour: Number(h),
             count: hourlyCount[Number(h)],
           }))
+          const combinedHourlyOut: HourlyCheckInPoint[] = Object.keys(hourlyOutCount).map((h) => ({
+            hour: Number(h),
+            count: hourlyOutCount[Number(h)],
+          }))
 
           setAdvancedData({
             eventId: 0,
@@ -608,6 +619,7 @@ export default function Reports() {
             timeline: combinedTimeline,
             categoryBreakdown: combinedCategoryBreakdown,
             hourlyCheckIns: combinedHourly,
+            hourlyCheckOuts: combinedHourlyOut,
             hasAdvancedReports: true,
           })
         } catch (err) {
@@ -1934,150 +1946,289 @@ export default function Reports() {
                     })()}
                   </div>
 
-                  {/* Hourly Check-In Distribution với Bộ lọc Ngày & Buổi (Sáng/Chiều/Tối) */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 lg:col-span-2 shadow-xl flex flex-col justify-between">
-                    <div>
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div>
-                          <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-indigo-500" />
-                            <span>Phân Bố Lượng Khách Check-In Theo Khung Giờ (24h)</span>
-                          </h3>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
-                            Tần suất khách quét mã vào cổng theo từng giờ trong ngày.
-                          </p>
-                        </div>
+                  {/* Phân Tích Check-In & Check-Out: Biểu Đồ Khung Giờ (24h) & Biểu Đồ Tròn Tỷ Lệ */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:col-span-2">
+                    {/* Cột 1 & 2: Bar Chart Phân Bố Khách Check-In & Check-Out Theo Khung Giờ */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 lg:col-span-2 shadow-xl flex flex-col justify-between">
+                      <div>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                          <div>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-indigo-500" />
+                              <span>Phân Bố Khách Check-In & Check-Out Theo Khung Giờ (24h)</span>
+                            </h3>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Tần suất khách quét mã vào cổng (Check-in) và ra về (Check-out) theo từng khung giờ trong ngày (GMT+7).
+                            </p>
+                          </div>
 
-                        {/* Bộ lọc Buổi trong ngày */}
-                        <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
-                          {[
-                            { key: 'ALL', label: 'Cả Ngày (24h)' },
-                            { key: 'MORNING', label: 'Sáng (6h-12h)' },
-                            { key: 'AFTERNOON', label: 'Chiều (12h-18h)' },
-                            { key: 'EVENING', label: 'Tối (18h-23h)' },
-                            { key: 'NIGHT', label: 'Đêm (0h-6h)' },
-                          ].map((item) => (
-                            <button
-                              key={item.key}
-                              onClick={() => setHourlyRangeFilter(item.key as any)}
-                              className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                                hourlyRangeFilter === item.key
-                                  ? 'bg-indigo-600 text-white shadow-sm'
-                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                              }`}
-                            >
-                              {item.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Filter Bar: Chọn ngày check-in nếu có nhiều ngày */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 pt-3 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-400 font-medium">Lọc theo ngày:</span>
-                          <select
-                            value={hourlyDateFilter}
-                            onChange={(e) => setHourlyDateFilter(e.target.value)}
-                            className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                          >
-                            <option value="ALL">Tất cả các ngày diễn ra</option>
-                            {Array.from(
-                              new Set(
-                                checkIns
-                                  .filter((c) => c.checkedInAt)
-                                  .map((c) => c.checkedInAt!.substring(0, 10))
-                              )
-                            ).map((d) => (
-                              <option key={d} value={d}>
-                                Ngày {d}
-                              </option>
+                          {/* Bộ lọc Buổi trong ngày */}
+                          <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
+                            {[
+                              { key: 'ALL', label: 'Cả Ngày (24h)' },
+                              { key: 'MORNING', label: 'Sáng (6h-12h)' },
+                              { key: 'AFTERNOON', label: 'Chiều (12h-18h)' },
+                              { key: 'EVENING', label: 'Tối (18h-23h)' },
+                              { key: 'NIGHT', label: 'Đêm (0h-6h)' },
+                            ].map((item) => (
+                              <button
+                                key={item.key}
+                                onClick={() => setHourlyRangeFilter(item.key as any)}
+                                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                  hourlyRangeFilter === item.key
+                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                }`}
+                              >
+                                {item.label}
+                              </button>
                             ))}
-                          </select>
+                          </div>
                         </div>
 
-                        <span className="text-xs font-bold text-slate-400">
-                          Tổng lượt vào:{' '}
-                          <strong className="text-indigo-600 dark:text-indigo-400 font-black">
-                            {seatStatus?.totalCheckedIn || 0}
-                          </strong>
-                        </span>
+                        {/* Filter Bar: Chọn ngày nếu có nhiều ngày */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 font-medium">Lọc theo ngày:</span>
+                            <select
+                              value={hourlyDateFilter}
+                              onChange={(e) => setHourlyDateFilter(e.target.value)}
+                              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                            >
+                              <option value="ALL">Tất cả các ngày diễn ra</option>
+                              {Array.from(
+                                new Set(
+                                  checkIns
+                                    .filter((c) => c.checkedInAt || c.checkedOutAt)
+                                    .map((c) => {
+                                      const timeStr = c.checkedInAt || c.checkedOutAt
+                                      if (!timeStr) return ''
+                                      const d = new Date(timeStr)
+                                      const pad = (n: number) => String(n).padStart(2, '0')
+                                      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+                                    })
+                                    .filter(Boolean)
+                                )
+                              ).map((d) => (
+                                <option key={d} value={d}>
+                                  Ngày {d}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-xs font-bold">
+                            <span className="text-slate-400">
+                              Lượt vào:{' '}
+                              <strong className="text-indigo-600 dark:text-indigo-400 font-black">
+                                {seatStatus?.totalCheckedIn || 0}
+                              </strong>
+                            </span>
+                            <span className="text-slate-400">
+                              Lượt ra:{' '}
+                              <strong className="text-emerald-600 dark:text-emerald-400 font-black">
+                                {seatStatus?.totalCheckedOut || 0}
+                              </strong>
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Hourly Calculation based on Filter */}
-                    {(() => {
-                      let baseHourly = advancedData?.hourlyCheckIns || []
+                      {/* Hourly Calculation based on Filter */}
+                      {(() => {
+                        let baseIn = advancedData?.hourlyCheckIns || []
+                        let baseOut = advancedData?.hourlyCheckOuts || []
 
-                      // Nếu người dùng chọn lọc theo 1 ngày cụ thể từ danh sách check-ins
-                      if (hourlyDateFilter !== 'ALL') {
-                        const countByHour: Record<number, number> = {}
-                        for (let h = 0; h < 24; h++) countByHour[h] = 0
+                        // Nếu lọc theo ngày cụ thể từ danh sách checkIns
+                        if (hourlyDateFilter !== 'ALL') {
+                          const countInByHour: Record<number, number> = {}
+                          const countOutByHour: Record<number, number> = {}
+                          for (let h = 0; h < 24; h++) {
+                            countInByHour[h] = 0
+                            countOutByHour[h] = 0
+                          }
 
-                        checkIns.forEach((c) => {
-                          if (c.checkedInAt && c.checkedInAt.startsWith(hourlyDateFilter)) {
-                            const h = new Date(c.checkedInAt).getHours()
-                            countByHour[h] = (countByHour[h] || 0) + 1
+                          checkIns.forEach((c) => {
+                            const pad = (n: number) => String(n).padStart(2, '0')
+                            if (c.checkedInAt) {
+                              const dIn = new Date(c.checkedInAt)
+                              const inDateStr = `${dIn.getFullYear()}-${pad(dIn.getMonth() + 1)}-${pad(dIn.getDate())}`
+                              if (inDateStr === hourlyDateFilter) {
+                                countInByHour[dIn.getHours()] = (countInByHour[dIn.getHours()] || 0) + 1
+                              }
+                            }
+                            if (c.checkedOutAt) {
+                              const dOut = new Date(c.checkedOutAt)
+                              const outDateStr = `${dOut.getFullYear()}-${pad(dOut.getMonth() + 1)}-${pad(dOut.getDate())}`
+                              if (outDateStr === hourlyDateFilter) {
+                                countOutByHour[dOut.getHours()] = (countOutByHour[dOut.getHours()] || 0) + 1
+                              }
+                            }
+                          })
+
+                          baseIn = Object.keys(countInByHour).map((h) => ({
+                            hour: Number(h),
+                            count: countInByHour[Number(h)],
+                          }))
+                          baseOut = Object.keys(countOutByHour).map((h) => ({
+                            hour: Number(h),
+                            count: countOutByHour[Number(h)],
+                          }))
+                        }
+
+                        // Ghép dữ liệu cho từng giờ
+                        const combinedHours = Array.from({ length: 24 }, (_, h) => {
+                          const inItem = baseIn.find((x) => x.hour === h)
+                          const outItem = baseOut.find((x) => x.hour === h)
+                          return {
+                            hour: h,
+                            checkInCount: inItem ? inItem.count : 0,
+                            checkOutCount: outItem ? outItem.count : 0,
                           }
                         })
 
-                        baseHourly = Object.keys(countByHour).map((h) => ({
-                          hour: Number(h),
-                          count: countByHour[Number(h)],
-                        }))
-                      }
+                        // Lọc theo khung giờ / buổi
+                        const filteredHourly = combinedHours.filter((item) => {
+                          if (hourlyRangeFilter === 'ALL') return true
+                          if (hourlyRangeFilter === 'MORNING') return item.hour >= 6 && item.hour < 12
+                          if (hourlyRangeFilter === 'AFTERNOON') return item.hour >= 12 && item.hour < 18
+                          if (hourlyRangeFilter === 'EVENING') return item.hour >= 18 && item.hour <= 23
+                          if (hourlyRangeFilter === 'NIGHT') return item.hour >= 0 && item.hour < 6
+                          return true
+                        })
 
-                      // Lọc theo khung giờ / buổi
-                      const filteredHourly = baseHourly.filter((item) => {
-                        if (hourlyRangeFilter === 'ALL') return true
-                        if (hourlyRangeFilter === 'MORNING') return item.hour >= 6 && item.hour < 12
-                        if (hourlyRangeFilter === 'AFTERNOON') return item.hour >= 12 && item.hour < 18
-                        if (hourlyRangeFilter === 'EVENING') return item.hour >= 18 && item.hour <= 23
-                        if (hourlyRangeFilter === 'NIGHT') return item.hour >= 0 && item.hour < 6
-                        return true
-                      })
+                        const totalInView = filteredHourly.reduce((acc, curr) => acc + curr.checkInCount + curr.checkOutCount, 0)
 
-                      const totalInView = filteredHourly.reduce((acc, curr) => acc + curr.count, 0)
+                        return (
+                          <div className="h-64 w-full my-2">
+                            {totalInView === 0 && (seatStatus?.totalCheckedIn || 0) === 0 && (seatStatus?.totalCheckedOut || 0) === 0 ? (
+                              <div className="h-full flex items-center justify-center text-xs text-slate-400 font-medium">
+                                Chưa có lượt khách nào thực hiện check-in hoặc check-out trong khung giờ này.
+                              </div>
+                            ) : (
+                              <ResponsiveContainer width="100%" height="100%" minHeight={240}>
+                                <BarChart
+                                  data={filteredHourly}
+                                  margin={{ top: 10, right: 10, left: -10, bottom: 10 }}
+                                >
+                                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                  <XAxis
+                                    dataKey="hour"
+                                    stroke="#94a3b8"
+                                    fontSize={10}
+                                    tickFormatter={(hour) => `${hour}:00`}
+                                  />
+                                  <YAxis stroke="#94a3b8" fontSize={10} allowDecimals={false} />
+                                  <Tooltip
+                                    contentStyle={{
+                                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                                      borderRadius: '1rem',
+                                      color: '#fff',
+                                      fontSize: '12px',
+                                      boxShadow: '0 20px 25px -5px rgba(0,0,0,0.4)',
+                                    }}
+                                    formatter={(val: any, name: any) => [
+                                      `${val} lượt`,
+                                      name === 'checkInCount' ? 'Lượt Check-in (Vào)' : 'Lượt Check-out (Ra)',
+                                    ]}
+                                    labelFormatter={(label) => `Khung giờ: ${label}:00 - ${Number(label) + 1}:00`}
+                                  />
+                                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                                  <Bar dataKey="checkInCount" name="Check-in (Vào)" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                                  <Bar dataKey="checkOutCount" name="Check-out (Ra)" fill="#10B981" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </div>
 
-                      return (
-                        <div className="h-64 w-full my-2">
-                          {totalInView === 0 && (seatStatus?.totalCheckedIn || 0) === 0 ? (
-                            <div className="h-full flex items-center justify-center text-xs text-slate-400 font-medium">
-                              Chưa có lượt khách nào thực hiện quét mã check-in trong khung giờ này.
-                            </div>
-                          ) : (
-                            <ResponsiveContainer width="100%" height="100%" minHeight={240}>
-                              <BarChart
-                                data={filteredHourly}
-                                margin={{ top: 10, right: 10, left: -10, bottom: 10 }}
-                              >
-                                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                                <XAxis
-                                  dataKey="hour"
-                                  stroke="#94a3b8"
-                                  fontSize={10}
-                                  tickFormatter={(hour) => `${hour}:00`}
-                                />
-                                <YAxis stroke="#94a3b8" fontSize={10} allowDecimals={false} />
-                                <Tooltip
-                                  contentStyle={{
-                                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                                    borderRadius: '1rem',
-                                    color: '#fff',
-                                    fontSize: '12px',
-                                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.4)',
-                                  }}
-                                  formatter={(val: any) => [`${val} lượt`, 'Số lượt check-in']}
-                                  labelFormatter={(label) => `Khung giờ: ${label}:00 - ${Number(label) + 1}:00`}
-                                />
-                                <Bar dataKey="count" name="Lượt check-in" fill="#8B5CF6" radius={[6, 6, 0, 0]} />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          )}
+                    {/* Cột 3: Biểu Đồ Tròn Tỷ Lệ Check-In vs Check-Out */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+                      <div>
+                        <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+                          <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                            <PieChartIcon className="w-4 h-4 text-emerald-500" />
+                            <span>Tỷ Lệ Check-In vs Check-Out</span>
+                          </h3>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            So sánh tương quan khách đang có mặt và đã rời sự kiện.
+                          </p>
                         </div>
-                      )
-                    })()}
+
+                        {(() => {
+                          const totalIn = seatStatus?.totalCheckedIn || 0
+                          const totalOut = seatStatus?.totalCheckedOut || 0
+                          const currentlyPresent = Math.max(0, totalIn - totalOut)
+
+                          const pieData = [
+                            { name: 'Đang có mặt tại sự kiện', value: currentlyPresent, fill: '#8B5CF6' },
+                            { name: 'Đã check-out (Rời đi)', value: totalOut, fill: '#10B981' },
+                          ]
+
+                          const hasData = totalIn > 0 || totalOut > 0
+
+                          return (
+                            <div className="h-64 w-full my-2">
+                              {!hasData ? (
+                                <div className="h-full flex items-center justify-center text-xs text-slate-400 font-medium">
+                                  Chưa ghi nhận dữ liệu check-in / check-out.
+                                </div>
+                              ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <PieChart>
+                                    <Pie
+                                      data={pieData}
+                                      dataKey="value"
+                                      nameKey="name"
+                                      cx="50%"
+                                      cy="50%"
+                                      innerRadius={55}
+                                      outerRadius={85}
+                                      paddingAngle={4}
+                                    >
+                                      {pieData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                                      ))}
+                                    </Pie>
+                                    <Tooltip
+                                      contentStyle={{
+                                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '1rem',
+                                        color: '#fff',
+                                        fontSize: '12px',
+                                        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.4)',
+                                      }}
+                                      formatter={(val: any) => [`${val} người`, 'Số lượng']}
+                                    />
+                                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} iconType="circle" />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </div>
+
+                      {/* Stat summary cards */}
+                      <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <div className="p-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50">
+                          <span className="text-[10px] font-bold text-indigo-500 uppercase block">Đang có mặt</span>
+                          <span className="text-base font-black text-indigo-700 dark:text-indigo-300">
+                            {Math.max(0, (seatStatus?.totalCheckedIn || 0) - (seatStatus?.totalCheckedOut || 0))}
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50">
+                          <span className="text-[10px] font-bold text-emerald-500 uppercase block">Đã check-out</span>
+                          <span className="text-base font-black text-emerald-700 dark:text-emerald-300">
+                            {seatStatus?.totalCheckedOut || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </>
