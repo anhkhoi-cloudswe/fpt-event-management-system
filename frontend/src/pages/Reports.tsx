@@ -1953,9 +1953,19 @@ export default function Reports() {
                       <div>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                           <div>
-                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-indigo-500" />
-                              <span>Phân Bố Khách Check-In & Check-Out Theo Khung Giờ (24h)</span>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex flex-wrap items-center gap-1.5">
+                              <Clock className="w-4 h-4 text-indigo-500 shrink-0" />
+                              <span>Phân Bố Khách</span>
+                              <span className="text-violet-600 dark:text-violet-400">Check-In</span>
+                              <span className="text-slate-400">&</span>
+                              <span className="text-emerald-600 dark:text-emerald-400">Check-Out</span>
+                              <span>
+                                {hourlyRangeFilter === 'ALL' && '(24h)'}
+                                {hourlyRangeFilter === 'MORNING' && '(Sáng 6h-12h)'}
+                                {hourlyRangeFilter === 'AFTERNOON' && '(Chiều 12h-18h)'}
+                                {hourlyRangeFilter === 'EVENING' && '(Tối 18h-23h)'}
+                                {hourlyRangeFilter === 'NIGHT' && '(Đêm 0h-6h)'}
+                              </span>
                             </h3>
                             <p className="text-[11px] text-slate-400 mt-0.5">
                               Tần suất khách quét mã vào cổng (Check-in) và ra về (Check-out) theo từng khung giờ trong ngày (GMT+7).
@@ -2020,7 +2030,7 @@ export default function Reports() {
                           <div className="flex items-center gap-3 text-xs font-bold">
                             <span className="text-slate-400">
                               Lượt vào:{' '}
-                              <strong className="text-indigo-600 dark:text-indigo-400 font-black">
+                              <strong className="text-violet-600 dark:text-violet-400 font-black">
                                 {seatStatus?.totalCheckedIn || 0}
                               </strong>
                             </span>
@@ -2121,13 +2131,15 @@ export default function Reports() {
                                   <YAxis stroke="#94a3b8" fontSize={10} allowDecimals={false} />
                                   <Tooltip
                                     contentStyle={{
-                                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                                      borderColor: 'rgba(255, 255, 255, 0.1)',
-                                      borderRadius: '1rem',
-                                      color: '#fff',
+                                      backgroundColor: '#0f172a',
+                                      borderColor: '#334155',
+                                      borderRadius: '0.75rem',
+                                      color: '#f8fafc',
                                       fontSize: '12px',
-                                      boxShadow: '0 20px 25px -5px rgba(0,0,0,0.4)',
+                                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
                                     }}
+                                    itemStyle={{ color: '#f8fafc' }}
+                                    labelStyle={{ color: '#94a3b8', fontWeight: 600 }}
                                     formatter={(val: any, name: any) => [
                                       `${val} lượt`,
                                       name === 'checkInCount' ? 'Lượt Check-in (Vào)' : 'Lượt Check-out (Ra)',
@@ -2195,13 +2207,15 @@ export default function Reports() {
                                     </Pie>
                                     <Tooltip
                                       contentStyle={{
-                                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                                        borderColor: 'rgba(255, 255, 255, 0.1)',
-                                        borderRadius: '1rem',
-                                        color: '#fff',
+                                        backgroundColor: '#0f172a',
+                                        borderColor: '#334155',
+                                        borderRadius: '0.75rem',
+                                        color: '#f8fafc',
                                         fontSize: '12px',
-                                        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.4)',
+                                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
                                       }}
+                                      itemStyle={{ color: '#f8fafc' }}
+                                      labelStyle={{ color: '#cbd5e1', fontWeight: 600 }}
                                       formatter={(val: any) => [`${val} người`, 'Số lượng']}
                                     />
                                     <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} iconType="circle" />
