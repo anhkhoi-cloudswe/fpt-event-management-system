@@ -65,6 +65,7 @@ import { formatVndShort, formatVndFull } from '../utils/currencyFormatter'
 import {
   exportEventAnalyticsToExcel,
   exportEventAnalyticsToCSV,
+  EventSummaryItem,
 } from '../utils/excelExportHelper'
 
 // ===================== DỮ LIỆU MẪU MINH HỌA (MOCK DATA FOR PAYWALL) =====================
@@ -496,6 +497,7 @@ export default function Reports() {
   const [advancedErrorType, setAdvancedErrorType] = useState<'FORBIDDEN' | 'NOT_FOUND' | 'SERVICE_UNAVAILABLE' | 'GENERIC' | null>(null)
   const [exportingCsv, setExportingCsv] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
+  const [allEventsReportData, setAllEventsReportData] = useState<EventSummaryItem[]>([])
 
   // Timeline Filter & Custom Date Range States for Pro Charts
   const [timelinePreset, setTimelinePreset] = useState<'ALL' | '7D' | '30D' | 'THIS_MONTH' | 'LAST_MONTH' | 'THIS_YEAR' | 'CUSTOM'>('ALL')
@@ -620,6 +622,10 @@ export default function Reports() {
           let net = 0
           let sold = 0
           let refunded = 0
+          let refundAmount = 0
+          let originalGross = 0
+          let fixedFee = 0
+          let commissionFee = 0
           let totalCapacity = 0
           let totalCheckedIn = 0
           let totalCheckedOut = 0
@@ -628,11 +634,19 @@ export default function Reports() {
 
           results.forEach((r) => {
             if (r.fin) {
-              gross += r.fin.totalGrossRevenue || 0
+              const curGross = r.fin.totalGrossRevenue || 0
+              const curRefundAmt = r.fin.totalRefundAmount || 0
+              const curOrigGross = r.fin.totalOriginalGross || (curGross + curRefundAmt)
+
+              gross += curGross
               fee += r.fin.totalPlatformFee || 0
               net += r.fin.totalNetProfit || 0
               sold += r.fin.totalTicketsSold || 0
               refunded += r.fin.totalTicketsRefunded || 0
+              refundAmount += curRefundAmt
+              originalGross += curOrigGross
+              fixedFee += r.fin.totalFixedFee || 0
+              commissionFee += r.fin.totalCommissionFee || 0
             }
             if (r.chk && Array.isArray(r.chk)) {
               combinedCheckIns = combinedCheckIns.concat(r.chk)
@@ -666,6 +680,33 @@ export default function Reports() {
             }
           })
 
+          // Tạo danh sách chi tiết các sự kiện để xuất Excel / CSV
+          const summaryList: EventSummaryItem[] = events.map((ev, idx) => {
+            const r = results[idx]
+            const cap = r?.st?.totalCapacity || 0
+            const sSold = r?.fin?.totalTicketsSold || 0
+            const sGross = r?.fin?.totalGrossRevenue || 0
+            const sFee = r?.fin?.totalPlatformFee || 0
+            const sNet = r?.fin?.totalNetProfit || 0
+            const fill = cap > 0 ? (sSold / cap) * 100 : 0
+            return {
+              id: ev.id,
+              title: ev.title,
+              startTime: ev.startTime,
+              endTime: ev.endTime,
+              status: ev.status,
+              organizerName: ev.organizerName,
+              organizerEmail: ev.organizerEmail,
+              capacity: cap,
+              ticketsSold: sSold,
+              grossRevenue: sGross,
+              platformFee: sFee,
+              netProfit: sNet,
+              fillRatePercent: fill,
+            }
+          })
+          setAllEventsReportData(summaryList)
+
           // Tính lại fillRatePercent cho combined categories
           const combinedCats = Object.values(combinedCategoriesMap).map((c) => ({
             ...c,
@@ -677,8 +718,14 @@ export default function Reports() {
             title: user?.role === 'ADMIN' ? 'Toàn bộ sự kiện trên hệ thống' : 'Toàn bộ sự kiện của bạn',
             totalGrossRevenue: gross,
             totalGrossFormatted: formatVndFull(gross),
+            totalOriginalGross: originalGross,
+            totalOriginalGrossFormatted: formatVndFull(originalGross),
+            totalRefundAmount: refundAmount,
+            totalRefundAmountFormatted: formatVndFull(refundAmount),
             totalPlatformFee: fee,
             totalPlatformFeeFormatted: formatVndFull(fee),
+            totalFixedFee: fixedFee,
+            totalCommissionFee: commissionFee,
             totalNetProfit: net,
             totalNetFormatted: formatVndFull(net),
             totalTicketsSold: sold,
@@ -686,6 +733,7 @@ export default function Reports() {
             currency: 'VND',
             isSettled: false,
             createdAt: new Date().toISOString(),
+            tierCode: currentSub?.tierCode || 'BUSINESS',
           })
 
           setCheckIns(combinedCheckIns)
@@ -828,14 +876,28 @@ export default function Reports() {
           let totalSold = 0
           let totalCheckIn = 0
           let totalCapacity = 0
+          let totalRefundAmount = 0
+          let totalTicketsRefunded = 0
+          let totalOriginalGross = 0
+          let totalFixedFee = 0
+          let totalCommissionFee = 0
 
           validResults.forEach((adv) => {
-            totalGross += adv.totalGrossRevenue || 0
+            const curGross = adv.totalGrossRevenue || 0
+            const curRefundAmt = adv.totalRefundAmount || 0
+            const curOrigGross = adv.totalOriginalGross || (curGross + curRefundAmt)
+
+            totalGross += curGross
             totalFee += adv.totalPlatformFee || 0
             totalNet += adv.totalNetProfit || 0
             totalSold += adv.totalTicketsSold || 0
             totalCheckIn += adv.checkedInTickets || 0
             totalCapacity += adv.totalCapacity || 0
+            totalRefundAmount += curRefundAmt
+            totalTicketsRefunded += ((adv as any).totalTicketsRefunded ?? adv.refundAuditList?.length ?? 0)
+            totalOriginalGross += curOrigGross
+            totalFixedFee += adv.totalFixedFee || 0
+            totalCommissionFee += adv.totalCommissionFee || 0
 
             // Merge timeline
             ;(adv.timeline || []).forEach((pt) => {
@@ -938,8 +1000,14 @@ export default function Reports() {
             title: user?.role === 'ADMIN' ? 'Toàn bộ sự kiện trên hệ thống' : 'Toàn bộ sự kiện của bạn',
             totalGrossRevenue: totalGross,
             totalGrossFormatted: formatVndFull(totalGross),
+            totalOriginalGross,
+            totalOriginalGrossFormatted: formatVndFull(totalOriginalGross),
+            totalRefundAmount,
+            totalRefundAmountFormatted: formatVndFull(totalRefundAmount),
             totalPlatformFee: totalFee,
             totalPlatformFeeFormatted: formatVndFull(totalFee),
+            totalFixedFee,
+            totalCommissionFee,
             totalNetProfit: totalNet,
             totalNetFormatted: formatVndFull(totalNet),
             totalTicketsSold: totalSold,
@@ -955,6 +1023,7 @@ export default function Reports() {
             refundAuditList: combinedRefundList,
             refundReasons: combinedRefundReasons,
             hasAdvancedReports: true,
+            tierCode: currentSub?.tierCode || 'BUSINESS',
           })
         } catch (err) {
           console.error('Lỗi tổng hợp báo cáo nâng cao toàn bộ sự kiện:', err)
@@ -1072,7 +1141,7 @@ export default function Reports() {
         organizerName: isAll
           ? (user?.role === 'ADMIN' ? 'Ban Quản Trị Hệ Thống FEMS' : (user?.fullName || 'Ban Tổ Chức'))
           : (selectedEvent?.organizerName || user?.fullName || 'Ban Tổ Chức'),
-        allEventsList: allEventsSummary,
+        allEventsList: isAll ? (allEventsReportData.length > 0 ? allEventsReportData : allEventsSummary) : [],
         advancedData: data,
         financialOverview,
         currentSub,
@@ -1137,7 +1206,7 @@ export default function Reports() {
         organizerName: isAll
           ? (user?.role === 'ADMIN' ? 'Ban Quản Trị Hệ Thống FEMS' : (user?.fullName || 'Ban Tổ Chức'))
           : (selectedEvent?.organizerName || user?.fullName || 'Ban Tổ Chức'),
-        allEventsList: allEventsSummary,
+        allEventsList: isAll ? (allEventsReportData.length > 0 ? allEventsReportData : allEventsSummary) : [],
         advancedData: data,
         financialOverview,
         currentSub,
@@ -1530,6 +1599,41 @@ export default function Reports() {
               </div>
             ) : (
               <>
+                {/* Header Action Bar: Xuất Báo Cáo Đối Soát Dữ Liệu (Excel & CSV) */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-sm">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+                      <span>Xuất Báo Cáo Đối Soát Dữ Liệu</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {selectedEventId === 'ALL'
+                        ? 'Tải file báo cáo tổng hợp toàn bộ sự kiện đã đối soát đa trang tính (.xlsx hoặc .csv).'
+                        : 'Tải file đối soát chi tiết chỉ số vận hành & tài chính sự kiện này.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleExportExcel}
+                      disabled={exportingExcel || exportingCsv}
+                      className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-2xl shadow-md shadow-emerald-600/20 transition flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
+                      title="Xuất tệp Excel đa trang tính (.xlsx) chuẩn tài chính"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+                      <span>{exportingExcel ? 'Đang tạo Excel...' : 'Xuất File Excel (.xlsx)'}</span>
+                    </button>
+                    <button
+                      onClick={handleExportCSV}
+                      disabled={exportingExcel || exportingCsv}
+                      className="px-3.5 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-2xl border border-slate-200 dark:border-slate-800 transition flex items-center gap-1.5 disabled:opacity-50 shadow-sm cursor-pointer active:scale-95"
+                      title="Xuất tệp CSV tiêu chuẩn"
+                    >
+                      <Download className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{exportingCsv ? 'Đang tạo...' : 'Xuất CSV'}</span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* 3 Cột Tiền Tài Chính Sự Kiện: Gross, Phí, Thực Nhận Chuẩn Đồng Nhất 10/10 */}
                 {(() => {
                   const bGross = financialOverview?.totalGrossRevenue || 0

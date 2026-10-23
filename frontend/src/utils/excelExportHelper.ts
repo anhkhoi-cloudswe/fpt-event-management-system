@@ -62,55 +62,113 @@ export function formatDateTimeVN(dateStr?: string): string {
 }
 
 /**
- * Tạo tên tệp báo cáo chuyên nghiệp có ngày xuất ISO
+ * Định dạng ngày chuẩn: DD/MM/YYYY
+ */
+export function formatDateOnlyVN(dateStr?: string): string {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
+}
+
+/**
+ * Trích xuất chuỗi ngày YYYYMMDD để ghép vào tên tệp
+ */
+function getDateStringForFileName(dateStr?: string): string {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`
+}
+
+/**
+ * Tạo tên tệp báo cáo chuyên nghiệp:
+ * - Sự kiện riêng lẻ: Bao_Cao_[Ten_Su_Kien]_[Ngay_Bat_Dau].xlsx
+ *   Ví dụ: Bao_Cao_Su_Kien_Truong_Hoc_20261022.xlsx
+ * - Toàn bộ sự kiện: Bao_Cao_Tong_Hop_[N]_Su_Kien_[Ngay_Dau]_den_[Ngay_Cuoi].xlsx
+ *   Ví dụ: Bao_Cao_Tong_Hop_10_Su_Kien_20261021_den_20261022.xlsx
  */
 export function generateReportFileName(
   title: string,
   eventId: number | string,
   extension: 'xlsx' | 'csv',
-  isAll?: boolean
+  isAll?: boolean,
+  eventStartTime?: string,
+  allEventsList?: EventSummaryItem[]
 ): string {
-  const now = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const dateStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`
-
   if (isAll || eventId === 'ALL') {
-    return `Bao_Cao_Tong_Hop_Toan_Bo_Su_Kien_${dateStr}.${extension}`
+    if (allEventsList && allEventsList.length > 0) {
+      const validDates = allEventsList
+        .map((ev) => ev.startTime || ev.endTime)
+        .filter(Boolean)
+        .map((dStr) => new Date(dStr!).getTime())
+        .filter((t) => !isNaN(t))
+        .sort((a, b) => a - b)
+
+      if (validDates.length > 0) {
+        const earliest = getDateStringForFileName(new Date(validDates[0]).toISOString())
+        const latest = getDateStringForFileName(new Date(validDates[validDates.length - 1]).toISOString())
+        const count = allEventsList.length
+
+        if (earliest && latest && earliest !== latest) {
+          return `Bao_Cao_Tong_Hop_${count}_Su_Kien_${earliest}_den_${latest}.${extension}`
+        } else if (earliest) {
+          return `Bao_Cao_Tong_Hop_${count}_Su_Kien_${earliest}.${extension}`
+        }
+      }
+    }
+    return `Bao_Cao_Tong_Hop_Toan_Bo_Su_Kien.${extension}`
   }
 
+  // Sự kiện riêng lẻ: Lấy ngày bắt đầu sự kiện
   const cleanTitle = removeVietnameseTones(title || `Event_${eventId}`)
     .trim()
     .replace(/[^a-zA-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
+    .split('_')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join('_')
 
-  return `Bao_Cao_${cleanTitle || `Event_${eventId}`}_${dateStr}.${extension}`
+  const eventDate = getDateStringForFileName(eventStartTime)
+  if (eventDate) {
+    return `Bao_Cao_${cleanTitle || `Event_${eventId}`}_${eventDate}.${extension}`
+  }
+  return `Bao_Cao_${cleanTitle || `Event_${eventId}`}.${extension}`
 }
 
 // ===================== STYLING TOKENS CHO EXCELJS =====================
 const thinBorder: Partial<ExcelJS.Borders> = {
-  top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-  left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-  bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-  right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+  top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+  left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+  bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+  right: { style: 'thin', color: { argb: 'FFCBD5E1' } },
 }
 
 const doubleBottomBorder: Partial<ExcelJS.Borders> = {
-  top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-  left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+  top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+  left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
   bottom: { style: 'double', color: { argb: 'FF0F172A' } },
-  right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+  right: { style: 'thin', color: { argb: 'FFCBD5E1' } },
 }
 
 const headerFill: ExcelJS.Fill = {
   type: 'pattern',
   pattern: 'solid',
-  fgColor: { argb: 'FFEA580C' }, // FPT Orange
+  fgColor: { argb: 'FFEA580C' }, // FPT Primary Orange
 }
 
 const navyFill: ExcelJS.Fill = {
   type: 'pattern',
   pattern: 'solid',
   fgColor: { argb: 'FF1E293B' }, // Dark Navy
+}
+
+const slateSectionFill: ExcelJS.Fill = {
+  type: 'pattern',
+  pattern: 'solid',
+  fgColor: { argb: 'FF334155' }, // Slate-700
 }
 
 const zebraFill: ExcelJS.Fill = {
@@ -122,24 +180,25 @@ const zebraFill: ExcelJS.Fill = {
 const highlightEmeraldFill: ExcelJS.Fill = {
   type: 'pattern',
   pattern: 'solid',
-  fgColor: { argb: 'FFECFDF5' }, // Emerald Light
+  fgColor: { argb: 'FFECFDF5' }, // Emerald-50
 }
 
 const totalAmberFill: ExcelJS.Fill = {
   type: 'pattern',
   pattern: 'solid',
-  fgColor: { argb: 'FFFEF3C7' }, // Amber Light
+  fgColor: { argb: 'FFFEF3C7' }, // Amber-100
 }
 
 const titleFont: Partial<ExcelJS.Font> = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FF0F172A' } }
-const subtitleFont: Partial<ExcelJS.Font> = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF475569' } }
-const sectionHeaderFont: Partial<ExcelJS.Font> = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF0F172A' } }
+const subtitleFont: Partial<ExcelJS.Font> = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF475569' } }
+const sectionHeaderFont: Partial<ExcelJS.Font> = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
 const headerFont: Partial<ExcelJS.Font> = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
 const normalFont: Partial<ExcelJS.Font> = { name: 'Segoe UI', size: 10, color: { argb: 'FF1E293B' } }
 const boldFont: Partial<ExcelJS.Font> = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF0F172A' } }
 
 /**
- * Xuất Báo Cáo Phân Tích Chuyên Sâu dạng Excel đa trang tính (.xlsx) được kẻ bảng và định dạng chuyên nghiệp
+ * Xuất Báo Cáo Phân Tích Chuyên Sâu dạng Excel đa trang tính (.xlsx)
+ * Đảm bảo 100%: Kẻ bảng toàn bộ, màu sắc đồng nhất, không cắt chữ, căn lề chuẩn xác, dữ liệu minh bạch
  */
 export async function exportEventAnalyticsToExcel({
   isAllEvents = false,
@@ -160,37 +219,20 @@ export async function exportEventAnalyticsToExcel({
   workbook.creator = 'FEMS - FPT Event Management System'
   workbook.created = new Date()
 
-  // Dữ liệu tài chính hợp nhất
+  // 1. Dữ liệu tài chính hợp nhất và minh bạch 100%
   const gross = advancedData?.totalGrossRevenue ?? financialOverview?.totalGrossRevenue ?? 0
-  const platformFee = advancedData?.totalPlatformFee ?? financialOverview?.totalPlatformFee ?? 0
-  const net = advancedData?.totalNetProfit ?? financialOverview?.totalNetProfit ?? 0
   const refundAmount = advancedData?.totalRefundAmount ?? financialOverview?.totalRefundAmount ?? 0
   const refundCount = (advancedData as any)?.totalTicketsRefunded ?? financialOverview?.totalTicketsRefunded ?? 0
   const originalGross = advancedData?.totalOriginalGross || financialOverview?.totalOriginalGross || (gross + refundAmount)
+  const platformFee = advancedData?.totalPlatformFee ?? financialOverview?.totalPlatformFee ?? 0
+  const net = advancedData?.totalNetProfit ?? financialOverview?.totalNetProfit ?? (gross - platformFee)
+
   const ticketsSold = advancedData?.totalTicketsSold ?? financialOverview?.totalTicketsSold ?? 0
   const capacity = advancedData?.totalCapacity || 0
   const fillRate = capacity > 0 ? (ticketsSold / capacity) * 100 : 0
-  const checkedIn = advancedData?.checkedInTickets || 0
-  const checkInRate = ticketsSold > 0 ? (checkedIn / ticketsSold) * 100 : 0
-  const aov = ticketsSold > 0 ? Math.round(gross / ticketsSold) : 0
 
-  // Chi tiết phí gói
-  const rawTierCode = advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE'
-  const tierCode = rawTierCode === 'LEGACY' ? (currentSub?.tierCode || 'FREE') : rawTierCode
-  const commRate = tierCode === 'BUSINESS'
-    ? 0.0
-    : (advancedData?.commissionRatePercent ?? financialOverview?.commissionRatePercent ?? (currentSub?.commissionBps ? currentSub.commissionBps / 100 : 5.0))
-  const fixedFee = (advancedData?.totalFixedFee !== undefined && advancedData.totalFixedFee > 0)
-    ? advancedData.totalFixedFee
-    : ((financialOverview?.totalFixedFee !== undefined && financialOverview.totalFixedFee > 0)
-      ? financialOverview.totalFixedFee
-      : (platformFee > 0 ? Math.min(platformFee, ticketsSold * 1000) : 0))
-  const commFee = tierCode === 'BUSINESS'
-    ? 0
-    : (advancedData?.totalCommissionFee ?? Math.max(0, platformFee - fixedFee))
-
-  // Đếm lượt check-in và check-out thực tế
-  let totalInCount = checkedIn
+  // 2. Lượt check-in và check-out thực tế
+  let totalInCount = advancedData?.checkedInTickets || 0
   let totalOutCount = 0
   if (checkIns.length > 0) {
     let inCnt = 0
@@ -201,19 +243,46 @@ export async function exportEventAnalyticsToExcel({
     })
     totalInCount = inCnt
     totalOutCount = outCnt
+  } else if (isAll) {
+    totalInCount = advancedData?.checkedInTickets || 0
+    // Tổng hợp out count từ hourlyCheckOuts nếu có
+    totalOutCount = (advancedData?.hourlyCheckOuts || []).reduce((acc, curr) => acc + curr.count, 0)
   }
+
+  // Tỷ lệ check-in thực tế tính chuẩn xác theo totalInCount để không bao giờ bị mâu thuẫn
+  const checkInRate = ticketsSold > 0 ? (totalInCount / ticketsSold) * 100 : 0
+  const aov = ticketsSold > 0 ? Math.round(gross / ticketsSold) : 0
+
+  // 3. Phân rã phí nền tảng
+  const rawTierCode = advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE'
+  const tierCode = rawTierCode === 'LEGACY' ? (currentSub?.tierCode || 'FREE') : rawTierCode
+  const commRate = tierCode === 'BUSINESS'
+    ? 0.0
+    : (advancedData?.commissionRatePercent ?? financialOverview?.commissionRatePercent ?? (currentSub?.commissionBps ? currentSub.commissionBps / 100 : 5.0))
+  const fixedFee = (advancedData?.totalFixedFee !== undefined && advancedData.totalFixedFee >= 0)
+    ? advancedData.totalFixedFee
+    : ((financialOverview?.totalFixedFee !== undefined && financialOverview.totalFixedFee >= 0)
+      ? financialOverview.totalFixedFee
+      : (platformFee > 0 ? Math.min(platformFee, ticketsSold * 1000) : 0))
+  const commFee = tierCode === 'BUSINESS'
+    ? 0
+    : (advancedData?.totalCommissionFee ?? Math.max(0, platformFee - fixedFee))
+
+  // Tính số lượng vé thực tế chịu phí cố định 1.000đ
+  const feeTicketCount = fixedFee > 0 ? Math.round(fixedFee / 1000) : 0
 
   // =========================================================================
   // SHEET 1: TỔNG QUAN & TÀI CHÍNH (ĐƯỢC KẺ BẢNG VÀ CANH LỀ ĐỒNG NHẤT 100%)
   // =========================================================================
-  const sheet1Name = isAll ? 'Tổng Quan Hệ Thống' : 'Tổng Quan & Tài Chính'
+  const sheet1Name = isAll ? 'Tổng Quan Toàn Bộ' : 'Tổng Quan & Tài Chính'
   const ws1 = workbook.addWorksheet(sheet1Name, {
     views: [{ showGridLines: true }],
   })
+  // Độ rộng cột rộng rãi, Cột C đủ 72 ký tự để không bao giờ bị cắt chữ
   ws1.columns = [
     { key: 'colA', width: 44 },
     { key: 'colB', width: 28 },
-    { key: 'colC', width: 48 },
+    { key: 'colC', width: 72 },
   ]
 
   // Header Titles
@@ -223,22 +292,52 @@ export async function exportEventAnalyticsToExcel({
   r2.font = subtitleFont
   ws1.addRow([])
 
-  // Block Thông Tin Sự Kiện
+  // Block THÔNG TIN SỰ KIỆN với Thanh Tiêu Đề Có Kẻ Bảng
   const rInfoHead = ws1.addRow(['THÔNG TIN CHUNG SỰ KIỆN', '', ''])
-  rInfoHead.font = sectionHeaderFont
+  ws1.mergeCells(`A${rInfoHead.number}:C${rInfoHead.number}`)
+  rInfoHead.getCell(1).fill = slateSectionFill
+  rInfoHead.getCell(1).font = sectionHeaderFont
+  rInfoHead.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  rInfoHead.eachCell({ includeEmpty: true }, (cell) => {
+    cell.border = thinBorder
+  })
 
-  const addInfoRow = (label: string, val: string) => {
+  const addInfoRow = (label: string, val: string, spanCol = true) => {
     const row = ws1.addRow([label, val, ''])
     row.getCell(1).font = boldFont
     row.getCell(2).font = normalFont
-    row.getCell(1).border = thinBorder
-    row.getCell(2).border = thinBorder
+    row.getCell(1).alignment = { vertical: 'middle', horizontal: 'left' }
+    row.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
     row.getCell(1).fill = zebraFill
+
+    if (spanCol) {
+      ws1.mergeCells(`B${row.number}:C${row.number}`)
+    }
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      cell.border = thinBorder
+    })
   }
 
   if (isAll) {
+    // Tính khoảng thời gian của toàn bộ sự kiện
+    let dateRangeStr = 'Đang cập nhật'
+    if (allEventsList.length > 0) {
+      const validDates = allEventsList
+        .map((ev) => ev.startTime || ev.endTime)
+        .filter(Boolean)
+        .map((dStr) => new Date(dStr!).getTime())
+        .filter((t) => !isNaN(t))
+        .sort((a, b) => a - b)
+      if (validDates.length > 0) {
+        const dStart = formatDateOnlyVN(new Date(validDates[0]).toISOString())
+        const dEnd = formatDateOnlyVN(new Date(validDates[validDates.length - 1]).toISOString())
+        dateRangeStr = dStart === dEnd ? `Ngày ${dStart}` : `Từ ${dStart} đến ${dEnd}`
+      }
+    }
+
     addInfoRow('Phạm vi báo cáo', 'Toàn bộ sự kiện trên hệ thống')
-    addInfoRow('Tổng số sự kiện', `${allEventsList.length} sự kiện`)
+    addInfoRow('Tổng số sự kiện ghi nhận', `${allEventsList.length} sự kiện`)
+    addInfoRow('Khoảng thời gian chu kỳ sự kiện', dateRangeStr)
     addInfoRow('Người lập báo cáo', organizerName || 'Ban Quản Trị Hệ Thống')
     addInfoRow('Thời gian trích xuất dữ liệu', formatDateTimeVN(new Date().toISOString()))
     addInfoRow('Trạng thái tổng hợp', 'Đã đối soát toàn sàn')
@@ -248,17 +347,25 @@ export async function exportEventAnalyticsToExcel({
     addInfoRow('Đơn vị tổ chức', organizerName || 'Ban Tổ Chức')
     addInfoRow('Thời gian sự kiện bắt đầu', formatDateTimeVN(eventStartTime))
     addInfoRow('Thời gian sự kiện kết thúc', formatDateTimeVN(eventEndTime))
-    addInfoRow('Trạng thái sự kiện', eventStatus === 'OPEN' ? 'Đang mở bán vé (OPEN)' : (eventStatus || 'Hoàn tất'))
+    addInfoRow('Trạng thái sự kiện', eventStatus === 'OPEN' ? 'Đang mở bán vé (OPEN)' : eventStatus === 'CLOSED' ? 'CLOSED (Đã kết thúc)' : (eventStatus || 'Hoàn tất'))
+    addInfoRow('Gói dịch vụ áp dụng', `Gói ${tierCode} (${tierCode === 'BUSINESS' ? 'Ưu đãi 0.0% hoa hồng sàn bán vé' : `${commRate}% hoa hồng sàn bán vé`})`)
     addInfoRow('Thời gian trích xuất báo cáo', formatDateTimeVN(new Date().toISOString()))
-    addInfoRow('Gói dịch vụ áp dụng', `Gói ${tierCode} (${tierCode === 'BUSINESS' ? 'Ưu đãi 0.0% hoa hồng sàn' : `${commRate}% hoa hồng sàn`})`)
   }
   ws1.addRow([])
 
-  // Bảng 1: Chỉ Số Vận Hành
+  // =========================================================================
+  // BẢNG 1: CHỈ SỐ VẬN HÀNH & KHÁCH THAM DỰ (ĐỒNG NHẤT 100%)
+  // =========================================================================
   const rSec1 = ws1.addRow(['1. CHỈ SỐ VẬN HÀNH & KHÁCH THAM DỰ', '', ''])
-  rSec1.font = sectionHeaderFont
+  ws1.mergeCells(`A${rSec1.number}:C${rSec1.number}`)
+  rSec1.getCell(1).fill = slateSectionFill
+  rSec1.getCell(1).font = sectionHeaderFont
+  rSec1.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  rSec1.eachCell({ includeEmpty: true }, (cell) => {
+    cell.border = thinBorder
+  })
 
-  const rHead1 = ws1.addRow(['CHỈ SỐ ĐÁNH GIÁ', 'GIÁ TRỊ', 'ĐƠN VỊ / DIỄN GIẢI CHI TIẾT'])
+  const rHead1 = ws1.addRow(['CHỈ SỐ VẬN HÀNH', 'GIÁ TRỊ THỰC TẾ', 'DIỄN GIẢI CHI TIẾT & GHI CHÚ'])
   rHead1.eachCell((cell) => {
     cell.fill = headerFill
     cell.font = headerFont
@@ -273,29 +380,38 @@ export async function exportEventAnalyticsToExcel({
     row.getCell(3).font = normalFont
 
     row.getCell(1).alignment = { vertical: 'middle', horizontal: 'left' }
-    row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' } // Canh giữa đồng nhất toàn bộ giá trị
-    row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' }
+    // Căn giữa đồng nhất cho toàn bộ cột Giá Trị Thực Tế
+    row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' }
+    row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
 
     row.getCell(1).border = thinBorder
     row.getCell(2).border = thinBorder
     row.getCell(3).border = thinBorder
   }
 
-  addMetricRow('Tổng sức chứa sự kiện (Capacity)', `${capacity.toLocaleString('vi-VN')} chỗ ngồi`, 'Tổng số ghế/vé tối đa được thiết lập')
-  addMetricRow('Tổng số vé đã bán (Tickets Sold)', `${ticketsSold.toLocaleString('vi-VN')} vé`, 'Số vé đã thanh toán thành công')
-  addMetricRow('Tỷ lệ lấp đầy sức chứa (Fill Rate)', `${fillRate.toFixed(1)}%`, 'Tỷ lệ vé đã bán / Tổng sức chứa')
-  addMetricRow('Lượt khách đã vào cổng (Đã có mặt)', `${totalInCount.toLocaleString('vi-VN')} lượt`, 'Lượt khách quét mã Check-in thành công')
+  addMetricRow('Tổng sức chứa sự kiện (Capacity)', `${capacity.toLocaleString('vi-VN')} chỗ ngồi`, 'Tổng số ghế/vé tối đa được thiết lập cho sự kiện')
+  addMetricRow('Tổng số vé đã bán (Tickets Sold)', `${ticketsSold.toLocaleString('vi-VN')} vé`, 'Số vé người tham dự đã thanh toán thành công')
+  addMetricRow('Tỷ lệ lấp đầy sức chứa (Fill Rate)', `${fillRate.toFixed(1)}%`, 'Tỷ lệ vé đã bán / Tổng sức chứa thiết lập')
+  addMetricRow('Lượt khách đã vào cổng (Đã có mặt)', `${totalInCount.toLocaleString('vi-VN')} lượt`, 'Lượt khách quét mã Check-in thành công tại sự kiện')
   addMetricRow('Lượt khách đã rời sự kiện (Check-out)', `${totalOutCount.toLocaleString('vi-VN')} lượt`, 'Lượt khách quét mã Check-out rời sự kiện')
-  addMetricRow('Tỷ lệ khách có mặt thực tế', `${checkInRate.toFixed(1)}%`, 'Tỷ lệ khách Check-in / Vé đã bán')
+  addMetricRow('Tỷ lệ khách có mặt thực tế', `${checkInRate.toFixed(1)}%`, 'Tỷ lệ khách Check-in vào cổng / Số vé đã bán ra')
   addMetricRow('Giá trị đơn hàng trung bình (AOV)', formatVndFull(aov), 'Doanh thu trung bình trên mỗi vé bán ra')
-  addMetricRow('Số vé đã hoàn tiền (Refunded)', `${refundCount.toLocaleString('vi-VN')} vé`, 'Số vé đã xử lý hoàn trả tiền hợp lệ')
+  addMetricRow('Số vé đã hoàn tiền (Refunded)', `${refundCount.toLocaleString('vi-VN')} vé`, 'Số vé đã xử lý hủy chỗ & hoàn tiền hợp lệ')
   ws1.addRow([])
 
-  // Bảng 2: Đối Soát Tài Chính
+  // =========================================================================
+  // BẢNG 2: ĐỐI SOÁT TÀI CHÍNH & DOANH THU (MINH BẠCH & KHỚP 100% CÔNG THỨC)
+  // =========================================================================
   const rSec2 = ws1.addRow(['2. ĐỐI SOÁT TÀI CHÍNH & DOANH THU', '', ''])
-  rSec2.font = sectionHeaderFont
+  ws1.mergeCells(`A${rSec2.number}:C${rSec2.number}`)
+  rSec2.getCell(1).fill = slateSectionFill
+  rSec2.getCell(1).font = sectionHeaderFont
+  rSec2.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  rSec2.eachCell({ includeEmpty: true }, (cell) => {
+    cell.border = thinBorder
+  })
 
-  const rHead2 = ws1.addRow(['HẠNG MỤC TÀI CHÍNH', 'SỐ TIỀN', 'DIỄN GIẢI CHI TIẾT'])
+  const rHead2 = ws1.addRow(['HẠNG MỤC TÀI CHÍNH', 'SỐ TIỀN THỰC THU (VNĐ)', 'DIỄN GIẢI CÔNG THỨC & ĐỐI SOÁT'])
   rHead2.eachCell((cell) => {
     cell.fill = navyFill
     cell.font = headerFont
@@ -306,12 +422,13 @@ export async function exportEventAnalyticsToExcel({
   const addFinanceRow = (item: string, amount: string, desc: string, isHighlight = false) => {
     const row = ws1.addRow([item, amount, desc])
     row.getCell(1).font = isHighlight ? boldFont : normalFont
-    row.getCell(2).font = isHighlight ? boldFont : boldFont
+    row.getCell(2).font = boldFont
     row.getCell(3).font = normalFont
 
     row.getCell(1).alignment = { vertical: 'middle', horizontal: 'left' }
-    row.getCell(2).alignment = { vertical: 'middle', horizontal: 'right' } // Tiền tệ canh phải chuẩn kế toán
-    row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' }
+    // Tiền tệ canh phải chuẩn kế toán
+    row.getCell(2).alignment = { vertical: 'middle', horizontal: 'right' }
+    row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
 
     row.getCell(1).border = isHighlight ? doubleBottomBorder : thinBorder
     row.getCell(2).border = isHighlight ? doubleBottomBorder : thinBorder
@@ -324,16 +441,29 @@ export async function exportEventAnalyticsToExcel({
     }
   }
 
-  addFinanceRow('Doanh thu thanh toán (Gross Revenue)', formatVndFull(gross), 'Tổng tiền thực thu từ khách tham dự sau khi đã trừ hoàn trả')
-  addFinanceRow('Doanh thu gốc ban đầu (Original Gross)', formatVndFull(originalGross), 'Tổng tiền ban đầu trước khi phát sinh đơn hoàn trả')
-  addFinanceRow('Đã trừ hoàn trả vé (Total Refunded)', refundAmount > 0 ? `-${formatVndFull(refundAmount)}` : '0 đ', `${refundCount} vé hoàn trả hợp lệ`)
-  addFinanceRow('Phí dịch vụ nền tảng (Platform Fee)', formatVndFull(platformFee), 'Tổng phí hệ thống khấu trừ vào đợt đối soát')
-  addFinanceRow('  - Trong đó: Hoa hồng sàn bán vé', formatVndFull(commFee), `Tỷ lệ ${commRate}% áp dụng theo gói ${tierCode}`)
-  addFinanceRow('  - Trong đó: Phí cố định hệ thống', formatVndFull(fixedFee), `Phí xử lý giao dịch 1.000 đ / vé (${ticketsSold} vé)`)
-  addFinanceRow('DOANH THU THỰC NHẬN CỦA BTC (Net Profit)', formatVndFull(net), 'Số tiền thực tế chuyển vào ví Ban Tổ Chức (Gross - Phí sàn)', true)
+  // Giải thích chi tiết phí cố định
+  let fixedFeeExplanation = `Phí xử lý giao dịch 1.000 đ / vé (${feeTicketCount} vé có tính phí)`
+  if (feeTicketCount === ticketsSold) {
+    fixedFeeExplanation = `Phí xử lý giao dịch 1.000 đ / vé (áp dụng cho toàn bộ ${ticketsSold} vé bán ra)`
+  } else if (feeTicketCount < ticketsSold) {
+    fixedFeeExplanation = `Phí xử lý giao dịch 1.000 đ / vé (${feeTicketCount} vé có phí, ${ticketsSold - feeTicketCount} vé miễn phí 0đ)`
+  }
+
+  // Giải thích hoàn tiền
+  const refundExplanation = refundCount > 0
+    ? `${refundCount} vé hoàn trả hợp lệ (đã hoàn lại cho người mua)`
+    : 'Không phát sinh đơn hoàn tiền nào'
+
+  addFinanceRow('Doanh thu thanh toán (Gross Revenue)', formatVndFull(gross), `Tổng tiền thực thu từ người tham dự (Doanh thu gốc - Hoàn trả: ${formatVndFull(originalGross)} - ${formatVndFull(refundAmount)})`)
+  addFinanceRow('Doanh thu gốc ban đầu (Original Gross)', formatVndFull(originalGross), 'Tổng tiền ban đầu khách thanh toán trước khi phát sinh đơn hoàn tiền')
+  addFinanceRow('Đã trừ hoàn trả vé (Total Refunded)', refundAmount > 0 ? `-${formatVndFull(refundAmount)}` : '0 đ', refundExplanation)
+  addFinanceRow('Phí dịch vụ nền tảng (Platform Fee)', formatVndFull(platformFee), `Tổng phí hệ thống khấu trừ vào đợt đối soát (Hoa hồng ${formatVndFull(commFee)} + Phí cố định ${formatVndFull(fixedFee)})`)
+  addFinanceRow('  - Trong đó: Hoa hồng sàn bán vé', formatVndFull(commFee), tierCode === 'BUSINESS' ? 'Ưu đãi hoa hồng 0.0% sàn áp dụng theo gói BUSINESS' : `Tỷ lệ hoa hồng ${commRate}% tính trên doanh thu gộp`)
+  addFinanceRow('  - Trong đó: Phí cố định hệ thống', formatVndFull(fixedFee), fixedFeeExplanation)
+  addFinanceRow('DOANH THU THỰC NHẬN CỦA BTC (Net Profit)', formatVndFull(net), `Số tiền thực tế chuyển vào ví Ban Tổ Chức (Gross ${formatVndFull(gross)} - Phí sàn ${formatVndFull(platformFee)})`, true)
 
   // =========================================================================
-  // SHEET 2: KHI LÀ 'ALL' -> DANH SÁCH CHI TIẾT TẤT CẢ SỰ KIỆN (CÓ KẺ BẢNG ĐẦY ĐỦ)
+  // SHEET 2: KHI LÀ 'ALL' -> DANH SÁCH CHI TIẾT TẤT CẢ SỰ KIỆN
   // =========================================================================
   if (isAll && allEventsList.length > 0) {
     const wsAllList = workbook.addWorksheet('Danh Sách Sự Kiện', {
@@ -422,10 +552,10 @@ export async function exportEventAnalyticsToExcel({
         cell.border = thinBorder
         if (colNum === 1 || colNum === 2 || colNum === 5 || colNum === 6 || colNum === 7 || colNum === 13) {
           cell.alignment = { vertical: 'middle', horizontal: 'center' }
-        } else if (colNum === 8 || colNum === 9 || colNum === 10 || colNum === 11 || colNum === 12) {
+        } else if (colNum >= 8 && colNum <= 12) {
           cell.alignment = { vertical: 'middle', horizontal: 'right' }
         } else {
-          cell.alignment = { vertical: 'middle', horizontal: 'left' }
+          cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
         }
       })
     })
@@ -459,7 +589,7 @@ export async function exportEventAnalyticsToExcel({
   }
 
   // =========================================================================
-  // SHEET 3: CƠ CẤU THEO HẠNG VÉ (KẺ BẢNG VÀ MÀU SẮC CHUẨN)
+  // SHEET: CƠ CẤU THEO HẠNG VÉ
   // =========================================================================
   const categories = advancedData?.categoryBreakdown || []
   const wsCat = workbook.addWorksheet('Cơ Cấu Hạng Vé', {
@@ -526,7 +656,7 @@ export async function exportEventAnalyticsToExcel({
       } else if (colNum >= 3 && colNum <= 10) {
         cell.alignment = { vertical: 'middle', horizontal: 'right' }
       } else {
-        cell.alignment = { vertical: 'middle', horizontal: 'left' }
+        cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
       }
     })
   })
@@ -557,7 +687,7 @@ export async function exportEventAnalyticsToExcel({
   })
 
   // =========================================================================
-  // SHEET 4: XU HƯỚNG BÁN VÉ THEO NGÀY (CÓ KẺ BẢNG)
+  // SHEET: XU HƯỚNG BÁN VÉ THEO NGÀY
   // =========================================================================
   const timeline = advancedData?.timeline || []
   const wsTime = workbook.addWorksheet('Xu Hướng Bán Vé', {
@@ -638,7 +768,7 @@ export async function exportEventAnalyticsToExcel({
   })
 
   // =========================================================================
-  // SHEET 5: THỐNG KÊ CHECK-IN & OUT (LỌC BỎ CÁC DÒNG SỐ 0, CÓ KẺ BẢNG)
+  // SHEET: THỐNG KÊ CHECK-IN & OUT (LỌC BỎ DÒNG SỐ 0, CÓ KẺ BẢNG)
   // =========================================================================
   const hourMap: Record<number, { checkIn: number; checkOut: number }> = {}
   for (let h = 0; h < 24; h++) {
@@ -717,7 +847,11 @@ export async function exportEventAnalyticsToExcel({
   wsCheck.addRow([])
 
   const rSecSession = wsCheck.addRow(['TỔNG QUAN THEO BUỔI TRONG NGÀY', '', '', '', ''])
-  rSecSession.font = sectionHeaderFont
+  wsCheck.mergeCells(`A${rSecSession.number}:E${rSecSession.number}`)
+  rSecSession.getCell(1).fill = slateSectionFill
+  rSecSession.getCell(1).font = sectionHeaderFont
+  rSecSession.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  rSecSession.getCell(1).border = thinBorder
 
   const rHeadSession = wsCheck.addRow(['Buổi Hoạt Động', 'Khung Giờ', 'Lượt Vào (Check-in)', 'Lượt Ra (Check-out)', 'Tần Suất Lưu Lượng'])
   rHeadSession.eachCell((cell) => {
@@ -743,7 +877,11 @@ export async function exportEventAnalyticsToExcel({
   wsCheck.addRow([])
 
   const rSecHours = wsCheck.addRow(['CHI TIẾT CÁC KHUNG GIỜ THỰC TẾ CÓ PHÁT SINH LƯỢT KHÁCH', '', '', '', ''])
-  rSecHours.font = sectionHeaderFont
+  wsCheck.mergeCells(`A${rSecHours.number}:E${rSecHours.number}`)
+  rSecHours.getCell(1).fill = slateSectionFill
+  rSecHours.getCell(1).font = sectionHeaderFont
+  rSecHours.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  rSecHours.getCell(1).border = thinBorder
 
   const rHeadHours = wsCheck.addRow(['Khung Giờ', 'Lượt Check-in (Vào)', 'Lượt Check-out (Ra)', 'Tổng Lưu Lượng', 'Ghi Chú'])
   rHeadHours.eachCell((cell) => {
@@ -782,7 +920,7 @@ export async function exportEventAnalyticsToExcel({
   }
 
   // =========================================================================
-  // SHEET 6: NHẬT KÝ ĐƠN HOÀN TRẢ VÉ (AUDIT TRAIL CÓ KẺ BẢNG)
+  // SHEET: NHẬT KÝ ĐƠN HOÀN TRẢ VÉ (AUDIT TRAIL CÓ KẺ BẢNG)
   // =========================================================================
   const refundAudits = advancedData?.refundAuditList || []
   const wsRefund = workbook.addWorksheet('Nhật Ký Hoàn Trả', {
@@ -873,14 +1011,14 @@ export async function exportEventAnalyticsToExcel({
         } else if (colNum === 7) {
           cell.alignment = { vertical: 'middle', horizontal: 'right' }
         } else {
-          cell.alignment = { vertical: 'middle', horizontal: 'left' }
+          cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
         }
       })
     })
   }
 
-  // Ghi tệp và tải về trình duyệt
-  const fileName = generateReportFileName(eventTitle, eventId || 'ALL', 'xlsx', isAll)
+  // Tên tệp phản ánh chính xác ngày diễn ra sự kiện thay vì ngày giờ tải về
+  const fileName = generateReportFileName(eventTitle, eventId || 'ALL', 'xlsx', isAll, eventStartTime, allEventsList)
   const buffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const url = window.URL.createObjectURL(blob)
@@ -894,7 +1032,7 @@ export async function exportEventAnalyticsToExcel({
 }
 
 /**
- * Xuất Báo Cáo CSV chuẩn hóa với UTF-8 BOM, hỗ trợ cả 'ALL' và sự kiện đơn lẻ
+ * Xuất Báo Cáo CSV chuẩn hóa với UTF-8 BOM, hỗ trợ cả 'ALL' và sự kiện đơn lẻ, tên tệp theo ngày diễn ra
  */
 export function exportEventAnalyticsToCSV({
   isAllEvents = false,
@@ -907,44 +1045,111 @@ export function exportEventAnalyticsToCSV({
   advancedData,
   financialOverview,
   currentSub,
+  checkIns = [],
 }: ExportReportParams): void {
   const isAll = isAllEvents || eventId === 'ALL'
   const gross = advancedData?.totalGrossRevenue ?? financialOverview?.totalGrossRevenue ?? 0
-  const platformFee = advancedData?.totalPlatformFee ?? financialOverview?.totalPlatformFee ?? 0
-  const net = advancedData?.totalNetProfit ?? financialOverview?.totalNetProfit ?? 0
   const refundAmount = advancedData?.totalRefundAmount ?? financialOverview?.totalRefundAmount ?? 0
   const refundCount = (advancedData as any)?.totalTicketsRefunded ?? financialOverview?.totalTicketsRefunded ?? 0
   const originalGross = advancedData?.totalOriginalGross || financialOverview?.totalOriginalGross || (gross + refundAmount)
+  const platformFee = advancedData?.totalPlatformFee ?? financialOverview?.totalPlatformFee ?? 0
+  const net = advancedData?.totalNetProfit ?? financialOverview?.totalNetProfit ?? (gross - platformFee)
+
   const ticketsSold = advancedData?.totalTicketsSold ?? financialOverview?.totalTicketsSold ?? 0
   const capacity = advancedData?.totalCapacity || 0
   const fillRate = capacity > 0 ? (ticketsSold / capacity) * 100 : 0
-  const checkedIn = advancedData?.checkedInTickets || 0
-  const checkInRate = ticketsSold > 0 ? (checkedIn / ticketsSold) * 100 : 0
+
+  let totalInCount = advancedData?.checkedInTickets || 0
+  let totalOutCount = 0
+  if (checkIns.length > 0) {
+    let inCnt = 0
+    let outCnt = 0
+    checkIns.forEach((c) => {
+      if (c.checkedInAt || c.status === 'CHECKED_IN' || c.status === 'CHECKED_OUT') inCnt++
+      if (c.checkedOutAt || c.status === 'CHECKED_OUT') outCnt++
+    })
+    totalInCount = inCnt
+    totalOutCount = outCnt
+  } else if (isAll) {
+    totalInCount = advancedData?.checkedInTickets || 0
+    totalOutCount = (advancedData?.hourlyCheckOuts || []).reduce((acc, curr) => acc + curr.count, 0)
+  }
+
+  const checkInRate = ticketsSold > 0 ? (totalInCount / ticketsSold) * 100 : 0
   const aov = ticketsSold > 0 ? Math.round(gross / ticketsSold) : 0
 
   const rawTierCode = advancedData?.tierCode || financialOverview?.tierCode || currentSub?.tierCode || 'FREE'
   const tierCode = rawTierCode === 'LEGACY' ? (currentSub?.tierCode || 'FREE') : rawTierCode
-  const commRate = tierCode === 'BUSINESS' ? 0.0 : (advancedData?.commissionRatePercent ?? financialOverview?.commissionRatePercent ?? 5.0)
+  const commRate = tierCode === 'BUSINESS'
+    ? 0.0
+    : (advancedData?.commissionRatePercent ?? financialOverview?.commissionRatePercent ?? 5.0)
+
+  const fixedFee = (advancedData?.totalFixedFee !== undefined && advancedData.totalFixedFee >= 0)
+    ? advancedData.totalFixedFee
+    : ((financialOverview?.totalFixedFee !== undefined && financialOverview.totalFixedFee >= 0)
+      ? financialOverview.totalFixedFee
+      : (platformFee > 0 ? Math.min(platformFee, ticketsSold * 1000) : 0))
+  const commFee = tierCode === 'BUSINESS'
+    ? 0
+    : (advancedData?.totalCommissionFee ?? Math.max(0, platformFee - fixedFee))
+
+  const feeTicketCount = fixedFee > 0 ? Math.round(fixedFee / 1000) : 0
+  let fixedFeeExplanation = `Phí xử lý giao dịch 1.000 đ / vé (${feeTicketCount} vé có tính phí)`
+  if (feeTicketCount === ticketsSold) {
+    fixedFeeExplanation = `Phí xử lý giao dịch 1.000 đ / vé (áp dụng cho toàn bộ ${ticketsSold} vé bán ra)`
+  } else if (feeTicketCount < ticketsSold) {
+    fixedFeeExplanation = `Phí xử lý giao dịch 1.000 đ / vé (${feeTicketCount} vé có tính phí / ${ticketsSold} vé bán ra, ${ticketsSold - feeTicketCount} vé miễn phí 0đ)`
+  }
+
+  const refundExplanation = refundCount > 0
+    ? `${refundCount} vé hoàn trả hợp lệ (đã hoàn lại cho người mua)`
+    : 'Không phát sinh đơn hoàn tiền nào'
+
+  // Khoảng thời gian
+  let dateHeaderStr = ''
+  if (isAll) {
+    if (allEventsList.length > 0) {
+      const validDates = allEventsList
+        .map((ev) => ev.startTime || ev.endTime)
+        .filter(Boolean)
+        .map((dStr) => new Date(dStr!).getTime())
+        .filter((t) => !isNaN(t))
+        .sort((a, b) => a - b)
+      if (validDates.length > 0) {
+        const dStart = formatDateOnlyVN(new Date(validDates[0]).toISOString())
+        const dEnd = formatDateOnlyVN(new Date(validDates[validDates.length - 1]).toISOString())
+        dateHeaderStr = dStart === dEnd ? `Ngày sự kiện: ${dStart}` : `Chu kỳ sự kiện: Từ ${dStart} đến ${dEnd}`
+      }
+    }
+  } else {
+    dateHeaderStr = `Thời gian sự kiện: ${formatDateTimeVN(eventStartTime)} - ${formatDateTimeVN(eventEndTime)}`
+  }
 
   const rows: string[][] = [
     ['HỆ THỐNG QUẢN LÝ SỰ KIỆN FEMS - BÁO CÁO PHÂN TÍCH CHUYÊN SÂU'],
     [isAll ? 'BÁO CÁO TỔNG HỢP TOÀN BỘ SỰ KIỆN' : `Sự kiện: ${eventTitle} (Mã: #${eventId})`],
-    [isAll ? `Tổng số sự kiện: ${allEventsList.length} sự kiện` : `Thời gian diễn ra: ${formatDateTimeVN(eventStartTime)} - ${formatDateTimeVN(eventEndTime)}`],
+    [dateHeaderStr],
     [`Đơn vị tổ chức: ${organizerName || 'Ban Tổ Chức'}`],
     [`Thời gian trích xuất dữ liệu: ${formatDateTimeVN(new Date().toISOString())}`],
     ['===================================================================================================='],
-    ['1. DANH MỤC KPI VẬN HÀNH & ĐỐI SOÁT TÀI CHÍNH', 'GIÁ TRỊ', 'GHI CHÚ CHI TIẾT'],
-    ['Doanh Thu Thanh Toán (Gross)', formatVndFull(gross), 'Tổng tiền thực thu từ khách mua vé'],
-    ['Doanh Thu Gốc Ban Đầu (Original Gross)', formatVndFull(originalGross), 'Doanh thu trước khi trừ hoàn trả'],
-    ['Đã Trừ Hoàn Trả (Refund Amount)', refundAmount > 0 ? `-${formatVndFull(refundAmount)}` : '0 đ', `${refundCount} vé hoàn trả`],
-    ['Phí Dịch Vụ Nền Tảng (Platform Fee)', formatVndFull(platformFee), `Khấu trừ đối soát (Gói ${tierCode} - Hoa hồng ${commRate}%)`],
-    ['Doanh Thu Thực Nhận (Net Profit)', formatVndFull(net), 'Chuyển về ví Ban tổ chức'],
-    ['Số Vé Đã Bán', `${ticketsSold.toLocaleString('vi-VN')} vé`, 'vé đã thanh toán thành công'],
-    ['Lượt Khách Đã Vào Cổng (Check-in)', `${checkedIn.toLocaleString('vi-VN')} lượt`, 'lượt khách có mặt'],
-    ['Tỷ Lệ Check-in', `${checkInRate.toFixed(1)}%`, 'Khách có mặt / Vé đã bán'],
-    ['Tổng Sức Chứa (Capacity)', `${capacity.toLocaleString('vi-VN')} chỗ`, 'chỗ ngồi'],
-    ['Tỷ Lệ Lấp Đầy (Fill Rate)', `${fillRate.toFixed(1)}%`, 'Vé đã bán / Sức chứa'],
-    ['Giá Trị Đơn Hàng Trung Bình (AOV)', formatVndFull(aov), 'Doanh thu / vé bán'],
+    ['1. CHỈ SỐ VẬN HÀNH & KHÁCH THAM DỰ', 'GIÁ TRỊ THỰC TẾ', 'DIỄN GIẢI CHI TIẾT & GHI CHÚ'],
+    ['Tổng sức chứa sự kiện (Capacity)', `${capacity.toLocaleString('vi-VN')} chỗ ngồi`, 'Tổng số ghế/vé tối đa được thiết lập cho sự kiện'],
+    ['Tổng số vé đã bán (Tickets Sold)', `${ticketsSold.toLocaleString('vi-VN')} vé`, 'Số vé người tham dự đã thanh toán thành công'],
+    ['Tỷ lệ lấp đầy sức chứa (Fill Rate)', `${fillRate.toFixed(1)}%`, 'Tỷ lệ vé đã bán / Tổng sức chứa thiết lập'],
+    ['Lượt khách đã vào cổng (Đã có mặt)', `${totalInCount.toLocaleString('vi-VN')} lượt`, 'Lượt khách quét mã Check-in thành công tại sự kiện'],
+    ['Lượt khách đã rời sự kiện (Check-out)', `${totalOutCount.toLocaleString('vi-VN')} lượt`, 'Lượt khách quét mã Check-out rời sự kiện'],
+    ['Tỷ lệ khách có mặt thực tế', `${checkInRate.toFixed(1)}%`, 'Tỷ lệ khách Check-in vào cổng / Số vé đã bán ra'],
+    ['Giá trị đơn hàng trung bình (AOV)', formatVndFull(aov), 'Doanh thu trung bình trên mỗi vé bán ra'],
+    ['Số vé đã hoàn tiền (Refunded)', `${refundCount.toLocaleString('vi-VN')} vé`, refundExplanation],
+    ['===================================================================================================='],
+    ['2. ĐỐI SOÁT TÀI CHÍNH & DOANH THU', 'SỐ TIỀN THỰC THU (VNĐ)', 'DIỄN GIẢI CÔNG THỨC & ĐỐI SOÁT'],
+    ['Doanh thu thanh toán (Gross Revenue)', formatVndFull(gross), `Tổng tiền thực thu từ người tham dự (Doanh thu gốc - Hoàn trả: ${formatVndFull(originalGross)} - ${formatVndFull(refundAmount)})`],
+    ['Doanh thu gốc ban đầu (Original Gross)', formatVndFull(originalGross), 'Tổng tiền ban đầu khách thanh toán trước khi phát sinh đơn hoàn tiền'],
+    ['Đã trừ hoàn trả vé (Total Refunded)', refundAmount > 0 ? `-${formatVndFull(refundAmount)}` : '0 đ', refundExplanation],
+    ['Phí dịch vụ nền tảng (Platform Fee)', formatVndFull(platformFee), `Tổng phí hệ thống khấu trừ vào đợt đối soát (Hoa hồng ${formatVndFull(commFee)} + Phí cố định ${formatVndFull(fixedFee)})`],
+    ['  - Trong đó: Hoa hồng sàn bán vé', formatVndFull(commFee), tierCode === 'BUSINESS' ? 'Ưu đãi hoa hồng 0.0% sàn áp dụng theo gói BUSINESS' : `Tỷ lệ hoa hồng ${commRate}% tính trên doanh thu gộp`],
+    ['  - Trong đó: Phí cố định hệ thống', formatVndFull(fixedFee), fixedFeeExplanation],
+    ['DOANH THU THỰC NHẬN CỦA BTC (Net Profit)', formatVndFull(net), `Số tiền thực tế chuyển vào ví Ban Tổ Chức (Gross ${formatVndFull(gross)} - Phí sàn ${formatVndFull(platformFee)})`],
   ]
 
   if (isAll && allEventsList.length > 0) {
@@ -1040,7 +1245,7 @@ export function exportEventAnalyticsToCSV({
   const url = window.URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  const fileName = generateReportFileName(eventTitle, eventId || 'ALL', 'csv', isAll)
+  const fileName = generateReportFileName(eventTitle, eventId || 'ALL', 'csv', isAll, eventStartTime, allEventsList)
   link.setAttribute('download', fileName)
   document.body.appendChild(link)
   link.click()

@@ -198,7 +198,7 @@ export const reportService = {
   },
 
   // GET /api/v1/organizer/events/{id}/export-csv (download file blob qua API)
-  async exportEventCSV(eventId: number, title?: string): Promise<void> {
+  async exportEventCSV(eventId: number, title?: string, startTime?: string): Promise<void> {
     const res = await api.get(`/v1/organizer/events/${eventId}/export-csv`, {
       responseType: 'blob',
     })
@@ -213,11 +213,19 @@ export const reportService = {
       .replace(/Đ/g, 'D')
       .trim()
       .replace(/[^a-zA-Z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '')
-    const now = new Date()
+      .split('_')
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join('_')
     const pad = (n: number) => String(n).padStart(2, '0')
-    const dateStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`
-    link.setAttribute('download', `Bao_Cao_${cleanTitle || `event_${eventId}`}_${dateStr}.csv`)
+    let dateStr = ''
+    if (startTime) {
+      const d = new Date(startTime)
+      if (!isNaN(d.getTime())) {
+        dateStr = `_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`
+      }
+    }
+    link.setAttribute('download', `Bao_Cao_${cleanTitle || `Event_${eventId}`}${dateStr}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
