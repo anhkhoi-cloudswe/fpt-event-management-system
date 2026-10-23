@@ -95,15 +95,40 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 		return nil, err
 	}
 
-	// 0. Phân giải thông tin gói dịch vụ & công thức hoa hồng hiệu lực của Organizer (FAIL-CLOSED)
+	// 0. Phân giải thông tin biểu phí động từ subscription_tier (Tier CRUD) và chính sách Organizer
+	tierRates := make(map[string]int)
+	if trRows, errTiers := r.db.QueryContext(ctx, "SELECT tier_code, commission_bps FROM subscription_tier WHERE is_active = TRUE"); errTiers == nil {
+		defer trRows.Close()
+		for trRows.Next() {
+			var tc string
+			var tbps int
+			if errS := trRows.Scan(&tc, &tbps); errS == nil {
+				tierRates[tc] = tbps
+			}
+		}
+	}
+
 	tierCode := "FREE"
 	commissionBps := 500
+	if bps, ok := tierRates["FREE"]; ok {
+		commissionBps = bps
+	}
 	var fixedFeePerTicket int64 = 1000
 
 	pol, errPol := policy.ResolveOrganizerPolicy(ctx, r.db, ownerID)
 	if errPol == nil && pol != nil {
 		tierCode = pol.TierCode
 		commissionBps = pol.CommissionBps
+	} else if userID > 0 {
+		if polUser, errUser := policy.ResolveOrganizerPolicy(ctx, r.db, userID); errUser == nil && polUser != nil {
+			tierCode = polUser.TierCode
+			commissionBps = polUser.CommissionBps
+		}
+	}
+
+	// Đồng bộ chính xác theo bảng subscription_tier (cấu hình động của Admin Tier CRUD)
+	if targetBps, ok := tierRates[tierCode]; ok && tierCode != "SCHOOL_ORGANIZER" {
+		commissionBps = targetBps
 	}
 
 	var fixedFeeStr string
@@ -153,9 +178,9 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 		fmt.Printf("[HEAL_QUERY_ERROR] event %d: %v\n", eventID, healErr)
 	}
 
-	// 2. Tự động tái tính toán & chuẩn hóa các biên lai cũ (LEGACY hoặc lệch % hoa hồng theo gói dịch vụ thực tế của Organizer)
+	// 2a. Chuyển đổi các biên lai cũ LEGACY hoặc thiếu gói sang gói dịch vụ hiện hành của Organizer
 	if tierCode != "" && tierCode != "LEGACY" {
-		healTierQuery := `
+		healLegacyQuery := `
 			UPDATE financial_receipt
 			SET 
 				tier_code = $1,
@@ -175,12 +200,37 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 				tier_code = 'LEGACY' 
 				OR fee_source = 'LEGACY' 
 				OR tier_code IS NULL 
-				OR (tier_code = $1 AND ABS(system_fee_percentage - $3) > 0.001)
-				OR ((SELECT COUNT(DISTINCT fr2.tier_code) FROM financial_receipt fr2 WHERE fr2.event_id = $4) <= 1 AND tier_code != 'SCHOOL')
-			  )
+			  );
 		`
-		_, _ = r.db.ExecContext(ctx, healTierQuery, tierCode, commissionBps, commPercent, eventID)
+		_, _ = r.db.ExecContext(ctx, healLegacyQuery, tierCode, commissionBps, commPercent, eventID)
 	}
+
+	// 2b. Tự động tái tính toán & chuẩn hóa các biên lai theo tỷ lệ hoa hồng mới nhất từ Admin Tier CRUD (subscription_tier)
+	healTierQuery := `
+		UPDATE financial_receipt fr
+		SET 
+			commission_bps = st.commission_bps,
+			system_fee_percentage = (st.commission_bps::FLOAT / 100.0),
+			fee_source = 'TIER',
+			commission_amount = CASE 
+				WHEN fr.is_reversal THEN -((ABS(fr.gross_amount) * st.commission_bps) / 10000 + (CASE WHEN ABS(fr.gross_amount) >= 20000 THEN ABS(fr.fixed_fee) ELSE 0 END))
+				ELSE ((fr.gross_amount * st.commission_bps) / 10000 + (CASE WHEN fr.gross_amount >= 20000 THEN ABS(fr.fixed_fee) ELSE 0 END))
+			END,
+			net_amount = CASE 
+				WHEN fr.is_reversal THEN -(ABS(fr.gross_amount) - ((ABS(fr.gross_amount) * st.commission_bps) / 10000 + (CASE WHEN ABS(fr.gross_amount) >= 20000 THEN ABS(fr.fixed_fee) ELSE 0 END)))
+				ELSE fr.gross_amount - ((fr.gross_amount * st.commission_bps) / 10000 + (CASE WHEN fr.gross_amount >= 20000 THEN ABS(fr.fixed_fee) ELSE 0 END))
+			END
+		FROM subscription_tier st
+		WHERE fr.event_id = $1
+		  AND fr.tier_code = st.tier_code
+		  AND fr.fee_source NOT IN ('OVERRIDE', 'ROLE')
+		  AND (
+			ABS(fr.system_fee_percentage - (st.commission_bps::FLOAT / 100.0)) > 0.001
+			OR fr.commission_bps != st.commission_bps
+			OR (st.commission_bps = 0 AND fr.commission_amount > ABS(fr.fixed_fee))
+		  );
+	`
+	_, _ = r.db.ExecContext(ctx, healTierQuery, eventID)
 
 	// 3. Doanh thu từ financial_receipt (Chỉ tính bill PAID hoặc REFUNDED + biên lai bill_id NULL; loại bỏ PENDING, FAILED)
 	overviewQuery := `
@@ -281,20 +331,36 @@ func (r *TicketRepository) GetEventFinancialOverview(ctx context.Context, eventI
 				if tb.TierCode == "LEGACY" && tierCode != "" && tierCode != "LEGACY" {
 					tb.TierCode = tierCode
 				}
-				if tb.TierCode == "BUSINESS" && commissionBps == 0 {
-					tb.CommissionRatePercent = 0.0
-					tb.CommissionFee = 0
-					tb.TotalFee = tb.FixedFee
+				// Gói BUSINESS hoa hồng sàn = 0%, chỉ tính phí cố định nếu có
+				if tb.TierCode == "BUSINESS" {
+					tbRate := 0.0
+					if bps, ok := tierRates["BUSINESS"]; ok {
+						tbRate = float64(bps) / 100.0
+					}
+					tb.CommissionRatePercent = tbRate
+					tb.CommissionFee = (tb.GrossAmount * int64(tbRate*100)) / 10000
+					tb.TotalFee = tb.CommissionFee + tb.FixedFee
 				}
 				tierBreakdowns = append(tierBreakdowns, tb)
 			}
 		}
 	}
 
-	if tierCode == "BUSINESS" && commissionBps == 0 && len(tierBreakdowns) <= 1 {
-		totalCommFee = 0
-		platformFee = totalFixedFee
-		net = netGross - platformFee
+	if tierCode == "BUSINESS" {
+		businessRate := 0.0
+		if bps, ok := tierRates["BUSINESS"]; ok {
+			businessRate = float64(bps) / 100.0
+		}
+		if businessRate == 0 {
+			totalCommFee = 0
+			platformFee = totalFixedFee
+			net = netGross - platformFee
+		}
+	}
+
+	if len(tierBreakdowns) == 1 {
+		tierCode = tierBreakdowns[0].TierCode
+		commPercent = tierBreakdowns[0].CommissionRatePercent
 	}
 
 	var formula string
@@ -533,8 +599,23 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 	}
 
 	// 3. Phân giải thông tin gói dịch vụ & công thức hoa hồng của Organizer
+	tierRates := make(map[string]int)
+	if trRows, errTiers := r.db.QueryContext(ctx, "SELECT tier_code, commission_bps FROM subscription_tier WHERE is_active = TRUE"); errTiers == nil {
+		defer trRows.Close()
+		for trRows.Next() {
+			var tc string
+			var tbps int
+			if errS := trRows.Scan(&tc, &tbps); errS == nil {
+				tierRates[tc] = tbps
+			}
+		}
+	}
+
 	tierCode := "FREE"
 	commissionBps := 500
+	if bps, ok := tierRates["FREE"]; ok {
+		commissionBps = bps
+	}
 	var fixedFeePerTicket int64 = 1000
 
 	var ownerID int
@@ -545,6 +626,11 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 			tierCode = pol.TierCode
 			commissionBps = pol.CommissionBps
 		}
+	}
+
+	// Đồng bộ chính xác theo bảng subscription_tier (cấu hình động của Admin Tier CRUD)
+	if targetBps, ok := tierRates[tierCode]; ok && tierCode != "SCHOOL_ORGANIZER" {
+		commissionBps = targetBps
 	}
 
 	var fixedFeeStr string
@@ -592,9 +678,9 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 	`
 	_, _ = r.db.ExecContext(ctx, healQuery, eventID)
 
-	// Tự động tái tính toán & chuẩn hóa các biên lai cũ theo gói dịch vụ của Organizer
+	// 3a. Chuyển đổi các biên lai cũ LEGACY hoặc thiếu gói sang gói dịch vụ hiện hành của Organizer
 	if tierCode != "" && tierCode != "LEGACY" {
-		healTierQuery := `
+		healLegacyQuery := `
 			UPDATE financial_receipt
 			SET 
 				tier_code = $1,
@@ -614,12 +700,37 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 				tier_code = 'LEGACY' 
 				OR fee_source = 'LEGACY' 
 				OR tier_code IS NULL 
-				OR (tier_code = $1 AND ABS(system_fee_percentage - $3) > 0.001)
-				OR ((SELECT COUNT(DISTINCT fr2.tier_code) FROM financial_receipt fr2 WHERE fr2.event_id = $4) <= 1 AND tier_code != 'SCHOOL')
-			  )
+			  );
 		`
-		_, _ = r.db.ExecContext(ctx, healTierQuery, tierCode, commissionBps, commPercent, eventID)
+		_, _ = r.db.ExecContext(ctx, healLegacyQuery, tierCode, commissionBps, commPercent, eventID)
 	}
+
+	// 3b. Tự động tái tính toán & chuẩn hóa các biên lai theo tỷ lệ hoa hồng mới nhất từ Admin Tier CRUD (subscription_tier)
+	healTierQuery := `
+		UPDATE financial_receipt fr
+		SET 
+			commission_bps = st.commission_bps,
+			system_fee_percentage = (st.commission_bps::FLOAT / 100.0),
+			fee_source = 'TIER',
+			commission_amount = CASE 
+				WHEN fr.is_reversal THEN -((ABS(fr.gross_amount) * st.commission_bps) / 10000 + (CASE WHEN ABS(fr.gross_amount) >= 20000 THEN ABS(fr.fixed_fee) ELSE 0 END))
+				ELSE ((fr.gross_amount * st.commission_bps) / 10000 + (CASE WHEN fr.gross_amount >= 20000 THEN ABS(fr.fixed_fee) ELSE 0 END))
+			END,
+			net_amount = CASE 
+				WHEN fr.is_reversal THEN -(ABS(fr.gross_amount) - ((ABS(fr.gross_amount) * st.commission_bps) / 10000 + (CASE WHEN ABS(fr.gross_amount) >= 20000 THEN ABS(fr.fixed_fee) ELSE 0 END)))
+				ELSE fr.gross_amount - ((fr.gross_amount * st.commission_bps) / 10000 + (CASE WHEN fr.gross_amount >= 20000 THEN ABS(fr.fixed_fee) ELSE 0 END))
+			END
+		FROM subscription_tier st
+		WHERE fr.event_id = $1
+		  AND fr.tier_code = st.tier_code
+		  AND fr.fee_source NOT IN ('OVERRIDE', 'ROLE')
+		  AND (
+			ABS(fr.system_fee_percentage - (st.commission_bps::FLOAT / 100.0)) > 0.001
+			OR fr.commission_bps != st.commission_bps
+			OR (st.commission_bps = 0 AND fr.commission_amount > ABS(fr.fixed_fee))
+		  );
+	`
+	_, _ = r.db.ExecContext(ctx, healTierQuery, eventID)
 
 	// 4. Doanh thu tổng hợp từ financial_receipt (chỉ bill PAID, REFUNDED hoặc NULL; gồm biên lai đảo)
 	overviewQuery := `

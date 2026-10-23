@@ -408,7 +408,7 @@ function MultiTierSnapshotModal({
                     {formatVndFull(totalFixed)}
                   </td>
                   <td className="py-2.5 px-2.5 sm:px-3 text-right text-xs sm:text-sm text-amber-600 dark:text-amber-400 whitespace-nowrap">
-                    {formatVndFull(totalPlatformFee || totalCalc)}
+                    {formatVndFull(totalCalc)}
                   </td>
                 </tr>
               </tfoot>
@@ -1457,16 +1457,14 @@ export default function Reports() {
                       ? bSingleTier.commissionFee
                       : Math.max(0, bPlatformFee - bFixedFee))
 
-                  if (bTierCode === 'BUSINESS' && bCommRate === 0) {
+                  if (bTierCode === 'BUSINESS' || bCommRate === 0) {
                     bCommFee = 0
                   }
 
-                  const effectiveBPlatformFee = (bTierCode === 'BUSINESS' && bCommRate === 0 && (!bHasMultiTier || bTierBreakdowns.length <= 1))
+                  const effectiveBPlatformFee = ((bTierCode === 'BUSINESS' || bCommRate === 0) && (!bHasMultiTier || bTierBreakdowns.length <= 1))
                     ? bFixedFee
-                    : bPlatformFee
-                  const effectiveBNet = (bTierCode === 'BUSINESS' && bCommRate === 0 && (!bHasMultiTier || bTierBreakdowns.length <= 1))
-                    ? (bGross - effectiveBPlatformFee)
-                    : bNet
+                    : (bCommFee + bFixedFee)
+                  const effectiveBNet = bGross - effectiveBPlatformFee
                   
                   // Số lượng vé áp dụng phí cố định linh hoạt theo thực tế
                   const bFeeTicketCount = (bFixedFee > 0 && bFixedFeePerTicket > 0)
@@ -2219,16 +2217,14 @@ export default function Reports() {
                         ? aSingleTier.commissionFee
                         : Math.max(0, aPlatformFee - aFixedFee)))
 
-                  if (aTierCode === 'BUSINESS' && aCommRate === 0) {
+                  if (aTierCode === 'BUSINESS' || aCommRate === 0) {
                     aCommFee = 0
                   }
 
-                  const effectiveAPlatformFee = (aTierCode === 'BUSINESS' && aCommRate === 0 && (!aHasMultiTier || aTierBreakdowns.length <= 1))
+                  const effectiveAPlatformFee = ((aTierCode === 'BUSINESS' || aCommRate === 0) && (!aHasMultiTier || aTierBreakdowns.length <= 1))
                     ? aFixedFee
-                    : aPlatformFee
-                  const effectiveANet = (aTierCode === 'BUSINESS' && aCommRate === 0 && (!aHasMultiTier || aTierBreakdowns.length <= 1))
-                    ? (aGross - effectiveAPlatformFee)
-                    : aNet
+                    : (aCommFee + aFixedFee)
+                  const effectiveANet = aGross - effectiveAPlatformFee
                   
                   // Số lượng vé áp dụng phí cố định linh hoạt theo thực tế
                   const aFeeTicketCount = (aFixedFee > 0 && aFixedFeePerTicket > 0)
