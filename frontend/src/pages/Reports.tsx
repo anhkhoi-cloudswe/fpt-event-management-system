@@ -53,6 +53,10 @@ import {
   EventCheckInItem,
   EventRealtimeSeatStatusResponse,
   EventAdvancedAnalyticsResponse,
+  EventCategorySeatStatus,
+  CategorySalesBreakdown,
+  DailySalesPoint,
+  HourlyCheckInPoint,
 } from '../services/reportService'
 import { subscriptionService, CurrentSubscription } from '../services/subscriptionService'
 import { UpgradePlanModal } from '../components/UpgradePlanModal'
@@ -2173,8 +2177,9 @@ export default function Reports() {
                   const aPlatformFee = advancedData?.totalPlatformFee ?? financialOverview?.totalPlatformFee ?? 0
                   const aNet = advancedData?.totalNetProfit ?? financialOverview?.totalNetProfit ?? 0
                   const aRefundAmount = advancedData?.totalRefundAmount ?? financialOverview?.totalRefundAmount ?? totalRefundAmount
-                  const aRefundCount = advancedData?.totalTicketsRefunded ?? financialOverview?.totalTicketsRefunded ?? 0
+                  const aRefundCount = (advancedData as any)?.totalTicketsRefunded ?? financialOverview?.totalTicketsRefunded ?? 0
                   const aOriginalGross = advancedData?.totalOriginalGross || financialOverview?.totalOriginalGross || (aGross + aRefundAmount)
+                  const aTicketsSold = advancedData?.totalTicketsSold ?? financialOverview?.totalTicketsSold ?? 0
                   // Dữ liệu phân rã giai đoạn gói (Multi-tier snapshot)
                   const aTierBreakdowns = (isPaywallRequired ? MOCK_ADVANCED_DATA.tierBreakdowns : (advancedData?.tierBreakdowns || financialOverview?.tierBreakdowns)) || []
                   const aHasMultiTier = aTierBreakdowns.length > 1
@@ -2309,7 +2314,7 @@ export default function Reports() {
                               >
                                 {aHasMultiTier ? (
                                   <>
-                                    <span>Gói {aTierBreakdowns[0].tierCode} → {aTierBreakdowns[aTierBreakdowns.length - 1].tierCode} · Đối soát</span>
+                                    <span>Gói {aTierBreakdowns[0]?.tierCode} → {aTierBreakdowns[aTierBreakdowns.length - 1]?.tierCode} · Đối soát</span>
                                     <ArrowUpRight size={10} className="shrink-0" />
                                   </>
                                 ) : (
@@ -2325,38 +2330,38 @@ export default function Reports() {
 
                         {/* Phân rã cụ thể số tiền hoa hồng & phí cố định */}
                         <div className="mt-4 pt-3.5 border-t border-amber-500/20 space-y-1.5 text-xs">
-                          {aHasMultiTier ? (
+                          {aHasMultiTier && aTierBreakdowns.length >= 2 ? (
                             <>
                               <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
                                 <span className="flex items-center gap-1.5 truncate max-w-[65%]">
                                   <span>GĐ 1</span>
                                   <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black text-[11px] leading-tight border border-amber-500/30">
-                                    {aTierBreakdowns[0].commissionRatePercent}% {aTierBreakdowns[0].tierCode}
+                                    {aTierBreakdowns[0]?.commissionRatePercent}% {aTierBreakdowns[0]?.tierCode}
                                   </span>
                                   <span className="text-slate-400">•</span>
                                   <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black text-[11px] leading-tight border border-amber-500/30">
-                                    {aTierBreakdowns[0].ticketCount} vé
+                                    {aTierBreakdowns[0]?.ticketCount} vé
                                   </span>
                                   <span>:</span>
                                 </span>
                                 <span className="font-extrabold text-amber-700 dark:text-amber-300 text-xs sm:text-[13px] tracking-tight">
-                                  {formatVndFull(aTierBreakdowns[0].totalFee)}
+                                  {formatVndFull(aTierBreakdowns[0]?.totalFee || 0)}
                                 </span>
                               </div>
                               <div className="h-6 flex items-center justify-between text-slate-500 dark:text-slate-400">
                                 <span className="flex items-center gap-1.5 truncate max-w-[65%]">
                                   <span>GĐ 2</span>
                                   <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 font-black text-[11px] leading-tight border border-purple-500/30">
-                                    {aTierBreakdowns[1].commissionRatePercent}% {aTierBreakdowns[1].tierCode}
+                                    {aTierBreakdowns[1]?.commissionRatePercent}% {aTierBreakdowns[1]?.tierCode}
                                   </span>
                                   <span className="text-slate-400">•</span>
                                   <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 font-black text-[11px] leading-tight border border-purple-500/30">
-                                    {aTierBreakdowns[1].ticketCount} vé
+                                    {aTierBreakdowns[1]?.ticketCount} vé
                                   </span>
                                   <span>:</span>
                                 </span>
                                 <span className="font-extrabold text-purple-700 dark:text-purple-300 text-xs sm:text-[13px] tracking-tight">
-                                  {formatVndFull(aTierBreakdowns[1].totalFee)}
+                                  {formatVndFull(aTierBreakdowns[1]?.totalFee || 0)}
                                 </span>
                               </div>
                             </>
