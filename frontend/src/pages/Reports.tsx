@@ -1024,32 +1024,59 @@ export default function Reports() {
     setIsDropdownOpen(false)
   }
 
-  // Export Excel (.xlsx) Chuyên Nghiệp Đa Sheet
+  // Export Excel (.xlsx) Chuyên Nghiệp Đa Sheet (Hỗ trợ cả Từng sự kiện và Toàn bộ sự kiện tổng hợp)
   const handleExportExcel = async () => {
-    if (!selectedEventId || selectedEventId === 'ALL') {
-      alert('Vui lòng chọn một sự kiện cụ thể để xuất file Excel báo cáo.')
+    if (!selectedEventId) {
+      alert('Vui lòng chọn sự kiện để xuất file Excel báo cáo.')
       return
     }
     if (isPaywallRequired) {
       setShowUpgradeModal(true)
       return
     }
-    const selectedEvent = events.find((ev) => String(ev.id) === selectedEventId)
+    const isAll = selectedEventId === 'ALL'
+    const selectedEvent = isAll ? null : events.find((ev) => String(ev.id) === selectedEventId)
     setExportingExcel(true)
     try {
       let data = advancedData
-      if (!data) {
+      if (!data && !isAll) {
         data = await reportService.getAdvancedAnalytics(Number(selectedEventId))
         setAdvancedData(data)
       }
-      exportEventAnalyticsToExcel({
-        eventId: Number(selectedEventId),
-        eventTitle: selectedEvent?.title || `Sự kiện #${selectedEventId}`,
-        organizerName: selectedEvent?.organizerName,
+      if (!data) {
+        alert('Không có dữ liệu để xuất file Excel báo cáo.')
+        return
+      }
+
+      const allEventsSummary = isAll
+        ? events.map((ev) => ({
+            id: ev.id,
+            title: ev.title,
+            startTime: ev.startTime,
+            endTime: ev.endTime,
+            status: ev.status,
+            organizerName: ev.organizerName,
+            organizerEmail: ev.organizerEmail,
+          }))
+        : []
+
+      await exportEventAnalyticsToExcel({
+        isAllEvents: isAll,
+        eventId: isAll ? 'ALL' : Number(selectedEventId),
+        eventTitle: isAll
+          ? (user?.role === 'ADMIN' ? 'Toàn bộ sự kiện trên hệ thống' : 'Toàn bộ sự kiện của bạn')
+          : (selectedEvent?.title || `Sự kiện #${selectedEventId}`),
+        eventStartTime: selectedEvent?.startTime,
+        eventEndTime: selectedEvent?.endTime,
+        eventStatus: selectedEvent?.status,
+        organizerName: isAll
+          ? (user?.role === 'ADMIN' ? 'Ban Quản Trị Hệ Thống FEMS' : (user?.fullName || 'Ban Tổ Chức'))
+          : (selectedEvent?.organizerName || user?.fullName || 'Ban Tổ Chức'),
+        allEventsList: allEventsSummary,
         advancedData: data,
         financialOverview,
         currentSub,
-        checkIns,
+        checkIns: isAll ? [] : checkIns,
       })
     } catch (err: any) {
       const status = err?.response?.status
@@ -1065,30 +1092,56 @@ export default function Reports() {
 
   // Export CSV (.csv) Chuẩn Hóa
   const handleExportCSV = async () => {
-    if (!selectedEventId || selectedEventId === 'ALL') {
-      alert('Vui lòng chọn một sự kiện cụ thể để xuất file CSV chi tiết.')
+    if (!selectedEventId) {
+      alert('Vui lòng chọn sự kiện để xuất file CSV chi tiết.')
       return
     }
     if (isPaywallRequired) {
       setShowUpgradeModal(true)
       return
     }
-    const selectedEvent = events.find((ev) => String(ev.id) === selectedEventId)
+    const isAll = selectedEventId === 'ALL'
+    const selectedEvent = isAll ? null : events.find((ev) => String(ev.id) === selectedEventId)
     setExportingCsv(true)
     try {
       let data = advancedData
-      if (!data) {
+      if (!data && !isAll) {
         data = await reportService.getAdvancedAnalytics(Number(selectedEventId))
         setAdvancedData(data)
       }
+      if (!data) {
+        alert('Không có dữ liệu để xuất file CSV.')
+        return
+      }
+
+      const allEventsSummary = isAll
+        ? events.map((ev) => ({
+            id: ev.id,
+            title: ev.title,
+            startTime: ev.startTime,
+            endTime: ev.endTime,
+            status: ev.status,
+            organizerName: ev.organizerName,
+            organizerEmail: ev.organizerEmail,
+          }))
+        : []
+
       exportEventAnalyticsToCSV({
-        eventId: Number(selectedEventId),
-        eventTitle: selectedEvent?.title || `Sự kiện #${selectedEventId}`,
-        organizerName: selectedEvent?.organizerName,
+        isAllEvents: isAll,
+        eventId: isAll ? 'ALL' : Number(selectedEventId),
+        eventTitle: isAll
+          ? (user?.role === 'ADMIN' ? 'Toàn bộ sự kiện trên hệ thống' : 'Toàn bộ sự kiện của bạn')
+          : (selectedEvent?.title || `Sự kiện #${selectedEventId}`),
+        eventStartTime: selectedEvent?.startTime,
+        eventEndTime: selectedEvent?.endTime,
+        organizerName: isAll
+          ? (user?.role === 'ADMIN' ? 'Ban Quản Trị Hệ Thống FEMS' : (user?.fullName || 'Ban Tổ Chức'))
+          : (selectedEvent?.organizerName || user?.fullName || 'Ban Tổ Chức'),
+        allEventsList: allEventsSummary,
         advancedData: data,
         financialOverview,
         currentSub,
-        checkIns,
+        checkIns: isAll ? [] : checkIns,
       })
     } catch (err: any) {
       const status = err?.response?.status
