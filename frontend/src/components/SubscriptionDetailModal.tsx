@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react'
 import {
-  Sparkles,
   Clock,
   Calendar,
   ShieldCheck,
@@ -30,13 +29,6 @@ function formatShortDateTime(dateStr?: string | Date | null): string {
   const dateFormatted = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
   const timeFormatted = `${pad(d.getHours())}:${pad(d.getMinutes())}`
   return `${timeFormatted} • ${dateFormatted}`
-}
-
-function formatShortDate(dateStr?: string | Date | null): string {
-  if (!dateStr) return '—'
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return '—'
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
 }
 
 export function SubscriptionDetailModal({
@@ -135,7 +127,6 @@ export function SubscriptionDetailModal({
         title: currentSub?.tierName || 'Gói Doanh Nghiệp',
         commissionRate: dynamicCommissionRate,
         commissionNote: dynamicCommissionRate === '0.0%' ? 'Miễn 100% sàn' : `Ưu đãi ${dynamicCommissionRate}`,
-        bannerNote: 'Áp dụng ưu đãi 0.0% hoa hồng sàn bán vé cho toàn bộ sự kiện.',
       }
     : isPro
     ? {
@@ -148,7 +139,6 @@ export function SubscriptionDetailModal({
         title: currentSub?.tierName || 'Gói Chuyên Nghiệp',
         commissionRate: dynamicCommissionRate,
         commissionNote: `Ưu đãi ${dynamicCommissionRate}`,
-        bannerNote: 'Áp dụng ưu đãi 2.5% hoa hồng sàn bán vé và mở khóa báo cáo.',
       }
     : isSchool
     ? {
@@ -161,7 +151,6 @@ export function SubscriptionDetailModal({
         title: currentSub?.tierName || 'School Organizer',
         commissionRate: dynamicCommissionRate,
         commissionNote: 'Đối tác FPT',
-        bannerNote: 'Đặc quyền tổ chức học đường không giới hạn sức chứa.',
       }
     : {
         badgeBorder: 'border-amber-500/40',
@@ -173,7 +162,6 @@ export function SubscriptionDetailModal({
         title: currentSub?.tierName || 'Gói Miễn Phí',
         commissionRate: dynamicCommissionRate,
         commissionNote: 'Biểu phí chuẩn',
-        bannerNote: 'Nâng cấp gói để hưởng 0% hoa hồng và mở rộng sức chứa.',
       }
 
   return (
@@ -259,44 +247,32 @@ export function SubscriptionDetailModal({
               </div>
             ) : (
               <div className="space-y-2.5">
-                {/* Hàng đếm ngược số ngày & mốc hết hạn tinh gọn */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1.5">
-                      <Clock size={12} className={themeConfig.accentText} />
-                      Thời Hạn Còn Lại
-                    </div>
-                    <div className={`text-2xl sm:text-3xl font-black tracking-tight ${themeConfig.accentText} mt-0.5`}>
-                      {daysLeft > 0 ? (
-                        <>
-                          <span>{daysLeft}</span>
-                          <span className="text-sm font-bold text-slate-600 dark:text-slate-300 ml-1">ngày</span>
-                          {hoursLeft > 0 && (
-                            <>
-                              <span className="ml-2">{hoursLeft}</span>
-                              <span className="text-sm font-bold text-slate-600 dark:text-slate-300 ml-1">giờ</span>
-                            </>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <span>{hoursLeft}</span>
-                          <span className="text-sm font-bold text-slate-600 dark:text-slate-300 ml-1">giờ</span>
-                          <span className="ml-2">{minutesLeft}</span>
-                          <span className="text-sm font-bold text-slate-600 dark:text-slate-300 ml-1">phút</span>
-                        </>
-                      )}
-                    </div>
+                {/* Hàng đếm ngược số ngày */}
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1.5">
+                    <Clock size={12} className={themeConfig.accentText} />
+                    Thời Hạn Còn Lại
                   </div>
-
-                  {/* Hiển thị mốc ngày hết hạn kế cận */}
-                  <div className="text-right">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
-                      Hạn chu kỳ đến
-                    </div>
-                    <div className="text-xs font-black text-slate-700 dark:text-slate-200 mt-0.5">
-                      {formatShortDate(currentSub?.endDate)}
-                    </div>
+                  <div className={`text-2xl sm:text-3xl font-black tracking-tight ${themeConfig.accentText} mt-0.5`}>
+                    {daysLeft > 0 ? (
+                      <>
+                        <span>{daysLeft}</span>
+                        <span className="text-sm font-bold text-slate-600 dark:text-slate-300 ml-1">ngày</span>
+                        {hoursLeft > 0 && (
+                          <>
+                            <span className="ml-2">{hoursLeft}</span>
+                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 ml-1">giờ</span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span>{hoursLeft}</span>
+                        <span className="text-sm font-bold text-slate-600 dark:text-slate-300 ml-1">giờ</span>
+                        <span className="ml-2">{minutesLeft}</span>
+                        <span className="text-sm font-bold text-slate-600 dark:text-slate-300 ml-1">phút</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -404,17 +380,12 @@ export function SubscriptionDetailModal({
           </div>
         </div>
 
-        {/* Footer Actions tinh gọn & cân đối */}
-        <div className="px-4 sm:px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex items-center justify-between gap-3">
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5 min-w-0 truncate">
-            <Sparkles size={13} className="text-amber-500 shrink-0" />
-            <span className="truncate">{themeConfig.bannerNote}</span>
-          </div>
-
+        {/* Footer Actions tinh gọn */}
+        <div className="px-4 sm:px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex items-center justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors cursor-pointer shadow-xs shrink-0"
+            className="px-5 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors cursor-pointer shadow-xs"
           >
             Đã hiểu & Đóng
           </button>
