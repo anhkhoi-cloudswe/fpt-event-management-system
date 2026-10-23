@@ -1,12 +1,10 @@
 import React, { useEffect } from 'react'
 import {
   Sparkles,
-  X,
   Clock,
   Calendar,
   ShieldCheck,
   ArrowUpRight,
-  RefreshCw,
   AlertTriangle,
   BarChart3,
   Users,
@@ -32,6 +30,13 @@ function formatShortDateTime(dateStr?: string | Date | null): string {
   const dateFormatted = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
   const timeFormatted = `${pad(d.getHours())}:${pad(d.getMinutes())}`
   return `${timeFormatted} • ${dateFormatted}`
+}
+
+function formatShortDate(dateStr?: string | Date | null): string {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return '—'
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
 }
 
 export function SubscriptionDetailModal({
@@ -106,12 +111,17 @@ export function SubscriptionDetailModal({
     ? `${(currentSub.commissionBps / 100).toFixed(1)}%`
     : isBusiness ? '0.0%' : isPro ? '2.5%' : '5.0%'
 
-  // Sức chứa động từ Backend
-  const dynamicCapacity = currentSub?.maxCapacityLimit === 0
-    ? 'Vô hạn'
-    : currentSub?.maxCapacityLimit
-    ? `${currentSub.maxCapacityLimit.toLocaleString('vi-VN')} khách`
-    : isBusiness || isSchool ? 'Vô hạn' : isPro ? '500 khách' : '100 khách'
+  // Sức chứa động: xử lý đúng giá trị -1, 0, hoặc undefined là "Không giới hạn"
+  const isUnlimitedCapacity =
+    !currentSub?.maxCapacityLimit ||
+    currentSub.maxCapacityLimit <= 0 ||
+    currentSub.maxCapacityLimit === -1 ||
+    isBusiness ||
+    isSchool
+
+  const dynamicCapacity = isUnlimitedCapacity
+    ? 'Không giới hạn'
+    : `${currentSub!.maxCapacityLimit.toLocaleString('vi-VN')} khách`
 
   // Cấu hình theme màu theo gói dịch vụ
   const themeConfig = isBusiness
@@ -125,6 +135,7 @@ export function SubscriptionDetailModal({
         title: currentSub?.tierName || 'Gói Doanh Nghiệp',
         commissionRate: dynamicCommissionRate,
         commissionNote: dynamicCommissionRate === '0.0%' ? 'Miễn 100% sàn' : `Ưu đãi ${dynamicCommissionRate}`,
+        bannerNote: 'Áp dụng ưu đãi 0.0% hoa hồng sàn bán vé cho toàn bộ sự kiện.',
       }
     : isPro
     ? {
@@ -137,6 +148,7 @@ export function SubscriptionDetailModal({
         title: currentSub?.tierName || 'Gói Chuyên Nghiệp',
         commissionRate: dynamicCommissionRate,
         commissionNote: `Ưu đãi ${dynamicCommissionRate}`,
+        bannerNote: 'Áp dụng ưu đãi 2.5% hoa hồng sàn bán vé và mở khóa báo cáo.',
       }
     : isSchool
     ? {
@@ -149,6 +161,7 @@ export function SubscriptionDetailModal({
         title: currentSub?.tierName || 'School Organizer',
         commissionRate: dynamicCommissionRate,
         commissionNote: 'Đối tác FPT',
+        bannerNote: 'Đặc quyền tổ chức học đường không giới hạn sức chứa.',
       }
     : {
         badgeBorder: 'border-amber-500/40',
@@ -160,6 +173,7 @@ export function SubscriptionDetailModal({
         title: currentSub?.tierName || 'Gói Miễn Phí',
         commissionRate: dynamicCommissionRate,
         commissionNote: 'Biểu phí chuẩn',
+        bannerNote: 'Nâng cấp gói để hưởng 0% hoa hồng và mở rộng sức chứa.',
       }
 
   return (
@@ -171,8 +185,8 @@ export function SubscriptionDetailModal({
         className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header tích hợp gọn: Logo + Tên Gói + Badge + Trạng thái */}
-        <div className={`px-4 sm:px-5 py-3.5 border-b border-slate-200/80 dark:border-slate-800 bg-gradient-to-r ${themeConfig.heroGradient} flex items-center justify-between`}>
+        {/* Header tích hợp: Logo + Tên Gói + Badge + Trạng thái & Nút "Gia Hạn Gói" góc phải */}
+        <div className={`px-4 sm:px-5 py-3.5 border-b border-slate-200/80 dark:border-slate-800 bg-gradient-to-r ${themeConfig.heroGradient} flex items-center justify-between gap-3`}>
           <div className="flex items-center gap-3 min-w-0">
             <img
               src="/favicon.png"
@@ -188,9 +202,9 @@ export function SubscriptionDetailModal({
                   {tierCode}
                 </span>
               </div>
-              <div className="flex items-center gap-2 mt-0.5 text-[11px]">
+              <div className="flex items-center gap-1.5 mt-0.5 text-[11px]">
                 {currentSub?.status === 'ACTIVE' && !isExpired ? (
-                  <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="inline-flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Đang hoạt động
                   </span>
@@ -202,31 +216,30 @@ export function SubscriptionDetailModal({
                 ) : (
                   <span className="font-medium text-slate-500">Gói tiêu chuẩn</span>
                 )}
-
-                {currentSub?.autoRenew && !isFree && (
-                  <>
-                    <span className="text-slate-300 dark:text-slate-700">•</span>
-                    <span className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                      <RefreshCw size={10} className="text-emerald-500" />
-                      Tự động gia hạn: <strong className="text-emerald-600 dark:text-emerald-400">BẬT</strong>
-                    </span>
-                  </>
-                )}
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-          >
-            <X size={18} />
-          </button>
+
+          {/* Vị trí góc phải: Thay thế nút X bằng nút "Gia Hạn Gói" */}
+          {onManageSubscription && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose()
+                onManageSubscription()
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-black text-xs shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer shrink-0"
+              title="Đi đến trang gia hạn / nâng cấp gói dịch vụ"
+            >
+              <span>Gia Hạn Gói</span>
+              <ArrowUpRight size={13} className="shrink-0" />
+            </button>
+          )}
         </div>
 
         {/* Nội dung gọn gàng trong 1 khung hình - KHÔNG CẦN CUỘN */}
         <div className="p-4 sm:p-5 space-y-3.5">
-          {/* Card Thời Hạn Còn Lại (Thông tin trọng tâm) */}
+          {/* Card Thời Hạn Còn Lại */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
             {isFree || isSchool ? (
               <div className="text-center py-2">
@@ -242,11 +255,11 @@ export function SubscriptionDetailModal({
             ) : isExpired ? (
               <div className="text-center py-2 text-rose-600 dark:text-rose-400">
                 <div className="text-lg font-black">Gói Đã Hết Hạn</div>
-                <p className="text-xs text-slate-500 mt-0.5">Vui lòng gia hạn để tiếp tục hưởng đặc quyền 0% hoa hồng sàn.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Vui lòng gia hạn gói để tiếp tục hưởng ưu đãi 0% hoa hồng sàn.</p>
               </div>
             ) : (
               <div className="space-y-2.5">
-                {/* Hàng đếm ngược số ngày & phần trăm */}
+                {/* Hàng đếm ngược số ngày & mốc hết hạn tinh gọn */}
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1.5">
@@ -276,12 +289,13 @@ export function SubscriptionDetailModal({
                     </div>
                   </div>
 
+                  {/* Hiển thị mốc ngày hết hạn kế cận */}
                   <div className="text-right">
-                    <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-xs">
-                      Còn {Math.max(0, 100 - percentCycleUsed)}% chu kỳ
-                    </span>
-                    <div className="text-[10px] font-bold text-slate-400 mt-1">
-                      Đã dùng {percentCycleUsed}%
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                      Hạn chu kỳ đến
+                    </div>
+                    <div className="text-xs font-black text-slate-700 dark:text-slate-200 mt-0.5">
+                      {formatShortDate(currentSub?.endDate)}
                     </div>
                   </div>
                 </div>
@@ -317,16 +331,16 @@ export function SubscriptionDetailModal({
             )}
           </div>
 
-          {/* Grid 4 Chỉ Số Quyền Lợi Cốt Lõi (4 Cột Tinh Gọn) */}
+          {/* Grid 4 Chỉ Số Quyền Lợi Cốt Lõi với màu sắc phân cấp rõ nét */}
           <div>
             <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
               Đặc Quyền Gói Dịch Vụ
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {/* Chỉ số 1: Hoa hồng sàn */}
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 flex flex-col justify-between">
+              <div className="p-2.5 rounded-xl bg-purple-500/5 dark:bg-purple-500/10 border border-purple-500/20 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-[10px] font-bold uppercase tracking-tight">Hoa hồng</span>
+                  <span className="text-[10px] font-bold uppercase tracking-tight text-purple-700 dark:text-purple-300">Hoa hồng</span>
                   <Percent size={12} className="text-purple-500" />
                 </div>
                 <div className="mt-1">
@@ -340,41 +354,41 @@ export function SubscriptionDetailModal({
               </div>
 
               {/* Chỉ số 2: Phí cố định */}
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 flex flex-col justify-between">
+              <div className="p-2.5 rounded-xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-[10px] font-bold uppercase tracking-tight">Phí cố định</span>
+                  <span className="text-[10px] font-bold uppercase tracking-tight text-amber-700 dark:text-amber-300">Phí cố định</span>
                   <ShieldCheck size={12} className="text-amber-500" />
                 </div>
                 <div className="mt-1">
                   <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight">
                     1.000đ
                   </div>
-                  <div className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
                     Vé ≥ 20.000đ
                   </div>
                 </div>
               </div>
 
-              {/* Chỉ số 3: Sức chứa */}
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 flex flex-col justify-between">
+              {/* Chỉ số 3: Sức chứa (Khắc phục lỗi -1 khách) */}
+              <div className="p-2.5 rounded-xl bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-[10px] font-bold uppercase tracking-tight">Sức chứa</span>
+                  <span className="text-[10px] font-bold uppercase tracking-tight text-blue-700 dark:text-blue-300">Sức chứa</span>
                   <Users size={12} className="text-blue-500" />
                 </div>
                 <div className="mt-1">
                   <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight truncate">
                     {dynamicCapacity}
                   </div>
-                  <div className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">
-                    {isBusiness ? 'Quy mô lớn' : 'Mỗi sự kiện'}
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
+                    {isUnlimitedCapacity ? 'Mọi quy mô' : 'Mỗi sự kiện'}
                   </div>
                 </div>
               </div>
 
               {/* Chỉ số 4: Báo cáo nâng cao */}
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 flex flex-col justify-between">
+              <div className="p-2.5 rounded-xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-[10px] font-bold uppercase tracking-tight">Báo cáo</span>
+                  <span className="text-[10px] font-bold uppercase tracking-tight text-emerald-700 dark:text-emerald-300">Báo cáo</span>
                   <BarChart3 size={12} className="text-emerald-500" />
                 </div>
                 <div className="mt-1">
@@ -390,28 +404,17 @@ export function SubscriptionDetailModal({
           </div>
         </div>
 
-        {/* Footer Actions tinh gọn */}
+        {/* Footer Actions tinh gọn & cân đối */}
         <div className="px-4 sm:px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex items-center justify-between gap-3">
-          {onManageSubscription ? (
-            <button
-              type="button"
-              onClick={() => {
-                onClose()
-                onManageSubscription()
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-xs hover:shadow transition-all active:scale-95 cursor-pointer"
-            >
-              <span>Quản lý & Gia hạn</span>
-              <ArrowUpRight size={13} />
-            </button>
-          ) : (
-            <div />
-          )}
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5 min-w-0 truncate">
+            <Sparkles size={13} className="text-amber-500 shrink-0" />
+            <span className="truncate">{themeConfig.bannerNote}</span>
+          </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors cursor-pointer shadow-xs"
+            className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors cursor-pointer shadow-xs shrink-0"
           >
             Đã hiểu & Đóng
           </button>
