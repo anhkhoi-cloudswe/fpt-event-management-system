@@ -1145,7 +1145,7 @@ export default function Reports() {
         advancedData: data,
         financialOverview,
         currentSub,
-        checkIns: isAll ? [] : checkIns,
+        checkIns,
       })
     } catch (err: any) {
       const status = err?.response?.status
@@ -1210,7 +1210,7 @@ export default function Reports() {
         advancedData: data,
         financialOverview,
         currentSub,
-        checkIns: isAll ? [] : checkIns,
+        checkIns,
       })
     } catch (err: any) {
       const status = err?.response?.status

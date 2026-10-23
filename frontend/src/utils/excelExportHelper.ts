@@ -244,8 +244,8 @@ export async function exportEventAnalyticsToExcel({
     totalInCount = inCnt
     totalOutCount = outCnt
   } else if (isAll) {
-    totalInCount = advancedData?.checkedInTickets || 0
-    // Tổng hợp out count từ hourlyCheckOuts nếu có
+    const hourlyInSum = (advancedData?.hourlyCheckIns || []).reduce((acc, curr) => acc + curr.count, 0)
+    totalInCount = Math.max(advancedData?.checkedInTickets || 0, hourlyInSum)
     totalOutCount = (advancedData?.hourlyCheckOuts || []).reduce((acc, curr) => acc + curr.count, 0)
   }
 
@@ -1071,7 +1071,8 @@ export function exportEventAnalyticsToCSV({
     totalInCount = inCnt
     totalOutCount = outCnt
   } else if (isAll) {
-    totalInCount = advancedData?.checkedInTickets || 0
+    const hourlyInSum = (advancedData?.hourlyCheckIns || []).reduce((acc, curr) => acc + curr.count, 0)
+    totalInCount = Math.max(advancedData?.checkedInTickets || 0, hourlyInSum)
     totalOutCount = (advancedData?.hourlyCheckOuts || []).reduce((acc, curr) => acc + curr.count, 0)
   }
 
@@ -1152,9 +1153,10 @@ export function exportEventAnalyticsToCSV({
     ['DOANH THU THỰC NHẬN CỦA BTC (Net Profit)', formatVndFull(net), `Số tiền thực tế chuyển vào ví Ban Tổ Chức (Gross ${formatVndFull(gross)} - Phí sàn ${formatVndFull(platformFee)})`],
   ]
 
+  let secIndex = 3
   if (isAll && allEventsList.length > 0) {
     rows.push(['===================================================================================================='])
-    rows.push(['2. DANH SÁCH CHI TIẾT TẤT CẢ SỰ KIỆN'])
+    rows.push([`${secIndex++}. DANH SÁCH CHI TIẾT TẤT CẢ SỰ KIỆN`])
     rows.push(['STT', 'Mã SK', 'Tên Sự Kiện', 'Ban Tổ Chức', 'Bắt Đầu', 'Kết Thúc', 'Trạng Thái', 'Sức Chứa', 'Vé Đã Bán', 'Doanh Thu Gross', 'Phí Sàn', 'Thực Nhận Net', 'Lấp Đầy'])
     allEventsList.forEach((ev, i) => {
       const cCap = ev.capacity || 0
@@ -1168,8 +1170,8 @@ export function exportEventAnalyticsToCSV({
         `#${ev.id}`,
         ev.title,
         ev.organizerName || '—',
-        formatDateTimeVN(ev.startTime),
-        formatDateTimeVN(ev.endTime),
+        ev.startTime ? `="${formatDateTimeVN(ev.startTime)}"` : '—',
+        ev.endTime ? `="${formatDateTimeVN(ev.endTime)}"` : '—',
         ev.status === 'OPEN' ? 'Đang mở bán' : (ev.status || '—'),
         `${cCap}`,
         `${cSold}`,
@@ -1182,7 +1184,7 @@ export function exportEventAnalyticsToCSV({
   }
 
   rows.push(['===================================================================================================='])
-  rows.push(['CƠ CẤU HẠNG VÉ'])
+  rows.push([`${secIndex++}. CƠ CẤU DOANH SỐ THEO HẠNG VÉ`])
   rows.push(['STT', 'Tên Hạng Vé', 'Giá Vé', 'Sức Chứa', 'Đã Bán', 'Còn Lại', 'Check-in', 'Doanh Thu Gross', 'Phí Sàn', 'Thực Nhận Net', 'Tỷ Lệ Lấp Đầy'])
 
   const categories = advancedData?.categoryBreakdown || []
@@ -1203,14 +1205,14 @@ export function exportEventAnalyticsToCSV({
   })
 
   rows.push(['===================================================================================================='])
-  rows.push(['XU HƯỚNG BÁN VÉ THEO NGÀY'])
+  rows.push([`${secIndex++}. XU HƯỚNG BÁN VÉ THEO NGÀY`])
   rows.push(['STT', 'Ngày', 'Số Vé Bán', 'Doanh Thu Gộp (Gross)', 'Phí Sàn', 'Thực Nhận (Net)', 'Ghi Chú'])
 
   const timeline = advancedData?.timeline || []
   timeline.forEach((t, i) => {
     rows.push([
       `${i + 1}`,
-      t.date,
+      t.date ? `="${formatDateOnlyVN(t.date)}"` : '—',
       `${t.ticketsSold} vé`,
       formatVndFull(t.grossRevenue),
       formatVndFull(t.platformFee),
@@ -1220,7 +1222,7 @@ export function exportEventAnalyticsToCSV({
   })
 
   rows.push(['===================================================================================================='])
-  rows.push(['KHUNG GIỜ CHECK-IN CÓ PHÁT SINH LƯỢT KHÁCH'])
+  rows.push([`${secIndex++}. KHUNG GIỜ CHECK-IN CÓ PHÁT SINH LƯỢT KHÁCH`])
   rows.push(['Khung Giờ', 'Lượt Check-in (Vào)', 'Ghi Chú'])
 
   const activeCheckIns = (advancedData?.hourlyCheckIns || []).filter((h) => h.count > 0)
@@ -1229,7 +1231,7 @@ export function exportEventAnalyticsToCSV({
   } else {
     activeCheckIns.forEach((h) => {
       const pad = (n: number) => String(n).padStart(2, '0')
-      rows.push([`${pad(h.hour)}:00 - ${pad(h.hour)}:59`, `${h.count} lượt`, 'Khung giờ có hoạt động'])
+      rows.push([`="${pad(h.hour)}:00 - ${pad(h.hour)}:59"`, `${h.count} lượt`, 'Khung giờ có hoạt động'])
     })
   }
 
