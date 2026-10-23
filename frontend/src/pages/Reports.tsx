@@ -3217,17 +3217,46 @@ export default function Reports() {
                             <span>Tỷ Lệ Check-In vs Check-Out</span>
                           </h3>
                           <p className="text-[11px] text-slate-400 mt-0.5">
-                            So sánh tương quan khách đang có mặt và đã rời sự kiện.
+                            So sánh tương quan khách đã có mặt và đã rời sự kiện.
                           </p>
                         </div>
 
                         {(() => {
-                          const totalIn = seatStatus?.totalCheckedIn || 0
-                          const totalOut = seatStatus?.totalCheckedOut || 0
-                          const currentlyPresent = Math.max(0, totalIn - totalOut)
+                          let totalIn = 0
+                          let totalOut = 0
+
+                          if (checkIns.length > 0) {
+                            checkIns.forEach((c) => {
+                              const pad = (n: number) => String(n).padStart(2, '0')
+                              const effectiveInTime = c.checkedInAt || (c.status === 'CHECKED_IN' || c.status === 'CHECKED_OUT' ? c.createdAt : undefined)
+                              if (effectiveInTime) {
+                                const dIn = new Date(effectiveInTime)
+                                if (!isNaN(dIn.getTime())) {
+                                  const inDateStr = `${dIn.getFullYear()}-${pad(dIn.getMonth() + 1)}-${pad(dIn.getDate())}`
+                                  if (hourlyDateFilter === 'ALL' || inDateStr === hourlyDateFilter) {
+                                    totalIn++
+                                  }
+                                }
+                              }
+                              if (c.checkedOutAt || c.status === 'CHECKED_OUT') {
+                                const dOut = c.checkedOutAt ? new Date(c.checkedOutAt) : null
+                                if (dOut && !isNaN(dOut.getTime())) {
+                                  const outDateStr = `${dOut.getFullYear()}-${pad(dOut.getMonth() + 1)}-${pad(dOut.getDate())}`
+                                  if (hourlyDateFilter === 'ALL' || outDateStr === hourlyDateFilter) {
+                                    totalOut++
+                                  }
+                                } else if (hourlyDateFilter === 'ALL') {
+                                  totalOut++
+                                }
+                              }
+                            })
+                          } else {
+                            totalIn = seatStatus?.totalCheckedIn || 0
+                            totalOut = seatStatus?.totalCheckedOut || 0
+                          }
 
                           const pieData = [
-                            { name: 'Đang có mặt tại sự kiện', value: currentlyPresent, fill: '#8B5CF6' },
+                            { name: 'Đã có mặt tại sự kiện', value: totalIn, fill: '#8B5CF6' },
                             { name: 'Đã check-out (Rời đi)', value: totalOut, fill: '#10B981' },
                           ]
 
@@ -3267,7 +3296,7 @@ export default function Reports() {
                                       }}
                                       itemStyle={{ color: '#f8fafc' }}
                                       labelStyle={{ color: '#cbd5e1', fontWeight: 600 }}
-                                      formatter={(val: any) => [`${val} người`, 'Số lượng']}
+                                      formatter={(val: any) => [`${val} lượt`, 'Số lượng']}
                                     />
                                     <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} iconType="circle" />
                                   </PieChart>
@@ -3279,20 +3308,57 @@ export default function Reports() {
                       </div>
 
                       {/* Stat summary cards */}
-                      <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                        <div className="p-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50">
-                          <span className="text-[10px] font-bold text-indigo-500 uppercase block">Đang có mặt</span>
-                          <span className="text-base font-black text-indigo-700 dark:text-indigo-300">
-                            {Math.max(0, (seatStatus?.totalCheckedIn || 0) - (seatStatus?.totalCheckedOut || 0))}
-                          </span>
-                        </div>
-                        <div className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50">
-                          <span className="text-[10px] font-bold text-emerald-500 uppercase block">Đã check-out</span>
-                          <span className="text-base font-black text-emerald-700 dark:text-emerald-300">
-                            {seatStatus?.totalCheckedOut || 0}
-                          </span>
-                        </div>
-                      </div>
+                      {(() => {
+                        let totalIn = 0
+                        let totalOut = 0
+
+                        if (checkIns.length > 0) {
+                          checkIns.forEach((c) => {
+                            const pad = (n: number) => String(n).padStart(2, '0')
+                            const effectiveInTime = c.checkedInAt || (c.status === 'CHECKED_IN' || c.status === 'CHECKED_OUT' ? c.createdAt : undefined)
+                            if (effectiveInTime) {
+                              const dIn = new Date(effectiveInTime)
+                              if (!isNaN(dIn.getTime())) {
+                                const inDateStr = `${dIn.getFullYear()}-${pad(dIn.getMonth() + 1)}-${pad(dIn.getDate())}`
+                                if (hourlyDateFilter === 'ALL' || inDateStr === hourlyDateFilter) {
+                                  totalIn++
+                                }
+                              }
+                            }
+                            if (c.checkedOutAt || c.status === 'CHECKED_OUT') {
+                              const dOut = c.checkedOutAt ? new Date(c.checkedOutAt) : null
+                              if (dOut && !isNaN(dOut.getTime())) {
+                                const outDateStr = `${dOut.getFullYear()}-${pad(dOut.getMonth() + 1)}-${pad(dOut.getDate())}`
+                                if (hourlyDateFilter === 'ALL' || outDateStr === hourlyDateFilter) {
+                                  totalOut++
+                                }
+                              } else if (hourlyDateFilter === 'ALL') {
+                                totalOut++
+                              }
+                            }
+                          })
+                        } else {
+                          totalIn = seatStatus?.totalCheckedIn || 0
+                          totalOut = seatStatus?.totalCheckedOut || 0
+                        }
+
+                        return (
+                          <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                            <div className="p-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50">
+                              <span className="text-[10px] font-bold text-indigo-500 uppercase block">Đã có mặt</span>
+                              <span className="text-base font-black text-indigo-700 dark:text-indigo-300">
+                                {totalIn}
+                              </span>
+                            </div>
+                            <div className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50">
+                              <span className="text-[10px] font-bold text-emerald-500 uppercase block">Đã check-out</span>
+                              <span className="text-base font-black text-emerald-700 dark:text-emerald-300">
+                                {totalOut}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
 

@@ -503,7 +503,7 @@ func (r *TicketRepository) GetEventSeatStatus(ctx context.Context, eventID int, 
 			ct.price::BIGINT,
 			COALESCE(ct.max_quantity, 0) AS total_capacity,
 			COALESCE(COUNT(t.ticket_id) FILTER (WHERE t.status IN ('BOOKED', 'CHECKED_IN', 'CHECKED_OUT')), 0) AS sold_seats,
-			COALESCE(COUNT(t.ticket_id) FILTER (WHERE t.status = 'CHECKED_IN' OR (t.checkin_time IS NOT NULL AND t.check_out_time IS NULL)), 0) AS checked_in_seats,
+			COALESCE(COUNT(t.ticket_id) FILTER (WHERE t.status IN ('CHECKED_IN', 'CHECKED_OUT') OR t.checkin_time IS NOT NULL), 0) AS checked_in_seats,
 			COALESCE(COUNT(t.ticket_id) FILTER (WHERE t.status = 'CHECKED_OUT' OR t.check_out_time IS NOT NULL), 0) AS checked_out_seats
 		FROM category_ticket ct
 		LEFT JOIN ticket t ON ct.category_ticket_id = t.category_ticket_id
