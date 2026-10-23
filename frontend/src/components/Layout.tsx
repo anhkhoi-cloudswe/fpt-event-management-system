@@ -38,6 +38,7 @@ import AccountRestoreOverlay from './common/AccountRestoreOverlay'
 import { TimezoneCombobox } from './TimezoneCombobox'
 import { subscriptionService, CurrentSubscription } from '../services/subscriptionService'
 import { OrganizerOnboardingModal } from './auth/OrganizerOnboardingModal'
+import { SubscriptionDetailModal } from './SubscriptionDetailModal'
 
 export default function Layout() {
   const { user, logout, refreshUser, currentLanguage } = useAuth()
@@ -57,6 +58,7 @@ export default function Layout() {
   })
   const [showModePopover, setShowModePopover] = useState(false)
   const [isOrganizerModalOpen, setIsOrganizerModalOpen] = useState(false)
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
 
   // Sidebar Scrollbar auto-hide indicator state
   const [isSidebarScrolling, setIsSidebarScrolling] = useState(false)
@@ -504,9 +506,10 @@ export default function Layout() {
             </div>
 
             {isOrganizer && (
-              <Link
-                to="/organizer/subscription"
-                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-black transition-all hover:scale-105 active:scale-95 ${
+              <button
+                type="button"
+                onClick={() => setShowSubscriptionModal(true)}
+                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-[11px] sm:text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs ${
                   currentSub?.tierCode === 'BUSINESS'
                     ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
                     : currentSub?.tierCode === 'PRO'
@@ -515,16 +518,16 @@ export default function Layout() {
                     ? 'bg-slate-800 text-slate-300 border-slate-700'
                     : 'bg-orange-50 text-orange-700 border-orange-200'
                 }`}
-                title="Xem & Nâng cấp Gói dịch vụ"
+                title="Nhấn để xem chi tiết thời hạn & quyền lợi gói dịch vụ"
               >
-                <Sparkles size={14} className={currentSub?.tierCode === 'PRO' || currentSub?.tierCode === 'BUSINESS' ? 'text-amber-500 animate-pulse' : 'text-slate-400'} />
-                <span className="text-[11px] font-black uppercase tracking-wider">
-                  {currentSub ? `Gói: ${currentSub.tierCode}` : 'Gói: FREE'}
+                <Sparkles size={13} className={currentSub?.tierCode === 'PRO' || currentSub?.tierCode === 'BUSINESS' ? 'text-amber-500 animate-pulse' : 'text-slate-400'} />
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider">
+                  <span className="hidden xs:inline">Gói: </span>{currentSub ? currentSub.tierCode : 'FREE'}
                 </span>
                 {currentSub?.status === 'ACTIVE' && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 ml-0.5 animate-pulse" />
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 ml-0.5 animate-pulse" />
                 )}
-              </Link>
+              </button>
             )}
 
             {showWallet && (
@@ -887,6 +890,14 @@ export default function Layout() {
       <OrganizerOnboardingModal
         isOpen={isOrganizerModalOpen}
         onClose={() => setIsOrganizerModalOpen(false)}
+      />
+
+      {/* Subscription Detail Modal for Organizer */}
+      <SubscriptionDetailModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        currentSub={currentSub}
+        onManageSubscription={() => navigate('/dashboard/organizer/subscription')}
       />
     </div>
   )
