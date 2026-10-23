@@ -30,6 +30,7 @@ import {
   ShieldCheck,
   Info,
   X,
+  FileSpreadsheet,
 } from 'lucide-react'
 import {
   BarChart,
@@ -61,6 +62,10 @@ import {
 import { subscriptionService, CurrentSubscription } from '../services/subscriptionService'
 import { UpgradePlanModal } from '../components/UpgradePlanModal'
 import { formatVndShort, formatVndFull } from '../utils/currencyFormatter'
+import {
+  exportEventAnalyticsToExcel,
+  exportEventAnalyticsToCSV,
+} from '../utils/excelExportHelper'
 
 // ===================== DỮ LIỆU MẪU MINH HỌA (MOCK DATA FOR PAYWALL) =====================
 const MOCK_ADVANCED_DATA: EventAdvancedAnalyticsResponse = {
@@ -490,6 +495,7 @@ export default function Reports() {
   const [advancedError, setAdvancedError] = useState<string | null>(null)
   const [advancedErrorType, setAdvancedErrorType] = useState<'FORBIDDEN' | 'NOT_FOUND' | 'SERVICE_UNAVAILABLE' | 'GENERIC' | null>(null)
   const [exportingCsv, setExportingCsv] = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
 
   // Timeline Filter & Custom Date Range States for Pro Charts
   const [timelinePreset, setTimelinePreset] = useState<'ALL' | '7D' | '30D' | 'THIS_MONTH' | 'LAST_MONTH' | 'THIS_YEAR' | 'CUSTOM'>('ALL')
@@ -1018,16 +1024,72 @@ export default function Reports() {
     setIsDropdownOpen(false)
   }
 
-  // Export CSV
+  // Export Excel (.xlsx) Chuyên Nghiệp Đa Sheet
+  const handleExportExcel = async () => {
+    if (!selectedEventId || selectedEventId === 'ALL') {
+      alert('Vui lòng chọn một sự kiện cụ thể để xuất file Excel báo cáo.')
+      return
+    }
+    if (isPaywallRequired) {
+      setShowUpgradeModal(true)
+      return
+    }
+    const selectedEvent = events.find((ev) => String(ev.id) === selectedEventId)
+    setExportingExcel(true)
+    try {
+      let data = advancedData
+      if (!data) {
+        data = await reportService.getAdvancedAnalytics(Number(selectedEventId))
+        setAdvancedData(data)
+      }
+      exportEventAnalyticsToExcel({
+        eventId: Number(selectedEventId),
+        eventTitle: selectedEvent?.title || `Sự kiện #${selectedEventId}`,
+        organizerName: selectedEvent?.organizerName,
+        advancedData: data,
+        financialOverview,
+        currentSub,
+        checkIns,
+      })
+    } catch (err: any) {
+      const status = err?.response?.status
+      if (status === 403) {
+        setShowUpgradeModal(true)
+      } else {
+        alert(err?.response?.data?.message || err?.message || 'Lỗi khi xuất file Excel báo cáo.')
+      }
+    } finally {
+      setExportingExcel(false)
+    }
+  }
+
+  // Export CSV (.csv) Chuẩn Hóa
   const handleExportCSV = async () => {
     if (!selectedEventId || selectedEventId === 'ALL') {
       alert('Vui lòng chọn một sự kiện cụ thể để xuất file CSV chi tiết.')
       return
     }
+    if (isPaywallRequired) {
+      setShowUpgradeModal(true)
+      return
+    }
     const selectedEvent = events.find((ev) => String(ev.id) === selectedEventId)
     setExportingCsv(true)
     try {
-      await reportService.exportEventCSV(Number(selectedEventId), selectedEvent?.title)
+      let data = advancedData
+      if (!data) {
+        data = await reportService.getAdvancedAnalytics(Number(selectedEventId))
+        setAdvancedData(data)
+      }
+      exportEventAnalyticsToCSV({
+        eventId: Number(selectedEventId),
+        eventTitle: selectedEvent?.title || `Sự kiện #${selectedEventId}`,
+        organizerName: selectedEvent?.organizerName,
+        advancedData: data,
+        financialOverview,
+        currentSub,
+        checkIns,
+      })
     } catch (err: any) {
       const status = err?.response?.status
       if (status === 403) {
@@ -2562,14 +2624,29 @@ export default function Reports() {
                     )}
                   </div>
 
-                  <button
-                    onClick={handleExportCSV}
-                    disabled={exportingCsv}
-                    className="px-4 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white font-bold text-xs rounded-2xl border border-slate-200 dark:border-slate-800 transition flex items-center gap-2 disabled:opacity-50 shadow-sm cursor-pointer active:scale-95"
-                  >
-                    <Download className="w-4 h-4 text-orange-500" />
-                    <span>{exportingCsv ? 'Đang xuất CSV...' : 'Xuất File CSV Báo Cáo'}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {/* Primary Export: Excel (.xlsx) */}
+                    <button
+                      onClick={handleExportExcel}
+                      disabled={exportingExcel || exportingCsv}
+                      className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-2xl shadow-lg shadow-emerald-600/20 transition flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
+                      title="Xuất tệp Excel đa trang tính (.xlsx) chuẩn tài chính"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+                      <span>{exportingExcel ? 'Đang tạo Excel...' : 'Xuất File Excel (.xlsx)'}</span>
+                    </button>
+
+                    {/* Secondary Export: CSV (.csv) */}
+                    <button
+                      onClick={handleExportCSV}
+                      disabled={exportingExcel || exportingCsv}
+                      className="px-3.5 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-2xl border border-slate-200 dark:border-slate-800 transition flex items-center gap-1.5 disabled:opacity-50 shadow-sm cursor-pointer active:scale-95"
+                      title="Xuất tệp CSV tiêu chuẩn"
+                    >
+                      <Download className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{exportingCsv ? 'Đang tạo...' : 'Xuất CSV'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* 4 KPI Cards Báo Cáo Nâng Cao */}
