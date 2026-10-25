@@ -229,7 +229,7 @@ export default function OrganizerPolicy() {
         { label: 'Bảo vệ Organizer', value: 'Không âm ví', desc: 'Không làm ảnh hưởng đến số dư các sự kiện khác' }
       ],
       rules: [
-        'Trong trường hợp sự kiện bị HỦY (Cancelled) bởi Ban tổ chức hoặc Ban giám hiệu: Hệ thống sẽ tự động hoàn trả 100% tiền vé lại cho toàn bộ khán giả đã thanh toán.',
+        'Trong trường hợp sự kiện bị HỦY (Cancelled) bởi Ban tổ chức hoặc Ban giám hiệu: Hệ thống sẽ tự động hoàn trả 100% tiền vé trực tiếp vào Ví nội bộ FEMS của toàn bộ khán giả đã thanh toán (số dư ví nội bộ dùng để mua vé các sự kiện kế tiếp, không hỗ trợ rút tiền mặt hoặc về tài khoản ngân hàng).',
         'Khoản tiền hoàn trả này được trừ trực tiếp từ "Số dư tạm giữ" (Pending Balance) của chính sự kiện đó. Phí hoa hồng sàn dự kiến tương ứng sẽ được tự động hủy bỏ.',
         'Nếu có khán giả khiếu nại ghế hỏng hoặc lỗi sảnh và được Staff phê duyệt hoàn tiền: Tiền hoàn sẽ được khấu trừ trực tiếp từ doanh thu tạm giữ của đơn vé đó trước khi quyết toán.',
         'Ban tổ chức có trách nhiệm thông báo lý do hủy sự kiện rõ ràng cho sinh viên qua hệ thống thông báo ít nhất 24 giờ trước thời điểm bắt đầu.'
@@ -241,7 +241,7 @@ export default function OrganizerPolicy() {
         },
         {
           question: 'Khán giả nhận tiền hoàn bằng hình thức nào?',
-          answer: 'Tiền hoàn sẽ được cộng trực tiếp vào Số dư Ví nội bộ của tài khoản sinh viên FPT hoặc hoàn về tài khoản ngân hàng theo quy định.'
+          answer: 'Toàn bộ tiền hoàn vé sẽ được hệ thống cộng trực tiếp 100% vào Ví nội bộ FEMS của sinh viên/người tham dự. Ví nội bộ là ví số dư khép kín trên hệ thống, hoàn toàn không hỗ trợ rút về tài khoản ngân hàng hay quy đổi tiền mặt; người tham dự dùng số dư này để khấu trừ cho các lần mua vé sự kiện tiếp theo.'
         }
       ]
     }

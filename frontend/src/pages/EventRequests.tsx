@@ -956,7 +956,7 @@ export default function EventRequests() {
                     </>
                   ) : (
                     <>
-                      • <strong>Hệ thống sẽ tự động hoàn lại tiền vé cho toàn bộ sinh viên đã đăng ký vào ví nội bộ của họ</strong>
+                      • <strong>Hệ thống sẽ tự động hoàn lại tiền vé cho toàn bộ sinh viên đã đăng ký vào Ví nội bộ FEMS (dùng để mua vé lần sau, không hỗ trợ rút tiền mặt)</strong>
                       <br />
                       • Địa điểm sẽ được giải phóng và có thể được sử dụng cho sự kiện khác
                       <br />

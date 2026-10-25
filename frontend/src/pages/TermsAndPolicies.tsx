@@ -223,32 +223,106 @@ export default function TermsAndPolicies() {
     payment: {
       id: 'payment',
       title: 'Chính sách thanh toán',
-      description: 'Quy định thanh toán trực tuyến qua cổng thanh toán, ví nội bộ và cơ chế bảo vệ giao dịch',
+      description: 'Quy định thanh toán trực tuyến, ví nội bộ FEMS và chính sách hoàn tiền 100% minh bạch',
       badge: 'Thanh toán bảo mật',
       content: (
         <div className="space-y-6 text-slate-700 dark:text-slate-300 leading-relaxed text-[15px]">
           <div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">1. Phương thức Thanh toán Hỗ trợ</h3>
             <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Cổng thanh toán điện tử VNPay / Chuyển khoản QR SePay:</strong> Hỗ trợ thanh toán nhanh chóng qua Internet Banking, thẻ ATM nội địa và mã VietQR.</li>
-              <li><strong>Ví nội bộ FEMS:</strong> Thanh toán tức thời không mất phí đối với số dư sẵn có trong ví người dùng.</li>
+              <li>
+                <strong>Cổng thanh toán điện tử VNPay / Chuyển khoản QR SePay:</strong> Hỗ trợ thanh toán tức thì qua Internet Banking, ứng dụng ngân hàng và mã VietQR chuẩn NAPAS 24/7.
+              </li>
+              <li>
+                <strong>Ví nội bộ FEMS:</strong> Thanh toán tức thời không mất phí đối với số dư sẵn có trong tài khoản người dùng.
+                <span className="block mt-1 text-slate-600 dark:text-slate-400 text-sm italic">
+                  * Lưu ý về Ví nội bộ: Số dư trong Ví nội bộ là số dư điểm thanh toán khép kín trên hệ thống FEMS, không hỗ trợ rút về tài khoản ngân hàng hoặc quy đổi thành tiền mặt. Số dư này dùng để thanh toán mua vé hoặc dịch vụ trên hệ thống.
+                </span>
+              </li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">2. Quy định Giữ chỗ & Khóa đơn hàng</h3>
             <p>
-              Sau khi chọn ghế và chuyển tới trang thanh toán, hệ thống sẽ tạm khóa ghế trong vòng <strong>05 phút</strong> để bạn hoàn tất giao dịch. Nếu quá thời gian này giao dịch chưa được ghi nhận thành công, đơn hàng sẽ tự động hủy và ghế sẽ được giải phóng cho người khác.
+              Sau khi chọn ghế và chuyển tới trang thanh toán, hệ thống sẽ tạm khóa ghế trong vòng <strong>05 phút</strong> để bạn hoàn tất giao dịch (áp dụng cho cả thanh toán Ví nội bộ và chuyển khoản SePay/VNPay). Nếu quá thời gian này giao dịch chưa được ghi nhận thành công, đơn hàng sẽ tự động hủy và ghế sẽ được giải phóng cho người khác.
             </p>
           </div>
 
           <div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">3. Chính sách Hoàn tiền & Hủy vé</h3>
-            <p>
-              - Hoàn tiền 100% khi sự kiện bị hủy bỏ hoặc thay đổi lịch trình bất khả kháng từ Ban tổ chức.<br />
-              - Trường hợp báo lỗi sự cố chỗ ngồi (hỏng ghế, trùng ghế) được tiếp nhận và xử lý hoàn tiền vào Ví nội bộ trong vòng 24 giờ sau khi nhân viên thẩm định hợp lệ.<br />
-              - Hủy vé theo nhu cầu cá nhân phải tuân thủ điều kiện thời gian tối thiểu 24 giờ trước khi sự kiện bắt đầu.
-            </p>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">3. Chính sách Hoàn tiền & Hủy vé (Quy định Minh bạch Ví nội bộ)</h3>
+            
+            <div className="p-4 mb-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-200 text-sm leading-relaxed shadow-xs">
+              <div className="font-bold flex items-center gap-2 mb-1.5 text-amber-800 dark:text-amber-300 text-base">
+                ⚠️ Quy định bắt buộc và minh bạch về tài khoản hoàn tiền:
+              </div>
+              <p className="mb-2">
+                Toàn bộ các khoản tiền hoàn vé phát sinh trên hệ thống FEMS (bao gồm trường hợp sự kiện bị hủy, ban tổ chức thay đổi lịch trình, báo cáo sự cố chỗ ngồi được duyệt hoặc người dùng hủy vé đúng quy định) đều được <strong>hoàn tiền 100% trực tiếp vào Ví nội bộ FEMS</strong> của tài khoản người mua.
+              </p>
+              <div className="font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 p-3 rounded-xl border border-rose-200 dark:border-rose-900/40">
+                LƯU Ý RÕ RÀNG: Ví nội bộ FEMS là ví thanh toán khép kín trên hệ thống, hoàn toàn KHÔNG THỂ RÚT TIỀN RA TÀI KHOẢN NGÂN HÀNG và KHÔNG THỂ QUY ĐỔI THÀNH TIỀN MẶT. Toàn bộ số tiền hoàn lại trong Ví nội bộ sẽ được bảo lưu an toàn vô thời hạn và chỉ dùng để khấu trừ / thanh toán trực tiếp cho tiền vé của các sự kiện tiếp theo hoặc các dịch vụ khác trên hệ thống FEMS.
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 bg-white/50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+                <div className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
+                  1
+                </div>
+                <div>
+                  <strong className="text-slate-900 dark:text-white text-sm">Sự kiện bị hủy bỏ hoặc thay đổi lịch trình bất khả kháng:</strong>
+                  <p className="text-slate-700 dark:text-slate-300 text-sm mt-0.5">
+                    Hệ thống tự động hoàn tiền 100% giá trị vé trực tiếp vào Ví nội bộ FEMS của toàn bộ khán giả đã đăng ký ngay khi sự kiện bị hủy hoặc thay đổi lịch trình bất khả kháng từ Ban tổ chức.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-white/50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+                <div className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
+                  2
+                </div>
+                <div>
+                  <strong className="text-slate-900 dark:text-white text-sm">Báo cáo sự cố chỗ ngồi (hỏng ghế, trùng ghế, lỗi hội trường):</strong>
+                  <p className="text-slate-700 dark:text-slate-300 text-sm mt-0.5">
+                    Yêu cầu phản ánh được Staff tiếp nhận và thẩm định trong vòng 24 giờ. Khi được xác nhận hợp lệ, số tiền vé được hoàn trả 100% vào Ví nội bộ FEMS của bạn để sử dụng cho sự kiện khác.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-white/50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+                <div className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
+                  3
+                </div>
+                <div>
+                  <strong className="text-slate-900 dark:text-white text-sm">Hủy vé theo nhu cầu cá nhân của người tham dự:</strong>
+                  <p className="text-slate-700 dark:text-slate-300 text-sm mt-0.5">
+                    Chỉ được hỗ trợ khi thực hiện trước thời điểm sự kiện bắt đầu tối thiểu 24 giờ. Tiền vé hoàn trả (sau khi trừ phí dịch vụ nếu có) sẽ được chuyển trực tiếp vào Ví nội bộ FEMS để thanh toán vé cho các sự kiện tiếp theo.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 border-t border-slate-200/80 dark:border-slate-800 pt-6">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <HelpCircle className="w-5 h-5 text-orange-500" /> Giải đáp thắc mắc về Thanh toán & Hoàn tiền (FAQ)
+            </h3>
+            <PolicyFaqAccordion
+              faqs={[
+                {
+                  q: 'Tiền hoàn khi hủy vé hoặc sự kiện bị hủy được nhận bằng cách nào?',
+                  a: 'Hệ thống sẽ hoàn trả 100% số tiền vé trực tiếp vào Ví nội bộ FEMS trên tài khoản của bạn ngay khi lệnh hoàn tiền được hệ thống hoặc nhân viên thẩm định phê duyệt hợp lệ.'
+                },
+                {
+                  q: 'Tôi có thể rút tiền từ Ví nội bộ FEMS về tài khoản ngân hàng hoặc nhận tiền mặt không?',
+                  a: 'Hoàn toàn KHÔNG. Ví nội bộ FEMS là ví điểm số dư khép kín phục vụ hoạt động nội bộ trên hệ thống. Tiền trong ví nội bộ không thể rút về tài khoản ngân hàng hay chuyển đổi thành tiền mặt dưới mọi hình thức. Bạn chỉ có thể dùng số tiền này để trừ trực tiếp vào tiền vé khi mua vé sự kiện kế tiếp.'
+                },
+                {
+                  q: 'Nếu tôi thanh toán vé bằng tài khoản ngân hàng hoặc VNPay thì khi hoàn tiền có quay lại ngân hàng không?',
+                  a: 'Không. Dù trước đó bạn thanh toán bằng VNPay, VietQR SePay hay ví nội bộ, chính sách hoàn tiền của hệ thống quy định toàn bộ tiền hoàn sẽ được nạp vào Ví nội bộ FEMS trên tài khoản của bạn để tiện tái sử dụng cho các lần đặt vé sau.'
+                }
+              ]}
+            />
           </div>
         </div>
       )
@@ -304,17 +378,26 @@ export default function TermsAndPolicies() {
     refunds: {
       id: 'refunds',
       title: 'Phản ánh & Hoàn tiền',
-      description: 'Cơ chế xử lý khi sảnh ghế ngồi bị lỗi, bị chiếm chỗ và chính sách hoàn trả chi phí tự động',
+      description: 'Cơ chế xử lý khi sảnh ghế ngồi bị lỗi, bị chiếm chỗ và chính sách hoàn trả 100% vào Ví nội bộ',
       badge: 'Bảo vệ quyền lợi',
       content: (
         <div className="space-y-6 text-slate-700 dark:text-slate-300 leading-relaxed text-[15px]">
           <div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">1. Cơ chế Tiếp nhận & Thẩm định Báo cáo</h3>
+            
+            <div className="p-4 mb-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-200 text-sm leading-relaxed shadow-xs">
+              <strong className="font-bold flex items-center gap-1.5 mb-1 text-amber-800 dark:text-amber-300">
+                📌 Minh bạch đích nhận tiền hoàn (Ví nội bộ FEMS):
+              </strong>
+              Tất cả các khoản hoàn tiền do lỗi ghế hoặc do sự kiện bị hủy đều được cộng trực tiếp 100% vào <strong>Ví nội bộ FEMS</strong>. 
+              Ví nội bộ là ví số dư khép kín của hệ thống, <span className="font-semibold text-rose-600 dark:text-rose-400">KHÔNG HỖ TRỢ RÚT TIỀN VỀ NGÂN HÀNG HOẶC TIỀN MẶT</span>. Số dư hoàn tiền được bảo lưu vô thời hạn và chỉ dùng để khấu trừ, thanh toán cho các lần mua vé sự kiện tiếp theo trên hệ thống.
+            </div>
+
             <div className="space-y-3">
               {[
                 'Nếu vị trí ghế ngồi của bạn tại sự kiện bị chiếm dụng hoặc bị hư hỏng vật lý, bạn có quyền gửi "Báo Cáo Lỗi" ngay trên trang chi tiết vé trong mục "Vé của tôi".',
-                'Staff sẽ thẩm định phản ánh của bạn trong vòng 24 giờ. Nếu báo cáo hợp lệ, bạn sẽ được hoàn trả 100% tiền vé trực tiếp vào tài khoản ví cá nhân.',
-                'Trong trường hợp sự kiện bị Hủy hoặc Rút phép hoạt động bởi Ban tổ chức, toàn bộ sinh viên đã mua vé sẽ được hệ thống tự động hoàn tiền 100% lập tức.'
+                'Staff sẽ thẩm định phản ánh của bạn trong vòng 24 giờ. Nếu báo cáo hợp lệ, bạn sẽ được hoàn trả 100% tiền vé trực tiếp vào Ví nội bộ FEMS (dùng để mua vé các sự kiện lần sau, không hỗ trợ rút về tài khoản ngân hàng hay tiền mặt).',
+                'Trong trường hợp sự kiện bị Hủy hoặc Rút phép hoạt động bởi Ban tổ chức, toàn bộ sinh viên đã mua vé sẽ được hệ thống tự động hoàn tiền 100% trực tiếp vào Ví nội bộ FEMS ngay lập tức.'
               ].map((rule, idx) => (
                 <div key={idx} className="flex items-start gap-3 bg-white/50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
                   <div className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
@@ -336,11 +419,15 @@ export default function TermsAndPolicies() {
               faqs={[
                 {
                   q: 'Tôi có thể tự ý hủy vé đã mua để lấy lại tiền không?',
-                  a: 'Việc tự ý hoàn/hủy vé từ phía sinh viên chỉ được chấp nhận trước khi sự kiện bắt đầu ít nhất 24 giờ. Tiền vé sẽ được hoàn trả sau khi trừ phí dịch vụ (nếu có quy định riêng từ nhà tổ chức).'
+                  a: 'Việc tự ý hoàn/hủy vé từ phía sinh viên chỉ được chấp nhận trước khi sự kiện bắt đầu ít nhất 24 giờ. Toàn bộ tiền vé hoàn lại sẽ được ghi nhận vào Ví nội bộ FEMS (không rút được ra tiền mặt hay ngân hàng, dùng thanh toán cho sự kiện tiếp theo) sau khi trừ phí dịch vụ nếu có.'
+                },
+                {
+                  q: 'Tiền hoàn trong Ví nội bộ có thể rút về thẻ ATM hoặc tài khoản ngân hàng không?',
+                  a: 'Không. Số tiền hoàn được bảo lưu trong Ví nội bộ FEMS của bạn để mua vé cho các sự kiện tiếp theo trên hệ thống. Ví nội bộ là ví thanh toán nội bộ khép kín, hoàn toàn không hỗ trợ tính năng rút tiền về tài khoản ngân hàng hay quy đổi ra tiền mặt.'
                 },
                 {
                   q: 'Làm thế nào để biết báo cáo lỗi ghế ngồi của tôi được duyệt?',
-                  a: 'Trạng thái báo cáo sẽ cập nhật trực tiếp trên thẻ vé trong ví của bạn dưới dạng nhãn trạng thái sáng màu: "Đang chờ hoàn tiền", "Đã hoàn tiền" hoặc "Từ chối hoàn tiền".'
+                  a: 'Trạng thái báo cáo sẽ cập nhật trực tiếp trên thẻ vé trong ví của bạn dưới dạng nhãn trạng thái sáng màu: "Đang chờ hoàn tiền", "Đã hoàn tiền" hoặc "Từ chối hoàn tiền". Khi trạng thái chuyển sang "Đã hoàn tiền", tiền sẽ lập tức được cộng vào số dư Ví nội bộ FEMS của bạn.'
                 }
               ]}
             />
@@ -530,9 +617,9 @@ export default function TermsAndPolicies() {
   const overviewList = [
     { id: 'terms', title: 'Điều khoản sử dụng dịch vụ', tag: 'Chung', icon: FileText, desc: 'Quy định tài khoản người dùng, vé sự kiện và nghĩa vụ pháp lý' },
     { id: 'privacy', title: 'Chính sách bảo mật', tag: 'Bảo mật', icon: ShieldCheck, desc: 'Cam kết bảo vệ dữ liệu cá nhân & mã hóa an toàn thông tin sinh viên' },
-    { id: 'payment', title: 'Chính sách thanh toán', tag: 'Tài chính', icon: CreditCard, desc: 'Quy trình giao dịch vé trực tuyến, cổng SePay/VNPay và biên lai' },
+    { id: 'payment', title: 'Chính sách thanh toán', tag: 'Tài chính', icon: CreditCard, desc: 'Quy trình giao dịch vé trực tuyến, cổng SePay/VNPay và hoàn tiền 100% vào Ví nội bộ FEMS' },
     { id: 'booking', title: 'Quy định đăng ký vé', tag: 'Tham dự', icon: BookOpen, desc: 'Hạn mức tối đa 04 vé/sinh viên, sơ đồ ghế và thời hạn giữ chỗ 5 phút' },
-    { id: 'refunds', title: 'Phản ánh & Hoàn tiền', tag: 'Hỗ trợ', icon: ShieldAlert, desc: 'Cơ chế giải quyết sự cố ghế lỗi và chính sách hoàn trả 100% tự động' },
+    { id: 'refunds', title: 'Phản ánh & Hoàn tiền', tag: 'Hỗ trợ', icon: ShieldAlert, desc: 'Cơ chế giải quyết sự cố ghế lỗi và chính sách hoàn trả 100% vào Ví nội bộ FEMS (dùng mua vé lần sau)' },
     { id: 'checkin', title: 'Quy trình kiểm vé & Check-in', tag: 'Vận hành', icon: QrCode, desc: 'Quét vé QR vào cổng hội trường và Check-out ghi nhận điểm ngoại khóa' },
     { id: 'organizer', title: 'Điều khoản Ban tổ chức', tag: 'Tổ chức', icon: Award, desc: 'Quy định đăng ký sảnh, hạn ngạch 2 sự kiện lớn/ngày và trả mặt bằng' },
     { id: 'mobile', title: 'Quy định ứng dụng di động', tag: 'Ứng dụng', icon: Smartphone, desc: 'Quyền riêng tư thiết bị di động, quyền Camera và chế độ lưu vé offline' },
@@ -545,11 +632,11 @@ export default function TermsAndPolicies() {
     { id: 'terms', title: 'Điều khoản sử dụng dịch vụ', category: 'Chính sách và điều khoản', desc: 'Quy định tài khoản, vé và quyền hạn người dùng' },
     { id: 'terms', title: 'Điều 2. Đăng ký & Bảo mật Tài khoản', category: 'Chính sách và điều khoản > Điều khoản sử dụng', desc: 'Xác thực OTP, email sinh viên FPT và trách nhiệm bảo mật mật khẩu' },
     { id: 'privacy', title: 'Chính sách bảo mật dữ liệu', category: 'Chính sách và điều khoản', desc: 'Bảo vệ dữ liệu cá nhân, thông tin sinh viên & mã hóa chuẩn TLS/SSL' },
-    { id: 'payment', title: 'Chính sách thanh toán', category: 'Chính sách và điều khoản', desc: 'Quy trình giao dịch vé trực tuyến, cổng SePay/VNPay và biên lai điện tử' },
+    { id: 'payment', title: 'Chính sách thanh toán', category: 'Chính sách và điều khoản', desc: 'Quy trình giao dịch vé trực tuyến, cổng SePay/VNPay và hoàn tiền 100% vào Ví nội bộ FEMS' },
     { id: 'booking', title: 'Quy định đăng ký vé & Giữ chỗ', category: 'Quy định vận hành sự kiện', desc: 'Hạn mức tối đa 04 vé/sinh viên, sơ đồ ghế và thời hạn giữ chỗ 5 phút' },
     { id: 'booking', title: 'FAQ: Giải đáp thắc mắc đăng ký vé', category: 'Quy định vận hành sự kiện > FAQ', desc: 'Vé khách ngoài trường và quy định không được chuyển nhượng vé' },
-    { id: 'refunds', title: 'Phản ánh & Hoàn tiền tự động', category: 'Quy định vận hành sự kiện', desc: 'Khiếu nại chỗ ngồi lỗi, cơ chế hoàn trả 100% qua ví sinh viên' },
-    { id: 'refunds', title: 'FAQ: Giải đáp thắc mắc hoàn tiền', category: 'Quy định vận hành sự kiện > FAQ', desc: 'Quy trình gửi video/ảnh hiện trường và thời hạn xét duyệt hoàn tất 24h' },
+    { id: 'refunds', title: 'Phản ánh & Hoàn tiền tự động', category: 'Quy định vận hành sự kiện', desc: 'Khiếu nại chỗ ngồi lỗi, cơ chế hoàn 100% vào Ví nội bộ FEMS (không rút tiền mặt, chỉ dùng mua vé tiếp theo)' },
+    { id: 'refunds', title: 'FAQ: Giải đáp thắc mắc hoàn tiền', category: 'Quy định vận hành sự kiện > FAQ', desc: 'Quy trình gửi video/ảnh hiện trường, hạn duyệt 24h và hoàn tiền vào Ví nội bộ FEMS' },
     { id: 'checkin', title: 'Quy trình kiểm vé & Check-in QR', category: 'Quy định vận hành sự kiện', desc: 'Quét vé QR lối vào hội trường và Check-out ghi nhận điểm rèn luyện ngoại khóa' },
     { id: 'checkin', title: 'FAQ: Giải đáp thắc mắc kiểm vé & Check-in', category: 'Quy định vận hành sự kiện > FAQ', desc: 'Xử lý vé mờ, màn hình điện thoại vỡ và sinh viên quên mang vé' },
     { id: 'organizer', title: 'Điều khoản Ban tổ chức', category: 'Quy định vận hành sự kiện', desc: 'Hạn ngạch 02 sự kiện lớn/ngày, đăng ký mượn phòng hội trường và hoàn trả mặt bằng' },

@@ -1130,7 +1130,7 @@ export default function OrganizerEventRequests() {
                   </ul>
                 ) : (
                   <ul className="list-disc pl-4 space-y-1 font-medium text-slate-600 dark:text-slate-400">
-                    <li>Hệ thống sẽ <strong>tự động hoàn tiền 100%</strong> trực tiếp vào ví của tất cả sinh viên đã mua vé.</li>
+                    <li>Hệ thống sẽ <strong>tự động hoàn tiền 100%</strong> trực tiếp vào Ví nội bộ FEMS của tất cả người dùng đã mua vé (dùng để mua vé các sự kiện kế tiếp, không hỗ trợ rút tiền mặt).</li>
                     <li>Sảnh sự kiện và cấu hình vé của sự kiện sẽ lập tức được giải phóng.</li>
                     <li>Hành động hủy sự kiện này hoàn toàn không thể đảo ngược.</li>
                   </ul>

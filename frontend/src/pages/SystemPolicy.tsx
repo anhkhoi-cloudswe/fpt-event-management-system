@@ -56,21 +56,25 @@ export default function SystemPolicy() {
     {
       id: 'refunds',
       title: 'Phản Ánh & Hoàn Tiền',
-      description: 'Cơ chế xử lý khi sảnh ghế ngồi bị lỗi, bị chiếm chỗ và chính sách hoàn trả chi phí tự động.',
+      description: 'Cơ chế xử lý khi sảnh ghế ngồi bị lỗi, bị chiếm chỗ và chính sách hoàn trả 100% vào Ví nội bộ FEMS.',
       icon: ShieldAlert,
       rules: [
         'Nếu vị trí ghế ngồi của bạn tại sự kiện bị chiếm dụng hoặc bị hư hỏng vật lý, bạn có quyền gửi "Báo Cáo Lỗi" ngay trên trang chi tiết vé trong mục "Vé của tôi".',
-        'Staff sẽ thẩm định phản ánh của bạn trong vòng 24 giờ. Nếu báo cáo hợp lệ, bạn sẽ được hoàn trả 100% tiền vé trực tiếp vào tài khoản ví cá nhân.',
-        'Trong trường hợp sự kiện bị Hủy hoặc Rút phép hoạt động bởi Ban tổ chức, toàn bộ sinh viên đã mua vé sẽ được hệ thống tự động hoàn tiền 100% lập tức.'
+        'Staff sẽ thẩm định phản ánh của bạn trong vòng 24 giờ. Nếu báo cáo hợp lệ, bạn sẽ được hoàn trả 100% tiền vé trực tiếp vào Ví nội bộ FEMS (Lưu ý: Ví nội bộ là ví khép kín trên hệ thống, không hỗ trợ rút về tài khoản ngân hàng hoặc quy đổi tiền mặt, dùng để trừ tiền vé cho các sự kiện tiếp theo).',
+        'Trong trường hợp sự kiện bị Hủy hoặc Rút phép hoạt động bởi Ban tổ chức, toàn bộ sinh viên đã mua vé sẽ được hệ thống tự động hoàn tiền 100% trực tiếp vào Ví nội bộ FEMS ngay lập tức.'
       ],
       faqs: [
         {
           question: 'Tôi có thể tự ý hủy vé đã mua để lấy lại tiền không?',
-          answer: 'Việc tự ý hoàn/hủy vé từ phía sinh viên chỉ được chấp nhận trước khi sự kiện bắt đầu ít nhất 24 giờ. Tiền vé sẽ được hoàn trả sau khi trừ phí dịch vụ (nếu có quy định riêng từ nhà tổ chức).'
+          answer: 'Việc tự ý hoàn/hủy vé từ phía sinh viên chỉ được chấp nhận trước khi sự kiện bắt đầu ít nhất 24 giờ. Tiền vé hoàn trả sẽ được chuyển vào Ví nội bộ FEMS (dùng cho các lần mua vé sau, không hỗ trợ rút tiền mặt) sau khi trừ phí dịch vụ (nếu có quy định riêng từ nhà tổ chức).'
+        },
+        {
+          question: 'Tiền trong Ví nội bộ FEMS có rút về tài khoản ngân hàng hoặc đổi tiền mặt được không?',
+          answer: 'Hoàn toàn KHÔNG. Ví nội bộ FEMS là giải pháp thanh toán khép kín trên nền tảng. Tiền trong ví nội bộ không thể rút về ngân hàng hay quy đổi tiền mặt dưới bất kỳ hình thức nào. Số dư này được bảo lưu vô thời hạn để bạn khấu trừ và thanh toán tiền vé cho các sự kiện tiếp theo trên hệ thống.'
         },
         {
           question: 'Làm thế nào để biết báo cáo lỗi ghế ngồi của tôi được duyệt?',
-          answer: 'Trạng thái báo cáo sẽ cập nhật trực tiếp trên thẻ vé trong ví của bạn dưới dạng nhãn trạng thái sáng màu: "Đang chờ hoàn tiền", "Đã hoàn tiền" hoặc "Từ chối hoàn tiền".'
+          answer: 'Trạng thái báo cáo sẽ cập nhật trực tiếp trên thẻ vé trong ví của bạn dưới dạng nhãn trạng thái sáng màu: "Đang chờ hoàn tiền", "Đã hoàn tiền" hoặc "Từ chối hoàn tiền". Khi được duyệt hoàn tiền, số dư Ví nội bộ FEMS của bạn sẽ được cộng tiền tức thì.'
         }
       ]
     },
