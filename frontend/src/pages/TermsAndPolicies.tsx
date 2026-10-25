@@ -20,6 +20,7 @@ import {
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { RealtimeClock } from '../components/RealtimeClock'
 import fptLogo from '../assets/fpt-logo.png'
+import FemsDocsManager from '../components/FemsDocsManager'
 
 interface DocSection {
   id: string
@@ -562,34 +563,9 @@ export default function TermsAndPolicies() {
     docs: {
       id: 'docs',
       title: 'Tài liệu mẫu & Hướng dẫn',
-      description: 'Quy trình, tài liệu hướng dẫn đăng ký, check-in và quyền lợi người dùng',
+      description: 'Quy trình, tài liệu hướng dẫn đăng ký, check-in, nhúng video trực quan và quyền lợi người dùng',
       badge: 'Tài liệu FEMS',
-      content: (
-        <div className="space-y-6 text-slate-700 dark:text-slate-300 leading-relaxed text-[15px]">
-          <div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">1. Hướng dẫn Nhận vé & Check-in sự kiện</h3>
-            <p>
-              Sau khi đăng ký vé thành công, bạn có thể kiểm tra danh sách vé tại mục <strong>"Vé của tôi"</strong>. Xuất trình mã QR tại cổng kiểm soát để kiểm soát viên quét mã ghi nhận điểm danh.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">2. Hướng dẫn Dành cho Ban tổ chức (Organizer)</h3>
-            <p>
-              Các Câu lạc bộ và Đơn vị tổ chức sự kiện cần gửi đơn đăng ký sự kiện trước thời điểm diễn ra tối thiểu 07 ngày làm việc để Nhà trường xét duyệt địa điểm, trang thiết bị và hạn ngạch sự kiện.
-            </p>
-          </div>
-
-          <div className="p-4 bg-orange-100/70 dark:bg-orange-950/40 rounded-2xl border border-orange-200 dark:border-orange-800 text-sm">
-            <p className="font-semibold text-orange-900 dark:text-orange-300">
-              💡 Cần hỗ trợ khẩn cấp hoặc giải đáp thắc mắc?
-            </p>
-            <p className="text-orange-800 dark:text-orange-400 mt-1">
-              Vui lòng liên hệ Văn phòng Quản lý Sự kiện FPT hoặc gửi email tới <code>support@fpt.edu.vn</code>.
-            </p>
-          </div>
-        </div>
-      )
+      content: <FemsDocsManager />
     }
   }
 
