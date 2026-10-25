@@ -25,7 +25,8 @@ import {
   FileDown,
   RotateCcw,
   Play,
-  Pencil
+  Pencil,
+  Search
 } from 'lucide-react'
 import { useToast } from '../../contexts/ToastContext'
 import { frontendConfigService } from '../../services/frontendConfigService'
@@ -195,18 +196,20 @@ export default function FrontendCustomizer() {
   }, [guideDocs])
 
   const filteredGuideDocs = useMemo(() => {
-    return guideDocs
+    return (guideDocs || [])
       .filter(d => {
+        if (!d) return false
         const matchesCategory =
           docSelectedCategory === 'ALL' || d.category === docSelectedCategory
+        const kw = docSearchKeyword.trim().toLowerCase()
         const matchesSearch =
-          !docSearchKeyword.trim() ||
-          d.title.toLowerCase().includes(docSearchKeyword.toLowerCase()) ||
-          d.content.toLowerCase().includes(docSearchKeyword.toLowerCase()) ||
-          d.category.toLowerCase().includes(docSearchKeyword.toLowerCase())
+          !kw ||
+          (d.title || '').toLowerCase().includes(kw) ||
+          (d.content || '').toLowerCase().includes(kw) ||
+          (d.category || '').toLowerCase().includes(kw)
         return matchesCategory && matchesSearch
       })
-      .sort((a, b) => a.order - b.order)
+      .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
   }, [guideDocs, docSelectedCategory, docSearchKeyword])
 
   const [config, setConfig] = useState<FrontendConfigData>({
