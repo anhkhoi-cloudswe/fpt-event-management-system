@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   Video,
   GripVertical,
@@ -20,7 +20,12 @@ import {
   Sliders,
   Type,
   X,
-  Check
+  Check,
+  BookOpen,
+  FileDown,
+  RotateCcw,
+  Play,
+  Pencil
 } from 'lucide-react'
 import { useToast } from '../../contexts/ToastContext'
 import { frontendConfigService } from '../../services/frontendConfigService'
@@ -31,12 +36,178 @@ import {
   BrandPartnerItem,
   HeroImageItem
 } from '../../types/frontendConfig'
+import {
+  GuideDocItem,
+  DEFAULT_GUIDE_DOCS,
+  STORAGE_KEY as DOCS_STORAGE_KEY,
+  parseVideoUrl
+} from '../../components/FemsDocsManager'
 
 export default function FrontendCustomizer() {
   const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'video' | 'brands' | 'hero' | 'sections'>('video')
+  const [activeTab, setActiveTab] = useState<'video' | 'brands' | 'hero' | 'sections' | 'docs'>('video')
+
+  // ===================== FEMS GUIDE DOCS & VIDEOS STATE =====================
+  const [guideDocs, setGuideDocs] = useState<GuideDocItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(DOCS_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+    return DEFAULT_GUIDE_DOCS
+  })
+
+  const [docSearchKeyword, setDocSearchKeyword] = useState('')
+  const [docSelectedCategory, setDocSelectedCategory] = useState('ALL')
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false)
+  const [editingGuideDoc, setEditingGuideDoc] = useState<GuideDocItem | null>(null)
+
+  const [docFormData, setDocFormData] = useState({
+    title: '',
+    category: 'Sinh viên & Khán giả',
+    content: '',
+    videoUrl: '',
+    documentUrl: '',
+    documentName: '',
+    order: 1
+  })
+
+  const saveGuideDocsToStorage = (newDocs: GuideDocItem[]) => {
+    try {
+      localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(newDocs))
+      window.dispatchEvent(new Event('storage'))
+    } catch (err) {
+      console.error(err)
+    }
+    setGuideDocs(newDocs)
+  }
+
+  const handleOpenCreateDocModal = () => {
+    setEditingGuideDoc(null)
+    setDocFormData({
+      title: '',
+      category: 'Sinh viên & Khán giả',
+      content: '',
+      videoUrl: '',
+      documentUrl: '',
+      documentName: '',
+      order: guideDocs.length + 1
+    })
+    setIsDocModalOpen(true)
+  }
+
+  const handleOpenEditDocModal = (doc: GuideDocItem) => {
+    setEditingGuideDoc(doc)
+    setDocFormData({
+      title: doc.title,
+      category: doc.category || 'Sinh viên & Khán giả',
+      content: doc.content,
+      videoUrl: doc.videoUrl || '',
+      documentUrl: doc.documentUrl || '',
+      documentName: doc.documentName || '',
+      order: doc.order || 1
+    })
+    setIsDocModalOpen(true)
+  }
+
+  const handleDeleteGuideDoc = (id: string, title: string) => {
+    const ok = window.confirm(`Bạn có chắc muốn xóa mục hướng dẫn: "${title}"?`)
+    if (!ok) return
+    const updated = guideDocs.filter(d => d.id !== id)
+    saveGuideDocsToStorage(updated)
+    showToast('success', `Đã xóa thành công mục: "${title}"`)
+  }
+
+  const handleResetGuideDocs = () => {
+    const ok = window.confirm('Khôi phục danh sách tài liệu & hướng dẫn về dữ liệu mẫu chuẩn FEMS?')
+    if (!ok) return
+    saveGuideDocsToStorage(DEFAULT_GUIDE_DOCS)
+    showToast('info', 'Đã khôi phục tài liệu hướng dẫn về mặc định!')
+  }
+
+  const handleSubmitDocForm = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!docFormData.title.trim()) {
+      showToast('error', 'Vui lòng nhập tiêu đề cho hướng dẫn!')
+      return
+    }
+    if (!docFormData.content.trim()) {
+      showToast('error', 'Vui lòng nhập nội dung chi tiết!')
+      return
+    }
+
+    if (editingGuideDoc) {
+      const updated = guideDocs.map(d => {
+        if (d.id === editingGuideDoc.id) {
+          return {
+            ...d,
+            title: docFormData.title.trim(),
+            category: docFormData.category.trim(),
+            content: docFormData.content.trim(),
+            videoUrl: docFormData.videoUrl.trim(),
+            documentUrl: docFormData.documentUrl.trim(),
+            documentName: docFormData.documentName.trim(),
+            order: Number(docFormData.order) || 1,
+            updatedAt: new Date().toLocaleDateString('vi-VN')
+          }
+        }
+        return d
+      })
+      saveGuideDocsToStorage(updated)
+      showToast('success', `Đã cập nhật mục "${docFormData.title}" thành công!`)
+    } else {
+      const newItem: GuideDocItem = {
+        id: `doc-${Date.now()}`,
+        title: docFormData.title.trim(),
+        category: docFormData.category.trim(),
+        content: docFormData.content.trim(),
+        videoUrl: docFormData.videoUrl.trim(),
+        documentUrl: docFormData.documentUrl.trim(),
+        documentName: docFormData.documentName.trim(),
+        order: Number(docFormData.order) || guideDocs.length + 1,
+        updatedAt: new Date().toLocaleDateString('vi-VN')
+      }
+      saveGuideDocsToStorage([...guideDocs, newItem])
+      showToast('success', `Đã thêm mới mục "${docFormData.title}" thành công!`)
+    }
+
+    setIsDocModalOpen(false)
+  }
+
+  const docModalVideoPreview = useMemo(() => {
+    return parseVideoUrl(docFormData.videoUrl)
+  }, [docFormData.videoUrl])
+
+  const docCategories = useMemo(() => {
+    const set = new Set<string>()
+    guideDocs.forEach(d => {
+      if (d.category) set.add(d.category)
+    })
+    return ['ALL', ...Array.from(set)]
+  }, [guideDocs])
+
+  const filteredGuideDocs = useMemo(() => {
+    return guideDocs
+      .filter(d => {
+        const matchesCategory =
+          docSelectedCategory === 'ALL' || d.category === docSelectedCategory
+        const matchesSearch =
+          !docSearchKeyword.trim() ||
+          d.title.toLowerCase().includes(docSearchKeyword.toLowerCase()) ||
+          d.content.toLowerCase().includes(docSearchKeyword.toLowerCase()) ||
+          d.category.toLowerCase().includes(docSearchKeyword.toLowerCase())
+        return matchesCategory && matchesSearch
+      })
+      .sort((a, b) => a.order - b.order)
+  }, [guideDocs, docSelectedCategory, docSearchKeyword])
 
   const [config, setConfig] = useState<FrontendConfigData>({
     videos: [],
@@ -391,15 +562,26 @@ export default function FrontendCustomizer() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <a
             href="/guest"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold text-xs hover:border-orange-500 transition-all shadow-xs"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold text-xs hover:border-orange-500 transition-all shadow-xs"
           >
             <Eye className="w-4 h-4 text-orange-500" />
             <span>Xem trang /guest</span>
+            <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+          </a>
+
+          <a
+            href="/terms-and-policies?tab=docs"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-orange-200 dark:border-slate-800 bg-orange-50/50 dark:bg-slate-800 text-orange-600 dark:text-orange-400 font-bold text-xs hover:border-orange-500 transition-all shadow-xs"
+          >
+            <BookOpen className="w-4 h-4 text-orange-500" />
+            <span>Xem trang Tài Liệu & Video</span>
             <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
           </a>
         </div>
@@ -453,6 +635,18 @@ export default function FrontendCustomizer() {
         >
           <Sliders className="w-4 h-4" />
           <span>Bật / Tắt Khối Section</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('docs')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer ${
+            activeTab === 'docs'
+              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>Tài Liệu & Video Hướng Dẫn ({guideDocs.length})</span>
         </button>
       </div>
 
@@ -1186,6 +1380,418 @@ export default function FrontendCustomizer() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 5: TÀI LIỆU & VIDEO HƯỚNG DẪN FEMS (DOCS CRUD & VIDEO EMBED)           */}
+      {/* ========================================================================= */}
+      {activeTab === 'docs' && (
+        <div className="space-y-6">
+          {/* Header Card của Tab Tài liệu & Video */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-orange-500" />
+                <h2 className="text-lg font-black text-slate-900 dark:text-white">
+                  Quản Lý Tài Liệu Mẫu & Video Hướng Dẫn FEMS
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400">
+                  {guideDocs.length} mục
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Toàn bộ dữ liệu tại đây sẽ tự động hiển thị trên trang công khai <code className="text-orange-600 font-bold">/terms-and-policies?tab=docs</code>. Bạn có thể chèn link video YouTube/MP4 và đính kèm link tải tài liệu biểu mẫu.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleOpenCreateDocModal}
+                className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-orange-500/20 transition-all cursor-pointer active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Thêm hướng dẫn mới</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetGuideDocs}
+                className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 hover:text-rose-600 hover:border-rose-300 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Khôi phục các mục hướng dẫn về mặc định"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Khôi phục mặc định</span>
+              </button>
+
+              <a
+                href="/terms-and-policies?tab=docs"
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-2.5 rounded-xl border border-orange-200 dark:border-slate-800 bg-orange-50/50 dark:bg-slate-800 text-orange-600 dark:text-orange-400 font-bold text-xs flex items-center gap-1.5 hover:bg-orange-100 transition-all"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Xem trang công khai</span>
+                <ExternalLink className="w-3 h-3 text-slate-400" />
+              </a>
+            </div>
+          </div>
+
+          {/* Bộ lọc & Tìm kiếm nhanh */}
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+              {docCategories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setDocSelectedCategory(cat)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                    docSelectedCategory === cat
+                      ? 'bg-orange-500 text-white shadow-xs'
+                      : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-orange-50 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {cat === 'ALL' ? 'Tất cả chủ đề' : cat}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative min-w-[240px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Tìm tiêu đề, nội dung hướng dẫn..."
+                value={docSearchKeyword}
+                onChange={e => setDocSearchKeyword(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-slate-800 dark:text-slate-200"
+              />
+            </div>
+          </div>
+
+          {/* Danh sách thẻ hướng dẫn hiển thị quản trị */}
+          {filteredGuideDocs.length === 0 ? (
+            <div className="text-center py-12 px-4 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/40">
+              <HelpCircle className="w-10 h-10 text-slate-400 mx-auto mb-3 opacity-60" />
+              <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                Không tìm thấy mục hướng dẫn nào
+              </h4>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                {docSearchKeyword ? `Không có kết quả khớp với "${docSearchKeyword}".` : 'Chưa có tài liệu nào trong danh mục này.'}
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenCreateDocModal}
+                className="mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-orange-500 text-white inline-flex items-center gap-1.5 shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" /> Thêm hướng dẫn ngay
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {filteredGuideDocs.map((item) => {
+                const parsedVideo = parseVideoUrl(item.videoUrl)
+                return (
+                  <div
+                    key={item.id}
+                    className="p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4 hover:border-orange-300 dark:hover:border-slate-700 transition-all"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-black">
+                            #{item.order}
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 border border-orange-200/60 dark:border-orange-900/40">
+                            {item.category || 'Chung'}
+                          </span>
+                          {parsedVideo.type && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 flex items-center gap-1">
+                              <Video className="w-3 h-3" />
+                              {parsedVideo.type === 'youtube' ? 'YouTube Video' : 'Direct Video'}
+                            </span>
+                          )}
+                          {item.documentUrl && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 flex items-center gap-1">
+                              <FileDown className="w-3 h-3" />
+                              Tài liệu đính kèm
+                            </span>
+                          )}
+                          {item.updatedAt && (
+                            <span className="text-[11px] text-slate-400">
+                              Cập nhật: {item.updatedAt}
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                          {item.title}
+                        </h3>
+                      </div>
+
+                      {/* Nút Sửa / Xóa */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditDocModal(item)}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-orange-600 hover:border-orange-400 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-orange-500" />
+                          <span>Sửa</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGuideDoc(item.id, item.title)}
+                          className="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Xóa</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">
+                      {item.content}
+                    </p>
+
+                    {/* Preview video nếu có */}
+                    {parsedVideo.type && (
+                      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                          <span className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400">
+                            <Video className="w-4 h-4" /> Link Video đã nhúng:
+                          </span>
+                          <span className="font-mono text-[11px] text-slate-400 truncate max-w-xs">{item.videoUrl}</span>
+                        </div>
+                        {parsedVideo.type === 'youtube' ? (
+                          <div className="relative w-full aspect-video max-w-md rounded-xl overflow-hidden shadow-sm border border-slate-300 dark:border-slate-700 bg-black">
+                            <iframe
+                              src={parsedVideo.embedUrl}
+                              title={item.title}
+                              allowFullScreen
+                              className="absolute inset-0 w-full h-full border-0"
+                            />
+                          </div>
+                        ) : parsedVideo.type === 'direct' ? (
+                          <div className="relative w-full aspect-video max-w-md rounded-xl overflow-hidden shadow-sm border border-slate-300 dark:border-slate-700 bg-black">
+                            <video src={parsedVideo.embedUrl} controls className="w-full h-full object-contain" />
+                          </div>
+                        ) : (
+                          <a
+                            href={parsedVideo.embedUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs text-orange-600 font-bold hover:underline"
+                          >
+                            <Play className="w-3.5 h-3.5" /> Mở liên kết video
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Hiển thị link file đính kèm nếu có */}
+                    {item.documentUrl && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="font-bold text-slate-500">File biểu mẫu:</span>
+                        <a
+                          href={item.documentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                        >
+                          <FileDown className="w-3.5 h-3.5" />
+                          <span>{item.documentName || item.documentUrl}</span>
+                          <ExternalLink className="w-3 h-3 text-slate-400" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL THÊM / SỬA TÀI LIỆU & VIDEO HƯỚNG DẪN FEMS (DOCS CRUD)               */}
+      {/* ========================================================================= */}
+      {isDocModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-5">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-orange-500" />
+                  {editingGuideDoc ? 'Chỉnh sửa tài liệu / video hướng dẫn' : 'Thêm tài liệu / video hướng dẫn mới'}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Dữ liệu lưu vào hệ thống và hiển thị trực tiếp tại trang /terms-and-policies?tab=docs
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDocModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitDocForm} className="space-y-4">
+              {/* Tiêu đề & Phân loại */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Tiêu đề mục hướng dẫn <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="VD: 1. Hướng dẫn quét mã QR Check-in hội trường"
+                    value={docFormData.title}
+                    onChange={e => setDocFormData({ ...docFormData, title: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-semibold"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Phân loại / Nhãn tag
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: Sinh viên, Ban tổ chức..."
+                    value={docFormData.category}
+                    onChange={e => setDocFormData({ ...docFormData, category: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              {/* Nội dung mô tả chi tiết */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Nội dung hướng dẫn chi tiết <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Nhập nội dung các bước thực hiện, quy trình, lưu ý quan trọng cho sinh viên hoặc ban tổ chức..."
+                  value={docFormData.content}
+                  onChange={e => setDocFormData({ ...docFormData, content: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 leading-relaxed"
+                />
+              </div>
+
+              {/* Đường dẫn Video (YouTube / MP4) */}
+              <div className="space-y-1.5 p-4 rounded-2xl bg-orange-50/50 dark:bg-slate-950/40 border border-orange-200/80 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Video className="w-4 h-4 text-orange-500" />
+                    Đường dẫn Video hướng dẫn (YouTube / MP4)
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-medium">Hỗ trợ nhúng phát trực tiếp</span>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://www.youtube.com/watch?v=... hoặc https://youtu.be/... hoặc link .mp4"
+                  value={docFormData.videoUrl}
+                  onChange={e => setDocFormData({ ...docFormData, videoUrl: e.target.value })}
+                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                />
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  💡 Nhập link YouTube (dạng chuẩn, rút gọn `youtu.be` hoặc `shorts`) để hệ thống tự động nhúng khung phát video HD.
+                </p>
+
+                {/* Live Preview Video ngay trong modal */}
+                {docModalVideoPreview.type === 'youtube' && (
+                  <div className="mt-3">
+                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block mb-1">
+                      ✓ Đã nhận diện YouTube video - Xem trước:
+                    </span>
+                    <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-inner border border-slate-300 dark:border-slate-700 bg-black">
+                      <iframe
+                        src={docModalVideoPreview.embedUrl}
+                        title="Video Preview"
+                        allowFullScreen
+                        className="absolute inset-0 w-full h-full border-0"
+                      />
+                    </div>
+                  </div>
+                )}
+                {docModalVideoPreview.type === 'direct' && (
+                  <div className="mt-3">
+                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block mb-1">
+                      ✓ Đã nhận diện file Video trực tiếp:
+                    </span>
+                    <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-inner border border-slate-300 dark:border-slate-700 bg-black">
+                      <video src={docModalVideoPreview.embedUrl} controls className="w-full h-full object-contain" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Tài liệu đính kèm (File / Form) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Đường dẫn tài liệu đính kèm (URL Drive / PDF)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://drive.google.com/file/..."
+                    value={docFormData.documentUrl}
+                    onChange={e => setDocFormData({ ...docFormData, documentUrl: e.target.value })}
+                    className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Tên file hiển thị (nếu có)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: Mau_de_xuat_su_kien.docx"
+                    value={docFormData.documentName}
+                    onChange={e => setDocFormData({ ...docFormData, documentName: e.target.value })}
+                    className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              {/* Thứ tự hiển thị */}
+              <div className="w-32 space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Thứ tự hiển thị
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={docFormData.order}
+                  onChange={e => setDocFormData({ ...docFormData, order: Number(e.target.value) || 1 })}
+                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                />
+              </div>
+
+              {/* Nút hành động */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsDocModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl text-sm font-black bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/25 transition-all cursor-pointer active:scale-95"
+                >
+                  {editingGuideDoc ? 'Lưu thay đổi' : 'Thêm mới hướng dẫn'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
