@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { Loader2, MapPin } from 'lucide-react'
-import { searchLocations, type LocationSuggestion } from '../../services/locationAutocompleteService'
+import { useEffect, useRef, useState } from 'react'
+import { Building2, Check, Loader2, MapPin, Sparkles, X } from 'lucide-react'
+import {
+  searchLocations,
+  getInstantLocalSuggestions,
+  type LocationSuggestion,
+} from '../../services/locationAutocompleteService'
 
 type Language = 'vi' | 'en'
 
@@ -16,18 +19,24 @@ type Props = {
 
 const copy = {
   vi: {
-    label: 'Nhập địa chỉ sự kiện',
-    placeholder: 'Nhập địa chỉ sự kiện',
-    use: 'Dùng',
-    customAddress: 'Địa chỉ tùy chỉnh',
-    loadingError: 'Chưa tải được gợi ý địa điểm',
+    title: 'Địa điểm / Địa chỉ tổ chức sự kiện',
+    badge: 'Tự do ngoài trường',
+    placeholder: 'Nhập tên tòa nhà hoặc địa chỉ (Ví dụ: Bitexco, Landmark 81, GEM Center...)',
+    useCustom: 'Sử dụng địa chỉ vừa nhập:',
+    customBadge: 'Tự gõ',
+    popularBadge: 'Nổi bật',
+    noResults: 'Không tìm thấy địa điểm phù hợp. Bạn có thể tự do gõ bất kỳ địa chỉ nào.',
+    quickPick: 'Địa điểm phổ biến gợi ý:',
   },
   en: {
-    label: 'Enter event location',
-    placeholder: 'Enter event location',
-    use: 'Use',
-    customAddress: 'Custom address',
-    loadingError: 'Could not load location suggestions',
+    title: 'Event Venue & Physical Address',
+    badge: 'Independent Venue',
+    placeholder: 'Enter venue name or address (e.g., Bitexco, Landmark 81, GEM Center...)',
+    useCustom: 'Use custom address:',
+    customBadge: 'Custom',
+    popularBadge: 'Popular',
+    noResults: 'No exact matches found. You can keep typing any custom address.',
+    quickPick: 'Suggested venues:',
   },
 }
 
@@ -39,223 +48,268 @@ export default function LocationAutocomplete({
   onVenueNameChange,
   onLocationChange,
 }: Props) {
-  const text = copy[language]
-  const [query, setQuery] = useState(location || venueName)
+  const t = copy[language]
+  const [query, setQuery] = useState(location || venueName || '')
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [searchError, setSearchError] = useState<string | null>(null)
-  const wrapperRef = useRef<HTMLDivElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const [dropdownRect, setDropdownRect] = useState({ top: 0, left: 0, width: 0, maxHeight: 256 })
 
+  // Keep internal query synchronized if parent form values change externally
   useEffect(() => {
-    setQuery(location || venueName)
+    const parentVal = location || venueName || ''
+    if (parentVal && parentVal !== query) {
+      setQuery(parentVal)
+    }
   }, [location, venueName])
 
+  // Handle outside click to close dropdown smoothly
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node
-      const clickedTrigger = wrapperRef.current?.contains(target)
-      const clickedDropdown = dropdownRef.current?.contains(target)
-
-      if (!clickedTrigger && !clickedDropdown) {
-        setIsExpanded(false)
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  useEffect(() => {
-    if (!isExpanded) return
+  // Input change handler: Immediate 0ms local match + debounced remote search
+  const handleInputChange = (val: string) => {
+    setQuery(val)
+    onVenueNameChange(val)
+    onLocationChange(val)
 
-    window.requestAnimationFrame(() => {
-      updateDropdownPosition()
-      inputRef.current?.focus()
-    })
-  }, [isExpanded])
-
-  const updateDropdownPosition = () => {
-    const rect = triggerRef.current?.getBoundingClientRect()
-    if (!rect) return
-
-    const viewportPadding = 16
-    const availableHeight = window.innerHeight - rect.bottom - viewportPadding
-
-    setDropdownRect({
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: rect.width,
-      maxHeight: Math.max(220, Math.min(360, availableHeight)),
-    })
-  }
-
-  useEffect(() => {
-    if (!isExpanded) return
-
-    updateDropdownPosition()
-    window.addEventListener('resize', updateDropdownPosition)
-    window.addEventListener('scroll', updateDropdownPosition, true)
-
-    return () => {
-      window.removeEventListener('resize', updateDropdownPosition)
-      window.removeEventListener('scroll', updateDropdownPosition, true)
-    }
-  }, [isExpanded])
-
-  useEffect(() => {
-    const trimmed = query.trim()
-    if (!isExpanded || trimmed.length < 1) {
+    const trimmed = val.trim()
+    if (!trimmed) {
       setSuggestions([])
       setIsLoading(false)
-      setSearchError(null)
+      return
+    }
+
+    // 1. Instant 0ms local lookup so Bitexco, Landmark, GEM... show immediately
+    const instantMatches = getInstantLocalSuggestions(trimmed)
+    setSuggestions(instantMatches)
+    setIsOpen(true)
+  }
+
+  // Remote search debounced effect
+  useEffect(() => {
+    const trimmed = query.trim()
+    if (!trimmed || !isOpen) {
+      setIsLoading(false)
       return
     }
 
     const controller = new AbortController()
-    const timer = window.setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         setIsLoading(true)
-        setSearchError(null)
-        const results = await searchLocations(trimmed, language, controller.signal)
-        setSuggestions(results)
-      } catch (error) {
-        if (controller.signal.aborted) return
-        console.error('Location autocomplete failed:', error)
-        setSuggestions([])
-        setSearchError(text.loadingError)
+        const remoteResults = await searchLocations(trimmed, language, controller.signal)
+        if (!controller.signal.aborted && remoteResults.length > 0) {
+          setSuggestions(remoteResults)
+        }
+      } catch {
+        // Handled silently
       } finally {
-        if (!controller.signal.aborted) setIsLoading(false)
+        if (!controller.signal.aborted) {
+          setIsLoading(false)
+        }
       }
-    }, 260)
+    }, 280)
 
     return () => {
       controller.abort()
-      window.clearTimeout(timer)
+      clearTimeout(timer)
     }
-  }, [isExpanded, language, query, text.loadingError])
+  }, [query, isOpen, language])
 
-  const hasQuery = query.trim().length > 0
-  const preview = useMemo(() => location || venueName || '', [location, venueName])
-  const triggerText = isExpanded ? text.label : preview || text.label
-
-  const handleManualLocationChange = (value: string) => {
-    setQuery(value)
-    onLocationChange(value)
-    onVenueNameChange(value)
+  const handleSelect = (s: LocationSuggestion) => {
+    setQuery(s.address)
+    onVenueNameChange(s.name)
+    onLocationChange(s.address)
+    setIsOpen(false)
   }
 
-  const handleSelect = (suggestion: LocationSuggestion) => {
-    setQuery(suggestion.address)
-    onVenueNameChange(suggestion.name)
-    onLocationChange(suggestion.address)
+  const handleClear = () => {
+    setQuery('')
+    onVenueNameChange('')
+    onLocationChange('')
     setSuggestions([])
-    setSearchError(null)
-    setIsExpanded(false)
+    setIsOpen(false)
+    inputRef.current?.focus()
   }
 
-  const handleUseQuery = () => {
+  const handleFocus = () => {
+    setIsOpen(true)
     const trimmed = query.trim()
-    if (!trimmed) return
-    onVenueNameChange(trimmed)
-    onLocationChange(trimmed)
-    setSuggestions([])
-    setSearchError(null)
-    setIsExpanded(false)
+    if (trimmed) {
+      setSuggestions(getInstantLocalSuggestions(trimmed))
+    } else {
+      // Show top 5 recommended locations when empty
+      setSuggestions(getInstantLocalSuggestions('bitexco').concat(getInstantLocalSuggestions('landmark')).slice(0, 5))
+    }
   }
 
   return (
-    <div ref={wrapperRef} className="relative">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setIsExpanded(true)}
-        className={`flex w-full items-center justify-between gap-3 px-0 py-1.5 text-left transition ${
-          isDarkMode ? 'text-white/70 hover:text-white' : 'text-neutral-700 hover:text-neutral-950'
-        }`}
-      >
-        <span className="min-w-0 truncate text-sm font-medium">{triggerText}</span>
-        {!isExpanded && preview && <MapPin className={`h-4 w-4 shrink-0 ${isDarkMode ? 'text-white/35' : 'text-neutral-400'}`} />}
-      </button>
+    <div
+      ref={containerRef}
+      className={`relative backdrop-blur-md border rounded-xl p-3 flex flex-col gap-2 transition-all ${
+        isDarkMode
+          ? 'bg-white/[0.04] border-white/[0.09] shadow-lg shadow-black/20'
+          : 'bg-white/85 border-neutral-200/90 shadow-sm'
+      }`}
+    >
+      {/* Header bar with venue icon and status */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+          <span
+            className={`text-[10px] font-bold uppercase tracking-[0.14em] ${
+              isDarkMode ? 'text-white/60' : 'text-neutral-600'
+            }`}
+          >
+            {t.title}
+          </span>
+        </div>
+        <span className="text-[9px] font-black uppercase tracking-wider text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
+          {t.badge}
+        </span>
+      </div>
 
-      {isExpanded && createPortal((
-        <div
-          ref={dropdownRef}
-          style={{
-            top: dropdownRect.top,
-            left: dropdownRect.left,
-            width: dropdownRect.width,
-          }}
-          className={`fixed z-[9999] overflow-hidden rounded-lg border shadow-xl ${
+      {/* Main interactive search input */}
+      <div className="relative flex items-center">
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onFocus={handleFocus}
+          onChange={(e) => handleInputChange(e.target.value)}
+          placeholder={t.placeholder}
+          className={`w-full border rounded-xl py-2.5 pl-3 pr-16 text-xs font-semibold focus:outline-none transition-all ${
             isDarkMode
-              ? 'border-white/10 bg-[#18181b] text-white shadow-black/40'
-              : 'border-neutral-200 bg-white text-neutral-950 shadow-neutral-900/10'
+              ? 'bg-[#141416] border-white/10 text-white placeholder:text-white/30 focus:border-orange-500/50'
+              : 'bg-white border-neutral-300 text-neutral-800 placeholder:text-neutral-400 focus:border-orange-500/50'
           }`}
-        >
-          <div className={`relative border-b ${isDarkMode ? 'border-white/10' : 'border-neutral-200'}`}>
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(event) => handleManualLocationChange(event.target.value)}
-              placeholder={text.placeholder}
-              className={`h-16 w-full bg-transparent px-4 pr-11 text-sm font-medium outline-none ${
-                isDarkMode ? 'placeholder:text-white/35' : 'placeholder:text-neutral-400'
+        />
+
+        {/* Right action icons (Loading spinner & Clear button) */}
+        <div className="absolute right-2.5 flex items-center gap-1.5">
+          {isLoading && (
+            <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
+          )}
+          {query && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className={`p-1 rounded-md transition hover:scale-105 cursor-pointer ${
+                isDarkMode ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100'
               }`}
-            />
-            <div className={`pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-white/40' : 'text-neutral-400'}`}>
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-            </div>
-          </div>
-
-          {(hasQuery || suggestions.length > 0 || searchError) && (
-            <div className="overflow-y-auto py-2" style={{ maxHeight: dropdownRect.maxHeight }}>
-              {hasQuery && (
-                <button
-                  type="button"
-                  onClick={handleUseQuery}
-                  className={`flex w-full items-start gap-3 px-4 py-2.5 text-left transition ${
-                    isDarkMode ? 'hover:bg-white/[0.06]' : 'hover:bg-neutral-50'
-                  }`}
-                >
-                  <MapPin className={`mt-0.5 h-5 w-5 shrink-0 ${isDarkMode ? 'text-white/45' : 'text-neutral-500'}`} />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">{text.use} &quot;{query.trim()}&quot;</span>
-                    <span className={`mt-0.5 block text-xs ${isDarkMode ? 'text-white/40' : 'text-neutral-400'}`}>{text.customAddress}</span>
-                  </span>
-                </button>
-              )}
-
-              {suggestions.map((suggestion) => (
-                <button
-                  key={suggestion.id}
-                  type="button"
-                  onClick={() => handleSelect(suggestion)}
-                  className={`flex w-full items-start gap-3 px-4 py-2.5 text-left transition ${
-                    isDarkMode ? 'hover:bg-white/[0.06]' : 'hover:bg-neutral-50'
-                  }`}
-                >
-                  <MapPin className={`mt-0.5 h-5 w-5 shrink-0 ${isDarkMode ? 'text-white/45' : 'text-neutral-500'}`} />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">{suggestion.name}</span>
-                    <span className={`mt-0.5 block truncate text-xs ${isDarkMode ? 'text-white/40' : 'text-neutral-400'}`}>{suggestion.address}</span>
-                  </span>
-                </button>
-              ))}
-
-              {searchError && (
-                <div className={`px-4 py-2 text-xs font-medium ${isDarkMode ? 'text-amber-200/80' : 'text-amber-700'}`}>
-                  {searchError}
-                </div>
-              )}
-            </div>
+              title="Xóa địa chỉ"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
-      ), document.body)}
+      </div>
+
+      {/* Selected location feedback bar */}
+      {(location || venueName) && !isOpen && (
+        <div
+          className={`text-[10px] font-medium p-2 rounded-lg leading-relaxed border flex items-start gap-1.5 ${
+            isDarkMode
+              ? 'text-neutral-300 bg-white/[0.02] border-white/[0.05]'
+              : 'text-neutral-700 bg-neutral-50 border-neutral-200'
+          }`}
+        >
+          <Building2 className="w-3 h-3 text-orange-400 shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1 truncate">
+            {venueName && <span className="font-bold text-orange-500 mr-1.5">{venueName}:</span>}
+            <span>{location || venueName}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Suggestions Dropdown */}
+      {isOpen && (
+        <div
+          className={`absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border shadow-2xl overflow-hidden backdrop-blur-xl animate-fadeIn ${
+            isDarkMode
+              ? 'bg-[#18181b]/95 border-white/12 text-white shadow-black/60'
+              : 'bg-white/98 border-neutral-200 text-neutral-900 shadow-neutral-900/15'
+          }`}
+        >
+          <div className="max-h-64 overflow-y-auto py-1 divide-y divide-neutral-100 dark:divide-white/[0.05]">
+            {/* Top custom query option */}
+            {query.trim().length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  onVenueNameChange(query.trim())
+                  onLocationChange(query.trim())
+                  setIsOpen(false)
+                }}
+                className={`w-full text-left px-3.5 py-2.5 flex items-start gap-2.5 transition cursor-pointer ${
+                  isDarkMode ? 'hover:bg-white/[0.08]' : 'hover:bg-orange-50/60'
+                }`}
+              >
+                <MapPin className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-orange-500 truncate">
+                      {t.useCustom} &quot;{query.trim()}&quot;
+                    </span>
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-orange-500/10 text-orange-500 border border-orange-500/20">
+                      {t.customBadge}
+                    </span>
+                  </div>
+                  <p className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                    Lưu trực tiếp địa chỉ này vào sự kiện của bạn
+                  </p>
+                </div>
+                <Check className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
+              </button>
+            )}
+
+            {/* List of matched suggestions */}
+            {suggestions.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleSelect(item)}
+                className={`w-full text-left px-3.5 py-2.5 flex items-start gap-2.5 transition cursor-pointer ${
+                  isDarkMode ? 'hover:bg-white/[0.06]' : 'hover:bg-neutral-50'
+                }`}
+              >
+                <div className="p-1 rounded-md bg-orange-500/10 text-orange-500 shrink-0 mt-0.5">
+                  <Building2 className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-bold truncate">{item.name}</p>
+                    {item.isPopular && (
+                      <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-0.5">
+                        <Sparkles className="w-2.5 h-2.5" /> {t.popularBadge}
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-[10px] leading-relaxed truncate mt-0.5 ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                    {item.address}
+                  </p>
+                </div>
+              </button>
+            ))}
+
+            {/* Empty state when no matches found */}
+            {suggestions.length === 0 && query.trim().length > 0 && !isLoading && (
+              <div className={`p-4 text-center ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                <p className="text-xs">{t.noResults}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
