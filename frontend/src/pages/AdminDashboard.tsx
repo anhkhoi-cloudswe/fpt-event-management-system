@@ -30,6 +30,8 @@ export default function AdminDashboard() {
 
   // Banner Modal state
   const [isBannerModalOpen, setIsBannerModalOpen] = useState(false)
+  const [bannerFormMode, setBannerFormMode] = useState<'create' | 'edit'>('create')
+  const [selectedBanner, setSelectedBanner] = useState<any | null>(null)
   const [bannerTitle, setBannerTitle] = useState('')
   const [bannerCategory, setBannerCategory] = useState('')
   const [newBannerFile, setNewBannerFile] = useState<File | null>(null)
@@ -453,6 +455,26 @@ export default function AdminDashboard() {
   }
 
   // --- SAMPLE BANNER ACTIONS ---
+  const handleOpenCreateBanner = () => {
+    setBannerFormMode('create')
+    setSelectedBanner(null)
+    setBannerTitle('')
+    setBannerCategory('')
+    setNewBannerFile(null)
+    setNewBannerPreview('')
+    setIsBannerModalOpen(true)
+  }
+
+  const handleOpenEditBanner = (banner: any) => {
+    setBannerFormMode('edit')
+    setSelectedBanner(banner)
+    setBannerTitle(banner.title || '')
+    setBannerCategory(banner.category || '')
+    setNewBannerFile(null)
+    setNewBannerPreview(banner.url || '')
+    setIsBannerModalOpen(true)
+  }
+
   const handleCreateSampleBannerSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!bannerTitle.trim()) {
@@ -471,8 +493,14 @@ export default function AdminDashboard() {
         finalUrl = await uploadEventBanner(newBannerFile)
       }
 
-      const response = await fetch('/api/v1/admin/sample-banners', {
-        method: 'POST',
+      const isEdit = bannerFormMode === 'edit' && selectedBanner?.bannerId
+      const endpoint = isEdit 
+        ? `/api/v1/admin/sample-banners/${selectedBanner.bannerId}`
+        : '/api/v1/admin/sample-banners'
+      const method = isEdit ? 'PUT' : 'POST'
+
+      const response = await fetch(endpoint, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -486,11 +514,12 @@ export default function AdminDashboard() {
 
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(data.message || 'Lưu ảnh mẫu thất bại')
+        throw new Error(data.message || (isEdit ? 'Cập nhật ảnh mẫu thất bại' : 'Lưu ảnh mẫu thất bại'))
       }
 
-      showToast('success', 'Thêm ảnh bìa mẫu thành công!')
+      showToast('success', isEdit ? 'Cập nhật ảnh bìa mẫu thành công!' : 'Thêm ảnh bìa mẫu thành công!')
       setIsBannerModalOpen(false)
+      setSelectedBanner(null)
       setBannerTitle('')
       setBannerCategory('')
       setNewBannerFile(null)
@@ -498,7 +527,7 @@ export default function AdminDashboard() {
       await fetchData()
     } catch (err: any) {
       console.error(err)
-      showToast('error', err.message || 'Lỗi thêm ảnh bìa mẫu')
+      showToast('error', err.message || 'Lỗi lưu ảnh bìa mẫu')
     } finally {
       setIsUploadingBanner(false)
     }
@@ -615,7 +644,7 @@ export default function AdminDashboard() {
           </button>
         ) : activeTab === 'BANNER' ? (
           <button
-            onClick={() => setIsBannerModalOpen(true)}
+            onClick={handleOpenCreateBanner}
             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white rounded-xl shadow-lg shadow-orange-500/20 font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
           >
             <Plus size={18} />
@@ -1021,6 +1050,13 @@ export default function AdminDashboard() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                       <div className="flex justify-end gap-2">
                         <button
+                          onClick={() => handleOpenEditBanner(banner)}
+                          className="text-blue-500 hover:text-blue-700 p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg transition-all"
+                          title="Sửa ảnh mẫu"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
                           onClick={() => handleDeleteSampleBanner(banner)}
                           className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-all"
                           title="Xóa ảnh mẫu"
@@ -1140,11 +1176,14 @@ export default function AdminDashboard() {
             <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
               <h3 className="font-extrabold text-lg text-gray-900 dark:text-white flex items-center gap-2">
                 <ImageIcon className="w-5 h-5 text-orange-500" />
-                Thêm ảnh bìa mẫu
+                {bannerFormMode === 'edit' ? 'Cập nhật ảnh bìa mẫu' : 'Thêm ảnh bìa mẫu'}
               </h3>
               <button
                 type="button"
-                onClick={() => setIsBannerModalOpen(false)}
+                onClick={() => {
+                  setIsBannerModalOpen(false)
+                  setSelectedBanner(null)
+                }}
                 className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 transition"
               >
                 <X className="w-5 h-5" />
@@ -1181,7 +1220,7 @@ export default function AdminDashboard() {
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
-                  Chọn hình ảnh
+                  Hình ảnh bìa {bannerFormMode === 'edit' && '(Bấm vào ảnh hoặc thùng rác để tải ảnh mới)'}
                 </label>
                 <div className="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-gray-200 dark:bg-slate-950 border border-dashed border-gray-300 dark:border-slate-800 flex flex-col items-center justify-center group mb-3">
                   {newBannerPreview ? (
@@ -1191,6 +1230,7 @@ export default function AdminDashboard() {
                         type="button"
                         onClick={() => { setNewBannerFile(null); setNewBannerPreview(''); }}
                         className="absolute top-2 right-2 p-1 bg-red-600/80 text-white rounded-lg hover:bg-red-600 transition"
+                        title="Xóa để chọn ảnh khác"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1219,7 +1259,10 @@ export default function AdminDashboard() {
               <div className="pt-4 border-t border-gray-100 dark:border-slate-800 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsBannerModalOpen(false)}
+                  onClick={() => {
+                    setIsBannerModalOpen(false)
+                    setSelectedBanner(null)
+                  }}
                   className="px-4 py-2 border border-gray-200 dark:border-slate-800 rounded-xl text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 font-bold text-xs"
                   disabled={isUploadingBanner}
                 >
@@ -1230,7 +1273,7 @@ export default function AdminDashboard() {
                   className="px-5 py-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-xl font-bold text-xs shadow-md shadow-orange-500/10 hover:shadow-orange-500/20"
                   disabled={isUploadingBanner}
                 >
-                  {isUploadingBanner ? 'Đang lưu...' : 'Thêm ngay'}
+                  {isUploadingBanner ? 'Đang lưu...' : bannerFormMode === 'edit' ? 'Cập nhật' : 'Thêm ngay'}
                 </button>
               </div>
             </form>

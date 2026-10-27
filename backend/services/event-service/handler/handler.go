@@ -1635,6 +1635,62 @@ func (h *EventHandler) HandleCreateSampleBanner(ctx context.Context, request eve
 	})
 }
 
+func (h *EventHandler) HandleUpdateSampleBanner(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	role := request.Headers["X-User-Role"]
+	if role != "ADMIN" {
+		return createMessageResponse(http.StatusForbidden, "Access denied: insufficient role")
+	}
+
+	idStr := request.QueryStringParameters["id"]
+	if idStr == "" {
+		parts := strings.Split(strings.TrimSuffix(request.Path, "/"), "/")
+		if len(parts) > 0 {
+			idStr = parts[len(parts)-1]
+		}
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		return createMessageResponse(http.StatusBadRequest, "Invalid banner ID")
+	}
+
+	var req models.UpdateSampleBannerRequest
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid request body")
+	}
+	if req.Title == "" || req.URL == "" {
+		return createMessageResponse(http.StatusBadRequest, "Title and URL are required")
+	}
+
+	existingBanner, err := h.useCase.GetSampleBannerByID(ctx, id)
+	if err != nil {
+		log.Error("GetSampleBannerByID error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Internal server error")
+	}
+	if existingBanner == nil {
+		return createMessageResponse(http.StatusNotFound, "Sample banner not found")
+	}
+
+	oldURL := existingBanner.URL
+	err = h.useCase.UpdateSampleBanner(ctx, id, req.Title, req.URL, req.Category)
+	if err != nil {
+		log.Error("UpdateSampleBanner error: %v", err)
+		return createMessageResponse(http.StatusInternalServerError, "Internal server error updating sample banner")
+	}
+
+	// Clean up previous image if it was replaced and hosted on custom S3
+	if oldURL != "" && oldURL != req.URL {
+		go repository.DeleteImageFromS3IfCustom(context.Background(), oldURL)
+	}
+
+	return createJSONResponse(http.StatusOK, map[string]interface{}{
+		"bannerId": id,
+		"title":    req.Title,
+		"url":      req.URL,
+		"category": req.Category,
+		"message":  "Sample banner updated successfully",
+	})
+}
+
 func (h *EventHandler) HandleDeleteSampleBanner(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	role := request.Headers["X-User-Role"]
 	if role != "ADMIN" {

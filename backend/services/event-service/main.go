@@ -150,6 +150,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return eventHandler.HandleDeleteSpeaker(ctx, request)
 	case path == "/api/v1/admin/sample-banners" && method == "POST":
 		return eventHandler.HandleCreateSampleBanner(ctx, request)
+	case (path == "/api/v1/admin/sample-banners" || strings.HasPrefix(path, "/api/v1/admin/sample-banners/")) && (method == "PUT" || method == "PATCH"):
+		return eventHandler.HandleUpdateSampleBanner(ctx, request)
 	case (path == "/api/v1/admin/sample-banners" || strings.HasPrefix(path, "/api/v1/admin/sample-banners/")) && method == "DELETE":
 		return eventHandler.HandleDeleteSampleBanner(ctx, request)
 	case path == "/api/sample-banners" && method == "GET":

@@ -310,20 +310,14 @@ const getSignificantTokens = (query: string) => {
 const isRelevantSuggestion = (suggestion: LocationSuggestion, query: string) => {
   const needle = normalize(query)
   const haystack = normalize(`${suggestion.name} ${suggestion.address}`)
-  const tokens = getSignificantTokens(query)
-  const requiredIntentTokens = ['sach', 'tho', 'cafe', 'hotel', 'mall', 'cho', 'truong', 'benh', 'vien']
-    .filter((token) => tokens.includes(token))
-
-  if (requiredIntentTokens.some((token) => !haystack.includes(token))) {
-    return false
-  }
-
-  if (!needle || tokens.length <= 1) return true
+  if (!needle) return true
   if (haystack.includes(needle)) return true
 
+  const tokens = getSignificantTokens(query)
+  if (tokens.length <= 1) return true
+
   const matchedTokens = tokens.filter((token) => haystack.includes(token)).length
-  const requiredMatches = tokens.length <= 3 ? tokens.length : Math.ceil(tokens.length * 0.75)
-  return matchedTokens >= requiredMatches
+  return matchedTokens >= Math.max(1, Math.ceil(tokens.length * 0.5))
 }
 
 const dedupeAndRank = (items: LocationSuggestion[], query: string) => {
@@ -355,13 +349,16 @@ const searchPopularLocations = (query: string) => {
 }
 
 const fetchPhotonLocations = async (query: string, language: Language, signal?: AbortSignal) => {
+  // Photon only supports: default, de, en, fr. If language is vi or other, omit lang or use default.
   const params = new URLSearchParams({
     q: query,
     limit: '12',
-    lang: language === 'en' ? 'en' : 'vi',
     lat: '10.7769',
     lon: '106.7009',
   })
+  if (language === 'en') {
+    params.set('lang', 'en')
+  }
 
   const response = await fetch(`https://photon.komoot.io/api/?${params.toString()}`, {
     method: 'GET',

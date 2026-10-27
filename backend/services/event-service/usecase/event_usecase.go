@@ -423,6 +423,10 @@ func (uc *EventUseCase) CreateSampleBanner(ctx context.Context, title, url strin
 	return uc.eventRepo.CreateSampleBanner(ctx, title, url, category)
 }
 
+func (uc *EventUseCase) UpdateSampleBanner(ctx context.Context, bannerID int, title, url string, category *string) error {
+	return uc.eventRepo.UpdateSampleBanner(ctx, bannerID, title, url, category)
+}
+
 func (uc *EventUseCase) DeleteSampleBanner(ctx context.Context, bannerID int) error {
 	return uc.eventRepo.DeleteSampleBanner(ctx, bannerID)
 }

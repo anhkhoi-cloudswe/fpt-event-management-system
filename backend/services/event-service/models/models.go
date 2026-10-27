@@ -782,3 +782,12 @@ type CreateSampleBannerRequest struct {
 
 	Category *string `json:"category"`
 }
+
+type UpdateSampleBannerRequest struct {
+	Title string `json:"title"`
+
+	URL string `json:"url"`
+
+	Category *string `json:"category"`
+}
+

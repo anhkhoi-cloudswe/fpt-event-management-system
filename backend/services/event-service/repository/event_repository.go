@@ -4583,6 +4583,23 @@ func (r *EventRepository) CreateSampleBanner(ctx context.Context, title, url str
 	return bannerID, nil
 }
 
+func (r *EventRepository) UpdateSampleBanner(ctx context.Context, bannerID int, title, url string, category *string) error {
+	query := `UPDATE sample_banner SET title = $1, url = $2, category = $3 WHERE banner_id = $4`
+	var catVal sql.NullString
+	if category != nil {
+		catVal = sql.NullString{String: *category, Valid: true}
+	}
+	res, err := r.db.ExecContext(ctx, query, title, url, catVal, bannerID)
+	if err != nil {
+		return fmt.Errorf("failed to update sample banner: %w", err)
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("sample banner not found")
+	}
+	return nil
+}
+
 func (r *EventRepository) DeleteSampleBanner(ctx context.Context, bannerID int) error {
 	query := `DELETE FROM sample_banner WHERE banner_id = $1`
 	_, err := r.db.ExecContext(ctx, query, bannerID)
