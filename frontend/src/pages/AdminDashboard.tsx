@@ -6,6 +6,7 @@ import { UserPlus, Edit, Trash2, Search, Filter, Users, ShieldAlert, Award, Imag
 import ConfirmModal from '../components/common/ConfirmModal'
 import UserFormModal from '../components/admin/UserFormModal'
 import SpeakerFormModal from '../components/admin/SpeakerFormModal'
+import Pagination from '../components/common/Pagination'
 import type { CreateUserRequest, UpdateUserRequest } from '../types/user'
 import { uploadEventBanner } from '../utils/imageUpload'
 
@@ -17,6 +18,10 @@ export default function AdminDashboard() {
 
   // Tab State
   const [activeTab, setActiveTab] = useState<ActiveTab>('STUDENT')
+
+  // Pagination State (items per page = 10)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   // Data States
   const [students, setStudents] = useState<any[]>([])
@@ -72,6 +77,11 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'ORGANIZER' | 'STAFF'>('ALL')
   const [campusFilter, setCampusFilter] = useState<string>('ALL')
+
+  // Reset pagination when active tab, search term, or filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, searchTerm, statusFilter, roleFilter, campusFilter])
 
   useEffect(() => {
     fetchData()
@@ -602,6 +612,8 @@ export default function AdminDashboard() {
   }
 
   const filteredItems = getFilteredData()
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage)
+  const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   if (user?.role !== 'ADMIN') {
     return (
@@ -864,7 +876,6 @@ export default function AdminDashboard() {
                 )}
                 {activeTab === 'INTERNAL' && (
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Username</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Họ và tên</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Số điện thoại</th>
@@ -894,7 +905,7 @@ export default function AdminDashboard() {
                 )}
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                {activeTab === 'STUDENT' && filteredItems.map((u) => (
+                {activeTab === 'STUDENT' && paginatedItems.map((u) => (
                   <tr key={u.userId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white">{u.fullName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{u.email}</td>
@@ -929,7 +940,7 @@ export default function AdminDashboard() {
                   </tr>
                 ))}
                 
-                {activeTab === 'SPEAKER' && filteredItems.map((sp) => (
+                {activeTab === 'SPEAKER' && paginatedItems.map((sp) => (
                   <tr key={sp.speakerId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-3">
                       {sp.avatarUrl ? (
@@ -967,9 +978,8 @@ export default function AdminDashboard() {
                   </tr>
                 ))}
 
-                {activeTab === 'INTERNAL' && filteredItems.map((u) => (
+                {activeTab === 'INTERNAL' && paginatedItems.map((u) => (
                   <tr key={u.userId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white">{u.username}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800 dark:text-slate-200 font-bold">{u.fullName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{u.email}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{u.phone || '—'}</td>
@@ -1033,7 +1043,7 @@ export default function AdminDashboard() {
                   </tr>
                 ))}
 
-                {activeTab === 'BANNER' && filteredItems.map((banner) => (
+                {activeTab === 'BANNER' && paginatedItems.map((banner) => (
                   <tr key={banner.bannerId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="w-20 aspect-[16/9] rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 shadow-sm">
@@ -1068,7 +1078,7 @@ export default function AdminDashboard() {
                   </tr>
                 ))}
 
-                {activeTab === 'ORGANIZATION' && filteredItems.map((org) => (
+                {activeTab === 'ORGANIZATION' && paginatedItems.map((org) => (
                   <tr key={org.orgId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-orange-600 dark:text-orange-400">{org.orgCode}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-3">
@@ -1128,6 +1138,20 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="py-4 border-t border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between px-6 gap-3">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                Hiển thị <span className="text-slate-900 dark:text-white font-extrabold">{((currentPage - 1) * itemsPerPage) + 1}</span> - <span className="text-slate-900 dark:text-white font-extrabold">{Math.min(currentPage * itemsPerPage, filteredItems.length)}</span> trên tổng số <span className="text-slate-900 dark:text-white font-extrabold">{filteredItems.length}</span> mục
+              </span>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => setCurrentPage(page)}
+              />
+            </div>
+          )}
         </div>
       )}
         </>

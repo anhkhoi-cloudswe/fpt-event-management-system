@@ -1621,16 +1621,61 @@ export default function EventRequestCreate() {
       ══════════════════════════════════════════════ */}
       {flowType && (
         <>
-          {/* ── Fixed cinema backdrop ── */}
+          {/* ── Dynamic Cinema Vibrant Backdrop — Adapts color & mood to bannerUrl ── */}
           <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden">
-            <div className={`absolute inset-0 ${isDarkMode ? 'bg-[#0c0c0d]' : 'bg-[#f8fafc]'}`} />
+            {/* Base foundation */}
+            <div className={`absolute inset-0 ${isDarkMode ? 'bg-[#090a0f]' : 'bg-[#f4f6fb]'}`} />
+
             {bannerUrl && (
-              <div
-                className={`absolute -inset-[30%] ${isDarkMode ? 'opacity-[0.12]' : 'opacity-[0.06]'} saturate-[100%] blur-[180px] scale-110 transition-all duration-[2000ms]`}
-                style={{ backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-              />
+              <>
+                {/* Layer 1: Massive wide ambient glow with high saturation */}
+                <div
+                  className={`absolute -inset-[20%] ${
+                    isDarkMode ? 'opacity-40 saturate-[220%] blur-[140px]' : 'opacity-35 saturate-[240%] blur-[120px]'
+                  } scale-125 transition-all duration-1000 ease-out`}
+                  style={{
+                    backgroundImage: `url(${bannerUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
+                />
+
+                {/* Layer 2: Focused radial bloom directly reflecting the artwork's core hues */}
+                <div
+                  className={`absolute top-0 left-1/4 w-[65vw] h-[65vh] ${
+                    isDarkMode ? 'opacity-35 saturate-[200%] blur-[100px]' : 'opacity-40 saturate-[220%] blur-[80px]'
+                  } rounded-full transition-all duration-1000 ease-out`}
+                  style={{
+                    backgroundImage: `url(${bannerUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
+                />
+
+                {/* Layer 3: Dynamic soft spotlight behind the main form */}
+                <div
+                  className={`absolute top-1/3 right-1/4 w-[50vw] h-[50vh] ${
+                    isDarkMode ? 'opacity-25 saturate-[180%] blur-[120px]' : 'opacity-30 saturate-[200%] blur-[90px]'
+                  } rounded-full transition-all duration-1000 ease-out`}
+                  style={{
+                    backgroundImage: `url(${bannerUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
+                />
+              </>
             )}
-            <div className={`absolute inset-0 ${isDarkMode ? 'bg-black/87' : 'bg-white/85'}`} />
+
+            {/* Readability contrast scrim:
+                - Light mode: Crisp frosted white vignette keeping vibrant banner hues clearly shining through without blinding
+                - Dark mode: Deep sleek obsidian vignette maintaining the banner's radiant neon / color essence */}
+            <div
+              className={`absolute inset-0 transition-colors duration-700 ${
+                isDarkMode
+                  ? 'bg-gradient-to-b from-[#090a0f]/60 via-[#0b0c10]/75 to-[#090a0f]/90 backdrop-blur-[40px]'
+                  : 'bg-gradient-to-b from-white/60 via-white/70 to-white/85 backdrop-blur-[35px]'
+              }`}
+            />
           </div>
 
           {/* ══════════════════════════════════════════════

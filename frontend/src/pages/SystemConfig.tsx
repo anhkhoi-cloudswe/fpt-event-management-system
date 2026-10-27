@@ -443,11 +443,11 @@ export default function SystemConfig() {
 
       {/* Tab Content: System Config - ✅ Only show for ADMIN */}
       {isAdmin && activeTab === 'system' && (
-        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 p-8 max-w-2xl w-full mx-auto shadow-xl hover:shadow-orange-500/5 transition-all duration-500 animate-fade-in-up">
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 p-5 md:p-6 max-w-5xl w-full mx-auto shadow-xl hover:shadow-orange-500/5 transition-all duration-300">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3">
-              <Settings className="w-6 h-6 text-orange-600" />
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <h1 className="text-lg md:text-xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
+              <Settings className="w-5 h-5 text-orange-600" />
               Cấu hình hệ thống
             </h1>
 
@@ -455,7 +455,7 @@ export default function SystemConfig() {
             <button
               onClick={handleReload}
               disabled={loading}
-              className="p-2 text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-500 hover:bg-white/80 dark:hover:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 transition-all duration-300 active:scale-95 shadow-sm"
+              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-500 hover:bg-white/80 dark:hover:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 transition-all duration-300 active:scale-95 shadow-sm"
               title="Tải lại cấu hình"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -464,147 +464,149 @@ export default function SystemConfig() {
 
           {/* Hiển thị lỗi nếu có */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50/50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-2xl flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-semibold shadow-sm">
+            <div className="mb-4 p-3 bg-red-50/50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl flex items-center gap-2 text-xs text-red-600 dark:text-red-400 font-semibold shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></span>
               <p>{error}</p>
             </div>
           )}
 
-          <div className="space-y-6">
-            {/* checkinAllowedBeforeStartMinutes - Check-in */}
-            <div className="border border-emerald-100 dark:border-emerald-950/50 bg-emerald-50/20 dark:bg-emerald-950/10 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                <label className="block text-base font-extrabold text-slate-900 dark:text-slate-100">
-                  Thời gian cho phép Check-in trước sự kiện (phút)
-                </label>
+          <div className="space-y-4">
+            {/* Split layout: Check-in (Left) and Check-out (Right) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* checkinAllowedBeforeStartMinutes - Check-in (Bên trái) */}
+              <div className="border border-emerald-100 dark:border-emerald-950/50 bg-emerald-50/20 dark:bg-emerald-950/10 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <label className="block text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                      Thời gian cho phép Check-in trước sự kiện (phút)
+                    </label>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-3 leading-relaxed">
+                    Số phút trước khi sự kiện bắt đầu mà người dùng có thể check-in (0 - 600 phút).
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-3">
+                    <NumericInput
+                      name="checkinAllowedBeforeStartMinutes"
+                      value={config.checkinAllowedBeforeStartMinutes}
+                      onChange={(val) => setConfig(prev => ({ ...prev, checkinAllowedBeforeStartMinutes: val }))}
+                      min={0}
+                      max={600}
+                      placeholder="0"
+                      className="w-24 px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-base font-bold text-slate-900 dark:text-slate-100 shadow-sm transition-all duration-300"
+                    />
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">phút trước khi bắt đầu</span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-extrabold text-slate-400">Gợi ý:</span>
+                    {[15, 30, 60, 120].map(val => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() =>
+                          setConfig(prev => ({
+                            ...prev,
+                            checkinAllowedBeforeStartMinutes: val
+                          }))
+                        }
+                        className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all duration-200 active:scale-95 ${
+                          config.checkinAllowedBeforeStartMinutes === val
+                            ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-sm'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:text-orange-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        {val}p
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-4 leading-relaxed">
-                Số phút trước khi sự kiện bắt đầu mà người dùng có thể check-in.
-                Giá trị từ 0 đến 600 phút (10 giờ).
-              </p>
+              {/* minMinutesAfterStart - Check-out (Bên phải) */}
+              <div className="border border-purple-100 dark:border-purple-950/50 bg-purple-50/20 dark:bg-purple-950/10 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse"></div>
+                    <label className="block text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                      Thời gian tối thiểu TRƯỚC KHI kết thúc để Check-out (phút)
+                    </label>
+                  </div>
 
-              <div className="flex items-center gap-4">
-                <NumericInput
-                  name="checkinAllowedBeforeStartMinutes"
-                  value={config.checkinAllowedBeforeStartMinutes}
-                  onChange={(val) => setConfig(prev => ({ ...prev, checkinAllowedBeforeStartMinutes: val }))}
-                  min={0}
-                  max={600}
-                  placeholder="0"
-                  className="w-32 px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-lg font-bold text-slate-900 dark:text-slate-100 shadow-sm transition-all duration-300"
-                />
-                <span className="text-sm font-bold text-slate-600 dark:text-slate-300">phút trước khi bắt đầu</span>
-              </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-3 leading-relaxed">
+                    Số phút trước khi sự kiện kết thúc mà người dùng mới có thể check-out (0 - 600 phút).
+                  </p>
+                </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-extrabold text-slate-400">Gợi ý nhanh:</span>
-                {[15, 30, 60, 120].map(val => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() =>
-                      setConfig(prev => ({
-                        ...prev,
-                        checkinAllowedBeforeStartMinutes: val
-                      }))
-                    }
-                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all duration-300 active:scale-95 ${
-                      config.checkinAllowedBeforeStartMinutes === val
-                        ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-md shadow-orange-500/10'
-                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-orange-500 hover:text-orange-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-400'
-                    }`}
-                  >
-                    {val} phút
-                  </button>
-                ))}
+                <div>
+                  <div className="flex items-center gap-3">
+                    <NumericInput
+                      name="minMinutesAfterStart"
+                      value={config.minMinutesAfterStart}
+                      onChange={(val) => setConfig(prev => ({ ...prev, minMinutesAfterStart: val }))}
+                      min={0}
+                      max={600}
+                      placeholder="0"
+                      className="w-24 px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-base font-bold text-slate-900 dark:text-slate-100 shadow-sm transition-all duration-300"
+                    />
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">phút trước khi kết thúc</span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-extrabold text-slate-400">Gợi ý:</span>
+                    {[15, 30, 60, 120].map(val => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() =>
+                          setConfig(prev => ({ ...prev, minMinutesAfterStart: val }))
+                        }
+                        className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all duration-200 active:scale-95 ${
+                          config.minMinutesAfterStart === val
+                            ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-sm'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:text-orange-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        {val}p
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* minMinutesAfterStart - Check-out */}
-            <div className="border border-purple-100 dark:border-purple-950/50 bg-purple-50/20 dark:bg-purple-950/10 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse"></div>
-                <label className="block text-base font-extrabold text-slate-900 dark:text-slate-100">
-                  Thời gian tối thiểu TRƯỚC KHI kết thúc để cho phép Check-out (phút)
-                </label>
-              </div>
-
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-4 leading-relaxed">
-                Số phút trước khi sự kiện kết thúc mà người dùng mới có thể check-out.
-                Giá trị từ 0 đến 600 phút (10 giờ).
-              </p>
-
-              <div className="flex items-center gap-4">
-                <NumericInput
-                  name="minMinutesAfterStart"
-                  value={config.minMinutesAfterStart}
-                  onChange={(val) => setConfig(prev => ({ ...prev, minMinutesAfterStart: val }))}
-                  min={0}
-                  max={600}
-                  placeholder="0"
-                  className="w-32 px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-center text-lg font-bold text-slate-900 dark:text-slate-100 shadow-sm transition-all duration-300"
-                />
-                <span className="text-sm font-bold text-slate-600 dark:text-slate-300">phút trước khi kết thúc</span>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-extrabold text-slate-400">Gợi ý nhanh:</span>
-                {[15, 30, 60, 120].map(val => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() =>
-                      setConfig(prev => ({ ...prev, minMinutesAfterStart: val }))
-                    }
-                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all duration-300 active:scale-95 ${
-                      config.minMinutesAfterStart === val
-                        ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-md shadow-orange-500/10'
-                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-orange-500 hover:text-orange-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-400'
-                    }`}
-                  >
-                    {val} phút
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Info box: giải thích ý nghĩa cấu hình */}
-            <div className="bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-5 shadow-sm text-slate-700 dark:text-slate-400 leading-relaxed font-semibold text-xs sm:text-sm">
-              <h3 className="font-extrabold text-blue-900 dark:text-blue-400 mb-2 flex items-center gap-1.5">
+            {/* Info box: Hướng dẫn vận hành đặt ngay bên dưới cả Check-in và Check-out */}
+            <div className="bg-blue-50/40 dark:bg-blue-950/15 border border-blue-100 dark:border-blue-900/40 rounded-2xl p-3.5 shadow-sm text-slate-700 dark:text-slate-300 leading-relaxed font-semibold text-xs">
+              <h3 className="font-extrabold text-blue-900 dark:text-blue-400 mb-1.5 flex items-center gap-1.5 text-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                 Hướng dẫn vận hành
               </h3>
-              <ul className="space-y-2 text-slate-600 dark:text-slate-400">
-                <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600 dark:text-slate-400 text-[11px]">
+                <div className="flex items-start gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0"></span>
                   <span>
-                    <strong className="text-slate-800 dark:text-slate-200">Check-in</strong>: Người dùng có thể check-in trước thời gian bắt đầu sự kiện theo số phút đã cấu hình.
+                    <strong className="text-slate-800 dark:text-slate-200">Check-in</strong>: Cho phép người tham gia check-in sớm trước giờ khai mạc theo số phút cấu hình.
                   </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 flex-shrink-0"></span>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0"></span>
                   <span>
-                    <strong className="text-slate-800 dark:text-slate-200">Check-out</strong>: Người dùng chỉ có thể check-out trước thời gian kết thúc sự kiện theo số phút đã cấu hình.
+                    <strong className="text-slate-800 dark:text-slate-200">Check-out</strong>: Chỉ cho phép check-out trước khi sự kiện bế mạc theo số phút cấu hình.
                   </span>
-                </li>
-                <li className="mt-3 pt-3 border-t border-slate-200/50 dark:border-slate-800/50">
-                  <strong className="text-slate-800 dark:text-slate-200">Ví dụ thực tế:</strong> Sự kiện kết thúc lúc 17:00
-                  <ul className="ml-4 mt-1 space-y-1 text-slate-500 dark:text-slate-400 text-xs">
-                    <li>• Check-in = 60 phút → Có thể check-in mở từ 13:00</li>
-                    <li>• Check-out = 30 phút → Có thể check-out trước 16:30</li>
-                  </ul>
-                </li>
-              </ul>
+                </div>
+              </div>
             </div>
 
             {/* Save button */}
-            <div className="pt-4 flex justify-end border-t border-slate-100 dark:border-slate-800">
+            <div className="pt-2 flex justify-end border-t border-slate-100 dark:border-slate-800">
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 text-white rounded-2xl shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/35 transition-all duration-300 active:scale-95 hover:scale-[1.02] font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 text-white rounded-xl shadow-md shadow-orange-500/20 hover:shadow-orange-500/35 transition-all duration-300 active:scale-95 font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-4 h-4" />
                 {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
