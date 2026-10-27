@@ -1398,15 +1398,20 @@ export default function FrontendCustomizer() {
               <div className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-orange-500" />
                 <h2 className="text-lg font-black text-slate-900 dark:text-white">
-                  Quản Lý Tài Liệu Mẫu & Video Hướng Dẫn FEMS
+                  Quản Lý Tài Liệu & Video Hướng Dẫn FEMS
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400">
                   {guideDocs.length} mục
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Toàn bộ dữ liệu tại đây sẽ tự động hiển thị trên trang công khai <code className="text-orange-600 font-bold">/terms-and-policies?tab=docs</code>. Bạn có thể chèn link video YouTube/MP4 và đính kèm link tải tài liệu biểu mẫu.
-              </p>
+              <div className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5 pt-0.5 leading-relaxed">
+                <p>
+                  Toàn bộ dữ liệu tại đây sẽ tự động hiển thị trên trang công khai <code className="text-orange-600 font-bold">/terms-and-policies?tab=docs</code>.
+                </p>
+                <p>
+                  Bạn có thể chèn link video YouTube/MP4 và đính kèm link tải tài liệu biểu mẫu.
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -1418,27 +1423,6 @@ export default function FrontendCustomizer() {
                 <Plus className="w-4 h-4" />
                 <span>Thêm hướng dẫn mới</span>
               </button>
-
-              <button
-                type="button"
-                onClick={handleResetGuideDocs}
-                className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 hover:text-rose-600 hover:border-rose-300 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                title="Khôi phục các mục hướng dẫn về mặc định"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Khôi phục mặc định</span>
-              </button>
-
-              <a
-                href="/terms-and-policies?tab=docs"
-                target="_blank"
-                rel="noreferrer"
-                className="px-3.5 py-2.5 rounded-xl border border-orange-200 dark:border-slate-800 bg-orange-50/50 dark:bg-slate-800 text-orange-600 dark:text-orange-400 font-bold text-xs flex items-center gap-1.5 hover:bg-orange-100 transition-all"
-              >
-                <Eye className="w-3.5 h-3.5" />
-                <span>Xem trang công khai</span>
-                <ExternalLink className="w-3 h-3 text-slate-400" />
-              </a>
             </div>
           </div>
 
@@ -1491,122 +1475,126 @@ export default function FrontendCustomizer() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               {filteredGuideDocs.map((item) => {
                 const parsedVideo = parseVideoUrl(item.videoUrl)
                 return (
                   <div
                     key={item.id}
-                    className="p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4 hover:border-orange-300 dark:hover:border-slate-700 transition-all"
+                    className="p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4 hover:border-orange-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-black">
-                            #{item.order}
-                          </span>
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 border border-orange-200/60 dark:border-orange-900/40">
-                            {item.category || 'Chung'}
-                          </span>
-                          {parsedVideo.type && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 flex items-center gap-1">
-                              <Video className="w-3 h-3" />
-                              {parsedVideo.type === 'youtube' ? 'YouTube Video' : 'Direct Video'}
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-black shrink-0">
+                              #{item.order}
                             </span>
-                          )}
-                          {item.documentUrl && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 flex items-center gap-1">
-                              <FileDown className="w-3 h-3" />
-                              Tài liệu đính kèm
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 border border-orange-200/60 dark:border-orange-900/40">
+                              {item.category || 'Chung'}
                             </span>
-                          )}
-                          {item.updatedAt && (
-                            <span className="text-[11px] text-slate-400">
-                              Cập nhật: {item.updatedAt}
-                            </span>
-                          )}
+                            {parsedVideo.type && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 flex items-center gap-1">
+                                <Video className="w-3 h-3" />
+                                {parsedVideo.type === 'youtube' ? 'YouTube Video' : 'Direct Video'}
+                              </span>
+                            )}
+                            {item.documentUrl && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 flex items-center gap-1">
+                                <FileDown className="w-3 h-3" />
+                                Tài liệu đính kèm
+                              </span>
+                            )}
+                            {item.updatedAt && (
+                              <span className="text-[11px] text-slate-400">
+                                Cập nhật: {item.updatedAt}
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                            {item.title}
+                          </h3>
                         </div>
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                          {item.title}
-                        </h3>
+
+                        {/* Nút Sửa / Xóa */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditDocModal(item)}
+                            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-orange-600 hover:border-orange-400 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                          >
+                            <Pencil className="w-3.5 h-3.5 text-orange-500" />
+                            <span>Sửa</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGuideDoc(item.id, item.title)}
+                            className="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Xóa</span>
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Nút Sửa / Xóa */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditDocModal(item)}
-                          className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-orange-600 hover:border-orange-400 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                        >
-                          <Pencil className="w-3.5 h-3.5 text-orange-500" />
-                          <span>Sửa</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteGuideDoc(item.id, item.title)}
-                          className="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Xóa</span>
-                        </button>
-                      </div>
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">
+                        {item.content}
+                      </p>
                     </div>
 
-                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">
-                      {item.content}
-                    </p>
-
-                    {/* Preview video nếu có */}
-                    {parsedVideo.type && (
-                      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                          <span className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400">
-                            <Video className="w-4 h-4" /> Link Video đã nhúng:
-                          </span>
-                          <span className="font-mono text-[11px] text-slate-400 truncate max-w-xs">{item.videoUrl}</span>
+                    <div className="space-y-3 pt-2">
+                      {/* Preview video nếu có - Bỏ max-w-md để vừa khít 100% cột thẻ */}
+                      {parsedVideo.type && (
+                        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                            <span className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400">
+                              <Video className="w-4 h-4" /> Link Video đã nhúng:
+                            </span>
+                            <span className="font-mono text-[11px] text-slate-400 truncate max-w-[200px] sm:max-w-xs">{item.videoUrl}</span>
+                          </div>
+                          {parsedVideo.type === 'youtube' ? (
+                            <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-sm border border-slate-300 dark:border-slate-700 bg-black">
+                              <iframe
+                                src={parsedVideo.embedUrl}
+                                title={item.title}
+                                allowFullScreen
+                                className="absolute inset-0 w-full h-full border-0"
+                              />
+                            </div>
+                          ) : parsedVideo.type === 'direct' ? (
+                            <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-sm border border-slate-300 dark:border-slate-700 bg-black">
+                              <video src={parsedVideo.embedUrl} controls className="w-full h-full object-contain" />
+                            </div>
+                          ) : (
+                            <a
+                              href={parsedVideo.embedUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs text-orange-600 font-bold hover:underline"
+                            >
+                              <Play className="w-3.5 h-3.5" /> Mở liên kết video
+                            </a>
+                          )}
                         </div>
-                        {parsedVideo.type === 'youtube' ? (
-                          <div className="relative w-full aspect-video max-w-md rounded-xl overflow-hidden shadow-sm border border-slate-300 dark:border-slate-700 bg-black">
-                            <iframe
-                              src={parsedVideo.embedUrl}
-                              title={item.title}
-                              allowFullScreen
-                              className="absolute inset-0 w-full h-full border-0"
-                            />
-                          </div>
-                        ) : parsedVideo.type === 'direct' ? (
-                          <div className="relative w-full aspect-video max-w-md rounded-xl overflow-hidden shadow-sm border border-slate-300 dark:border-slate-700 bg-black">
-                            <video src={parsedVideo.embedUrl} controls className="w-full h-full object-contain" />
-                          </div>
-                        ) : (
+                      )}
+
+                      {/* Hiển thị link file đính kèm nếu có */}
+                      {item.documentUrl && (
+                        <div className="flex items-center gap-2 text-xs pt-1">
+                          <span className="font-bold text-slate-500 shrink-0">File biểu mẫu:</span>
                           <a
-                            href={parsedVideo.embedUrl}
+                            href={item.documentUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-orange-600 font-bold hover:underline"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold hover:underline truncate"
                           >
-                            <Play className="w-3.5 h-3.5" /> Mở liên kết video
+                            <FileDown className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{item.documentName || item.documentUrl}</span>
+                            <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
                           </a>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Hiển thị link file đính kèm nếu có */}
-                    {item.documentUrl && (
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="font-bold text-slate-500">File biểu mẫu:</span>
-                        <a
-                          href={item.documentUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold hover:underline"
-                        >
-                          <FileDown className="w-3.5 h-3.5" />
-                          <span>{item.documentName || item.documentUrl}</span>
-                          <ExternalLink className="w-3 h-3 text-slate-400" />
-                        </a>
-                      </div>
-                    )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })}

@@ -335,7 +335,7 @@ func authCookies(authResponse *models.AuthResponse) []string {
 	refreshCookie := http.Cookie{
 		Name:     "refresh_token",
 		Value:    authResponse.RefreshToken,
-		Path:     "/api/auth/refresh",
+		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteNoneMode,
@@ -346,7 +346,9 @@ func authCookies(authResponse *models.AuthResponse) []string {
 
 func clearAuthCookies() []string {
 	return []string{
+		(&http.Cookie{Name: "refresh_token", Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode, MaxAge: -1}).String(),
 		(&http.Cookie{Name: "refresh_token", Value: "", Path: "/api/auth/refresh", HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode, MaxAge: -1}).String(),
+		(&http.Cookie{Name: "token", Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode, MaxAge: -1}).String(),
 	}
 }
 
@@ -637,7 +639,31 @@ func extractRefreshToken(request events.APIGatewayProxyRequest) string {
 	if token := extractNamedCookieFromHeader(request.Headers["Cookie"], "refresh_token"); token != "" {
 		return token
 	}
-	return extractNamedCookieFromHeader(request.Headers["cookie"], "refresh_token")
+	if token := extractNamedCookieFromHeader(request.Headers["cookie"], "refresh_token"); token != "" {
+		return token
+	}
+	for _, cookieHeader := range request.MultiValueHeaders["Cookie"] {
+		if token := extractNamedCookieFromHeader(cookieHeader, "refresh_token"); token != "" {
+			return token
+		}
+	}
+	for _, cookieHeader := range request.MultiValueHeaders["cookie"] {
+		if token := extractNamedCookieFromHeader(cookieHeader, "refresh_token"); token != "" {
+			return token
+		}
+	}
+	if request.Body != "" {
+		var bodyMap map[string]string
+		if err := json.Unmarshal([]byte(request.Body), &bodyMap); err == nil {
+			if token, ok := bodyMap["refreshToken"]; ok && strings.TrimSpace(token) != "" {
+				return strings.TrimSpace(token)
+			}
+			if token, ok := bodyMap["refresh_token"]; ok && strings.TrimSpace(token) != "" {
+				return strings.TrimSpace(token)
+			}
+		}
+	}
+	return ""
 }
 
 func extractNamedCookieFromHeader(cookieHeader, cookieName string) string {

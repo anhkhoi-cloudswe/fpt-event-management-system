@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import axios from 'axios'
-import { getAccessToken, setAccessToken, setInMemoryToken } from '../config/api'
+import { getAccessToken, setAccessToken, setInMemoryToken, requestTokenRefresh } from '../config/api'
 
 const AUTH_ME_ENDPOINTS = ['/api/auth/me'] as const
 
@@ -248,14 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let activeToken = getAccessToken()
         if (!activeToken) {
           try {
-            const res = await axios.post('/auth/refresh', null, { 
-              withCredentials: true,
-              ...({ isBackgroundRequest: false } as any)
-            })
-            if (res.data && res.data.accessToken) {
-              activeToken = res.data.accessToken
-              setInMemoryToken(activeToken)
-            }
+            activeToken = await requestTokenRefresh()
           } catch (refreshErr) {
             console.warn('Silent refresh failed during bootstrap:', refreshErr)
           }
@@ -289,6 +282,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted = false
     }
   }, [fetchUserFromMe])
+
+  // =========================================================================
+  // Proactive Auto-Refresh:
+  //   1. Heartbeat timer: Refreshes token every 20 minutes while authenticated
+  //      to prevent token expiry during long active sessions.
+  //   2. AFK Recovery: When a Student/User leaves the tab idle or sleeps their
+  //      computer for > 15 minutes, silently refreshes the token on focus/visible.
+  // =========================================================================
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    // 1. Heartbeat timer every 20 minutes (Student token is 60m, Organizer 30m)
+    const heartbeatTimer = setInterval(() => {
+      void requestTokenRefresh()
+        .then((newToken) => {
+          if (newToken) {
+            setTokenState(newToken)
+          }
+        })
+        .catch((err) => {
+          console.warn('[Auth] Heartbeat token refresh skipped/failed:', err)
+        })
+    }, 20 * 60 * 1000)
+
+    // 2. AFK / Sleep Wake-up recovery
+    let lastActiveAt = Date.now()
+
+    const recordActivity = () => {
+      lastActiveAt = Date.now()
+    }
+
+    const checkAfkRecovery = () => {
+      if (document.visibilityState === 'visible') {
+        const idleDuration = Date.now() - lastActiveAt
+        // If user was idle/AFK for more than 15 minutes, silently refresh token now
+        if (idleDuration > 15 * 60 * 1000) {
+          console.log('[Auth] User returned from AFK (>15m). Silently refreshing token...')
+          void requestTokenRefresh()
+            .then((newToken) => {
+              if (newToken) {
+                setTokenState(newToken)
+                void refreshUser(true)
+              }
+            })
+            .catch((err) => {
+              console.warn('[Auth] AFK token recovery failed:', err)
+            })
+        }
+        lastActiveAt = Date.now()
+      }
+    }
+
+    window.addEventListener('focus', checkAfkRecovery)
+    document.addEventListener('visibilitychange', checkAfkRecovery)
+    window.addEventListener('click', recordActivity, { passive: true })
+    window.addEventListener('keydown', recordActivity, { passive: true })
+
+    return () => {
+      clearInterval(heartbeatTimer)
+      window.removeEventListener('focus', checkAfkRecovery)
+      document.removeEventListener('visibilitychange', checkAfkRecovery)
+      window.removeEventListener('click', recordActivity)
+      window.removeEventListener('keydown', recordActivity)
+    }
+  }, [isAuthenticated, refreshUser])
 
   useEffect(() => {
     if (user?.language) {

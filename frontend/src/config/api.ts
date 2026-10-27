@@ -69,6 +69,49 @@ const processQueue = (error: any, token: string | null = null) => {
 	failedQueue = []
 }
 
+export const requestTokenRefresh = (): Promise<string> => {
+	if (isRefreshing) {
+		return new Promise((resolve, reject) => {
+			failedQueue.push({
+				resolve: (token) => {
+					if (token) resolve(token)
+					else reject(new Error('Token refresh failed'))
+				},
+				reject,
+			})
+		})
+	}
+
+	isRefreshing = true
+	window.dispatchEvent(new CustomEvent('auth:refresh-start'))
+
+	return new Promise((resolve, reject) => {
+		refreshClient
+			.post('/auth/refresh')
+			.then((res) => {
+				const token = res.data?.accessToken
+				if (token) {
+					setInMemoryToken(token)
+					processQueue(null, token)
+					resolve(token)
+				} else {
+					const err = new Error('No accessToken in refresh response')
+					processQueue(err, null)
+					reject(err)
+				}
+			})
+			.catch((refreshError) => {
+				processQueue(refreshError, null)
+				setInMemoryToken(null)
+				reject(refreshError)
+			})
+			.finally(() => {
+				isRefreshing = false
+				window.dispatchEvent(new CustomEvent('auth:refresh-end'))
+			})
+	})
+}
+
 api.interceptors.response.use(
 	(response) => response,
 	async (error: AxiosError<any>) => {
@@ -94,47 +137,20 @@ api.interceptors.response.use(
 				return Promise.reject(error)
 			}
 
-			if (isRefreshing) {
-				return new Promise((resolve, reject) => {
-					failedQueue.push({
-						resolve: (token) => {
-							originalRequest.headers.Authorization = `Bearer ${token}`
-							resolve(api(originalRequest))
-						},
-						reject: (err) => {
-							reject(err)
-						}
-					})
-				})
-			}
-
 			originalRequest._retry = true
-			isRefreshing = true
-			window.dispatchEvent(new CustomEvent('auth:refresh-start'))
 
-			return new Promise((resolve, reject) => {
-				refreshClient.post('/auth/refresh')
-					.then((res) => {
-						const token = res.data?.accessToken
-						setInMemoryToken(token)
-						originalRequest.headers.Authorization = `Bearer ${token}`
-						processQueue(null, token)
-						resolve(api(originalRequest))
-					})
-					.catch((refreshError) => {
-						processQueue(refreshError, null)
-						setInMemoryToken(null)
-						if (!isBackground) {
-							window.dispatchEvent(new CustomEvent('auth:session-expired'))
-							window.location.href = '/guest'
-						}
-						reject(refreshError)
-					})
-					.finally(() => {
-						isRefreshing = false
-						window.dispatchEvent(new CustomEvent('auth:refresh-end'))
-					})
-			})
+			return requestTokenRefresh()
+				.then((token) => {
+					originalRequest.headers.Authorization = `Bearer ${token}`
+					return api(originalRequest)
+				})
+				.catch((refreshError) => {
+					if (!isBackground) {
+						window.dispatchEvent(new CustomEvent('auth:session-expired'))
+						window.location.href = '/guest'
+					}
+					return Promise.reject(refreshError)
+				})
 		}
 
 		return Promise.reject(error)
@@ -146,35 +162,60 @@ console.log('🚀 Ferrari BaseURL:', api.defaults.baseURL)
 // =============================================================================
 // Global Fetch Interceptor Strategy:
 //
-//   Since access tokens are stored strictly in-memory, raw browser fetch() calls
-//   (used extensively in legacy pages) would fail with 401. This monkey-patches
-//   window.fetch to inject the Authorization Bearer header to any relative or
-//   API-bound requests when an access token is active in memory.
+//   1. Injects Authorization: Bearer <token> & credentials: 'include'.
+//   2. Handles 401 Unauthorized transparently by executing requestTokenRefresh()
+//      and retrying the request seamlessly (solving the AFK / idle student issue).
 // =============================================================================
 
 const originalFetch = window.fetch
-window.fetch = async function (input, init) {
-	const token = getAccessToken()
-	if (token) {
-		let url = ''
-		if (typeof input === 'string') {
-			url = input
-		} else if (input instanceof URL) {
-			url = input.toString()
-		} else if (input && typeof input === 'object' && 'url' in input) {
-			url = (input as Request).url
-		}
+window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+	let url = ''
+	if (typeof input === 'string') {
+		url = input
+	} else if (input instanceof URL) {
+		url = input.toString()
+	} else if (input && typeof input === 'object' && 'url' in input) {
+		url = (input as Request).url
+	}
 
-		// Inject only for relative API paths or explicit API endpoints on the same origin
-		const isApiRequest = url.startsWith('/') || url.includes('/api/')
-		if (isApiRequest) {
-			init = init || {}
-			const headers = new Headers(init.headers || {})
+	const isApiRequest = url.startsWith('/') || url.includes('/api/')
+	const isRefreshRequest = url.includes('/auth/refresh') || url.includes('/api/auth/refresh')
+	const isLoginRequest = url.includes('/login') || url.includes('/auth/login')
+
+	let modifiedInit: RequestInit = init ? { ...init } : {}
+
+	if (isApiRequest) {
+		if (!modifiedInit.credentials) {
+			modifiedInit.credentials = 'include'
+		}
+		const token = getAccessToken()
+		if (token) {
+			const headers = new Headers(modifiedInit.headers || {})
 			if (!headers.has('Authorization')) {
 				headers.set('Authorization', `Bearer ${token}`)
 			}
-			init.headers = headers
+			modifiedInit.headers = headers
 		}
 	}
-	return originalFetch.call(this, input, init)
+
+	let response = await originalFetch.call(this, input, modifiedInit)
+
+	// If 401 on an API request (and not a refresh/login call), refresh token and retry!
+	if (response.status === 401 && isApiRequest && !isRefreshRequest && !isLoginRequest) {
+		try {
+			const newToken = await requestTokenRefresh()
+			if (newToken) {
+				const retryHeaders = new Headers(modifiedInit.headers || {})
+				retryHeaders.set('Authorization', `Bearer ${newToken}`)
+				modifiedInit.headers = retryHeaders
+
+				// Seamlessly retry the request with the refreshed token
+				response = await originalFetch.call(this, input, modifiedInit)
+			}
+		} catch (refreshErr) {
+			console.warn('[Fetch Interceptor] Auto-refresh failed after 401:', refreshErr)
+		}
+	}
+
+	return response
 }
