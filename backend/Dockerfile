@@ -33,8 +33,8 @@ ARG SERVICE=all
 ARG BUILD_PATH=all
 ARG GOARCH=amd64
 
-# git is required for `go mod download` on modules hosted on VCS
-RUN apk add --no-cache git
+# git and ca-certificates are required for `go mod download` on modules hosted on VCS over HTTPS
+RUN apk update && apk --no-cache upgrade && apk add --no-cache git ca-certificates
 
 WORKDIR /build
 
@@ -84,9 +84,11 @@ CMD ["bootstrap"]
 # =============================================================================
 FROM alpine:3.21 AS local
 
+# Security hardening: upgrade OS packages and fetch latest trusted CA certificate store
+# (revokes compromised eMudhra intermediate certificates and patches base OS CVEs)
 # ca-certificates → HTTPS calls to AWS SDK, SMTP, VNPay, reCAPTCHA
 # tzdata          → Asia/Ho_Chi_Minh timezone support for schedulers
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk update && apk --no-cache upgrade && apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 
