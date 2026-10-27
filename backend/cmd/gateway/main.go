@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/fpt-event-services/common/jwt"
+	"github.com/fpt-event-services/common/places"
 	"github.com/fpt-event-services/common/registry"
 	"github.com/fpt-event-services/common/storage"
 	"github.com/fpt-event-services/common/timeutil"
@@ -404,6 +405,11 @@ func main() {
 			"timestamp":  timeutil.GetNow().UnixMilli(),
 		})
 	})
+
+	// ── Goong Places API with Throttling & Security Rate Limiting ───────────────────
+	mux.HandleFunc("/api/v1/places/autocomplete", places.HandleAutocomplete)
+	mux.HandleFunc("/api/v1/places/detail", places.HandlePlaceDetail)
+	mux.HandleFunc("/api/v1/places/quota-status", places.HandleQuotaStatus)
 
 	// Main routing handler
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

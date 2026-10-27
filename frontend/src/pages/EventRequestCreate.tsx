@@ -108,28 +108,32 @@ const ERC_CSS = `
   html.dark.erc-cinema body { background: #0c0c0d !important; }
   html:not(.dark).erc-cinema body { background: #f8fafc !important; }
 
+  html.erc-cinema #root,
+  html.erc-cinema #root > div,
+  html.erc-cinema [class*="min-h-screen"],
+  html.erc-cinema [class*="from-orange-50"],
+  html.erc-cinema [class*="via-amber-50"],
+  html.erc-cinema [class*="to-orange-100"],
   html.erc-cinema body > div > div[class*="min-h-screen"],
-  html.erc-cinema body > div[class*="min-h-screen"],
-  html.erc-cinema body > div > div > div[class*="min-h-screen"] {
+  html.erc-cinema body > div[class*="min-h-screen"] {
     background: transparent !important;
+    background-image: none !important;
   }
 
   /* Header theme support */
   html.dark.erc-cinema header {
-    background: rgba(10,10,14,0.40) !important;
-    background-image: radial-gradient(ellipse at 15% 0%, rgba(var(--banner-glow-rgb, 249,115,22), 0.28) 0%, transparent 70%) !important;
+    background: rgba(10,10,14,0.35) !important;
     backdrop-filter: blur(24px) saturate(160%) !important;
     -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
     border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-    box-shadow: 0 4px 30px -4px rgba(var(--banner-glow-rgb, 0,0,0), 0.25) !important;
+    box-shadow: 0 4px 30px -4px rgba(0,0,0,0.30) !important;
   }
   html:not(.dark).erc-cinema header {
-    background: rgba(255,255,255,0.28) !important;
-    background-image: radial-gradient(ellipse at 15% 0%, rgba(var(--banner-glow-rgb, 249,115,22), 0.24) 0%, transparent 70%) !important;
-    backdrop-filter: blur(24px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-    border-bottom: 1px solid rgba(var(--banner-glow-rgb, 249,115,22), 0.16) !important;
-    box-shadow: 0 4px 30px -4px rgba(var(--banner-glow-rgb, 0,0,0), 0.10) !important;
+    background: rgba(255,255,255,0.20) !important;
+    backdrop-filter: blur(24px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.40) !important;
+    box-shadow: 0 4px 24px -2px rgba(0,0,0,0.06) !important;
   }
   
   /* Force dark-mode texts on header items */
@@ -236,23 +240,21 @@ const ERC_CSS = `
 
   /* Sidebar (Aside) */
   html.dark.erc-cinema aside {
-    background: rgba(10,10,14,0.35) !important;
-    background-image: radial-gradient(ellipse at 0% 25%, rgba(var(--banner-glow-rgb, 249,115,22), 0.25) 0%, transparent 80%) !important;
+    background: rgba(10,10,14,0.30) !important;
     backdrop-filter: blur(24px) saturate(160%) !important;
     -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
     border-right: 1px solid rgba(255,255,255,0.08) !important;
-    box-shadow: 4px 0 30px -4px rgba(var(--banner-glow-rgb, 0,0,0), 0.20) !important;
+    box-shadow: 4px 0 30px -4px rgba(0,0,0,0.25) !important;
   }
   html.dark.erc-cinema aside,
   html.dark.erc-cinema aside * { color: rgba(255,255,255,0.75) !important; }
 
   html:not(.dark).erc-cinema aside {
-    background: rgba(255,255,255,0.24) !important;
-    background-image: radial-gradient(ellipse at 0% 25%, rgba(var(--banner-glow-rgb, 249,115,22), 0.20) 0%, transparent 80%) !important;
-    backdrop-filter: blur(24px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-    border-right: 1px solid rgba(var(--banner-glow-rgb, 249,115,22), 0.15) !important;
-    box-shadow: 4px 0 30px -4px rgba(var(--banner-glow-rgb, 0,0,0), 0.08) !important;
+    background: rgba(255,255,255,0.18) !important;
+    backdrop-filter: blur(24px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+    border-right: 1px solid rgba(255,255,255,0.40) !important;
+    box-shadow: 4px 0 24px -2px rgba(0,0,0,0.06) !important;
   }
   html:not(.dark).erc-cinema aside,
   html:not(.dark).erc-cinema aside * { color: rgba(15,23,42,0.75) !important; }
@@ -1644,26 +1646,14 @@ export default function EventRequestCreate() {
           {/* ── Dynamic Cinema Vibrant Backdrop — Adapts color & mood to bannerUrl ── */}
           <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden">
             {/* Base foundation */}
-            <div className={`absolute inset-0 transition-colors duration-700 ${isDarkMode ? 'bg-[#08090d]' : 'bg-[#eef3f8]'}`} />
+            <div className={`absolute inset-0 transition-colors duration-700 ${isDarkMode ? 'bg-[#08090d]' : 'bg-[#f8fafc]'}`} />
 
             {bannerUrl && (
               <>
-                {/* Layer 0: Mesh radial gradients driven directly by dominant extracted colors */}
-                <div
-                  className="absolute inset-0 transition-opacity duration-1000 ease-out"
-                  style={{
-                    background: `
-                      radial-gradient(circle at 10% 10%, rgba(var(--banner-glow-rgb, 249, 115, 22), ${isDarkMode ? '0.50' : '0.42'}) 0%, transparent 60%),
-                      radial-gradient(circle at 85% 85%, rgba(var(--banner-glow-secondary-rgb, 234, 88, 12), ${isDarkMode ? '0.40' : '0.32'}) 0%, transparent 55%),
-                      radial-gradient(circle at 35% 50%, rgba(var(--banner-glow-rgb, 249, 115, 22), ${isDarkMode ? '0.35' : '0.30'}) 0%, transparent 65%)
-                    `,
-                  }}
-                />
-
                 {/* Layer 1: Massive wide ambient glow with high saturation from banner */}
                 <div
                   className={`absolute -inset-[30%] ${
-                    isDarkMode ? 'opacity-75 saturate-[340%] blur-[95px] brightness-110' : 'opacity-70 saturate-[320%] blur-[80px] brightness-105'
+                    isDarkMode ? 'opacity-75 saturate-[340%] blur-[95px] brightness-110' : 'opacity-85 saturate-[380%] blur-[75px] brightness-105'
                   } scale-150 transition-all duration-1000 ease-out`}
                   style={{
                     backgroundImage: `url(${bannerUrl})`,
@@ -1674,8 +1664,8 @@ export default function EventRequestCreate() {
 
                 {/* Layer 2: Nav Bar Spillage Orb (Top-Left wash that pours over top header & left sidebar) */}
                 <div
-                  className={`absolute -top-28 -left-28 w-[80vw] h-[70vh] ${
-                    isDarkMode ? 'opacity-70 saturate-[300%] blur-[80px]' : 'opacity-65 saturate-[280%] blur-[70px]'
+                  className={`absolute -top-32 -left-32 w-[90vw] h-[80vh] ${
+                    isDarkMode ? 'opacity-70 saturate-[300%] blur-[80px]' : 'opacity-85 saturate-[360%] blur-[65px] brightness-105'
                   } rounded-full transition-all duration-1000 ease-out`}
                   style={{
                     backgroundImage: `url(${bannerUrl})`,
@@ -1686,8 +1676,8 @@ export default function EventRequestCreate() {
 
                 {/* Layer 3: Focused radial bloom behind the banner artwork */}
                 <div
-                  className={`absolute top-1/6 left-1/5 w-[65vw] h-[65vh] ${
-                    isDarkMode ? 'opacity-60 saturate-[280%] blur-[80px]' : 'opacity-55 saturate-[260%] blur-[65px]'
+                  className={`absolute top-1/6 left-1/5 w-[70vw] h-[70vh] ${
+                    isDarkMode ? 'opacity-60 saturate-[280%] blur-[80px]' : 'opacity-75 saturate-[320%] blur-[55px] brightness-105'
                   } rounded-full transition-all duration-1000 ease-out`}
                   style={{
                     backgroundImage: `url(${bannerUrl})`,
@@ -1699,13 +1689,13 @@ export default function EventRequestCreate() {
             )}
 
             {/* Readability contrast scrim:
-                - Light mode: Fresh, luminous frosted glass veil letting banner hues flood across the viewport while maintaining crisp text
+                - Light mode: Ultra-clean luminous frosted veil letting banner's authentic hues (aqua, pink, gold) radiate brightly
                 - Dark mode: Deep, obsidian glow that gives strong neon aura without crushing into pure black */}
             <div
               className={`absolute inset-0 transition-all duration-700 ${
                 isDarkMode
                   ? 'bg-gradient-to-b from-[#08090d]/30 via-[#0a0b10]/45 to-[#08090d]/75 backdrop-blur-[24px]'
-                  : 'bg-gradient-to-b from-white/18 via-white/28 to-white/42 backdrop-blur-[20px]'
+                  : 'bg-gradient-to-b from-white/10 via-white/15 to-white/22 backdrop-blur-[14px]'
               }`}
             />
           </div>

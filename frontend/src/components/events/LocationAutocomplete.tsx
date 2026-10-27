@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Building2, Check, Loader2, MapPin, Sparkles, X } from 'lucide-react'
+import { AlertCircle, Building2, Loader2, MapPin, X } from 'lucide-react'
 import {
   searchLocations,
-  getInstantLocalSuggestions,
   type LocationSuggestion,
 } from '../../services/locationAutocompleteService'
 
@@ -21,22 +20,18 @@ const copy = {
   vi: {
     title: 'Địa điểm / Địa chỉ tổ chức sự kiện',
     badge: 'Tự do ngoài trường',
-    placeholder: 'Nhập tên tòa nhà hoặc địa chỉ (Ví dụ: Bitexco, Landmark 81, GEM Center...)',
-    useCustom: 'Sử dụng địa chỉ vừa nhập:',
-    customBadge: 'Tự gõ',
-    popularBadge: 'Nổi bật',
-    noResults: 'Không tìm thấy địa điểm phù hợp. Bạn có thể tự do gõ bất kỳ địa chỉ nào.',
-    quickPick: 'Địa điểm phổ biến gợi ý:',
+    placeholder: 'Nhập địa chỉ hoặc tên địa điểm tổ chức...',
+    rateLimitWarning: 'Bạn đã thực hiện quá nhiều thao tác tìm kiếm địa chỉ. Vui lòng thử lại sau.',
+    fallbackNotice: 'Hạn mức tra cứu tự động hôm nay đã đạt giới hạn. Bạn có thể tự do nhập tay địa chỉ bình thường.',
+    minCharsNotice: 'Gõ từ 3 ký tự trở lên để xem gợi ý tự động',
   },
   en: {
     title: 'Event Venue & Physical Address',
     badge: 'Independent Venue',
-    placeholder: 'Enter venue name or address (e.g., Bitexco, Landmark 81, GEM Center...)',
-    useCustom: 'Use custom address:',
-    customBadge: 'Custom',
-    popularBadge: 'Popular',
-    noResults: 'No exact matches found. You can keep typing any custom address.',
-    quickPick: 'Suggested venues:',
+    placeholder: 'Enter venue name or address...',
+    rateLimitWarning: 'Too many search requests. Please try again later.',
+    fallbackNotice: 'Automatic lookup quota reached for today. You can freely type your address manually.',
+    minCharsNotice: 'Type at least 3 characters for autocomplete suggestions',
   },
 }
 
@@ -53,18 +48,20 @@ export default function LocationAutocomplete({
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null)
+  const [isFallbackMode, setIsFallbackMode] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Keep internal query synchronized if parent form values change externally
+  // Keep query in sync if parent updates location externally
   useEffect(() => {
     const parentVal = location || venueName || ''
-    if (parentVal && parentVal !== query) {
+    if (parentVal !== query && !isOpen) {
       setQuery(parentVal)
     }
   }, [location, venueName])
 
-  // Handle outside click to close dropdown smoothly
+  // Handle outside click to close dropdown cleanly
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -75,60 +72,91 @@ export default function LocationAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Input change handler: Immediate 0ms local match + debounced remote search
+  // Input change handler: saves text directly to form state
   const handleInputChange = (val: string) => {
     setQuery(val)
     onVenueNameChange(val)
     onLocationChange(val)
+    setRateLimitError(null)
 
     const trimmed = val.trim()
-    if (!trimmed) {
+    // Do NOT show suggestions or call API if less than 3 characters
+    if (trimmed.length < 3) {
       setSuggestions([])
+      setIsOpen(false)
       setIsLoading(false)
-      return
     }
-
-    // 1. Instant 0ms local lookup so Bitexco, Landmark, GEM... show immediately
-    const instantMatches = getInstantLocalSuggestions(trimmed)
-    setSuggestions(instantMatches)
-    setIsOpen(true)
   }
 
-  // Remote search debounced effect
+  // Mandatory Debounce (400ms) and Min-length (>= 3 chars) API calling
   useEffect(() => {
     const trimmed = query.trim()
-    if (!trimmed || !isOpen) {
+
+    // 1. Min-length requirement: < 3 chars -> Never trigger API
+    if (trimmed.length < 3) {
+      setSuggestions([])
+      setIsOpen(false)
       setIsLoading(false)
       return
     }
 
+    // 2. If already switched to manual fallback mode, don't spam API
+    if (isFallbackMode) {
+      return
+    }
+
+    // 3. Debounce: 400ms delay after user stops typing
     const controller = new AbortController()
+    setIsLoading(true)
+
     const timer = setTimeout(async () => {
       try {
-        setIsLoading(true)
-        const remoteResults = await searchLocations(trimmed, language, controller.signal)
-        if (!controller.signal.aborted && remoteResults.length > 0) {
-          setSuggestions(remoteResults)
+        const result = await searchLocations(trimmed, controller.signal)
+        if (controller.signal.aborted) return
+
+        if (result.rateLimited) {
+          setRateLimitError(result.message || t.rateLimitWarning)
+          setSuggestions([])
+          setIsOpen(false)
+          return
+        }
+
+        if (result.fallback) {
+          setIsFallbackMode(true)
+          setSuggestions([])
+          setIsOpen(false)
+          return
+        }
+
+        if (result.suggestions && result.suggestions.length > 0) {
+          setSuggestions(result.suggestions)
+          setIsOpen(true)
+        } else {
+          setSuggestions([])
+          setIsOpen(false)
         }
       } catch {
-        // Handled silently
+        // Fallback gracefully on any unexpected network exception
+        setSuggestions([])
+        setIsOpen(false)
       } finally {
         if (!controller.signal.aborted) {
           setIsLoading(false)
         }
       }
-    }, 280)
+    }, 400) // 400ms debounce
 
     return () => {
       controller.abort()
       clearTimeout(timer)
     }
-  }, [query, isOpen, language])
+  }, [query, isFallbackMode, t.rateLimitWarning])
 
-  const handleSelect = (s: LocationSuggestion) => {
+  const handleSelectSuggestion = (s: LocationSuggestion) => {
     setQuery(s.address)
     onVenueNameChange(s.name)
     onLocationChange(s.address)
+    setSuggestions([])
     setIsOpen(false)
   }
 
@@ -138,18 +166,8 @@ export default function LocationAutocomplete({
     onLocationChange('')
     setSuggestions([])
     setIsOpen(false)
+    setRateLimitError(null)
     inputRef.current?.focus()
-  }
-
-  const handleFocus = () => {
-    setIsOpen(true)
-    const trimmed = query.trim()
-    if (trimmed) {
-      setSuggestions(getInstantLocalSuggestions(trimmed))
-    } else {
-      // Show top 5 recommended locations when empty
-      setSuggestions(getInstantLocalSuggestions('bitexco').concat(getInstantLocalSuggestions('landmark')).slice(0, 5))
-    }
   }
 
   return (
@@ -157,11 +175,11 @@ export default function LocationAutocomplete({
       ref={containerRef}
       className={`relative backdrop-blur-md border rounded-xl p-3 flex flex-col gap-2 transition-all ${
         isDarkMode
-          ? 'bg-white/[0.04] border-white/[0.09] shadow-lg shadow-black/20'
+          ? 'bg-white/[0.04] border-white/[0.09]'
           : 'bg-white/85 border-neutral-200/90 shadow-sm'
       }`}
     >
-      {/* Header bar with venue icon and status */}
+      {/* Title & Organization Type Badge */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />
@@ -178,13 +196,12 @@ export default function LocationAutocomplete({
         </span>
       </div>
 
-      {/* Main interactive search input */}
+      {/* Main text input field (allows seamless manual typing without friction) */}
       <div className="relative flex items-center">
         <input
           ref={inputRef}
           type="text"
           value={query}
-          onFocus={handleFocus}
           onChange={(e) => handleInputChange(e.target.value)}
           placeholder={t.placeholder}
           className={`w-full border rounded-xl py-2.5 pl-3 pr-16 text-xs font-semibold focus:outline-none transition-all ${
@@ -194,7 +211,7 @@ export default function LocationAutocomplete({
           }`}
         />
 
-        {/* Right action icons (Loading spinner & Clear button) */}
+        {/* Action icons */}
         <div className="absolute right-2.5 flex items-center gap-1.5">
           {isLoading && (
             <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
@@ -214,99 +231,51 @@ export default function LocationAutocomplete({
         </div>
       </div>
 
-      {/* Selected location feedback bar */}
-      {(location || venueName) && !isOpen && (
-        <div
-          className={`text-[10px] font-medium p-2 rounded-lg leading-relaxed border flex items-start gap-1.5 ${
-            isDarkMode
-              ? 'text-neutral-300 bg-white/[0.02] border-white/[0.05]'
-              : 'text-neutral-700 bg-neutral-50 border-neutral-200'
-          }`}
-        >
-          <Building2 className="w-3 h-3 text-orange-400 shrink-0 mt-0.5" />
-          <div className="min-w-0 flex-1 truncate">
-            {venueName && <span className="font-bold text-orange-500 mr-1.5">{venueName}:</span>}
-            <span>{location || venueName}</span>
-          </div>
+      {/* Rate limit warning message (Displayed if user triggers 24h block or rate limit) */}
+      {rateLimitError && (
+        <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-500 animate-fadeIn">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          <span className="text-[10px] font-medium leading-normal">{rateLimitError}</span>
         </div>
       )}
 
-      {/* Floating Suggestions Dropdown */}
-      {isOpen && (
+      {/* Daily quota fallback notice */}
+      {isFallbackMode && (
+        <p className={`text-[10px] font-medium leading-normal ${isDarkMode ? 'text-amber-400/80' : 'text-amber-700'}`}>
+          💡 {t.fallbackNotice}
+        </p>
+      )}
+
+      {/* Floating Suggestions Dropdown (Only appears when user has typed >= 3 chars and valid suggestions exist) */}
+      {isOpen && suggestions.length > 0 && (
         <div
           className={`absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border shadow-2xl overflow-hidden backdrop-blur-xl animate-fadeIn ${
             isDarkMode
-              ? 'bg-[#18181b]/95 border-white/12 text-white shadow-black/60'
-              : 'bg-white/98 border-neutral-200 text-neutral-900 shadow-neutral-900/15'
+              ? 'bg-[#18181b]/98 border-white/12 text-white shadow-black/70'
+              : 'bg-white/98 border-neutral-200 text-neutral-900 shadow-neutral-900/20'
           }`}
         >
-          <div className="max-h-64 overflow-y-auto py-1 divide-y divide-neutral-100 dark:divide-white/[0.05]">
-            {/* Top custom query option */}
-            {query.trim().length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  onVenueNameChange(query.trim())
-                  onLocationChange(query.trim())
-                  setIsOpen(false)
-                }}
-                className={`w-full text-left px-3.5 py-2.5 flex items-start gap-2.5 transition cursor-pointer ${
-                  isDarkMode ? 'hover:bg-white/[0.08]' : 'hover:bg-orange-50/60'
-                }`}
-              >
-                <MapPin className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-orange-500 truncate">
-                      {t.useCustom} &quot;{query.trim()}&quot;
-                    </span>
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-orange-500/10 text-orange-500 border border-orange-500/20">
-                      {t.customBadge}
-                    </span>
-                  </div>
-                  <p className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                    Lưu trực tiếp địa chỉ này vào sự kiện của bạn
-                  </p>
-                </div>
-                <Check className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
-              </button>
-            )}
-
-            {/* List of matched suggestions */}
+          <div className="max-h-56 overflow-y-auto py-1 divide-y divide-neutral-100 dark:divide-white/[0.05]">
             {suggestions.map((item) => (
               <button
                 key={item.id}
                 type="button"
-                onClick={() => handleSelect(item)}
+                onClick={() => handleSelectSuggestion(item)}
                 className={`w-full text-left px-3.5 py-2.5 flex items-start gap-2.5 transition cursor-pointer ${
-                  isDarkMode ? 'hover:bg-white/[0.06]' : 'hover:bg-neutral-50'
+                  isDarkMode ? 'hover:bg-white/[0.08]' : 'hover:bg-orange-50/60'
                 }`}
               >
                 <div className="p-1 rounded-md bg-orange-500/10 text-orange-500 shrink-0 mt-0.5">
                   <Building2 className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs font-bold truncate">{item.name}</p>
-                    {item.isPopular && (
-                      <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-0.5">
-                        <Sparkles className="w-2.5 h-2.5" /> {t.popularBadge}
-                      </span>
-                    )}
-                  </div>
+                  <p className="text-xs font-bold truncate text-orange-500">{item.name}</p>
                   <p className={`text-[10px] leading-relaxed truncate mt-0.5 ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
                     {item.address}
                   </p>
                 </div>
               </button>
             ))}
-
-            {/* Empty state when no matches found */}
-            {suggestions.length === 0 && query.trim().length > 0 && !isLoading && (
-              <div className={`p-4 text-center ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                <p className="text-xs">{t.noResults}</p>
-              </div>
-            )}
           </div>
         </div>
       )}
