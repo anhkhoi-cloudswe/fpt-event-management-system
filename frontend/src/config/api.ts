@@ -132,7 +132,17 @@ api.interceptors.response.use(
 			if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/api/auth/refresh') || originalRequest._retry) {
 				accessToken = null
 				if (!isBackground) {
-					window.location.href = '/guest'
+					const path = window.location.pathname
+					const isAllowedUnauthPage =
+						path.startsWith('/guest') ||
+						path.startsWith('/login') ||
+						path.startsWith('/signup') ||
+						path.startsWith('/reset-password') ||
+						path.startsWith('/attendance') ||
+						path.startsWith('/events')
+					if (!isAllowedUnauthPage) {
+						window.location.href = '/guest'
+					}
 				}
 				return Promise.reject(error)
 			}
@@ -147,7 +157,17 @@ api.interceptors.response.use(
 				.catch((refreshError) => {
 					if (!isBackground) {
 						window.dispatchEvent(new CustomEvent('auth:session-expired'))
-						window.location.href = '/guest'
+						const path = window.location.pathname
+						const isAllowedUnauthPage =
+							path.startsWith('/guest') ||
+							path.startsWith('/login') ||
+							path.startsWith('/signup') ||
+							path.startsWith('/reset-password') ||
+							path.startsWith('/attendance') ||
+							path.startsWith('/events')
+						if (!isAllowedUnauthPage) {
+							window.location.href = '/guest'
+						}
 					}
 					return Promise.reject(refreshError)
 				})

@@ -16,7 +16,9 @@ import {
   Lock,
   LogIn,
 } from 'lucide-react'
-import { api } from '../config/api'
+import axios from 'axios'
+import { useGoogleLogin } from '@react-oauth/google'
+import { api, API_BASE_URL, setInMemoryToken } from '../config/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import fptLogo from '../assets/fpt-logo.png'
@@ -65,8 +67,9 @@ const RATING_OPTIONS = [
 export default function AttendanceConfirm() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { user, isAuthenticated, loading: authLoading, isRefreshing, currentLanguage } = useAuth()
+  const { user, setUser, setToken, refreshUser, isAuthenticated, loading: authLoading, isRefreshing, currentLanguage } = useAuth()
   const { showToast } = useToast()
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   const [lang, setLang] = useState<'vi' | 'en'>(currentLanguage === 'en' ? 'en' : 'vi')
   const eventId = Number(params.get('eventId') || 0)
@@ -95,16 +98,43 @@ export default function AttendanceConfirm() {
     }
   }, [currentLanguage])
 
-  // Redirect to login if user is not logged in on this device/browser
-  useEffect(() => {
-    if (!authLoading && !isRefreshing && !isAuthenticated) {
-      const redirectTarget = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
-      const timer = setTimeout(() => {
-        navigate(redirectTarget, { replace: true })
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [authLoading, isRefreshing, isAuthenticated, navigate])
+  // In-place Google OAuth login without full page reload or bouncing away
+  const googleLogin = useGoogleLogin({
+    flow: 'auth-code',
+    onSuccess: async (codeResponse) => {
+      setGoogleLoading(true)
+      try {
+        const response = await axios.post(`${API_BASE_URL}/auth/google/callback`, {
+          code: codeResponse.code,
+        }, {
+          withCredentials: true,
+        })
+
+        if (response.data && response.data.status === 'success') {
+          const { user: authedUser, accessToken } = response.data
+          if (accessToken) {
+            setInMemoryToken(accessToken)
+          }
+          setUser(authedUser)
+          setToken(null)
+          await refreshUser()
+          showToast('success', lang === 'en' ? 'Signed in successfully!' : 'Đăng nhập thành công! Hãy hoàn thành khảo sát.')
+        } else {
+          showToast('error', response.data?.message || (lang === 'en' ? 'Google Login failed' : 'Đăng nhập Google thất bại'))
+        }
+      } catch (err: any) {
+        console.error('Google callback error:', err)
+        const srvMsg = err.response?.data?.message || err.response?.data?.error
+        showToast('error', srvMsg || (lang === 'en' ? 'Authentication failed. Please try again.' : 'Không thể xác thực Google. Vui lòng thử lại.'))
+      } finally {
+        setGoogleLoading(false)
+      }
+    },
+    onError: (err) => {
+      console.error('Google Sign-In Error:', err)
+      showToast('error', lang === 'en' ? 'Google Sign-In cancelled or failed.' : 'Đăng nhập Google bị hủy hoặc thất bại.')
+    },
+  })
 
   // Extract student code from email (e.g. SE170123 from anhttse170123@fpt.edu.vn)
   const studentCode = useMemo(() => {
@@ -298,30 +328,70 @@ export default function AttendanceConfirm() {
 
         {/* Not Logged In State (Unauthenticated on mobile browser) */}
         {!authLoading && !isRefreshing && !isAuthenticated && (
-          <div className="p-8 text-center rounded-3xl bg-white dark:bg-neutral-900 border border-orange-200 dark:border-orange-500/20 shadow-xl space-y-4 animate-in fade-in duration-300">
-            <div className="w-16 h-16 rounded-full bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center mx-auto text-orange-600">
+          <div className="p-7 sm:p-10 text-center rounded-3xl bg-white dark:bg-neutral-900 border border-orange-200 dark:border-orange-500/20 shadow-2xl max-w-lg mx-auto space-y-6 animate-in fade-in duration-300">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-500/10 to-amber-500/20 flex items-center justify-center mx-auto text-orange-600 border border-orange-500/20 shadow-inner">
               <LogIn className="w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-              {lang === 'en' ? 'Login Required' : 'Yêu Cầu Đăng Nhập'}
-            </h2>
-            <p className="text-sm text-slate-600 dark:text-neutral-400 max-w-md mx-auto leading-relaxed">
-              {lang === 'en'
-                ? 'Please log in with your FPT student account (@fpt.edu.vn) to check out and submit your feedback. Redirecting to login...'
-                : 'Vui lòng đăng nhập bằng tài khoản sinh viên FPT (@fpt.edu.vn) để xác nhận điểm danh check-out và gửi đánh giá sự kiện. Đang chuyển hướng sang trang đăng nhập...'}
-            </p>
-            <div className="pt-2">
+
+            <div>
+              <span className="inline-block px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wide bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-500/20 mb-2">
+                {lang === 'en' ? 'Attendee Authentication' : 'Xác thực Sinh viên'}
+              </span>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+                {lang === 'en' ? 'Check-out & Survey Access' : 'Điểm Danh Check-out & Đánh Giá'}
+              </h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-neutral-400 leading-relaxed">
+                {lang === 'en'
+                  ? 'Please authenticate with your FPT student email (@fpt.edu.vn) to record your attendance and submit feedback.'
+                  : 'Vui lòng xác thực bằng tài khoản sinh viên FPT (@fpt.edu.vn) để hệ thống ghi nhận MSSV và hoàn tất thủ tục điểm danh.'}
+              </p>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-3">
+              {/* One-tap Google Login in-place */}
               <button
                 type="button"
-                onClick={() => {
-                  const redirectTarget = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
-                  navigate(redirectTarget, { replace: true })
-                }}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white text-sm font-bold transition-all shadow-md shadow-orange-500/20 cursor-pointer active:scale-95"
+                onClick={() => googleLogin()}
+                disabled={googleLoading}
+                className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-extrabold text-sm sm:text-base transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center gap-3 cursor-pointer active:scale-98 disabled:opacity-60"
               >
-                <LogIn className="w-4 h-4" />
-                {lang === 'en' ? 'Log in Now' : 'Đăng nhập ngay'}
+                {googleLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>{lang === 'en' ? 'Signing in with Google...' : 'Đang xác thực Google...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path
+                        fill="#FFFFFF"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#FFFFFF"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FFFFFF"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      />
+                      <path
+                        fill="#FFFFFF"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      />
+                    </svg>
+                    <span>{lang === 'en' ? 'Sign in with Google FPT' : 'Đăng nhập nhanh với Google FPT'}</span>
+                  </>
+                )}
               </button>
+
+              {/* Password login link fallback */}
+              <Link
+                to={`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                className="py-2.5 px-4 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-neutral-400 dark:hover:text-white transition-colors"
+              >
+                {lang === 'en' ? 'Or sign in with email & password →' : 'Hoặc đăng nhập bằng Email & Mật khẩu →'}
+              </Link>
             </div>
           </div>
         )}

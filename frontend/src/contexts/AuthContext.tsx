@@ -15,6 +15,7 @@ const isPublicRoutePath = (pathname: string) => {
     pathname === '/organizer-policy' ||
     pathname === '/payment-success' ||
     pathname === '/payment-failed' ||
+    pathname.startsWith('/attendance') ||
     /^\/events\/[^/]+\/page$/.test(pathname)
 }
 
