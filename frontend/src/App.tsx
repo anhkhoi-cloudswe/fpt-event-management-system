@@ -299,7 +299,7 @@ function AppRoutes() {
       <Route path="/events/:id/payment" element={<PublicEventPayment />} />
       <Route path="/invite/:token" element={<PublicEventPage />} />
       <Route path="/invite/:token/payment" element={<PublicEventPayment />} />
-      <Route path="/attendance/confirm" element={<ProtectedRoute><AttendanceConfirm /></ProtectedRoute>} />
+      <Route path="/attendance/confirm" element={<AttendanceConfirm />} />
       <Route path="/dashboard/events/:id/page" element={<DashboardEventPageRedirect />} />
       <Route path="/organizer/subscription" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<OrganizerSubscriptionPage />} />

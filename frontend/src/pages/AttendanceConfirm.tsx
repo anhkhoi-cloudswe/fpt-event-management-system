@@ -14,6 +14,7 @@ import {
   Frown,
   Calendar,
   Lock,
+  LogIn,
 } from 'lucide-react'
 import { api } from '../config/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -64,7 +65,7 @@ const RATING_OPTIONS = [
 export default function AttendanceConfirm() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { user, currentLanguage } = useAuth()
+  const { user, isAuthenticated, loading: authLoading, isRefreshing, currentLanguage } = useAuth()
   const { showToast } = useToast()
 
   const [lang, setLang] = useState<'vi' | 'en'>(currentLanguage === 'en' ? 'en' : 'vi')
@@ -94,6 +95,17 @@ export default function AttendanceConfirm() {
     }
   }, [currentLanguage])
 
+  // Redirect to login if user is not logged in on this device/browser
+  useEffect(() => {
+    if (!authLoading && !isRefreshing && !isAuthenticated) {
+      const redirectTarget = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
+      const timer = setTimeout(() => {
+        navigate(redirectTarget, { replace: true })
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [authLoading, isRefreshing, isAuthenticated, navigate])
+
   // Extract student code from email (e.g. SE170123 from anhttse170123@fpt.edu.vn)
   const studentCode = useMemo(() => {
     const email = user?.email || statusData?.userEmail || ''
@@ -108,6 +120,11 @@ export default function AttendanceConfirm() {
     if (!eventId) {
       setStatusLoading(false)
       setStatusError(lang === 'en' ? 'Missing or invalid event ID.' : 'Mã sự kiện không hợp lệ.')
+      return
+    }
+
+    if (!isAuthenticated) {
+      setStatusLoading(false)
       return
     }
 
@@ -143,7 +160,7 @@ export default function AttendanceConfirm() {
     }
 
     fetchStatus()
-  }, [eventId, lang])
+  }, [eventId, isAuthenticated, lang])
 
   const formatDateTime = (value?: string) => {
     if (!value) return ''
@@ -269,8 +286,48 @@ export default function AttendanceConfirm() {
 
       {/* Main Form Content */}
       <main className="w-full max-w-3xl mx-auto px-4 py-8 flex-1">
+        {/* Auth Loading / Refreshing State */}
+        {(authLoading || isRefreshing) && (
+          <div className="p-12 text-center rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+            <p className="text-sm font-semibold text-slate-600 dark:text-neutral-400">
+              {lang === 'en' ? 'Checking your account session...' : 'Đang kiểm tra tài khoản người dùng...'}
+            </p>
+          </div>
+        )}
+
+        {/* Not Logged In State (Unauthenticated on mobile browser) */}
+        {!authLoading && !isRefreshing && !isAuthenticated && (
+          <div className="p-8 text-center rounded-3xl bg-white dark:bg-neutral-900 border border-orange-200 dark:border-orange-500/20 shadow-xl space-y-4 animate-in fade-in duration-300">
+            <div className="w-16 h-16 rounded-full bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center mx-auto text-orange-600">
+              <LogIn className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+              {lang === 'en' ? 'Login Required' : 'Yêu Cầu Đăng Nhập'}
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-neutral-400 max-w-md mx-auto leading-relaxed">
+              {lang === 'en'
+                ? 'Please log in with your FPT student account (@fpt.edu.vn) to check out and submit your feedback. Redirecting to login...'
+                : 'Vui lòng đăng nhập bằng tài khoản sinh viên FPT (@fpt.edu.vn) để xác nhận điểm danh check-out và gửi đánh giá sự kiện. Đang chuyển hướng sang trang đăng nhập...'}
+            </p>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const redirectTarget = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
+                  navigate(redirectTarget, { replace: true })
+                }}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white text-sm font-bold transition-all shadow-md shadow-orange-500/20 cursor-pointer active:scale-95"
+              >
+                <LogIn className="w-4 h-4" />
+                {lang === 'en' ? 'Log in Now' : 'Đăng nhập ngay'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Loading State */}
-        {statusLoading && (
+        {isAuthenticated && statusLoading && (
           <div className="p-12 text-center rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
             <p className="text-sm font-semibold text-slate-600 dark:text-neutral-400">
@@ -280,7 +337,7 @@ export default function AttendanceConfirm() {
         )}
 
         {/* Global Error Banner */}
-        {!statusLoading && statusError && (
+        {isAuthenticated && !statusLoading && statusError && (
           <div className="p-6 rounded-3xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 text-rose-800 dark:text-rose-300 flex items-start gap-3.5 shadow-sm">
             <AlertCircle className="w-6 h-6 flex-shrink-0 mt-0.5 text-rose-600" />
             <div>
@@ -307,7 +364,7 @@ export default function AttendanceConfirm() {
         )}
 
         {/* Form Closed Notification (> 1 hour after event) */}
-        {!statusLoading && !statusError && statusData?.isClosed && !result && (
+        {isAuthenticated && !statusLoading && !statusError && statusData?.isClosed && !result && (
           <div className="p-8 text-center rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/10 shadow-sm space-y-4">
             <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center mx-auto text-slate-400">
               <Lock className="w-8 h-8" />
@@ -333,7 +390,7 @@ export default function AttendanceConfirm() {
         )}
 
         {/* Form Not Open Yet */}
-        {!statusLoading && !statusError && !statusData?.isOpen && !statusData?.isClosed && !result && (
+        {isAuthenticated && !statusLoading && !statusError && !statusData?.isOpen && !statusData?.isClosed && !result && (
           <div className="p-8 text-center rounded-3xl bg-white dark:bg-neutral-900 border border-amber-200 dark:border-amber-500/20 shadow-sm space-y-4">
             <div className="w-16 h-16 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center mx-auto text-amber-500">
               <Clock className="w-8 h-8" />
@@ -355,7 +412,7 @@ export default function AttendanceConfirm() {
         )}
 
         {/* Success / Already Done Screen */}
-        {!statusLoading && result && (
+        {isAuthenticated && !statusLoading && result && (
           <div className="p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-emerald-200 dark:border-emerald-500/30 shadow-xl shadow-emerald-500/5 text-center space-y-5 animate-in zoom-in-95 duration-200">
             <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
               <CheckCircle2 className="w-9 h-9" />
@@ -411,7 +468,7 @@ export default function AttendanceConfirm() {
         )}
 
         {/* Open Form for Checkout & Feedback */}
-        {!statusLoading && !statusError && statusData?.isOpen && !result && (
+        {isAuthenticated && !statusLoading && !statusError && statusData?.isOpen && !result && (
           <form onSubmit={handleSubmit} className="space-y-6">
             
             {/* Header Title Card */}
