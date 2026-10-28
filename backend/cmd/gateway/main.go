@@ -99,6 +99,7 @@ var routes = []Route{
 	{"/api/registrations/", "Ticket"},
 	{"/api/tickets/", "Ticket"},
 	{"/api/category-tickets", "Ticket"},
+	{"/api/attendance", "Ticket"},
 	{"/api/bills/", "Ticket"},
 	{"/api/payment", "Ticket"},
 	{"/api/buyTicket", "Ticket"},

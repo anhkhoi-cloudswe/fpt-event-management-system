@@ -125,7 +125,7 @@ func (h *TicketHandler) HandleConfirmAttendance(ctx context.Context, request eve
 		return createMessageResponse(http.StatusBadRequest, "eventId is required")
 	}
 
-	result, err := h.useCase.ConfirmAttendance(ctx, userID, req.EventID, req.Action)
+	result, err := h.useCase.ConfirmAttendance(ctx, userID, req)
 	if err != nil {
 		message := err.Error()
 		statusCode := http.StatusBadRequest
@@ -137,6 +137,71 @@ func (h *TicketHandler) HandleConfirmAttendance(ctx context.Context, request eve
 	}
 
 	return createJSONResponse(http.StatusOK, result)
+}
+
+func (h *TicketHandler) HandleCheckinOnline(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	ctx = utils.WithRequestHeaders(ctx, request.Headers)
+
+	userIDStr := extractUserIDFromHeaders(request.Headers)
+	if userIDStr == "" {
+		return createMessageResponse(http.StatusUnauthorized, "Unauthorized: missing userId")
+	}
+
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid userId")
+	}
+
+	var req models.AttendanceCheckinOnlineRequest
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid request body")
+	}
+	if req.EventID <= 0 {
+		return createMessageResponse(http.StatusBadRequest, "eventId is required")
+	}
+
+	result, err := h.useCase.CheckinOnline(ctx, userID, req.EventID)
+	if err != nil {
+		message := err.Error()
+		statusCode := http.StatusBadRequest
+		if strings.Contains(message, "no eligible ticket") {
+			statusCode = http.StatusForbidden
+		}
+		log.Warn("HandleCheckinOnline - userID=%d eventID=%d error=%v", userID, req.EventID, err)
+		return createMessageResponse(statusCode, message)
+	}
+
+	return createJSONResponse(http.StatusOK, result)
+}
+
+func (h *TicketHandler) HandleGetAttendanceStatus(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	ctx = utils.WithRequestHeaders(ctx, request.Headers)
+
+	userIDStr := extractUserIDFromHeaders(request.Headers)
+	if userIDStr == "" {
+		return createMessageResponse(http.StatusUnauthorized, "Unauthorized: missing userId")
+	}
+
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		return createMessageResponse(http.StatusBadRequest, "Invalid userId")
+	}
+
+	eventIDStr := request.QueryStringParameters["eventId"]
+	if eventIDStr == "" {
+		return createMessageResponse(http.StatusBadRequest, "eventId is required")
+	}
+	eventID, err := strconv.Atoi(eventIDStr)
+	if err != nil || eventID <= 0 {
+		return createMessageResponse(http.StatusBadRequest, "invalid eventId")
+	}
+
+	status, err := h.useCase.GetAttendanceStatus(ctx, userID, eventID)
+	if err != nil {
+		return createMessageResponse(http.StatusBadRequest, err.Error())
+	}
+
+	return createJSONResponse(http.StatusOK, status)
 }
 
 // HandleGetTicketList - GET /api/tickets/list?eventId=

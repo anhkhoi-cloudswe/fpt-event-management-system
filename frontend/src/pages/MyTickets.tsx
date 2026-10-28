@@ -17,10 +17,13 @@ import {
   FileX,                // Icon hủy vé
   Search,               // Icon search
   Filter,               // Icon filter
+  Video,                // Icon phòng họp online
 } from 'lucide-react'
 
 // Import component modal hủy vé
 import CancelTicketModal from '../components/common/CancelTicketModal'
+import { useToast } from '../contexts/ToastContext'
+import { api } from '../config/api'
 
 // Import format ngày giờ từ date-fns
 import { format } from 'date-fns'
@@ -80,12 +83,22 @@ type MyTicket = {
   // ticketCode: QR code dạng base64 PNG image (data:image/png;base64,...) BE trả về từ qr_code_value
   ticketCode?: string | null // Base64 PNG from backend qr_code_value column
 
+  eventFormat?: string | null
+  onlineMeetingUrl?: string | null
+
   // Các trường check-in / check-out:
   checkedIn?: boolean
   checkInTime?: string | null // BE đang dùng
   checkinTime?: string | null // fallback nếu BE viết khác
   checkOutTime?: string | null // Thời gian check-out
   checkoutTime?: string | null // fallback
+}
+
+const isOnlineTicket = (ticket: MyTicket) => {
+  const format = (ticket.eventFormat || '').toUpperCase()
+  const seat = (ticket.seatCode || ticket.seatNumber || '').toUpperCase()
+  const venue = (ticket.venueName || ticket.location || '').toUpperCase()
+  return format === 'ONLINE' || seat === 'ONLINE' || venue.includes('ZOOM') || venue.includes('GOOGLE MEET') || venue.includes('TRỰC TUYẾN') || (!ticket.seatCode && !ticket.seatNumber && format !== 'ONSITE')
 }
 
 // Response type từ backend pagination
@@ -106,6 +119,7 @@ type PaginatedTicketsResponse = {
  */
 export default function MyTickets() {
   const { currentLanguage } = useAuth()
+  const { showToast } = useToast()
   // URL params management
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -369,6 +383,26 @@ export default function MyTickets() {
           return next
         })
       }
+    }
+  }
+
+  // Tự động check-in và mở phòng họp online
+  const handleJoinOnlineMeeting = async (ticket: MyTicket) => {
+    const meetingUrl = ticket.onlineMeetingUrl
+    const eventId = ticket.eventId
+    if (eventId) {
+      try {
+        await api.post('/attendance/checkin-online', { eventId })
+        showToast('success', currentLanguage === 'en' ? 'Checked in online successfully!' : 'Đã ghi nhận check-in trực tuyến!')
+        fetchTickets(currentPage, searchQuery, statusFilter)
+      } catch (err) {
+        console.warn('Online checkin notice:', err)
+      }
+    }
+    if (meetingUrl) {
+      window.open(meetingUrl, '_blank', 'noopener,noreferrer')
+    } else {
+      showToast('error', currentLanguage === 'en' ? 'Meeting URL not found' : 'Không tìm thấy đường link phòng họp')
     }
   }
 
@@ -667,13 +701,24 @@ export default function MyTickets() {
 
                   {/* Tear-off Ticket Footer / Action Panel */}
                   <div className="px-6 pb-6 pt-4 border-t-2 border-dashed border-slate-200/80 dark:border-slate-800 mt-2 relative">
-                    <div className="flex gap-3">
-                      {/* Action Button: Báo cáo lỗi (Only for CHECKED_IN events with seat issues) */}
-                      {!hasExistingReport && status === 'CHECKED_IN' && (
+                    <div className="flex flex-wrap gap-2.5">
+                      {/* Action Button: Vào phòng họp online (tự động check-in) */}
+                      {isOnlineTicket(t) && t.onlineMeetingUrl && (status === 'BOOKED' || status === 'CHECKED_IN') && (
+                        <button
+                          type="button"
+                          onClick={() => handleJoinOnlineMeeting(t)}
+                          className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all duration-300 shadow-sm hover:shadow hover:scale-[1.02] active:scale-95"
+                        >
+                          <Video className="w-4 h-4" /> {currentLanguage === 'en' ? 'Join Meeting' : 'Vào phòng họp'}
+                        </button>
+                      )}
+
+                      {/* Action Button: Báo cáo lỗi (Chỉ hiển thị cho vé offline có ghế ngồi vật lý) */}
+                      {!hasExistingReport && status === 'CHECKED_IN' && !isOnlineTicket(t) && (
                         <button
                           type="button"
                           onClick={() => setCancelTicket(t)}
-                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all duration-300 shadow-sm hover:shadow hover:scale-[1.02] active:scale-95"
+                          className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all duration-300 shadow-sm hover:shadow hover:scale-[1.02] active:scale-95"
                         >
                           <FileX className="w-4 h-4" /> {currentLanguage === 'en' ? 'Report Issue' : 'Báo Cáo Lỗi'}
                         </button>
@@ -683,8 +728,7 @@ export default function MyTickets() {
                       <button
                         type="button"
                         onClick={() => setQrTicket(t)}
-                        className={`${!hasExistingReport && status === 'CHECKED_IN' ? 'flex-1' : 'w-full'
-                          } inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 rounded-xl hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 hover:scale-[1.02] active:scale-95`}
+                        className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 rounded-xl hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 hover:scale-[1.02] active:scale-95"
                       >
                         <TicketIcon className="w-4 h-4" /> {currentLanguage === 'en' ? 'View QR Ticket' : 'Xem vé QR'}
                       </button>

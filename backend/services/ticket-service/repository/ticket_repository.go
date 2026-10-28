@@ -64,9 +64,35 @@ type TicketRepository struct {
 // NewTicketRepositoryWithDB creates a new ticket repository with explicit DB connection (DI)
 // All DB connections must be injected from main.go - no singleton db.GetDB() allowed
 func NewTicketRepositoryWithDB(dbConn *sql.DB) *TicketRepository {
-	return &TicketRepository{
+	repo := &TicketRepository{
 		db: dbConn,
 	}
+	repo.initSchema()
+	return repo
+}
+
+func (r *TicketRepository) initSchema() {
+	if r.db == nil {
+		return
+	}
+	schema := `
+	CREATE TABLE IF NOT EXISTS event_feedback (
+		feedback_id SERIAL PRIMARY KEY,
+		event_id INT NOT NULL,
+		user_id INT NOT NULL,
+		ticket_id INT,
+		content_rating VARCHAR(50) NOT NULL DEFAULT '',
+		speaker_rating VARCHAR(50) NOT NULL DEFAULT '',
+		organization_rating VARCHAR(50) NOT NULL DEFAULT '',
+		is_satisfied BOOLEAN NOT NULL DEFAULT TRUE,
+		experience_notes TEXT DEFAULT '',
+		suggestions TEXT DEFAULT '',
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+		CONSTRAINT uq_event_feedback_user UNIQUE (event_id, user_id)
+	);
+	CREATE INDEX IF NOT EXISTS idx_event_feedback_event_id ON event_feedback(event_id);
+	`
+	_, _ = r.db.Exec(schema)
 }
 
 // ============================================================
@@ -89,7 +115,10 @@ func (r *TicketRepository) GetTicketsByUserID(ctx context.Context, userID int) (
 			s.seat_code,
 			u.full_name AS buyer_name,
 			e.start_time AS purchase_date,
-			e.banner_url
+			e.banner_url,
+			t.event_id,
+			e.event_format,
+			e.online_meeting_url
 		FROM Ticket t
 		LEFT JOIN Event e ON t.event_id = e.event_id
 		LEFT JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
@@ -111,18 +140,21 @@ func (r *TicketRepository) GetTicketsByUserID(ctx context.Context, userID int) (
 	for rows.Next() {
 		var ticket models.MyTicketResponse
 		var (
-			ticketCode    sql.NullString
-			eventName     sql.NullString
-			venueName     sql.NullString
-			startTime     sql.NullTime
-			checkinTime   sql.NullTime
-			checkoutTime  sql.NullTime
-			category      sql.NullString
-			categoryPrice sql.NullFloat64
-			seatCode      sql.NullString
-			buyerName     sql.NullString
-			purchaseDate  sql.NullTime
-			bannerURL     sql.NullString
+			ticketCode       sql.NullString
+			eventName        sql.NullString
+			venueName        sql.NullString
+			startTime        sql.NullTime
+			checkinTime      sql.NullTime
+			checkoutTime     sql.NullTime
+			category         sql.NullString
+			categoryPrice    sql.NullFloat64
+			seatCode         sql.NullString
+			buyerName        sql.NullString
+			purchaseDate     sql.NullTime
+			bannerURL        sql.NullString
+			eventID          sql.NullInt64
+			eventFormat      sql.NullString
+			onlineMeetingURL sql.NullString
 		)
 
 		err := rows.Scan(
@@ -140,6 +172,9 @@ func (r *TicketRepository) GetTicketsByUserID(ctx context.Context, userID int) (
 			&buyerName,
 			&purchaseDate,
 			&bannerURL,
+			&eventID,
+			&eventFormat,
+			&onlineMeetingURL,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan ticket: %w", err)
@@ -180,6 +215,15 @@ func (r *TicketRepository) GetTicketsByUserID(ctx context.Context, userID int) (
 		}
 		if bannerURL.Valid {
 			ticket.BannerURL = &bannerURL.String
+		}
+		if eventID.Valid {
+			ticket.EventID = int(eventID.Int64)
+		}
+		if eventFormat.Valid {
+			ticket.EventFormat = &eventFormat.String
+		}
+		if onlineMeetingURL.Valid {
+			ticket.OnlineMeetingURL = &onlineMeetingURL.String
 		}
 
 		tickets = append(tickets, ticket)
@@ -247,7 +291,10 @@ func (r *TicketRepository) GetTicketsByUserIDPaginated(ctx context.Context, user
 			s.seat_code,
 			u.full_name AS buyer_name,
 			e.start_time AS purchase_date,
-			e.banner_url
+			e.banner_url,
+			t.event_id,
+			e.event_format,
+			e.online_meeting_url
 		FROM Ticket t
 		LEFT JOIN Event e ON t.event_id = e.event_id
 		LEFT JOIN Category_Ticket ct ON t.category_ticket_id = ct.category_ticket_id
@@ -271,18 +318,21 @@ func (r *TicketRepository) GetTicketsByUserIDPaginated(ctx context.Context, user
 	for rows.Next() {
 		var ticket models.MyTicketResponse
 		var (
-			ticketCode    sql.NullString
-			eventName     sql.NullString
-			venueName     sql.NullString
-			startTime     sql.NullTime
-			checkinTime   sql.NullTime
-			checkoutTime  sql.NullTime
-			category      sql.NullString
-			categoryPrice sql.NullFloat64
-			seatCode      sql.NullString
-			buyerName     sql.NullString
-			purchaseDate  sql.NullTime
-			bannerURL     sql.NullString
+			ticketCode       sql.NullString
+			eventName        sql.NullString
+			venueName        sql.NullString
+			startTime        sql.NullTime
+			checkinTime      sql.NullTime
+			checkoutTime     sql.NullTime
+			category         sql.NullString
+			categoryPrice    sql.NullFloat64
+			seatCode         sql.NullString
+			buyerName        sql.NullString
+			purchaseDate     sql.NullTime
+			bannerURL        sql.NullString
+			eventID          sql.NullInt64
+			eventFormat      sql.NullString
+			onlineMeetingURL sql.NullString
 		)
 
 		err := rows.Scan(
@@ -300,6 +350,9 @@ func (r *TicketRepository) GetTicketsByUserIDPaginated(ctx context.Context, user
 			&buyerName,
 			&purchaseDate,
 			&bannerURL,
+			&eventID,
+			&eventFormat,
+			&onlineMeetingURL,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan ticket: %w", err)
@@ -340,6 +393,15 @@ func (r *TicketRepository) GetTicketsByUserIDPaginated(ctx context.Context, user
 		}
 		if bannerURL.Valid {
 			ticket.BannerURL = &bannerURL.String
+		}
+		if eventID.Valid {
+			ticket.EventID = int(eventID.Int64)
+		}
+		if eventFormat.Valid {
+			ticket.EventFormat = &eventFormat.String
+		}
+		if onlineMeetingURL.Valid {
+			ticket.OnlineMeetingURL = &onlineMeetingURL.String
 		}
 
 		tickets = append(tickets, ticket)
@@ -2243,14 +2305,14 @@ func (r *TicketRepository) GetUserWalletBalance(ctx context.Context, userID int)
 	return balance, nil
 }
 
-// ConfirmAttendance lets a registered user confirm end-of-session attendance from an event-level QR code.
-func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventID int, action string) (*models.AttendanceConfirmResponse, error) {
-	normalizedAction := strings.ToUpper(strings.TrimSpace(action))
+// ConfirmAttendance lets a registered user confirm end-of-session attendance from an event-level QR code and submit feedback.
+func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventID int, req models.AttendanceConfirmRequest) (*models.AttendanceConfirmResponse, error) {
+	normalizedAction := strings.ToUpper(strings.TrimSpace(req.Action))
 	if normalizedAction == "" {
 		normalizedAction = "CHECKOUT"
 	}
 	if normalizedAction != "CHECKOUT" {
-		return nil, fmt.Errorf("unsupported attendance action: %s", action)
+		return nil, fmt.Errorf("unsupported attendance action: %s", req.Action)
 	}
 
 	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{})
@@ -2303,15 +2365,45 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 		return nil, err
 	}
 
-	format := strings.ToUpper(strings.TrimSpace(eventFormat.String))
-	if format == "" {
-		format = "ONSITE"
+	// Time window check:
+	now := time.Now()
+	offsetMinutes := config.GetEffectiveCheckoutOffset(checkoutOffset)
+	allowedAt := endTime.Add(-time.Duration(offsetMinutes) * time.Minute)
+	if now.Before(allowedAt) {
+		return nil, fmt.Errorf("cổng điểm danh và đánh giá chưa mở (mở trước khi kết thúc %d phút)", offsetMinutes)
 	}
-	if format == "ONSITE" {
-		return nil, fmt.Errorf("attendance QR is only available for online or hybrid events")
+	closedAt := endTime.Add(1 * time.Hour)
+	if now.After(closedAt) {
+		return nil, fmt.Errorf("cổng điểm danh và đánh giá sự kiện đã đóng (kết thúc sau 1 tiếng kể từ khi sự kiện kết thúc)")
 	}
 
+	// If already checked out, still save feedback if provided, then return already done
 	if status == "CHECKED_OUT" {
+		if req.ContentRating != "" || req.SpeakerRating != "" || req.OrganizationRating != "" || req.ExperienceNotes != "" || req.Suggestions != "" {
+			isSat := true
+			if req.IsSatisfied != nil {
+				isSat = *req.IsSatisfied
+			}
+			feedbackQuery := `
+				INSERT INTO event_feedback (
+					event_id, user_id, ticket_id, 
+					content_rating, speaker_rating, organization_rating, 
+					is_satisfied, experience_notes, suggestions
+				) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+				ON CONFLICT (event_id, user_id) DO UPDATE SET
+					content_rating = EXCLUDED.content_rating,
+					speaker_rating = EXCLUDED.speaker_rating,
+					organization_rating = EXCLUDED.organization_rating,
+					is_satisfied = EXCLUDED.is_satisfied,
+					experience_notes = EXCLUDED.experience_notes,
+					suggestions = EXCLUDED.suggestions,
+					created_at = NOW()`
+			_, _ = tx.ExecContext(ctx, feedbackQuery,
+				eventID, userID, ticketID,
+				req.ContentRating, req.SpeakerRating, req.OrganizationRating,
+				isSat, req.ExperienceNotes, req.Suggestions,
+			)
+		}
 		return &models.AttendanceConfirmResponse{
 			TicketID:     ticketID,
 			EventID:      eventID,
@@ -2325,13 +2417,6 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 		}, tx.Commit()
 	}
 
-	now := time.Now()
-	offsetMinutes := config.GetEffectiveCheckoutOffset(checkoutOffset)
-	allowedAt := endTime.Add(-time.Duration(offsetMinutes) * time.Minute)
-	if now.Before(allowedAt) {
-		return nil, fmt.Errorf("attendance confirmation is not open yet")
-	}
-
 	updateQuery := `
 		UPDATE Ticket
 		SET status = 'CHECKED_OUT',
@@ -2342,6 +2427,36 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 		RETURNING checkin_time, check_out_time`
 	if err := tx.QueryRowContext(ctx, updateQuery, ticketID).Scan(&checkInTime, &checkOutTime); err != nil {
 		return nil, err
+	}
+
+	// Insert or update feedback
+	if req.ContentRating != "" || req.SpeakerRating != "" || req.OrganizationRating != "" || req.ExperienceNotes != "" || req.Suggestions != "" {
+		isSat := true
+		if req.IsSatisfied != nil {
+			isSat = *req.IsSatisfied
+		}
+		feedbackQuery := `
+			INSERT INTO event_feedback (
+				event_id, user_id, ticket_id, 
+				content_rating, speaker_rating, organization_rating, 
+				is_satisfied, experience_notes, suggestions
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			ON CONFLICT (event_id, user_id) DO UPDATE SET
+				content_rating = EXCLUDED.content_rating,
+				speaker_rating = EXCLUDED.speaker_rating,
+				organization_rating = EXCLUDED.organization_rating,
+				is_satisfied = EXCLUDED.is_satisfied,
+				experience_notes = EXCLUDED.experience_notes,
+				suggestions = EXCLUDED.suggestions,
+				created_at = NOW()`
+		_, err = tx.ExecContext(ctx, feedbackQuery,
+			eventID, userID, ticketID,
+			req.ContentRating, req.SpeakerRating, req.OrganizationRating,
+			isSat, req.ExperienceNotes, req.Suggestions,
+		)
+		if err != nil {
+			logger.Default().Warn("Failed to insert event feedback: %v", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -2357,8 +2472,142 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 		AlreadyDone:  false,
 		CheckInTime:  nullTimePtr(checkInTime),
 		CheckOutTime: nullTimePtr(checkOutTime),
-		Message:      "Attendance confirmed",
+		Message:      "Attendance confirmed and feedback submitted",
 	}, nil
+}
+
+// CheckinOnline records automatic check-in when user enters online meeting
+func (r *TicketRepository) CheckinOnline(ctx context.Context, userID, eventID int) (*models.AttendanceConfirmResponse, error) {
+	var ticketID int
+	var status string
+	var checkInTime sql.NullTime
+	var eventName string
+
+	query := `
+		SELECT t.ticket_id, t.status, t.checkin_time, e.title
+		FROM Ticket t
+		JOIN Event e ON e.event_id = t.event_id
+		WHERE t.user_id = $1 AND t.event_id = $2
+			AND t.status IN ('BOOKED', 'CHECKED_IN', 'CHECKED_OUT')
+		ORDER BY t.ticket_id ASC
+		LIMIT 1`
+	err := r.db.QueryRowContext(ctx, query, userID, eventID).Scan(&ticketID, &status, &checkInTime, &eventName)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no eligible ticket found for this event")
+		}
+		return nil, err
+	}
+
+	if status == "BOOKED" {
+		now := time.Now()
+		_, err := r.db.ExecContext(ctx, `
+			UPDATE Ticket
+			SET status = 'CHECKED_IN', checkin_time = COALESCE(checkin_time, $1)
+			WHERE ticket_id = $2 AND status = 'BOOKED'`,
+			now, ticketID,
+		)
+		if err != nil {
+			return nil, err
+		}
+		return &models.AttendanceConfirmResponse{
+			TicketID:    ticketID,
+			EventID:     eventID,
+			EventName:   eventName,
+			Status:      "CHECKED_IN",
+			Action:      "CHECKIN",
+			AlreadyDone: false,
+			CheckInTime: &now,
+			Message:     "Online check-in recorded successfully",
+		}, nil
+	}
+
+	return &models.AttendanceConfirmResponse{
+		TicketID:    ticketID,
+		EventID:     eventID,
+		EventName:   eventName,
+		Status:      status,
+		Action:      "CHECKIN",
+		AlreadyDone: true,
+		CheckInTime: nullTimePtr(checkInTime),
+		Message:     "Already checked in",
+	}, nil
+}
+
+// GetAttendanceStatus returns the current event & user attendance status for the check-out page
+func (r *TicketRepository) GetAttendanceStatus(ctx context.Context, userID, eventID int) (*models.AttendanceStatusResponse, error) {
+	var (
+		title          string
+		eventFormat    sql.NullString
+		startTime      time.Time
+		endTime        time.Time
+		checkoutOffset sql.NullInt64
+	)
+	eventQuery := `SELECT title, event_format, start_time, end_time, checkout_offset FROM Event WHERE event_id = $1`
+	if err := r.db.QueryRowContext(ctx, eventQuery, eventID).Scan(&title, &eventFormat, &startTime, &endTime, &checkoutOffset); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("event not found")
+		}
+		return nil, err
+	}
+
+	offsetMinutes := config.GetEffectiveCheckoutOffset(checkoutOffset)
+	allowedAt := endTime.Add(-time.Duration(offsetMinutes) * time.Minute)
+	closedAt := endTime.Add(1 * time.Hour)
+	now := time.Now()
+
+	isOpen := now.After(allowedAt) && now.Before(closedAt)
+	isClosed := now.After(closedAt)
+
+	format := strings.ToUpper(strings.TrimSpace(eventFormat.String))
+	if format == "" {
+		format = "ONSITE"
+	}
+
+	resp := &models.AttendanceStatusResponse{
+		EventID:        eventID,
+		EventTitle:     title,
+		EventFormat:    format,
+		StartTime:      startTime,
+		EndTime:        endTime,
+		AllowedAt:      allowedAt,
+		ClosedAt:       closedAt,
+		IsOpen:         isOpen,
+		IsClosed:       isClosed,
+		CheckoutOffset: offsetMinutes,
+	}
+
+	var (
+		fullName string
+		email    string
+	)
+	_ = r.db.QueryRowContext(ctx, `SELECT COALESCE(full_name, ''), COALESCE(email, '') FROM Users WHERE user_id = $1`, userID).Scan(&fullName, &email)
+	resp.UserFullName = fullName
+	resp.UserEmail = email
+
+	var (
+		ticketID     int
+		status       string
+		checkInTime  sql.NullTime
+		checkOutTime sql.NullTime
+	)
+	ticketQuery := `SELECT ticket_id, status, checkin_time, check_out_time FROM Ticket WHERE user_id = $1 AND event_id = $2 AND status IN ('BOOKED', 'CHECKED_IN', 'CHECKED_OUT') ORDER BY ticket_id ASC LIMIT 1`
+	err := r.db.QueryRowContext(ctx, ticketQuery, userID, eventID).Scan(&ticketID, &status, &checkInTime, &checkOutTime)
+	if err == nil {
+		resp.TicketID = ticketID
+		resp.TicketStatus = status
+		resp.CheckInTime = nullTimePtr(checkInTime)
+		resp.CheckOutTime = nullTimePtr(checkOutTime)
+		if status == "CHECKED_OUT" {
+			resp.AlreadyDone = true
+		}
+	}
+
+	var feedbackExists bool
+	_ = r.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM event_feedback WHERE event_id = $1 AND user_id = $2)`, eventID, userID).Scan(&feedbackExists)
+	resp.FeedbackSubmitted = feedbackExists
+
+	return resp, nil
 }
 
 func nullTimePtr(value sql.NullTime) *time.Time {

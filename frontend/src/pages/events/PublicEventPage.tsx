@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Calendar, MapPin, Users, Lock } from 'lucide-react'
+import { Calendar, MapPin, Users, Lock, Video } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { api } from '../../config/api'
 import type { EventDetail } from '../../types/event'
 import { getCleanedLocationForMap } from '../../utils/location'
 
@@ -591,20 +592,40 @@ export default function PublicEventPage() {
                   {canViewCredentials ? (
                     <>
                       {event.onlineMeetingUrl && (
-                        <div className="space-y-1.5 pt-2 border-t border-white/10">
-                          <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide">
-                            {pageLanguage === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={event.onlineMeetingUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm font-semibold text-blue-400 hover:underline break-all"
-                            >
-                              {event.onlineMeetingUrl}
-                            </a>
+                        <div className="space-y-2 pt-2 border-t border-white/10">
+                          <div>
+                            <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide">
+                              {pageLanguage === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <a
+                                href={event.onlineMeetingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={async () => {
+                                  try {
+                                    await api.post('/attendance/checkin-online', { eventId })
+                                  } catch (e) {}
+                                }}
+                                className="text-sm font-semibold text-blue-400 hover:underline break-all"
+                              >
+                                {event.onlineMeetingUrl}
+                              </a>
+                            </div>
                           </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await api.post('/attendance/checkin-online', { eventId })
+                              } catch (e) {}
+                              window.open(event.onlineMeetingUrl, '_blank', 'noopener,noreferrer')
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm active:scale-95 cursor-pointer"
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                            {pageLanguage === 'en' ? 'Join Meeting Now (Auto Check-in)' : 'Vào phòng họp ngay (Tự động check-in)'}
+                          </button>
                         </div>
                       )}
 

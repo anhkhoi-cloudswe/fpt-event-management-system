@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Copy, ExternalLink, MapPin, Users, X, Lock, Edit } from 'lucide-react'
+import { Calendar, Copy, ExternalLink, MapPin, Users, X, Lock, Edit, QrCode, Video } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import { api } from '../../config/api'
 import type { EventDetail } from '../../types/event'
 import { getCleanedLocationForMap } from '../../utils/location'
+import EventCheckoutSlideModal from './EventCheckoutSlideModal'
 
 interface EventDetailModalProps {
   isOpen: boolean
@@ -186,6 +188,7 @@ export function EventDetailModal({
   const [isZoomed, setIsZoomed] = useState(false)
   const [isRegistered, setIsRegistered] = useState(false)
   const [checkingRegistration, setCheckingRegistration] = useState(false)
+  const [showCheckoutSlide, setShowCheckoutSlide] = useState(false)
 
   const lang: 'vi' | 'en' = currentLanguage === 'en' ? 'en' : 'vi'
   const text = {
@@ -517,16 +520,26 @@ export function EventDetailModal({
                           </p>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => closeThenNavigate(`/dashboard/events/${eventId}/edit`)}
-                        className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3.5 rounded-xl transition-all uppercase tracking-wide cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 active:scale-95"
-                      >
-                        <Edit className="w-4 h-4" />
-                        {detail?.status === 'UPDATING'
-                          ? (lang === 'en' ? 'Edit & Open Event' : 'Chỉnh sửa & Mở sự kiện')
-                          : (lang === 'en' ? 'Edit Event Details' : 'Chỉnh sửa sự kiện')}
-                      </button>
+                      <div className="flex flex-col gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowCheckoutSlide(true)}
+                          className="w-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-bold py-3.5 rounded-xl transition-all uppercase tracking-wide cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 active:scale-95 text-xs"
+                        >
+                          <QrCode className="w-4 h-4" />
+                          {lang === 'en' ? 'Project Check-out & Feedback QR' : 'Trình chiếu QR Check-out & Đánh giá'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => closeThenNavigate(`/dashboard/events/${eventId}/edit`)}
+                          className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-800 dark:text-neutral-200 font-bold py-3 rounded-xl transition-all uppercase tracking-wide cursor-pointer flex items-center justify-center gap-2 active:scale-95 text-xs"
+                        >
+                          <Edit className="w-4 h-4" />
+                          {detail?.status === 'UPDATING'
+                            ? (lang === 'en' ? 'Edit & Open Event' : 'Chỉnh sửa & Mở sự kiện')
+                            : (lang === 'en' ? 'Edit Event Details' : 'Chỉnh sửa sự kiện')}
+                        </button>
+                      </div>
                     </div>
                   ) : eventEnded ? (
                     <button
@@ -641,20 +654,40 @@ export function EventDetailModal({
                     {isOrganizerOfEvent || isRegistered || activeRole === 'ADMIN' ? (
                       <>
                         {detail.onlineMeetingUrl && (
-                          <div className="space-y-1.5 pt-2 border-t border-blue-200/50 dark:border-blue-500/20">
-                            <p className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">
-                              {lang === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <a
-                                href={detail.onlineMeetingUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline break-all"
-                              >
-                                {detail.onlineMeetingUrl}
-                              </a>
+                          <div className="space-y-2 pt-2 border-t border-blue-200/50 dark:border-blue-500/20">
+                            <div>
+                              <p className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">
+                                {lang === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <a
+                                  href={detail.onlineMeetingUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={async () => {
+                                    try {
+                                      await api.post('/attendance/checkin-online', { eventId })
+                                    } catch (e) {}
+                                  }}
+                                  className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline break-all"
+                                >
+                                  {detail.onlineMeetingUrl}
+                                </a>
+                              </div>
                             </div>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await api.post('/attendance/checkin-online', { eventId })
+                                } catch (e) {}
+                                window.open(detail.onlineMeetingUrl, '_blank', 'noopener,noreferrer')
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm active:scale-95 cursor-pointer"
+                            >
+                              <Video className="w-3.5 h-3.5" />
+                              {lang === 'en' ? 'Join Meeting Now (Auto Check-in)' : 'Vào phòng họp ngay (Tự động check-in)'}
+                            </button>
                           </div>
                         )}
 
@@ -752,6 +785,16 @@ export function EventDetailModal({
           </p>
         </div>
       )}
+
+      {/* Modal Trình chiếu QR Check-out & Feedback (Hình 2) */}
+      <EventCheckoutSlideModal
+        isOpen={showCheckoutSlide}
+        onClose={() => setShowCheckoutSlide(false)}
+        eventId={eventId}
+        eventTitle={detail?.title}
+        startTime={detail?.startTime}
+        endTime={detail?.endTime}
+      />
     </div>,
     document.body,
   )

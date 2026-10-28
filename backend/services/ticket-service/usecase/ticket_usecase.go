@@ -51,9 +51,17 @@ func (uc *TicketUseCase) GetTicketsByRole(ctx context.Context, role string, user
 	return uc.ticketRepo.GetTicketsByRole(ctx, role, userID, eventID, limit, offset)
 }
 
-// GetCategoryTickets - Lấy các loại vé của event
-func (uc *TicketUseCase) ConfirmAttendance(ctx context.Context, userID, eventID int, action string) (*models.AttendanceConfirmResponse, error) {
-	return uc.ticketRepo.ConfirmAttendance(ctx, userID, eventID, action)
+// ConfirmAttendance - Xác nhận điểm danh cuối giờ và gửi đánh giá
+func (uc *TicketUseCase) ConfirmAttendance(ctx context.Context, userID int, req models.AttendanceConfirmRequest) (*models.AttendanceConfirmResponse, error) {
+	return uc.ticketRepo.ConfirmAttendance(ctx, userID, req.EventID, req)
+}
+
+func (uc *TicketUseCase) CheckinOnline(ctx context.Context, userID, eventID int) (*models.AttendanceConfirmResponse, error) {
+	return uc.ticketRepo.CheckinOnline(ctx, userID, eventID)
+}
+
+func (uc *TicketUseCase) GetAttendanceStatus(ctx context.Context, userID, eventID int) (*models.AttendanceStatusResponse, error) {
+	return uc.ticketRepo.GetAttendanceStatus(ctx, userID, eventID)
 }
 
 func (uc *TicketUseCase) GetCategoryTickets(ctx context.Context, eventID int) ([]models.CategoryTicket, error) {

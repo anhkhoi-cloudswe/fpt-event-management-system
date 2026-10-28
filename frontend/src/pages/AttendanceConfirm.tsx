@@ -1,123 +1,626 @@
-import { useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { AlertCircle, CheckCircle2, Loader2, QrCode } from 'lucide-react'
+import { useEffect, useState, useMemo } from 'react'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import {
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Clock,
+  Send,
+  Ticket,
+  ChevronRight,
+  Globe,
+  Sparkles,
+  Smile,
+  Frown,
+  Calendar,
+  Lock,
+} from 'lucide-react'
 import { api } from '../config/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useToast } from '../contexts/ToastContext'
+import fptLogo from '../assets/fpt-logo.png'
 
-type AttendanceResponse = {
-  eventName?: string
-  status?: string
-  alreadyDone?: boolean
+type AttendanceStatusData = {
+  eventId: number
+  eventTitle: string
+  eventFormat: string
+  startTime: string
+  endTime: string
+  allowedAt: string
+  closedAt: string
+  isOpen: boolean
+  isClosed: boolean
+  checkoutOffset: number
+  ticketId?: number
+  ticketStatus?: string
+  alreadyDone: boolean
+  feedbackSubmitted: boolean
   checkInTime?: string
   checkOutTime?: string
-  message?: string
+  userFullName?: string
+  userEmail?: string
 }
 
-const formatTime = (value?: string) => {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+type AttendanceConfirmResponse = {
+  ticketId: number
+  eventId: number
+  eventName: string
+  status: string
+  action: string
+  alreadyDone: boolean
+  checkInTime?: string
+  checkOutTime?: string
+  message: string
 }
+
+const RATING_OPTIONS = [
+  { value: 'VERY_GOOD', labelVi: 'Rất tốt', labelEn: 'Very Good', color: 'text-emerald-500' },
+  { value: 'GOOD', labelVi: 'Tốt', labelEn: 'Good', color: 'text-blue-500' },
+  { value: 'AVERAGE', labelVi: 'Trung bình', labelEn: 'Average', color: 'text-amber-500' },
+  { value: 'POOR', labelVi: 'Kém', labelEn: 'Poor', color: 'text-orange-500' },
+  { value: 'VERY_POOR', labelVi: 'Rất kém', labelEn: 'Very Poor', color: 'text-rose-500' },
+]
 
 export default function AttendanceConfirm() {
   const [params] = useSearchParams()
-  const { user } = useAuth()
+  const navigate = useNavigate()
+  const { user, currentLanguage } = useAuth()
+  const { showToast } = useToast()
+
+  const [lang, setLang] = useState<'vi' | 'en'>(currentLanguage === 'en' ? 'en' : 'vi')
   const eventId = Number(params.get('eventId') || 0)
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<AttendanceResponse | null>(null)
-  const [error, setError] = useState('')
 
-  const canConfirm = useMemo(() => Number.isFinite(eventId) && eventId > 0, [eventId])
+  // Status & loading
+  const [statusLoading, setStatusLoading] = useState(true)
+  const [statusData, setStatusData] = useState<AttendanceStatusData | null>(null)
+  const [statusError, setStatusError] = useState<string | null>(null)
 
-  const confirmAttendance = async () => {
-    if (!canConfirm) {
-      setError('Ma QR khong hop le hoac thieu ma su kien.')
+  // Form states matching images 3, 4, 5
+  const [contentRating, setContentRating] = useState<string>('')
+  const [speakerRating, setSpeakerRating] = useState<string>('')
+  const [organizationRating, setOrganizationRating] = useState<string>('')
+  const [isSatisfied, setIsSatisfied] = useState<boolean | null>(null)
+  const [experienceNotes, setExperienceNotes] = useState<string>('')
+  const [suggestions, setSuggestions] = useState<string>('')
+
+  // Submit states
+  const [submitting, setSubmitting] = useState(false)
+  const [result, setResult] = useState<AttendanceConfirmResponse | null>(null)
+
+  // Sync lang with context
+  useEffect(() => {
+    if (currentLanguage === 'en' || currentLanguage === 'vi') {
+      setLang(currentLanguage)
+    }
+  }, [currentLanguage])
+
+  // Extract student code from email (e.g. SE170123 from anhttse170123@fpt.edu.vn)
+  const studentCode = useMemo(() => {
+    const email = user?.email || statusData?.userEmail || ''
+    const match = email.match(/([a-zA-Z]{2}\d{5,6})/i)
+    if (match) return match[1].toUpperCase()
+    const prefix = email.split('@')[0]
+    return prefix || 'SV-FPT'
+  }, [user, statusData])
+
+  // Fetch status on mount
+  useEffect(() => {
+    if (!eventId) {
+      setStatusLoading(false)
+      setStatusError(lang === 'en' ? 'Missing or invalid event ID.' : 'Mã sự kiện không hợp lệ.')
       return
     }
 
-    setLoading(true)
-    setError('')
-    setResult(null)
+    const fetchStatus = async () => {
+      setStatusLoading(true)
+      setStatusError(null)
+      try {
+        const res = await api.get<AttendanceStatusData>(`/attendance/status?eventId=${eventId}`)
+        setStatusData(res.data)
+        if (res.data.alreadyDone || res.data.feedbackSubmitted) {
+          setResult({
+            ticketId: res.data.ticketId || 0,
+            eventId: res.data.eventId,
+            eventName: res.data.eventTitle,
+            status: 'CHECKED_OUT',
+            action: 'CHECKOUT',
+            alreadyDone: true,
+            checkInTime: res.data.checkInTime,
+            checkOutTime: res.data.checkOutTime,
+            message: lang === 'en' ? 'Attendance already confirmed' : 'Đã xác nhận điểm danh trước đó',
+          })
+        }
+      } catch (err: any) {
+        console.error('Error fetching attendance status:', err)
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          (lang === 'en' ? 'Unable to load attendance status.' : 'Không thể tải trạng thái điểm danh.')
+        setStatusError(msg)
+      } finally {
+        setStatusLoading(false)
+      }
+    }
+
+    fetchStatus()
+  }, [eventId, lang])
+
+  const formatDateTime = (value?: string) => {
+    if (!value) return ''
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return ''
+    return date.toLocaleString(lang === 'en' ? 'en-US' : 'vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+  }
+
+  // Handle Form Submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Validation
+    if (!contentRating) {
+      showToast('warning', lang === 'en' ? 'Please rate the event content.' : 'Vui lòng đánh giá nội dung truyền đạt.')
+      return
+    }
+    if (!speakerRating) {
+      showToast('warning', lang === 'en' ? 'Please rate the speaker/guest quality.' : 'Vui lòng đánh giá chất lượng diễn giả/khách mời.')
+      return
+    }
+    if (!organizationRating) {
+      showToast('warning', lang === 'en' ? 'Please rate the organization quality.' : 'Vui lòng đánh giá công tác tổ chức sự kiện.')
+      return
+    }
+    if (isSatisfied === null) {
+      showToast('warning', lang === 'en' ? 'Please indicate overall satisfaction.' : 'Vui lòng chọn mức độ hài lòng chung.')
+      return
+    }
+    if (!experienceNotes.trim()) {
+      showToast('warning', lang === 'en' ? 'Please share your event experience.' : 'Vui lòng chia sẻ trải nghiệm về sự kiện.')
+      return
+    }
+
+    setSubmitting(true)
     try {
-      const response = await api.post<AttendanceResponse>('/attendance/confirm', {
+      const response = await api.post<AttendanceConfirmResponse>('/attendance/confirm', {
         eventId,
         action: 'CHECKOUT',
+        contentRating,
+        speakerRating,
+        organizationRating,
+        isSatisfied,
+        experienceNotes: experienceNotes.trim(),
+        suggestions: suggestions.trim(),
       })
+
       setResult(response.data)
+      showToast(
+        'success',
+        lang === 'en' ? 'Check-out & Feedback submitted successfully!' : 'Điểm danh Check-out & Gửi đánh giá thành công!'
+      )
     } catch (err: any) {
-      const message = err?.response?.data?.message || err?.response?.data?.error || 'Khong the xac nhan tham du. Vui long thu lai.'
-      setError(message)
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        (lang === 'en' ? 'Failed to confirm attendance. Please try again.' : 'Không thể xác nhận điểm danh. Vui lòng thử lại.')
+      showToast('error', message)
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-white flex items-center justify-center px-4 py-10">
-      <main className="w-full max-w-md rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-neutral-900 shadow-sm p-6">
-        <div className="flex items-start gap-3">
-          <div className="h-11 w-11 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 flex items-center justify-center">
-            <QrCode className="h-6 w-6" />
+    <div className="min-h-screen bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 flex flex-col justify-between">
+      {/* Top Navigation Bar */}
+      <header className="w-full border-b border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="max-w-4xl mx-auto px-4 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src={fptLogo} alt="FEMS Logo" className="h-9 w-auto object-contain" />
+            <div>
+              <span className="text-xs font-black uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" /> FEMS EVENT
+              </span>
+              <p className="text-[11px] text-slate-500 dark:text-neutral-400 font-medium">
+                {lang === 'en' ? 'Event Check-out & Feedback' : 'Điểm danh Check-out & Khảo sát ý kiến'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold">Xac nhan tham du su kien</h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-neutral-400">
-              Tai khoan: {user?.fullName || user?.email || 'Sinh vien'}
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 transition-all text-slate-700 dark:text-neutral-300"
+            >
+              <Globe className="w-3.5 h-3.5 text-orange-500" />
+              <span>{lang === 'vi' ? 'English' : 'Tiếng Việt'}</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Form Content */}
+      <main className="w-full max-w-3xl mx-auto px-4 py-8 flex-1">
+        {/* Loading State */}
+        {statusLoading && (
+          <div className="p-12 text-center rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+            <p className="text-sm font-semibold text-slate-600 dark:text-neutral-400">
+              {lang === 'en' ? 'Checking event attendance status...' : 'Đang kiểm tra thông tin điểm danh sự kiện...'}
             </p>
-          </div>
-        </div>
-
-        <div className="mt-6 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-4 text-sm">
-          <p className="font-semibold text-slate-800 dark:text-neutral-100">Ma su kien #{eventId || '--'}</p>
-          <p className="mt-1 text-slate-600 dark:text-neutral-400">
-            He thong chi xac nhan neu tai khoan nay da dang ky ve cho su kien.
-          </p>
-        </div>
-
-        {error && (
-          <div className="mt-5 flex gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
-            <AlertCircle className="h-5 w-5 flex-shrink-0" />
-            <p>{error}</p>
           </div>
         )}
 
-        {result && (
-          <div className="mt-5 flex gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100">
-            <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+        {/* Global Error Banner */}
+        {!statusLoading && statusError && (
+          <div className="p-6 rounded-3xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 text-rose-800 dark:text-rose-300 flex items-start gap-3.5 shadow-sm">
+            <AlertCircle className="w-6 h-6 flex-shrink-0 mt-0.5 text-rose-600" />
             <div>
-              <p className="font-semibold">
-                {result.alreadyDone ? 'Ban da xac nhan truoc do' : 'Xac nhan thanh cong'}
-              </p>
-              {result.eventName && <p className="mt-1">{result.eventName}</p>}
-              {result.checkOutTime && <p className="mt-1">Thoi gian: {formatTime(result.checkOutTime)}</p>}
+              <h2 className="text-base font-bold">
+                {lang === 'en' ? 'Attendance Notice' : 'Thông báo điểm danh'}
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed">{statusError}</p>
+              <div className="mt-4 flex items-center gap-3">
+                <Link
+                  to="/dashboard/my-tickets"
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                >
+                  {lang === 'en' ? 'View My Tickets' : 'Xem vé của tôi'}
+                </Link>
+                <Link
+                  to="/guest"
+                  className="px-4 py-2 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl text-xs font-bold hover:bg-rose-100/50 transition-all"
+                >
+                  {lang === 'en' ? 'Home' : 'Trang chủ'}
+                </Link>
+              </div>
             </div>
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={confirmAttendance}
-          disabled={loading || !canConfirm}
-          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-neutral-700"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-          Xac nhan tham du
-        </button>
+        {/* Form Closed Notification (> 1 hour after event) */}
+        {!statusLoading && !statusError && statusData?.isClosed && !result && (
+          <div className="p-8 text-center rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/10 shadow-sm space-y-4">
+            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center mx-auto text-slate-400">
+              <Lock className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+              {lang === 'en' ? 'Attendance Form Closed' : 'Cổng Điểm Danh Đã Đóng'}
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-neutral-400 max-w-md mx-auto leading-relaxed">
+              {lang === 'en'
+                ? 'The check-out and feedback portal automatically closes 1 hour after the event ends. Thank you for your interest!'
+                : 'Cổng điểm danh check-out và đánh giá sự kiện tự động đóng sau 1 tiếng kể từ khi sự kiện kết thúc. Cảm ơn bạn đã tham gia!'}
+            </p>
+            <div className="pt-2">
+              <Link
+                to="/dashboard/my-tickets"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition-all shadow-md"
+              >
+                <Ticket className="w-4 h-4" />
+                {lang === 'en' ? 'Return to My Tickets' : 'Quay lại vé của tôi'}
+              </Link>
+            </div>
+          </div>
+        )}
 
-        <Link
-          to="/dashboard/my-tickets"
-          className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/10 dark:text-neutral-200 dark:hover:bg-white/5"
-        >
-          Xem ve cua toi
-        </Link>
+        {/* Form Not Open Yet */}
+        {!statusLoading && !statusError && !statusData?.isOpen && !statusData?.isClosed && !result && (
+          <div className="p-8 text-center rounded-3xl bg-white dark:bg-neutral-900 border border-amber-200 dark:border-amber-500/20 shadow-sm space-y-4">
+            <div className="w-16 h-16 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center mx-auto text-amber-500">
+              <Clock className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+              {lang === 'en' ? 'Check-out Not Open Yet' : 'Cổng Điểm Danh Chưa Mở'}
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-neutral-400 max-w-md mx-auto leading-relaxed">
+              {lang === 'en'
+                ? `The check-out and feedback form will open ${statusData?.checkoutOffset || 15} minutes before the event ends. Please return at the end of the session!`
+                : `Cổng điểm danh và đánh giá sẽ mở trước khi sự kiện kết thúc ${statusData?.checkoutOffset || 15} phút. Bạn vui lòng quay lại vào cuối buổi sự kiện nhé!`}
+            </p>
+            {statusData?.allowedAt && (
+              <p className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 py-1.5 px-3 rounded-xl inline-block">
+                {lang === 'en' ? 'Opening Time:' : 'Thời gian mở:'} {formatDateTime(statusData.allowedAt)}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Success / Already Done Screen */}
+        {!statusLoading && result && (
+          <div className="p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-emerald-200 dark:border-emerald-500/30 shadow-xl shadow-emerald-500/5 text-center space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+
+            <div>
+              <span className="inline-block px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wide bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                {result.alreadyDone
+                  ? (lang === 'en' ? 'Already Confirmed' : 'Đã xác nhận trước đó')
+                  : (lang === 'en' ? 'Check-out Success' : 'Check-out thành công')}
+              </span>
+              <h1 className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                {lang === 'en' ? 'Thank You for Attending!' : 'Cảm Ơn Bạn Đã Tham Gia!'}
+              </h1>
+              <p className="mt-1 text-sm text-slate-600 dark:text-neutral-400 max-w-md mx-auto">
+                {result.eventName || statusData?.eventTitle}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-neutral-800/50 border border-slate-100 dark:border-white/5 text-xs text-left max-w-md mx-auto space-y-2">
+              <div className="flex justify-between items-center text-slate-600 dark:text-neutral-400">
+                <span>{lang === 'en' ? 'Participant:' : 'Người tham dự:'}</span>
+                <strong className="text-slate-900 dark:text-white">{user?.fullName || statusData?.userFullName || 'Sinh viên'}</strong>
+              </div>
+              <div className="flex justify-between items-center text-slate-600 dark:text-neutral-400">
+                <span>MSSV:</span>
+                <strong className="text-slate-900 dark:text-white font-mono">{studentCode}</strong>
+              </div>
+              {result.checkOutTime && (
+                <div className="flex justify-between items-center text-slate-600 dark:text-neutral-400">
+                  <span>{lang === 'en' ? 'Check-out Time:' : 'Thời gian Check-out:'}</span>
+                  <strong className="text-emerald-600 dark:text-emerald-400">{formatDateTime(result.checkOutTime)}</strong>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                to="/dashboard/my-tickets"
+                className="w-full sm:w-auto px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-orange-500/20 flex items-center justify-center gap-2"
+              >
+                <Ticket className="w-4 h-4" />
+                {lang === 'en' ? 'View My Tickets' : 'Xem vé của tôi'}
+              </Link>
+              <Link
+                to="/guest"
+                className="w-full sm:w-auto px-6 py-3 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-neutral-200 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-white/5 transition-all"
+              >
+                {lang === 'en' ? 'Return Home' : 'Về trang chủ'}
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Open Form for Checkout & Feedback */}
+        {!statusLoading && !statusError && statusData?.isOpen && !result && (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            
+            {/* Header Title Card */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 text-white shadow-xl shadow-orange-500/10">
+              <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/20 text-white inline-block">
+                {lang === 'en' ? 'EVENT CHECK-OUT & SURVEY' : 'ĐIỂM DANH CHECK-OUT & ĐÁNH GIÁ'}
+              </span>
+              <h1 className="mt-2 text-2xl sm:text-3xl font-black">
+                {statusData?.eventTitle || (lang === 'en' ? 'Event Check-out' : 'Xác nhận tham dự')}
+              </h1>
+              <p className="mt-2 text-xs sm:text-sm text-white/90 leading-relaxed max-w-xl">
+                {lang === 'en'
+                  ? 'Please complete this quick survey to confirm your check-out attendance and help organizers improve future events.'
+                  : 'Vui lòng hoàn thành phiếu khảo sát ngắn dưới đây để hệ thống ghi nhận bạn đã tham dự sự kiện đầy đủ và nhận điểm rèn luyện.'}
+              </p>
+            </div>
+
+            {/* Readonly Auto-filled Student Info (Cards 1, 2, 3 in Image 3) */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+              <h2 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-neutral-500 flex items-center gap-1.5">
+                <Ticket className="w-3.5 h-3.5 text-orange-500" />
+                {lang === 'en' ? 'ATTENDEE INFORMATION (AUTO-FILLED)' : 'THÔNG TIN NGƯỜI THAM DỰ (TỰ ĐỘNG NHẬN DIỆN)'}
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+                  <p className="text-[11px] text-slate-400 font-semibold">{lang === 'en' ? 'Full Name' : 'Họ và tên'}</p>
+                  <p className="mt-0.5 text-sm font-bold text-slate-800 dark:text-white truncate">
+                    {user?.fullName || statusData?.userFullName || 'Sinh viên'}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+                  <p className="text-[11px] text-slate-400 font-semibold">MSSV</p>
+                  <p className="mt-0.5 text-sm font-bold text-orange-600 dark:text-orange-400 font-mono">
+                    {studentCode}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+                  <p className="text-[11px] text-slate-400 font-semibold">Email</p>
+                  <p className="mt-0.5 text-xs font-bold text-slate-800 dark:text-white truncate">
+                    {user?.email || statusData?.userEmail || ''}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Question 1: Content Rating (Image 3) */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-3">
+              <label className="text-sm sm:text-base font-bold text-slate-900 dark:text-white block">
+                1. {lang === 'en' ? 'How do you rate the content delivered in the event?' : 'Bạn đánh giá thế nào về nội dung truyền đạt trong sự kiện?'} <span className="text-rose-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-1">
+                {RATING_OPTIONS.map((opt) => {
+                  const selected = contentRating === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setContentRating(opt.value)}
+                      className={`p-3 rounded-2xl border text-xs font-bold transition-all text-center flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                        selected
+                          ? 'border-orange-500 bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 shadow-sm'
+                          : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 text-slate-700 dark:text-neutral-300'
+                      }`}
+                    >
+                      <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${selected ? 'border-orange-500 bg-orange-500' : 'border-slate-300'}`}>
+                        {selected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span>{lang === 'en' ? opt.labelEn : opt.labelVi}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Question 2: Speaker Quality (Image 4) */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-3">
+              <label className="text-sm sm:text-base font-bold text-slate-900 dark:text-white block">
+                2. {lang === 'en' ? 'How do you rate the quality of speakers/guests?' : 'Bạn đánh giá thế nào về chất lượng của diễn giả/khách mời trong sự kiện?'} <span className="text-rose-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-1">
+                {RATING_OPTIONS.map((opt) => {
+                  const selected = speakerRating === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setSpeakerRating(opt.value)}
+                      className={`p-3 rounded-2xl border text-xs font-bold transition-all text-center flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                        selected
+                          ? 'border-orange-500 bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 shadow-sm'
+                          : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 text-slate-700 dark:text-neutral-300'
+                      }`}
+                    >
+                      <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${selected ? 'border-orange-500 bg-orange-500' : 'border-slate-300'}`}>
+                        {selected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span>{lang === 'en' ? opt.labelEn : opt.labelVi}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Question 3: Organization Quality (Image 4) */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-3">
+              <label className="text-sm sm:text-base font-bold text-slate-900 dark:text-white block">
+                3. {lang === 'en' ? 'How do you rate the event organization and setup?' : 'Bạn đánh giá thế nào về công tác tổ chức sự kiện?'} <span className="text-rose-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-1">
+                {RATING_OPTIONS.map((opt) => {
+                  const selected = organizationRating === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setOrganizationRating(opt.value)}
+                      className={`p-3 rounded-2xl border text-xs font-bold transition-all text-center flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                        selected
+                          ? 'border-orange-500 bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 shadow-sm'
+                          : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 text-slate-700 dark:text-neutral-300'
+                      }`}
+                    >
+                      <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${selected ? 'border-orange-500 bg-orange-500' : 'border-slate-300'}`}>
+                        {selected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span>{lang === 'en' ? opt.labelEn : opt.labelVi}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Question 4: Overall Satisfaction (Image 4 & 5) */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-3">
+              <label className="text-sm sm:text-base font-bold text-slate-900 dark:text-white block">
+                4. {lang === 'en' ? 'Overall, are you satisfied with the event?' : 'Nhìn chung, bạn có hài lòng về sự kiện không?'} <span className="text-rose-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsSatisfied(true)}
+                  className={`p-4 rounded-2xl border text-sm font-bold transition-all flex items-center justify-center gap-2.5 cursor-pointer active:scale-98 ${
+                    isSatisfied === true
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 shadow-sm'
+                      : 'border-slate-200 dark:border-white/10 hover:border-slate-300 text-slate-700 dark:text-neutral-300'
+                  }`}
+                >
+                  <Smile className="w-5 h-5 text-emerald-500" />
+                  <span>{lang === 'en' ? 'Satisfied' : 'Hài lòng'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsSatisfied(false)}
+                  className={`p-4 rounded-2xl border text-sm font-bold transition-all flex items-center justify-center gap-2.5 cursor-pointer active:scale-98 ${
+                    isSatisfied === false
+                      ? 'border-rose-500 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 shadow-sm'
+                      : 'border-slate-200 dark:border-white/10 hover:border-slate-300 text-slate-700 dark:text-neutral-300'
+                  }`}
+                >
+                  <Frown className="w-5 h-5 text-rose-500" />
+                  <span>{lang === 'en' ? 'Not Satisfied' : 'Không hài lòng'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Question 5: Experience Notes (Image 4 & 5) */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+              <label className="text-sm sm:text-base font-bold text-slate-900 dark:text-white block">
+                5. {lang === 'en' ? 'Your experience (e.g. What you liked most / least):' : 'Trải nghiệm của bạn về sự kiện (VD: Điều bạn thích nhất/ không thích nhất...):'} <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={experienceNotes}
+                onChange={(e) => setExperienceNotes(e.target.value)}
+                placeholder={
+                  lang === 'en'
+                    ? 'Share your thoughts, highlights, or memorable moments from the event...'
+                    : 'Hãy chia sẻ cảm nhận, khoảnh khắc đáng nhớ hoặc điều cần cải thiện...'
+                }
+                className="w-full p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-neutral-800/40 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none transition-all placeholder:text-slate-400"
+              />
+            </div>
+
+            {/* Question 6: Suggestions (Image 5) */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+              <label className="text-sm sm:text-base font-bold text-slate-900 dark:text-white block">
+                6. {lang === 'en' ? 'Suggestions, comments for future events (Optional):' : 'Đề xuất, góp ý của bạn về sự kiện (Nếu có):'}
+              </label>
+              <textarea
+                rows={2}
+                value={suggestions}
+                onChange={(e) => setSuggestions(e.target.value)}
+                placeholder={
+                  lang === 'en'
+                    ? 'Ideas for next topics, workshop formats, or activities...'
+                    : 'Gợi ý chủ đề tiếp theo, hình thức tổ chức hoặc hoạt động bạn mong đợi...'
+                }
+                className="w-full p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-neutral-800/40 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none transition-all placeholder:text-slate-400"
+              />
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-extrabold text-sm sm:text-base transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>{lang === 'en' ? 'Submitting Feedback & Check-out...' : 'Đang gửi đánh giá & hoàn tất check-out...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    <span>{lang === 'en' ? 'Submit Feedback & Confirm Check-out' : 'Gửi Đánh Giá & Hoàn Tất Check-out'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
       </main>
+
+      {/* Footer */}
+      <footer className="w-full border-t border-slate-200/60 dark:border-white/5 py-6 text-center text-xs text-slate-400 dark:text-neutral-500">
+        <p>© 2026 FPT Event Management System (FEMS) - All rights reserved.</p>
+      </footer>
     </div>
   )
 }

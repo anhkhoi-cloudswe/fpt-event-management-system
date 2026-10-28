@@ -12,18 +12,21 @@ type MyTicketResponse struct {
 	TicketID      int        `json:"ticketId"`
 	TicketCode    *string    `json:"ticketCode"` // qr_code_value
 	EventName     *string    `json:"eventName"`
-	VenueName     *string    `json:"venueName"`
-	StartTime     *time.Time `json:"startTime"`
-	Status        string     `json:"status"`
-	CheckInTime   *time.Time `json:"checkInTime"`
-	CheckOutTime  *time.Time `json:"checkOutTime"`
-	Category      *string    `json:"category"`
-	CategoryPrice *float64   `json:"categoryPrice"`
-	SeatCode      *string    `json:"seatCode"`
-	BuyerName     *string    `json:"buyerName"`
-	BuyerEmail    *string    `json:"buyerEmail"`
-	PurchaseDate  *time.Time `json:"purchaseDate"`
-	BannerURL     *string    `json:"bannerUrl"`
+	EventID          int        `json:"eventId"`
+	EventFormat      *string    `json:"eventFormat,omitempty"`
+	OnlineMeetingURL *string    `json:"onlineMeetingUrl,omitempty"`
+	VenueName        *string    `json:"venueName"`
+	StartTime        *time.Time `json:"startTime"`
+	Status           string     `json:"status"`
+	CheckInTime      *time.Time `json:"checkInTime"`
+	CheckOutTime     *time.Time `json:"checkOutTime"`
+	Category         *string    `json:"category"`
+	CategoryPrice    *float64   `json:"categoryPrice"`
+	SeatCode         *string    `json:"seatCode"`
+	BuyerName        *string    `json:"buyerName"`
+	BuyerEmail       *string    `json:"buyerEmail"`
+	PurchaseDate     *time.Time `json:"purchaseDate"`
+	BannerURL        *string    `json:"bannerUrl"`
 }
 
 // ============================================================
@@ -57,8 +60,18 @@ type Ticket struct {
 }
 
 type AttendanceConfirmRequest struct {
-	EventID int    `json:"eventId"`
-	Action  string `json:"action"`
+	EventID            int    `json:"eventId"`
+	Action             string `json:"action"`
+	ContentRating      string `json:"contentRating"`
+	SpeakerRating      string `json:"speakerRating"`
+	OrganizationRating string `json:"organizationRating"`
+	IsSatisfied        *bool  `json:"isSatisfied"`
+	ExperienceNotes    string `json:"experienceNotes"`
+	Suggestions        string `json:"suggestions"`
+}
+
+type AttendanceCheckinOnlineRequest struct {
+	EventID int `json:"eventId"`
 }
 
 type AttendanceConfirmResponse struct {
@@ -71,6 +84,27 @@ type AttendanceConfirmResponse struct {
 	CheckInTime  *time.Time `json:"checkInTime,omitempty"`
 	CheckOutTime *time.Time `json:"checkOutTime,omitempty"`
 	Message      string     `json:"message"`
+}
+
+type AttendanceStatusResponse struct {
+	EventID           int        `json:"eventId"`
+	EventTitle        string     `json:"eventTitle"`
+	EventFormat       string     `json:"eventFormat"`
+	StartTime         time.Time  `json:"startTime"`
+	EndTime           time.Time  `json:"endTime"`
+	AllowedAt         time.Time  `json:"allowedAt"`
+	ClosedAt          time.Time  `json:"closedAt"`
+	IsOpen            bool       `json:"isOpen"`
+	IsClosed          bool       `json:"isClosed"`
+	CheckoutOffset    int        `json:"checkoutOffset"`
+	TicketID          int        `json:"ticketId,omitempty"`
+	TicketStatus      string     `json:"ticketStatus,omitempty"`
+	AlreadyDone       bool       `json:"alreadyDone"`
+	FeedbackSubmitted bool       `json:"feedbackSubmitted"`
+	CheckInTime       *time.Time `json:"checkInTime,omitempty"`
+	CheckOutTime      *time.Time `json:"checkOutTime,omitempty"`
+	UserFullName      string     `json:"userFullName"`
+	UserEmail         string     `json:"userEmail"`
 }
 
 // ============================================================
