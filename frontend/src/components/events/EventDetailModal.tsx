@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Copy, ExternalLink, MapPin, Users, X } from 'lucide-react'
+import { Calendar, Copy, ExternalLink, MapPin, Users, X, Lock, Edit } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../contexts/AuthContext'
@@ -266,7 +266,8 @@ export function EventDetailModal({
   const eventPaymentPath = detail?.eventPaymentPath || `/events/${eventId}/payment`
   const eventFormat = (detail?.eventFormat || '').toUpperCase()
   const organizerId = detail?.organizerId ?? detail?.organizer_id
-  const canShowAttendanceQr = activeRole === 'ORGANIZER' && user?.id === organizerId && detail?.status === 'OPEN' && (eventFormat === 'ONLINE' || eventFormat === 'HYBRID')
+  const isOrganizerOfEvent = Boolean((activeRole === 'ORGANIZER' && user?.id === organizerId) || (user && organizerId && user.id === organizerId))
+  const canShowAttendanceQr = isOrganizerOfEvent && detail?.status === 'OPEN' && (eventFormat === 'ONLINE' || eventFormat === 'HYBRID')
   const attendanceUrl = `${window.location.origin}/attendance/confirm?eventId=${eventId}&action=checkout`
   const organizerName = detail?.organizerName || (organizerId ? `${text.organizerFallback} #${organizerId}` : text.organizerFallback)
   const organizerAvatar =
@@ -496,13 +497,67 @@ export function EventDetailModal({
                         </div>
                     ))}
                   </div>
-                  {eventClosed || eventEnded ? (
+                  {isOrganizerOfEvent ? (
+                    <div className="mt-6 space-y-3">
+                      <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 text-sm">
+                        <p className="font-bold flex items-center gap-1.5">
+                          <span>👑</span> {lang === 'en' ? 'You are the organizer of this event' : 'Bạn là ban tổ chức của sự kiện này'}
+                        </p>
+                        {detail?.status === 'UPDATING' ? (
+                          <p className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
+                            {lang === 'en'
+                              ? 'This event is currently in UPDATING status. Update details and publish to open registration.'
+                              : 'Sự kiện đang ở trạng thái Chờ cập nhật. Bạn có thể cập nhật thông tin để mở đăng ký vé cho sinh viên.'}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
+                            {lang === 'en'
+                              ? 'Organizers can manage and update details anytime.'
+                              : 'Bạn có thể chỉnh sửa thông tin sự kiện và vé bất cứ lúc nào.'}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => closeThenNavigate(`/dashboard/events/${eventId}/edit`)}
+                        className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3.5 rounded-xl transition-all uppercase tracking-wide cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 active:scale-95"
+                      >
+                        <Edit className="w-4 h-4" />
+                        {detail?.status === 'UPDATING'
+                          ? (lang === 'en' ? 'Edit & Open Event' : 'Chỉnh sửa & Mở sự kiện')
+                          : (lang === 'en' ? 'Edit Event Details' : 'Chỉnh sửa sự kiện')}
+                      </button>
+                    </div>
+                  ) : eventEnded ? (
                     <button
                       type="button"
                       disabled
                       className="w-full bg-slate-200 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 border border-slate-300 dark:border-neutral-700 font-bold py-3.5 rounded-xl mt-6 transition-all uppercase tracking-wide cursor-not-allowed"
                     >
                       {eventEnded ? text.ended : text.closed}
+                    </button>
+                  ) : detail?.status === 'UPDATING' ? (
+                    <div className="mt-6 text-center">
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold py-3.5 rounded-xl transition-all uppercase tracking-wide cursor-not-allowed text-xs"
+                      >
+                        {lang === 'en' ? 'Registration Opening Soon' : 'SẮP MỞ ĐĂNG KÝ (CHỜ CẬP NHẬT)'}
+                      </button>
+                      <p className="text-[11px] text-slate-500 dark:text-neutral-400 mt-2 font-medium">
+                        {lang === 'en'
+                          ? '* The organizer is updating event details. Registration will open soon.'
+                          : '* Ban tổ chức đang hoàn thiện thông tin sự kiện. Đăng ký vé sẽ sớm được mở.'}
+                      </p>
+                    </div>
+                  ) : eventClosed ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full bg-slate-200 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 border border-slate-300 dark:border-neutral-700 font-bold py-3.5 rounded-xl mt-6 transition-all uppercase tracking-wide cursor-not-allowed"
+                    >
+                      {text.closed}
                     </button>
                   ) : activeRole === 'STAFF' || activeRole === 'ADMIN' ? (
                     <div className="mt-6 text-center">
@@ -519,26 +574,11 @@ export function EventDetailModal({
                           : '* Vui lòng đăng nhập tài khoản Sinh viên để mua vé tham gia.'}
                       </p>
                     </div>
-                  ) : activeRole === 'ORGANIZER' && user?.id === organizerId ? (
-                    <div className="mt-6 text-center">
-                      <button
-                        type="button"
-                        disabled
-                        className="w-full bg-slate-100 dark:bg-neutral-900/50 text-slate-400 dark:text-neutral-500 border border-slate-200 dark:border-white/5 font-semibold py-3 rounded-xl transition-all uppercase tracking-wide cursor-not-allowed text-xs"
-                      >
-                        {lang === 'en' ? 'You are the organizer of this event' : 'Bạn là ban tổ chức của sự kiện này'}
-                      </button>
-                      <p className="text-[11px] text-slate-500 dark:text-neutral-400 mt-2 font-medium">
-                        {lang === 'en' 
-                          ? '* Organizers cannot register for their own events.' 
-                          : '* Bạn không thể tự đăng ký/đặt vé cho sự kiện do chính mình tạo.'}
-                      </p>
-                    </div>
                   ) : (
                     <button
                       type="button"
                       onClick={() => closeThenNavigate(eventPaymentPath)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-6 transition-all uppercase tracking-wide cursor-pointer"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-6 transition-all uppercase tracking-wide cursor-pointer shadow-lg shadow-blue-500/20 active:scale-95"
                     >
                       {text.register}
                     </button>
@@ -580,7 +620,7 @@ export function EventDetailModal({
                 </section>
               )}
 
-              {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (user?.id === organizerId || isRegistered) && (
+              {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (
                 <section className="space-y-3">
                   <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">
                     {lang === 'en' ? 'Online Meeting Info' : 'Thông tin phòng họp trực tuyến'}
@@ -598,43 +638,56 @@ export function EventDetailModal({
                       </div>
                     </div>
 
-                    {detail.onlineMeetingUrl && (
-                      <div className="space-y-1.5">
-                        <p className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">
-                          {lang === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <a
-                            href={detail.onlineMeetingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline break-all"
-                          >
-                            {detail.onlineMeetingUrl}
-                          </a>
-                        </div>
-                      </div>
-                    )}
+                    {isOrganizerOfEvent || isRegistered || activeRole === 'ADMIN' ? (
+                      <>
+                        {detail.onlineMeetingUrl && (
+                          <div className="space-y-1.5 pt-2 border-t border-blue-200/50 dark:border-blue-500/20">
+                            <p className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">
+                              {lang === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={detail.onlineMeetingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline break-all"
+                              >
+                                {detail.onlineMeetingUrl}
+                              </a>
+                            </div>
+                          </div>
+                        )}
 
-                    {detail.onlineMeetingId && (
-                      <div className="space-y-1">
-                        <p className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">
-                          Meeting ID
-                        </p>
-                        <p className="text-sm font-semibold text-slate-800 dark:text-neutral-200">
-                          {detail.onlineMeetingId}
-                        </p>
-                      </div>
-                    )}
+                        {detail.onlineMeetingId && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">
+                              Meeting ID
+                            </p>
+                            <p className="text-sm font-semibold text-slate-800 dark:text-neutral-200">
+                              {detail.onlineMeetingId}
+                            </p>
+                          </div>
+                        )}
 
-                    {detail.onlineMeetingSecret && (
-                      <div className="space-y-1">
-                        <p className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">
-                          {lang === 'en' ? 'Passcode' : 'Mật khẩu cuộc họp'}
-                        </p>
-                        <p className="text-sm font-semibold text-slate-800 dark:text-neutral-200 font-mono">
-                          {detail.onlineMeetingSecret}
-                        </p>
+                        {detail.onlineMeetingSecret && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">
+                              {lang === 'en' ? 'Passcode' : 'Mật khẩu cuộc họp'}
+                            </p>
+                            <p className="text-sm font-semibold text-slate-800 dark:text-neutral-200 font-mono">
+                              {detail.onlineMeetingSecret}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2.5">
+                        <Lock className="w-4 h-4 flex-shrink-0 text-amber-500" />
+                        <span>
+                          {lang === 'en'
+                            ? 'Online meeting details (Join link, Meeting ID & Passcode) are protected and will be sent via confirmation email immediately upon registration.'
+                            : 'Thông tin phòng họp trực tuyến (Link tham gia, ID & Mật khẩu) được bảo mật và sẽ được tự động gửi qua email xác nhận ngay sau khi bạn đăng ký vé thành công.'}
+                        </span>
                       </div>
                     )}
                   </div>

@@ -929,7 +929,8 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
-			e.created_by, u.full_name
+			e.created_by, u.full_name,
+			e.event_format, e.custom_venue_name, e.custom_location, e.online_meeting_url, e.org_type, e.privacy_status
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
@@ -962,6 +963,7 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 	for rows.Next() {
 		var item models.EventListItem
 		var description, bannerURL, areaName, floor, venueName, venueLoc, organizerName sql.NullString
+		var eventFormat, customVenueName, customLocation, onlineMeetingURL, orgType, privacyStatus sql.NullString
 		var areaID, createdBy sql.NullInt64
 		var startTime, endTime time.Time
 
@@ -970,6 +972,7 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 			&areaID, &areaName, &floor,
 			&venueName, &venueLoc,
 			&createdBy, &organizerName,
+			&eventFormat, &customVenueName, &customLocation, &onlineMeetingURL, &orgType, &privacyStatus,
 		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to scan event: %w", err)
@@ -1006,6 +1009,24 @@ func (r *EventRepository) GetAllEventsSeparated(ctx context.Context, role string
 		}
 		if organizerName.Valid {
 			item.OrganizerName = &organizerName.String
+		}
+		if eventFormat.Valid {
+			item.EventFormat = &eventFormat.String
+		}
+		if customVenueName.Valid {
+			item.CustomVenueName = &customVenueName.String
+		}
+		if customLocation.Valid {
+			item.CustomLocation = &customLocation.String
+		}
+		if onlineMeetingURL.Valid {
+			item.OnlineMeetingURL = &onlineMeetingURL.String
+		}
+		if orgType.Valid {
+			item.OrgType = &orgType.String
+		}
+		if privacyStatus.Valid {
+			item.PrivacyStatus = &privacyStatus.String
 		}
 
 		// Classify events into open vs closed/historical.
@@ -1056,7 +1077,8 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
-			e.created_by
+			e.created_by,
+			e.event_format, e.custom_venue_name, e.custom_location, e.online_meeting_url, e.org_type, e.privacy_status
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
@@ -1090,6 +1112,7 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 	for rows.Next() {
 		var item models.EventListItem
 		var description, bannerURL, areaName, floor, venueName, venueLoc sql.NullString
+		var eventFormat, customVenueName, customLocation, onlineMeetingURL, orgType, privacyStatus sql.NullString
 		var areaID, createdBy sql.NullInt64
 		var startTime, endTime time.Time
 
@@ -1098,6 +1121,7 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 			&areaID, &areaName, &floor,
 			&venueName, &venueLoc,
 			&createdBy,
+			&eventFormat, &customVenueName, &customLocation, &onlineMeetingURL, &orgType, &privacyStatus,
 		)
 		if err != nil {
 			return nil, nil, nil, 0, 0, 0, fmt.Errorf("failed to scan event: %w", err)
@@ -1131,6 +1155,24 @@ func (r *EventRepository) GetAllEventsSeparatedWithPagination(ctx context.Contex
 		}
 		if createdBy.Valid {
 			item.OrganizerID = pointer(int(createdBy.Int64))
+		}
+		if eventFormat.Valid {
+			item.EventFormat = &eventFormat.String
+		}
+		if customVenueName.Valid {
+			item.CustomVenueName = &customVenueName.String
+		}
+		if customLocation.Valid {
+			item.CustomLocation = &customLocation.String
+		}
+		if onlineMeetingURL.Valid {
+			item.OnlineMeetingURL = &onlineMeetingURL.String
+		}
+		if orgType.Valid {
+			item.OrgType = &orgType.String
+		}
+		if privacyStatus.Valid {
+			item.PrivacyStatus = &privacyStatus.String
 		}
 
 		// Classify events into open vs closed vs cancelled
@@ -1200,7 +1242,8 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
-			e.created_by, u.full_name
+			e.created_by, u.full_name,
+			e.event_format, e.custom_venue_name, e.custom_location, e.online_meeting_url, e.org_type, e.privacy_status
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
@@ -1244,6 +1287,7 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 	for rows.Next() {
 		var item models.EventListItem
 		var description, bannerURL, areaName, floor, venueName, venueLoc, organizerName sql.NullString
+		var eventFormat, customVenueName, customLocation, onlineMeetingURL, orgType, privacyStatus sql.NullString
 		var areaID, createdBy sql.NullInt64
 		var startTime, endTime time.Time
 
@@ -1252,6 +1296,7 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 			&areaID, &areaName, &floor,
 			&venueName, &venueLoc,
 			&createdBy, &organizerName,
+			&eventFormat, &customVenueName, &customLocation, &onlineMeetingURL, &orgType, &privacyStatus,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan event: %w", err)
@@ -1286,6 +1331,24 @@ func (r *EventRepository) GetEventsWithPagination(ctx context.Context, role stri
 		}
 		if organizerName.Valid {
 			item.OrganizerName = &organizerName.String
+		}
+		if eventFormat.Valid {
+			item.EventFormat = &eventFormat.String
+		}
+		if customVenueName.Valid {
+			item.CustomVenueName = &customVenueName.String
+		}
+		if customLocation.Valid {
+			item.CustomLocation = &customLocation.String
+		}
+		if onlineMeetingURL.Valid {
+			item.OnlineMeetingURL = &onlineMeetingURL.String
+		}
+		if orgType.Valid {
+			item.OrgType = &orgType.String
+		}
+		if privacyStatus.Valid {
+			item.PrivacyStatus = &privacyStatus.String
 		}
 
 		items = append(items, item)
@@ -1729,7 +1792,8 @@ func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventList
 			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
-			e.created_by
+			e.created_by,
+			e.event_format, e.custom_venue_name, e.custom_location, e.online_meeting_url, e.org_type, e.privacy_status
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
@@ -1747,6 +1811,7 @@ func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventList
 	for rows.Next() {
 		var item models.EventListItem
 		var description, bannerURL, areaName, floor, venueName, venueLoc sql.NullString
+		var eventFormat, customVenueName, customLocation, onlineMeetingURL, orgType, privacyStatus sql.NullString
 		var areaID, createdBy sql.NullInt64
 		var startTime, endTime time.Time
 
@@ -1755,6 +1820,7 @@ func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventList
 			&areaID, &areaName, &floor,
 			&venueName, &venueLoc,
 			&createdBy,
+			&eventFormat, &customVenueName, &customLocation, &onlineMeetingURL, &orgType, &privacyStatus,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan event: %w", err)
@@ -1788,6 +1854,24 @@ func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventList
 		}
 		if createdBy.Valid {
 			item.OrganizerID = pointer(int(createdBy.Int64))
+		}
+		if eventFormat.Valid {
+			item.EventFormat = &eventFormat.String
+		}
+		if customVenueName.Valid {
+			item.CustomVenueName = &customVenueName.String
+		}
+		if customLocation.Valid {
+			item.CustomLocation = &customLocation.String
+		}
+		if onlineMeetingURL.Valid {
+			item.OnlineMeetingURL = &onlineMeetingURL.String
+		}
+		if orgType.Valid {
+			item.OrgType = &orgType.String
+		}
+		if privacyStatus.Valid {
+			item.PrivacyStatus = &privacyStatus.String
 		}
 
 		items = append(items, item)
@@ -1830,7 +1914,8 @@ func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page 
 			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, va.area_name, va.floor,
 			v.venue_name, v.location,
-			e.created_by
+			e.created_by,
+			e.event_format, e.custom_venue_name, e.custom_location, e.online_meeting_url, e.org_type, e.privacy_status
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
@@ -1849,6 +1934,7 @@ func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page 
 	for rows.Next() {
 		var item models.EventListItem
 		var description, bannerURL, areaName, floor, venueName, venueLoc sql.NullString
+		var eventFormat, customVenueName, customLocation, onlineMeetingURL, orgType, privacyStatus sql.NullString
 		var areaID, createdBy sql.NullInt64
 		var startTime, endTime time.Time
 
@@ -1857,6 +1943,7 @@ func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page 
 			&areaID, &areaName, &floor,
 			&venueName, &venueLoc,
 			&createdBy,
+			&eventFormat, &customVenueName, &customLocation, &onlineMeetingURL, &orgType, &privacyStatus,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan event: %w", err)
@@ -1888,6 +1975,24 @@ func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page 
 		}
 		if createdBy.Valid {
 			item.OrganizerID = pointer(int(createdBy.Int64))
+		}
+		if eventFormat.Valid {
+			item.EventFormat = &eventFormat.String
+		}
+		if customVenueName.Valid {
+			item.CustomVenueName = &customVenueName.String
+		}
+		if customLocation.Valid {
+			item.CustomLocation = &customLocation.String
+		}
+		if onlineMeetingURL.Valid {
+			item.OnlineMeetingURL = &onlineMeetingURL.String
+		}
+		if orgType.Valid {
+			item.OrgType = &orgType.String
+		}
+		if privacyStatus.Valid {
+			item.PrivacyStatus = &privacyStatus.String
 		}
 
 		items = append(items, item)

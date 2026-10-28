@@ -178,7 +178,13 @@ func (r *EventRepository) GetEventsByStatusV1(
 			v.location,
 			e.created_by,
 			(SELECT COALESCE(COUNT(*), 0) FROM Ticket t WHERE t.event_id = e.event_id AND t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN')) AS seats_booked,
-			COALESCE(e.max_seats, 0) AS total_capacity
+			COALESCE(e.max_seats, 0) AS total_capacity,
+			e.event_format,
+			e.custom_venue_name,
+			e.custom_location,
+			e.online_meeting_url,
+			e.org_type,
+			e.privacy_status
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
@@ -200,22 +206,28 @@ func (r *EventRepository) GetEventsByStatusV1(
 
 	for rows.Next() {
 		var (
-			eventID       int
-			title         string
-			description   sql.NullString
-			startTime     time.Time
-			endTime       time.Time
-			maxSeats      int
-			status        string
-			bannerURL     sql.NullString
-			areaID        sql.NullInt64
-			areaName      sql.NullString
-			floor         sql.NullString
-			venueName     sql.NullString
-			venueLocation sql.NullString
-			organizerID   sql.NullInt64
-			seatsBooked   sql.NullInt64
-			totalCapacity sql.NullInt64
+			eventID          int
+			title            string
+			description      sql.NullString
+			startTime        time.Time
+			endTime          time.Time
+			maxSeats         int
+			status           string
+			bannerURL        sql.NullString
+			areaID           sql.NullInt64
+			areaName         sql.NullString
+			floor            sql.NullString
+			venueName        sql.NullString
+			venueLocation    sql.NullString
+			organizerID      sql.NullInt64
+			seatsBooked      sql.NullInt64
+			totalCapacity    sql.NullInt64
+			eventFormat      sql.NullString
+			customVenueName  sql.NullString
+			customLocation   sql.NullString
+			onlineMeetingURL sql.NullString
+			orgType          sql.NullString
+			privacyStatus    sql.NullString
 		)
 
 		err := rows.Scan(
@@ -235,6 +247,12 @@ func (r *EventRepository) GetEventsByStatusV1(
 			&organizerID,
 			&seatsBooked,
 			&totalCapacity,
+			&eventFormat,
+			&customVenueName,
+			&customLocation,
+			&onlineMeetingURL,
+			&orgType,
+			&privacyStatus,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan event: %w", err)
@@ -245,19 +263,25 @@ func (r *EventRepository) GetEventsByStatusV1(
 			Title:       title,
 			Description: nullStringToPointer(description),
 			// ✅ FIXED: Use FormatTimeToWallClockRFC3339 - formats wall-clock time directly without conversion
-			StartTime:     utils.FormatTimeToWallClockRFC3339(startTime),
-			EndTime:       utils.FormatTimeToWallClockRFC3339(endTime),
-			MaxSeats:      maxSeats,
-			Status:        status,
-			BannerURL:     nullStringToPointer(bannerURL),
-			AreaID:        nullInt64ToPointer(areaID),
-			AreaName:      nullStringToPointer(areaName),
-			Floor:         nullStringToPointer(floor),
-			VenueName:     nullStringToPointer(venueName),
-			VenueLocation: nullStringToPointer(venueLocation),
-			OrganizerID:   nullInt64ToPointer(organizerID),
-			SeatsBooked:   nullInt64ToPointer(seatsBooked),
-			TotalCapacity: nullInt64ToPointer(totalCapacity),
+			StartTime:        utils.FormatTimeToWallClockRFC3339(startTime),
+			EndTime:          utils.FormatTimeToWallClockRFC3339(endTime),
+			MaxSeats:         maxSeats,
+			Status:           status,
+			BannerURL:        nullStringToPointer(bannerURL),
+			AreaID:           nullInt64ToPointer(areaID),
+			AreaName:         nullStringToPointer(areaName),
+			Floor:            nullStringToPointer(floor),
+			VenueName:        nullStringToPointer(venueName),
+			VenueLocation:    nullStringToPointer(venueLocation),
+			OrganizerID:      nullInt64ToPointer(organizerID),
+			SeatsBooked:      nullInt64ToPointer(seatsBooked),
+			TotalCapacity:    nullInt64ToPointer(totalCapacity),
+			EventFormat:      nullStringToPointer(eventFormat),
+			CustomVenueName:  nullStringToPointer(customVenueName),
+			CustomLocation:   nullStringToPointer(customLocation),
+			OnlineMeetingURL: nullStringToPointer(onlineMeetingURL),
+			OrgType:          nullStringToPointer(orgType),
+			PrivacyStatus:    nullStringToPointer(privacyStatus),
 		}
 
 		events = append(events, event)
@@ -414,7 +438,13 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			v.location,
 			e.created_by,
 			(SELECT COALESCE(COUNT(*), 0) FROM Ticket t WHERE t.event_id = e.event_id AND t.status IN ('PENDING', 'BOOKED', 'CHECKED_IN')) AS seats_booked,
-			COALESCE(e.max_seats, 0) AS total_capacity
+			COALESCE(e.max_seats, 0) AS total_capacity,
+			e.event_format,
+			e.custom_venue_name,
+			e.custom_location,
+			e.online_meeting_url,
+			e.org_type,
+			e.privacy_status
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
@@ -436,22 +466,28 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 
 	for rows.Next() {
 		var (
-			eventID       int
-			title         string
-			description   sql.NullString
-			startTime     time.Time
-			endTime       time.Time
-			maxSeats      int
-			status        string
-			bannerURL     sql.NullString
-			areaID        sql.NullInt64
-			areaName      sql.NullString
-			floor         sql.NullString
-			venueName     sql.NullString
-			venueLocation sql.NullString
-			organizerID   sql.NullInt64
-			seatsBooked   sql.NullInt64
-			totalCapacity sql.NullInt64
+			eventID          int
+			title            string
+			description      sql.NullString
+			startTime        time.Time
+			endTime          time.Time
+			maxSeats         int
+			status           string
+			bannerURL        sql.NullString
+			areaID           sql.NullInt64
+			areaName         sql.NullString
+			floor            sql.NullString
+			venueName        sql.NullString
+			venueLocation    sql.NullString
+			organizerID      sql.NullInt64
+			seatsBooked      sql.NullInt64
+			totalCapacity    sql.NullInt64
+			eventFormat      sql.NullString
+			customVenueName  sql.NullString
+			customLocation   sql.NullString
+			onlineMeetingURL sql.NullString
+			orgType          sql.NullString
+			privacyStatus    sql.NullString
 		)
 
 		err := rows.Scan(
@@ -471,6 +507,12 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			&organizerID,
 			&seatsBooked,
 			&totalCapacity,
+			&eventFormat,
+			&customVenueName,
+			&customLocation,
+			&onlineMeetingURL,
+			&orgType,
+			&privacyStatus,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan event: %w", err)
@@ -481,19 +523,25 @@ func (r *EventRepository) GetEventsByStatusV1WithRole(
 			Title:       title,
 			Description: nullStringToPointer(description),
 			// ✅ FIXED: Use FormatTimeToWallClockRFC3339 - formats wall-clock time directly without conversion
-			StartTime:     utils.FormatTimeToWallClockRFC3339(startTime),
-			EndTime:       utils.FormatTimeToWallClockRFC3339(endTime),
-			MaxSeats:      maxSeats,
-			Status:        status,
-			BannerURL:     nullStringToPointer(bannerURL),
-			AreaID:        nullInt64ToPointer(areaID),
-			AreaName:      nullStringToPointer(areaName),
-			Floor:         nullStringToPointer(floor),
-			VenueName:     nullStringToPointer(venueName),
-			VenueLocation: nullStringToPointer(venueLocation),
-			OrganizerID:   nullInt64ToPointer(organizerID),
-			SeatsBooked:   nullInt64ToPointer(seatsBooked),
-			TotalCapacity: nullInt64ToPointer(totalCapacity),
+			StartTime:        utils.FormatTimeToWallClockRFC3339(startTime),
+			EndTime:          utils.FormatTimeToWallClockRFC3339(endTime),
+			MaxSeats:         maxSeats,
+			Status:           status,
+			BannerURL:        nullStringToPointer(bannerURL),
+			AreaID:           nullInt64ToPointer(areaID),
+			AreaName:         nullStringToPointer(areaName),
+			Floor:            nullStringToPointer(floor),
+			VenueName:        nullStringToPointer(venueName),
+			VenueLocation:    nullStringToPointer(venueLocation),
+			OrganizerID:      nullInt64ToPointer(organizerID),
+			SeatsBooked:      nullInt64ToPointer(seatsBooked),
+			TotalCapacity:    nullInt64ToPointer(totalCapacity),
+			EventFormat:      nullStringToPointer(eventFormat),
+			CustomVenueName:  nullStringToPointer(customVenueName),
+			CustomLocation:   nullStringToPointer(customLocation),
+			OnlineMeetingURL: nullStringToPointer(onlineMeetingURL),
+			OrgType:          nullStringToPointer(orgType),
+			PrivacyStatus:    nullStringToPointer(privacyStatus),
 		}
 
 		events = append(events, event)

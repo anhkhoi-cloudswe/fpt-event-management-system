@@ -1869,7 +1869,6 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 		qrBase64 = "" // Gửi email không có QR nếu lỗi
 	}
 
-	// Lấy thông tin event + venue (KHỚP VỚI GetEventByID logic)
 	var eventTitle string
 	var startTime time.Time
 	var areaID sql.NullInt64
@@ -1877,25 +1876,28 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 	var venueName sql.NullString
 	var venueLocation sql.NullString
 	var eventFormat string
+	var customVenueName sql.NullString
+	var customLocation sql.NullString
+	var onlineMeetingUrl sql.NullString
+	var onlineMeetingId sql.NullString
+	var onlineMeetingSecret sql.NullString
 	err = r.db.QueryRowContext(bgCtx,
 		`SELECT e.title, e.start_time, e.area_id, 
 		        COALESCE(va.area_name, 'Chưa xác định') as area_name,
 		        COALESCE(v.venue_name, 'Chưa xác định') as venue_name,
 		        COALESCE(v.location, 'Chưa xác định') as location,
-		        COALESCE(e.event_format, 'OFFLINE')
+		        COALESCE(e.event_format, 'OFFLINE'),
+		        e.custom_venue_name, e.custom_location,
+		        e.online_meeting_url, e.online_meeting_id, e.online_meeting_secret
 		 FROM Event e
 		 LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		 LEFT JOIN Venue v ON va.venue_id = v.venue_id
 		 WHERE e.event_id = $1`,
 		eventID,
-	).Scan(&eventTitle, &startTime, &areaID, &areaName, &venueName, &venueLocation, &eventFormat)
+	).Scan(&eventTitle, &startTime, &areaID, &areaName, &venueName, &venueLocation, &eventFormat,
+		&customVenueName, &customLocation, &onlineMeetingUrl, &onlineMeetingId, &onlineMeetingSecret)
 	if err != nil {
 		log.Error("Failed to get event for email", "event_id", eventID, "error", err)
-		return
-	}
-
-	if strings.ToUpper(eventFormat) == "ONLINE" && (amount == "0" || amount == "0 VND" || amount == "") {
-		log.Info("Skipping email for FREE ONLINE event", "event_id", eventID)
 		return
 	}
 
@@ -1933,6 +1935,13 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 
 	if venueLocation.Valid && venueLocation.String != "" && venueLocation.String != "Chưa xác định" {
 		finalVenueAddress = venueLocation.String
+	}
+
+	if customVenueName.Valid && customVenueName.String != "" {
+		finalVenueName = customVenueName.String
+	}
+	if customLocation.Valid && customLocation.String != "" {
+		finalVenueAddress = customLocation.String
 	}
 
 	// Format giá tiền giống Java: 250.000 đ (dấu chấm phân cách hàng nghìn)
@@ -1986,9 +1995,13 @@ func (r *TicketRepository) sendTicketEmailAsync(ctx context.Context, userID, eve
 		"seat_number":    seatNumber,
 		"category_name":  categoryName,
 		"price":          formattedAmount,
-		"qr_base64":      qrBase64,
-		"map_url":        mapURL,
-		"payment_method": "VNPAY",
+		"qr_base64":               qrBase64,
+		"map_url":                 mapURL,
+		"payment_method":          "VNPAY",
+		"event_format":            eventFormat,
+		"online_meeting_url":      onlineMeetingUrl.String,
+		"online_meeting_id":       onlineMeetingId.String,
+		"online_meeting_secret":   onlineMeetingSecret.String,
 	}); err != nil {
 		log.Error("Notification API failed for single ticket email dispatch", "ticket_id", ticketID, "error", err)
 		return
@@ -2045,25 +2058,28 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 	var venueLocation sql.NullString
 	var createdBy sql.NullInt64
 	var eventFormat string
+	var customVenueName sql.NullString
+	var customLocation sql.NullString
+	var onlineMeetingUrl sql.NullString
+	var onlineMeetingId sql.NullString
+	var onlineMeetingSecret sql.NullString
 	err = r.db.QueryRowContext(bgCtx,
 		`SELECT e.title, e.start_time, e.end_time, e.area_id, e.created_by,
 		        COALESCE(va.area_name, 'Chưa xác định') as area_name,
 		        COALESCE(v.venue_name, 'Chưa xác định') as venue_name,
 		        COALESCE(v.location, 'Chưa xác định') as location,
-		        COALESCE(e.event_format, 'OFFLINE')
+		        COALESCE(e.event_format, 'OFFLINE'),
+		        e.custom_venue_name, e.custom_location,
+		        e.online_meeting_url, e.online_meeting_id, e.online_meeting_secret
 		 FROM Event e
 		 LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		 LEFT JOIN Venue v ON va.venue_id = v.venue_id
 		 WHERE e.event_id = $1`,
 		eventID,
-	).Scan(&eventTitle, &startTime, &endTime, &areaID, &createdBy, &areaName, &venueName, &venueLocation, &eventFormat)
+	).Scan(&eventTitle, &startTime, &endTime, &areaID, &createdBy, &areaName, &venueName, &venueLocation, &eventFormat,
+		&customVenueName, &customLocation, &onlineMeetingUrl, &onlineMeetingId, &onlineMeetingSecret)
 	if err != nil {
 		log.Error("Failed to get event for email", "event_id", eventID, "error", err)
-		return
-	}
-
-	if strings.ToUpper(eventFormat) == "ONLINE" && (totalAmount == "0" || totalAmount == "0 VND" || totalAmount == "") {
-		log.Info("Skipping email for FREE ONLINE event", "event_id", eventID)
 		return
 	}
 
@@ -2079,6 +2095,12 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 	}
 	if venueLocation.Valid && venueLocation.String != "" && venueLocation.String != "Chưa xác định" {
 		finalVenueAddress = venueLocation.String
+	}
+	if customVenueName.Valid && customVenueName.String != "" {
+		finalVenueName = customVenueName.String
+	}
+	if customLocation.Valid && customLocation.String != "" {
+		finalVenueAddress = customLocation.String
 	}
 
 	// Lấy thông tin organizer từ created_by
@@ -2150,9 +2172,13 @@ func (r *TicketRepository) sendMultipleTicketEmailsAsync(ctx context.Context, us
 		"venue_address":   finalVenueAddress,
 		"total_amount":    formatCurrency(totalAmount),
 		"map_url":         mapURL,
-		"organizer_name":  organizerName,
-		"organizer_email": organizerEmail,
-		"items":           items,
+		"organizer_name":          organizerName,
+		"organizer_email":         organizerEmail,
+		"event_format":            eventFormat,
+		"online_meeting_url":      onlineMeetingUrl.String,
+		"online_meeting_id":       onlineMeetingId.String,
+		"online_meeting_secret":   onlineMeetingSecret.String,
+		"items":                   items,
 	}); err != nil {
 		log.Error("Notification API failed for multiple ticket email dispatch", "ticket_count", len(ticketIDs), "error", err)
 		return
@@ -3008,8 +3034,12 @@ func sendSingleTicketViaNotifyAPI(ctx context.Context, data map[string]interface
 			"ticketTypes":    categoryName,
 			"seatCodes":      fmt.Sprintf("%s%s", seatRow, seatNumber),
 			"timeRange":      strings.TrimSpace(startTimeDisplay + " - " + endTimeDisplay),
-			"organizerName":  data["organizer_name"],
-			"organizerEmail": data["organizer_email"],
+			"organizerName":       data["organizer_name"],
+			"organizerEmail":      data["organizer_email"],
+			"eventFormat":         data["event_format"],
+			"onlineMeetingUrl":    data["online_meeting_url"],
+			"onlineMeetingId":     data["online_meeting_id"],
+			"onlineMeetingSecret": data["online_meeting_secret"],
 		},
 	}
 
@@ -3093,9 +3123,13 @@ func sendMultipleTicketsViaNotifyAPI(ctx context.Context, data map[string]interf
 			"seatList":       seatList,
 			"totalAmount":    data["total_amount"],
 			"googleMapsUrl":  data["map_url"],
-			"organizerName":  data["organizer_name"],
-			"organizerEmail": data["organizer_email"],
-			"tickets":        ticketItems,
+			"organizerName":       data["organizer_name"],
+			"organizerEmail":      data["organizer_email"],
+			"eventFormat":         data["event_format"],
+			"onlineMeetingUrl":    data["online_meeting_url"],
+			"onlineMeetingId":     data["online_meeting_id"],
+			"onlineMeetingSecret": data["online_meeting_secret"],
+			"tickets":             ticketItems,
 			"timeRange":      strings.TrimSpace(startTimeDisplay + " - " + endTimeDisplay),
 		},
 	}

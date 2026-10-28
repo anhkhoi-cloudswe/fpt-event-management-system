@@ -26,7 +26,13 @@ import {
   Inbox,
   AlertCircle,
   FileText,
-  User
+  User,
+  Settings,
+  Globe,
+  Video,
+  ExternalLink,
+  Eye,
+  Sparkles
 } from 'lucide-react'
 
 // useEffect để gọi API khi component mount / khi dependencies thay đổi
@@ -35,6 +41,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 // Modal xem chi tiết request
 import { EventRequestDetailModal } from '../components/events/EventRequestDetailModal'
+import { EventDetailModal } from '../components/events/EventDetailModal'
+import { EventConfigModal } from '../components/events/EventConfigModal'
+import { formatEventLocation } from '../utils/location'
+import type { EventListItem, EventDetail } from '../types/event'
 
 const ITEMS_PER_PAGE = 10
 const ARCHIVED_EVENT_STATUSES = ['OPEN', 'CLOSED', 'CANCELLED', 'FINISHED'] as const
@@ -328,7 +338,20 @@ export default function OrganizerEventRequests() {
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [eventToCancel, setEventToCancel] = useState<EventRequest | null>(null)
 
-  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active')
+  const [activeTab, setActiveTab] = useState<'active' | 'archived' | 'independent'>('active')
+  const [independentStatusFilter, setIndependentStatusFilter] = useState<string>('ALL')
+  const [independentEvents, setIndependentEvents] = useState<EventListItem[]>([])
+  const [independentLoading, setIndependentLoading] = useState(false)
+  const [independentCount, setIndependentCount] = useState(0)
+
+  // Event modal states for Independent Events tab
+  const [selectedDetailEvent, setSelectedDetailEvent] = useState<EventDetail | null>(null)
+  const [isDetailEventModalOpen, setIsDetailEventModalOpen] = useState(false)
+  const [loadingDetailEvent, setLoadingDetailEvent] = useState(false)
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
+  const [selectedConfigEventId, setSelectedConfigEventId] = useState<number>(0)
+  const [selectedConfigEventTitle, setSelectedConfigEventTitle] = useState<string>('')
+
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const searchQueryRef = useRef('')
 
@@ -339,6 +362,50 @@ export default function OrganizerEventRequests() {
   useEffect(() => {
     searchQueryRef.current = searchQuery
   }, [searchQuery])
+
+  const fetchIndependentEvents = useCallback(async () => {
+    try {
+      setIndependentLoading(true)
+      const response = await fetch('/api/events?limit=100&page=1', {
+        credentials: 'include',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const allEvts: EventListItem[] = data.data || []
+        // Filter events created by the logged in organizer that are independent
+        const myIndep = allEvts.filter(
+          evt => (evt.organizerId === user?.id || !evt.organizerId) &&
+                 (evt.orgType === 'FREE' || evt.eventFormat === 'ONLINE' || evt.customLocation || evt.customVenueName)
+        )
+        setIndependentEvents(myIndep)
+        setIndependentCount(myIndep.length)
+      }
+    } catch (error) {
+      console.error('Error fetching independent events:', error)
+    } finally {
+      setIndependentLoading(false)
+    }
+  }, [user?.id])
+
+  const handleOpenEventDetail = async (eventId: number) => {
+    try {
+      setLoadingDetailEvent(true)
+      setIsDetailEventModalOpen(true)
+      const res = await fetch(`/api/events/detail?id=${eventId}`, {
+        credentials: 'include',
+      })
+      if (res.ok) {
+        const detail = await res.json()
+        setSelectedDetailEvent(detail)
+      } else {
+        showToast('error', 'Không thể tải chi tiết sự kiện')
+      }
+    } catch (err: any) {
+      showToast('error', err.message || 'Lỗi tải chi tiết sự kiện')
+    } finally {
+      setLoadingDetailEvent(false)
+    }
+  }
 
   const fetchActiveRequests = useCallback(async (page: number, query = searchQueryRef.current) => {
     try {
@@ -425,11 +492,12 @@ export default function OrganizerEventRequests() {
       await Promise.all([
         fetchActiveRequests(1),
         fetchArchivedRequests(1),
+        fetchIndependentEvents(),
       ])
     }
 
     void loadInitialRequests()
-  }, [refreshTrigger, fetchActiveRequests, fetchArchivedRequests])
+  }, [refreshTrigger, fetchActiveRequests, fetchArchivedRequests, fetchIndependentEvents])
 
   const fetchEventRequestDetail = async (requestId: number) => {
     try {
@@ -539,8 +607,11 @@ export default function OrganizerEventRequests() {
     }
   }
 
-  const handleTabChange = (tab: 'active' | 'archived') => {
+  const handleTabChange = (tab: 'active' | 'archived' | 'independent') => {
     setActiveTab(tab)
+    if (tab === 'independent') {
+      void fetchIndependentEvents()
+    }
   }
 
   const handleSearchChange = (query: string) => {
@@ -553,8 +624,10 @@ export default function OrganizerEventRequests() {
     const query = searchQueryRef.current
     if (activeTab === 'active') {
       fetchActiveRequests(1, query)
-    } else {
+    } else if (activeTab === 'archived') {
       fetchArchivedRequests(1, query)
+    } else {
+      void fetchIndependentEvents()
     }
   }
 
@@ -633,11 +706,27 @@ export default function OrganizerEventRequests() {
     return true
   })
 
+  const filteredIndependentEvents = independentEvents.filter((evt) => {
+    if (!evt) return false
+    if (independentStatusFilter !== 'ALL' && evt.status !== independentStatusFilter) {
+      return false
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      const titleMatch = evt.title?.toLowerCase().includes(q)
+      const descMatch = evt.description?.toLowerCase().includes(q)
+      const locMatch = (evt.customLocation || evt.customVenueName || evt.location || '').toLowerCase().includes(q)
+      if (!titleMatch && !descMatch && !locMatch) return false
+    }
+    return true
+  })
+
   const canRenderRequestList =
-    Array.isArray(filteredRequests) &&
+    activeTab === 'independent' ||
+    (Array.isArray(filteredRequests) &&
     Number.isFinite(currentPage) &&
     Number.isFinite(currentTotalPages) &&
-    Number.isFinite(currentTotalCount)
+    Number.isFinite(currentTotalCount))
 
   return (
     <div className="w-full min-h-screen p-4 md:p-6 text-slate-900 dark:text-slate-100 bg-transparent">
@@ -668,34 +757,44 @@ export default function OrganizerEventRequests() {
       </div>
 
       {/* Stats Widgets */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-4">
-        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3.5 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-2xl border border-amber-100/50 dark:border-amber-900/30">
-            <Clock className="w-6 h-6 animate-pulse" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-2xl border border-amber-100/50 dark:border-amber-900/30">
+            <Clock className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hồ sơ chờ duyệt</p>
-            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeCount}</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hồ sơ chờ duyệt</p>
+            <p className="text-2xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeCount}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/30">
-            <CheckCircle2 className="w-6 h-6" />
+        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/30">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hồ sơ đã xử lý</p>
-            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{archivedCount}</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hồ sơ đã xử lý</p>
+            <p className="text-2xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{archivedCount}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-6 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3.5 bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400 rounded-2xl border border-orange-100/50 dark:border-orange-900/30">
-            <Inbox className="w-6 h-6" />
+        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
+          <div className="p-3 bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400 rounded-2xl border border-orange-100/50 dark:border-orange-900/30">
+            <Inbox className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng cộng đã gửi</p>
-            <p className="text-3xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeCount + archivedCount}</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng cộng hồ sơ</p>
+            <p className="text-2xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeCount + archivedCount}</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 rounded-2xl border border-blue-100/50 dark:border-blue-900/30">
+            <Sparkles className="w-5 h-5 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sự kiện tự do</p>
+            <p className="text-2xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{independentCount}</p>
           </div>
         </div>
       </div>
@@ -740,6 +839,23 @@ export default function OrganizerEventRequests() {
             {archivedCount}
           </span>
         </button>
+
+        <button
+          onClick={() => handleTabChange('independent')}
+          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+            activeTab === 'independent'
+              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/20 dark:hover:bg-slate-800/40'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-orange-500" />
+          Sự kiện tự do của tôi
+          <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
+            activeTab === 'independent' ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-400' : 'bg-slate-300/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+          }`}>
+            {independentCount}
+          </span>
+        </button>
       </div>
 
       {/* Filters & Toolbar Section */}
@@ -771,12 +887,14 @@ export default function OrganizerEventRequests() {
           {/* Status select */}
           <div className="relative flex items-center min-w-[200px]">
             <select
-              value={activeTab === 'active' ? activeTabStatusFilter : archivedTabStatusFilter}
+              value={activeTab === 'active' ? activeTabStatusFilter : (activeTab === 'archived' ? archivedTabStatusFilter : independentStatusFilter)}
               onChange={(e) => {
                 if (activeTab === 'active') {
                   setActiveTabStatusFilter(e.target.value as EventRequestStatus | 'ALL')
-                } else {
+                } else if (activeTab === 'archived') {
                   setArchivedTabStatusFilter(e.target.value as EventRequestStatus | 'ALL')
+                } else {
+                  setIndependentStatusFilter(e.target.value)
                 }
               }}
               className="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all appearance-none cursor-pointer font-medium shadow-sm"
@@ -794,6 +912,13 @@ export default function OrganizerEventRequests() {
                   <option value="REJECTED" className="dark:bg-slate-950">Bị từ chối (REJECTED)</option>
                   <option value="CANCELLED" className="dark:bg-slate-950">Đã hủy (CANCELLED)</option>
                   <option value="FINISHED" className="dark:bg-slate-950">Hoàn tất (FINISHED)</option>
+                </>
+              )}
+              {activeTab === 'independent' && (
+                <>
+                  <option value="UPDATING" className="dark:bg-slate-950">Chờ cập nhật (UPDATING)</option>
+                  <option value="OPEN" className="dark:bg-slate-950">Đang mở đăng ký (OPEN)</option>
+                  <option value="CLOSED" className="dark:bg-slate-950">Đã đóng (CLOSED)</option>
                 </>
               )}
             </select>
@@ -828,8 +953,11 @@ export default function OrganizerEventRequests() {
           {/* Metadata */}
           <div className="mb-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex justify-between items-center flex-wrap gap-2">
             <span>
-              Tìm thấy <span className="text-blue-600 dark:text-blue-400 font-bold">{filteredRequests.length}</span> hồ sơ trên{' '}
-              <span className="font-bold text-slate-700 dark:text-slate-300">{currentTotalCount}</span> yêu cầu
+              {activeTab === 'independent' ? (
+                <>Tìm thấy <span className="text-orange-600 dark:text-orange-400 font-bold">{filteredIndependentEvents.length}</span> sự kiện tự do</>
+              ) : (
+                <>Tìm thấy <span className="text-blue-600 dark:text-blue-400 font-bold">{filteredRequests.length}</span> hồ sơ trên <span className="font-bold text-slate-700 dark:text-slate-300">{currentTotalCount}</span> yêu cầu</>
+              )}
             </span>
 
             {searchQuery && (
@@ -848,8 +976,153 @@ export default function OrganizerEventRequests() {
             )}
           </div>
 
-          {/* Empty state */}
-          {filteredRequests.length === 0 ? (
+          {/* Content rendering */}
+          {activeTab === 'independent' ? (
+            filteredIndependentEvents.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-white/80 dark:border-slate-800 p-16 text-center shadow-md">
+                <div className="p-4 bg-orange-50 dark:bg-orange-950/30 text-orange-500 rounded-full w-fit mx-auto mb-4">
+                  <Sparkles className="w-12 h-12" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Chưa có sự kiện tự do nào</h3>
+                <p className="text-sm text-slate-400 dark:text-slate-500 mt-2 max-w-md mx-auto">
+                  Bạn có thể tạo sự kiện trực tuyến (Zoom / Google Meet) hoặc sự kiện tự thuê địa điểm bên ngoài mà không cần chờ duyệt cơ sở vật chất FPT.
+                </p>
+                <Link
+                  to="/dashboard/event-requests/create"
+                  className="inline-flex items-center gap-2 mt-6 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-500 text-white font-bold rounded-xl shadow-lg shadow-orange-500/20 hover:scale-[1.02] transition-all text-sm"
+                >
+                  <PlusCircle className="w-4 h-4" /> Tạo sự kiện tự do ngay
+                </Link>
+              </div>
+            ) : (
+              <div className="grid w-full grid-cols-1 gap-4 mb-4">
+                {filteredIndependentEvents.map((evt, index) => {
+                  const formatUpper = (evt.eventFormat || '').toUpperCase()
+                  const isOnline = formatUpper === 'ONLINE'
+                  const isHybrid = formatUpper === 'HYBRID'
+                  const isMeet = evt.onlineMeetingUrl?.includes('meet.google.com') || evt.customVenueName?.toLowerCase().includes('google meet')
+                  const platformName = isMeet ? 'Google Meet' : 'Zoom'
+                  const locationDisplay = formatEventLocation(evt, 'vi')
+
+                  return (
+                    <div
+                      key={evt.eventId}
+                      className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/80 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur-md p-6 shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500 flex flex-col lg:flex-row lg:items-center justify-between gap-5"
+                      style={{ animationDelay: `${index * 60}ms` }}
+                    >
+                      {/* Left accent bar */}
+                      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                        evt.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' :
+                        evt.status === 'OPEN' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' :
+                        evt.status === 'CLOSED' ? 'bg-slate-400' : 'bg-orange-500'
+                      }`} />
+
+                      <div className="flex-1 min-w-0 pl-1.5">
+                        <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
+                          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-orange-600 transition-colors duration-300">
+                            {evt.title}
+                          </h3>
+
+                          {/* Status Badge */}
+                          {evt.status === 'UPDATING' ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40">
+                              <Clock className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '3s' }} />
+                              Chờ cập nhật
+                            </span>
+                          ) : evt.status === 'OPEN' ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Đang mở đăng ký
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                              {evt.status}
+                            </span>
+                          )}
+
+                          {/* Format Badge */}
+                          {isOnline ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                              <Video className="w-3.5 h-3.5" />
+                              {platformName} (Trực tuyến)
+                            </span>
+                          ) : isHybrid ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              <Globe className="w-3.5 h-3.5" />
+                              Hybrid ({platformName} & Offline)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                              <MapPin className="w-3.5 h-3.5" />
+                              Tự thuê địa điểm
+                            </span>
+                          )}
+                        </div>
+
+                        {evt.description && (
+                          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mb-3.5 font-medium">
+                            {evt.description}
+                          </p>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                            <span className="truncate">Thời gian: <strong className="text-slate-700 dark:text-slate-300">{formatSafeDate(evt.startTime)}</strong></span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                            <span className="truncate" title={locationDisplay}>Địa điểm: <strong className="text-slate-700 dark:text-slate-300">{locationDisplay}</strong></span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Users className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                            <span>Quy mô: <strong className="text-slate-700 dark:text-slate-300">{evt.capacity || 100} chỗ</strong></span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap border-t sm:border-t-0 pt-4 sm:pt-0 border-slate-100 dark:border-slate-800">
+                        {/* 👁️ View detail */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEventDetail(evt.eventId)}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
+                          title="Xem chi tiết sự kiện"
+                        >
+                          <Eye className="w-4 h-4 text-blue-500" /> Chi tiết
+                        </button>
+
+                        {/* ⚙️ Check-in config */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedConfigEventId(evt.eventId)
+                            setSelectedConfigEventTitle(evt.title)
+                            setIsConfigModalOpen(true)
+                          }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
+                          title="Cấu hình Check-in & Điểm danh"
+                        >
+                          <Settings className="w-4 h-4 text-emerald-500" /> Cấu hình
+                        </button>
+
+                        {/* ✏️ Direct Edit button */}
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/dashboard/events/${evt.eventId}/edit`)}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-md shadow-orange-500/20 hover:shadow-lg transition-all active:scale-95 hover:scale-[1.02]"
+                          title="Chỉnh sửa thông tin & cấu hình vé"
+                        >
+                          <Edit className="w-4 h-4" /> Chỉnh sửa
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          ) : filteredRequests.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center shadow-sm">
               <div className="p-4 bg-slate-50 dark:bg-slate-950/50 text-slate-300 dark:text-slate-400 rounded-full w-fit mx-auto mb-4">
                 <FileClock className="w-12 h-12" />
@@ -1018,7 +1291,7 @@ export default function OrganizerEventRequests() {
               </div>
 
               {/* Pagination controls */}
-              {currentTotalPages > 1 && (
+              {activeTab !== 'independent' && currentTotalPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-2 bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 shadow-md">
                   <div className="text-sm text-slate-500 dark:text-slate-400 font-semibold">
                     Trang <span className="text-orange-600 dark:text-orange-400 font-extrabold">{currentPage}</span> /{' '}
@@ -1158,6 +1431,30 @@ export default function OrganizerEventRequests() {
           </div>
         </div>
       )}
+
+      {/* Event Detail Modal for viewing event */}
+      <EventDetailModal
+        isOpen={isDetailEventModalOpen}
+        onClose={() => {
+          setIsDetailEventModalOpen(false)
+          setSelectedDetailEvent(null)
+        }}
+        event={selectedDetailEvent}
+        loading={loadingDetailEvent}
+        error={null}
+        userRole={user?.role}
+      />
+
+      {/* Event Config Modal for Check-in configuration */}
+      <EventConfigModal
+        isOpen={isConfigModalOpen}
+        onClose={() => {
+          setIsConfigModalOpen(false)
+          setSelectedConfigEventId(0)
+        }}
+        eventId={selectedConfigEventId}
+        eventTitle={selectedConfigEventTitle}
+      />
     </div>
   )
 }

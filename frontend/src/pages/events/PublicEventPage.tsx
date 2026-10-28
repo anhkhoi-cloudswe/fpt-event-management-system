@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Calendar, MapPin, Users } from 'lucide-react'
+import { Calendar, MapPin, Users, Lock } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import type { EventDetail } from '../../types/event'
 import { getCleanedLocationForMap } from '../../utils/location'
@@ -332,6 +332,12 @@ export default function PublicEventPage() {
     ''
   const eventFormat = (event.eventFormat || '').toUpperCase()
   const onlinePlatformLabel = getOnlinePlatformLabel(event.onlineMeetingUrl)
+  const isOrganizerOfEvent = Boolean(user && user.id && organizerId && user.id === organizerId)
+  const canViewCredentials = Boolean(
+    isOrganizerOfEvent ||
+    isRegistered ||
+    (user && (user.role === 'ADMIN' || (user as any).roleName === 'ADMIN'))
+  )
   const cleanedMapLocation = getCleanedLocationForMap(exactLocationString, venueName)
   const mapTokens = [
     cleanedMapLocation,
@@ -564,7 +570,7 @@ export default function PublicEventPage() {
               </div>
             )}
 
-            {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (user?.id === organizerId || isRegistered) && (
+            {(eventFormat === 'ONLINE' || eventFormat === 'HYBRID') && (
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl space-y-4">
                 <h3 className="text-sm font-black uppercase tracking-widest text-neutral-300">
                   {pageLanguage === 'en' ? 'Online Meeting Info' : 'Thông tin phòng họp trực tuyến'}
@@ -582,43 +588,56 @@ export default function PublicEventPage() {
                     </div>
                   </div>
 
-                  {event.onlineMeetingUrl && (
-                    <div className="space-y-1.5">
-                      <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide">
-                        {pageLanguage === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={event.onlineMeetingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-semibold text-blue-400 hover:underline break-all"
-                        >
-                          {event.onlineMeetingUrl}
-                        </a>
-                      </div>
-                    </div>
-                  )}
+                  {canViewCredentials ? (
+                    <>
+                      {event.onlineMeetingUrl && (
+                        <div className="space-y-1.5 pt-2 border-t border-white/10">
+                          <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide">
+                            {pageLanguage === 'en' ? 'Meeting URL' : 'Đường dẫn cuộc họp'}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={event.onlineMeetingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-semibold text-blue-400 hover:underline break-all"
+                            >
+                              {event.onlineMeetingUrl}
+                            </a>
+                          </div>
+                        </div>
+                      )}
 
-                  {event.onlineMeetingId && (
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide">
-                        Meeting ID
-                      </p>
-                      <p className="text-sm font-semibold text-neutral-200">
-                        {event.onlineMeetingId}
-                      </p>
-                    </div>
-                  )}
+                      {event.onlineMeetingId && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide">
+                            Meeting ID
+                          </p>
+                          <p className="text-sm font-semibold text-neutral-200">
+                            {event.onlineMeetingId}
+                          </p>
+                        </div>
+                      )}
 
-                  {event.onlineMeetingSecret && (
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide">
-                        {pageLanguage === 'en' ? 'Passcode' : 'Mật khẩu cuộc họp'}
-                      </p>
-                      <p className="text-sm font-semibold text-neutral-200 font-mono">
-                        {event.onlineMeetingSecret}
-                      </p>
+                      {event.onlineMeetingSecret && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide">
+                            {pageLanguage === 'en' ? 'Passcode' : 'Mật khẩu cuộc họp'}
+                          </p>
+                          <p className="text-sm font-semibold text-neutral-200 font-mono">
+                            {event.onlineMeetingSecret}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs flex items-center gap-2.5">
+                      <Lock className="w-4 h-4 flex-shrink-0 text-amber-400" />
+                      <span>
+                        {pageLanguage === 'en'
+                          ? 'Online meeting details (Join link, Meeting ID & Passcode) are protected and will be sent via confirmation email immediately upon registration.'
+                          : 'Thông tin phòng họp trực tuyến (Link tham gia, ID & Mật khẩu) được bảo mật và sẽ được tự động gửi qua email xác nhận ngay sau khi bạn đăng ký vé thành công.'}
+                      </span>
                     </div>
                   )}
                 </div>

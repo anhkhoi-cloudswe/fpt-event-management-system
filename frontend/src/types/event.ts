@@ -20,6 +20,12 @@ export interface EventListItem {
   organizerName?: string
   seatsBooked?: number
   totalCapacity?: number
+  eventFormat?: string
+  customVenueName?: string | null
+  customLocation?: string | null
+  onlineMeetingUrl?: string | null
+  orgType?: string | null
+  privacyStatus?: string | null
 }
 
 // Chi tiết một sự kiện

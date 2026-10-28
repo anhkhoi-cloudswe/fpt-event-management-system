@@ -197,6 +197,8 @@ type EventListItem struct {
 	OrgType *string `json:"orgType,omitempty"`
 
 	PrivacyStatus *string `json:"privacyStatus,omitempty"`
+
+	OnlineMeetingURL *string `json:"onlineMeetingUrl,omitempty"`
 }
 
 // ============================================================

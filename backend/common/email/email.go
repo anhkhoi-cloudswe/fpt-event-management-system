@@ -83,42 +83,50 @@ type Attachment struct {
 }
 
 type TicketEmailData struct {
-	UserEmail      string
-	UserName       string
-	EventTitle     string
-	TicketIDs      string
-	TicketTypes    string
-	SeatCodes      string
-	VenueName      string
-	VenueAddress   string
-	AreaName       string
-	MapURL         string
-	TotalAmount    string
-	StartTime      string // RFC3339 format
-	EndTime        string // RFC3339 format (optional)
-	QRCodeBase64   string
-	PaymentMethod  string
-	PDFAttachment  []byte
-	PDFFilename    string
-	OrganizerName  string
-	OrganizerEmail string
+	UserEmail           string
+	UserName            string
+	EventTitle          string
+	TicketIDs           string
+	TicketTypes         string
+	SeatCodes           string
+	VenueName           string
+	VenueAddress        string
+	AreaName            string
+	MapURL              string
+	TotalAmount         string
+	StartTime           string // RFC3339 format
+	EndTime             string // RFC3339 format (optional)
+	QRCodeBase64        string
+	PaymentMethod       string
+	PDFAttachment       []byte
+	PDFFilename         string
+	OrganizerName       string
+	OrganizerEmail      string
+	EventFormat         string
+	OnlineMeetingURL    string
+	OnlineMeetingID     string
+	OnlineMeetingSecret string
 }
 
 type MultipleTicketsEmailData struct {
-	UserEmail      string
-	UserName       string
-	EventTitle     string
-	EventDate      string
-	EndTime        string
-	VenueName      string
-	VenueAddress   string
-	TicketCount    int
-	SeatList       string
-	TotalAmount    string
-	GoogleMapsURL  string
-	OrganizerName  string
-	OrganizerEmail string
-	PDFAttachments []PDFAttachment
+	UserEmail           string
+	UserName            string
+	EventTitle          string
+	EventDate           string
+	EndTime             string
+	VenueName           string
+	VenueAddress        string
+	TicketCount         int
+	SeatList            string
+	TotalAmount         string
+	GoogleMapsURL       string
+	OrganizerName       string
+	OrganizerEmail      string
+	PDFAttachments      []PDFAttachment
+	EventFormat         string
+	OnlineMeetingURL    string
+	OnlineMeetingID     string
+	OnlineMeetingSecret string
 }
 
 type PDFAttachment struct {
@@ -773,6 +781,72 @@ func (s *EmailService) SendTicketEmail(data TicketEmailData) error {
 	return s.Send(msg)
 }
 
+func buildOnlineMeetingSection(format, meetingURL, meetingID, meetingSecret, venueName, venueAddress, mapURL string) (string, string, string) {
+	fmtUpper := strings.ToUpper(strings.TrimSpace(format))
+	isOnline := fmtUpper == "ONLINE"
+	isHybrid := fmtUpper == "HYBRID"
+	cleanURL := strings.TrimSpace(meetingURL)
+
+	platform := "Zoom"
+	if strings.Contains(strings.ToLower(cleanURL), "meet.google.com") {
+		platform = "Google Meet"
+	}
+
+	var locationDisplay string
+	if isOnline {
+		locationDisplay = fmt.Sprintf("Online trên nền tảng <strong>%s</strong>", platform)
+	} else if isHybrid {
+		locationDisplay = fmt.Sprintf("Online trên nền tảng <strong>%s</strong> & Trực tiếp tại <strong>%s</strong> (%s)", platform, venueName, venueAddress)
+	} else {
+		locationDisplay = fmt.Sprintf("<strong>%s</strong><br/><small>%s</small>", venueName, venueAddress)
+	}
+
+	var meetingBoxHTML string
+	if cleanURL != "" {
+		var creds []string
+		if meetingID != "" {
+			creds = append(creds, fmt.Sprintf("ID: %s", meetingID))
+		}
+		if meetingSecret != "" {
+			creds = append(creds, fmt.Sprintf("Pass: %s", meetingSecret))
+		}
+		credText := ""
+		if len(creds) > 0 {
+			credText = fmt.Sprintf(`<p style="margin: 6px 0 0 0; font-size: 13px; color: #1E3A8A;">(Hoặc %s)</p>`, strings.Join(creds, ", "))
+		}
+
+		meetingBoxHTML = fmt.Sprintf(`
+    <table width="100%%" bgcolor="#EFF6FF" style="border:1px solid #BFDBFE;border-radius:12px;margin-bottom:20px;">
+      <tr>
+        <td style="padding:18px;">
+          <h4 style="margin:0 0 8px 0;color:#1E40AF;font-size:15px;font-weight:bold;text-transform:uppercase;">THÔNG TIN PHÒNG HỌP TRỰC TUYẾN</h4>
+          <p style="margin:0 0 6px 0;font-size:14px;color:#1E3A8A;"><strong>Địa điểm:</strong> Online trên nền tảng <strong>%s</strong></p>
+          <p style="margin:0 0 6px 0;font-size:14px;color:#1E3A8A;"><strong>Link tham gia:</strong> <a href="%s" target="_blank" style="color:#2563EB;font-weight:bold;text-decoration:underline;">TẠI ĐÂY</a></p>
+          %s
+        </td>
+      </tr>
+    </table>`, platform, cleanURL, credText)
+	}
+
+	var buttonHTML string
+	if cleanURL != "" && isOnline {
+		buttonHTML = fmt.Sprintf(`<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#2563EB" style="border-radius:50px;padding:15px 35px;"><a href="%s" style="color:#ffffff;text-decoration:none;font-weight:bold;">THAM GIA PHÒNG HỌP (JOIN MEETING)</a></td></tr></table>`, cleanURL)
+	} else if cleanURL != "" && isHybrid {
+		buttonHTML = fmt.Sprintf(`
+    <table border="0" cellspacing="0" cellpadding="0">
+      <tr>
+        <td bgcolor="#2563EB" style="border-radius:50px;padding:15px 30px;"><a href="%s" style="color:#ffffff;text-decoration:none;font-weight:bold;">THAM GIA PHÒNG HỌP</a></td>
+        <td width="15">&nbsp;</td>
+        <td bgcolor="#F27124" style="border-radius:50px;padding:15px 30px;"><a href="%s" style="color:#ffffff;text-decoration:none;font-weight:bold;">XEM TRÊN BẢN ĐỒ</a></td>
+      </tr>
+    </table>`, cleanURL, mapURL)
+	} else {
+		buttonHTML = fmt.Sprintf(`<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#F27124" style="border-radius:50px;padding:15px 35px;"><a href="%s" style="color:#ffffff;text-decoration:none;font-weight:bold;">VIEW ON MAP</a></td></tr></table>`, mapURL)
+	}
+
+	return meetingBoxHTML, locationDisplay, buttonHTML
+}
+
 func (s *EmailService) buildTicketEmailHTML(data TicketEmailData) string {
 	mapURL := "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(data.VenueAddress)
 
@@ -790,6 +864,16 @@ func (s *EmailService) buildTicketEmailHTML(data TicketEmailData) string {
     </div>`, data.OrganizerName, data.OrganizerEmail)
 	}
 
+	meetingBoxHTML, locationDisplay, buttonHTML := buildOnlineMeetingSection(
+		data.EventFormat,
+		data.OnlineMeetingURL,
+		data.OnlineMeetingID,
+		data.OnlineMeetingSecret,
+		data.VenueName,
+		data.VenueAddress,
+		mapURL,
+	)
+
 	return fmt.Sprintf(`<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f5f5f5;">
     <table width="100%%" border="0" cellspacing="0" cellpadding="0" bgcolor="#f5f5f5"><tr><td align="center" style="padding:40px 0;">
     <table width="600" border="0" cellspacing="0" cellpadding="0" bgcolor="#ffffff" style="border-radius:16px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.1);">
@@ -797,19 +881,20 @@ func (s *EmailService) buildTicketEmailHTML(data TicketEmailData) string {
     <tr><td align="left" style="padding:35px 40px;"><h1 style="margin:0;color:#F27124;font-size:24px;font-weight:bold;letter-spacing:1px;">FPT EVENT SYSTEM</h1></td></tr>
     <tr><td style="padding:10px 40px 40px 40px;"><p style="font-size:18px;color:#666666;margin:0 0 10px 0;">Registration confirmed</p>
     <h2 style="font-size:32px;font-weight:bold;color:#000000;margin:0 0 30px 0;line-height:1.2;">%s</h2>
-    <p>Hello <strong>%s</strong>, your payment was successful. Details below:</p>
+    <p>Hello <strong>%s</strong>, your registration was successful. Details below:</p>
     <table width="100%%" border="0" cellpadding="15" bgcolor="#fafafa" style="margin-bottom:20px;border-left:4px solid #F27124;">
     <tr><td><small style="color:#999999;text-transform:uppercase;">Ticket ID</small><br/><strong>#%s</strong></td></tr>
-    <tr><td><small style="color:#999999;text-transform:uppercase;">Location</small><br/><strong>%s</strong><br/><small>%s</small></td></tr>
+    <tr><td><small style="color:#999999;text-transform:uppercase;">Location</small><br/>%s</td></tr>
     <tr><td><small style="color:#999999;text-transform:uppercase;">Date</small><br/><strong>%s</strong></td></tr>
     <tr><td><small style="color:#999999;text-transform:uppercase;">Time</small><br/><strong>%s</strong></td></tr>
     <tr><td><small style="color:#999999;text-transform:uppercase;">Total Amount</small><br/><strong style="color:#F27124;font-size:22px;">%s VND</strong></td></tr>
     </table>
     %s
-    <table width="100%%" bgcolor="#FFF8E1" style="border:1px solid #FFE082;border-radius:8px;margin-bottom:30px;"><tr><td style="padding:15px;"><strong>This email contains 1 PDF file.</strong> Please present the QR code at the entrance.</td></tr></table>
-    <table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#F27124" style="border-radius:50px;padding:15px 35px;"><a href="%s" style="color:#ffffff;text-decoration:none;font-weight:bold;">VIEW ON MAP</a></td></tr></table>
+    %s
+    <table width="100%%" bgcolor="#FFF8E1" style="border:1px solid #FFE082;border-radius:8px;margin-bottom:30px;"><tr><td style="padding:15px;"><strong>This email contains 1 PDF file.</strong> Please present the QR code at the entrance or keep it for your records.</td></tr></table>
+    %s
     </td></tr><tr><td align="center" bgcolor="#2c2c2c" style="padding:25px;"><p style="margin:0;font-size:12px;color:#999999;">© 2026 FPT Event Management. All rights reserved.</p></td></tr></table></td></tr></table></body></html>`,
-		data.EventTitle, data.UserName, data.TicketIDs, data.VenueName, data.VenueAddress, eventDate, eventTime, data.TotalAmount, organizerSection, mapURL)
+		data.EventTitle, data.UserName, data.TicketIDs, locationDisplay, eventDate, eventTime, data.TotalAmount, meetingBoxHTML, organizerSection, buttonHTML)
 }
 
 func (s *EmailService) SendMultipleTicketsEmail(data MultipleTicketsEmailData) error {
@@ -833,6 +918,16 @@ func (s *EmailService) SendMultipleTicketsEmail(data MultipleTicketsEmailData) e
     </div>`, data.OrganizerName, data.OrganizerEmail)
 	}
 
+	meetingBoxHTML, locationDisplay, buttonHTML := buildOnlineMeetingSection(
+		data.EventFormat,
+		data.OnlineMeetingURL,
+		data.OnlineMeetingID,
+		data.OnlineMeetingSecret,
+		data.VenueName,
+		data.VenueAddress,
+		mapURL,
+	)
+
 	html := fmt.Sprintf(`<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f5f5f5;">
     <table width="100%%" border="0" cellspacing="0" cellpadding="0" bgcolor="#f5f5f5"><tr><td align="center" style="padding:40px 0;">
     <table width="600" border="0" cellspacing="0" cellpadding="0" bgcolor="#ffffff" style="border-radius:16px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.1);">
@@ -842,16 +937,17 @@ func (s *EmailService) SendMultipleTicketsEmail(data MultipleTicketsEmailData) e
     <p>Hello <strong>%s</strong>, you have <strong>%d tickets</strong> for this event.</p>
     <table width="100%%" border="0" cellpadding="15" bgcolor="#fafafa" style="margin-bottom:20px;border-left:4px solid #F27124;">
     <tr><td><small style="color:#999999;text-transform:uppercase;">SEATS</small><br/><strong>%s</strong></td></tr>
-    <tr><td><small style="color:#999999;text-transform:uppercase;">LOCATION</small><br/><strong>%s</strong><br/><small>%s</small></td></tr>
+    <tr><td><small style="color:#999999;text-transform:uppercase;">LOCATION</small><br/>%s</td></tr>
     <tr><td><small style="color:#999999;text-transform:uppercase;">DATE</small><br/><strong>%s</strong></td></tr>
     <tr><td><small style="color:#999999;text-transform:uppercase;">TIME</small><br/><strong>%s</strong></td></tr>
     <tr><td><small style="color:#999999;text-transform:uppercase;">TOTAL AMOUNT</small><br/><strong style="color:#F27124;font-size:22px;">%s VND</strong></td></tr>
     </table>
     %s
+    %s
     <table width="100%%" bgcolor="#FFF8E1" style="border:1px solid #FFE082;border-radius:8px;margin-bottom:30px;"><tr><td style="padding:15px;"><strong>This email contains %d PDF files.</strong></td></tr></table>
-    <table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#F27124" style="border-radius:50px;padding:15px 35px;"><a href="%s" style="color:#ffffff;text-decoration:none;font-weight:bold;">VIEW ON MAP</a></td></tr></table>
+    %s
     </td></tr><tr><td align="center" bgcolor="#2c2c2c" style="padding:25px;"><p style="margin:0;font-size:12px;color:#999999;">© 2026 FPT Event Management. All rights reserved.</p></td></tr></table></td></tr></table></body></html>`,
-		data.EventTitle, data.UserName, data.TicketCount, data.SeatList, data.VenueName, data.VenueAddress, eventDate, eventTime, data.TotalAmount, organizerSection, data.TicketCount, mapURL)
+		data.EventTitle, data.UserName, data.TicketCount, data.SeatList, locationDisplay, eventDate, eventTime, data.TotalAmount, meetingBoxHTML, organizerSection, data.TicketCount, buttonHTML)
 	msg := EmailMessage{
 		To:       []string{data.UserEmail},
 		Subject:  fmt.Sprintf("[FPT Event] %d E-Tickets - %s", data.TicketCount, data.EventTitle),

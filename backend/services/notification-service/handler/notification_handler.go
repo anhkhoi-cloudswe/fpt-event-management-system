@@ -123,26 +123,34 @@ type SingleTicketData struct {
 	TicketIDs        string `json:"ticketIds"`
 	TicketTypes      string `json:"ticketTypes"`
 	SeatCodes        string `json:"seatCodes"`
-	CategoryTicketID int    `json:"categoryTicketId"`
-	OrganizerName    string `json:"organizerName"`
-	OrganizerEmail   string `json:"organizerEmail"`
+	CategoryTicketID    int    `json:"categoryTicketId"`
+	OrganizerName       string `json:"organizerName"`
+	OrganizerEmail      string `json:"organizerEmail"`
+	EventFormat         string `json:"eventFormat,omitempty"`
+	OnlineMeetingURL    string `json:"onlineMeetingUrl,omitempty"`
+	OnlineMeetingID     string `json:"onlineMeetingId,omitempty"`
+	OnlineMeetingSecret string `json:"onlineMeetingSecret,omitempty"`
 }
 
 // MultipleTicketsData - Data cho nhiều vé
 type MultipleTicketsData struct {
-	UserEmail      string          `json:"userEmail"`
-	UserName       string          `json:"userName"`
-	EventTitle     string          `json:"eventTitle"`
-	EventDate      string          `json:"eventDate"` // RFC3339 format
-	EndTime        string          `json:"endTime"`   // RFC3339 format
-	VenueName      string          `json:"venueName"`
-	VenueAddress   string          `json:"venueAddress"`
-	SeatList       string          `json:"seatList"`
-	TotalAmount    string          `json:"totalAmount"`
-	GoogleMapsURL  string          `json:"googleMapsUrl"`
-	OrganizerName  string          `json:"organizerName"`
-	OrganizerEmail string          `json:"organizerEmail"`
-	Tickets        []TicketPDFItem `json:"tickets"`
+	UserEmail           string          `json:"userEmail"`
+	UserName            string          `json:"userName"`
+	EventTitle          string          `json:"eventTitle"`
+	EventDate           string          `json:"eventDate"` // RFC3339 format
+	EndTime             string          `json:"endTime"`   // RFC3339 format
+	VenueName           string          `json:"venueName"`
+	VenueAddress        string          `json:"venueAddress"`
+	SeatList            string          `json:"seatList"`
+	TotalAmount         string          `json:"totalAmount"`
+	GoogleMapsURL       string          `json:"googleMapsUrl"`
+	OrganizerName       string          `json:"organizerName"`
+	OrganizerEmail      string          `json:"organizerEmail"`
+	EventFormat         string          `json:"eventFormat,omitempty"`
+	OnlineMeetingURL    string          `json:"onlineMeetingUrl,omitempty"`
+	OnlineMeetingID     string          `json:"onlineMeetingId,omitempty"`
+	OnlineMeetingSecret string          `json:"onlineMeetingSecret,omitempty"`
+	Tickets             []TicketPDFItem `json:"tickets"`
 }
 
 // TicketPDFItem - Thông tin 1 vé trong nhóm nhiều vé
@@ -333,9 +341,13 @@ func (h *NotificationHandler) handleSingleTicketPDF(data *SingleTicketData) (eve
 		QRCodeBase64:   qrBase64,
 		PaymentMethod:  data.PaymentMethod,
 		PDFAttachment:  pdfBytes,
-		PDFFilename:    fmt.Sprintf("ticket_%s.pdf", data.TicketCode),
-		OrganizerName:  data.OrganizerName, // Add organizer info
-		OrganizerEmail: data.OrganizerEmail,
+		PDFFilename:         fmt.Sprintf("ticket_%s.pdf", data.TicketCode),
+		OrganizerName:       data.OrganizerName, // Add organizer info
+		OrganizerEmail:      data.OrganizerEmail,
+		EventFormat:         data.EventFormat,
+		OnlineMeetingURL:    data.OnlineMeetingURL,
+		OnlineMeetingID:     data.OnlineMeetingID,
+		OnlineMeetingSecret: data.OnlineMeetingSecret,
 	}
 
 	if err := h.emailService.SendTicketEmail(emailData); err != nil {
@@ -424,9 +436,13 @@ func (h *NotificationHandler) handleMultipleTicketsPDF(data *MultipleTicketsData
 		SeatList:       data.SeatList,
 		TotalAmount:    data.TotalAmount,
 		GoogleMapsURL:  data.GoogleMapsURL,
-		OrganizerName:  data.OrganizerName,
-		OrganizerEmail: data.OrganizerEmail,
-		PDFAttachments: pdfAttachments,
+		OrganizerName:       data.OrganizerName,
+		OrganizerEmail:      data.OrganizerEmail,
+		PDFAttachments:      pdfAttachments,
+		EventFormat:         data.EventFormat,
+		OnlineMeetingURL:    data.OnlineMeetingURL,
+		OnlineMeetingID:     data.OnlineMeetingID,
+		OnlineMeetingSecret: data.OnlineMeetingSecret,
 	}
 
 	if err := h.emailService.SendMultipleTicketsEmail(emailData); err != nil {
