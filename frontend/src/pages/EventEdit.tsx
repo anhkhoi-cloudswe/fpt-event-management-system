@@ -26,6 +26,8 @@ import { uploadEventBanner, validateImageFile } from '../utils/imageUpload'
 import { useToast } from '../contexts/ToastContext'
 // showToast(type, message): hiển thị toast success/error/warning
 
+import { useAuth } from '../contexts/AuthContext'
+
 import UpgradePlanModal from '../components/UpgradePlanModal'
 import { useCapacityGuard } from '../hooks/useCapacityGuard'
 import { NumericInput } from '../components/common/NumericInput'
@@ -55,6 +57,7 @@ export default function EventEdit() {
 
   // showToast: hiển thị toast message
   const { showToast } = useToast()
+  const { user } = useAuth()
 
   const {
     modalOpen,
@@ -313,6 +316,13 @@ export default function EventEdit() {
       if (response.ok) {
         const data = await response.json()
         console.log('Event details:', data)
+
+        // ===== Kiểm tra quyền sở hữu đối với ORGANIZER =====
+        if (user && user.role !== 'ADMIN' && data.organizerId && Number(data.organizerId) !== Number(user.id)) {
+          showToast('error', 'Bạn không có quyền chỉnh sửa sự kiện của ban tổ chức khác.')
+          navigate('/dashboard/events')
+          return
+        }
 
         // ===== Check hasBookings từ backend để khóa ticket editing =====
         if (data.hasBookings !== undefined && data.hasBookings !== null) {

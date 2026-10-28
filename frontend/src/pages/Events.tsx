@@ -437,7 +437,11 @@ export default function Events() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {upcomingEvents.map(event => (
+                    {upcomingEvents.map(event => {
+                      const isOwner = Boolean(user?.id && event.organizerId && Number(user.id) === Number(event.organizerId))
+                      const canEditOrManage = user?.role === 'ADMIN' || isOwner
+
+                      return (
                       <div
                         key={event.eventId}
                         className="bg-white dark:bg-slate-900 border border-white/80 dark:border-slate-800/80 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full"
@@ -458,11 +462,11 @@ export default function Events() {
                               {event.title}
                             </h3>
 
-                            {/* Admin/Organizer/Staff có icon thao tác */}
-                            {(isOrganizer || isStaff) && (
+                            {/* Chỉ Admin hoặc chính Organizer tạo sự kiện mới có icon chỉnh sửa/cấu hình */}
+                            {(canEditOrManage || isStaff) && (
                               <div className="flex space-x-2 ml-2 flex-shrink-0">
-                                {/* Admin/Organizer được quản lý cấu hình */}
-                                {(user?.role === 'ADMIN' || isOrganizer) && (
+                                {/* Admin/Chính chủ được quản lý cấu hình */}
+                                {canEditOrManage && (
                                   <button
                                     onClick={() => handleManageConfig(event.eventId, event.title)}
                                     className="p-1 text-purple-600 hover:bg-purple-50 rounded"
@@ -472,8 +476,8 @@ export default function Events() {
                                   </button>
                                 )}
 
-                                {/* Organizer được edit */}
-                                {isOrganizer && (
+                                {/* Admin/Chính chủ được edit */}
+                                {canEditOrManage && (
                                   <Link
                                     to={`/dashboard/events/${event.eventId}/edit`}
                                     className="p-1 text-blue-600 hover:bg-blue-50 rounded"
@@ -568,7 +572,7 @@ export default function Events() {
                           </div>
                         </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </div>
@@ -582,7 +586,11 @@ export default function Events() {
                   </h2>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {pastEvents.map(event => (
+                    {pastEvents.map(event => {
+                      const isOwner = Boolean(user?.id && event.organizerId && Number(user.id) === Number(event.organizerId))
+                      const canEditOrManage = user?.role === 'ADMIN' || isOwner
+
+                      return (
                       <div
                         key={event.eventId}
                         className="bg-gray-50 rounded-lg shadow-sm overflow-hidden opacity-75 hover:opacity-90 transition-opacity flex flex-col h-full"
@@ -602,9 +610,9 @@ export default function Events() {
                             </h3>
 
                             {/* Icon thao tác: vẫn render nhưng style nhạt */}
-                            {(isOrganizer || isStaff) && (
+                            {(canEditOrManage || isStaff) && (
                               <div className="flex space-x-2 ml-2 flex-shrink-0">
-                                {(user?.role === 'ADMIN' || isOrganizer) && (
+                                {canEditOrManage && (
                                   <button
                                     onClick={() => handleManageConfig(event.eventId, event.title)}
                                     className="p-1 text-gray-400 hover:bg-gray-100 rounded"
@@ -614,7 +622,7 @@ export default function Events() {
                                     <Settings size={18} />
                                   </button>
                                 )}
-                                {isOrganizer && (
+                                {canEditOrManage && (
                                   <Link
                                     to={`/dashboard/events/${event.eventId}/edit`}
                                     className="p-1 text-gray-400 hover:bg-gray-100 rounded"
@@ -685,7 +693,7 @@ export default function Events() {
                           </div>
                         </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </div>
               )}
