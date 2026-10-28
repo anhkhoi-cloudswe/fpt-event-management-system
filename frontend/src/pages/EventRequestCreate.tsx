@@ -760,6 +760,35 @@ export default function EventRequestCreate() {
     }
   };
 
+  const formatMeetingSlot = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+      const clean = dateStr.replace('T', ' ');
+      const parts = clean.split(' ');
+      const datePart = parts[0];
+      const timePart = parts[1] || '';
+      if (datePart && timePart) {
+        const [yyyy, mm, dd] = datePart.split('-');
+        const [hh, min] = timePart.split(':');
+        if (yyyy && mm && dd && hh !== undefined && min !== undefined) {
+          return `${hh.padStart(2, '0')}:${min.padStart(2, '0')} (${dd.padStart(2, '0')}/${mm.padStart(2, '0')}/${yyyy})`;
+        }
+      }
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        const hh = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mo = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `${hh}:${min} (${dd}/${mo}/${yyyy})`;
+      }
+      return dateStr;
+    } catch {
+      return dateStr;
+    }
+  };
+
   // Listen for OAuth success messages from popup window
   useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
@@ -1395,7 +1424,11 @@ export default function EventRequestCreate() {
 
   const handleCancel = async () => {
     if (bannerUrl?.includes('/uploads/')) await deleteEventBanner(bannerUrl)
-    navigate('/dashboard/event-requests')
+    if (flowType === 'INDEPENDENT') {
+      navigate('/dashboard/events')
+    } else {
+      navigate('/dashboard/event-requests')
+    }
   }
 
   /* ── Field change ── */
@@ -1560,7 +1593,11 @@ export default function EventRequestCreate() {
         throw new Error(ed.message || ed.error || 'Thất bại')
       }
       showToast('success', flowType === 'UNIVERSITY' ? 'Đã gửi đề xuất thành công!' : 'Sự kiện đã được tạo thành công!')
-      navigate('/dashboard/event-requests')
+      if (flowType === 'INDEPENDENT') {
+        navigate('/dashboard/events')
+      } else {
+        navigate('/dashboard/event-requests')
+      }
     } catch (err: any) {
       setError(err.message || 'Có lỗi xảy ra')
       showToast('error', err.message || 'Có lỗi xảy ra')
@@ -2263,41 +2300,55 @@ export default function EventRequestCreate() {
 
                       {/* Schedule Confirmation Card */}
                       {meetingDetails.url && (
-                        <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition ${
-                          isDarkMode ? 'bg-orange-950/20 border-orange-500/20 text-orange-200' : 'bg-orange-50 border-orange-200 text-orange-900'
+                        <div className={`relative p-3.5 rounded-xl border transition ${
+                          isDarkMode ? 'bg-orange-950/20 border-orange-500/20 text-orange-200' : 'bg-orange-50/80 border-orange-200 text-orange-900'
                         }`}>
-                          <div className="flex items-start gap-2.5">
+                          {/* Sát góc phải trên, nằm ngang không xuống dòng */}
+                          <div className="absolute top-3 right-3 shrink-0">
+                            <span className="inline-flex items-center whitespace-nowrap px-2 py-0.5 text-[9px] font-black rounded-full uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm">
+                              Đã book lịch
+                            </span>
+                          </div>
+
+                          <div className="flex items-start gap-2.5 pr-28">
                             <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500 mt-0.5 shrink-0">
                               <CalendarCheck className="w-4 h-4" />
                             </div>
-                            <div className="space-y-0.5">
-                              <div className="text-xs font-bold flex items-center gap-1.5">
-                                <span>Phòng họp đã được lên lịch theo thời gian mong muốn</span>
-                                <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                  Đã book lịch
-                                </span>
+                            <div className="space-y-1.5 flex-1 min-w-0">
+                              {/* Tiêu đề ngắn gọn trên một hàng */}
+                              <div className="text-xs font-bold text-slate-800 dark:text-orange-200 whitespace-nowrap overflow-hidden text-ellipsis">
+                                Thời gian Phòng họp mong muốn
                               </div>
-                              <div className="text-[11px] opacity-90 font-medium">
-                                {formData.preferredStart && formData.preferredEnd ? (
-                                  <span>
-                                    Khung giờ: <b>{formData.preferredStart.replace('T', ' ')}</b> đến <b>{formData.preferredEnd.replace('T', ' ')}</b>
+
+                              {/* Khung giờ format căn chuẩn hàng dọc */}
+                              {formData.preferredStart && formData.preferredEnd ? (
+                                <div className="grid grid-cols-[auto_auto_1fr] items-center gap-x-1.5 text-[11px] leading-relaxed font-mono">
+                                  <span className="text-slate-500 dark:text-orange-400/80 font-medium">Khung giờ</span>
+                                  <span className="text-slate-400 dark:text-orange-400/60 font-semibold">:</span>
+                                  <span className="font-bold text-slate-800 dark:text-orange-100">
+                                    {formatMeetingSlot(formData.preferredStart)}
+                                  </span>
+
+                                  <span className="text-slate-500 dark:text-orange-400/80 font-medium">đến</span>
+                                  <span className="text-slate-400 dark:text-orange-400/60 font-semibold">:</span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-slate-800 dark:text-orange-100">
+                                      {formatMeetingSlot(formData.preferredEnd)}
+                                    </span>
                                     {calcMeetingDuration(formData.preferredStart, formData.preferredEnd) && (
-                                      <span> ({calcMeetingDuration(formData.preferredStart, formData.preferredEnd)})</span>
+                                      <span className="font-sans text-[10px] text-slate-500 dark:text-orange-300/70 font-normal">
+                                        ({calcMeetingDuration(formData.preferredStart, formData.preferredEnd)})
+                                      </span>
                                     )}
-                                  </span>
-                                ) : (
-                                  <span className="text-amber-500 font-medium">
-                                    💡 Vui lòng hoàn tất ngày giờ bắt đầu và kết thúc bên trên để phòng họp đồng bộ chuẩn xác.
-                                  </span>
-                                )}
-                              </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-amber-500 font-medium text-[11px]">
+                                  💡 Vui lòng hoàn tất ngày giờ bắt đầu và kết thúc bên trên để phòng họp đồng bộ chuẩn xác.
+                                </div>
+                              )}
                             </div>
                           </div>
-                          {formData.preferredStart && formData.preferredEnd && (
-                            <div className="text-[10px] text-right font-semibold text-emerald-500 shrink-0 hidden sm:block">
-                              ✓ Sẵn sàng kích hoạt tự động
-                            </div>
-                          )}
                         </div>
                       )}
 

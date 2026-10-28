@@ -646,7 +646,7 @@ export default function OrganizerEventRequests() {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight sm:text-4xl">Yêu Cầu Sự Kiện Của Tôi</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
-            Theo dõi, cập nhật và quản lý trạng thái hồ sơ đăng ký tổ chức sự kiện của bạn.
+            Theo dõi các hồ sơ đề xuất mượn cơ sở vật chất trường FPT. Với sự kiện tự do (Online / Tự thuê địa điểm), bạn có thể quản lý trực tiếp tại mục <Link to="/dashboard/events" className="text-orange-500 font-bold hover:underline">Sự kiện</Link>.
           </p>
         </div>
 

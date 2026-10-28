@@ -4732,7 +4732,7 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 			banner_url, status, created_by, created_at,
 			event_format, custom_venue_name, custom_location,
 			org_type, privacy_status, online_meeting_url, online_meeting_id, online_meeting_secret
-		) VALUES ($1, $2, $3, $4, $5, $6, 'UPDATING', $7, NOW(), $8, $9, $10, $11, $12, $13, $14, $15)
+		) VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, NOW(), $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING event_id
 	`
 	var eventID int

@@ -329,9 +329,10 @@ export default function Events() {
   // ===== Filter chỉ lấy các sự kiện đang OPEN và chưa kết thúc =====
   const nowTime = new Date().getTime()
 
-  // openEvents: Chỉ lấy các sự kiện có status là OPEN và chưa qua endTime
+  // openEvents: Hiển thị các sự kiện đang mở (OPEN) hoặc đang cập nhật (UPDATING dành cho Organizer/Staff/Admin) và chưa qua endTime
   const openEvents = events.filter(
-    e => e.status === 'OPEN' && new Date(e.endTime).getTime() > nowTime
+    e => (e.status === 'OPEN' || ((isOrganizer || isStaff || user?.role === 'ADMIN') && e.status === 'UPDATING')) &&
+      new Date(e.endTime).getTime() > nowTime
   )
 
   // upcomingEvents: Sắp xếp các sự kiện đang mở theo thời gian bắt đầu
@@ -503,18 +504,23 @@ export default function Events() {
                           {/* Trạng thái và Countdown */}
                           <div className="flex flex-wrap items-center gap-2 mb-3">
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${event.status === 'OPEN'
-                                ? 'bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300'
-                                : event.status === 'CLOSED'
-                                  ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
-                                  : 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-300'
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                event.status === 'OPEN'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300'
+                                  : event.status === 'UPDATING'
+                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                                    : event.status === 'CLOSED'
+                                      ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
+                                      : 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-300'
                               }`}
                             >
                               {event.status === 'OPEN'
                                 ? (currentLanguage === 'en' ? 'Open' : 'Đang mở')
-                                : event.status === 'CLOSED'
-                                  ? (currentLanguage === 'en' ? 'Closed' : 'Đã đóng')
-                                  : event.status}
+                                : event.status === 'UPDATING'
+                                  ? (currentLanguage === 'en' ? 'Updating' : 'Chờ cập nhật')
+                                  : event.status === 'CLOSED'
+                                    ? (currentLanguage === 'en' ? 'Closed' : 'Đã đóng')
+                                    : event.status}
                             </span>
 
                             {event.status === 'OPEN' && getCountdownText(event.startTime) && (
