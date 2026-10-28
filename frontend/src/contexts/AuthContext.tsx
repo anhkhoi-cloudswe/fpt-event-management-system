@@ -221,16 +221,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem('user')
   }, [])
 
+  const handleSessionExpired = useCallback(() => {
+    setUser(null)
+    setTokenState(null)
+    setIsAuthenticated(false)
+  }, [setUser])
+
   // Listen to session expired events from Axios client config
   useEffect(() => {
-    const handleSessionExpired = () => {
-      setUser(null)
-      setTokenState(null)
-      setIsAuthenticated(false)
-    }
     window.addEventListener('auth:session-expired', handleSessionExpired)
     return () => window.removeEventListener('auth:session-expired', handleSessionExpired)
-  }, [])
+  }, [handleSessionExpired])
 
   useEffect(() => {
     // Public pages must be immediately readable for guests, including clean browsers with no auth cookie.
@@ -319,6 +320,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const idleDuration = Date.now() - lastActiveAt
         // If user was idle/AFK for more than 15 minutes, silently refresh token now
         if (idleDuration > 15 * 60 * 1000) {
+          lastActiveAt = Date.now()
           console.log('[Auth] User returned from AFK (>15m). Silently refreshing token...')
           void requestTokenRefresh()
             .then((newToken) => {
@@ -328,10 +330,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             })
             .catch((err) => {
-              console.warn('[Auth] AFK token recovery failed:', err)
+              console.warn('[Auth] AFK token recovery failed (session expired):', err)
+              handleSessionExpired()
             })
+        } else {
+          lastActiveAt = Date.now()
         }
-        lastActiveAt = Date.now()
       }
     }
 

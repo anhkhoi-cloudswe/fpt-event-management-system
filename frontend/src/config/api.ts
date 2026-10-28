@@ -57,6 +57,7 @@ interface FailedRequest {
 
 let isRefreshing = false
 let failedQueue: FailedRequest[] = []
+let lastRefreshFailedAt = 0
 
 const processQueue = (error: any, token: string | null = null) => {
 	failedQueue.forEach((prom) => {
@@ -70,6 +71,11 @@ const processQueue = (error: any, token: string | null = null) => {
 }
 
 export const requestTokenRefresh = (): Promise<string> => {
+	// Guard against rapid consecutive refresh attempts if refresh just failed (< 10s)
+	if (Date.now() - lastRefreshFailedAt < 10000) {
+		return Promise.reject(new Error('Recent token refresh failed'))
+	}
+
 	if (isRefreshing) {
 		return new Promise((resolve, reject) => {
 			failedQueue.push({
@@ -91,18 +97,23 @@ export const requestTokenRefresh = (): Promise<string> => {
 			.then((res) => {
 				const token = res.data?.accessToken
 				if (token) {
+					lastRefreshFailedAt = 0
 					setInMemoryToken(token)
 					processQueue(null, token)
 					resolve(token)
 				} else {
 					const err = new Error('No accessToken in refresh response')
+					lastRefreshFailedAt = Date.now()
 					processQueue(err, null)
 					reject(err)
 				}
 			})
 			.catch((refreshError) => {
+				lastRefreshFailedAt = Date.now()
 				processQueue(refreshError, null)
 				setInMemoryToken(null)
+				// Broadcast session expired cleanly so UI logs out without infinite loops
+				window.dispatchEvent(new CustomEvent('auth:session-expired'))
 				reject(refreshError)
 			})
 			.finally(() => {
@@ -132,17 +143,7 @@ api.interceptors.response.use(
 			if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/api/auth/refresh') || originalRequest._retry) {
 				accessToken = null
 				if (!isBackground) {
-					const path = window.location.pathname
-					const isAllowedUnauthPage =
-						path.startsWith('/guest') ||
-						path.startsWith('/login') ||
-						path.startsWith('/signup') ||
-						path.startsWith('/reset-password') ||
-						path.startsWith('/attendance') ||
-						path.startsWith('/events')
-					if (!isAllowedUnauthPage) {
-						window.location.href = '/guest'
-					}
+					window.dispatchEvent(new CustomEvent('auth:session-expired'))
 				}
 				return Promise.reject(error)
 			}
@@ -157,17 +158,6 @@ api.interceptors.response.use(
 				.catch((refreshError) => {
 					if (!isBackground) {
 						window.dispatchEvent(new CustomEvent('auth:session-expired'))
-						const path = window.location.pathname
-						const isAllowedUnauthPage =
-							path.startsWith('/guest') ||
-							path.startsWith('/login') ||
-							path.startsWith('/signup') ||
-							path.startsWith('/reset-password') ||
-							path.startsWith('/attendance') ||
-							path.startsWith('/events')
-						if (!isAllowedUnauthPage) {
-							window.location.href = '/guest'
-						}
 					}
 					return Promise.reject(refreshError)
 				})
@@ -234,6 +224,7 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Pr
 			}
 		} catch (refreshErr) {
 			console.warn('[Fetch Interceptor] Auto-refresh failed after 401:', refreshErr)
+			window.dispatchEvent(new CustomEvent('auth:session-expired'))
 		}
 	}
 

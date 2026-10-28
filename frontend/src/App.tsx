@@ -155,21 +155,21 @@ function LoadingScreen() {
 }
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, loading, isRefreshing } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
 
-  if (loading || isRefreshing) {
+  if (loading) {
     return <LoadingScreen />
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/guest" />
+  return isAuthenticated ? <>{children}</> : <Navigate to="/guest" replace />
 }
 
 function PublicRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, loading, isRefreshing } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
   const [timedOut, setTimedOut] = useState(false)
 
   useEffect(() => {
-    if (loading || isRefreshing) {
+    if (loading) {
       const timer = setTimeout(() => {
         setTimedOut(true)
       }, 1500)
@@ -177,9 +177,9 @@ function PublicRoute({ children }: { children: ReactNode }) {
     } else {
       setTimedOut(false)
     }
-  }, [loading, isRefreshing])
+  }, [loading])
 
-  if ((loading || isRefreshing) && !timedOut) {
+  if (loading && !timedOut) {
     return <LoadingScreen />
   }
 

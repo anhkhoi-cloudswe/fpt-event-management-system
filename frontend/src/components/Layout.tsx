@@ -213,14 +213,18 @@ export default function Layout() {
     }
   }, [])
 
-  // Show loading overlay when location changes
+  // Show loading overlay only when actual pathname changes (prevent mount flicker)
+  const prevPathnameRef = useRef<string>(currentPathname)
   useEffect(() => {
-    setShowLoading(true)
-    const timer = setTimeout(() => {
-      setShowLoading(false)
-    }, 500)
+    if (prevPathnameRef.current !== currentPathname) {
+      prevPathnameRef.current = currentPathname
+      setShowLoading(true)
+      const timer = setTimeout(() => {
+        setShowLoading(false)
+      }, 350)
 
-    return () => clearTimeout(timer)
+      return () => clearTimeout(timer)
+    }
   }, [currentPathname])
 
   const handleLogout = () => {
