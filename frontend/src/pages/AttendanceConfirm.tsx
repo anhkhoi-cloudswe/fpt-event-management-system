@@ -218,14 +218,38 @@ export default function AttendanceConfirm() {
       {/* Top Navigation Bar */}
       <header className="w-full border-b border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-4xl mx-auto px-4 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={fptLogo} alt="FEMS Logo" className="h-9 w-auto object-contain" />
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" /> FEMS EVENT
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <Link to="/" className="flex items-center gap-2 sm:gap-2.5 group shrink-0">
+              {/* FEMS Logo Favicon */}
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300 shadow-sm">
+                <img
+                  src="/favicon.png"
+                  alt="FEMS Logo"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+
+              {/* Dấu × kết nối thương hiệu co-branding */}
+              <span className="text-slate-400 font-light text-base select-none leading-none shrink-0">
+                ×
               </span>
-              <p className="text-[11px] text-slate-500 dark:text-neutral-400 font-medium">
-                {lang === 'en' ? 'Event Check-out & Feedback' : 'Điểm danh Check-out & Khảo sát ý kiến'}
+
+              {/* FPT University Logo */}
+              <img
+                src={fptLogo}
+                alt="FPT Education"
+                className="h-7 sm:h-8 w-auto object-contain transition-transform duration-300 group-hover:scale-105 shrink-0"
+              />
+            </Link>
+
+            <div className="h-6 w-px bg-slate-200 dark:bg-white/10 hidden sm:block ml-1" />
+
+            <div className="hidden sm:block">
+              <span className="text-xs font-black uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> FEMS EVENT
+              </span>
+              <p className="text-[11px] text-slate-500 dark:text-neutral-400 font-medium leading-tight">
+                {lang === 'en' ? 'Check-out & Feedback' : 'Điểm danh Check-out & Đánh giá'}
               </p>
             </div>
           </div>

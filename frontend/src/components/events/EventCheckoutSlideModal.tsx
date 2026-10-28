@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { X, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles } from 'lucide-react'
+import { X, Maximize2, Minimize2, Copy, Check, ExternalLink } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import fptLogo from '../../assets/fpt-logo.png'
 
@@ -81,15 +81,23 @@ export default function EventCheckoutSlideModal({
           </button>
         </div>
 
-        {/* Branding Logo & Header */}
-        <div className="flex items-center gap-3 mb-2">
-          <img src={fptLogo} alt="FEMS Logo" className="h-10 sm:h-12 w-auto object-contain" />
-          <div className="text-left">
-            <span className="text-xs font-black uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" /> FEMS ALL-IN-ONE
-            </span>
-            <p className="text-xs text-slate-500 dark:text-neutral-400 font-medium">Event Management System</p>
+        {/* Branding Logo Combo matching Image 3: [FEMS Favicon] × [FPT University] */}
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+            <img
+              src="/favicon.png"
+              alt="FEMS Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
+          <span className="text-slate-400 font-light text-lg select-none leading-none shrink-0">
+            ×
+          </span>
+          <img
+            src={fptLogo}
+            alt="FPT Education"
+            className="h-8 sm:h-9 w-auto object-contain shrink-0"
+          />
         </div>
 
         {/* Big Catchy Title matching Image 2 */}
@@ -112,11 +120,11 @@ export default function EventCheckoutSlideModal({
               level="H"
               includeMargin={true}
               imageSettings={{
-                src: fptLogo,
+                src: '/favicon.png',
                 x: undefined,
                 y: undefined,
-                height: 38,
-                width: 38,
+                height: 44,
+                width: 44,
                 excavate: true,
               }}
             />
@@ -160,13 +168,6 @@ export default function EventCheckoutSlideModal({
             <ExternalLink className="w-3.5 h-3.5" /> {lang === 'en' ? 'Open Form' : 'Mở Form'}
           </a>
         </div>
-
-        {/* Instructions */}
-        <p className="mt-4 text-[11px] text-slate-400 dark:text-neutral-500 max-w-md">
-          {lang === 'en'
-            ? '💡 Project this slide at the end of the event on Zoom screen or hall projector. Attendees scan the code to check out and submit their feedback directly.'
-            : '💡 Ban tổ chức trình chiếu slide này cuối buổi trên màn hình Zoom/Meet hoặc máy chiếu hội trường. Sinh viên quét mã để hoàn tất check-out và gửi đánh giá.'}
-        </p>
       </div>
     </div>
   )
