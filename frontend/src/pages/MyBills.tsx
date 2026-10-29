@@ -250,7 +250,7 @@ export default function MyBills() {
             {currentLanguage === 'en' ? 'My Bills' : 'Hóa đơn của tôi'}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
-            {currentLanguage === 'en' ? 'Track transaction history, event ticket payments, and financial documents at FPT University.' : 'Theo dõi lịch sử giao dịch, thanh toán vé sự kiện và các chứng từ tài chính tại trường FPT.'}
+            {currentLanguage === 'en' ? 'Track transaction history, ticket payments' : 'Theo dõi lịch sử giao dịch, thanh toán vé'}
           </p>
         </div>
       </div>
@@ -315,10 +315,73 @@ export default function MyBills() {
         </div>
       )}
 
-      {/* Nếu không loading, không lỗi, và có hóa đơn -> render bảng */}
+      {/* Nếu không loading, không lỗi, và có hóa đơn -> render bảng (Desktop) & Flat List (Mobile) */}
       {!loading && !error && bills.length > 0 && (
         <>
-          <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 overflow-hidden shadow-md animate-fade-in-up">
+          {/* Mobile View: Nền phẳng liền mạch, không viền hộp lồng nhau, border-b 1px rgba(255,255,255,0.08), hover/active mượt */}
+          <div className="block md:hidden bg-transparent divide-y divide-slate-200/40 dark:divide-white/[0.08]">
+            {bills.map((bill, index) => {
+              const isLast = index === bills.length - 1;
+              return (
+                <div
+                  key={bill.id}
+                  className={`py-4 px-1.5 transition-colors duration-200 hover:bg-black/5 dark:hover:bg-white/[0.04] active:bg-black/10 dark:active:bg-white/[0.07] ${
+                    isLast ? 'border-b-0' : ''
+                  }`}
+                >
+                  {/* Hàng 1: Mã hóa đơn + Phương thức thanh toán (trái) và Trạng thái không xuống hàng (phải) */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-mono text-sm font-black text-slate-900 dark:text-white shrink-0">
+                        #{bill.id}
+                      </span>
+                      <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 ${
+                        bill.paymentMethod === 'MOMO' ? 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 border border-pink-200/60 dark:border-pink-900/40' :
+                        bill.paymentMethod === 'WALLET' ? 'bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300 border border-orange-200/60 dark:border-orange-900/40' :
+                        bill.paymentMethod === 'FREE' ? 'bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-900/40' :
+                        'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                      }`}>
+                        {bill.paymentMethod === 'WALLET' ? (currentLanguage === 'en' ? 'E-Wallet' : 'Ví điện tử') : bill.paymentMethod === 'FREE' ? (currentLanguage === 'en' ? 'Free' : 'Miễn phí') : (bill.paymentMethod || 'N/A')}
+                      </span>
+                    </div>
+
+                    {/* Badge trạng thái: whitespace-nowrap để không bao giờ bị đứt gãy chữ */}
+                    <div className="shrink-0">
+                      {bill.status === 'PAID' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40">
+                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" />
+                          <span>{currentLanguage === 'en' ? 'Paid' : 'Đã hoàn thành'}</span>
+                        </span>
+                      ) : bill.status === 'PENDING' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/40">
+                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />
+                          <span>{currentLanguage === 'en' ? 'Pending' : 'Chờ thanh toán'}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/40">
+                          <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse shrink-0" />
+                          <span>{currentLanguage === 'en' ? 'Canceled' : 'Đã hủy'}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Hàng 2: Ngày tạo (trái) và Số tiền nổi bật (phải) */}
+                  <div className="flex items-center justify-between gap-2 mt-2">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      {formatVietnamDateTime(bill.createdAt, 'dd/MM/yyyy HH:mm')}
+                    </span>
+                    <span className="text-sm font-black text-slate-900 dark:text-white shrink-0">
+                      {bill.totalAmount.toLocaleString('vi-VN')} {currentLanguage === 'en' ? 'VND' : 'đ'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop View: Table đầy đủ */}
+          <div className="hidden md:block bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 overflow-hidden shadow-md animate-fade-in-up">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200/60 dark:divide-slate-800">
                 {/* Header của bảng */}
@@ -380,17 +443,17 @@ export default function MyBills() {
                       {/* Cột trạng thái */}
                       <td className="px-6 py-4 text-sm text-center">
                         {bill.status === 'PAID' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/30 shadow-sm shadow-emerald-500/5">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/30 shadow-sm shadow-emerald-500/5">
                             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                             {currentLanguage === 'en' ? 'Paid' : 'Đã thanh toán'}
                           </span>
                         ) : bill.status === 'PENDING' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/30 shadow-sm shadow-amber-500/5">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/30 shadow-sm shadow-amber-500/5">
                             <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
                             {currentLanguage === 'en' ? 'Pending Payment' : 'Chờ thanh toán'}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900/30 shadow-sm shadow-rose-500/5">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900/30 shadow-sm shadow-rose-500/5">
                             <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
                             {currentLanguage === 'en' ? 'Canceled' : 'Đã hủy'}
                           </span>
@@ -418,29 +481,48 @@ export default function MyBills() {
 
       {/* Loading skeleton */}
       {loading && (
-        <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 overflow-hidden shadow-md">
-          <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
-            <thead className="bg-slate-50/50 dark:bg-slate-950/50">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  {currentLanguage === 'en' ? 'Bill ID' : 'Mã hóa đơn'}
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  {currentLanguage === 'en' ? 'Created Date' : 'Ngày tạo'}
-                </th>
-                <th className="px-6 py-4 text-right text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  {currentLanguage === 'en' ? 'Amount' : 'Số tiền'}
-                </th>
-                <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  {currentLanguage === 'en' ? 'Status' : 'Trạng thái'}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              <BillSkeleton />
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Mobile Skeleton */}
+          <div className="block md:hidden bg-transparent divide-y divide-slate-200/40 dark:divide-white/[0.08] animate-pulse">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="py-4 px-1.5 space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-28"></div>
+                  <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded-full w-24"></div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-36"></div>
+                  <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-20"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Skeleton */}
+          <div className="hidden md:block bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 overflow-hidden shadow-md">
+            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+              <thead className="bg-slate-50/50 dark:bg-slate-950/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    {currentLanguage === 'en' ? 'Bill ID' : 'Mã hóa đơn'}
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    {currentLanguage === 'en' ? 'Created Date' : 'Ngày tạo'}
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    {currentLanguage === 'en' ? 'Amount' : 'Số tiền'}
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    {currentLanguage === 'en' ? 'Status' : 'Trạng thái'}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <BillSkeleton />
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Empty state */}
