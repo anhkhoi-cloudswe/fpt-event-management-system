@@ -466,7 +466,7 @@ export default function OrganizerWalletPage() {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto no-scrollbar whitespace-nowrap">
         <button
           onClick={() => setActiveTab('LEDGER')}
           className={`px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
@@ -538,8 +538,67 @@ export default function OrganizerWalletPage() {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          {/* Mobile Flat List: Nền trong suốt liền mạch, ngăn cách đường kẻ mảnh, không lồng hộp */}
+          <div className="block md:hidden bg-transparent divide-y divide-slate-200/40 dark:divide-white/[0.08]">
+            {ledgerLoading ? (
+              <div className="py-10 text-center text-xs text-slate-400">Đang tải lịch sử giao dịch...</div>
+            ) : transactions.length === 0 ? (
+              <div className="py-10 text-center text-xs text-slate-400">Chưa có giao dịch nào được ghi nhận.</div>
+            ) : (
+              transactions.map((tx, idx) => {
+                const isCredit = ['TOPUP', 'EVENT_PAYOUT_RELEASE', 'CREDIT'].includes(tx.type);
+                const isLast = idx === transactions.length - 1;
+                return (
+                  <div
+                    key={tx.transactionId}
+                    className={`py-3.5 px-1 transition-colors duration-200 hover:bg-black/5 dark:hover:bg-white/[0.04] active:bg-black/10 dark:active:bg-white/[0.07] ${
+                      isLast ? 'border-b-0' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-xs font-bold text-slate-500 shrink-0">#{tx.transactionId}</span>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap shrink-0 ${
+                            tx.type === 'TOPUP'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                              : tx.type === 'TICKET_SALE'
+                              ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                              : tx.type === 'EVENT_PAYOUT_RELEASE'
+                              ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+                              : tx.type === 'USAGE_FEE'
+                              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                          }`}
+                        >
+                          {tx.type}
+                        </span>
+                      </div>
+                      <span className={`text-sm font-black whitespace-nowrap shrink-0 ${isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        {isCredit ? '+' : '-'}{formatVND(tx.amount)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 mt-1.5 text-xs">
+                      <span className="text-slate-600 dark:text-slate-300 truncate max-w-[200px]" title={tx.description || ''}>
+                        {tx.description || 'Giao dịch ví'}
+                      </span>
+                      <span className="text-slate-400 text-[11px] shrink-0 font-medium">
+                        {new Date(tx.createdAt).toLocaleDateString('vi-VN')}
+                      </span>
+                    </div>
+
+                    <div className="mt-1 text-[11px] font-mono text-slate-400">
+                      Số dư: {formatVND(tx.balanceBefore)} → {formatVND(tx.balanceAfter)}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 <tr>
@@ -720,7 +779,65 @@ export default function OrganizerWalletPage() {
             </button>
           </div>
 
-          <div className="overflow-x-auto rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          {/* Mobile Flat List for Payouts */}
+          <div className="block md:hidden bg-transparent divide-y divide-slate-200/40 dark:divide-white/[0.08]">
+            {payoutLoading ? (
+              <div className="py-10 text-center text-xs text-slate-400">Đang tải lịch sử rút tiền...</div>
+            ) : payouts.length === 0 ? (
+              <div className="py-10 text-center text-xs text-slate-400">Chưa có yêu cầu rút tiền nào.</div>
+            ) : (
+              payouts.map((p, idx) => {
+                const isLast = idx === payouts.length - 1;
+                return (
+                  <div
+                    key={p.payoutId}
+                    className={`py-3.5 px-1 transition-colors duration-200 hover:bg-black/5 dark:hover:bg-white/[0.04] active:bg-black/10 dark:active:bg-white/[0.07] ${
+                      isLast ? 'border-b-0' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-xs font-bold text-slate-500 shrink-0">#{p.payoutId}</span>
+                        <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                          {p.bankCode} - {p.accountNumber}
+                        </span>
+                      </div>
+                      <span className="text-sm font-black text-rose-600 dark:text-rose-400 whitespace-nowrap shrink-0">
+                        -{formatVND(p.amount)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 mt-1.5 text-xs">
+                      <span className="text-slate-400 uppercase text-[11px] truncate max-w-[180px]">
+                        {p.accountHolderName}
+                      </span>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap shrink-0 ${
+                          p.status === 'COMPLETED'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                            : p.status === 'PROCESSING'
+                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                            : p.status === 'REJECTED'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                        }`}
+                      >
+                        {p.status === 'COMPLETED' ? 'Hoàn tất' : p.status === 'PROCESSING' ? 'Đang xử lý' : p.status === 'REJECTED' ? 'Từ chối' : 'Chờ xử lý'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 mt-1 text-[11px] text-slate-400">
+                      <span className="truncate">{p.note || p.rejectReason || 'Lệnh rút tiền'}</span>
+                      <span className="shrink-0 font-medium">{new Date(p.createdAt).toLocaleDateString('vi-VN')}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 <tr>

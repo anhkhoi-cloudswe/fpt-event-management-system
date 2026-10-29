@@ -124,7 +124,7 @@ export function SubscriptionDetailModal({
         heroGradient: 'from-purple-600/20 via-indigo-600/10 to-transparent',
         accentText: 'text-purple-600 dark:text-purple-400',
         progressBar: 'bg-gradient-to-r from-purple-500 to-indigo-500',
-        title: currentSub?.tierName || 'Gói Doanh Nghiệp',
+        title: currentSub?.tierName || 'Gói BUSINESS',
         commissionRate: dynamicCommissionRate,
         commissionNote: dynamicCommissionRate === '0.0%' ? 'Miễn 100% sàn' : `Ưu đãi ${dynamicCommissionRate}`,
       }
