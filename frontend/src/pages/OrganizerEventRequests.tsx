@@ -1,13 +1,6 @@
-// Import Link để chuyển trang trong SPA, useNavigate để điều hướng bằng code, useLocation để nhận state
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-
-// Lấy thông tin user đăng nhập (role) từ AuthContext
 import { useAuth } from '../contexts/AuthContext'
-
-// ToastContext để hiển thị thông báo (success/error/warning)
 import { useToast } from '../contexts/ToastContext'
-
-// Import icon để hiển thị UI đẹp hơn
 import {
   XCircle,
   FileClock,
@@ -32,14 +25,11 @@ import {
   Video,
   ExternalLink,
   Eye,
-  Sparkles
+  Sparkles,
+  GraduationCap
 } from 'lucide-react'
-
-// useEffect để gọi API khi component mount / khi dependencies thay đổi
-// useState để quản lý state dữ liệu
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-// Modal xem chi tiết request
 import { EventRequestDetailModal } from '../components/events/EventRequestDetailModal'
 import { EventDetailModal } from '../components/events/EventDetailModal'
 import { EventConfigModal } from '../components/events/EventConfigModal'
@@ -47,11 +37,7 @@ import { formatEventLocation } from '../utils/location'
 import type { EventListItem, EventDetail } from '../types/event'
 
 const ITEMS_PER_PAGE = 10
-const ARCHIVED_EVENT_STATUSES = ['OPEN', 'CLOSED', 'CANCELLED', 'FINISHED'] as const
 
-/**
- * Enum kiểu trạng thái yêu cầu tổ chức sự kiện
- */
 type EventRequestStatus =
   | 'PENDING'
   | 'APPROVED'
@@ -63,9 +49,6 @@ type EventRequestStatus =
   | 'CLOSED'
   | 'OPEN'
 
-/**
- * Kiểu dữ liệu EventRequest
- */
 type EventRequest = {
   requestId: number
   requesterId: number
@@ -82,7 +65,7 @@ type EventRequest = {
   processedAt?: string
   organizerNote?: string
   createdEventId?: number
-  eventStatus?: string // Status of created Event (UPDATING, OPEN, CLOSED, etc.)
+  eventStatus?: string
   bannerUrl?: string
   venueName?: string
   areaName?: string
@@ -99,9 +82,6 @@ type EventRequest = {
   onlineMeetingSecret?: string
 }
 
-/**
- * Kiểu dữ liệu EventRequest cho EventRequestDetailModal
- */
 type EventRequestForModal = {
   requestId: number
   requesterId: number
@@ -135,9 +115,6 @@ type EventRequestForModal = {
   onlineMeetingSecret?: string
 }
 
-/**
- * API Response type for active/archived requests
- */
 type ApiTabResponse = {
   requests: EventRequest[]
   totalCount: number
@@ -176,7 +153,7 @@ const sanitizeEventRequest = (value: unknown): EventRequest | null => {
     requestId,
     requesterId: Number(value.requesterId ?? value.requester_id ?? 0) || 0,
     requesterName: value.requesterName ?? value.requester_name ?? value.Organizer?.name,
-    title: String(value.title ?? 'Yeu cau su kien'),
+    title: String(value.title ?? 'Yêu cầu sự kiện'),
     description: value.description ? String(value.description) : undefined,
     preferredStartTime: getValidDateString(value.preferredStartTime ?? value.preferred_start_time),
     preferredEndTime: getValidDateString(value.preferredEndTime ?? value.preferred_end_time),
@@ -222,9 +199,6 @@ const normalizeTabResponse = (payload: unknown): ApiTabResponse => {
   }
 }
 
-/**
- * getStatusLabel - Chuyển status code -> text tiếng Việt
- */
 const getStatusLabel = (status: EventRequestStatus) => {
   switch (status) {
     case 'APPROVED':
@@ -248,9 +222,6 @@ const getStatusLabel = (status: EventRequestStatus) => {
   }
 }
 
-/**
- * convertToModalRequest - Ensure all required fields for EventRequestDetailModal
- */
 const convertToModalRequest = (request: EventRequest): EventRequestForModal => {
   return {
     ...request,
@@ -262,138 +233,144 @@ const convertToModalRequest = (request: EventRequest): EventRequestForModal => {
   }
 }
 
-/**
- * isRequestActiveTabEligible - Check if request should appear in "Chờ" (Active) tab
- */
-const isRequestActiveTabEligible = (request: EventRequest): boolean => {
-  if (request?.status === 'EXPIRED') {
-    return false
-  }
-  if (request?.status === 'PENDING') {
-    return true
-  }
-  if (request?.status === 'APPROVED' && request?.eventStatus === 'UPDATING') {
-    return true
-  }
-  return false
-}
-
-/**
- * isRequestArchivedTabEligible - Check if request should appear in "Đã xử lý" (Archived) tab
- */
-const isRequestArchivedTabEligible = (request: EventRequest): boolean => {
-  if (request?.status === 'REJECTED' || request?.status === 'CANCELLED' || request?.status === 'EXPIRED') {
-    return true
-  }
-  if (request?.status === 'APPROVED') {
-    if (request?.eventStatus && ARCHIVED_EVENT_STATUSES.includes(request.eventStatus as typeof ARCHIVED_EVENT_STATUSES[number])) {
-      return true
-    }
-  }
-  return false
-}
-
-/**
- * getDisplayStatus - Get status to display on Card badge
- */
-const getDisplayStatus = (request: EventRequest): EventRequestStatus => {
-  return request?.status ?? 'PENDING'
-}
-
-/**
- * =============================================================================
- * ORGANIZER EVENT REQUESTS PAGE - UPGRADED WITH DASHBOARD VISUALS
- * =============================================================================
- */
 export default function OrganizerEventRequests() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
   const location = useLocation()
 
-  const [activeTabPage, setActiveTabPage] = useState(1)
-  const [archivedTabPage, setArchivedTabPage] = useState(1)
+  // 2 main categories: "Sự Kiện Trường Học" vs "Sự Kiện Tự Do"
+  const [mainCategory, setMainCategory] = useState<'UNIVERSITY' | 'INDEPENDENT'>('UNIVERSITY')
 
-  const [activeLoading, setActiveLoading] = useState(true)
-  const [archivedLoading, setArchivedLoading] = useState(true)
+  // Sub-tabs for "Sự Kiện Trường Học": UPDATING (Cập nhật), PENDING (Chờ duyệt), PROCESSED (Đã xử lý)
+  const [schoolSubTab, setSchoolSubTab] = useState<'UPDATING' | 'PENDING' | 'PROCESSED'>('UPDATING')
+
+  // Sub-tabs for "Sự Kiện Tự Do": UPDATING (Cập nhật), PROCESSED (Đã xử lý)
+  const [indepSubTab, setIndepSubTab] = useState<'UPDATING' | 'PROCESSED'>('UPDATING')
+
+  // Pagination page state
+  const [currentPage, setCurrentPage] = useState(1)
+
+  // Loading & error
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
-  const [activeTabData, setActiveTabData] = useState<ApiTabResponse>({
-    requests: [],
-    totalCount: 0,
-  })
-  const [archivedTabData, setArchivedTabData] = useState<ApiTabResponse>({
-    requests: [],
-    totalCount: 0,
-  })
+  // Requests Data for University events
+  const [schoolRequests, setSchoolRequests] = useState<EventRequest[]>([])
 
+  // Requests Data for Independent events
+  const [independentEvents, setIndependentEvents] = useState<EventListItem[]>([])
+
+  // Search & Filter
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeTabStatusFilter, setActiveTabStatusFilter] = useState<EventRequestStatus | 'ALL'>('ALL')
-  const [archivedTabStatusFilter, setArchivedTabStatusFilter] = useState<EventRequestStatus | 'ALL'>('ALL')
+  const [statusFilter, setStatusFilter] = useState<string>('ALL')
 
+  // Modals state
   const [selectedRequest, setSelectedRequest] = useState<EventRequest | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const [showCancelModal, setShowCancelModal] = useState(false)
-  const [eventToCancel, setEventToCancel] = useState<EventRequest | null>(null)
-
-  const [activeTab, setActiveTab] = useState<'active' | 'archived' | 'independent'>('active')
-  const [independentStatusFilter, setIndependentStatusFilter] = useState<string>('ALL')
-  const [independentEvents, setIndependentEvents] = useState<EventListItem[]>([])
-  const [independentLoading, setIndependentLoading] = useState(false)
-  const [independentCount, setIndependentCount] = useState(0)
-
-  // Event modal states for Independent Events tab
   const [selectedDetailEvent, setSelectedDetailEvent] = useState<EventDetail | null>(null)
   const [isDetailEventModalOpen, setIsDetailEventModalOpen] = useState(false)
   const [loadingDetailEvent, setLoadingDetailEvent] = useState(false)
+
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
   const [selectedConfigEventId, setSelectedConfigEventId] = useState<number>(0)
   const [selectedConfigEventTitle, setSelectedConfigEventTitle] = useState<string>('')
 
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [eventToCancel, setEventToCancel] = useState<EventRequest | null>(null)
+
   const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const searchQueryRef = useRef('')
+  const forceRefresh = () => setRefreshTrigger(prev => prev + 1)
 
-  const forceRefresh = () => {
-    setRefreshTrigger(prev => prev + 1)
-  }
-
+  // Reset page to 1 when switching category or sub-tab
   useEffect(() => {
-    searchQueryRef.current = searchQuery
-  }, [searchQuery])
+    setCurrentPage(1)
+    setStatusFilter('ALL')
+  }, [mainCategory, schoolSubTab, indepSubTab])
 
+  // Fetch School Requests (both active and archived)
+  const fetchSchoolRequests = useCallback(async () => {
+    try {
+      const [resActive, resArchived] = await Promise.all([
+        fetch('/api/event-requests/my/active?limit=200&offset=0', { credentials: 'include' }),
+        fetch('/api/event-requests/my/archived?limit=200&offset=0', { credentials: 'include' }),
+      ])
+
+      const list: EventRequest[] = []
+      const seen = new Set<number>()
+
+      if (resActive.ok) {
+        const data = await resActive.json().catch(() => null)
+        const parsed = normalizeTabResponse(data).requests
+        parsed.forEach(r => {
+          if (!seen.has(r.requestId)) {
+            seen.add(r.requestId)
+            list.push(r)
+          }
+        })
+      }
+
+      if (resArchived.ok) {
+        const data = await resArchived.json().catch(() => null)
+        const parsed = normalizeTabResponse(data).requests
+        parsed.forEach(r => {
+          if (!seen.has(r.requestId)) {
+            seen.add(r.requestId)
+            list.push(r)
+          }
+        })
+      }
+
+      setSchoolRequests(list)
+    } catch (err: any) {
+      console.error('Error fetching school requests:', err)
+      setError(err.message || 'Lỗi tải hồ sơ sự kiện trường học')
+    }
+  }, [])
+
+  // Fetch Independent Events
   const fetchIndependentEvents = useCallback(async () => {
     try {
-      setIndependentLoading(true)
-      const response = await fetch('/api/events?limit=100&page=1', {
-        credentials: 'include',
-      })
+      const response = await fetch('/api/events?limit=200&page=1', { credentials: 'include' })
       if (response.ok) {
         const data = await response.json()
         const allEvts: EventListItem[] = data.data || []
-        // Filter events created by the logged in organizer that are independent
         const myIndep = allEvts.filter(
           evt => (evt.organizerId === user?.id || !evt.organizerId) &&
                  (evt.orgType === 'FREE' || evt.eventFormat === 'ONLINE' || evt.customLocation || evt.customVenueName)
         )
         setIndependentEvents(myIndep)
-        setIndependentCount(myIndep.length)
       }
-    } catch (error) {
-      console.error('Error fetching independent events:', error)
-    } finally {
-      setIndependentLoading(false)
+    } catch (err) {
+      console.error('Error fetching independent events:', err)
     }
   }, [user?.id])
 
+  // Initial load
+  useEffect(() => {
+    const loadAll = async () => {
+      setLoading(true)
+      await Promise.all([fetchSchoolRequests(), fetchIndependentEvents()])
+      setLoading(false)
+    }
+    void loadAll()
+  }, [refreshTrigger, fetchSchoolRequests, fetchIndependentEvents])
+
+  useEffect(() => {
+    if (location.state && (location.state as any).refetch) {
+      window.history.replaceState({}, document.title)
+      forceRefresh()
+    }
+  }, [location.state])
+
+  // Modals & Actions
   const handleOpenEventDetail = async (eventId: number) => {
     try {
       setLoadingDetailEvent(true)
       setIsDetailEventModalOpen(true)
-      const res = await fetch(`/api/events/detail?id=${eventId}`, {
-        credentials: 'include',
-      })
+      const res = await fetch(`/api/events/detail?id=${eventId}`, { credentials: 'include' })
       if (res.ok) {
         const detail = await res.json()
         setSelectedDetailEvent(detail)
@@ -407,116 +384,18 @@ export default function OrganizerEventRequests() {
     }
   }
 
-  const fetchActiveRequests = useCallback(async (page: number, query = searchQueryRef.current) => {
-    try {
-      setActiveLoading(true)
-      const offset = (page - 1) * ITEMS_PER_PAGE
-      let url = `/api/event-requests/my/active?limit=${ITEMS_PER_PAGE}&offset=${offset}`
-      const safeQuery = typeof query === 'string' ? query.trim() : ''
-      if (safeQuery) {
-        url += `&search=${encodeURIComponent(safeQuery)}`
-      }
-
-      const response = await fetch(url, {
-        credentials: 'include',
-      })
-
-      if (response.ok) {
-        const data = await response.json().catch(() => null)
-        setActiveTabData(normalizeTabResponse(data))
-        setActiveTabPage(page)
-      } else {
-        throw new Error('Failed to fetch active event requests')
-      }
-    } catch (error) {
-      console.error('Error fetching active requests:', error)
-      setError(error instanceof Error ? error.message : 'Failed to fetch active event requests')
-    } finally {
-      setActiveLoading(false)
-    }
-  }, [])
-
-  const fetchArchivedRequests = useCallback(async (page: number, query = searchQueryRef.current) => {
-    try {
-      setArchivedLoading(true)
-      const offset = (page - 1) * ITEMS_PER_PAGE
-      let url = `/api/event-requests/my/archived?limit=${ITEMS_PER_PAGE}&offset=${offset}`
-      const safeQuery = typeof query === 'string' ? query.trim() : ''
-      if (safeQuery) {
-        url += `&search=${encodeURIComponent(safeQuery)}`
-      }
-
-      const response = await fetch(url, {
-        credentials: 'include',
-      })
-
-      if (response.ok) {
-        const data = await response.json().catch(() => null)
-        setArchivedTabData(normalizeTabResponse(data))
-        setArchivedTabPage(page)
-      } else {
-        throw new Error('Failed to fetch archived event requests')
-      }
-    } catch (error) {
-      console.error('Error fetching archived requests:', error)
-      setError(error instanceof Error ? error.message : 'Failed to fetch archived event requests')
-    } finally {
-      setArchivedLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (location.state && (location.state as any).refetch) {
-      const archivedId = (location.state as any).archivedRequestId
-      if (archivedId) {
-        const archivedStr = localStorage.getItem('client_archived_requests') || '{}'
-        try {
-          const archived = JSON.parse(archivedStr)
-          archived[archivedId] = true
-          localStorage.setItem('client_archived_requests', JSON.stringify(archived))
-        } catch (e) {
-          console.error('Error in state cleanup:', e)
-        }
-      }
-      
-      // Clear location state to prevent endless refresh
-      window.history.replaceState({}, document.title)
-      
-      // Force refresh
-      forceRefresh()
-    }
-  }, [location.state])
-
-  useEffect(() => {
-    const loadInitialRequests = async () => {
-      await Promise.all([
-        fetchActiveRequests(1),
-        fetchArchivedRequests(1),
-        fetchIndependentEvents(),
-      ])
-    }
-
-    void loadInitialRequests()
-  }, [refreshTrigger, fetchActiveRequests, fetchArchivedRequests, fetchIndependentEvents])
-
   const fetchEventRequestDetail = async (requestId: number) => {
     try {
       setIsDetailLoading(true)
-      const response = await fetch(`/api/event-requests/${requestId}`, {
-        credentials: 'include',
-      })
-
+      const response = await fetch(`/api/event-requests/${requestId}`, { credentials: 'include' })
       if (response.ok) {
         const detailedRequest = sanitizeEventRequest(await response.json().catch(() => null))
         if (detailedRequest) {
           setSelectedRequest(detailedRequest)
         }
-      } else {
-        throw new Error('Failed to fetch event request details')
       }
-    } catch (error) {
-      console.error('Error fetching event request detail:', error)
-      showToast('error', 'Không thể tải chi tiết yêu cầu')
+    } catch (err) {
+      console.error('Error fetching detail:', err)
     } finally {
       setIsDetailLoading(false)
     }
@@ -529,49 +408,15 @@ export default function OrganizerEventRequests() {
     fetchEventRequestDetail(request.requestId)
   }
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false)
-    setSelectedRequest(null)
-  }
-
-  const isEventEligibleForUpdate = (
-    request: EventRequest | null | undefined,
-  ): { eligible: boolean; reason: string } => {
-    if (!request?.createdEventId) {
-      return { eligible: false, reason: 'Sự kiện chưa được tạo' }
-    }
-    return { eligible: true, reason: '' }
-  }
-
-  const handleUpdateRequest = (request: EventRequest | null | undefined) => {
-    if (!request?.requestId) return
-    navigate(`/dashboard/event-requests/${request.requestId}/edit`)
-  }
-
-  const handleCancelClick = (request: EventRequest | null | undefined) => {
-    if (!request?.requestId) return
-    setEventToCancel(request)
-    setShowCancelModal(true)
-  }
-
   const confirmCancelEvent = async () => {
-    if (!eventToCancel) {
-      showToast('error', 'Không tìm thấy yêu cầu/sự kiện để hủy')
-      return
-    }
-
-    const hasCreatedEvent = Boolean(eventToCancel?.createdEventId && eventToCancel.createdEventId > 0)
-
-    if (hasCreatedEvent && !eventToCancel?.createdEventId) {
-      showToast('error', 'Không tìm thấy sự kiện để hủy')
-      return
-    }
+    if (!eventToCancel) return
+    const hasCreatedEvent = Boolean(eventToCancel.createdEventId && eventToCancel.createdEventId > 0)
 
     try {
       const userIdStr = localStorage.getItem('userId')
       const payload = {
-        eventId: hasCreatedEvent ? eventToCancel?.createdEventId : 0,
-        requestId: hasCreatedEvent ? 0 : eventToCancel?.requestId,
+        eventId: hasCreatedEvent ? eventToCancel.createdEventId : 0,
+        requestId: hasCreatedEvent ? 0 : eventToCancel.requestId,
       }
 
       const response = await fetch('/api/organizer/events/cancel', {
@@ -585,49 +430,16 @@ export default function OrganizerEventRequests() {
       })
 
       if (response.ok) {
-        let successMessage = 'Hủy thành công'
-
-        if (!hasCreatedEvent) {
-          successMessage = 'Yêu cầu đã được rút lại thành công. Yêu cầu đã được chuyển vào mục Đã xử lý'
-        } else {
-          successMessage = 'Sự kiện đã được hủy và hoàn tiền thành công. Yêu cầu đã được chuyển vào mục Đã xử lý'
-        }
-
-        showToast('success', successMessage)
+        showToast('success', hasCreatedEvent ? 'Sự kiện đã được hủy và hoàn tiền thành công' : 'Rút yêu cầu thành công')
         setShowCancelModal(false)
         setEventToCancel(null)
-        setRefreshTrigger(prev => prev + 1)
+        forceRefresh()
       } else {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.message || 'Không thể hủy')
       }
     } catch (error: any) {
-      console.error('Error cancelling:', error)
       showToast('error', error.message || 'Lỗi hủy')
-    }
-  }
-
-  const handleTabChange = (tab: 'active' | 'archived' | 'independent') => {
-    setActiveTab(tab)
-    if (tab === 'independent') {
-      void fetchIndependentEvents()
-    }
-  }
-
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query)
-    setActiveTabPage(1)
-    setArchivedTabPage(1)
-  }
-
-  const handleSearchSubmit = () => {
-    const query = searchQueryRef.current
-    if (activeTab === 'active') {
-      fetchActiveRequests(1, query)
-    } else if (activeTab === 'archived') {
-      fetchArchivedRequests(1, query)
-    } else {
-      void fetchIndependentEvents()
     }
   }
 
@@ -643,457 +455,669 @@ export default function OrganizerEventRequests() {
     )
   }
 
-  const rawActiveRequests = Array.isArray(activeTabData?.requests) ? activeTabData.requests : []
-  const rawArchivedRequests = Array.isArray(archivedTabData?.requests) ? archivedTabData.requests : []
-
-  // Check if any request in rawActiveRequests is client-archived
-  const clientArchivedIds = new Set<number>()
-  const archivedStr = localStorage.getItem('client_archived_requests') || '{}'
-  try {
-    const clientArchived = JSON.parse(archivedStr)
-    Object.keys(clientArchived).forEach(id => {
-      if (clientArchived[id]) {
-        clientArchivedIds.add(Number(id))
-      }
-    })
-  } catch (e) {
-    console.error(e)
+  // Helper filters for School Events
+  // 1. Cập nhật sự kiện: status OPEN hoặc UPDATING
+  const isSchoolUpdating = (req: EventRequest) => {
+    const s = (req.status || '').toUpperCase()
+    const es = (req.eventStatus || '').toUpperCase()
+    return es === 'OPEN' || es === 'UPDATING' || s === 'UPDATING' || (s === 'APPROVED' && (!es || es === 'UPDATING' || es === 'OPEN'))
   }
 
-  // Active requests are those that are NOT client-archived
-  const activeRequests = rawActiveRequests.filter(req => !clientArchivedIds.has(req.requestId))
+  // 2. Hồ sơ đang chờ duyệt: status PENDING
+  const isSchoolPending = (req: EventRequest) => {
+    return (req.status || '').toUpperCase() === 'PENDING'
+  }
 
-  // Archived requests should include rawArchivedRequests AND any requests from rawActiveRequests that are client-archived
-  const movedToArchived = rawActiveRequests.filter(req => clientArchivedIds.has(req.requestId))
-  
-  // Merge, avoiding duplicates
-  const archivedRequests = [...rawArchivedRequests]
-  movedToArchived.forEach(req => {
-    if (!archivedRequests.some(r => r.requestId === req.requestId)) {
-      archivedRequests.push({ ...req, status: 'EXPIRED' })
+  // 3. Sự kiện đã xử lý: CANCELLED, CLOSED, APPROVED (đã kết thúc), DENIED (REJECTED), EXPIRED
+  const isSchoolProcessed = (req: EventRequest) => {
+    const s = (req.status || '').toUpperCase()
+    const es = (req.eventStatus || '').toUpperCase()
+    if (s === 'REJECTED' || s === 'CANCELLED' || s === 'EXPIRED') return true
+    if (es === 'CLOSED' || es === 'CANCELLED' || es === 'FINISHED') return true
+    if (s === 'APPROVED' && (es === 'CLOSED' || es === 'FINISHED' || es === 'CANCELLED')) return true
+    if (!isSchoolUpdating(req) && !isSchoolPending(req)) return true
+    return false
+  }
+
+  // Helper filters for Independent Events
+  // 1. Cập nhật sự kiện: status OPEN hoặc UPDATING
+  const isIndepUpdating = (evt: EventListItem) => {
+    const s = (evt.status || '').toUpperCase()
+    return s === 'OPEN' || s === 'UPDATING'
+  }
+
+  // 2. Sự kiện đã xử lý: CANCELLED hoặc CLOSED (hoặc FINISHED)
+  const isIndepProcessed = (evt: EventListItem) => {
+    const s = (evt.status || '').toUpperCase()
+    return s === 'CANCELLED' || s === 'CLOSED' || s === 'FINISHED' || !isIndepUpdating(evt)
+  }
+
+  // Counts for School sub-tabs
+  const schoolUpdatingCount = schoolRequests.filter(isSchoolUpdating).length
+  const schoolPendingCount = schoolRequests.filter(isSchoolPending).length
+  const schoolProcessedCount = schoolRequests.filter(isSchoolProcessed).length
+  const schoolTotalCount = schoolRequests.length
+
+  // Counts for Independent sub-tabs
+  const indepUpdatingCount = independentEvents.filter(isIndepUpdating).length
+  const indepProcessedCount = independentEvents.filter(isIndepProcessed).length
+  const independentTotalCount = independentEvents.length
+
+  // Filtered items based on active sub-tab and search/status filter
+  const q = searchQuery.toLowerCase().trim()
+
+  const currentSchoolList = schoolRequests.filter((req) => {
+    // sub-tab filter
+    if (schoolSubTab === 'UPDATING' && !isSchoolUpdating(req)) return false
+    if (schoolSubTab === 'PENDING' && !isSchoolPending(req)) return false
+    if (schoolSubTab === 'PROCESSED' && !isSchoolProcessed(req)) return false
+
+    // search query
+    if (q) {
+      const matchTitle = req.title?.toLowerCase().includes(q)
+      const matchDesc = req.description?.toLowerCase().includes(q)
+      const matchVenue = (req.venueName || '').toLowerCase().includes(q)
+      const matchArea = (req.areaName || '').toLowerCase().includes(q)
+      if (!matchTitle && !matchDesc && !matchVenue && !matchArea) return false
     }
+
+    // status dropdown filter
+    if (statusFilter !== 'ALL') {
+      const matchStatus = req.status === statusFilter || req.eventStatus === statusFilter
+      if (!matchStatus) return false
+    }
+
+    return true
   })
 
-  const rawActiveCount = Number.isFinite(Number(activeTabData?.totalCount)) ? Number(activeTabData.totalCount) : rawActiveRequests.length
-  const rawArchivedCount = Number.isFinite(Number(archivedTabData?.totalCount)) ? Number(archivedTabData.totalCount) : rawArchivedRequests.length
+  const currentIndepList = independentEvents.filter((evt) => {
+    // sub-tab filter
+    if (indepSubTab === 'UPDATING' && !isIndepUpdating(evt)) return false
+    if (indepSubTab === 'PROCESSED' && !isIndepProcessed(evt)) return false
 
-  const activeCount = Math.max(0, rawActiveCount - movedToArchived.length)
-  const archivedCount = rawArchivedCount + movedToArchived.length
+    // search query
+    if (q) {
+      const matchTitle = evt.title?.toLowerCase().includes(q)
+      const matchDesc = evt.description?.toLowerCase().includes(q)
+      const matchLoc = (evt.customLocation || evt.customVenueName || evt.location || '').toLowerCase().includes(q)
+      if (!matchTitle && !matchDesc && !matchLoc) return false
+    }
 
-  const activeTabTotalPages = Math.max(1, Math.ceil(activeCount / ITEMS_PER_PAGE))
-  const archivedTabTotalPages = Math.max(1, Math.ceil(archivedCount / ITEMS_PER_PAGE))
-  const currentPage = activeTab === 'active' ? activeTabPage : archivedTabPage
-  const currentTotalPages = activeTab === 'active' ? activeTabTotalPages : archivedTabTotalPages
-  const currentLoading = activeTab === 'active' ? activeLoading : archivedLoading
-  const currentRequests = activeTab === 'active' ? activeRequests : archivedRequests
-  const currentTotalCount = activeTab === 'active' ? activeCount : archivedCount
-
-  const filteredRequests = (Array.isArray(currentRequests) ? currentRequests : []).filter((req) => {
-    if (!req) return false
-    const tabValid =
-      activeTab === 'active'
-        ? isRequestActiveTabEligible(req)
-        : isRequestArchivedTabEligible(req)
-
-    if (!tabValid) return false
-
-    const statusFilter =
-      activeTab === 'active' ? activeTabStatusFilter : archivedTabStatusFilter
-    if (statusFilter !== 'ALL' && req?.status !== statusFilter) {
+    // status dropdown filter
+    if (statusFilter !== 'ALL' && evt.status !== statusFilter) {
       return false
     }
 
     return true
   })
 
-  const filteredIndependentEvents = independentEvents.filter((evt) => {
-    if (!evt) return false
-    if (independentStatusFilter !== 'ALL' && evt.status !== independentStatusFilter) {
-      return false
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim()
-      const titleMatch = evt.title?.toLowerCase().includes(q)
-      const descMatch = evt.description?.toLowerCase().includes(q)
-      const locMatch = (evt.customLocation || evt.customVenueName || evt.location || '').toLowerCase().includes(q)
-      if (!titleMatch && !descMatch && !locMatch) return false
-    }
-    return true
-  })
+  // Pagination calculation
+  const activeListLength = mainCategory === 'UNIVERSITY' ? currentSchoolList.length : currentIndepList.length
+  const totalPages = Math.max(1, Math.ceil(activeListLength / ITEMS_PER_PAGE))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
 
-  const canRenderRequestList =
-    activeTab === 'independent' ||
-    (Array.isArray(filteredRequests) &&
-    Number.isFinite(currentPage) &&
-    Number.isFinite(currentTotalPages) &&
-    Number.isFinite(currentTotalCount))
+  const paginatedSchoolList = currentSchoolList.slice((safeCurrentPage - 1) * ITEMS_PER_PAGE, safeCurrentPage * ITEMS_PER_PAGE)
+  const paginatedIndepList = currentIndepList.slice((safeCurrentPage - 1) * ITEMS_PER_PAGE, safeCurrentPage * ITEMS_PER_PAGE)
 
   return (
     <div className="w-full min-h-screen p-4 md:p-6 text-slate-900 dark:text-slate-100 bg-transparent">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-5 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight sm:text-4xl">Yêu Cầu Sự Kiện Của Tôi</h1>
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight sm:text-4xl">
+            Yêu Cầu Sự Kiện Của Tôi
+          </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
-            Theo dõi các hồ sơ đề xuất mượn cơ sở vật chất trường FPT. Với sự kiện tự do (Online / Tự thuê địa điểm), bạn có thể quản lý trực tiếp tại mục <Link to="/dashboard/events" className="text-orange-500 font-bold hover:underline">Sự kiện</Link>.
+            Quản lý tập trung toàn bộ đề xuất cơ sở vật chất trường FPT và các sự kiện tự do (Trực tuyến / Tự thuê địa điểm).
           </p>
         </div>
 
         <div className="flex gap-2.5 flex-wrap">
           <button
             onClick={forceRefresh}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400 border border-slate-200 dark:border-slate-800 hover:border-orange-500 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-300 active:scale-95"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400 border border-slate-200 dark:border-slate-800 hover:border-orange-500 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all active:scale-95"
           >
             <RefreshCw className="w-4 h-4 text-orange-500" /> Làm mới
           </button>
-          
+
           <Link
             to="/dashboard/event-requests/create"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300 active:scale-95 hover:scale-[1.02]"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/40 transition-all active:scale-95 hover:scale-[1.02]"
           >
             <PlusCircle className="w-4 h-4" /> Gửi yêu cầu mới
           </Link>
         </div>
       </div>
 
-      {/* Stats Widgets */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-2xl border border-amber-100/50 dark:border-amber-900/30">
-            <Clock className="w-5 h-5 animate-pulse" />
+      {/* Top Stats Overview */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-5">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
+            <Clock className="w-4 h-4" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Cập nhật sự kiện</span>
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hồ sơ chờ duyệt</p>
-            <p className="text-2xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeCount}</p>
-          </div>
+          <p className="text-2xl font-black text-slate-900 dark:text-white">
+            {mainCategory === 'UNIVERSITY' ? schoolUpdatingCount : indepUpdatingCount}
+          </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/30">
-            <CheckCircle2 className="w-5 h-5" />
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1">
+            <Inbox className="w-4 h-4" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              {mainCategory === 'UNIVERSITY' ? 'Chờ duyệt' : 'Đang mở (OPEN)'}
+            </span>
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hồ sơ đã xử lý</p>
-            <p className="text-2xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{archivedCount}</p>
-          </div>
+          <p className="text-2xl font-black text-slate-900 dark:text-white">
+            {mainCategory === 'UNIVERSITY'
+              ? schoolPendingCount
+              : independentEvents.filter(e => e.status === 'OPEN').length}
+          </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3 bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400 rounded-2xl border border-orange-100/50 dark:border-orange-900/30">
-            <Inbox className="w-5 h-5" />
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
+            <CheckCircle2 className="w-4 h-4" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Đã xử lý / Đóng</span>
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng cộng hồ sơ</p>
-            <p className="text-2xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{activeCount + archivedCount}</p>
-          </div>
+          <p className="text-2xl font-black text-slate-900 dark:text-white">
+            {mainCategory === 'UNIVERSITY' ? schoolProcessedCount : indepProcessedCount}
+          </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 flex items-center gap-4 shadow-md hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-500">
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 rounded-2xl border border-blue-100/50 dark:border-blue-900/30">
-            <Sparkles className="w-5 h-5 text-blue-500" />
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 mb-1">
+            <Sparkles className="w-4 h-4" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Tổng danh mục</span>
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sự kiện tự do</p>
-            <p className="text-2xl font-extrabold text-slate-950 dark:text-slate-50 mt-0.5 tracking-tight">{independentCount}</p>
-          </div>
+          <p className="text-2xl font-black text-slate-900 dark:text-white">
+            {mainCategory === 'UNIVERSITY' ? schoolTotalCount : independentTotalCount}
+          </p>
         </div>
       </div>
 
-      {/* Error display */}
-      {error && (
-        <div className="mb-6 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-800 dark:text-rose-400 text-sm font-medium flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" /> {error}
-        </div>
-      )}
-
-      {/* Main Tabs Segmented Floating Control */}
-      <div className="flex bg-slate-200/40 dark:bg-slate-900 backdrop-blur-sm p-1 rounded-2xl gap-1.5 w-fit mb-4 border border-slate-200/10 dark:border-slate-800 shadow-inner">
+      {/* 1. PRIMARY FILTER: 2 Bộ lọc riêng biệt (Sự Kiện Trường Học vs Sự Kiện Tự Do) */}
+      <div className="flex bg-slate-200/60 dark:bg-slate-900 p-1.5 rounded-2xl gap-2 w-full sm:w-fit mb-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <button
-          onClick={() => handleTabChange('active')}
-          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
-            activeTab === 'active'
-              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/20 dark:hover:bg-slate-800/40'
+          type="button"
+          onClick={() => setMainCategory('UNIVERSITY')}
+          className={`flex-1 sm:flex-initial px-6 py-2.5 rounded-xl text-sm font-extrabold transition-all duration-300 flex items-center justify-center gap-2.5 ${
+            mainCategory === 'UNIVERSITY'
+              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-md shadow-orange-500/25 scale-[1.01]'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-slate-800/40'
           }`}
         >
-          Hồ sơ đang chờ duyệt
-          <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
-            activeTab === 'active' ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-400' : 'bg-slate-300/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+          <GraduationCap className="w-4 h-4" />
+          <span>Sự Kiện Trường Học</span>
+          <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
+            mainCategory === 'UNIVERSITY' ? 'bg-white/20 text-white' : 'bg-slate-300/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
           }`}>
-            {activeCount}
+            {schoolTotalCount}
           </span>
         </button>
 
         <button
-          onClick={() => handleTabChange('archived')}
-          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
-            activeTab === 'archived'
-              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/20 dark:hover:bg-slate-800/40'
+          type="button"
+          onClick={() => setMainCategory('INDEPENDENT')}
+          className={`flex-1 sm:flex-initial px-6 py-2.5 rounded-xl text-sm font-extrabold transition-all duration-300 flex items-center justify-center gap-2.5 ${
+            mainCategory === 'INDEPENDENT'
+              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-md shadow-orange-500/25 scale-[1.01]'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-slate-800/40'
           }`}
         >
-          Lịch sử đã xử lý
-          <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
-            activeTab === 'archived' ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-400' : 'bg-slate-300/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+          <Sparkles className="w-4 h-4" />
+          <span>Sự Kiện Tự Do</span>
+          <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
+            mainCategory === 'INDEPENDENT' ? 'bg-white/20 text-white' : 'bg-slate-300/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
           }`}>
-            {archivedCount}
-          </span>
-        </button>
-
-        <button
-          onClick={() => handleTabChange('independent')}
-          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
-            activeTab === 'independent'
-              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-md font-extrabold scale-[1.02] border border-slate-100 dark:border-slate-700'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/20 dark:hover:bg-slate-800/40'
-          }`}
-        >
-          <Sparkles className="w-4 h-4 text-orange-500" />
-          Sự kiện tự do của tôi
-          <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full transition-colors ${
-            activeTab === 'independent' ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-400' : 'bg-slate-300/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-          }`}>
-            {independentCount}
+            {independentTotalCount}
           </span>
         </button>
       </div>
 
-      {/* Filters & Toolbar Section */}
-      <div className="mb-4 bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 shadow-md">
-        <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
-          {/* Search bar */}
+      {/* 2. SECONDARY SUB-TABS (Theo yêu cầu từng danh mục) */}
+      <div className="flex bg-slate-100 dark:bg-slate-900/60 p-1 rounded-2xl gap-1.5 w-full sm:w-fit mb-5 border border-slate-200/60 dark:border-slate-800 overflow-x-auto shadow-inner">
+        {mainCategory === 'UNIVERSITY' ? (
+          <>
+            {/* Sub-tab 1: Cập Nhật Sự Kiện (OPEN & UPDATING) */}
+            <button
+              type="button"
+              onClick={() => setSchoolSubTab('UPDATING')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
+                schoolSubTab === 'UPDATING'
+                  ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200/60 dark:border-slate-700 font-extrabold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <span>Cập Nhật Sự Kiện</span>
+              <span className={`px-2 py-0.5 text-[11px] rounded-full font-bold ${
+                schoolSubTab === 'UPDATING'
+                  ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-400'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+              }`}>
+                {schoolUpdatingCount}
+              </span>
+            </button>
+
+            {/* Sub-tab 2: Hồ sơ đang chờ duyệt (PENDING) */}
+            <button
+              type="button"
+              onClick={() => setSchoolSubTab('PENDING')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
+                schoolSubTab === 'PENDING'
+                  ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200/60 dark:border-slate-700 font-extrabold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <span>Hồ sơ đang chờ duyệt</span>
+              <span className={`px-2 py-0.5 text-[11px] rounded-full font-bold ${
+                schoolSubTab === 'PENDING'
+                  ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-400'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+              }`}>
+                {schoolPendingCount}
+              </span>
+            </button>
+
+            {/* Sub-tab 3: Sự Kiện đã xử lý (CANCELLED, CLOSED, APPROVED, DENIED) */}
+            <button
+              type="button"
+              onClick={() => setSchoolSubTab('PROCESSED')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
+                schoolSubTab === 'PROCESSED'
+                  ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200/60 dark:border-slate-700 font-extrabold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <span>Sự Kiện đã xử lý</span>
+              <span className={`px-2 py-0.5 text-[11px] rounded-full font-bold ${
+                schoolSubTab === 'PROCESSED'
+                  ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-400'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+              }`}>
+                {schoolProcessedCount}
+              </span>
+            </button>
+          </>
+        ) : (
+          <>
+            {/* Sub-tab 1: Cập Nhật Sự Kiện (OPEN & UPDATING) */}
+            <button
+              type="button"
+              onClick={() => setIndepSubTab('UPDATING')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
+                indepSubTab === 'UPDATING'
+                  ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200/60 dark:border-slate-700 font-extrabold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <span>Cập Nhật Sự Kiện</span>
+              <span className={`px-2 py-0.5 text-[11px] rounded-full font-bold ${
+                indepSubTab === 'UPDATING'
+                  ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-400'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+              }`}>
+                {indepUpdatingCount}
+              </span>
+            </button>
+
+            {/* Sub-tab 2: Sự kiện đã xử lý (CANCELLED & CLOSED) */}
+            <button
+              type="button"
+              onClick={() => setIndepSubTab('PROCESSED')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
+                indepSubTab === 'PROCESSED'
+                  ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200/60 dark:border-slate-700 font-extrabold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <span>Sự kiện đã xử lý</span>
+              <span className={`px-2 py-0.5 text-[11px] rounded-full font-bold ${
+                indepSubTab === 'PROCESSED'
+                  ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-400'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+              }`}>
+                {indepProcessedCount}
+              </span>
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* 3. Search & Filter Bar */}
+      <div className="mb-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
           <div className="flex-1 relative flex items-center">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
             <input
               type="text"
-              placeholder="Tìm kiếm hồ sơ theo tiêu đề..."
+              placeholder="Tìm kiếm sự kiện / hồ sơ theo tiêu đề, địa điểm..."
               value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleSearchSubmit()
-                }
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setCurrentPage(1)
               }}
-              className="w-full pl-10 pr-16 py-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-sm placeholder:text-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all font-medium text-slate-800 dark:text-slate-100 shadow-sm"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium text-slate-800 dark:text-slate-100"
             />
-            <button
-              onClick={handleSearchSubmit}
-              className="absolute right-2 px-3 py-1 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-orange-600 hover:text-white dark:hover:bg-orange-600 dark:hover:text-white rounded-lg text-xs font-bold transition-all duration-300"
-            >
-              Tìm
-            </button>
           </div>
 
-          {/* Status select */}
           <div className="relative flex items-center min-w-[200px]">
             <select
-              value={activeTab === 'active' ? activeTabStatusFilter : (activeTab === 'archived' ? archivedTabStatusFilter : independentStatusFilter)}
+              value={statusFilter}
               onChange={(e) => {
-                if (activeTab === 'active') {
-                  setActiveTabStatusFilter(e.target.value as EventRequestStatus | 'ALL')
-                } else if (activeTab === 'archived') {
-                  setArchivedTabStatusFilter(e.target.value as EventRequestStatus | 'ALL')
-                } else {
-                  setIndependentStatusFilter(e.target.value)
-                }
+                setStatusFilter(e.target.value)
+                setCurrentPage(1)
               }}
-              className="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all appearance-none cursor-pointer font-medium shadow-sm"
+              className="w-full pl-3 pr-10 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-700 dark:text-slate-200 outline-none focus:border-orange-500 transition-all appearance-none cursor-pointer font-medium"
             >
-              <option value="ALL" className="dark:bg-slate-950">Tất cả trạng thái</option>
-              {activeTab === 'active' && (
-                <>
-                  <option value="PENDING" className="dark:bg-slate-950">Chờ duyệt (PENDING)</option>
-                  <option value="UPDATING" className="dark:bg-slate-950">Chờ cập nhật (UPDATING)</option>
-                  <option value="APPROVED" className="dark:bg-slate-950">Đã duyệt (APPROVED)</option>
-                </>
-              )}
-              {activeTab === 'archived' && (
-                <>
-                  <option value="REJECTED" className="dark:bg-slate-950">Bị từ chối (REJECTED)</option>
-                  <option value="CANCELLED" className="dark:bg-slate-950">Đã hủy (CANCELLED)</option>
-                  <option value="FINISHED" className="dark:bg-slate-950">Hoàn tất (FINISHED)</option>
-                </>
-              )}
-              {activeTab === 'independent' && (
-                <>
-                  <option value="UPDATING" className="dark:bg-slate-950">Chờ cập nhật (UPDATING)</option>
-                  <option value="OPEN" className="dark:bg-slate-950">Đang mở đăng ký (OPEN)</option>
-                  <option value="CLOSED" className="dark:bg-slate-950">Đã đóng (CLOSED)</option>
-                </>
-              )}
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="OPEN">Đang mở (OPEN)</option>
+              <option value="UPDATING">Chờ cập nhật (UPDATING)</option>
+              <option value="PENDING">Chờ duyệt (PENDING)</option>
+              <option value="APPROVED">Đã duyệt (APPROVED)</option>
+              <option value="CLOSED">Đã đóng (CLOSED)</option>
+              <option value="CANCELLED">Đã hủy (CANCELLED)</option>
+              <option value="REJECTED">Bị từ chối (REJECTED)</option>
             </select>
-            <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+            <div className="absolute inset-y-0 right-3.5 flex items-center pointer-events-none text-slate-400">
               <Filter className="w-3.5 h-3.5" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Loading Block */}
-      {!canRenderRequestList && (
-        <div className="min-h-[60vh] bg-transparent flex items-center justify-center px-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-center shadow-sm">
-            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-orange-500 dark:border-slate-700 dark:border-t-orange-400" />
-            <p className="text-base font-bold text-slate-900 dark:text-slate-100">Dang tai danh sach yeu cau</p>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Du lieu dang duoc khoi tao lai an toan.</p>
-          </div>
+      {/* Error display */}
+      {error && (
+        <div className="mb-4 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-800 dark:text-rose-400 text-sm font-medium flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
-      {canRenderRequestList && currentLoading && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center shadow-sm">
-          <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Đang tải hồ sơ của bạn...</p>
+      {/* 4. Main List Rendering with Unified Pagination */}
+      {loading ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 p-16 text-center shadow-sm">
+          <div className="w-9 h-9 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Đang tải danh sách sự kiện...</p>
         </div>
-      )}
-
-      {/* Main List */}
-      {canRenderRequestList && !currentLoading && (
-        <>
-          {/* Metadata */}
-          <div className="mb-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex justify-between items-center flex-wrap gap-2">
-            <span>
-              {activeTab === 'independent' ? (
-                <>Tìm thấy <span className="text-orange-600 dark:text-orange-400 font-bold">{filteredIndependentEvents.length}</span> sự kiện tự do</>
-              ) : (
-                <>Tìm thấy <span className="text-blue-600 dark:text-blue-400 font-bold">{filteredRequests.length}</span> hồ sơ trên <span className="font-bold text-slate-700 dark:text-slate-300">{currentTotalCount}</span> yêu cầu</>
-              )}
-            </span>
-
-            {searchQuery && (
-              <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 px-2 py-1 rounded-lg text-[10px] font-bold border border-blue-100 dark:border-blue-900/35">
-                Tìm: "{searchQuery}"
-                <button
-                  onClick={() => {
-                    setSearchQuery('')
-                    setRefreshTrigger(prev => prev + 1)
-                  }}
-                  className="hover:text-red-600 dark:hover:text-red-400 font-black ml-1"
-                >
-                  ✕
-                </button>
-              </span>
-            )}
+      ) : mainCategory === 'UNIVERSITY' ? (
+        /* ==================== SỰ KIỆN TRƯỜNG HỌC LIST ==================== */
+        paginatedSchoolList.length === 0 ? (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 p-16 text-center shadow-sm">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-full w-fit mx-auto mb-3">
+              <FileClock className="w-10 h-10" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">Không có hồ sơ sự kiện trường học nào</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              {schoolSubTab === 'UPDATING' && 'Chưa có sự kiện nào đang ở trạng thái OPEN hoặc UPDATING.'}
+              {schoolSubTab === 'PENDING' && 'Hiện không có yêu cầu nào đang chờ Phòng Quản trị duyệt.'}
+              {schoolSubTab === 'PROCESSED' && 'Chưa có hồ sơ sự kiện đã xử lý nào.'}
+            </p>
           </div>
+        ) : (
+          <div className="grid w-full grid-cols-1 gap-3.5 mb-5">
+            {paginatedSchoolList.map((req, index) => {
+              const displayStatus = (req.eventStatus || req.status || 'PENDING').toUpperCase()
+              const isUpdatingTab = schoolSubTab === 'UPDATING'
 
-          {/* Content rendering */}
-          {activeTab === 'independent' ? (
-            filteredIndependentEvents.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-white/80 dark:border-slate-800 p-16 text-center shadow-md">
-                <div className="p-4 bg-orange-50 dark:bg-orange-950/30 text-orange-500 rounded-full w-fit mx-auto mb-4">
-                  <Sparkles className="w-12 h-12" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Chưa có sự kiện tự do nào</h3>
-                <p className="text-sm text-slate-400 dark:text-slate-500 mt-2 max-w-md mx-auto">
-                  Bạn có thể tạo sự kiện trực tuyến (Zoom / Google Meet) hoặc sự kiện tự thuê địa điểm bên ngoài mà không cần chờ duyệt cơ sở vật chất FPT.
-                </p>
-                <Link
-                  to="/dashboard/event-requests/create"
-                  className="inline-flex items-center gap-2 mt-6 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-500 text-white font-bold rounded-xl shadow-lg shadow-orange-500/20 hover:scale-[1.02] transition-all text-sm"
+              return (
+                <div
+                  key={req.requestId || index}
+                  onClick={() => handleViewDetails(req)}
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm hover:shadow-md hover:border-orange-500/60 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
-                  <PlusCircle className="w-4 h-4" /> Tạo sự kiện tự do ngay
-                </Link>
-              </div>
-            ) : (
-              <div className="grid w-full grid-cols-1 gap-4 mb-4">
-                {filteredIndependentEvents.map((evt, index) => {
-                  const formatUpper = (evt.eventFormat || '').toUpperCase()
-                  const isOnline = formatUpper === 'ONLINE'
-                  const isHybrid = formatUpper === 'HYBRID'
-                  const isMeet = evt.onlineMeetingUrl?.includes('meet.google.com') || evt.customVenueName?.toLowerCase().includes('google meet')
-                  const platformName = isMeet ? 'Google Meet' : 'Zoom'
-                  const locationDisplay = formatEventLocation(evt, 'vi')
+                  {/* Left accent bar */}
+                  <div
+                    className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                      displayStatus === 'PENDING' ? 'bg-amber-400' :
+                      displayStatus === 'OPEN' ? 'bg-emerald-500' :
+                      displayStatus === 'UPDATING' ? 'bg-blue-500' :
+                      displayStatus === 'REJECTED' || displayStatus === 'CANCELLED' ? 'bg-rose-500' :
+                      'bg-slate-400'
+                    }`}
+                  />
 
-                  return (
-                    <div
-                      key={evt.eventId}
-                      className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/80 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur-md p-6 shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500 flex flex-col lg:flex-row lg:items-center justify-between gap-5"
-                      style={{ animationDelay: `${index * 60}ms` }}
-                    >
-                      {/* Left accent bar */}
-                      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-                        evt.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' :
-                        evt.status === 'OPEN' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' :
-                        evt.status === 'CLOSED' ? 'bg-slate-400' : 'bg-orange-500'
-                      }`} />
+                  <div className="flex-1 min-w-0 pl-1.5">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-orange-600 transition-colors">
+                        {req.title}
+                      </h3>
 
-                      <div className="flex-1 min-w-0 pl-1.5">
-                        <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
-                          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-orange-600 transition-colors duration-300">
-                            {evt.title}
-                          </h3>
+                      {/* Status Badges */}
+                      {displayStatus === 'PENDING' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40">
+                          <Clock className="w-3 h-3 animate-pulse" />
+                          Chờ duyệt
+                        </span>
+                      ) : displayStatus === 'UPDATING' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40">
+                          <Clock className="w-3 h-3" />
+                          Chờ cập nhật
+                        </span>
+                      ) : displayStatus === 'OPEN' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Đang mở đăng ký
+                        </span>
+                      ) : displayStatus === 'CLOSED' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                          Đã đóng
+                        </span>
+                      ) : displayStatus === 'CANCELLED' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/40">
+                          <XCircle className="w-3 h-3" />
+                          Đã hủy
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                          {getStatusLabel(displayStatus as EventRequestStatus)}
+                        </span>
+                      )}
 
-                          {/* Status Badge */}
-                          {evt.status === 'UPDATING' ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40">
-                              <Clock className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '3s' }} />
-                              Chờ cập nhật
-                            </span>
-                          ) : evt.status === 'OPEN' ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              Đang mở đăng ký
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                              {evt.status}
-                            </span>
-                          )}
+                      {/* School badge */}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 border border-orange-200/50">
+                        <GraduationCap className="w-3 h-3" /> Trường FPT
+                      </span>
+                    </div>
 
-                          {/* Format Badge */}
-                          {isOnline ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
-                              <Video className="w-3.5 h-3.5" />
-                              {platformName} (Trực tuyến)
-                            </span>
-                          ) : isHybrid ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                              <Globe className="w-3.5 h-3.5" />
-                              Hybrid ({platformName} & Offline)
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                              <MapPin className="w-3.5 h-3.5" />
-                              Tự thuê địa điểm
-                            </span>
-                          )}
-                        </div>
+                    {req.description && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mb-3 font-medium">
+                        {req.description}
+                      </p>
+                    )}
 
-                        {evt.description && (
-                          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mb-3.5 font-medium">
-                            {evt.description}
-                          </p>
-                        )}
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                            <span className="truncate">Thời gian: <strong className="text-slate-700 dark:text-slate-300">{formatSafeDate(evt.startTime)}</strong></span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                            <span className="truncate" title={locationDisplay}>Địa điểm: <strong className="text-slate-700 dark:text-slate-300">{locationDisplay}</strong></span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Users className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                            <span>Quy mô: <strong className="text-slate-700 dark:text-slate-300">{evt.capacity || 100} chỗ</strong></span>
-                          </div>
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
+                        <span className="truncate">Thời gian: <strong className="text-slate-700 dark:text-slate-300">{formatSafeDate(req.preferredStartTime || req.createdAt)}</strong></span>
                       </div>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                        <span className="truncate">Sảnh: <strong className="text-slate-700 dark:text-slate-300">{req.areaName || req.venueName || 'FPT University'}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                        <span>Quy mô: <strong className="text-slate-700 dark:text-slate-300">{req.expectedCapacity || req.areaCapacity || 100} chỗ</strong></span>
+                      </div>
+                    </div>
+                  </div>
 
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap border-t sm:border-t-0 pt-4 sm:pt-0 border-slate-100 dark:border-slate-800">
-                        {/* 👁️ View detail */}
+                  {/* ACTION BUTTONS (Khóa Chỉnh sửa & Cấu hình ở Hồ sơ chờ duyệt và Sự kiện đã xử lý) */}
+                  <div
+                    className="flex items-center gap-2 flex-wrap sm:flex-nowrap border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100 dark:border-slate-800"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* 👁️ Nút Chi tiết luôn hiển thị ở mọi tab */}
+                    <button
+                      type="button"
+                      onClick={() => handleViewDetails(req)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
+                      title="Xem chi tiết hồ sơ yêu cầu"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-blue-500" /> Chi tiết
+                    </button>
+
+                    {/* Chỉ tab "Cập Nhật Sự Kiện" mới được hiển thị Cấu hình & Chỉnh sửa */}
+                    {isUpdatingTab && (
+                      <>
+                        {req.createdEventId ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedConfigEventId(req.createdEventId!)
+                              setSelectedConfigEventTitle(req.title)
+                              setIsConfigModalOpen(true)
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
+                            title="Cấu hình Check-in & Điểm danh"
+                          >
+                            <Settings className="w-3.5 h-3.5 text-emerald-500" /> Cấu hình
+                          </button>
+                        ) : null}
+
                         <button
                           type="button"
-                          onClick={() => handleOpenEventDetail(evt.eventId)}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
-                          title="Xem chi tiết sự kiện"
+                          onClick={() => {
+                            if (req.createdEventId) {
+                              navigate(`/dashboard/events/${req.createdEventId}/edit`)
+                            } else {
+                              navigate(`/dashboard/event-requests/${req.requestId}/edit`)
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow transition-all active:scale-95"
+                          title="Chỉnh sửa thông tin sự kiện"
                         >
-                          <Eye className="w-4 h-4 text-blue-500" /> Chi tiết
+                          <Edit className="w-3.5 h-3.5" /> Chỉnh sửa
                         </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
+      ) : (
+        /* ==================== SỰ KIỆN TỰ DO LIST ==================== */
+        paginatedIndepList.length === 0 ? (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 p-16 text-center shadow-sm">
+            <div className="p-4 bg-orange-50 dark:bg-orange-950/30 text-orange-500 rounded-full w-fit mx-auto mb-3">
+              <Sparkles className="w-10 h-10" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">Không có sự kiện tự do nào</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              {indepSubTab === 'UPDATING'
+                ? 'Chưa có sự kiện tự do nào đang ở trạng thái OPEN hoặc UPDATING.'
+                : 'Chưa có sự kiện tự do nào đã đóng hoặc bị hủy.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid w-full grid-cols-1 gap-3.5 mb-5">
+            {paginatedIndepList.map((evt, index) => {
+              const formatUpper = (evt.eventFormat || '').toUpperCase()
+              const isOnline = formatUpper === 'ONLINE'
+              const isHybrid = formatUpper === 'HYBRID'
+              const isMeet = evt.onlineMeetingUrl?.includes('meet.google.com') || evt.customVenueName?.toLowerCase().includes('google meet')
+              const platformName = isMeet ? 'Google Meet' : 'Zoom'
+              const locationDisplay = formatEventLocation(evt, 'vi')
+              const isUpdatingTab = indepSubTab === 'UPDATING'
 
-                        {/* ⚙️ Check-in config */}
+              return (
+                <div
+                  key={evt.eventId || index}
+                  onClick={() => handleOpenEventDetail(evt.eventId)}
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm hover:shadow-md hover:border-orange-500/60 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  {/* Left accent bar */}
+                  <div
+                    className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                      evt.status === 'UPDATING' ? 'bg-blue-500' :
+                      evt.status === 'OPEN' ? 'bg-emerald-500' :
+                      evt.status === 'CLOSED' ? 'bg-slate-400' :
+                      evt.status === 'CANCELLED' ? 'bg-rose-500' : 'bg-orange-500'
+                    }`}
+                  />
+
+                  <div className="flex-1 min-w-0 pl-1.5">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-orange-600 transition-colors">
+                        {evt.title}
+                      </h3>
+
+                      {/* Status Badge */}
+                      {evt.status === 'UPDATING' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40">
+                          <Clock className="w-3 h-3" />
+                          Chờ cập nhật
+                        </span>
+                      ) : evt.status === 'OPEN' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Đang mở đăng ký
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                          {evt.status === 'CLOSED' ? 'Đã đóng' : evt.status === 'CANCELLED' ? 'Đã hủy' : evt.status}
+                        </span>
+                      )}
+
+                      {/* Format Badge */}
+                      {isOnline ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                          <Video className="w-3 h-3" />
+                          {platformName}
+                        </span>
+                      ) : isHybrid ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          <Globe className="w-3 h-3" /> Hybrid
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                          <MapPin className="w-3 h-3" /> Tự thuê địa điểm
+                        </span>
+                      )}
+                    </div>
+
+                    {evt.description && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mb-3 font-medium">
+                        {evt.description}
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
+                        <span className="truncate">Thời gian: <strong className="text-slate-700 dark:text-slate-300">{formatSafeDate(evt.startTime)}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                        <span className="truncate" title={locationDisplay}>Địa điểm: <strong className="text-slate-700 dark:text-slate-300">{locationDisplay}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                        <span>Quy mô: <strong className="text-slate-700 dark:text-slate-300">{evt.capacity || 100} chỗ</strong></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ACTION BUTTONS (Khóa Chỉnh sửa & Cấu hình ở Lịch sử đã xử lý) */}
+                  <div
+                    className="flex items-center gap-2 flex-wrap sm:flex-nowrap border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100 dark:border-slate-800"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* 👁️ Nút Chi tiết luôn hiển thị */}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEventDetail(evt.eventId)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
+                      title="Xem chi tiết sự kiện"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-blue-500" /> Chi tiết
+                    </button>
+
+                    {/* Chỉ tab "Cập Nhật Sự Kiện" mới được hiển thị Cấu hình & Chỉnh sửa */}
+                    {isUpdatingTab && (
+                      <>
                         <button
                           type="button"
                           onClick={() => {
@@ -1101,260 +1125,81 @@ export default function OrganizerEventRequests() {
                             setSelectedConfigEventTitle(evt.title)
                             setIsConfigModalOpen(true)
                           }}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
                           title="Cấu hình Check-in & Điểm danh"
                         >
-                          <Settings className="w-4 h-4 text-emerald-500" /> Cấu hình
+                          <Settings className="w-3.5 h-3.5 text-emerald-500" /> Cấu hình
                         </button>
 
-                        {/* ✏️ Direct Edit button */}
                         <button
                           type="button"
                           onClick={() => navigate(`/dashboard/events/${evt.eventId}/edit`)}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-md shadow-orange-500/20 hover:shadow-lg transition-all active:scale-95 hover:scale-[1.02]"
-                          title="Chỉnh sửa thông tin & cấu hình vé"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow transition-all active:scale-95"
+                          title="Chỉnh sửa sự kiện"
                         >
-                          <Edit className="w-4 h-4" /> Chỉnh sửa
+                          <Edit className="w-3.5 h-3.5" /> Chỉnh sửa
                         </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          ) : filteredRequests.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center shadow-sm">
-              <div className="p-4 bg-slate-50 dark:bg-slate-950/50 text-slate-300 dark:text-slate-400 rounded-full w-fit mx-auto mb-4">
-                <FileClock className="w-12 h-12" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Không tìm thấy yêu cầu nào</h3>
-              <p className="text-sm text-slate-400 dark:text-slate-500 mt-2 max-w-sm mx-auto">
-                {activeTab === 'active'
-                  ? 'Hiện bạn không có yêu cầu tổ chức sự kiện nào đang chờ xử lý.'
-                  : 'Danh sách lịch sử xử lý của bạn trống.'}
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Cards Grid */}
-              <div className="grid w-full grid-cols-1 gap-4 mb-4">
-                {Array.isArray(filteredRequests) ? filteredRequests.map((req, index) => (
-                  <div
-                    key={req?.requestId ?? `request-${index}`}
-                    className="animate-fade-in-up group relative overflow-hidden rounded-3xl border border-white/80 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur-md p-6 shadow-md hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-500 hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-5"
-                    style={{ animationDelay: `${index * 80}ms` }}
-                    onClick={() => handleViewDetails(req)}
-                  >
-                    {/* Color Accent left bar */}
-                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-                      req?.status === 'PENDING' ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.5)]' :
-                      req?.status === 'APPROVED' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(10,185,129,0.5)]' :
-                      req?.status === 'REJECTED' ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]' :
-                      req?.status === 'UPDATING' ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' :
-                      req?.status === 'EXPIRED' ? 'bg-slate-400 shadow-[0_0_12px_rgba(148,163,184,0.5)]' : 'bg-slate-400'
-                    }`} />
-
-                    <div className="flex-1 min-w-0 pl-1.5">
-                      <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-orange-600 transition-colors duration-300">
-                          {req?.title || 'Yêu cầu sự kiện'}
-                        </h3>
-
-                        {/* Status Badges with custom visual tags */}
-                        {req?.status === 'PENDING' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40 shadow-sm shadow-amber-500/5">
-                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-                            Chờ duyệt
-                          </span>
-                        ) : req?.status === 'APPROVED' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40 shadow-sm shadow-emerald-500/5">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Đã duyệt
-                          </span>
-                        ) : req?.status === 'REJECTED' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/40 shadow-sm shadow-rose-500/5">
-                            <XCircle className="w-3.5 h-3.5" />
-                            Từ chối
-                          </span>
-                        ) : req?.status === 'UPDATING' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40 shadow-sm shadow-blue-500/5">
-                            <Clock className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '3s' }} />
-                            Chờ cập nhật
-                          </span>
-                        ) : req?.status === 'EXPIRED' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <AlertCircle className="w-3.5 h-3.5" style={{ color: '#94a3b8' }} />
-                            Hết hạn
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
-                            {getStatusLabel(req?.status ?? 'PENDING')}
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mb-4 leading-relaxed font-medium">
-                        {req?.description || 'N/A'}
-                      </p>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-500 dark:text-slate-400 font-bold">
-                        {req?.createdAt && (
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-4 h-4 text-orange-500" />
-                            <span>Gửi: <strong className="text-slate-700 dark:text-slate-300">{formatSafeDate(req?.createdAt)}</strong></span>
-                          </div>
-                        )}
-                        {req?.expectedCapacity && (
-                          <div className="flex items-center gap-1.5">
-                            <Users className="w-4 h-4 text-orange-500" />
-                            <span>Sức chứa: <strong className="text-slate-700 dark:text-slate-300">{req?.expectedCapacity} người</strong></span>
-                          </div>
-                        )}
-                        {req?.preferredStartTime && (
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="w-4 h-4 text-orange-500" />
-                            <span>Dự kiến: <strong className="text-slate-700 dark:text-slate-300">{formatSafeDate(req?.preferredStartTime)}</strong></span>
-                          </div>
-                        )}
-                        {req?.processedByName && (
-                          <div className="flex items-center gap-1.5">
-                            <User className="w-4 h-4 text-orange-500" />
-                            <span>Duyệt bởi: <strong className="text-slate-700 dark:text-slate-300">{req?.processedByName}</strong></span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action buttons panel */}
-                    {activeTab === 'active' && (
-                      <div
-                        className="flex gap-2 self-end sm:self-center ml-auto flex-shrink-0"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {/* APPROVED: Cập nhật button */}
-                        {req?.status === 'APPROVED' && (() => {
-                          const eligibility = isEventEligibleForUpdate(req)
-                          return (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (eligibility.eligible) {
-                                  handleUpdateRequest(req)
-                                } else {
-                                  showToast('warning', eligibility.reason)
-                                }
-                              }}
-                              disabled={!eligibility.eligible}
-                              title={!eligibility.eligible ? eligibility.reason : 'Cập nhật thông tin sự kiện'}
-                              className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-extrabold rounded-xl border transition-all duration-300 active:scale-95 ${
-                                eligibility.eligible
-                                  ? 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-600 hover:text-white dark:hover:bg-orange-600 dark:hover:text-white border-orange-200 dark:border-orange-900/50 shadow-sm hover:scale-[1.02]'
-                                  : 'text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                              }`}
-                            >
-                              <Edit className="w-4 h-4" /> Cập nhật
-                            </button>
-                          )
-                        })()}
-
-                        {/* PENDING/UPDATING: Hủy yêu cầu button */}
-                        {(req?.status === 'PENDING' || req?.status === 'UPDATING') && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleCancelClick(req)
-                            }}
-                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all duration-300 shadow-sm hover:shadow hover:scale-[1.02] active:scale-95"
-                            title="Hủy/rút lại yêu cầu"
-                          >
-                            <XCircle className="w-4 h-4" /> Rút yêu cầu
-                          </button>
-                        )}
-
-                        {/* APPROVED + createdEventId: Hủy sự kiện button */}
-                        {req?.status === 'APPROVED' && req?.createdEventId && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleCancelClick(req)
-                            }}
-                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all duration-300 shadow-sm hover:shadow hover:scale-[1.02] active:scale-95"
-                            title="Hủy/dừng sự kiện và hoàn tiền"
-                          >
-                            <XCircle className="w-4 h-4" /> Hủy sự kiện
-                          </button>
-                        )}
-                      </div>
+                      </>
                     )}
                   </div>
-                )) : null}
-              </div>
-
-              {/* Pagination controls */}
-              {activeTab !== 'independent' && currentTotalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-2 bg-white dark:bg-slate-900 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800 p-5 shadow-md">
-                  <div className="text-sm text-slate-500 dark:text-slate-400 font-semibold">
-                    Trang <span className="text-orange-600 dark:text-orange-400 font-extrabold">{currentPage}</span> /{' '}
-                    <span className="text-slate-800 dark:text-slate-300 font-extrabold">{currentTotalPages}</span> ({currentTotalCount} hồ sơ)
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const newPage = Math.max(1, currentPage - 1)
-                        if (activeTab === 'active') fetchActiveRequests(newPage)
-                        else fetchArchivedRequests(newPage)
-                      }}
-                      disabled={currentPage === 1}
-                      className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300 shadow-sm"
-                    >
-                      ← Trước
-                    </button>
-
-                    {/* Page numbers */}
-                    <div className="flex gap-1.5">
-                      {Array.from({ length: currentTotalPages }, (_, i) => i + 1).map((page) => (
-                        <button
-                          key={page}
-                          onClick={() => {
-                            if (activeTab === 'active') fetchActiveRequests(page)
-                            else fetchArchivedRequests(page)
-                          }}
-                          className={`w-9 h-9 rounded-xl text-xs font-bold transition-all duration-300 border ${
-                            currentPage === page
-                              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white border-transparent shadow-lg shadow-orange-500/20 scale-[1.02] font-extrabold'
-                              : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        const newPage = Math.min(currentTotalPages, currentPage + 1)
-                        if (activeTab === 'active') fetchActiveRequests(newPage)
-                        else fetchArchivedRequests(newPage)
-                      }}
-                      disabled={currentPage === currentTotalPages}
-                      className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300 shadow-sm"
-                    >
-                      Sau →
-                    </button>
-                  </div>
                 </div>
-              )}
-            </>
-          )}
-        </>
+              )
+            })}
+          </div>
+        )
       )}
 
-      {/* Detail Modal */}
+      {/* 5. UNIFIED PAGINATION BAR (10 sự kiện / trang cho cả Sự Kiện Trường và Sự Kiện Tự Do) */}
+      {!loading && totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 p-4 shadow-sm">
+          <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-semibold">
+            Trang <span className="text-orange-600 dark:text-orange-400 font-extrabold">{safeCurrentPage}</span> /{' '}
+            <span className="text-slate-800 dark:text-slate-200 font-extrabold">{totalPages}</span> ({activeListLength} sự kiện)
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={safeCurrentPage === 1}
+              className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
+            >
+              ← Trước
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`w-8 h-8 rounded-xl text-xs font-bold transition-all border ${
+                  safeCurrentPage === page
+                    ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white border-transparent shadow-md shadow-orange-500/20 font-extrabold'
+                    : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={safeCurrentPage === totalPages}
+              className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
+            >
+              Sau →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal for Request */}
       {selectedRequest && (
         <EventRequestDetailModal
           request={convertToModalRequest(selectedRequest)}
           isOpen={isModalOpen}
-          onClose={handleCloseModal}
+          onClose={() => {
+            setIsModalOpen(false)
+            setSelectedRequest(null)
+          }}
           userRole={user?.role}
           loading={isDetailLoading}
         />
@@ -1362,8 +1207,8 @@ export default function OrganizerEventRequests() {
 
       {/* Cancel Confirmation Modal */}
       {showCancelModal && eventToCancel && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 dark:border-slate-800">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2.5 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 rounded-xl">
@@ -1377,8 +1222,7 @@ export default function OrganizerEventRequests() {
               </div>
 
               <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
-                {eventToCancel?.status === 'PENDING' ||
-                eventToCancel?.status === 'UPDATING' ? (
+                {eventToCancel?.status === 'PENDING' || eventToCancel?.status === 'UPDATING' ? (
                   <>
                     Bạn có chắc chắn muốn rút lại yêu cầu đăng ký{' '}
                     <strong className="text-slate-900 dark:text-slate-200">"{eventToCancel?.title || 'Yêu cầu sự kiện'}"</strong>?
@@ -1390,25 +1234,6 @@ export default function OrganizerEventRequests() {
                   </>
                 )}
               </p>
-
-              <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50 rounded-xl p-4 mb-6 text-xs text-amber-800 dark:text-amber-400 space-y-2">
-                <p className="font-bold flex items-center gap-1 text-[11px] uppercase tracking-wide">
-                  ⚠️ Lưu ý quan trọng:
-                </p>
-                {eventToCancel?.status === 'PENDING' ||
-                eventToCancel?.status === 'UPDATING' ? (
-                  <ul className="list-disc pl-4 space-y-1 font-medium text-slate-600 dark:text-slate-400">
-                    <li>Hệ thống sẽ lập tức giải phóng sảnh và lịch đã giữ chỗ.</li>
-                    <li>Yêu cầu này sẽ được hủy và không thể khôi phục lại trạng thái.</li>
-                  </ul>
-                ) : (
-                  <ul className="list-disc pl-4 space-y-1 font-medium text-slate-600 dark:text-slate-400">
-                    <li>Hệ thống sẽ <strong>tự động hoàn tiền 100%</strong> trực tiếp vào Ví nội bộ FEMS của tất cả người dùng đã mua vé (dùng để mua vé các sự kiện kế tiếp, không hỗ trợ rút tiền mặt).</li>
-                    <li>Sảnh sự kiện và cấu hình vé của sự kiện sẽ lập tức được giải phóng.</li>
-                    <li>Hành động hủy sự kiện này hoàn toàn không thể đảo ngược.</li>
-                  </ul>
-                )}
-              </div>
 
               <div className="flex gap-3 justify-end">
                 <button
@@ -1424,7 +1249,7 @@ export default function OrganizerEventRequests() {
                   onClick={confirmCancelEvent}
                   className="px-5 py-2.5 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-all active:scale-95 shadow-sm hover:shadow text-sm"
                 >
-                  Có, {eventToCancel?.status === 'APPROVED' ? 'hủy sự kiện' : 'rút lại'}
+                  Có, xác nhận
                 </button>
               </div>
             </div>

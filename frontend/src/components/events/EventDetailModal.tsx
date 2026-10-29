@@ -195,7 +195,7 @@ export function EventDetailModal({
     loading: lang === 'en' ? 'Loading event details...' : 'Đang tải chi tiết...',
     error: lang === 'en' ? 'Error' : 'Lỗi',
     copied: lang === 'en' ? 'Copied' : 'Đã sao chép',
-    copyLink: lang === 'en' ? 'Copy Link' : 'Sao chép liên kết',
+    copyLink: lang === 'en' ? 'Copy' : 'Sao chép',
     eventPage: lang === 'en' ? 'Event Page' : 'Trang sự kiện',
     fullSize: lang === 'en' ? 'View full size' : 'Xem ảnh lớn',
     area: lang === 'en' ? 'Area' : 'Khu vực',
@@ -340,22 +340,22 @@ export function EventDetailModal({
 
       <div className="relative w-full max-w-lg h-full bg-white dark:bg-neutral-950 text-slate-900 dark:text-white shadow-2xl flex flex-col z-10 animate-slide-in-right border-l border-slate-200 dark:border-white/10">
         <div className="sticky top-0 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 px-4 py-3.5 flex items-center justify-between z-20 flex-shrink-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={handleCopyLink}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-neutral-200 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors active:scale-95"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-[11px] sm:text-xs font-semibold whitespace-nowrap shrink-0 text-slate-700 dark:text-neutral-200 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors active:scale-95"
             >
-              <Copy className="w-3.5 h-3.5" />
-              {copied ? text.copied : text.copyLink}
+              <Copy className="w-3.5 h-3.5 shrink-0" />
+              <span>{copied ? text.copied : text.copyLink}</span>
             </button>
 
             <button
               type="button"
               onClick={() => closeThenNavigate(eventPagePath)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-neutral-200 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors active:scale-95"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-[11px] sm:text-xs font-semibold whitespace-nowrap shrink-0 text-slate-700 dark:text-neutral-200 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors active:scale-95"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              {text.eventPage}
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+              <span>{text.eventPage}</span>
             </button>
           </div>
 

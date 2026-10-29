@@ -358,19 +358,8 @@ export default function Events() {
           </p>
         </div>
 
-        {/* Controls: Create button on top, Calendar/List toggle right below */}
-        <div className="flex flex-col items-start sm:items-end gap-3 shrink-0">
-          {/* Organizer có quyền tạo event - nút gọn gàng không bị kéo dài ở mobile */}
-          {isOrganizer && (
-            <Link
-              to="/dashboard/events/create"
-              className="inline-flex items-center justify-center w-auto bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-5 py-2.5 rounded-2xl text-xs font-black shadow-md hover:shadow-lg active:scale-95 transition-all"
-            >
-              {currentLanguage === 'en' ? 'Create New Event' : 'Tạo sự kiện mới'}
-            </Link>
-          )}
-
-          {/* Toggle Calendar/List đặt ngay dưới nút Tạo sự kiện mới */}
+        {/* Controls: Calendar/List toggle */}
+        <div className="flex items-center shrink-0">
           <div className="flex bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 shadow-inner border border-slate-200/40 dark:border-slate-700/30 w-fit">
             <button
               onClick={() => setViewMode('calendar')}
