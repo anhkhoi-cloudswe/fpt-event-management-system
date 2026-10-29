@@ -1125,29 +1125,29 @@ export default function Dashboard() {
 
     <div className="w-full mx-auto pb-12">
 
-      {/* Tiêu đề + Tìm kiếm */}
+      {/* Tiêu đề + Tìm kiếm (Tối ưu mobile gọn nhẹ, chừa không gian hiển thị sự kiện) */}
 
-      <div className="mb-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      <div className="mb-4 sm:mb-10 flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-6">
 
         <div>
 
-          <h1 className="text-4xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight sm:text-5xl">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight">
 
             {currentLanguage === 'en' ? 'Events in' : 'Sự kiện tại'}{' '}<span className="bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">{currentLanguage === 'en' ? 'Ho Chi Minh City' : 'Thành phố Hồ Chí Minh'}</span>
 
           </h1>
 
-          <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm md:text-base font-medium">{currentLanguage === 'en' ? 'Discover and register for the most outstanding activities on campus.' : 'Khám phá và đăng ký tham gia các hoạt động nổi bật nhất tại campus.'}</p>
+          <p className="hidden sm:block text-slate-500 dark:text-slate-400 mt-2 text-sm md:text-base font-medium">{currentLanguage === 'en' ? 'Discover and register for the most outstanding activities on campus.' : 'Khám phá và đăng ký tham gia các hoạt động nổi bật nhất tại campus.'}</p>
 
         </div>
 
 
 
-        {/* Search Input */}
+        {/* Search Input: nhỏ gọn, tinh tế trên mobile */}
 
         <div className="relative max-w-md w-full md:w-80">
 
-          <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" />
+          <Search className="absolute left-3.5 top-2.5 sm:top-3.5 w-4 h-4 sm:w-5 sm:h-5 text-gray-400 pointer-events-none" />
 
           <input
 
@@ -1159,7 +1159,7 @@ export default function Dashboard() {
 
             onChange={(e) => handleSearchChange(e.target.value)}
 
-            className="w-full pl-11 pr-4 py-3 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm hover:border-orange-300 dark:hover:border-slate-700 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-white placeholder-slate-400 font-semibold"
+            className="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-3 text-xs sm:text-sm border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm hover:border-orange-300 dark:hover:border-slate-700 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-white placeholder-slate-400 font-semibold"
 
           />
 
@@ -1189,13 +1189,13 @@ export default function Dashboard() {
 
 
 
-      {/* ===================== TAB PANEL ===================== */}
+      {/* ===================== TAB PANEL (Gọn gàng, chữ thẳng 1 hàng không bị đứt gãy trên mobile) ===================== */}
 
-      <div className="mb-8">
+      <div className="mb-4 sm:mb-8">
 
         <div className="border-b border-slate-200/60 dark:border-slate-800">
 
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex sm:space-x-8 justify-between sm:justify-start">
 
             {/* Tab 1: Sự kiện hôm nay */}
 
@@ -1203,9 +1203,9 @@ export default function Dashboard() {
 
               onClick={() => handleTabChange('open')}
 
-              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-305 relative ${activeTab === 'open'
+              className={`py-2.5 sm:py-4 px-1 sm:px-2 border-b-2 font-black sm:font-bold text-xs sm:text-base whitespace-nowrap transition-all duration-300 relative text-center ${activeTab === 'open'
 
-                ? 'border-orange-500 text-orange-600 dark:text-orange-500 scale-105'
+                ? 'border-orange-500 text-orange-600 dark:text-orange-500 sm:scale-105'
 
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
 
@@ -1213,7 +1213,7 @@ export default function Dashboard() {
 
             >
 
-              <span>{currentLanguage === 'en' ? "Today's Events" : 'Sự kiện hôm nay'}</span>
+              <span className="whitespace-nowrap">{currentLanguage === 'en' ? "Today" : 'Sự kiện hôm nay'}</span>
 
               {activeTab === 'open' && (
 
@@ -1231,9 +1231,9 @@ export default function Dashboard() {
 
               onClick={() => handleTabChange('upcoming')}
 
-              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-305 relative ${activeTab === 'upcoming'
+              className={`py-2.5 sm:py-4 px-1 sm:px-2 border-b-2 font-black sm:font-bold text-xs sm:text-base whitespace-nowrap transition-all duration-300 relative text-center ${activeTab === 'upcoming'
 
-                ? 'border-orange-500 text-orange-600 dark:text-orange-500 scale-105'
+                ? 'border-orange-500 text-orange-600 dark:text-orange-500 sm:scale-105'
 
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
 
@@ -1241,7 +1241,7 @@ export default function Dashboard() {
 
             >
 
-              <span>{currentLanguage === 'en' ? 'Upcoming Events' : 'Sự kiện sắp diễn ra'}</span>
+              <span className="whitespace-nowrap">{currentLanguage === 'en' ? 'Upcoming' : 'Sự kiện sắp diễn ra'}</span>
 
               {activeTab === 'upcoming' && (
 
@@ -1259,9 +1259,9 @@ export default function Dashboard() {
 
               onClick={() => handleTabChange('closed')}
 
-              className={`py-4 px-1 border-b-2 font-bold text-base transition-all duration-305 relative ${activeTab === 'closed'
+              className={`py-2.5 sm:py-4 px-1 sm:px-2 border-b-2 font-black sm:font-bold text-xs sm:text-base whitespace-nowrap transition-all duration-300 relative text-center ${activeTab === 'closed'
 
-                ? 'border-orange-500 text-orange-600 dark:text-orange-500 scale-105'
+                ? 'border-orange-500 text-orange-600 dark:text-orange-500 sm:scale-105'
 
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
 
@@ -1269,7 +1269,7 @@ export default function Dashboard() {
 
             >
 
-              <span>{currentLanguage === 'en' ? 'Ended Events' : 'Sự kiện đã kết thúc'}</span>
+              <span className="whitespace-nowrap">{currentLanguage === 'en' ? 'Ended' : 'Sự kiện đã kết thúc'}</span>
 
               {activeTab === 'closed' && (
 
@@ -1317,7 +1317,7 @@ export default function Dashboard() {
 
               {/* Results Count */}
 
-              <div className="mb-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
+              <div className="mb-3 sm:mb-6 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
 
                 <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-400 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
 
@@ -1659,7 +1659,7 @@ export default function Dashboard() {
 
               {/* Results Count */}
 
-              <div className="mb-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
+              <div className="mb-3 sm:mb-6 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
 
                 <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-400 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
 
@@ -1961,7 +1961,7 @@ export default function Dashboard() {
 
               {/* Results Count */}
 
-              <div className="mb-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
+              <div className="mb-3 sm:mb-6 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
 
                 <p>{currentLanguage === 'en' ? 'Showing' : 'Hiển thị'} <span className="text-orange-600 dark:text-orange-400 font-bold">{displayedEvents.length}</span> {currentLanguage === 'en' ? 'of' : 'trên tổng số'} <span className="text-orange-600 font-bold">{totalItems}</span> {currentLanguage === 'en' ? 'events' : 'sự kiện'}</p>
 
