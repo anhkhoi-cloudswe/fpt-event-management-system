@@ -112,19 +112,44 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {monthNames[month]} {year}
-        </h2>
-        <div className="flex items-center gap-2">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-3 sm:p-6">
+      {/* Header: Hiển thị "Tháng ... Năm ..." theo hàng ngang không rớt dòng; nút Hôm nay ở dưới tiêu đề trên mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+        <div className="flex flex-col items-start gap-1.5 w-full sm:w-auto">
+          <div className="flex items-center justify-between w-full sm:w-auto gap-4">
+            <h2 className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white whitespace-nowrap">
+              {monthNames[month]} Năm {year}
+            </h2>
+            {/* Phím điều hướng ở mobile: đặt cùng hàng với tháng năm */}
+            <div className="flex sm:hidden items-center gap-1">
+              <button
+                onClick={prevMonth}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 rounded-md transition-colors"
+                aria-label="Previous month"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={nextMonth}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 rounded-md transition-colors"
+                aria-label="Next month"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          
+          {/* Nút "Hôm nay": Đặt dưới "Tháng ... Năm ..." khi ở mobile view */}
           <button
             onClick={goToToday}
-            className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
+            className="px-2.5 py-1 text-xs sm:text-sm bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors font-semibold"
           >
             Hôm nay
           </button>
+        </div>
+
+        {/* Phím điều hướng ở desktop */}
+        <div className="hidden sm:flex items-center gap-2">
           <button
             onClick={prevMonth}
             className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 rounded-md transition-colors"
@@ -148,7 +173,7 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
         {dayNames.map(day => (
           <div
             key={day}
-            className="text-center text-sm font-semibold text-gray-600 dark:text-slate-400 py-2"
+            className="text-center text-xs sm:text-sm font-semibold text-gray-600 dark:text-slate-400 py-1 sm:py-2"
           >
             {day}
           </div>

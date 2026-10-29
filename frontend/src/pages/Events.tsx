@@ -348,17 +348,30 @@ export default function Events() {
   return (
     <div>
       {/* Header + nút toggle view */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-8 gap-4 border-b border-slate-200/60 dark:border-slate-800 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight sm:text-4xl">
             {currentLanguage === 'en' ? 'Event List' : 'Danh sách sự kiện'}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
+          <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
             {currentLanguage === 'en' ? 'Explore and participate in events, scientific seminars, and extracurricular activities at FPT University.' : 'Khám phá và tham gia các sự kiện, hội thảo khoa học và hoạt động ngoại khóa tại trường FPT.'}
           </p>
+        </div>
 
-          {/* Toggle Calendar/List */}
-          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 shadow-inner border border-slate-200/40 dark:border-slate-700/30 w-fit mt-4">
+        {/* Controls: Create button on top, Calendar/List toggle right below */}
+        <div className="flex flex-col items-start sm:items-end gap-3 shrink-0">
+          {/* Organizer có quyền tạo event - nút gọn gàng không bị kéo dài ở mobile */}
+          {isOrganizer && (
+            <Link
+              to="/dashboard/events/create"
+              className="inline-flex items-center justify-center w-auto bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-5 py-2.5 rounded-2xl text-xs font-black shadow-md hover:shadow-lg active:scale-95 transition-all"
+            >
+              {currentLanguage === 'en' ? 'Create New Event' : 'Tạo sự kiện mới'}
+            </Link>
+          )}
+
+          {/* Toggle Calendar/List đặt ngay dưới nút Tạo sự kiện mới */}
+          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 shadow-inner border border-slate-200/40 dark:border-slate-700/30 w-fit">
             <button
               onClick={() => setViewMode('calendar')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${viewMode === 'calendar'
@@ -382,16 +395,6 @@ export default function Events() {
             </button>
           </div>
         </div>
-
-        {/* Organizer có quyền tạo event */}
-        {isOrganizer && (
-          <Link
-            to="/dashboard/events/create"
-            className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-5 py-2.5 rounded-2xl text-xs font-black shadow-md hover:shadow-lg active:scale-95 transition-all"
-          >
-            {currentLanguage === 'en' ? 'Create New Event' : 'Tạo sự kiện mới'}
-          </Link>
-        )}
       </div>
 
       {/* Loading / Error / Empty / Content */}
@@ -417,7 +420,7 @@ export default function Events() {
         <>
           {/* ===== Calendar View ===== */}
           {viewMode === 'calendar' && (
-            <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-6 shadow-md overflow-hidden animate-fade-in-up">
+            <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-2 sm:p-6 shadow-md overflow-hidden animate-fade-in-up">
               <EventCalendar events={openEvents} onEventClick={handleEventClick} />
             </div>
           )}

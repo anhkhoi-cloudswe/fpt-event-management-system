@@ -537,7 +537,7 @@ export default function Layout() {
             {showWallet && (
               <Link
                 to={isOrganizer ? "/dashboard/organizer/wallet" : "/dashboard/bills"}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all hover:scale-105 active:scale-95 ${isDarkMode
+                className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all hover:scale-105 active:scale-95 ${isDarkMode
                   ? 'bg-slate-800 border-slate-700 hover:border-orange-500/50 text-orange-400 font-bold'
                   : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 hover:border-orange-400 text-slate-800 font-bold'
                   }`}
@@ -819,32 +819,33 @@ export default function Layout() {
               ? 'bg-slate-900 border-slate-800 text-slate-200'
               : 'bg-white border-orange-100 text-slate-800'
               }`}>
-              <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200/50 dark:border-slate-800/60">
+              <div className="h-16 flex items-center gap-3 px-4 border-b border-slate-200/50 dark:border-slate-800/60">
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                  aria-label="Toggle menu"
+                >
+                  <Menu size={20} />
+                </button>
                 <Link
                   to="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 group shrink min-w-0"
+                  className="flex items-center gap-1.5 sm:gap-3 group shrink min-w-0 hover:opacity-95 transition-opacity"
                 >
                   <img
                     src="/favicon.png"
                     alt="FEMS Logo"
-                    className="h-8 w-auto object-contain shrink-0 drop-shadow-xs"
+                    className="h-8 sm:h-9 w-auto object-contain shrink-0 drop-shadow-xs"
                   />
-                  <span className="text-slate-300 dark:text-slate-600 font-light text-base select-none leading-none shrink-0">
+                  <span className="text-slate-300 dark:text-slate-600 font-light text-base sm:text-lg select-none leading-none shrink-0">
                     ×
                   </span>
                   <img
                     src={fptLogo}
                     alt="FPT University"
-                    className="h-7 w-auto object-contain shrink-0"
+                    className="h-7 sm:h-8 w-auto object-contain shrink-0"
                   />
                 </Link>
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-orange-500 transition-colors"
-                >
-                  <Menu size={20} />
-                </button>
               </div>
               <div className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
                 {renderSidebarLinks(true)}

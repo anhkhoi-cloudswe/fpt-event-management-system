@@ -301,11 +301,18 @@ export default function GuestLanding() {
 
         const data = await response.json()
 
-        const events = Array.isArray(data)
+        const rawList = Array.isArray(data)
           ? data
           : Array.isArray(data.data)
             ? data.data
             : []
+
+        // Best practice: Lọc sạch các sự kiện đã quá thời gian kết thúc (end_time)
+        const now = Date.now()
+        const events = rawList.filter((ev: any) => {
+          if (!ev.endTime) return true
+          return new Date(ev.endTime).getTime() > now
+        })
 
         setHighlightedEvents(events)
       } catch (error) {

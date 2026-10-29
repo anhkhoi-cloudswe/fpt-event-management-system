@@ -1797,7 +1797,7 @@ func (r *EventRepository) GetOpenEvents(ctx context.Context) ([]models.EventList
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
-		WHERE e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'
+		WHERE e.status = 'OPEN' AND e.end_time > timezone('Asia/Ho_Chi_Minh', NOW()) AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'
 		ORDER BY e.start_time DESC
 	`
 
@@ -1901,7 +1901,7 @@ func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page 
 	countQuery := `
 		SELECT COUNT(*)
 		FROM Event e
-		WHERE e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'
+		WHERE e.status = 'OPEN' AND e.end_time > timezone('Asia/Ho_Chi_Minh', NOW()) AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'
 	`
 
 	var totalCount int
@@ -1919,7 +1919,7 @@ func (r *EventRepository) GetOpenEventsWithPagination(ctx context.Context, page 
 		FROM Event e
 		LEFT JOIN Venue_Area va ON e.area_id = va.area_id
 		LEFT JOIN Venue v ON va.venue_id = v.venue_id
-		WHERE e.status = 'OPEN' AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'
+		WHERE e.status = 'OPEN' AND e.end_time > timezone('Asia/Ho_Chi_Minh', NOW()) AND COALESCE(e.privacy_status, 'PUBLIC') = 'PUBLIC'
 		ORDER BY e.start_time DESC
 		LIMIT $1 OFFSET $2
 	`

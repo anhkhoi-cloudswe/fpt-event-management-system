@@ -63,7 +63,7 @@ func (s *EventCleanupScheduler) cleanupEndedEvents() {
 	query := `
 		SELECT event_id, area_id, title, end_time 
 		FROM Event 
-		WHERE end_time < NOW() 
+		WHERE end_time < timezone('Asia/Ho_Chi_Minh', NOW()) 
 		  AND status <> 'CANCELLED'
 		  AND status <> 'CLOSED'
 	`

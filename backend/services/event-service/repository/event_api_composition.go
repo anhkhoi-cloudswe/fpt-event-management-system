@@ -461,7 +461,7 @@ func (r *EventRepository) GetOpenEventsComposed(ctx context.Context) ([]models.E
 			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, e.created_by
 		FROM Event e
-		WHERE e.status = 'OPEN'
+		WHERE e.status = 'OPEN' AND e.end_time > timezone('Asia/Ho_Chi_Minh', NOW())
 		ORDER BY e.start_time DESC
 	`
 
@@ -574,7 +574,7 @@ func (r *EventRepository) GetOpenEventsComposedWithPagination(ctx context.Contex
 	countQuery := `
 		SELECT COUNT(*)
 		FROM Event e
-		WHERE e.status = 'OPEN'
+		WHERE e.status = 'OPEN' AND e.end_time > timezone('Asia/Ho_Chi_Minh', NOW())
 	`
 
 	var totalCount int
@@ -587,7 +587,7 @@ func (r *EventRepository) GetOpenEventsComposedWithPagination(ctx context.Contex
 			e.event_id, e.title, e.description, e.start_time, e.end_time, COALESCE(e.max_seats, 0) AS max_seats, e.status, e.banner_url,
 			e.area_id, e.created_by
 		FROM Event e
-		WHERE e.status = 'OPEN'
+		WHERE e.status = 'OPEN' AND e.end_time > timezone('Asia/Ho_Chi_Minh', NOW())
 		ORDER BY e.start_time DESC
 		LIMIT $1 OFFSET $2
 	`
