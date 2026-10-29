@@ -2060,12 +2060,15 @@ func (r *EventRepository) CreateEventRequest(ctx context.Context, requesterID in
 	ensureOnlineMeetingFields(req)
 
 	var requestID int64
+	normReqStartTime := normalizeEventTimeToVietnamISO(req.PreferredStartTime)
+	normReqEndTime := normalizeEventTimeToVietnamISO(req.PreferredEndTime)
+
 	err = tx.QueryRowContext(ctx, query,
 		requesterID,
 		req.Title,
 		req.Description,
-		req.PreferredStartTime,
-		req.PreferredEndTime,
+		normReqStartTime,
+		normReqEndTime,
 		req.ExpectedCapacity,
 		req.EventFormat,
 		req.CustomVenueName,
@@ -4800,6 +4803,27 @@ func (r *EventRepository) ensureAreaAndSeatsForEvent(ctx context.Context, tx *sq
 	return areaID.Int64, nil
 }
 
+// normalizeEventTimeToVietnamISO ensures datetime string is parsed in Vietnam timezone (+07:00)
+// and formatted with explicit timezone offset for PostgreSQL TIMESTAMPTZ storage.
+func normalizeEventTimeToVietnamISO(timeStr string) string {
+	timeStr = strings.TrimSpace(timeStr)
+	if timeStr == "" {
+		return timeStr
+	}
+	if t, err := time.Parse(time.RFC3339, timeStr); err == nil {
+		return t.In(utils.VietnamLocation()).Format("2006-01-02T15:04:05+07:00")
+	}
+	if t, err := time.Parse("2006-01-02T15:04:05Z07:00", timeStr); err == nil {
+		return t.In(utils.VietnamLocation()).Format("2006-01-02T15:04:05+07:00")
+	}
+	for _, layout := range []string{"2006-01-02T15:04:05", "2006-01-02T15:04", "2006-01-02 15:04:05", "2006-01-02 15:04"} {
+		if t, err := time.ParseInLocation(layout, timeStr, utils.VietnamLocation()); err == nil {
+			return t.Format("2006-01-02T15:04:05+07:00")
+		}
+	}
+	return timeStr
+}
+
 func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int, req *models.CreateEventRequestBody) (int, error) {
 	req.EventFormat = normalizeEventFormat(req.EventFormat)
 	if !isValidEventFormat(req.EventFormat) {
@@ -4860,11 +4884,14 @@ func (r *EventRepository) CreateIndependentEvent(ctx context.Context, userID int
 	// Ensure online meeting info for ONLINE/HYBRID format
 	ensureOnlineMeetingFields(req)
 
+	normStartTime := normalizeEventTimeToVietnamISO(req.PreferredStartTime)
+	normEndTime := normalizeEventTimeToVietnamISO(req.PreferredEndTime)
+
 	err = tx.QueryRowContext(ctx, query,
 		req.Title,
 		req.Description,
-		req.PreferredStartTime,
-		req.PreferredEndTime,
+		normStartTime,
+		normEndTime,
 		req.ExpectedCapacity,
 		bannerURL,
 		userID,

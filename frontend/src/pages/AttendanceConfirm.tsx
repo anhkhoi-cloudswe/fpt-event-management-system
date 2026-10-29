@@ -289,16 +289,7 @@ export default function AttendanceConfirm() {
               />
             </Link>
 
-            <div className="h-6 w-px bg-slate-200 dark:bg-white/10 hidden sm:block ml-1" />
 
-            <div className="hidden sm:block">
-              <span className="text-xs font-black uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> FEMS EVENT
-              </span>
-              <p className="text-[11px] text-slate-500 dark:text-neutral-400 font-medium leading-tight">
-                {lang === 'en' ? 'Check-out & Feedback' : 'Điểm danh Check-out & Đánh giá'}
-              </p>
-            </div>
           </div>
 
           <div className="flex items-center gap-2">

@@ -4,7 +4,7 @@ import { getAccessToken, setAccessToken, setInMemoryToken, requestTokenRefresh }
 
 const AUTH_ME_ENDPOINTS = ['/api/auth/me'] as const
 
-const isPublicRoutePath = (pathname: string) => {
+const isPurePublicLanding = (pathname: string) => {
   return pathname === '/guest' ||
     pathname === '/login' ||
     pathname === '/signup' ||
@@ -15,7 +15,6 @@ const isPublicRoutePath = (pathname: string) => {
     pathname === '/organizer-policy' ||
     pathname === '/payment-success' ||
     pathname === '/payment-failed' ||
-    pathname.startsWith('/attendance') ||
     /^\/events\/[^/]+\/page$/.test(pathname)
 }
 
@@ -234,16 +233,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [handleSessionExpired])
 
   useEffect(() => {
-    // Public pages must be immediately readable for guests, including clean browsers with no auth cookie.
-    if (isPublicRoutePath(window.location.pathname)) {
-      setLoading(false) // Instantly release the "Loading Auth State..." screen barrier smoothly
-      return
-    }
-
     let isMounted = true
 
     const bootstrapAuth = async () => {
-      setLoading(true)
+      const isPublic = isPurePublicLanding(window.location.pathname)
+      // Only show blocking splash loading screen on private routes; public routes bootstrap silently
+      if (!isPublic) {
+        setLoading(true)
+      } else {
+        setLoading(false)
+      }
       setIsRefreshing(true)
 
       try {
