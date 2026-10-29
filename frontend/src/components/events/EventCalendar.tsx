@@ -189,66 +189,89 @@ export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
           return (
             <div
               key={index}
-              className={`min-h-[100px] border border-gray-200 dark:border-slate-800 p-2 ${!isCurrentMonth
-                  ? 'bg-gray-50 dark:bg-slate-950/40 opacity-50'
+              onClick={() => {
+                if (isCurrentMonth && hasEvents) {
+                  handleShowAllEvents(day, dayEvents)
+                }
+              }}
+              className={`aspect-square sm:aspect-auto sm:min-h-[90px] border border-gray-200 dark:border-slate-800 p-1 sm:p-2 rounded-xl transition-all flex flex-col justify-between ${
+                !isCurrentMonth
+                  ? 'bg-gray-50/60 dark:bg-slate-950/40 opacity-40'
                   : hasEvents
-                    ? 'bg-gray-100 dark:bg-slate-800/40'
+                    ? 'bg-orange-50/40 dark:bg-slate-800/60 cursor-pointer hover:border-orange-400 dark:hover:border-orange-500'
                     : 'bg-white dark:bg-slate-900'
-                } ${today ? 'ring-2 ring-blue-500' : ''}`}
+                } ${today ? 'ring-2 ring-blue-500 font-bold bg-blue-50/30 dark:bg-blue-950/20' : ''}`}
             >
               {/* Day number */}
               <div
-                className={`text-sm font-semibold mb-1 ${!isCurrentMonth
+                className={`text-xs sm:text-sm font-bold text-center sm:text-left ${
+                  !isCurrentMonth
                     ? 'text-gray-400 dark:text-slate-600'
                     : today
-                      ? 'text-blue-600'
+                      ? 'text-blue-600 dark:text-blue-400'
                       : 'text-gray-900 dark:text-slate-200'
-                  }`}
+                }`}
               >
                 {day}
               </div>
 
-              {/* Events - only show for current month */}
+              {/* Events: Mobile show neat dots, desktop show card previews */}
               {isCurrentMonth && hasEvents && (
-                <div className="space-y-1">
-                  {dayEvents.slice(0, 2).map(event => (
-                    <button
-                      key={event.eventId}
-                      onClick={() => onEventClick?.(event)}
-                      className="w-full text-left rounded overflow-hidden transition-all hover:ring-2 hover:ring-blue-400"
-                      title={event.title}
-                    >
-                      {event.bannerUrl ? (
-                        <div className="relative">
-                          <img
-                            src={event.bannerUrl}
-                            alt={event.title}
-                            className="w-full h-16 object-cover"
-                          />
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
-                            <p className="text-xs text-white font-medium truncate">
-                              {event.title}
-                            </p>
+                <div className="w-full">
+                  {/* Mobile dot indicator: neatly centered */}
+                  <div className="flex sm:hidden items-center justify-center gap-1 mt-0.5">
+                    {dayEvents.slice(0, 3).map((_, i) => (
+                      <span key={i} className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                    ))}
+                    {dayEvents.length > 3 && (
+                      <span className="text-[9px] text-orange-600 font-black leading-none">+{dayEvents.length - 3}</span>
+                    )}
+                  </div>
+
+                  {/* Tablet/Desktop previews */}
+                  <div className="hidden sm:block space-y-1 mt-1">
+                    {dayEvents.slice(0, 2).map(event => (
+                      <button
+                        key={event.eventId}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onEventClick?.(event)
+                        }}
+                        className="w-full text-left rounded overflow-hidden transition-all hover:ring-2 hover:ring-blue-400"
+                        title={event.title}
+                      >
+                        {event.bannerUrl ? (
+                          <div className="relative">
+                            <img
+                              src={event.bannerUrl}
+                              alt={event.title}
+                              className="w-full h-14 object-cover"
+                            />
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
+                              <p className="text-xs text-white font-medium truncate">
+                                {event.title}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded text-xs text-blue-800 truncate">
-                          {event.title}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                  {dayEvents.length > 2 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleShowAllEvents(day, dayEvents)
-                      }}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-0.5 hover:bg-blue-50 rounded transition-colors w-full text-left"
-                    >
-                      +{dayEvents.length - 2} sự kiện
-                    </button>
-                  )}
+                        ) : (
+                          <div className="px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded text-xs text-blue-800 truncate">
+                            {event.title}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                    {dayEvents.length > 2 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleShowAllEvents(day, dayEvents)
+                        }}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-0.5 hover:bg-blue-50 rounded transition-colors w-full text-left"
+                      >
+                        +{dayEvents.length - 2} sự kiện
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

@@ -513,7 +513,7 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={() => setShowSubscriptionModal(true)}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-[11px] sm:text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs ${
+                className={`hidden sm:flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-[11px] sm:text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs ${
                   currentSub?.tierCode === 'BUSINESS'
                     ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
                     : currentSub?.tierCode === 'PRO'
@@ -590,6 +590,33 @@ export default function Layout() {
                       <div className="min-w-0 flex-1">
                         <h4 className="text-xs font-black truncate">{user?.fullName}</h4>
                         <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
+                        {isOrganizer && (
+                          <div className="mt-1 flex items-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSettingsOpen(false);
+                                setShowSubscriptionModal(true);
+                              }}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                                currentSub?.tierCode === 'BUSINESS'
+                                  ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
+                                  : currentSub?.tierCode === 'PRO'
+                                  ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
+                                  : isDarkMode
+                                  ? 'bg-slate-800 text-slate-300 border-slate-700'
+                                  : 'bg-orange-50 text-orange-700 border-orange-200'
+                              }`}
+                              title="Nhấn để xem chi tiết thời hạn & quyền lợi gói dịch vụ"
+                            >
+                              <Sparkles size={11} className={currentSub?.tierCode === 'PRO' || currentSub?.tierCode === 'BUSINESS' ? 'text-amber-500 animate-pulse' : 'text-slate-400'} />
+                              <span>Gói: {currentSub ? currentSub.tierCode : 'FREE'}</span>
+                              {currentSub?.status === 'ACTIVE' && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-0.5 animate-pulse" />
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -420,7 +420,7 @@ export default function Events() {
         <>
           {/* ===== Calendar View ===== */}
           {viewMode === 'calendar' && (
-            <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-2 sm:p-6 shadow-md overflow-hidden animate-fade-in-up">
+            <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800 p-1 sm:p-6 shadow-md overflow-hidden animate-fade-in-up">
               <EventCalendar events={openEvents} onEventClick={handleEventClick} />
             </div>
           )}

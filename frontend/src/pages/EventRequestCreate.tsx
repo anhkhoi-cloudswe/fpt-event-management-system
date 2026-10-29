@@ -1554,7 +1554,11 @@ export default function EventRequestCreate() {
       const activeSecret = meetingDetails.secret.trim() || 
         (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingSecret : connectedPlatforms.google.meetingSecret);
 
-      const fmt = (s: string) => (s ? s + ':00' : null)
+      const fmt = (s: string) => {
+        if (!s) return null;
+        // Ensure +07:00 Vietnam timezone offset so backend/PostgreSQL does not default to UTC
+        return s.includes('+') ? s : s + ':00+07:00';
+      }
       const body = {
         title: formData.title,
         description: formData.description || null,

@@ -182,27 +182,21 @@ export function SubscriptionDetailModal({
               className="w-10 h-10 object-contain rounded-xl shrink-0 shadow-sm ring-2 ring-white/20"
             />
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
-                  {themeConfig.title}
+                  Gói {tierCode}
                 </h3>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shrink-0 ${themeConfig.badgeBg} ${themeConfig.badgeBorder} ${themeConfig.badgeText}`}>
-                  {tierCode}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 mt-0.5 text-[11px]">
-                {currentSub?.status === 'ACTIVE' && !isExpired ? (
-                  <span className="inline-flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {currentSub?.status === 'ACTIVE' && !isExpired && (
+                  <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400 text-xs shrink-0">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     Đang hoạt động
                   </span>
-                ) : isExpired ? (
-                  <span className="inline-flex items-center gap-1 font-bold text-rose-600 dark:text-rose-400">
+                )}
+                {isExpired && (
+                  <span className="inline-flex items-center gap-1 font-bold text-rose-600 dark:text-rose-400 text-xs shrink-0">
                     <AlertTriangle size={12} />
                     Đã hết hạn
                   </span>
-                ) : (
-                  <span className="font-medium text-slate-500">Gói tiêu chuẩn</span>
                 )}
               </div>
             </div>
@@ -284,16 +278,18 @@ export function SubscriptionDetailModal({
                   />
                 </div>
 
-                {/* Mốc Ngày Bắt đầu & Hết hạn tinh gọn trên 1 dòng */}
-                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/70 dark:border-slate-700/60">
-                  <span className="flex items-center gap-1">
-                    <Calendar size={12} className="text-slate-400" />
-                    Bắt đầu: <strong className="text-slate-700 dark:text-slate-200">{formatShortDateTime(currentSub?.startDate)}</strong>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className={themeConfig.accentText}>●</span>
-                    Hết hạn: <strong className="text-slate-800 dark:text-slate-100">{formatShortDateTime(currentSub?.endDate)}</strong>
-                  </span>
+                {/* Mốc Ngày Bắt đầu & Hết hạn: Trên mobile Bắt đầu hàng trên, Hết hạn hàng dưới; Desktop cùng hàng */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200/70 dark:border-slate-700/60">
+                  <div className="flex items-center gap-1.5 whitespace-nowrap">
+                    <Calendar size={13} className="text-slate-400 shrink-0" />
+                    <span>Bắt đầu:</span>
+                    <strong className="text-slate-700 dark:text-slate-200">{formatShortDateTime(currentSub?.startDate)}</strong>
+                  </div>
+                  <div className="flex items-center gap-1.5 whitespace-nowrap">
+                    <Clock size={13} className={`${themeConfig.accentText} shrink-0`} />
+                    <span>Hết hạn:</span>
+                    <strong className="text-slate-800 dark:text-slate-100">{formatShortDateTime(currentSub?.endDate)}</strong>
+                  </div>
                 </div>
               </div>
             )}
