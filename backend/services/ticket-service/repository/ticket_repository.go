@@ -33,6 +33,17 @@ var (
 	penaltyMutex  sync.RWMutex
 )
 
+var vnLocation = time.FixedZone("Asia/Ho_Chi_Minh", 7*3600)
+
+// interpretEventTimeInVietnam ensures a timestamp stored nominally in Vietnam local time
+// is treated in +07:00 without double-adding 7 hours or shifting when converted across zones.
+func interpretEventTimeInVietnam(t time.Time) time.Time {
+	if t.IsZero() {
+		return t
+	}
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), vnLocation)
+}
+
 func incrementUserPenalty(userID int) {
 	penaltyMutex.Lock()
 	defer penaltyMutex.Unlock()
@@ -2327,6 +2338,7 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 	var checkOutTime sql.NullTime
 	var eventName string
 	var eventFormat sql.NullString
+	var eventStatus string
 	var endTime time.Time
 	var checkoutOffset sql.NullInt64
 
@@ -2338,6 +2350,7 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 			t.check_out_time,
 			e.title,
 			e.event_format,
+			e.status,
 			e.end_time,
 			e.checkout_offset
 		FROM Ticket t
@@ -2356,6 +2369,7 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 		&checkOutTime,
 		&eventName,
 		&eventFormat,
+		&eventStatus,
 		&endTime,
 		&checkoutOffset,
 	); err != nil {
@@ -2365,8 +2379,15 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 		return nil, err
 	}
 
-	// Time window check:
-	now := time.Now()
+	endTime = interpretEventTimeInVietnam(endTime)
+
+	// Time window and event status check:
+	now := time.Now().In(vnLocation)
+	upperEventStatus := strings.ToUpper(strings.TrimSpace(eventStatus))
+	if upperEventStatus == "CLOSED" || upperEventStatus == "CANCELLED" || upperEventStatus == "FINISHED" {
+		return nil, fmt.Errorf("cổng điểm danh và đánh giá sự kiện đã đóng do sự kiện đã kết thúc hoặc hủy")
+	}
+
 	offsetMinutes := config.GetEffectiveCheckoutOffset(checkoutOffset)
 	allowedAt := endTime.Add(-time.Duration(offsetMinutes) * time.Minute)
 	if now.Before(allowedAt) {
@@ -2539,25 +2560,32 @@ func (r *TicketRepository) GetAttendanceStatus(ctx context.Context, userID, even
 	var (
 		title          string
 		eventFormat    sql.NullString
+		eventStatus    string
 		startTime      time.Time
 		endTime        time.Time
 		checkoutOffset sql.NullInt64
 	)
-	eventQuery := `SELECT title, event_format, start_time, end_time, checkout_offset FROM Event WHERE event_id = $1`
-	if err := r.db.QueryRowContext(ctx, eventQuery, eventID).Scan(&title, &eventFormat, &startTime, &endTime, &checkoutOffset); err != nil {
+	eventQuery := `SELECT title, event_format, status, start_time, end_time, checkout_offset FROM Event WHERE event_id = $1`
+	if err := r.db.QueryRowContext(ctx, eventQuery, eventID).Scan(&title, &eventFormat, &eventStatus, &startTime, &endTime, &checkoutOffset); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("event not found")
 		}
 		return nil, err
 	}
 
+	startTime = interpretEventTimeInVietnam(startTime)
+	endTime = interpretEventTimeInVietnam(endTime)
+
 	offsetMinutes := config.GetEffectiveCheckoutOffset(checkoutOffset)
 	allowedAt := endTime.Add(-time.Duration(offsetMinutes) * time.Minute)
 	closedAt := endTime.Add(1 * time.Hour)
-	now := time.Now()
+	now := time.Now().In(vnLocation)
 
-	isOpen := now.After(allowedAt) && now.Before(closedAt)
-	isClosed := now.After(closedAt)
+	upperStatus := strings.ToUpper(strings.TrimSpace(eventStatus))
+	isEventExplicitlyClosed := upperStatus == "CLOSED" || upperStatus == "CANCELLED" || upperStatus == "FINISHED"
+
+	isOpen := !isEventExplicitlyClosed && now.After(allowedAt) && now.Before(closedAt)
+	isClosed := isEventExplicitlyClosed || now.After(closedAt)
 
 	format := strings.ToUpper(strings.TrimSpace(eventFormat.String))
 	if format == "" {
