@@ -1137,6 +1137,7 @@ func (r *TicketRepository) CreateBankTransferOrder(ctx context.Context, userID, 
 					ON s.category_ticket_id = ct.category_ticket_id
 					AND ct.event_id = $1
 				WHERE s.seat_id = $2
+				FOR UPDATE OF s
 			`, eventID, seatID).Scan(&seatStatus, &seatCategoryTicketID, &catName, &catStatus, &pricePerSeat, &maxQty)
 			if err != nil {
 				log.Error("Seat not found", "seat_id", seatID, "error", err)

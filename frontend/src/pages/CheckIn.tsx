@@ -812,7 +812,7 @@ export default function CheckIn() {
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 dark:border-slate-800/60 pb-3 sm:pb-4 mb-4 gap-2 sm:gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white uppercase">
-            Kiểm Soát Check-In / Check-Out
+            CHECK-IN / CHECK-OUT
           </h1>
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-500 mt-1">
             Bảng điều khiển quét mã QR và nhập mã vé tham gia hội trường sự kiện FPT.
@@ -825,150 +825,77 @@ export default function CheckIn() {
         {/* Nút tab Check-in */}
         <button
           onClick={() => setActiveTab('checkin')}
-          className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3.5 rounded-xl text-xs sm:text-xs font-extrabold uppercase tracking-wide sm:tracking-wider transition-all duration-300 whitespace-nowrap ${
+          className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap ${
             activeTab === 'checkin'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20 scale-102'
               : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
           <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-          <span className="whitespace-nowrap">Check-in Cổng</span>
+          <span className="whitespace-nowrap">CHECK-IN</span>
         </button>
 
         {/* Nút tab Check-out */}
         <button
           onClick={() => setActiveTab('checkout')}
-          className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3.5 rounded-xl text-xs sm:text-xs font-extrabold uppercase tracking-wide sm:tracking-wider transition-all duration-300 whitespace-nowrap ${
+          className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap ${
             activeTab === 'checkout'
               ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/20 scale-102'
               : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
           <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-          <span className="whitespace-nowrap">Check-out Cổng</span>
+          <span className="whitespace-nowrap">CHECK-OUT</span>
         </button>
       </div>
 
-      {/* ===== LAYOUT 2 CỘT: QUÉT QR + KẾT QUẢ ===== */}
+      {/* ===== LAYOUT: MOBILE VIEW ĐƯA Ô NHẬP TAY LÊN TRÊN, KẾT QUẢ Ở GIỮA, NÚT QUÉT Ở DƯỚI, CHẾ ĐỘ QUÉT LIÊN TỤC Ở CUỐI ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 
-        {/* CỘT TRÁI: KHU VỰC QUÉT MÃ QR VÀ NHẬP THỦ CÔNG */}
-        <div className="bg-transparent sm:bg-white sm:dark:bg-slate-900 border-0 sm:border sm:border-slate-200 sm:dark:border-slate-800/80 rounded-none sm:rounded-3xl p-0 sm:p-4 shadow-none sm:shadow-md flex flex-col justify-between">
+        {/* KHU VỰC THAO TÁC QUÉT & NHẬP */}
+        <div className="bg-transparent sm:bg-white sm:dark:bg-slate-900 border-0 sm:border sm:border-slate-200 sm:dark:border-slate-800/80 rounded-none sm:rounded-3xl p-0 sm:p-4 shadow-none sm:shadow-md flex flex-col justify-between order-1 lg:order-1">
           <div>
-            <h2 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-slate-200 mb-3 sm:mb-4 flex items-center gap-2">
-              <Scan className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-orange-500" />
-              Quét mã QR - {actionLabel}
-            </h2>
-
-            {/* ✅ NEW: Nút gạt chế độ quét liên tục (Continuous Mode) */}
-            <div className="flex items-center justify-between mb-4 bg-slate-100/70 dark:bg-slate-900/90 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
-              <div className="flex flex-col pr-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Chế độ quét liên tục
-                </span>
-                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">
-                  Giữ camera luôn mở để soát nhiều vé liên tiếp, tự động phát âm báo.
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setContinuousMode(!continuousMode)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  continuousMode ? (isCheckIn ? 'bg-orange-500' : 'bg-purple-500') : 'bg-slate-300 dark:bg-slate-800'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    continuousMode ? 'translate-x-5' : 'translate-x-0'
-                  }`}
+            {/* Form nhập mã thủ công: Hiển thị ngay đầu trên mobile */}
+            <div className="space-y-2 mb-4">
+              <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wide pl-1">
+                Nhập mã QR / ID vé thủ công
+              </label>
+              <div className="flex space-x-2 min-w-0">
+                <input
+                  type="text"
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  placeholder="Ví dụ: 123 hoặc TICKETS:123,124"
+                  className="flex-1 min-w-0 px-3.5 sm:px-4 py-2.5 sm:py-3 bg-white/70 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 font-bold text-xs sm:text-sm shadow-sm transition-all duration-300"
+                  onKeyDown={(e) => e.key === 'Enter' && handleManualAction()}
                 />
-              </button>
-            </div>
-
-            {!scanning ? (
-              <div className="space-y-4 sm:space-y-5">
-                {/* Nút bắt đầu quét QR */}
                 <button
-                  onClick={() => {
-                    resetResult()
-                    setScanning(true)
-                  }}
+                  onClick={handleManualAction}
                   disabled={isProcessing}
-                  className={`w-full py-3.5 sm:py-4 rounded-2xl transition-all duration-300 font-extrabold text-xs uppercase tracking-wider sm:tracking-widest text-white shadow-md active:scale-95 flex items-center justify-center gap-2 ${
-                    isProcessing
-                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
-                      : isCheckIn
-                        ? 'bg-gradient-to-r from-orange-600 to-orange-500 hover:shadow-lg hover:shadow-orange-500/10'
-                        : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:shadow-lg hover:shadow-purple-500/10'
-                  }`}
+                  className="px-4 sm:px-5 py-2.5 sm:py-3 text-white rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all duration-300 active:scale-95 flex items-center justify-center shadow-sm disabled:opacity-40 shrink-0"
                 >
                   {isProcessing ? (
-                    <>
-                      <Loader className="w-4 h-4 sm:w-4.5 sm:h-4.5 animate-spin" />
-                      Đang xử lý dữ liệu...
-                    </>
+                    <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                   ) : (
-                    <>
-                      <Scan className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-                      Bắt đầu quét {actionLabel}
-                    </>
+                    <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
                   )}
                 </button>
-
-                {/* Đường kẻ phân cách */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-200 dark:border-slate-800" />
-                  </div>
-                  <div className="relative flex justify-center text-xs font-bold uppercase tracking-wider">
-                    <span className="px-3 bg-transparent sm:bg-white sm:dark:bg-slate-900 text-slate-500">Hoặc nhập tay</span>
-                  </div>
-                </div>
-
-                {/* Form nhập mã thủ công */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wide pl-1">
-                    Nhập mã QR / ID vé thủ công
-                  </label>
-                  <div className="flex space-x-2 min-w-0">
-                    <input
-                      type="text"
-                      value={manualCode}
-                      onChange={(e) => setManualCode(e.target.value)}
-                      placeholder="Ví dụ: 123 hoặc TICKETS:123,124"
-                      className="flex-1 min-w-0 px-3.5 sm:px-4 py-2.5 sm:py-3 bg-white/70 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 font-bold text-xs sm:text-sm shadow-sm transition-all duration-300"
-                      onKeyDown={(e) => e.key === 'Enter' && handleManualAction()}
-                    />
-                    <button
-                      onClick={handleManualAction}
-                      disabled={isProcessing}
-                      className="px-4 sm:px-5 py-2.5 sm:py-3 text-white rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all duration-300 active:scale-95 flex items-center justify-center shadow-sm disabled:opacity-40 shrink-0"
-                    >
-                      {isProcessing ? (
-                        <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                      ) : (
-                        <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
-                      )}
-                    </button>
-                  </div>
-                </div>
               </div>
-            ) : (
-              /* ĐANG QUÉT QR CAMERA */
-              <div className="space-y-4">
+            </div>
+
+            {/* ĐANG QUÉT QR CAMERA (Nếu bấm quét) */}
+            {scanning && (
+              <div className="space-y-4 mb-4">
                 <div className="relative bg-white dark:bg-slate-950 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-inner">
                   <div id="reader" className="w-full h-full" style={{ minHeight: 320 }} />
 
                   {/* Overlay khung quét HUD */}
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <div className={`relative w-64 h-64 rounded-2xl border-2 ${isCheckIn ? 'border-orange-500/80' : 'border-purple-500/80'} animate-pulse`}>
-                      {/* 4 Góc bo tròn HUD */}
                       <div className={`absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 rounded-tl-xl ${isCheckIn ? 'border-orange-500' : 'border-purple-500'}`} />
                       <div className={`absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 rounded-tr-xl ${isCheckIn ? 'border-orange-500' : 'border-purple-500'}`} />
                       <div className={`absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 rounded-bl-xl ${isCheckIn ? 'border-orange-500' : 'border-purple-500'}`} />
                       <div className={`absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 rounded-br-xl ${isCheckIn ? 'border-orange-500' : 'border-purple-500'}`} />
-                      
-                      {/* ✅ NEW: Tia laser quét chuyển động chạy dọc */}
                       <div 
                         className={`absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent ${isCheckIn ? 'via-orange-500' : 'via-purple-500'} to-transparent animate-laser`} 
                         style={{ top: 0 }}
@@ -995,21 +922,21 @@ export default function CheckIn() {
           </div>
         </div>
 
-        {/* CỘT PHẢI: KẾT QUẢ CHECK-IN/CHECK-OUT */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 shadow-md flex flex-col justify-between min-h-[350px] max-h-[400px] overflow-y-auto">
+        {/* KHU VỰC KẾT QUẢ CHECK-IN/CHECK-OUT: Đặt ngay bên dưới ô nhập tay trên mobile */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 shadow-md flex flex-col justify-between min-h-[300px] max-h-[380px] overflow-y-auto order-2 lg:order-2">
           <div>
-            <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
-              <CheckCircle className="w-4.5 h-4.5 text-orange-500" />
-              Kết quả quét - {actionLabel}
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-slate-200 mb-3 sm:mb-4 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-orange-500" />
+              Kết quả quét – {actionLabel}
             </h2>
 
             {!result ? (
-              <div className="text-center py-16 text-slate-500 flex flex-col items-center justify-center h-full">
-                <div className="p-4 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full w-fit mb-4 text-slate-500 dark:text-slate-600 animate-pulse">
-                  <Scan className="w-12 h-12" />
+              <div className="text-center py-10 sm:py-16 text-slate-500 flex flex-col items-center justify-center h-full">
+                <div className="p-3.5 sm:p-4 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full w-fit mb-3 sm:mb-4 text-slate-500 dark:text-slate-600 animate-pulse">
+                  <Scan className="w-10 h-10 sm:w-12 sm:h-12" />
                 </div>
                 <p className="font-extrabold text-sm text-slate-400">Chưa có kết quả quét</p>
-                <p className="text-xs text-slate-500 mt-1.5 max-w-xs mx-auto leading-relaxed">
+                <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">
                   Nhấn "Bắt đầu quét" hoặc sử dụng khung nhập ID vé thủ công để ghi nhận tham dự.
                 </p>
               </div>
@@ -1022,15 +949,15 @@ export default function CheckIn() {
                     <div className="text-center py-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 relative overflow-hidden">
                       <div className="absolute inset-0 bg-emerald-500/5 opacity-40 pointer-events-none" />
                       <CheckCircle
-                        className={`w-14 h-14 mx-auto mb-3.5 animate-bounce ${isCheckIn ? 'text-emerald-500' : 'text-purple-500'}`}
+                        className={`w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-3 animate-bounce ${isCheckIn ? 'text-emerald-500' : 'text-purple-500'}`}
                       />
-                      <p className={`text-lg font-black leading-tight ${isCheckIn ? 'text-emerald-500' : 'text-purple-500'}`}>
+                      <p className={`text-base sm:text-lg font-black leading-tight ${isCheckIn ? 'text-emerald-500' : 'text-purple-500'}`}>
                         {result.message}
                       </p>
                     </div>
 
                     {(result.registration?.ticketId || result.registration?.checkedInAt || result.registration?.checkedOutAt) && (
-                      <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-2.5 text-xs">
+                      <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 space-y-2 text-xs">
                         {result.registration?.ticketId && (
                           <div className="flex justify-between items-center">
                             <span className="text-slate-500 font-bold">Ticket ID:</span>
@@ -1075,13 +1002,13 @@ export default function CheckIn() {
                     const ErrIcon = errCfg.Icon
                     return (
                       <div className="space-y-4">
-                        <div className="text-center py-5 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 rounded-2xl p-5 relative overflow-hidden">
-                          <ErrIcon className={`w-14 h-14 mx-auto mb-3.5 ${errCfg.iconClass} animate-pulse`} />
-                          <p className="text-base font-black text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed">
+                        <div className="text-center py-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 rounded-2xl p-4 relative overflow-hidden">
+                          <ErrIcon className={`w-12 h-12 mx-auto mb-2.5 ${errCfg.iconClass} animate-pulse`} />
+                          <p className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed">
                             {errCfg.title}
                           </p>
                           {result.message && (
-                            <div className="mt-3 text-xs text-rose-700 dark:text-rose-400 font-extrabold italic bg-rose-100 dark:bg-rose-950/50 rounded-xl p-2 border border-rose-200 dark:border-rose-900/20">
+                            <div className="mt-2.5 text-xs text-rose-700 dark:text-rose-400 font-extrabold italic bg-rose-100 dark:bg-rose-950/50 rounded-xl p-2 border border-rose-200 dark:border-rose-900/20">
                               {result.message}
                             </div>
                           )}
@@ -1093,16 +1020,16 @@ export default function CheckIn() {
 
                 {/* Info details case of failure multi-ticket */}
                 {!result.success && result.registration && (
-                  <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-3">
+                  <div className="border-t border-slate-200 dark:border-slate-800 pt-3 space-y-2.5">
                     {result.registration.customerName && (
-                      <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border-l-4 border-orange-500/80 text-xs">
+                      <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl border-l-4 border-orange-500/80 text-xs">
                         <p className="text-slate-500 font-bold uppercase tracking-wider mb-0.5">👤 Khách hàng:</p>
                         <p className="font-extrabold text-slate-800 dark:text-slate-100">{result.registration.customerName}</p>
                       </div>
                     )}
 
                     {result.registration.eventName && (
-                      <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border-l-4 border-purple-500/80 text-xs">
+                      <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl border-l-4 border-purple-500/80 text-xs">
                         <p className="text-slate-500 font-bold uppercase tracking-wider mb-0.5">📋 Sự kiện:</p>
                         <p className="font-extrabold text-slate-800 dark:text-slate-100">{result.registration.eventName}</p>
                       </div>
@@ -1111,11 +1038,11 @@ export default function CheckIn() {
                     {result.registration.results && Array.isArray(result.registration.results) && (
                       <div className="space-y-2">
                         <p className="text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-2">Báo cáo kiểm tra lô vé:</p>
-                        <div className="text-xs space-y-2 max-h-48 overflow-y-auto pr-1">
+                        <div className="text-xs space-y-2 max-h-40 overflow-y-auto pr-1">
                           {result.registration.results.map((r: any, idx: number) => (
                             <div
                               key={idx}
-                              className="border-l-4 pl-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 text-xs"
+                              className="border-l-4 pl-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/40 text-xs"
                               style={{ borderColor: r.success ? '#10b981' : '#ef4444' }}
                             >
                               <div className="flex justify-between items-center font-bold">
@@ -1138,66 +1065,124 @@ export default function CheckIn() {
                 {/* Button next checkin */}
                 <button
                   onClick={resetResult}
-                  className="w-full mt-4 py-3.5 font-extrabold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-2xl transition-all duration-300 shadow-sm active:scale-95 border border-slate-200 dark:border-transparent"
+                  className="w-full mt-3 py-3 font-extrabold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-2xl transition-all duration-300 shadow-sm active:scale-95 border border-slate-200 dark:border-transparent"
                 >
                   Quét vé tiếp theo
                 </button>
               </div>
             )}
-
-            {/* ✅ NEW: Lịch sử 5 lượt quét gần nhất hiển thị trực quan */}
-            {scanHistory.length > 0 && (
-              <div className="mt-6 border-t border-slate-200 dark:border-slate-800/60 pt-4 animate-fade-in-up">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 pl-1 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-400 animate-spin" style={{ animationDuration: '6s' }} />
-                  Lịch sử quét gần đây
-                </h3>
-                <div className="space-y-2 max-h-[190px] overflow-y-auto pr-1 custom-scrollbar">
-                  {scanHistory.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex items-center justify-between p-2.5 rounded-xl border text-[11px] transition-all hover:scale-[1.01] ${
-                        item.success
-                          ? 'bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-200/40 dark:border-emerald-900/20 text-emerald-800 dark:text-emerald-400'
-                          : 'bg-rose-50/20 dark:bg-rose-950/10 border-rose-200/40 dark:border-rose-900/20 text-rose-800 dark:text-rose-400'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[9px] font-bold opacity-60 font-mono shrink-0">{item.time}</span>
-                        <div className="min-w-0">
-                          <p className="font-extrabold truncate text-slate-800 dark:text-slate-200">{item.customerName}</p>
-                          <p className="text-[9px] opacity-75 truncate">{item.ticketId} &middot; {item.message}</p>
-                        </div>
-                      </div>
-                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md shrink-0 select-none ${
-                        item.success
-                          ? 'bg-emerald-100/60 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400'
-                          : 'bg-rose-100/60 dark:bg-rose-900/30 text-rose-800 dark:text-rose-400'
-                      }`}>
-                        {item.success ? 'Hợp lệ' : 'Lỗi'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ✅ NEW: Nhúng style động cho hiệu ứng Laser */}
-            <style>{`
-              @keyframes laserScan {
-                0%, 100% { top: 0%; opacity: 0.3; }
-                50% { top: 100%; opacity: 1; }
-              }
-              .animate-laser {
-                animation: laserScan 2s ease-in-out infinite;
-              }
-            `}</style>
           </div>
         </div>
       </div>
 
-      {/* ===== PHẦN HƯỚNG DẪN SỬ DỤNG ===== */}
-      <div className={`mt-6 p-5 rounded-3xl border text-xs leading-relaxed transition-all duration-300 ${
+      {/* ===== KHU VỰC THAO TÁC QUÉT Ở DƯỚI Ô KẾT QUẢ (THEO THIẾT KẾ YÊU CẦU) ===== */}
+      <div className="mt-4 space-y-3">
+        {/* Nút Bắt đầu quét check-in / check-out */}
+        {!scanning && (
+          <button
+            onClick={() => {
+              resetResult()
+              setScanning(true)
+            }}
+            disabled={isProcessing}
+            className={`w-full py-3.5 sm:py-4 rounded-2xl transition-all duration-300 font-extrabold text-xs uppercase tracking-wider sm:tracking-widest text-white shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+              isProcessing
+                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
+                : isCheckIn
+                  ? 'bg-gradient-to-r from-orange-600 to-orange-500 hover:shadow-lg hover:shadow-orange-500/10'
+                  : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:shadow-lg hover:shadow-purple-500/10'
+            }`}
+          >
+            {isProcessing ? (
+              <>
+                <Loader className="w-4 h-4 sm:w-4.5 sm:h-4.5 animate-spin" />
+                Đang xử lý dữ liệu...
+              </>
+            ) : (
+              <>
+                <Scan className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                Bắt đầu quét {actionLabel}
+              </>
+            )}
+          </button>
+        )}
+
+        {/* Chế độ quét liên tục đặt ở dưới */}
+        <div className="flex items-center justify-between bg-slate-100/70 dark:bg-slate-900/90 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
+          <div className="flex flex-col pr-2">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              Chế độ quét liên tục
+            </span>
+            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">
+              Giữ camera luôn mở để soát nhiều vé liên tiếp, tự động phát âm báo.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setContinuousMode(!continuousMode)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              continuousMode ? (isCheckIn ? 'bg-orange-500' : 'bg-purple-500') : 'bg-slate-300 dark:bg-slate-800'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                continuousMode ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* ✅ NEW: Lịch sử 5 lượt quét gần nhất */}
+      {scanHistory.length > 0 && (
+        <div className="mt-4 border-t border-slate-200 dark:border-slate-800/60 pt-4 animate-fade-in-up">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 pl-1 flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-slate-400 animate-spin" style={{ animationDuration: '6s' }} />
+            Lịch sử quét gần đây
+          </h3>
+          <div className="space-y-2 max-h-[190px] overflow-y-auto pr-1 custom-scrollbar">
+            {scanHistory.map((item, idx) => (
+              <div
+                key={idx}
+                className={`flex items-center justify-between p-2.5 rounded-xl border text-[11px] transition-all hover:scale-[1.01] ${
+                  item.success
+                    ? 'bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-200/40 dark:border-emerald-900/20 text-emerald-800 dark:text-emerald-400'
+                    : 'bg-rose-50/20 dark:bg-rose-950/10 border-rose-200/40 dark:border-rose-900/20 text-rose-800 dark:text-rose-400'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[9px] font-bold opacity-60 font-mono shrink-0">{item.time}</span>
+                  <div className="min-w-0">
+                    <p className="font-extrabold truncate text-slate-800 dark:text-slate-200">{item.customerName}</p>
+                    <p className="text-[9px] opacity-75 truncate">{item.ticketId} &middot; {item.message}</p>
+                  </div>
+                </div>
+                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md shrink-0 select-none ${
+                  item.success
+                    ? 'bg-emerald-100/60 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400'
+                    : 'bg-rose-100/60 dark:bg-rose-900/30 text-rose-800 dark:text-rose-400'
+                }`}>
+                  {item.success ? 'Hợp lệ' : 'Lỗi'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Laser Animation Style */}
+      <style>{`
+        @keyframes laserScan {
+          0%, 100% { top: 0%; opacity: 0.3; }
+          50% { top: 100%; opacity: 1; }
+        }
+        .animate-laser {
+          animation: laserScan 2s ease-in-out infinite;
+        }
+      `}</style>
+
+      {/* ===== PHẦN HƯỚNG DẪN SỬ DỤNG: ẨN TRÊN MOBILE (HIDDEN SM:BLOCK) ===== */}
+      <div className={`hidden sm:block mt-6 p-5 rounded-3xl border text-xs leading-relaxed transition-all duration-300 ${
         isCheckIn
           ? 'bg-orange-50/80 border-orange-200 text-orange-800 dark:bg-orange-950/25 dark:border-orange-500/35 dark:text-orange-200 shadow-md dark:shadow-lg dark:shadow-orange-500/5'
           : 'bg-purple-50/80 border-purple-200 text-purple-800 dark:bg-purple-950/25 dark:border-purple-500/35 dark:text-purple-200 shadow-md dark:shadow-lg dark:shadow-purple-500/5'

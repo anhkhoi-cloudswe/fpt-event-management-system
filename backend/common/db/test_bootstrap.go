@@ -131,6 +131,12 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				PRIMARY KEY (event_id, speaker_id)
 			);
 
+			CREATE TABLE IF NOT EXISTS event_request_speaker (
+				request_id INTEGER NOT NULL REFERENCES event_request(request_id) ON DELETE CASCADE,
+				speaker_id INTEGER NOT NULL REFERENCES speaker(speaker_id) ON DELETE CASCADE,
+				PRIMARY KEY (request_id, speaker_id)
+			);
+
 			CREATE TABLE IF NOT EXISTS event_request (
 				request_id SERIAL PRIMARY KEY,
 				requester_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
