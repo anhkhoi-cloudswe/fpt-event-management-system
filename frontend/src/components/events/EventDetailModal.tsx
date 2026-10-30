@@ -505,30 +505,33 @@ export function EventDetailModal({
                   </div>
                   {isOrganizerOfEvent ? (
                     <div className="mt-6 space-y-3">
-                      <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 text-sm">
-                        <p className="font-bold flex items-center gap-1.5">
-                          <span>👑</span> {lang === 'en' ? 'You are the organizer of this event' : 'Bạn là ban tổ chức của sự kiện này'}
-                        </p>
-                        {detail?.status === 'UPDATING' ? (
-                          <p className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
-                            {lang === 'en'
-                              ? 'This event is currently in UPDATING status. Update details and publish to open registration.'
-                              : 'Sự kiện đang ở trạng thái Chờ cập nhật. Bạn có thể cập nhật thông tin để mở đăng ký vé cho sinh viên.'}
+                      {canEditEvent ? (
+                        <div className="p-3.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 text-xs">
+                          <p className="font-bold flex items-center gap-1.5">
+                            <span>👑</span> {lang === 'en' ? 'You are the organizer of this event' : 'Bạn là ban tổ chức của sự kiện này'}
                           </p>
-                        ) : canEditEvent ? (
-                          <p className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
-                            {lang === 'en'
-                              ? 'Organizers can manage and update details anytime.'
-                              : 'Bạn có thể chỉnh sửa thông tin sự kiện và vé bất cứ lúc nào.'}
+                          <p className="text-[11px] text-slate-600 dark:text-neutral-400 mt-1">
+                            {detail?.status === 'UPDATING'
+                              ? (lang === 'en'
+                                  ? 'This event is currently in UPDATING status. Update details and publish to open registration.'
+                                  : 'Sự kiện đang ở trạng thái Chờ cập nhật. Bạn có thể cập nhật thông tin để mở đăng ký vé cho sinh viên.')
+                              : (lang === 'en'
+                                  ? 'Organizers can manage and update details anytime.'
+                                  : 'Bạn có thể chỉnh sửa thông tin sự kiện và vé bất cứ lúc nào.')}
                           </p>
-                        ) : (
-                          <p className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
-                            {lang === 'en'
-                              ? 'This event has concluded or is closed. Details cannot be edited.'
-                              : 'Sự kiện này đã kết thúc, đã đóng hoặc đã hủy nên không thể chỉnh sửa thêm.'}
+                        </div>
+                      ) : (
+                        <div className="px-1 text-slate-600 dark:text-neutral-300 text-xs">
+                          <p className="font-bold flex items-center gap-1.5 text-orange-600 dark:text-orange-400">
+                            <span>👑</span> {lang === 'en' ? 'You are the organizer of this event' : 'Bạn là ban tổ chức của sự kiện này'}
                           </p>
-                        )}
-                      </div>
+                          <p className="text-[11px] text-slate-500 dark:text-neutral-400 mt-0.5">
+                            {lang === 'en'
+                              ? 'This event is closed so details cannot be edited.'
+                              : 'Sự kiện này đã đóng nên không thể chỉnh sửa thêm.'}
+                          </p>
+                        </div>
+                      )}
                       <div className="flex flex-col gap-2.5">
                         <button
                           type="button"

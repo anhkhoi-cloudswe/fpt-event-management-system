@@ -461,33 +461,33 @@ export default function MyTickets() {
             {currentLanguage === 'en' ? 'My Tickets' : 'Vé của tôi'}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl font-medium">
-            {currentLanguage === 'en' ? 'Manage, track attendance history and use QR tickets to participate in events at FPT University.' : 'Quản lý, theo dõi lịch sử tham dự và sử dụng vé QR tham gia sự kiện tại trường FPT.'}
+            {currentLanguage === 'en' ? 'Manage attendance history and QR tickets to participate in events at FPT University.' : 'Quản lý lịch sử tham dự và mã QR tham gia sự kiện tại trường FPT.'}
           </p>
         </div>
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white/70 backdrop-blur-md dark:bg-slate-900/70 rounded-3xl border border-white/80 dark:border-slate-800/80 p-5 shadow-md mb-8">
-        <div className="flex flex-col md:flex-row gap-4">
+      <div className="bg-transparent md:bg-white/70 md:backdrop-blur-md md:dark:bg-slate-900/70 rounded-3xl border-0 md:border md:border-white/80 md:dark:border-slate-800/80 p-0 md:p-5 shadow-none md:shadow-md mb-6 md:mb-8">
+        <div className="flex flex-col md:flex-row gap-2.5 md:gap-4">
           {/* Search input */}
           <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder={currentLanguage === 'en' ? 'Search by event name...' : 'Tìm kiếm theo tên sự kiện...'}
               value={searchInput}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 dark:text-white font-semibold placeholder-slate-400 text-sm shadow-sm transition-all duration-300"
+              className="w-full pl-10 pr-3 py-2.5 md:py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-xl md:rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 dark:text-white font-medium md:font-semibold placeholder-slate-400 text-xs md:text-sm shadow-sm transition-all duration-300"
             />
           </div>
 
           {/* Status filter */}
-          <div className="relative min-w-[220px]">
-            <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4.5 h-4.5 text-slate-400 pointer-events-none" />
+          <div className="relative min-w-full md:min-w-[220px]">
+            <Filter className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             <select
               value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
-              className="w-full pl-11 pr-10 py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-700 dark:text-slate-200 font-semibold text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
+              className="w-full pl-10 pr-9 py-2.5 md:py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-xl md:rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-700 dark:text-slate-200 font-medium md:font-semibold text-xs md:text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300"
             >
               <option value="">{currentLanguage === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
               <option value="BOOKED">{currentLanguage === 'en' ? 'Not Checked In' : 'Chưa check-in'}</option>
@@ -502,8 +502,8 @@ export default function MyTickets() {
 
         {/* Results count */}
         {!loading && (
-          <div className="mt-3.5 text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider pl-1">
-{currentLanguage === 'en' ? 'Found' : 'Tìm thấy'} <span className="text-orange-600 font-extrabold">{totalRecords}</span> {currentLanguage === 'en' ? 'tickets' : 'vé'}
+          <div className="mt-2.5 md:mt-3.5 text-[11px] md:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider pl-1">
+            {currentLanguage === 'en' ? 'Found' : 'Tìm thấy'} <span className="text-orange-600 font-extrabold">{totalRecords}</span> {currentLanguage === 'en' ? 'tickets' : 'vé'}
           </div>
         )}
       </div>
