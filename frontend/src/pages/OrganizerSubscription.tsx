@@ -428,7 +428,7 @@ export default function OrganizerSubscriptionPage() {
 
         {/* Top Right Current Tier Badge */}
         {currentSub && (
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl px-3 sm:px-4 py-2 shadow-xs shrink-0 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex items-center gap-2 sm:gap-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl px-3 sm:px-4 py-2 shadow-xs shrink-0 self-start sm:self-auto">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">
                 Gói hiện tại:
@@ -448,35 +448,6 @@ export default function OrganizerSubscriptionPage() {
               <span className="text-[11px] sm:text-xs font-bold text-red-600 dark:text-red-400 pl-2 border-l border-slate-200 dark:border-slate-800 whitespace-nowrap">
                 Đã hết hạn
               </span>
-            )}
-
-            {/* Auto Renew Toggle */}
-            {currentSub.tierCode !== 'FREE' && currentSub.status === 'ACTIVE' && (
-              <div className="flex items-center gap-1.5 sm:gap-2 pl-2 border-l border-slate-200 dark:border-slate-800 whitespace-nowrap ml-auto sm:ml-0">
-                <span className="text-[11px] sm:text-xs font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">Tự động gia hạn</span>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const nextVal = !currentSub.autoRenew
-                      await subscriptionService.setAutoRenew(nextVal)
-                      showToast('success', `Cấu hình tự động gia hạn đã ${nextVal ? 'bật' : 'tắt'} thành công.`)
-                      fetchData()
-                    } catch (err: any) {
-                      showToast('error', err?.response?.data?.message || 'Không thể cập nhật cấu hình tự động gia hạn.')
-                    }
-                  }}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                    currentSub.autoRenew ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-700'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                      currentSub.autoRenew ? 'translate-x-4' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
             )}
           </div>
         )}

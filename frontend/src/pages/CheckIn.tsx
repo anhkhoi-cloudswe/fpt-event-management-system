@@ -849,43 +849,89 @@ export default function CheckIn() {
         </button>
       </div>
 
-      {/* ===== LAYOUT: MOBILE VIEW ĐƯA Ô NHẬP TAY LÊN TRÊN, KẾT QUẢ Ở GIỮA, NÚT QUÉT Ở DƯỚI, CHẾ ĐỘ QUÉT LIÊN TỤC Ở CUỐI ===== */}
+      {/* ===== LAYOUT: RESPONSIVE (LAPTOP = 2 CỘT CHUẨN, MOBILE = BỐ CỤC ĐỨNG TINH GỌN) ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 
-        {/* KHU VỰC THAO TÁC QUÉT & NHẬP */}
-        <div className="bg-transparent sm:bg-white sm:dark:bg-slate-900 border-0 sm:border sm:border-slate-200 sm:dark:border-slate-800/80 rounded-none sm:rounded-3xl p-0 sm:p-4 shadow-none sm:shadow-md flex flex-col justify-between order-1 lg:order-1">
+        {/* CỘT TRÁI (LAPTOP) / KHU VỰC THAO TÁC QUÉT:
+            - Trên Laptop: Chứa Tiêu đề + Chế độ quét liên tục + Nút quét / Khung Camera + Phân cách + Ô nhập tay
+            - Trên Mobile: Ô nhập tay đưa lên đầu, nút quét đặt dưới kết quả
+        */}
+        <div className="bg-transparent sm:bg-white sm:dark:bg-slate-900 border-0 sm:border sm:border-slate-200 sm:dark:border-slate-800/80 rounded-none sm:rounded-3xl p-0 sm:p-5 shadow-none sm:shadow-md flex flex-col justify-between order-1">
           <div>
-            {/* Form nhập mã thủ công: Hiển thị ngay đầu trên mobile */}
-            <div className="space-y-2 mb-4">
-              <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wide pl-1">
-                Nhập mã QR / ID vé thủ công
-              </label>
-              <div className="flex space-x-2 min-w-0">
-                <input
-                  type="text"
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  placeholder="Ví dụ: 123 hoặc TICKETS:123,124"
-                  className="flex-1 min-w-0 px-3.5 sm:px-4 py-2.5 sm:py-3 bg-white/70 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 font-bold text-xs sm:text-sm shadow-sm transition-all duration-300"
-                  onKeyDown={(e) => e.key === 'Enter' && handleManualAction()}
-                />
-                <button
-                  onClick={handleManualAction}
-                  disabled={isProcessing}
-                  className="px-4 sm:px-5 py-2.5 sm:py-3 text-white rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all duration-300 active:scale-95 flex items-center justify-center shadow-sm disabled:opacity-40 shrink-0"
-                >
-                  {isProcessing ? (
-                    <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
-                  )}
-                </button>
+            {/* Header mục quét - Hiển thị trên Laptop */}
+            <h2 className="hidden lg:flex text-base font-extrabold text-slate-800 dark:text-slate-200 mb-4 items-center gap-2">
+              <Scan className="w-4.5 h-4.5 text-orange-500" />
+              Quét mã QR - {actionLabel}
+            </h2>
+
+            {/* ✅ Nút gạt chế độ quét liên tục trên Laptop (Đặt trên đầu) */}
+            <div className="hidden lg:flex items-center justify-between mb-5 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800/80">
+              <div className="flex flex-col pr-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Chế độ quét liên tục
+                </span>
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">
+                  Giữ camera luôn mở để soát nhiều vé liên tiếp, tự động phát âm báo.
+                </span>
               </div>
+              <button
+                type="button"
+                onClick={() => setContinuousMode(!continuousMode)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  continuousMode ? (isCheckIn ? 'bg-orange-500' : 'bg-purple-500') : 'bg-slate-300 dark:bg-slate-800'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    continuousMode ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
             </div>
 
-            {/* ĐANG QUÉT QR CAMERA (Nếu bấm quét) */}
-            {scanning && (
-              <div className="space-y-4 mb-4">
+            {/* Nút bắt đầu quét QR trên Laptop (Đặt trong cột trái trước phân cách) */}
+            {!scanning ? (
+              <div className="hidden lg:block space-y-5 mb-5">
+                <button
+                  onClick={() => {
+                    resetResult()
+                    setScanning(true)
+                  }}
+                  disabled={isProcessing}
+                  className={`w-full py-4 rounded-2xl transition-all duration-300 font-extrabold text-xs uppercase tracking-widest text-white shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+                    isProcessing
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
+                      : isCheckIn
+                        ? 'bg-gradient-to-r from-orange-600 to-orange-500 hover:shadow-lg hover:shadow-orange-500/10'
+                        : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:shadow-lg hover:shadow-purple-500/10'
+                  }`}
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader className="w-4.5 h-4.5 animate-spin" />
+                      Đang xử lý dữ liệu...
+                    </>
+                  ) : (
+                    <>
+                      <Scan className="w-4.5 h-4.5" />
+                      Bắt đầu quét {actionLabel}
+                    </>
+                  )}
+                </button>
+
+                {/* Đường kẻ phân cách */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200 dark:border-slate-800" />
+                  </div>
+                  <div className="relative flex justify-center text-xs font-bold uppercase tracking-wider">
+                    <span className="px-3 bg-white dark:bg-slate-900 text-slate-500">Hoặc nhập tay</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* ĐANG QUÉT QR CAMERA (Cả Mobile và Laptop đều render khung quét ở đây khi mở) */
+              <div className="space-y-4 mb-5">
                 <div className="relative bg-white dark:bg-slate-950 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-inner">
                   <div id="reader" className="w-full h-full" style={{ minHeight: 320 }} />
 
@@ -919,11 +965,39 @@ export default function CheckIn() {
                 </button>
               </div>
             )}
+
+            {/* Form nhập mã thủ công */}
+            <div className="space-y-2">
+              <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wide pl-1">
+                Nhập mã QR / ID vé thủ công
+              </label>
+              <div className="flex space-x-2 min-w-0">
+                <input
+                  type="text"
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  placeholder="Ví dụ: 123 hoặc TICKETS:123,124"
+                  className="flex-1 min-w-0 px-3.5 sm:px-4 py-2.5 sm:py-3 bg-white/70 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 font-bold text-xs sm:text-sm shadow-sm transition-all duration-300"
+                  onKeyDown={(e) => e.key === 'Enter' && handleManualAction()}
+                />
+                <button
+                  onClick={handleManualAction}
+                  disabled={isProcessing}
+                  className="px-4 sm:px-5 py-2.5 sm:py-3 text-white rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all duration-300 active:scale-95 flex items-center justify-center shadow-sm disabled:opacity-40 shrink-0"
+                >
+                  {isProcessing ? (
+                    <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* KHU VỰC KẾT QUẢ CHECK-IN/CHECK-OUT: Đặt ngay bên dưới ô nhập tay trên mobile */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 shadow-md flex flex-col justify-between min-h-[300px] max-h-[380px] overflow-y-auto order-2 lg:order-2">
+        {/* CỘT PHẢI: KHU VỰC KẾT QUẢ CHECK-IN/CHECK-OUT */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-md flex flex-col justify-between min-h-[300px] sm:min-h-[380px] max-h-[420px] overflow-y-auto order-2">
           <div>
             <h2 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-slate-200 mb-3 sm:mb-4 flex items-center gap-2">
               <CheckCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-orange-500" />
@@ -1075,8 +1149,8 @@ export default function CheckIn() {
         </div>
       </div>
 
-      {/* ===== KHU VỰC THAO TÁC QUÉT Ở DƯỚI Ô KẾT QUẢ (THEO THIẾT KẾ YÊU CẦU) ===== */}
-      <div className="mt-4 space-y-3">
+      {/* ===== KHU VỰC THAO TÁC QUÉT DÀNH RIÊNG CHO MOBILE VIEW (DƯỚI Ô KẾT QUẢ) - ẨN TRÊN LAPTOP (block lg:hidden) ===== */}
+      <div className="block lg:hidden mt-4 space-y-3">
         {/* Nút Bắt đầu quét check-in / check-out */}
         {!scanning && (
           <button
@@ -1085,7 +1159,7 @@ export default function CheckIn() {
               setScanning(true)
             }}
             disabled={isProcessing}
-            className={`w-full py-3.5 sm:py-4 rounded-2xl transition-all duration-300 font-extrabold text-xs uppercase tracking-wider sm:tracking-widest text-white shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+            className={`w-full py-3.5 sm:py-4 rounded-2xl transition-all duration-300 font-extrabold text-xs uppercase tracking-wider text-white shadow-md active:scale-95 flex items-center justify-center gap-2 ${
               isProcessing
                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
                 : isCheckIn
@@ -1095,20 +1169,20 @@ export default function CheckIn() {
           >
             {isProcessing ? (
               <>
-                <Loader className="w-4 h-4 sm:w-4.5 sm:h-4.5 animate-spin" />
+                <Loader className="w-4 h-4 animate-spin" />
                 Đang xử lý dữ liệu...
               </>
             ) : (
               <>
-                <Scan className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                <Scan className="w-4 h-4" />
                 Bắt đầu quét {actionLabel}
               </>
             )}
           </button>
         )}
 
-        {/* Chế độ quét liên tục đặt ở dưới */}
-        <div className="flex items-center justify-between bg-slate-100/70 dark:bg-slate-900/90 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
+        {/* Chế độ quét liên tục trên Mobile */}
+        <div className="flex items-center justify-between bg-slate-100/70 dark:bg-slate-900/90 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
           <div className="flex flex-col pr-2">
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Chế độ quét liên tục
