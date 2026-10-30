@@ -1,14 +1,14 @@
 // Import hook React:
 // - useState: lưu state UI (danh sách hóa đơn, loading, error)
 // - useEffect: chạy side-effect (gọi API) khi component mount
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
 // Import useSearchParams để quản lý URL params
 import { useSearchParams } from 'react-router-dom'
 
 // Import icon để hiển thị UI trạng thái hóa đơn
-import { FileText, CreditCard, Search, Filter } from 'lucide-react'
+import { FileText, CreditCard, Search, Filter, ChevronDown, Check } from 'lucide-react'
 
 // Import helper để format thời gian theo Vietnam timezone
 import { formatVietnamDateTime } from '../utils/dateFormat'
@@ -63,6 +63,26 @@ export default function MyBills() {
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') || '')
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '')
   const [methodFilter, setMethodFilter] = useState(() => searchParams.get('method') || '')
+
+  // Dropdown open states and refs for custom popovers
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
+  const [isMethodDropdownOpen, setIsMethodDropdownOpen] = useState(false)
+  const statusDropdownRef = useRef<HTMLDivElement>(null)
+  const methodDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Click outside listener for custom dropdowns
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(e.target as Node)) {
+        setIsStatusDropdownOpen(false)
+      }
+      if (methodDropdownRef.current && !methodDropdownRef.current.contains(e.target as Node)) {
+        setIsMethodDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Debounce timer
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null)
@@ -271,34 +291,118 @@ export default function MyBills() {
           </div>
 
           {/* Sub-row for filters on mobile: placed side by side in 1 row */}
-          <div className="grid grid-cols-2 md:flex gap-2.5 md:gap-4 w-full md:w-auto">
-            {/* Status filter */}
-            <div className="relative min-w-0 md:min-w-[180px]">
-              <Filter className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 w-3.5 md:w-4.5 h-3.5 md:h-4.5 text-slate-400 pointer-events-none" />
-              <select
-                value={statusFilter}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="w-full pl-8 md:pl-11 pr-6 md:pr-10 py-2.5 md:py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-xl md:rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-700 dark:text-slate-200 font-medium md:font-semibold text-xs md:text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300 truncate"
+          <div className="grid grid-cols-2 md:flex gap-2 md:gap-4 w-full md:w-auto">
+            {/* Custom Status filter dropdown */}
+            <div className="relative min-w-0 md:min-w-[170px]" ref={statusDropdownRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsStatusDropdownOpen(!isStatusDropdownOpen)
+                  setIsMethodDropdownOpen(false)
+                }}
+                className={`w-full flex items-center justify-between px-2.5 sm:px-3 md:px-4 py-2.5 md:py-3 bg-white/60 dark:bg-slate-800/80 border ${
+                  isStatusDropdownOpen
+                    ? 'border-orange-500 ring-2 ring-orange-500/20'
+                    : 'border-slate-200/80 dark:border-slate-700'
+                } rounded-xl md:rounded-2xl text-slate-800 dark:text-slate-100 font-semibold text-xs md:text-sm shadow-sm transition-all duration-200 select-none`}
               >
-                <option value="">{currentLanguage === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
-                <option value="PENDING">{currentLanguage === 'en' ? 'Pending Payment' : 'Chờ thanh toán'}</option>
-                <option value="PAID">{currentLanguage === 'en' ? 'Paid' : 'Đã thanh toán'}</option>
-                <option value="CANCELED">{currentLanguage === 'en' ? 'Canceled' : 'Đã hủy'}</option>
-              </select>
+                <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+                  <Filter className="w-3.5 md:w-4 h-3.5 md:h-4 text-orange-500 shrink-0" />
+                  <span className="truncate">
+                    {statusFilter === 'PENDING'
+                      ? (currentLanguage === 'en' ? 'Pending' : 'Chờ TT')
+                      : statusFilter === 'PAID'
+                      ? (currentLanguage === 'en' ? 'Paid' : 'Đã TT')
+                      : statusFilter === 'CANCELED'
+                      ? (currentLanguage === 'en' ? 'Canceled' : 'Đã hủy')
+                      : (currentLanguage === 'en' ? 'All Status' : 'Tất cả trạng thái')}
+                  </span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${isStatusDropdownOpen ? 'rotate-180 text-orange-500' : ''}`} />
+              </button>
+
+              {isStatusDropdownOpen && (
+                <div className="absolute left-0 top-full mt-1.5 w-full min-w-[170px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-black/50 py-1.5 z-50 backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+                  {[
+                    { value: '', label: currentLanguage === 'en' ? 'All Statuses' : 'Tất cả trạng thái' },
+                    { value: 'PENDING', label: currentLanguage === 'en' ? 'Pending Payment' : 'Chờ thanh toán' },
+                    { value: 'PAID', label: currentLanguage === 'en' ? 'Paid' : 'Đã thanh toán' },
+                    { value: 'CANCELED', label: currentLanguage === 'en' ? 'Canceled' : 'Đã hủy' },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        handleStatusChange(option.value)
+                        setIsStatusDropdownOpen(false)
+                      }}
+                      className={`w-full px-3 py-2 text-left text-xs md:text-sm flex items-center justify-between font-medium transition-colors ${
+                        statusFilter === option.value
+                          ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                      }`}
+                    >
+                      <span className="whitespace-nowrap">{option.label}</span>
+                      {statusFilter === option.value && <Check className="w-3.5 h-3.5 text-orange-500 shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Method filter */}
-            <div className="relative min-w-0 md:min-w-[180px]">
-              <CreditCard className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 w-3.5 md:w-4.5 h-3.5 md:h-4.5 text-slate-400 pointer-events-none" />
-              <select
-                value={methodFilter}
-                onChange={(e) => handleMethodChange(e.target.value)}
-                className="w-full pl-8 md:pl-11 pr-6 md:pr-10 py-2.5 md:py-3 bg-white/50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 rounded-xl md:rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-700 dark:text-slate-200 font-medium md:font-semibold text-xs md:text-sm shadow-sm appearance-none cursor-pointer transition-all duration-300 truncate"
+            {/* Custom Method filter dropdown */}
+            <div className="relative min-w-0 md:min-w-[170px]" ref={methodDropdownRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMethodDropdownOpen(!isMethodDropdownOpen)
+                  setIsStatusDropdownOpen(false)
+                }}
+                className={`w-full flex items-center justify-between px-2.5 sm:px-3 md:px-4 py-2.5 md:py-3 bg-white/60 dark:bg-slate-800/80 border ${
+                  isMethodDropdownOpen
+                    ? 'border-orange-500 ring-2 ring-orange-500/20'
+                    : 'border-slate-200/80 dark:border-slate-700'
+                } rounded-xl md:rounded-2xl text-slate-800 dark:text-slate-100 font-semibold text-xs md:text-sm shadow-sm transition-all duration-200 select-none`}
               >
-                <option value="">{currentLanguage === 'en' ? 'All Methods' : 'Tất cả phương thức'}</option>
-                <option value="WALLET">{currentLanguage === 'en' ? 'E-wallet' : 'Ví điện tử'}</option>
-                <option value="FREE">{currentLanguage === 'en' ? 'Free' : 'Miễn phí'}</option>
-              </select>
+                <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+                  <CreditCard className="w-3.5 md:w-4 h-3.5 md:h-4 text-orange-500 shrink-0" />
+                  <span className="truncate">
+                    {methodFilter === 'WALLET'
+                      ? (currentLanguage === 'en' ? 'E-wallet' : 'Ví điện tử')
+                      : methodFilter === 'FREE'
+                      ? (currentLanguage === 'en' ? 'Free' : 'Miễn phí')
+                      : (currentLanguage === 'en' ? 'All Methods' : 'Tất cả phương thức')}
+                  </span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${isMethodDropdownOpen ? 'rotate-180 text-orange-500' : ''}`} />
+              </button>
+
+              {isMethodDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-full min-w-[170px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-black/50 py-1.5 z-50 backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+                  {[
+                    { value: '', label: currentLanguage === 'en' ? 'All Methods' : 'Tất cả phương thức' },
+                    { value: 'WALLET', label: currentLanguage === 'en' ? 'E-wallet' : 'Ví điện tử' },
+                    { value: 'FREE', label: currentLanguage === 'en' ? 'Free' : 'Miễn phí' },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        handleMethodChange(option.value)
+                        setIsMethodDropdownOpen(false)
+                      }}
+                      className={`w-full px-3 py-2 text-left text-xs md:text-sm flex items-center justify-between font-medium transition-colors ${
+                        methodFilter === option.value
+                          ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                      }`}
+                    >
+                      <span className="whitespace-nowrap">{option.label}</span>
+                      {methodFilter === option.value && <Check className="w-3.5 h-3.5 text-orange-500 shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

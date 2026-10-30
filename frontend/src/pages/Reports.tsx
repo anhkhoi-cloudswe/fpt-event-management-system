@@ -1321,31 +1321,19 @@ export default function Reports() {
               Theo dõi toàn diện hiệu quả doanh thu, tỷ lệ lấp đầy ghế và tiến độ check-in / check-out thời gian thực.
             </p>
           </div>
-
-          <div className="flex items-center gap-3">
-            {user?.role === 'ORGANIZER' && (
-              <Link
-                to="/dashboard/organizer/wallet"
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white font-bold text-xs rounded-2xl border border-slate-200 dark:border-slate-800 transition shadow-sm"
-              >
-                <Wallet size={16} className="text-orange-500" />
-                <span>Ví Organizer</span>
-              </Link>
-            )}
-          </div>
         </div>
 
         {/* Event Selector Combobox */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl shadow-slate-200/40 dark:shadow-none">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0 border border-orange-500/20 shadow-inner">
-              <Calendar className="w-6 h-6" />
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl shadow-slate-200/40 dark:shadow-none min-w-0">
+          <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0 border border-orange-500/20 shadow-inner">
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <p className="text-[11px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] sm:text-[11px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider truncate">
                 Sự kiện đang chọn phân tích
               </p>
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white truncate max-w-xl mt-0.5">
+              <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-white truncate mt-0.5">
                 {selectedEventTitle}
               </h2>
               {/* Phụ đề Organizer cho Admin khi xem sự kiện đơn lẻ - Chỉ hiển thị tên Organizer */}
@@ -1477,17 +1465,17 @@ export default function Reports() {
         </div>
 
         {/* Navigation Tabs (Basic vs Advanced) */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-8">
+        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 sm:gap-8 overflow-x-auto scrollbar-none whitespace-nowrap">
           <button
             onClick={() => setActiveTab('basic')}
-            className={`pb-3.5 font-black text-sm tracking-wide transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+            className={`pb-3.5 font-black text-xs sm:text-sm tracking-wide transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'basic'
                 ? 'border-orange-500 text-orange-600 dark:text-orange-400'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            <BarChart3 className="w-4 h-4" />
-            <span>Báo Cáo Cơ Bản</span>
+            <BarChart3 className="w-4 h-4 shrink-0" />
+            <span className="whitespace-nowrap">Báo Cáo Cơ Bản</span>
           </button>
 
           <button
@@ -1499,21 +1487,21 @@ export default function Reports() {
               }
               setActiveTab('advanced')
             }}
-            className={`pb-3.5 font-black text-sm tracking-wide transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+            className={`pb-3.5 font-black text-xs sm:text-sm tracking-wide transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'advanced'
                 ? 'border-orange-500 text-orange-600 dark:text-orange-400'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>Báo Cáo Nâng Cao</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+              <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+              <span className="whitespace-nowrap">Báo Cáo Nâng Cao</span>
               {currentSub && !currentSub.hasAdvancedReports && user?.role !== 'ADMIN' ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1 shrink-0">
                   <Lock size={10} /> PRO ONLY
                 </span>
               ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">
+                <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shrink-0">
                   PRO
                 </span>
               )}
@@ -1530,27 +1518,27 @@ export default function Reports() {
               }
               setActiveTab('ga4')
             }}
-            className={`pb-3.5 font-black text-sm tracking-wide transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+            className={`pb-3.5 font-black text-xs sm:text-sm tracking-wide transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'ga4'
                 ? 'border-orange-500 text-orange-600 dark:text-orange-400'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
               <span>📊</span>
-              <span>GA4 Analytics</span>
+              <span className="whitespace-nowrap">GA4 Analytics</span>
               {currentSub && currentSub.tierCode === 'FREE' && user?.role !== 'ADMIN' && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1 shrink-0">
                   <Lock size={10} /> PRO+
                 </span>
               )}
               {currentSub && currentSub.tierCode === 'PRO' && user?.role !== 'ADMIN' && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 shrink-0">
                   PRO
                 </span>
               )}
               {(currentSub?.tierCode === 'BUSINESS' || user?.role === 'ADMIN') && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">
+                <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shrink-0">
                   {user?.role === 'ADMIN' ? 'ADMIN' : 'BUSINESS'}
                 </span>
               )}

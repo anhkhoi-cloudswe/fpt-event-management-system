@@ -603,48 +603,48 @@ export default function OrganizerEventRequests() {
         </div>
       </div>
 
-      {/* Top Stats Overview: clean 2 columns on mobile, 4 columns on sm+ */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 mb-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-3 sm:p-4 shadow-sm">
-          <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-0.5">
-            <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Cập nhật</span>
+      {/* Top Stats Overview: 4 columns in 1 single row on all screen sizes */}
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-4 mb-3 sm:mb-4">
+        <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200/60 dark:border-slate-800 p-2 sm:p-4 shadow-sm min-w-0">
+          <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 mb-0.5">
+            <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span className="text-[8px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Cập nhật</span>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+          <p className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
             {mainCategory === 'UNIVERSITY' ? schoolUpdatingCount : indepUpdatingCount}
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-3 sm:p-4 shadow-sm">
-          <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 mb-0.5">
-            <Inbox className="w-3.5 h-3.5 shrink-0" />
-            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">
-              {mainCategory === 'UNIVERSITY' ? 'Chờ duyệt' : 'Đang mở (OPEN)'}
+        <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200/60 dark:border-slate-800 p-2 sm:p-4 shadow-sm min-w-0">
+          <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 mb-0.5">
+            <Inbox className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span className="text-[8px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">
+              {mainCategory === 'UNIVERSITY' ? 'Chờ duyệt' : 'Đang mở'}
             </span>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+          <p className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
             {mainCategory === 'UNIVERSITY'
               ? schoolPendingCount
               : independentEvents.filter(e => e.status === 'OPEN').length}
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-3 sm:p-4 shadow-sm">
-          <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 mb-0.5">
-            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Đã xử lý</span>
+        <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200/60 dark:border-slate-800 p-2 sm:p-4 shadow-sm min-w-0">
+          <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 mb-0.5">
+            <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span className="text-[8px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Đã xử lý</span>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+          <p className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
             {mainCategory === 'UNIVERSITY' ? schoolProcessedCount : indepProcessedCount}
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-3 sm:p-4 shadow-sm">
-          <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400 mb-0.5">
-            <Sparkles className="w-3.5 h-3.5 shrink-0" />
-            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Tổng sự kiện</span>
+        <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200/60 dark:border-slate-800 p-2 sm:p-4 shadow-sm min-w-0">
+          <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400 mb-0.5">
+            <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span className="text-[8px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Tổng sự kiện</span>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+          <p className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
             {mainCategory === 'UNIVERSITY' ? schoolTotalCount : independentTotalCount}
           </p>
         </div>
@@ -655,15 +655,15 @@ export default function OrganizerEventRequests() {
         <button
           type="button"
           onClick={() => setMainCategory('UNIVERSITY')}
-          className={`w-full sm:w-auto px-2 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2.5 whitespace-nowrap ${
+          className={`w-full sm:w-auto px-2 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap min-w-0 ${
             mainCategory === 'UNIVERSITY'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-md shadow-orange-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-slate-800/40'
           }`}
         >
-          <GraduationCap className="w-4 h-4 shrink-0" />
-          <span className="truncate">Sự Kiện Trường</span>
-          <span className={`px-1.5 py-0.5 text-[10px] sm:text-xs font-bold rounded-full shrink-0 ${
+          <GraduationCap className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+          <span className="whitespace-nowrap">Sự Kiện Trường</span>
+          <span className={`px-1.5 py-0.2 text-[10px] sm:text-xs font-bold rounded-full shrink-0 ${
             mainCategory === 'UNIVERSITY' ? 'bg-white/20 text-white' : 'bg-slate-300/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
           }`}>
             {schoolTotalCount}
@@ -673,15 +673,15 @@ export default function OrganizerEventRequests() {
         <button
           type="button"
           onClick={() => setMainCategory('INDEPENDENT')}
-          className={`w-full sm:w-auto px-2 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2.5 whitespace-nowrap ${
+          className={`w-full sm:w-auto px-2 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap min-w-0 ${
             mainCategory === 'INDEPENDENT'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-md shadow-orange-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-slate-800/40'
           }`}
         >
-          <Sparkles className="w-4 h-4 shrink-0" />
-          <span className="truncate">Sự Kiện Tự Do</span>
-          <span className={`px-1.5 py-0.5 text-[10px] sm:text-xs font-bold rounded-full shrink-0 ${
+          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+          <span className="whitespace-nowrap">Sự Kiện Tự Do</span>
+          <span className={`px-1.5 py-0.2 text-[10px] sm:text-xs font-bold rounded-full shrink-0 ${
             mainCategory === 'INDEPENDENT' ? 'bg-white/20 text-white' : 'bg-slate-300/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
           }`}>
             {independentTotalCount}
