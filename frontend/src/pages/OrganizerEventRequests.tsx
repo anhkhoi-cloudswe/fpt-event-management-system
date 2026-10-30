@@ -408,6 +408,23 @@ export default function OrganizerEventRequests() {
     fetchEventRequestDetail(request.requestId)
   }
 
+  // Handle click on "Chi tiết" button for a School Event Request
+  const handleSchoolDetailButtonClick = async (req: EventRequest) => {
+    // 1. Nếu đã có createdEventId hợp lệ -> Mở slide modal chi tiết sự kiện công khai (Hình 4)
+    if (req.createdEventId && req.createdEventId > 0) {
+      await handleOpenEventDetail(req.createdEventId)
+      return
+    }
+
+    // 2. Nếu là hồ sơ chưa duyệt (PENDING) hoặc chưa được tạo event chính thức
+    // thông báo nhẹ cho người dùng hiểu và mở popup chi tiết hồ sơ yêu cầu (Hình 2)
+    const isPending = (req.status || '').toUpperCase() === 'PENDING'
+    if (isPending) {
+      showToast('info', 'Hồ sơ đang chờ duyệt, chưa có trang sự kiện công khai. Đang mở chi tiết đề xuất.')
+    }
+    handleViewDetails(req)
+  }
+
   const confirmCancelEvent = async () => {
     if (!eventToCancel) return
     const hasCreatedEvent = Boolean(eventToCancel.createdEventId && eventToCancel.createdEventId > 0)
@@ -944,11 +961,11 @@ export default function OrganizerEventRequests() {
                   >
                     <button
                       type="button"
-                      onClick={() => handleViewDetails(req)}
+                      onClick={() => handleSchoolDetailButtonClick(req)}
                       className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1.5 sm:py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-[11px] sm:text-xs font-bold transition-all active:scale-95 shadow-sm whitespace-nowrap ${
                         !isUpdatingTab ? 'w-full sm:w-auto' : ''
                       }`}
-                      title="Xem chi tiết"
+                      title={req.createdEventId ? 'Xem chi tiết sự kiện' : 'Xem đề xuất yêu cầu'}
                     >
                       <Eye className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                       <span>Chi tiết</span>
