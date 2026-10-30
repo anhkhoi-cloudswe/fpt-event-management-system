@@ -268,6 +268,9 @@ export function EventDetailModal({
   const eventPagePath = detail?.eventPagePath || `/events/${eventId}/page`
   const eventPaymentPath = detail?.eventPaymentPath || `/events/${eventId}/payment`
   const eventFormat = (detail?.eventFormat || '').toUpperCase()
+  const currentStatus = String(detail?.status || '').toUpperCase()
+  const isTerminatedStatus = ['CLOSED', 'CANCELLED', 'REJECTED', 'DENIED', 'FINISHED', 'EXPIRED'].includes(currentStatus)
+  const canEditEvent = !isTerminatedStatus && !eventEnded
   const organizerId = detail?.organizerId ?? detail?.organizer_id
   const isOrganizerOfEvent = Boolean((activeRole === 'ORGANIZER' && user?.id === organizerId) || (user && organizerId && user.id === organizerId))
   const canShowAttendanceQr = isOrganizerOfEvent && detail?.status === 'OPEN' && (eventFormat === 'ONLINE' || eventFormat === 'HYBRID')
@@ -512,11 +515,17 @@ export function EventDetailModal({
                               ? 'This event is currently in UPDATING status. Update details and publish to open registration.'
                               : 'Sự kiện đang ở trạng thái Chờ cập nhật. Bạn có thể cập nhật thông tin để mở đăng ký vé cho sinh viên.'}
                           </p>
-                        ) : (
+                        ) : canEditEvent ? (
                           <p className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
                             {lang === 'en'
                               ? 'Organizers can manage and update details anytime.'
                               : 'Bạn có thể chỉnh sửa thông tin sự kiện và vé bất cứ lúc nào.'}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
+                            {lang === 'en'
+                              ? 'This event has concluded or is closed. Details cannot be edited.'
+                              : 'Sự kiện này đã kết thúc, đã đóng hoặc đã hủy nên không thể chỉnh sửa thêm.'}
                           </p>
                         )}
                       </div>
@@ -529,16 +538,18 @@ export function EventDetailModal({
                           <QrCode className="w-4 h-4" />
                           {lang === 'en' ? 'Project Check-out & Feedback QR' : 'Trình chiếu QR Check-out & Đánh giá'}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => closeThenNavigate(`/dashboard/events/${eventId}/edit`)}
-                          className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-800 dark:text-neutral-200 font-bold py-3 rounded-xl transition-all uppercase tracking-wide cursor-pointer flex items-center justify-center gap-2 active:scale-95 text-xs"
-                        >
-                          <Edit className="w-4 h-4" />
-                          {detail?.status === 'UPDATING'
-                            ? (lang === 'en' ? 'Edit & Open Event' : 'Chỉnh sửa & Mở sự kiện')
-                            : (lang === 'en' ? 'Edit Event Details' : 'Chỉnh sửa sự kiện')}
-                        </button>
+                        {canEditEvent && (
+                          <button
+                            type="button"
+                            onClick={() => closeThenNavigate(`/dashboard/events/${eventId}/edit`)}
+                            className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-800 dark:text-neutral-200 font-bold py-3 rounded-xl transition-all uppercase tracking-wide cursor-pointer flex items-center justify-center gap-2 active:scale-95 text-xs"
+                          >
+                            <Edit className="w-4 h-4" />
+                            {detail?.status === 'UPDATING'
+                              ? (lang === 'en' ? 'Edit & Open Event' : 'Chỉnh sửa & Mở sự kiện')
+                              : (lang === 'en' ? 'Edit Event Details' : 'Chỉnh sửa sự kiện')}
+                          </button>
+                        )}
                       </div>
                     </div>
                   ) : eventEnded ? (
