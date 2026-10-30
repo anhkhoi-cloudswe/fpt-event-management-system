@@ -226,6 +226,7 @@ func (uc *EventUseCase) GetEventConfigById(ctx context.Context, eventID int) (*m
 		return &models.EventConfigResponse{
 			CheckinAllowedBeforeStartMinutes: globalCfg.CheckinAllowedBeforeStartMinutes,
 			MinMinutesAfterStart:             globalCfg.MinMinutesAfterStart,
+			FeedbackDurationMinutes:          globalCfg.FeedbackDurationMinutes,
 			Source:                           "global",
 		}, nil
 	}
@@ -242,6 +243,7 @@ func (uc *EventUseCase) GetEventConfigById(ctx context.Context, eventID int) (*m
 		return &models.EventConfigResponse{
 			CheckinAllowedBeforeStartMinutes: globalCfg.CheckinAllowedBeforeStartMinutes,
 			MinMinutesAfterStart:             globalCfg.MinMinutesAfterStart,
+			FeedbackDurationMinutes:          globalCfg.FeedbackDurationMinutes,
 			Source:                           "global",
 		}, nil
 	}
@@ -261,6 +263,12 @@ func (uc *EventUseCase) GetEventConfigById(ctx context.Context, eventID int) (*m
 				return eventCfg.MinMinutesAfterStart
 			}
 			return globalCfg.MinMinutesAfterStart
+		}(),
+		FeedbackDurationMinutes: func() int {
+			if eventCfg.HasFeedbackCloseOffset {
+				return eventCfg.FeedbackDurationMinutes
+			}
+			return globalCfg.FeedbackDurationMinutes
 		}(),
 		Source: eventCfg.Source,
 	}, nil

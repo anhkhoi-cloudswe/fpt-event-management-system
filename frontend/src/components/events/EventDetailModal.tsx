@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Copy, ExternalLink, MapPin, Users, X, Lock, Edit, QrCode, Video } from 'lucide-react'
+import { Calendar, Copy, ExternalLink, MapPin, Users, X, Lock, Edit, QrCode, Video, Settings } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../contexts/AuthContext'
@@ -8,6 +8,7 @@ import { api } from '../../config/api'
 import type { EventDetail } from '../../types/event'
 import { getCleanedLocationForMap } from '../../utils/location'
 import EventCheckoutSlideModal from './EventCheckoutSlideModal'
+import { EventConfigModal } from './EventConfigModal'
 
 interface EventDetailModalProps {
   isOpen: boolean
@@ -189,6 +190,7 @@ export function EventDetailModal({
   const [isRegistered, setIsRegistered] = useState(false)
   const [checkingRegistration, setCheckingRegistration] = useState(false)
   const [showCheckoutSlide, setShowCheckoutSlide] = useState(false)
+  const [showConfigModal, setShowConfigModal] = useState(false)
 
   const lang: 'vi' | 'en' = currentLanguage === 'en' ? 'en' : 'vi'
   const text = {
@@ -541,18 +543,28 @@ export function EventDetailModal({
                           <QrCode className="w-4 h-4" />
                           {lang === 'en' ? 'Project Check-out & Feedback QR' : 'Trình chiếu QR Check-out & Đánh giá'}
                         </button>
-                        {canEditEvent && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <button
                             type="button"
-                            onClick={() => closeThenNavigate(`/dashboard/events/${eventId}/edit`)}
-                            className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-800 dark:text-neutral-200 font-bold py-3 rounded-xl transition-all uppercase tracking-wide cursor-pointer flex items-center justify-center gap-2 active:scale-95 text-xs"
+                            onClick={() => setShowConfigModal(true)}
+                            className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-800 dark:text-neutral-200 font-bold py-2.5 rounded-xl transition-all tracking-wide cursor-pointer flex items-center justify-center gap-2 active:scale-95 text-xs"
                           >
-                            <Edit className="w-4 h-4" />
-                            {detail?.status === 'UPDATING'
-                              ? (lang === 'en' ? 'Edit & Open Event' : 'Chỉnh sửa & Mở sự kiện')
-                              : (lang === 'en' ? 'Edit Event Details' : 'Chỉnh sửa sự kiện')}
+                            <Settings className="w-4 h-4 text-orange-500" />
+                            {lang === 'en' ? 'Setup Check-in/out' : 'Cấu hình Check-in/Feedback'}
                           </button>
-                        )}
+                          {canEditEvent && (
+                            <button
+                              type="button"
+                              onClick={() => closeThenNavigate(`/dashboard/events/${eventId}/edit`)}
+                              className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-800 dark:text-neutral-200 font-bold py-2.5 rounded-xl transition-all tracking-wide cursor-pointer flex items-center justify-center gap-2 active:scale-95 text-xs"
+                            >
+                              <Edit className="w-4 h-4 text-blue-500" />
+                              {detail?.status === 'UPDATING'
+                                ? (lang === 'en' ? 'Edit & Open' : 'Chỉnh sửa & Mở')
+                                : (lang === 'en' ? 'Edit Details' : 'Chỉnh sửa sự kiện')}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ) : eventEnded ? (
@@ -808,6 +820,15 @@ export function EventDetailModal({
         eventTitle={detail?.title}
         startTime={detail?.startTime}
         endTime={detail?.endTime}
+        onOpenConfig={() => setShowConfigModal(true)}
+      />
+
+      {/* Modal Cấu hình Check-in / Check-out / Feedback */}
+      <EventConfigModal
+        isOpen={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+        eventId={eventId}
+        eventTitle={detail?.title || ''}
       />
     </div>,
     document.body,

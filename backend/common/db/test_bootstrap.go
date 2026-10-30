@@ -131,12 +131,6 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				PRIMARY KEY (event_id, speaker_id)
 			);
 
-			CREATE TABLE IF NOT EXISTS event_request_speaker (
-				request_id INTEGER NOT NULL REFERENCES event_request(request_id) ON DELETE CASCADE,
-				speaker_id INTEGER NOT NULL REFERENCES speaker(speaker_id) ON DELETE CASCADE,
-				PRIMARY KEY (request_id, speaker_id)
-			);
-
 			CREATE TABLE IF NOT EXISTS event_request (
 				request_id SERIAL PRIMARY KEY,
 				requester_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -161,6 +155,12 @@ func EnsureAllTestTablesExists(db *sql.DB) error {
 				online_meeting_url VARCHAR(500),
 				online_meeting_id VARCHAR(100),
 				online_meeting_secret VARCHAR(100)
+			);
+
+			CREATE TABLE IF NOT EXISTS event_request_speaker (
+				request_id INTEGER NOT NULL REFERENCES event_request(request_id) ON DELETE CASCADE,
+				speaker_id INTEGER NOT NULL REFERENCES speaker(speaker_id) ON DELETE CASCADE,
+				PRIMARY KEY (request_id, speaker_id)
 			);
 
 			CREATE TABLE IF NOT EXISTS category_ticket (

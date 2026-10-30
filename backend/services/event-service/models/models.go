@@ -648,6 +648,7 @@ type UpdateEventConfigRequest struct {
 
 	MinMinutesAfterStart int `json:"minMinutesAfterStart"` // Số phút tối thiểu sau start_time mới cho phép check-out
 
+	FeedbackDurationMinutes int `json:"feedbackDurationMinutes"` // Số phút mở cổng check-out/feedback sau khi kết thúc sự kiện
 }
 
 // ============================================================
@@ -660,6 +661,8 @@ type SystemConfigResponse struct {
 	CheckinAllowedBeforeStartMinutes int `json:"checkinAllowedBeforeStartMinutes"`
 
 	MinMinutesAfterStart int `json:"minMinutesAfterStart"`
+
+	FeedbackDurationMinutes int `json:"feedbackDurationMinutes"`
 }
 
 // ============================================================
@@ -675,12 +678,15 @@ type EventConfigResponse struct {
 
 	MinMinutesAfterStart int `json:"minMinutesAfterStart"`
 
+	FeedbackDurationMinutes int `json:"feedbackDurationMinutes"`
+
 	Source string `json:"source"` // "per-event" hoặc "global"
 
 	HasCheckinOffset bool `json:"-"` // Internal: có giá trị checkin_offset từ DB
 
 	HasCheckoutOffset bool `json:"-"` // Internal: có giá trị checkout_offset từ DB
 
+	HasFeedbackCloseOffset bool `json:"-"` // Internal: có giá trị feedback_close_offset từ DB
 }
 
 // ============================================================

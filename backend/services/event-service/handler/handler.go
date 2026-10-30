@@ -977,6 +977,9 @@ func (h *EventHandler) HandleUpdateEventConfig(ctx context.Context, request even
 	if req.MinMinutesAfterStart < 0 || req.MinMinutesAfterStart > 600 {
 		return createMessageResponse(http.StatusBadRequest, "minMinutesAfterStart must be between 0 and 600")
 	}
+	if req.FeedbackDurationMinutes < 0 || req.FeedbackDurationMinutes > 1440 {
+		return createMessageResponse(http.StatusBadRequest, "feedbackDurationMinutes must be between 0 and 1440")
+	}
 
 	// EventID = -1: Update global config (ADMIN only)
 	// EventID > 0: Update per-event config (ADMIN or ORGANIZER with ownership check)
@@ -1023,6 +1026,7 @@ func (h *EventHandler) HandleGetEventConfig(ctx context.Context, request events.
 		response := models.SystemConfigResponse{
 			CheckinAllowedBeforeStartMinutes: config.CheckinAllowedBeforeStartMinutes,
 			MinMinutesAfterStart:             config.MinMinutesAfterStart,
+			FeedbackDurationMinutes:          config.FeedbackDurationMinutes,
 		}
 		return createJSONResponse(http.StatusOK, response)
 	}

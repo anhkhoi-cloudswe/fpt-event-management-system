@@ -3749,11 +3749,12 @@ func (r *EventRepository) UpdateEventConfig(ctx context.Context, userID int, rol
 		if err := config.UpdateConfig(
 			updateReq.CheckinAllowedBeforeStartMinutes,
 			updateReq.MinMinutesAfterStart,
+			updateReq.FeedbackDurationMinutes,
 		); err != nil {
 			return fmt.Errorf("failed to save global config: %w", err)
 		}
-		fmt.Printf("[UpdateEventConfig] ✅ Global config saved: checkin=%d, checkout=%d\n",
-			updateReq.CheckinAllowedBeforeStartMinutes, updateReq.MinMinutesAfterStart)
+		fmt.Printf("[UpdateEventConfig] ✅ Global config saved: checkin=%d, checkout=%d, feedbackDuration=%d\n",
+			updateReq.CheckinAllowedBeforeStartMinutes, updateReq.MinMinutesAfterStart, updateReq.FeedbackDurationMinutes)
 		return nil
 	}
 
@@ -3800,28 +3801,35 @@ func (r *EventRepository) UpdateEventConfig(ctx context.Context, userID int, rol
 		}
 	}
 
-	// UPDATE checkin_offset and checkout_offset
+	// Ensure feedback_close_offset column exists in Event table
+	_, _ = r.db.ExecContext(ctx, "ALTER TABLE Event ADD COLUMN IF NOT EXISTS feedback_close_offset INTEGER DEFAULT 60")
+
+	// UPDATE checkin_offset, checkout_offset and feedback_close_offset
 	_, err = r.db.ExecContext(ctx,
-		"UPDATE Event SET checkin_offset = $1, checkout_offset = $2 WHERE event_id = $3",
+		"UPDATE Event SET checkin_offset = $1, checkout_offset = $2, feedback_close_offset = $3 WHERE event_id = $4",
 		updateReq.CheckinAllowedBeforeStartMinutes,
 		updateReq.MinMinutesAfterStart,
+		updateReq.FeedbackDurationMinutes,
 		updateReq.EventID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update event config: %w", err)
 	}
 
-	fmt.Printf("[UpdateEventConfig] ✅ Per-event config saved: eventID=%d, checkin=%d, checkout=%d\n",
-		updateReq.EventID, updateReq.CheckinAllowedBeforeStartMinutes, updateReq.MinMinutesAfterStart)
+	fmt.Printf("[UpdateEventConfig] ✅ Per-event config saved: eventID=%d, checkin=%d, checkout=%d, feedbackDuration=%d\n",
+		updateReq.EventID, updateReq.CheckinAllowedBeforeStartMinutes, updateReq.MinMinutesAfterStart, updateReq.FeedbackDurationMinutes)
 	return nil
 }
 
 func (r *EventRepository) GetEventConfigById(ctx context.Context, eventID int) (*models.EventConfigResponse, error) {
-	var checkinOffset, checkoutOffset sql.NullInt64
+	// Ensure feedback_close_offset column exists
+	_, _ = r.db.ExecContext(ctx, "ALTER TABLE Event ADD COLUMN IF NOT EXISTS feedback_close_offset INTEGER DEFAULT 60")
+
+	var checkinOffset, checkoutOffset, feedbackCloseOffset sql.NullInt64
 	err := r.db.QueryRowContext(ctx,
-		"SELECT checkin_offset, checkout_offset FROM Event WHERE event_id = $1",
+		"SELECT checkin_offset, checkout_offset, feedback_close_offset FROM Event WHERE event_id = $1",
 		eventID,
-	).Scan(&checkinOffset, &checkoutOffset)
+	).Scan(&checkinOffset, &checkoutOffset, &feedbackCloseOffset)
 
 	if err == sql.ErrNoRows {
 		return nil, nil // No per-event config found
@@ -3832,24 +3840,32 @@ func (r *EventRepository) GetEventConfigById(ctx context.Context, eventID int) (
 
 	hasCheckin := checkinOffset.Valid && checkinOffset.Int64 > 0
 	hasCheckout := checkoutOffset.Valid && checkoutOffset.Int64 > 0
+	hasFeedback := feedbackCloseOffset.Valid && feedbackCloseOffset.Int64 > 0
 
-	var checkinVal, checkoutVal int
+	var checkinVal, checkoutVal, feedbackVal int
 	if hasCheckin {
 		checkinVal = int(checkinOffset.Int64)
 	}
 	if hasCheckout {
 		checkoutVal = int(checkoutOffset.Int64)
 	}
+	if hasFeedback {
+		feedbackVal = int(feedbackCloseOffset.Int64)
+	} else {
+		feedbackVal = 60
+	}
 
-	fmt.Printf("[GetEventConfigById] eventID=%d → checkin=%v(%d), checkout=%v(%d)\n",
-		eventID, hasCheckin, checkinVal, hasCheckout, checkoutVal)
+	fmt.Printf("[GetEventConfigById] eventID=%d → checkin=%v(%d), checkout=%v(%d), feedback=%v(%d)\n",
+		eventID, hasCheckin, checkinVal, hasCheckout, checkoutVal, hasFeedback, feedbackVal)
 
 	return &models.EventConfigResponse{
 		CheckinAllowedBeforeStartMinutes: checkinVal,
 		MinMinutesAfterStart:             checkoutVal,
+		FeedbackDurationMinutes:          feedbackVal,
 		Source:                           "per-event",
 		HasCheckinOffset:                 hasCheckin,
 		HasCheckoutOffset:                hasCheckout,
+		HasFeedbackCloseOffset:           hasFeedback,
 	}, nil
 }
 

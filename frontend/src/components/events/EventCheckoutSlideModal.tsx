@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { X, Maximize2, Minimize2, Copy, Check, ExternalLink } from 'lucide-react'
+import { X, Maximize2, Minimize2, Copy, Check, ExternalLink, Settings } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import fptLogo from '../../assets/fpt-logo.png'
 
@@ -11,6 +11,7 @@ interface EventCheckoutSlideModalProps {
   eventTitle?: string
   startTime?: string
   endTime?: string
+  onOpenConfig?: () => void
 }
 
 export default function EventCheckoutSlideModal({
@@ -18,6 +19,7 @@ export default function EventCheckoutSlideModal({
   onClose,
   eventId,
   eventTitle,
+  onOpenConfig,
 }: EventCheckoutSlideModalProps) {
   const { currentLanguage } = useAuth()
   const [copied, setCopied] = useState(false)
@@ -64,6 +66,19 @@ export default function EventCheckoutSlideModal({
         
         {/* Top Control Buttons */}
         <div className="absolute top-4 right-4 flex items-center gap-2">
+          {onOpenConfig && (
+            <button
+              type="button"
+              onClick={() => {
+                onOpenConfig()
+              }}
+              className="p-2 rounded-xl text-slate-500 hover:text-orange-600 dark:text-neutral-400 dark:hover:text-orange-400 hover:bg-black/5 dark:hover:bg-white/5 transition-all flex items-center gap-1.5 text-xs font-semibold"
+              title={lang === 'en' ? 'Setup Feedback Duration' : 'Cấu hình thời gian Feedback'}
+            >
+              <Settings className="w-5 h-5 text-orange-500" />
+              <span className="hidden sm:inline">{lang === 'en' ? 'Setup' : 'Cài đặt'}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={toggleFullscreen}

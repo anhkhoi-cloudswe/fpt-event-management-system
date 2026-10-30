@@ -2342,6 +2342,10 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 	var eventStatus string
 	var endTime time.Time
 	var checkoutOffset sql.NullInt64
+	var feedbackCloseOffset sql.NullInt64
+
+	// Ensure feedback_close_offset column exists in Event table
+	_, _ = r.db.ExecContext(ctx, "ALTER TABLE Event ADD COLUMN IF NOT EXISTS feedback_close_offset INTEGER DEFAULT 60")
 
 	query := `
 		SELECT
@@ -2353,7 +2357,8 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 			e.event_format,
 			e.status,
 			e.end_time,
-			e.checkout_offset
+			e.checkout_offset,
+			e.feedback_close_offset
 		FROM Ticket t
 		JOIN Event e ON e.event_id = t.event_id
 		WHERE t.user_id = $1
@@ -2373,6 +2378,7 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 		&eventStatus,
 		&endTime,
 		&checkoutOffset,
+		&feedbackCloseOffset,
 	); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("no eligible ticket found for this event")
@@ -2394,9 +2400,11 @@ func (r *TicketRepository) ConfirmAttendance(ctx context.Context, userID, eventI
 	if now.Before(allowedAt) {
 		return nil, fmt.Errorf("cổng điểm danh và đánh giá chưa mở (mở trước khi kết thúc %d phút)", offsetMinutes)
 	}
-	closedAt := endTime.Add(1 * time.Hour)
+
+	feedbackDuration := config.GetEffectiveFeedbackCloseOffset(feedbackCloseOffset)
+	closedAt := endTime.Add(time.Duration(feedbackDuration) * time.Minute)
 	if now.After(closedAt) {
-		return nil, fmt.Errorf("cổng điểm danh và đánh giá sự kiện đã đóng (kết thúc sau 1 tiếng kể từ khi sự kiện kết thúc)")
+		return nil, fmt.Errorf("cổng điểm danh và đánh giá sự kiện đã đóng (kết thúc sau %d phút kể từ khi sự kiện kết thúc)", feedbackDuration)
 	}
 
 	// If already checked out, still save feedback if provided, then return already done
@@ -2559,15 +2567,19 @@ func (r *TicketRepository) CheckinOnline(ctx context.Context, userID, eventID in
 // GetAttendanceStatus returns the current event & user attendance status for the check-out page
 func (r *TicketRepository) GetAttendanceStatus(ctx context.Context, userID, eventID int) (*models.AttendanceStatusResponse, error) {
 	var (
-		title          string
-		eventFormat    sql.NullString
-		eventStatus    string
-		startTime      time.Time
-		endTime        time.Time
-		checkoutOffset sql.NullInt64
+		title               string
+		eventFormat         sql.NullString
+		eventStatus         string
+		startTime           time.Time
+		endTime             time.Time
+		checkoutOffset      sql.NullInt64
+		feedbackCloseOffset sql.NullInt64
 	)
-	eventQuery := `SELECT title, event_format, status, start_time, end_time, checkout_offset FROM Event WHERE event_id = $1`
-	if err := r.db.QueryRowContext(ctx, eventQuery, eventID).Scan(&title, &eventFormat, &eventStatus, &startTime, &endTime, &checkoutOffset); err != nil {
+	// Ensure feedback_close_offset column exists in Event table
+	_, _ = r.db.ExecContext(ctx, "ALTER TABLE Event ADD COLUMN IF NOT EXISTS feedback_close_offset INTEGER DEFAULT 60")
+
+	eventQuery := `SELECT title, event_format, status, start_time, end_time, checkout_offset, feedback_close_offset FROM Event WHERE event_id = $1`
+	if err := r.db.QueryRowContext(ctx, eventQuery, eventID).Scan(&title, &eventFormat, &eventStatus, &startTime, &endTime, &checkoutOffset, &feedbackCloseOffset); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("event not found")
 		}
@@ -2579,7 +2591,8 @@ func (r *TicketRepository) GetAttendanceStatus(ctx context.Context, userID, even
 
 	offsetMinutes := config.GetEffectiveCheckoutOffset(checkoutOffset)
 	allowedAt := endTime.Add(-time.Duration(offsetMinutes) * time.Minute)
-	closedAt := endTime.Add(1 * time.Hour)
+	feedbackDuration := config.GetEffectiveFeedbackCloseOffset(feedbackCloseOffset)
+	closedAt := endTime.Add(time.Duration(feedbackDuration) * time.Minute)
 	now := time.Now().In(vnLocation)
 
 	upperStatus := strings.ToUpper(strings.TrimSpace(eventStatus))

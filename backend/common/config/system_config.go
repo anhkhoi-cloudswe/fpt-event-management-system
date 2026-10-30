@@ -39,6 +39,10 @@ type SystemConfig struct {
 	// MinMinutesAfterStart: Số phút tối thiểu sau start_time mới cho phép check-out
 	// Mặc định: 60 phút (người dùng chỉ được check-out sau startTime + 60 phút)
 	MinMinutesAfterStart int `json:"minMinutesAfterStart"`
+
+	// FeedbackDurationMinutes: Số phút mở cổng check-out/feedback tính từ thời điểm kết thúc sự kiện
+	// Mặc định: 60 phút (1 tiếng sau end_time)
+	FeedbackDurationMinutes int `json:"feedbackDurationMinutes"`
 }
 
 var (
@@ -52,6 +56,7 @@ func DefaultConfig() *SystemConfig {
 	return &SystemConfig{
 		CheckinAllowedBeforeStartMinutes: 60,
 		MinMinutesAfterStart:             60,
+		FeedbackDurationMinutes:          60,
 	}
 }
 
@@ -156,6 +161,9 @@ func validateAndClamp(cfg *SystemConfig) {
 	if cfg.MinMinutesAfterStart < 0 || cfg.MinMinutesAfterStart > 600 {
 		cfg.MinMinutesAfterStart = 60
 	}
+	if cfg.FeedbackDurationMinutes <= 0 || cfg.FeedbackDurationMinutes > 1440 {
+		cfg.FeedbackDurationMinutes = 60
+	}
 }
 
 // SaveConfig lưu cấu hình vào file (Local) hoặc SSM Parameter Store (AWS).
@@ -244,10 +252,14 @@ func GetConfig() *SystemConfig {
 }
 
 // UpdateConfig cập nhật cấu hình (chỉ ADMIN mới được gọi)
-func UpdateConfig(checkinBefore, checkoutAfter int) error {
+func UpdateConfig(checkinBefore, checkoutAfter, feedbackDuration int) error {
+	if feedbackDuration <= 0 {
+		feedbackDuration = 60
+	}
 	cfg := &SystemConfig{
 		CheckinAllowedBeforeStartMinutes: checkinBefore,
 		MinMinutesAfterStart:             checkoutAfter,
+		FeedbackDurationMinutes:          feedbackDuration,
 	}
 	return SaveConfig(cfg)
 }
@@ -288,4 +300,17 @@ func GetEffectiveCheckoutOffset(eventCheckoutOffset sql.NullInt64) int {
 	// Case 2: Fallback to global config
 	globalConfig := GetConfig()
 	return globalConfig.MinMinutesAfterStart
+}
+
+// GetEffectiveFeedbackCloseOffset trả về số phút cho phép check-out và feedback tính từ end_time
+// Priority: Per-event feedback_close_offset > Global config (mặc định 60 phút = 1 tiếng)
+func GetEffectiveFeedbackCloseOffset(eventFeedbackCloseOffset sql.NullInt64) int {
+	if eventFeedbackCloseOffset.Valid && eventFeedbackCloseOffset.Int64 > 0 {
+		return int(eventFeedbackCloseOffset.Int64)
+	}
+	globalConfig := GetConfig()
+	if globalConfig.FeedbackDurationMinutes > 0 {
+		return globalConfig.FeedbackDurationMinutes
+	}
+	return 60
 }

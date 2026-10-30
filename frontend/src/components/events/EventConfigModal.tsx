@@ -27,6 +27,7 @@ type EventConfigModalProps = {
 type ConfigData = {
     checkinAllowedBeforeStartMinutes: number
     minMinutesAfterStart: number
+    feedbackDurationMinutes: number
     source?: 'per-event' | 'global' // Nguồn config (per-event hoặc global)
 }
 
@@ -40,7 +41,8 @@ export function EventConfigModal({
 
     const [config, setConfig] = useState<ConfigData>({
         checkinAllowedBeforeStartMinutes: 30,
-        minMinutesAfterStart: 30
+        minMinutesAfterStart: 30,
+        feedbackDurationMinutes: 60
     })
 
     const [loading, setLoading] = useState(false)
@@ -57,7 +59,8 @@ export function EventConfigModal({
             if (!isOpen) {
                 setConfig({
                     checkinAllowedBeforeStartMinutes: 30,
-                    minMinutesAfterStart: 30
+                    minMinutesAfterStart: 30,
+                    feedbackDurationMinutes: 60
                 })
             }
             return
@@ -89,6 +92,7 @@ export function EventConfigModal({
                     checkinAllowedBeforeStartMinutes:
                         data.checkinAllowedBeforeStartMinutes ?? 30,
                     minMinutesAfterStart: data.minMinutesAfterStart ?? 30,
+                    feedbackDurationMinutes: data.feedbackDurationMinutes ?? 60,
                     source: data.source || 'global' // ✅ SOURCE: 'global' or 'per-event'
                 })
             } catch (err: any) {
@@ -143,6 +147,13 @@ export function EventConfigModal({
             showToast('error', 'Thời gian check-in phải từ 0 đến 600')
             return
         }
+        if (
+            config.feedbackDurationMinutes < 0 ||
+            config.feedbackDurationMinutes > 1440
+        ) {
+            showToast('error', 'Thời gian mở form feedback sau sự kiện phải từ 0 đến 1440 phút')
+            return
+        }
 
         setSaving(true)
         setError(null)
@@ -159,7 +170,8 @@ export function EventConfigModal({
                     eventId: eventId,
                     checkinAllowedBeforeStartMinutes:
                         config.checkinAllowedBeforeStartMinutes,
-                    minMinutesAfterStart: config.minMinutesAfterStart
+                    minMinutesAfterStart: config.minMinutesAfterStart,
+                    feedbackDurationMinutes: config.feedbackDurationMinutes
                 })
             })
 
@@ -356,6 +368,66 @@ export function EventConfigModal({
                                                         }`}
                                                 >
                                                     {val} phút
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Feedback Window Close Config */}
+                                    <div className="border border-amber-200 dark:border-amber-950 bg-amber-50/30 dark:bg-amber-950/10 rounded-lg p-6">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                                            <label className="block text-lg font-semibold text-gray-900 dark:text-slate-100">
+                                                Thời gian mở cổng Check-out & Feedback sau kết thúc (phút)
+                                            </label>
+                                            {config.source === 'global' ? (
+                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 rounded-full border border-blue-200 dark:border-blue-900/50">
+                                                    📋 Đang dùng mặc định (60p)
+                                                </span>
+                                            ) : (
+                                                <span className="ml-auto px-2 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 rounded-full border border-purple-200 dark:border-purple-900/50">
+                                                    ⚙️ Cấu hình riêng
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+                                            Thời gian tính từ lúc sự kiện kết thúc mà người tham dự vẫn có thể quét mã QR check-out và điền form đánh giá (Mặc định: 60 phút = 1 tiếng).
+                                        </p>
+
+                                        <div className="flex items-center gap-4">
+                                            <NumericInput
+                                                name="feedbackDurationMinutes"
+                                                value={config.feedbackDurationMinutes}
+                                                onChange={(val) => setConfig(prev => ({ ...prev, feedbackDurationMinutes: val, source: 'per-event' }))}
+                                                min={0}
+                                                max={1440}
+                                                placeholder="60"
+                                                className="w-32 px-4 py-2 border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-950 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-center text-lg font-medium text-slate-900 dark:text-slate-100"
+                                            />
+                                            <span className="text-gray-600 dark:text-slate-400">phút sau khi sự kiện kết thúc</span>
+                                        </div>
+
+                                        {/* Quick Suggestions */}
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <span className="text-xs text-gray-400 dark:text-slate-500">Gợi ý:</span>
+                                            {[30, 60, 120, 180, 1440].map(val => (
+                                                <button
+                                                    key={val}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setConfig(prev => ({
+                                                            ...prev,
+                                                            feedbackDurationMinutes: val,
+                                                            source: 'per-event'
+                                                        }))
+                                                    }
+                                                    className={`px-3 py-1 text-xs rounded-full transition-colors ${config.feedbackDurationMinutes === val
+                                                        ? 'bg-amber-600 text-white shadow-md'
+                                                        : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-950/30 hover:text-amber-600 dark:hover:text-amber-400'
+                                                        }`}
+                                                >
+                                                    {val === 60 ? '1 tiếng (Chuẩn)' : val === 120 ? '2 tiếng' : val === 180 ? '3 tiếng' : val === 1440 ? '24 tiếng' : `${val} phút`}
                                                 </button>
                                             ))}
                                         </div>
