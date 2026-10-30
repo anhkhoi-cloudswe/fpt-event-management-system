@@ -618,10 +618,10 @@ export default function SystemConfig() {
 
       {/* Tab Content: Events Config */}
       {activeTab === 'events' && (
-        <div className="bg-white/70 dark:bg-slate-900/70 border border-white/80 dark:border-slate-800/80 backdrop-blur-md rounded-3xl p-8 max-w-7xl w-full mx-auto shadow-xl hover:shadow-orange-500/5 transition-all duration-500 animate-fade-in-up">
-          <div className="mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 mb-2">
-              <Settings className="w-6 h-6 text-orange-600" />
+        <div className="bg-transparent sm:bg-white/70 sm:dark:bg-slate-900/70 border-0 sm:border sm:border-white/80 sm:dark:border-slate-800/80 sm:backdrop-blur-md rounded-none sm:rounded-3xl p-0 sm:p-8 max-w-7xl w-full mx-auto shadow-none sm:shadow-xl hover:shadow-orange-500/5 transition-all duration-500 animate-fade-in-up">
+          <div className="mb-4 sm:mb-6 border-b border-slate-200 dark:border-slate-800 pb-3 sm:pb-4">
+            <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2.5 sm:gap-3 mb-1.5 sm:mb-2">
+              <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
               Cấu hình riêng cho từng sự kiện
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">
@@ -630,16 +630,16 @@ export default function SystemConfig() {
           </div>
 
           {/* Search and Filter Bar */}
-          <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="mb-4 sm:mb-6 grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
             {/* Search */}
             <div className="relative sm:col-span-2">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3.5 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Tìm kiếm sự kiện..."
                 value={searchQuery}
                 onChange={e => handleSearchChange(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-white/50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 dark:text-slate-100 font-semibold placeholder-slate-400 dark:placeholder-slate-500 text-sm shadow-sm transition-all duration-300"
+                className="w-full pl-10 sm:pl-11 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-white/70 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 dark:text-slate-100 font-semibold placeholder-slate-400 dark:placeholder-slate-500 text-xs sm:text-sm shadow-sm transition-all duration-300"
               />
             </div>
 
@@ -648,7 +648,7 @@ export default function SystemConfig() {
               <select
                 value={statusFilter}
                 onChange={e => handleStatusFilterChange(e.target.value as 'ALL' | 'OPEN' | 'CLOSED')}
-                className="w-full pl-4 pr-10 py-3 bg-white/50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-700 dark:text-slate-200 font-semibold text-sm shadow-sm cursor-pointer transition-all duration-300 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M7%209l3%203%203-3%22%20stroke%3D%22%25236b7280%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.75rem_center] bg-no-repeat bg-[length:1rem_1rem]"
+                className="w-full pl-3.5 sm:pl-4 pr-10 py-2.5 sm:py-3 bg-white/70 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm shadow-sm cursor-pointer transition-all duration-300 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M7%209l3%203%203-3%22%20stroke%3D%22%25236b7280%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.75rem_center] bg-no-repeat bg-[length:1rem_1rem]"
               >
                 <option value="ALL" className="dark:bg-slate-950">Tất cả trạng thái</option>
                 <option value="OPEN" className="dark:bg-slate-950">🟢 Đang mở</option>
@@ -660,7 +660,7 @@ export default function SystemConfig() {
           {/* Events Table */}
           {loadingEvents ? (
             <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-orange-600"></div>
             </div>
           ) : filteredEvents.length === 0 ? (
             <div className="text-center py-12 bg-white/40 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-inner">
@@ -671,43 +671,30 @@ export default function SystemConfig() {
               </p>
             </div>
           ) : (
-            <div className="bg-white/70 dark:bg-slate-900/40 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 overflow-hidden shadow-md animate-fade-in-up mt-6 overflow-x-auto" data-event-table>
-              <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
-                <thead className="bg-slate-50/50 dark:bg-slate-950/50">
-                  <tr>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Tên sự kiện
-                    </th>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Thời gian bắt đầu
-                    </th>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Địa điểm
-                    </th>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Trạng thái
-                    </th>
-                    <th scope="col" className="px-6 py-4 text-center text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Hành động
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white/40 dark:bg-slate-900/20 divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredEvents.map(event => (
-                    <tr
-                      key={event.eventId}
-                      className="hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-colors"
-                    >
-                      {/* Event Title */}
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-bold text-slate-800 dark:text-slate-200 max-w-xs md:max-w-md truncate">
-                          {event.title}
-                        </div>
-                      </td>
+            <>
+              {/* Mobile View: Flat list card layout (No boxed tables, clean dividers) */}
+              <div className="block md:hidden divide-y divide-slate-200/60 dark:divide-white/[0.08] mb-4">
+                {filteredEvents.map(event => (
+                  <div key={event.eventId} className="py-3.5 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-2">
+                        {event.title}
+                      </h4>
+                      <span
+                        className={`inline-flex shrink-0 px-2 py-0.5 text-[10px] font-extrabold rounded-full border shadow-xs ${
+                          event.status === 'OPEN'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50'
+                            : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700'
+                        }`}
+                      >
+                        {event.status === 'OPEN' ? 'Đang mở' : 'Đã đóng'}
+                      </span>
+                    </div>
 
-                      {/* Start Time */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    <div className="flex flex-col gap-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-3 h-3 text-orange-500 shrink-0" />
+                        <span>
                           {new Date(event.startTime).toLocaleDateString('vi-VN', {
                             day: '2-digit',
                             month: '2-digit',
@@ -715,71 +702,150 @@ export default function SystemConfig() {
                             hour: '2-digit',
                             minute: '2-digit'
                           })}
-                        </div>
-                      </td>
-
-                      {/* Venue Location */}
-                      <td className="px-6 py-4">
-                        <div className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                          {event.venueLocation ? (
-                            <span className="flex items-center gap-1">
-                              📍 {event.venueLocation}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 dark:text-slate-500 italic font-semibold">Chưa có địa điểm</span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Status Badge */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2.5 py-1 text-[11px] font-extrabold rounded-full border shadow-sm ${
-                            event.status === 'OPEN'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50'
-                              : event.status === 'CLOSED'
-                                ? 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700'
-                                : event.status === 'CANCELLED'
-                                  ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50'
-                                  : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50'
-                          }`}
-                        >
-                          {event.status === 'OPEN' && '🟢 Đang mở'}
-                          {event.status === 'CLOSED' && '⚫ Đã đóng'}
-                          {event.status === 'CANCELLED' && '🔴 Đã hủy'}
-                          {!['OPEN', 'CLOSED', 'CANCELLED'].includes(event.status) && event.status}
                         </span>
-                      </td>
+                      </div>
+                      {event.venueLocation && (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="shrink-0">📍</span>
+                          <span className="truncate">{event.venueLocation}</span>
+                        </div>
+                      )}
+                    </div>
 
-                      {/* Action Button */}
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {event.status === 'OPEN' ? (
-                          <button
-                            onClick={() =>
-                              handleManageEventConfig(event.eventId, event.title)
-                            }
-                            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 border border-transparent rounded-xl text-xs font-bold text-white hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 active:scale-95 hover:scale-[1.02]"
-                            title="Cấu hình Check-in Gate"
-                          >
-                            <Settings className="w-3.5 h-3.5" />
-                            Cấu hình
-                          </button>
-                        ) : (
-                          <button
-                            disabled
-                            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-100 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-400 dark:text-slate-600 cursor-not-allowed"
-                            title="Chỉ có thể cấu hình sự kiện đang mở"
-                          >
-                            <Settings className="w-3.5 h-3.5" />
-                            Đã đóng
-                          </button>
-                        )}
-                      </td>
+                    <div className="pt-1">
+                      {event.status === 'OPEN' ? (
+                        <button
+                          onClick={() => handleManageEventConfig(event.eventId, event.title)}
+                          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                          <span>Cấu hình Check-in / Check-out</span>
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl text-xs font-bold cursor-not-allowed"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                          <span>Sự kiện đã đóng</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop View: Full Table */}
+              <div className="hidden md:block bg-white/70 dark:bg-slate-900/40 backdrop-blur-md rounded-3xl border border-white/80 dark:border-slate-800/80 overflow-hidden shadow-md animate-fade-in-up mt-6 overflow-x-auto" data-event-table>
+                <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+                  <thead className="bg-slate-50/50 dark:bg-slate-950/50">
+                    <tr>
+                      <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Tên sự kiện
+                      </th>
+                      <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Thời gian bắt đầu
+                      </th>
+                      <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Địa điểm
+                      </th>
+                      <th scope="col" className="px-6 py-4 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Trạng thái
+                      </th>
+                      <th scope="col" className="px-6 py-4 text-center text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Hành động
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white/40 dark:bg-slate-900/20 divide-y divide-slate-100 dark:divide-slate-800">
+                    {filteredEvents.map(event => (
+                      <tr
+                        key={event.eventId}
+                        className="hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-colors"
+                      >
+                        {/* Event Title */}
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-bold text-slate-800 dark:text-slate-200 max-w-xs md:max-w-md truncate">
+                            {event.title}
+                          </div>
+                        </td>
+
+                        {/* Start Time */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            {new Date(event.startTime).toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        </td>
+
+                        {/* Venue Location */}
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                            {event.venueLocation ? (
+                              <span className="flex items-center gap-1">
+                                📍 {event.venueLocation}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 dark:text-slate-500 italic font-semibold">Chưa có địa điểm</span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Status Badge */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2.5 py-1 text-[11px] font-extrabold rounded-full border shadow-sm ${
+                              event.status === 'OPEN'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50'
+                                : event.status === 'CLOSED'
+                                  ? 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700'
+                                  : event.status === 'CANCELLED'
+                                    ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50'
+                                    : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50'
+                            }`}
+                          >
+                            {event.status === 'OPEN' && '🟢 Đang mở'}
+                            {event.status === 'CLOSED' && '⚫ Đã đóng'}
+                            {event.status === 'CANCELLED' && '🔴 Đã hủy'}
+                            {!['OPEN', 'CLOSED', 'CANCELLED'].includes(event.status) && event.status}
+                          </span>
+                        </td>
+
+                        {/* Action Button */}
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {event.status === 'OPEN' ? (
+                            <button
+                              onClick={() =>
+                                handleManageEventConfig(event.eventId, event.title)
+                              }
+                              className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 border border-transparent rounded-xl text-xs font-bold text-white hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 active:scale-95 hover:scale-[1.02]"
+                              title="Cấu hình Check-in Gate"
+                            >
+                              <Settings className="w-3.5 h-3.5" />
+                              Cấu hình
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-100 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-400 dark:text-slate-600 cursor-not-allowed"
+                              title="Chỉ có thể cấu hình sự kiện đang mở"
+                            >
+                              <Settings className="w-3.5 h-3.5" />
+                              Đã đóng
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           {/* ✅ NEW: Pagination Component */}

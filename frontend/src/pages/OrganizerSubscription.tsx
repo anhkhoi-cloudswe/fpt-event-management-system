@@ -428,31 +428,32 @@ export default function OrganizerSubscriptionPage() {
 
         {/* Top Right Current Tier Badge */}
         {currentSub && (
-          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl px-4 py-2 shadow-xs shrink-0 self-start sm:self-auto">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl px-3 sm:px-4 py-2 shadow-xs shrink-0 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">
                 Gói hiện tại:
               </span>
-              <span className="px-2.5 py-0.5 text-xs font-black uppercase tracking-wider rounded-lg bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-500/30">
+              <span className="px-2 sm:px-2.5 py-0.5 text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-lg bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-500/30 whitespace-nowrap">
                 {currentSub.tierCode}
               </span>
             </div>
+
             {currentSub.status === 'ACTIVE' && (
-              <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold pl-1 border-l border-slate-200 dark:border-slate-800">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-semibold pl-2 border-l border-slate-200 dark:border-slate-800 whitespace-nowrap">
+                <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 Đang hoạt động
               </span>
             )}
             {isExpired && (
-              <span className="text-xs font-bold text-red-600 dark:text-red-400 pl-1 border-l border-slate-200 dark:border-slate-800">
+              <span className="text-[11px] sm:text-xs font-bold text-red-600 dark:text-red-400 pl-2 border-l border-slate-200 dark:border-slate-800 whitespace-nowrap">
                 Đã hết hạn
               </span>
             )}
 
             {/* Auto Renew Toggle */}
             {currentSub.tierCode !== 'FREE' && currentSub.status === 'ACTIVE' && (
-              <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
-                <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Tự động gia hạn</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 pl-2 border-l border-slate-200 dark:border-slate-800 whitespace-nowrap ml-auto sm:ml-0">
+                <span className="text-[11px] sm:text-xs font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">Tự động gia hạn</span>
                 <button
                   type="button"
                   onClick={async () => {

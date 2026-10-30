@@ -807,11 +807,11 @@ export default function CheckIn() {
   // ===========================================================================
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-2xl text-slate-900 dark:text-slate-100 animate-fade-in-up">
+    <div className="bg-transparent sm:bg-slate-50 sm:dark:bg-slate-950 rounded-none sm:rounded-3xl border-0 sm:border sm:border-slate-200 sm:dark:border-slate-800 p-0 sm:p-6 shadow-none sm:shadow-2xl text-slate-900 dark:text-slate-100 animate-fade-in-up">
       {/* ===== TIÊU ĐỀ TRANG ===== */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 dark:border-slate-800/60 pb-4 mb-4 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 dark:border-slate-800/60 pb-3 sm:pb-4 mb-4 gap-2 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white uppercase sm:text-3xl">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white uppercase">
             Kiểm Soát Check-In / Check-Out
           </h1>
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-500 mt-1">
@@ -821,47 +821,47 @@ export default function CheckIn() {
       </div>
 
       {/* ===== TAB CHUYỂN ĐỔI CHECK-IN / CHECK-OUT ===== */}
-      <div className="flex bg-white dark:bg-slate-900 rounded-2xl p-1.5 mb-4 max-w-md border border-slate-200 dark:border-slate-800/50">
+      <div className="flex bg-slate-200/60 dark:bg-slate-900 rounded-2xl p-1 mb-4 max-w-md border border-slate-200 dark:border-slate-800/50">
         {/* Nút tab Check-in */}
         <button
           onClick={() => setActiveTab('checkin')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-300 ${
+          className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3.5 rounded-xl text-xs sm:text-xs font-extrabold uppercase tracking-wide sm:tracking-wider transition-all duration-300 whitespace-nowrap ${
             activeTab === 'checkin'
               ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/20 scale-102'
               : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
-          <LogIn className="w-4 h-4" />
-          Check-in Cổng
+          <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+          <span className="whitespace-nowrap">Check-in Cổng</span>
         </button>
 
         {/* Nút tab Check-out */}
         <button
           onClick={() => setActiveTab('checkout')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-300 ${
+          className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3.5 rounded-xl text-xs sm:text-xs font-extrabold uppercase tracking-wide sm:tracking-wider transition-all duration-300 whitespace-nowrap ${
             activeTab === 'checkout'
               ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/20 scale-102'
               : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
-          <LogOut className="w-4 h-4" />
-          Check-out Cổng
+          <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+          <span className="whitespace-nowrap">Check-out Cổng</span>
         </button>
       </div>
 
       {/* ===== LAYOUT 2 CỘT: QUÉT QR + KẾT QUẢ ===== */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 
         {/* CỘT TRÁI: KHU VỰC QUÉT MÃ QR VÀ NHẬP THỦ CÔNG */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 shadow-md flex flex-col justify-between">
+        <div className="bg-transparent sm:bg-white sm:dark:bg-slate-900 border-0 sm:border sm:border-slate-200 sm:dark:border-slate-800/80 rounded-none sm:rounded-3xl p-0 sm:p-4 shadow-none sm:shadow-md flex flex-col justify-between">
           <div>
-            <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
-              <Scan className="w-4.5 h-4.5 text-orange-500" />
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-slate-200 mb-3 sm:mb-4 flex items-center gap-2">
+              <Scan className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-orange-500" />
               Quét mã QR - {actionLabel}
             </h2>
 
             {/* ✅ NEW: Nút gạt chế độ quét liên tục (Continuous Mode) */}
-            <div className="flex items-center justify-between mb-4 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800/80">
+            <div className="flex items-center justify-between mb-4 bg-slate-100/70 dark:bg-slate-900/90 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
               <div className="flex flex-col pr-2">
                 <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   Chế độ quét liên tục
@@ -886,7 +886,7 @@ export default function CheckIn() {
             </div>
 
             {!scanning ? (
-              <div className="space-y-5">
+              <div className="space-y-4 sm:space-y-5">
                 {/* Nút bắt đầu quét QR */}
                 <button
                   onClick={() => {
@@ -894,7 +894,7 @@ export default function CheckIn() {
                     setScanning(true)
                   }}
                   disabled={isProcessing}
-                  className={`w-full py-4 rounded-2xl transition-all duration-300 font-extrabold text-xs uppercase tracking-widest text-white shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+                  className={`w-full py-3.5 sm:py-4 rounded-2xl transition-all duration-300 font-extrabold text-xs uppercase tracking-wider sm:tracking-widest text-white shadow-md active:scale-95 flex items-center justify-center gap-2 ${
                     isProcessing
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
                       : isCheckIn
@@ -904,12 +904,12 @@ export default function CheckIn() {
                 >
                   {isProcessing ? (
                     <>
-                      <Loader className="w-4.5 h-4.5 animate-spin" />
+                      <Loader className="w-4 h-4 sm:w-4.5 sm:h-4.5 animate-spin" />
                       Đang xử lý dữ liệu...
                     </>
                   ) : (
                     <>
-                      <Scan className="w-4.5 h-4.5" />
+                      <Scan className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                       Bắt đầu quét {actionLabel}
                     </>
                   )}
@@ -918,10 +918,10 @@ export default function CheckIn() {
                 {/* Đường kẻ phân cách */}
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-800" />
+                    <div className="w-full border-t border-slate-200 dark:border-slate-800" />
                   </div>
                   <div className="relative flex justify-center text-xs font-bold uppercase tracking-wider">
-                    <span className="px-3 bg-white dark:bg-slate-900 text-slate-500">Hoặc nhập tay</span>
+                    <span className="px-3 bg-transparent sm:bg-white sm:dark:bg-slate-900 text-slate-500">Hoặc nhập tay</span>
                   </div>
                 </div>
 
@@ -930,24 +930,24 @@ export default function CheckIn() {
                   <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wide pl-1">
                     Nhập mã QR / ID vé thủ công
                   </label>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 min-w-0">
                     <input
                       type="text"
                       value={manualCode}
                       onChange={(e) => setManualCode(e.target.value)}
                       placeholder="Ví dụ: 123 hoặc TICKETS:123,124"
-                      className="flex-1 px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-600 font-bold text-sm shadow-sm transition-all duration-300"
+                      className="flex-1 min-w-0 px-3.5 sm:px-4 py-2.5 sm:py-3 bg-white/70 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 font-bold text-xs sm:text-sm shadow-sm transition-all duration-300"
                       onKeyDown={(e) => e.key === 'Enter' && handleManualAction()}
                     />
                     <button
                       onClick={handleManualAction}
                       disabled={isProcessing}
-                      className="px-5 py-3 text-white rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all duration-300 active:scale-95 flex items-center justify-center shadow-sm disabled:opacity-40"
+                      className="px-4 sm:px-5 py-2.5 sm:py-3 text-white rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all duration-300 active:scale-95 flex items-center justify-center shadow-sm disabled:opacity-40 shrink-0"
                     >
                       {isProcessing ? (
-                        <Loader className="w-5 h-5 animate-spin" />
+                        <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                       ) : (
-                        <Search className="w-5 h-5 text-slate-400" />
+                        <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
                       )}
                     </button>
                   </div>
