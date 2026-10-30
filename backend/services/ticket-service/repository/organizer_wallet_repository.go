@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
@@ -278,7 +279,7 @@ func (r *TicketRepository) CreateOrganizerTopupOrder(ctx context.Context, userID
 
 	paymentMethod := "TOPUP"
 	if selectedTier != "" {
-		paymentMethod = "SUBSCRIPTION"
+		paymentMethod = fmt.Sprintf("SUBSCRIPTION_%s", selectedTier)
 	}
 
 	var billID int64
@@ -1085,7 +1086,34 @@ func (r *TicketRepository) ProcessSePayTopup(ctx context.Context, gateway string
 		return "", fmt.Errorf("lỗi cập nhật trạng thái hóa đơn: %w", err)
 	}
 
-	// 2. Khóa hoặc tạo ví Organizer và cộng số dư khả dụng (balance)
+	pMethod := ""
+	if paymentMethod.Valid {
+		pMethod = strings.ToUpper(strings.TrimSpace(paymentMethod.String))
+	}
+
+	// Nếu là hóa đơn thanh toán gói dịch vụ (SUBSCRIPTION) -> Kích hoạt gói trực tiếp ngay lập tức, KHÔNG cộng vào ví!
+	if pMethod == "SUBSCRIPTION" || strings.HasPrefix(pMethod, "SUBSCRIPTION_") || strings.HasPrefix(pMethod, "SUBSCRIPTION:") {
+		tierCode := ""
+		if strings.HasPrefix(pMethod, "SUBSCRIPTION_") {
+			tierCode = strings.TrimPrefix(pMethod, "SUBSCRIPTION_")
+		} else if strings.HasPrefix(pMethod, "SUBSCRIPTION:") {
+			tierCode = strings.TrimPrefix(pMethod, "SUBSCRIPTION:")
+		}
+
+		err = r.activateSubscriptionDirectlyTx(ctx, tx, userID, tierCode, int64(billAmount), orderID)
+		if err != nil {
+			return "", fmt.Errorf("lỗi kích hoạt trực tiếp gói dịch vụ: %w", err)
+		}
+
+		if err = tx.Commit(); err != nil {
+			return "", err
+		}
+
+		log.Info("Successfully activated organizer subscription directly via transfer", "user_id", userID, "tier_code", tierCode, "bill_id", orderID, "amount", billAmount)
+		return "subscription_success", nil
+	}
+
+	// 2. Khóa hoặc tạo ví Organizer và cộng số dư khả dụng (balance) cho lệnh TOPUP thông thường
 	var walletID int
 	var currentBalance float64
 	err = tx.QueryRowContext(ctx, "SELECT wallet_id, balance FROM wallet WHERE user_id = $1 FOR UPDATE", userID).Scan(&walletID, &currentBalance)
@@ -1128,6 +1156,137 @@ func (r *TicketRepository) ProcessSePayTopup(ctx context.Context, gateway string
 
 	log.Info("Successfully processed organizer wallet topup", "user_id", userID, "amount", amount, "bill_id", orderID)
 	return "topup_success", nil
+}
+
+// activateSubscriptionDirectlyTx - Kích hoạt hoặc gia hạn gói trực tiếp từ giao dịch chuyển khoản thành công
+func (r *TicketRepository) activateSubscriptionDirectlyTx(ctx context.Context, tx *sql.Tx, userID int, targetTierCode string, amountPaid int64, billID int64) error {
+	log := logger.Default().WithContext(ctx)
+
+	// 1. Xác định target tier từ targetTierCode hoặc theo amountPaid
+	var targetTier models.SubscriptionTier
+	var queryErr error
+	if targetTierCode != "" {
+		queryErr = tx.QueryRowContext(ctx, `
+			SELECT tier_id, tier_code, name, price_vnd, is_active
+			FROM subscription_tier
+			WHERE UPPER(tier_code) = UPPER($1)
+		`, targetTierCode).Scan(
+			&targetTier.TierID, &targetTier.TierCode, &targetTier.Name, &targetTier.PriceVND, &targetTier.IsActive,
+		)
+	}
+
+	if targetTierCode == "" || queryErr != nil {
+		// Tìm gói phù hợp nhất với giá tiền
+		queryErr = tx.QueryRowContext(ctx, `
+			SELECT tier_id, tier_code, name, price_vnd, is_active
+			FROM subscription_tier
+			WHERE is_active = true AND tier_code NOT IN ('FREE', 'SCHOOL_ORGANIZER')
+			ORDER BY ABS(price_vnd - $1) ASC
+			LIMIT 1
+		`, amountPaid).Scan(
+			&targetTier.TierID, &targetTier.TierCode, &targetTier.Name, &targetTier.PriceVND, &targetTier.IsActive,
+		)
+		if queryErr != nil {
+			return fmt.Errorf("không xác định được gói đăng ký tương ứng: %w", queryErr)
+		}
+	}
+
+	now := time.Now()
+
+	// 2. Khóa và kiểm tra gói ACTIVE hiện tại của user
+	var (
+		currentSubID int
+		oldTierID    int
+		oldTierCode  string
+		oldStartDate time.Time
+		oldEndDate   time.Time
+	)
+
+	hasCurrentActive := false
+	err := tx.QueryRowContext(ctx, `
+		SELECT us.subscription_id, us.tier_id, st.tier_code, us.start_date, us.end_date
+		FROM user_subscription us
+		JOIN subscription_tier st ON us.tier_id = st.tier_id
+		WHERE us.user_id = $1 AND us.status = 'ACTIVE'
+		FOR UPDATE
+	`, userID).Scan(&currentSubID, &oldTierID, &oldTierCode, &oldStartDate, &oldEndDate)
+
+	if err == nil {
+		hasCurrentActive = true
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("lỗi kiểm tra gói hiện tại: %w", err)
+	}
+
+	isRenewSameTier := hasCurrentActive && (strings.ToUpper(oldTierCode) == strings.ToUpper(targetTier.TierCode))
+
+	var finalSubID int
+	var finalStartDate, finalEndDate time.Time
+	actionType := "INITIAL"
+
+	if isRenewSameTier {
+		// Gia hạn gói cũ thêm 30 ngày từ oldEndDate (hoặc từ now nếu đã quá hạn)
+		actionType = "RENEWAL"
+		finalStartDate = oldStartDate
+		if oldEndDate.After(now) {
+			finalEndDate = oldEndDate.AddDate(0, 0, 30)
+		} else {
+			finalEndDate = now.AddDate(0, 0, 30)
+		}
+
+		_, err = tx.ExecContext(ctx, `
+			UPDATE user_subscription
+			SET end_date = $1, amount_paid_vnd = amount_paid_vnd + $2, updated_at = NOW()
+			WHERE subscription_id = $3
+		`, finalEndDate, amountPaid, currentSubID)
+		if err != nil {
+			return fmt.Errorf("lỗi gia hạn gói dịch vụ: %w", err)
+		}
+		finalSubID = currentSubID
+	} else {
+		if hasCurrentActive {
+			actionType = "UPGRADE"
+			// Chuyển gói cũ sang UPGRADED
+			_, err = tx.ExecContext(ctx, `
+				UPDATE user_subscription
+				SET status = 'UPGRADED', updated_at = NOW()
+				WHERE subscription_id = $1
+			`, currentSubID)
+			if err != nil {
+				return fmt.Errorf("lỗi chuyển trạng thái gói cũ: %w", err)
+			}
+		}
+		finalStartDate = now
+		finalEndDate = now.AddDate(0, 0, 30)
+
+		reqID := fmt.Sprintf("BILL_%d", billID)
+		insertSubQuery := `
+			INSERT INTO user_subscription (
+				user_id, tier_id, status, start_date, end_date, auto_renew,
+				amount_paid_vnd, prorated_credit_vnd, request_id, created_at, updated_at
+			) VALUES ($1, $2, 'ACTIVE', $3, $4, false, $5, 0, $6, NOW(), NOW())
+			RETURNING subscription_id
+		`
+		err = tx.QueryRowContext(ctx, insertSubQuery,
+			userID, targetTier.TierID, finalStartDate, finalEndDate, amountPaid, reqID,
+		).Scan(&finalSubID)
+		if err != nil {
+			return fmt.Errorf("lỗi kích hoạt gói dịch vụ mới: %w", err)
+		}
+	}
+
+	// 3. Ghi log vào subscription_payment_log
+	logReqID := fmt.Sprintf("DIRECT_BILL_%d_%d", billID, now.UnixNano())
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO subscription_payment_log (
+			subscription_id, user_id, tier_id, action_type, amount_paid_vnd,
+			prorated_credit_vnd, request_id, start_date, end_date, created_at
+		) VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, NOW())
+	`, finalSubID, userID, targetTier.TierID, actionType, amountPaid, logReqID, finalStartDate, finalEndDate)
+	if err != nil {
+		log.Warn("Không thể ghi log subscription_payment_log (không chặn luồng kích hoạt)", "error", err)
+	}
+
+	return nil
 }
 
 // ============================================================

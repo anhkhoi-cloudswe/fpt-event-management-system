@@ -5,9 +5,6 @@ import {
   Building2,
   Clock,
   CheckCircle2,
-  Copy,
-  Check,
-  Plus,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
@@ -15,11 +12,9 @@ import {
   Percent,
   SlidersHorizontal,
   X,
-  ExternalLink,
   Loader2,
   AlertCircle
 } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
 import { NumericInput } from '../components/common/NumericInput'
 import {
   organizerWalletService,
@@ -27,7 +22,6 @@ import {
   WalletTransaction,
   OrganizerBankAccount,
   PayoutRequest,
-  TopupOrder,
   EventFinancialReport,
 } from '../services/organizerWalletService'
 import { useToast } from '../contexts/ToastContext'
@@ -89,12 +83,6 @@ export default function OrganizerWalletPage() {
   const [settling, setSettling] = useState(false)
 
   // Modals state
-  const [showTopupModal, setShowTopupModal] = useState(false)
-  const [topupAmount, setTopupAmount] = useState<number>(100000)
-  const [topupOrder, setTopupOrder] = useState<TopupOrder | null>(null)
-  const [topupSubmitting, setTopupSubmitting] = useState(false)
-  const [copiedContent, setCopiedContent] = useState(false)
-  const [copiedAccNum, setCopiedAccNum] = useState(false)
 
   const [showPayoutModal, setShowPayoutModal] = useState(false)
   const [payoutAmount, setPayoutAmount] = useState<number>(50000)
@@ -195,22 +183,6 @@ export default function OrganizerWalletPage() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)
   }
 
-  // Handle Top-up
-  const handleInitiateTopup = async () => {
-    if (!topupAmount || topupAmount < 10000) {
-      showToast('error', 'Số tiền nạp tối thiểu là 10.000 ₫')
-      return
-    }
-    try {
-      setTopupSubmitting(true)
-      const order = await organizerWalletService.topup(topupAmount)
-      setTopupOrder(order)
-    } catch (err: any) {
-      showToast('error', err?.response?.data?.message || err.message || 'Lỗi khởi tạo nạp tiền')
-    } finally {
-      setTopupSubmitting(false)
-    }
-  }
 
   // Handle Payout Submission
   const handleSubmitPayout = async () => {
@@ -357,22 +329,13 @@ export default function OrganizerWalletPage() {
             </div>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight">Ví & Doanh Thu Ban Tổ Chức</h1>
             <p className="text-white/80 text-sm mt-1 max-w-xl">
-              Quản lý số dư bán vé, trích phí nền tảng tự động, nạp tiền trả trước hạn ngạch sự kiện miễn phí và quyết toán an toàn về tài khoản ngân hàng.
+              Quản lý số dư bán vé sự kiện, doanh thu thực nhận và quyết toán an toàn về tài khoản ngân hàng của bạn.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                setTopupOrder(null)
-                setShowTopupModal(true)
-              }}
-              className="px-5 py-3 rounded-2xl bg-white text-orange-600 hover:bg-orange-50 font-black text-sm shadow-lg shadow-black/10 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <Plus size={18} /> Nạp Tiền Ví
-            </button>
-            <button
               onClick={() => setShowPayoutModal(true)}
-              className="px-5 py-3 rounded-2xl bg-orange-950/40 hover:bg-orange-950/60 border border-white/20 text-white font-black text-sm shadow-lg active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+              className="px-5 py-3 rounded-2xl bg-white text-orange-600 hover:bg-orange-50 font-black text-sm shadow-lg shadow-black/10 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
             >
               <ArrowUpRight size={18} /> Rút Tiền
             </button>
@@ -1021,162 +984,6 @@ export default function OrganizerWalletPage() {
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* TOPUP MODAL */}
-      {showTopupModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-2xl">
-            <button
-              onClick={() => setShowTopupModal(false)}
-              className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-
-            {!topupOrder ? (
-              <div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white">Nạp Tiền Ví Organizer</h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Nạp số dư khả dụng trả trước để duy trì mở đăng ký cho sự kiện miễn phí (từ người thứ 101 trở đi).
-                </p>
-
-                {/* Quick amounts */}
-                <div className="mt-6">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Chọn nhanh số tiền:</label>
-                  <div className="grid grid-cols-3 gap-2 mt-2">
-                    {[50000, 100000, 200000, 500000, 1000000, 2000000].map((amt) => (
-                      <button
-                        key={amt}
-                        type="button"
-                        onClick={() => setTopupAmount(amt)}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          topupAmount === amt
-                            ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
-                            : 'border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                        }`}
-                      >
-                        {formatVND(amt)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Custom amount */}
-                <div className="mt-4">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hoặc nhập số tiền tùy ý:</label>
-                  <NumericInput
-                    value={topupAmount}
-                    onChange={(val) => setTopupAmount(val)}
-                    placeholder="10,000"
-                    className="w-full mt-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-base text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
-                  />
-                </div>
-
-                <button
-                  onClick={handleInitiateTopup}
-                  disabled={topupSubmitting}
-                  className="w-full mt-6 py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-sm shadow-lg shadow-orange-950/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {topupSubmitting ? 'Đang tạo mã thanh toán...' : 'Tiếp Tục Tạo Mã VietQR'}
-                </button>
-              </div>
-            ) : (
-              <div className="text-center">
-                <h3 className="text-xl font-black text-slate-900 dark:text-white">Quét Mã VietQR Để Nạp Tiền</h3>
-                <p className="text-xs text-slate-400 mt-1">Hệ thống tự động cộng tiền vào ví ngay khi nhận chuyển khoản.</p>
-
-                {/* QR Code */}
-                <div className="mt-4 flex flex-col items-center justify-center">
-                  <div className="p-3 rounded-2xl bg-white shadow-md border border-slate-100 flex items-center justify-center min-w-[240px] min-h-[240px]">
-                    {topupOrder.qrCodeUrl?.startsWith('http') || topupOrder.qrCodeUrl?.startsWith('data:image') ? (
-                      <img src={topupOrder.qrCodeUrl} alt="VietQR" className="w-56 h-56 object-contain" />
-                    ) : topupOrder.qrCodeUrl ? (
-                      <QRCodeSVG value={topupOrder.qrCodeUrl} size={224} level="M" />
-                    ) : (
-                      <div className="w-56 h-56 flex items-center justify-center text-xs text-slate-400">
-                        Đang tạo mã QR...
-                      </div>
-                    )}
-                  </div>
-                  {topupOrder.checkoutUrl && (
-                    <a
-                      href={topupOrder.checkoutUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 mt-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 font-bold text-xs border border-orange-500/30 transition-all active:scale-95"
-                    >
-                      <span>Mở Cổng Thanh Toán payOS</span>
-                      <ExternalLink size={13} />
-                    </a>
-                  )}
-                </div>
-
-                {/* Transfer Info */}
-                <div className="mt-4 space-y-2.5 text-left bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 font-medium">Ngân hàng:</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{topupOrder.bankCode}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 font-medium">Số tài khoản:</span>
-                    <div className="flex items-center gap-1.5 font-mono font-bold text-slate-800 dark:text-slate-200">
-                      <span>{topupOrder.accountNumber}</span>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(topupOrder.accountNumber)
-                          setCopiedAccNum(true)
-                          setTimeout(() => setCopiedAccNum(false), 2000)
-                        }}
-                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded cursor-pointer"
-                      >
-                        {copiedAccNum ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 font-medium">Chủ tài khoản:</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 uppercase">{topupOrder.accountName}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 font-medium">Số tiền:</span>
-                    <span className="font-black text-rose-500 text-sm">{formatVND(topupOrder.amount)}</span>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-2">
-                    <span className="text-slate-400 font-bold">Nội dung chuyển khoản:</span>
-                    <div className="flex items-center gap-1.5 font-mono font-black text-orange-600 dark:text-orange-400">
-                      <span>{topupOrder.transferContent}</span>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(topupOrder.transferContent)
-                          setCopiedContent(true)
-                          setTimeout(() => setCopiedContent(false), 2000)
-                        }}
-                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded cursor-pointer"
-                      >
-                        {copiedContent ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
-                  <Clock size={14} className="animate-spin text-orange-500" /> Đang chờ ngân hàng xác nhận giao dịch...
-                </div>
-
-                <button
-                  onClick={() => {
-                    setShowTopupModal(false)
-                    void loadWallet()
-                  }}
-                  className="w-full mt-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
-                >
-                  Đóng Cửa Sổ
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       )}
 

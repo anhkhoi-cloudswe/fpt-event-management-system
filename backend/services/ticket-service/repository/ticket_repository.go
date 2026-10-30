@@ -690,7 +690,7 @@ func (r *TicketRepository) GetBillsByUserID(ctx context.Context, userID int) ([]
 			b.created_at
 		FROM Bill b
 		WHERE b.user_id = $1
-		  AND NOT (b.payment_status = 'PENDING' AND b.payment_method IN ('SUBSCRIPTION', 'TOPUP'))
+		  AND NOT (b.payment_status = 'PENDING' AND (b.payment_method IN ('SUBSCRIPTION', 'TOPUP') OR b.payment_method LIKE 'SUBSCRIPTION%'))
 		ORDER BY b.created_at DESC
 	`
 
@@ -753,7 +753,7 @@ func (r *TicketRepository) GetBillsByUserIDPaginated(ctx context.Context, userID
 	// Do not show abandoned PENDING subscription or topup bills in invoice history
 	whereConditions := []string{
 		"b.user_id = $1",
-		"NOT (b.payment_status = 'PENDING' AND b.payment_method IN ('SUBSCRIPTION', 'TOPUP'))",
+		"NOT (b.payment_status = 'PENDING' AND (b.payment_method IN ('SUBSCRIPTION', 'TOPUP') OR b.payment_method LIKE 'SUBSCRIPTION%'))",
 	}
 	args := []interface{}{userID}
 
@@ -1456,7 +1456,7 @@ func (r *TicketRepository) ProcessPayOSWebhook(ctx context.Context, orderCode in
 	// Kiểm tra nếu là nạp tiền ví Organizer (TOPUP) hoặc thanh toán gói dịch vụ (SUBSCRIPTION)
 	var paymentMethod string
 	err := r.db.QueryRowContext(ctx, "SELECT payment_method FROM Bill WHERE bill_id = $1", orderCode).Scan(&paymentMethod)
-	if err == nil && (paymentMethod == "TOPUP" || paymentMethod == "SUBSCRIPTION" || strings.HasPrefix(strings.ToUpper(description), "TOPUP") || strings.HasPrefix(strings.ToUpper(description), "SUB")) {
+	if err == nil && (paymentMethod == "TOPUP" || paymentMethod == "SUBSCRIPTION" || strings.HasPrefix(paymentMethod, "SUBSCRIPTION") || strings.HasPrefix(strings.ToUpper(description), "TOPUP") || strings.HasPrefix(strings.ToUpper(description), "SUB")) {
 		return r.ProcessSePayTopup(ctx, "PAYOS", amount, orderCode)
 	}
 
@@ -1741,7 +1741,7 @@ func (r *TicketRepository) GetPaymentStatus(ctx context.Context, orderID int64) 
 					}
 
 					var reconcileErr error
-					if pMethod == "TOPUP" || pMethod == "SUBSCRIPTION" {
+					if pMethod == "TOPUP" || pMethod == "SUBSCRIPTION" || strings.HasPrefix(pMethod, "SUBSCRIPTION") {
 						_, reconcileErr = r.ProcessSePayTopup(ctx, "PAYOS", float64(payosData.AmountPaid), orderID)
 					} else {
 						_, reconcileErr = r.CompletePaidOrder(ctx, orderID, "PAYOS", float64(payosData.AmountPaid))

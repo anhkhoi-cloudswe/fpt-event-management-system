@@ -410,7 +410,7 @@ func (r *TicketRepository) SubscribeOrUpgrade(ctx context.Context, userID int, r
 			desc += fmt.Sprintf(" (được khấu trừ %s đ từ gói cũ)", formatMoneyVND(unusedCredit))
 		}
 		refType := "SUBSCRIPTION"
-		refID := fmt.Sprintf("TIER_%s", targetTier.TierCode)
+		refID := fmt.Sprintf("SUB_%s_%d_%d", targetTier.TierCode, userID, time.Now().UnixNano())
 
 		_, err = tx.ExecContext(ctx, `
 			INSERT INTO wallet_transaction (
@@ -747,13 +747,14 @@ func (r *TicketRepository) ProcessExpiredSubscriptions(ctx context.Context) (int
 		}
 
 		desc := fmt.Sprintf("Gia hạn tự động gói Organizer %s", targetTier.Name)
+		renewRefID := fmt.Sprintf("RENEW_%s_%d_%d", targetTier.TierCode, userID, time.Now().UnixNano())
 		_, err = tx.ExecContext(ctx, `
 			INSERT INTO wallet_transaction (
 				wallet_id, user_id, type, amount, balance_before, balance_after,
 				reference_type, reference_id, description, created_at
 			) VALUES ($1, $2, 'USAGE_FEE', $3, $4, $5, 'SUBSCRIPTION', $6, $7, NOW())
 		`, walletID, userID, targetTier.PriceVND, balanceBefore, balanceAfter,
-			fmt.Sprintf("RENEW_%s", targetTier.TierCode), desc)
+			renewRefID, desc)
 		if err != nil {
 			tx.Rollback()
 			return expiredCount, renewedCount, fmt.Errorf("lỗi ghi wallet_transaction khi gia hạn sub %d: %w", subID, err)

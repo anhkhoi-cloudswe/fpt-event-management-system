@@ -10,7 +10,8 @@ import {
   Copy,
   ShieldCheck,
   AlertCircle,
-  Wallet
+  Wallet,
+  QrCode
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import {
@@ -76,6 +77,9 @@ export default function OrganizerSubscriptionPage() {
   const [downgradeSubmitting, setDowngradeSubmitting] = useState(false)
   const [downgradeError, setDowngradeError] = useState<string | null>(null)
 
+  // Payment Method Choice Modal State (khi số dư ví đủ/dư)
+  const [paymentMethodChoiceTier, setPaymentMethodChoiceTier] = useState<SubscriptionTier | null>(null)
+
   // Wallet Confirmation Modal State
   const [walletConfirmTier, setWalletConfirmTier] = useState<SubscriptionTier | null>(null)
   const [walletPaySubmitting, setWalletPaySubmitting] = useState(false)
@@ -125,25 +129,16 @@ export default function OrganizerSubscriptionPage() {
             try {
               await organizerWalletService.checkTopupStatus(Number(billIdParam))
             } catch (e) {
-              // Tiếp tục kích hoạt
+              // Tiếp tục
             }
           }
 
-          if (tierCodeParam) {
-            const subRes = await subscriptionService.subscribeOrUpgrade({
-              tierCode: tierCodeParam,
-              requestId: generateUUID(),
-              autoRenew: true,
-            })
-            showToast('success', subRes.message || `Thanh toán thành công! Gói dịch vụ đã được kích hoạt.`)
-          } else {
-            showToast('success', 'Nạp tiền vào ví thành công!')
-          }
+          showToast('success', tierCodeParam ? `Thanh toán thành công! Gói dịch vụ đã được kích hoạt trực tiếp.` : 'Thanh toán thành công!')
           emitWalletRefresh()
           fetchData()
         } catch (err: any) {
           console.error('Auto activation error:', err)
-          showToast('info', 'Thanh toán đã ghi nhận. Vui lòng nhấn Nâng cấp để áp dụng gói.')
+          showToast('info', 'Thanh toán đã ghi nhận.')
           emitWalletRefresh()
           fetchData()
         }
@@ -197,30 +192,40 @@ export default function OrganizerSubscriptionPage() {
     }
   }
 
-  // Handle direct payment initiation with PayOS / SePay
-  const handleInitiateDirectPayment = async (tier: SubscriptionTier) => {
-    const { netPay } = calculateUpgradeCost(tier)
-
-    // Nếu số dư ví hiện tại đủ thanh toán luôn -> Mở Modal Xác Nhận Thanh Toán Ví
-    if (balance >= netPay && netPay > 0) {
-      setWalletConfirmTier(tier)
-      return
-    }
-
+  // Khởi tạo đơn thanh toán trực tiếp qua VietQR / payOS
+  const startQRPayment = async (tier: SubscriptionTier, amount: number) => {
     setPaymentModalTier(tier)
+    setPaymentOrder(null)
     setPaymentError(null)
-
-    // Nếu số dư ví chưa đủ hoặc thanh toán trực tiếp qua PayOS QR
-    const amountNeeded = netPay > balance ? netPay - balance : netPay
     setPaymentSubmitting(true)
     try {
-      const order = await organizerWalletService.topup(amountNeeded, tier.tierCode, 'SUBSCRIPTION')
+      const order = await organizerWalletService.topup(amount, tier.tierCode, 'SUBSCRIPTION')
       setPaymentOrder(order)
     } catch (err: any) {
       setPaymentError(err?.response?.data?.message || err?.message || 'Lỗi khởi tạo cổng thanh toán payOS')
     } finally {
       setPaymentSubmitting(false)
     }
+  }
+
+  // Handle direct payment initiation with PayOS / SePay
+  const handleInitiateDirectPayment = async (tier: SubscriptionTier) => {
+    const { netPay } = calculateUpgradeCost(tier)
+
+    // Nếu netPay <= 0 (miễn phí hoặc khấu trừ 100%): kích hoạt ngay
+    if (netPay <= 0) {
+      setWalletConfirmTier(tier)
+      return
+    }
+
+    // Nếu số dư ví hiện tại đủ hoặc dư để thanh toán -> Hiện modal chọn phương thức thanh toán
+    if (balance >= netPay) {
+      setPaymentMethodChoiceTier(tier)
+      return
+    }
+
+    // Nếu số dư ví không đủ -> Đi thẳng vào hiển thị mã QR thanh toán (tiết kiệm bước)
+    await startQRPayment(tier, netPay)
   }
 
   // Handle actual wallet payment execution after user confirms in modal
@@ -250,24 +255,10 @@ export default function OrganizerSubscriptionPage() {
     if (!paymentModalTier || !paymentOrder) return
     setIsCheckingPayment(true)
     try {
-      // 1. Kiểm tra trạng thái hóa đơn thanh toán
-      try {
-        await organizerWalletService.checkTopupStatus(paymentOrder.orderId)
-      } catch (e) {
-        // Ignored if gateway check fails, proceed to check balance
-      }
-
-      // 2. Kiểm tra số dư ví hiện tại
-      const walletRes = await organizerWalletService.getOverview()
-      const { netPay } = calculateUpgradeCost(paymentModalTier)
-      if (walletRes.availableBalance >= netPay) {
-        // Tự động kích hoạt gói khi tiền đã vào ví
-        const subRes = await subscriptionService.subscribeOrUpgrade({
-          tierCode: paymentModalTier.tierCode,
-          requestId: generateUUID(),
-          autoRenew: true,
-        })
-        showToast('success', subRes.message || `Kích hoạt gói ${paymentModalTier.name} thành công!`)
+      // 1. Kiểm tra trạng thái hóa đơn thanh toán - Backend sẽ tự động kích hoạt gói khi xác nhận PAID
+      const statusRes = await organizerWalletService.checkTopupStatus(paymentOrder.orderId)
+      if (statusRes && statusRes.status === 'PAID') {
+        showToast('success', `Thanh toán thành công! Gói ${paymentModalTier.name} đã được kích hoạt trực tiếp.`)
         emitWalletRefresh()
         setPaymentModalTier(null)
         setPaymentOrder(null)
@@ -289,14 +280,8 @@ export default function OrganizerSubscriptionPage() {
     const intervalId = window.setInterval(async () => {
       try {
         const statusRes = await organizerWalletService.checkTopupStatus(paymentOrder.orderId)
-        if (statusRes.status === 'PAID') {
-          // Kích hoạt ngay
-          const subRes = await subscriptionService.subscribeOrUpgrade({
-            tierCode: paymentModalTier.tierCode,
-            requestId: generateUUID(),
-            autoRenew: true,
-          })
-          showToast('success', subRes.message || `Kích hoạt gói ${paymentModalTier.name} thành công!`)
+        if (statusRes && statusRes.status === 'PAID') {
+          showToast('success', `Thanh toán thành công! Gói ${paymentModalTier.name} đã được kích hoạt trực tiếp.`)
           emitWalletRefresh()
           setPaymentModalTier(null)
           setPaymentOrder(null)
@@ -310,7 +295,7 @@ export default function OrganizerSubscriptionPage() {
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [paymentOrder, paymentModalTier, fetchData])
+  }, [paymentOrder, paymentModalTier, fetchData, showToast])
 
   // Open Downgrade Modal
   const handleOpenDowngradeModal = (tier: SubscriptionTier) => {
@@ -675,6 +660,101 @@ export default function OrganizerSubscriptionPage() {
           </div>
         )}
       </div>
+
+      {/* ══════════════════════════════════════════════════
+          Payment Method Choice Modal (Khi số dư ví đủ/dư)
+      ══════════════════════════════════════════════════ */}
+      {paymentMethodChoiceTier && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-7 shadow-2xl space-y-5 text-left">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">Chọn Phương Thức Thanh Toán</h3>
+                <p className="text-[12px] text-slate-500 mt-0.5">
+                  Gói {paymentMethodChoiceTier.name} • {calculateUpgradeCost(paymentMethodChoiceTier).netPay.toLocaleString('vi-VN')} đ
+                </p>
+              </div>
+              <button
+                onClick={() => setPaymentMethodChoiceTier(null)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Options */}
+            <div className="space-y-3">
+              {/* Option 1: Ví nội bộ */}
+              <button
+                type="button"
+                onClick={() => {
+                  const tier = paymentMethodChoiceTier
+                  setPaymentMethodChoiceTier(null)
+                  setWalletConfirmTier(tier)
+                }}
+                className="w-full group p-4 rounded-2xl border-2 border-orange-500/40 hover:border-orange-500 bg-orange-500/5 hover:bg-orange-500/10 transition-all text-left flex items-start gap-3.5 cursor-pointer"
+              >
+                <div className="p-2.5 rounded-xl bg-orange-500 text-white shadow-md shadow-orange-500/30 group-hover:scale-105 transition">
+                  <Wallet size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-900 dark:text-white">Ví nội bộ</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      Nhanh nhất
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Số dư: <span className="font-bold text-slate-700 dark:text-slate-300">{balance.toLocaleString('vi-VN')} đ</span> (Đủ thanh toán)
+                  </p>
+                  <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-1 font-medium">
+                    Trừ trực tiếp số dư ví, kích hoạt tức thì không cần chuyển khoản
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Chuyển khoản QR */}
+              <button
+                type="button"
+                onClick={() => {
+                  const tier = paymentMethodChoiceTier
+                  const { netPay } = calculateUpgradeCost(tier)
+                  setPaymentMethodChoiceTier(null)
+                  void startQRPayment(tier, netPay)
+                }}
+                className="w-full group p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100/50 dark:hover:bg-slate-800/70 transition-all text-left flex items-start gap-3.5 cursor-pointer"
+              >
+                <div className="p-2.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 group-hover:scale-105 transition">
+                  <QrCode size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-900 dark:text-white">Chuyển khoản VietQR / Ngân hàng</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Quét mã QR qua app ngân hàng hoặc cổng payOS
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Hệ thống tự động kích hoạt gói ngay khi nhận được thanh toán
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            {/* Cancel Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethodChoiceTier(null)}
+                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════
           Direct PayOS / QR Transfer Modal

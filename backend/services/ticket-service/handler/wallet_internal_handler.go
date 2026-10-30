@@ -62,7 +62,7 @@ func ensureWalletIdempotencySchema(dbConn *sql.DB) {
 		response_body TEXT NOT NULL DEFAULT '',
 		created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 	)`)
-	_, _ = dbConn.Exec(`ALTER TABLE wallet_transaction ADD CONSTRAINT uniq_wallet_tx_reference_id UNIQUE (reference_id)`)
+	_, _ = dbConn.Exec(`ALTER TABLE wallet_transaction DROP CONSTRAINT IF EXISTS uniq_wallet_tx_reference_id`)
 }
 
 // ============================================================
