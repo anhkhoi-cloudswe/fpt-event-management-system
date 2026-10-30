@@ -543,25 +543,43 @@ export function EventDetailModal({
                           <QrCode className="w-4 h-4" />
                           {lang === 'en' ? 'Project Check-out & Feedback QR' : 'Trình chiếu QR Check-out & Đánh giá'}
                         </button>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
-                            onClick={() => setShowConfigModal(true)}
-                            className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-800 dark:text-neutral-200 font-bold py-2.5 rounded-xl transition-all tracking-wide cursor-pointer flex items-center justify-center gap-2 active:scale-95 text-xs"
+                            onClick={() => canEditEvent && setShowConfigModal(true)}
+                            disabled={!canEditEvent}
+                            className={`w-full font-bold py-2.5 px-2 rounded-xl transition-all tracking-wide flex items-center justify-center gap-1.5 text-[11px] whitespace-nowrap ${
+                              canEditEvent
+                                ? 'bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-800 dark:text-neutral-200 cursor-pointer active:scale-95'
+                                : 'bg-slate-100/50 dark:bg-neutral-800/40 text-slate-400 dark:text-neutral-500 border border-dashed border-slate-200 dark:border-neutral-800 cursor-not-allowed opacity-60'
+                            }`}
+                            title={!canEditEvent ? (lang === 'en' ? 'Event is closed or ended' : 'Sự kiện đã kết thúc hoặc đã đóng') : undefined}
                           >
-                            <Settings className="w-4 h-4 text-orange-500" />
-                            {lang === 'en' ? 'Setup Check-in/out' : 'Cấu hình Check-in/Feedback'}
+                            <Settings className={`w-3.5 h-3.5 flex-shrink-0 ${canEditEvent ? 'text-orange-500' : 'text-slate-400 dark:text-neutral-600'}`} />
+                            <span className="truncate">{lang === 'en' ? 'Setup Check-in/out' : 'Cấu hình Check-in/Feedback'}</span>
                           </button>
-                          {canEditEvent && (
+                          {canEditEvent ? (
                             <button
                               type="button"
                               onClick={() => closeThenNavigate(`/dashboard/events/${eventId}/edit`)}
-                              className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-800 dark:text-neutral-200 font-bold py-2.5 rounded-xl transition-all tracking-wide cursor-pointer flex items-center justify-center gap-2 active:scale-95 text-xs"
+                              className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-800 dark:text-neutral-200 font-bold py-2.5 px-2 rounded-xl transition-all tracking-wide cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 text-[11px] whitespace-nowrap"
                             >
-                              <Edit className="w-4 h-4 text-blue-500" />
-                              {detail?.status === 'UPDATING'
-                                ? (lang === 'en' ? 'Edit & Open' : 'Chỉnh sửa & Mở')
-                                : (lang === 'en' ? 'Edit Details' : 'Chỉnh sửa sự kiện')}
+                              <Edit className="w-3.5 h-3.5 flex-shrink-0 text-blue-500" />
+                              <span className="truncate">
+                                {detail?.status === 'UPDATING'
+                                  ? (lang === 'en' ? 'Edit & Open' : 'Chỉnh sửa & Mở')
+                                  : (lang === 'en' ? 'Edit Details' : 'Chỉnh sửa sự kiện')}
+                              </span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              className="w-full bg-slate-100/50 dark:bg-neutral-800/40 text-slate-400 dark:text-neutral-500 border border-dashed border-slate-200 dark:border-neutral-800 font-bold py-2.5 px-2 rounded-xl transition-all tracking-wide cursor-not-allowed flex items-center justify-center gap-1.5 opacity-60 text-[11px] whitespace-nowrap"
+                              title={lang === 'en' ? 'Event is closed or ended' : 'Sự kiện đã kết thúc hoặc đã đóng'}
+                            >
+                              <Edit className="w-3.5 h-3.5 flex-shrink-0 text-slate-400 dark:text-neutral-600" />
+                              <span className="truncate">{lang === 'en' ? 'Edit Details' : 'Chỉnh sửa sự kiện'}</span>
                             </button>
                           )}
                         </div>
