@@ -491,19 +491,45 @@ export function EventDetailModal({
                 <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-5">
                   <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-neutral-500">{text.tickets}</h2>
                   <div className="divide-y divide-slate-200 dark:divide-white/10">
-                    {detail.tickets.map((ticket) => (
+                    {detail.tickets.map((ticket) => {
+                      const isSoldOut = ticket.remaining !== undefined && ticket.remaining <= 0;
+                      const isLowStock = ticket.remaining !== undefined && ticket.remaining > 0 && ticket.remaining <= 10;
+                      
+                      return (
                         <div key={ticket.categoryTicketId} className="flex items-center justify-between gap-4 py-4 first:pt-0">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{ticket.name}</p>
-                          {ticket.description && (
-                            <p className="text-xs text-slate-500 dark:text-neutral-400 mt-0.5 line-clamp-1">{ticket.description}</p>
-                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{ticket.name}</p>
+                              {ticket.remaining !== undefined ? (
+                                isSoldOut ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                    {lang === 'en' ? 'Sold out' : 'Hết vé'}
+                                  </span>
+                                ) : isLowStock ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20">
+                                    {lang === 'en' ? `Only ${ticket.remaining} left` : `Chỉ còn ${ticket.remaining} vé`}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                    {lang === 'en' ? `Remaining: ${ticket.remaining}` : `Còn lại: ${ticket.remaining} vé`}
+                                  </span>
+                                )
+                              ) : ticket.maxQuantity ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/20">
+                                  {lang === 'en' ? `Total: ${ticket.maxQuantity}` : `Số lượng: ${ticket.maxQuantity} vé`}
+                                </span>
+                              ) : null}
+                            </div>
+                            {ticket.description && (
+                              <p className="text-xs text-slate-500 dark:text-neutral-400 mt-1 line-clamp-1">{ticket.description}</p>
+                            )}
+                          </div>
+                          <p className={`text-sm font-black whitespace-nowrap ${isSoldOut ? 'text-slate-400 dark:text-neutral-500 line-through' : 'text-slate-950 dark:text-white'}`}>
+                            {ticket.price > 0 ? `${ticket.price.toLocaleString('vi-VN')} đ` : text.free}
+                          </p>
                         </div>
-                        <p className="text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">
-                          {ticket.price > 0 ? `${ticket.price.toLocaleString('vi-VN')} đ` : text.free}
-                        </p>
-                        </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   {isOrganizerOfEvent ? (
                     <div className="mt-6 space-y-3">
