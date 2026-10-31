@@ -725,14 +725,20 @@ export default function EventRequestCreate() {
     return () => observer.disconnect()
   }, [])
 
-  // Online platform oauth & meeting integration
+  // Online platform oauth & meeting integration - Separated states for Zoom, Google Meet, and Custom
   const [selectedOnlinePlatform, setSelectedOnlinePlatform] = useState<'ZOOM' | 'GOOGLE' | 'CUSTOM'>('ZOOM')
-  const [meetingDetails, setMeetingDetails] = useState({
-    url: '',
-    id: '',
-    secret: '',
-    customPlatformName: '',
+  const [platformMeetingMap, setPlatformMeetingMap] = useState<{
+    ZOOM: { url: string; id: string; secret: string; customPlatformName: string };
+    GOOGLE: { url: string; id: string; secret: string; customPlatformName: string };
+    CUSTOM: { url: string; id: string; secret: string; customPlatformName: string };
+  }>({
+    ZOOM: { url: '', id: '', secret: '', customPlatformName: 'Zoom Meeting' },
+    GOOGLE: { url: '', id: '', secret: '', customPlatformName: 'Google Meet' },
+    CUSTOM: { url: '', id: '', secret: '', customPlatformName: '' },
   })
+
+  // Helper getter for active platform's meeting details
+  const activeMeetingDetails = platformMeetingMap[selectedOnlinePlatform]
   const [connectedPlatforms, setConnectedPlatforms] = useState({
     zoom: { connected: false, email: '', meetingLink: '', meetingId: '', meetingSecret: '' },
     google: { connected: false, email: '', meetingLink: '', meetingId: '', meetingSecret: '' }
@@ -823,23 +829,26 @@ export default function EventRequestCreate() {
             meetingSecret,
           }
         }));
-        setMeetingDetails(prev => ({
+        const targetPlat = platform === 'ZOOM' ? 'ZOOM' : 'GOOGLE';
+        setPlatformMeetingMap(prev => ({
           ...prev,
-          url: meetingLink,
-          id: meetingId,
-          secret: meetingSecret,
-          customPlatformName: platform === 'ZOOM' ? 'Zoom' : 'Google Meet',
+          [targetPlat]: {
+            url: meetingLink,
+            id: meetingId,
+            secret: meetingSecret,
+            customPlatformName: targetPlat === 'ZOOM' ? 'Zoom Meeting' : 'Google Meet',
+          }
         }));
-        setSelectedOnlinePlatform(platform === 'ZOOM' ? 'ZOOM' : 'GOOGLE');
+        setSelectedOnlinePlatform(targetPlat);
         setMeetingSchedule({
           isScheduled: true,
-          platform: platform === 'ZOOM' ? 'ZOOM' : 'GOOGLE',
+          platform: targetPlat,
           startTime: event.data.scheduledStart || formData.preferredStart,
           endTime: event.data.scheduledEnd || formData.preferredEnd,
           title: event.data.scheduledTitle || formData.title,
         });
         setIsConnecting(false);
-        showToast('success', `Đã kết nối tài khoản ${platform === 'ZOOM' ? 'Zoom' : 'Google Meet'} và lên lịch phòng họp thành công!`);
+        showToast('success', `Đã kết nối tài khoản ${targetPlat === 'ZOOM' ? 'Zoom' : 'Google Meet'} và lên lịch phòng họp thành công!`);
       } else if (event.data?.type === "OAUTH_ERROR") {
         setIsConnecting(false);
         showToast('error', event.data.error || 'Không thể kết nối tài khoản. Vui lòng thử lại.');
@@ -885,12 +894,14 @@ export default function EventRequestCreate() {
       const zoomId = `8${Math.floor(1000000000 + Math.random() * 9000000000)}`;
       const pwd = Math.random().toString(36).substring(2, 8);
       const url = `https://zoom.us/j/${zoomId}?pwd=${pwd}`;
-      setMeetingDetails(prev => ({
+      setPlatformMeetingMap(prev => ({
         ...prev,
-        url,
-        id: zoomId,
-        secret: pwd,
-        customPlatformName: 'Zoom Meeting',
+        ZOOM: {
+          url,
+          id: zoomId,
+          secret: pwd,
+          customPlatformName: 'Zoom Meeting',
+        }
       }));
       setConnectedPlatforms(prev => ({
         ...prev,
@@ -915,12 +926,14 @@ export default function EventRequestCreate() {
       const rLetters = (n: number) => Array.from({ length: n }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join('');
       const meetId = `${rLetters(3)}-${rLetters(4)}-${rLetters(3)}`;
       const url = `https://meet.google.com/${meetId}`;
-      setMeetingDetails(prev => ({
+      setPlatformMeetingMap(prev => ({
         ...prev,
-        url,
-        id: meetId,
-        secret: '',
-        customPlatformName: 'Google Meet',
+        GOOGLE: {
+          url,
+          id: meetId,
+          secret: '',
+          customPlatformName: 'Google Meet',
+        }
       }));
       setConnectedPlatforms(prev => ({
         ...prev,
@@ -945,33 +958,43 @@ export default function EventRequestCreate() {
   };
 
   const handleMeetingUrlChange = (newUrl: string) => {
-    setMeetingDetails(prev => {
-      const updated = { ...prev, url: newUrl };
-      let matchedPlatform: 'ZOOM' | 'GOOGLE' | 'CUSTOM' = selectedOnlinePlatform;
-      if (/zoom\.us\/j\/(\d+)/i.test(newUrl)) {
-        const m = newUrl.match(/zoom\.us\/j\/(\d+)/i);
-        if (m && m[1]) updated.id = m[1];
-        const pwdMatch = newUrl.match(/[?&]pwd=([a-zA-Z0-9]+)/i);
-        if (pwdMatch && pwdMatch[1]) updated.secret = pwdMatch[1];
-        matchedPlatform = 'ZOOM';
-        setSelectedOnlinePlatform('ZOOM');
-      } else if (/meet\.google\.com\/([a-z0-9-]+)/i.test(newUrl)) {
-        const m = newUrl.match(/meet\.google\.com\/([a-z0-9-]+)/i);
-        if (m && m[1]) updated.id = m[1].split('?')[0];
-        matchedPlatform = 'GOOGLE';
-        setSelectedOnlinePlatform('GOOGLE');
+    let matchedPlatform: 'ZOOM' | 'GOOGLE' | 'CUSTOM' = selectedOnlinePlatform;
+    let extraId = '';
+    let extraSecret = '';
+
+    if (/zoom\.us\/j\/(\d+)/i.test(newUrl)) {
+      const m = newUrl.match(/zoom\.us\/j\/(\d+)/i);
+      if (m && m[1]) extraId = m[1];
+      const pwdMatch = newUrl.match(/[?&]pwd=([a-zA-Z0-9]+)/i);
+      if (pwdMatch && pwdMatch[1]) extraSecret = pwdMatch[1];
+      matchedPlatform = 'ZOOM';
+      setSelectedOnlinePlatform('ZOOM');
+    } else if (/meet\.google\.com\/([a-z0-9-]+)/i.test(newUrl)) {
+      const m = newUrl.match(/meet\.google\.com\/([a-z0-9-]+)/i);
+      if (m && m[1]) extraId = m[1].split('?')[0];
+      matchedPlatform = 'GOOGLE';
+      setSelectedOnlinePlatform('GOOGLE');
+    }
+
+    setPlatformMeetingMap(prev => ({
+      ...prev,
+      [matchedPlatform]: {
+        ...prev[matchedPlatform],
+        url: newUrl,
+        ...(extraId ? { id: extraId } : {}),
+        ...(extraSecret ? { secret: extraSecret } : {}),
       }
-      if (newUrl.trim()) {
-        setMeetingSchedule({
-          isScheduled: true,
-          platform: matchedPlatform,
-          startTime: formData.preferredStart,
-          endTime: formData.preferredEnd,
-          title: formData.title,
-        });
-      }
-      return updated;
-    });
+    }));
+
+    if (newUrl.trim()) {
+      setMeetingSchedule({
+        isScheduled: true,
+        platform: matchedPlatform,
+        startTime: formData.preferredStart,
+        endTime: formData.preferredEnd,
+        title: formData.title,
+      });
+    }
   };
 
   const handleDisconnect = (platform: 'zoom' | 'google') => {
@@ -985,7 +1008,11 @@ export default function EventRequestCreate() {
         meetingSecret: '',
       }
     }));
-    setMeetingDetails({ url: '', id: '', secret: '', customPlatformName: '' });
+    const key = platform === 'zoom' ? 'ZOOM' : 'GOOGLE';
+    setPlatformMeetingMap(prev => ({
+      ...prev,
+      [key]: { url: '', id: '', secret: '', customPlatformName: key === 'ZOOM' ? 'Zoom Meeting' : 'Google Meet' }
+    }));
     setMeetingSchedule(null);
     showToast('info', `Đã hủy kết nối tài khoản ${platform === 'zoom' ? 'Zoom' : 'Google Meet'}.`);
   };
@@ -1001,7 +1028,7 @@ export default function EventRequestCreate() {
   const getSelectedPlatformLabel = () => {
     if (selectedOnlinePlatform === 'ZOOM') return 'Zoom Meeting'
     if (selectedOnlinePlatform === 'GOOGLE') return 'Google Meet'
-    return meetingDetails.customPlatformName || 'Họp trực tuyến'
+    return activeMeetingDetails.customPlatformName || 'Họp trực tuyến'
   }
 
   const [ticketConfig, setTicketConfig] = useState({
@@ -1550,11 +1577,11 @@ export default function EventRequestCreate() {
 
     setIsSubmitting(true)
     try {
-      const activeUrl = meetingDetails.url.trim() || 
+      const activeUrl = activeMeetingDetails.url.trim() || 
         (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingLink : connectedPlatforms.google.meetingLink);
-      const activeId = meetingDetails.id.trim() || 
+      const activeId = activeMeetingDetails.id.trim() || 
         (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingId : connectedPlatforms.google.meetingId);
-      const activeSecret = meetingDetails.secret.trim() || 
+      const activeSecret = activeMeetingDetails.secret.trim() || 
         (selectedOnlinePlatform === 'ZOOM' ? connectedPlatforms.zoom.meetingSecret : connectedPlatforms.google.meetingSecret);
 
       const fmt = (s: string) => {
@@ -2205,8 +2232,11 @@ export default function EventRequestCreate() {
                         </label>
                         <input
                           type="text"
-                          value={meetingDetails.customPlatformName}
-                          onChange={(e) => setMeetingDetails(prev => ({ ...prev, customPlatformName: e.target.value }))}
+                          value={activeMeetingDetails.customPlatformName}
+                          onChange={(e) => setPlatformMeetingMap(prev => ({
+                            ...prev,
+                            CUSTOM: { ...prev.CUSTOM, customPlatformName: e.target.value }
+                          }))}
                           placeholder="Ví dụ: Microsoft Teams, Cisco Webex, Discord..."
                           className={`w-full border rounded-xl p-2.5 text-xs font-medium focus:outline-none focus:border-orange-500/50 ${
                             isDarkMode ? 'bg-[#18181b] border-white/10 text-white' : 'bg-white border-neutral-300 text-neutral-800'
@@ -2226,12 +2256,12 @@ export default function EventRequestCreate() {
                             <Link2 className="w-3 h-3 text-orange-400" />
                             Đường dẫn tham gia (Meeting URL) <span className="text-orange-500">*</span>
                           </label>
-                          {meetingDetails.url && (
+                          {activeMeetingDetails.url && (
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
                                 onClick={() => {
-                                  navigator.clipboard.writeText(meetingDetails.url);
+                                  navigator.clipboard.writeText(activeMeetingDetails.url);
                                   showToast('success', 'Đã sao chép link cuộc họp!');
                                 }}
                                 className={`text-[10px] font-bold flex items-center gap-1 cursor-pointer transition ${
@@ -2242,7 +2272,7 @@ export default function EventRequestCreate() {
                                 Sao chép
                               </button>
                               <a
-                                href={meetingDetails.url}
+                                href={activeMeetingDetails.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-[10px] font-bold flex items-center gap-0.5 text-orange-400 hover:text-orange-500"
@@ -2255,7 +2285,7 @@ export default function EventRequestCreate() {
                         </div>
                         <input
                           type="url"
-                          value={meetingDetails.url}
+                          value={activeMeetingDetails.url}
                           onChange={(e) => handleMeetingUrlChange(e.target.value)}
                           placeholder={
                             selectedOnlinePlatform === 'ZOOM'
@@ -2274,12 +2304,15 @@ export default function EventRequestCreate() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <div className="space-y-1">
                           <label className={`text-[10px] font-bold ${isDarkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                            Mã cuộc họp (Meeting ID / Code)
+                            Mã cuộc họp (Meeting ID)
                           </label>
                           <input
                             type="text"
-                            value={meetingDetails.id}
-                            onChange={(e) => setMeetingDetails(prev => ({ ...prev, id: e.target.value }))}
+                            value={activeMeetingDetails.id}
+                            onChange={(e) => setPlatformMeetingMap(prev => ({
+                              ...prev,
+                              [selectedOnlinePlatform]: { ...prev[selectedOnlinePlatform], id: e.target.value }
+                            }))}
                             placeholder={selectedOnlinePlatform === 'ZOOM' ? 'Ví dụ: 849 3021 9485' : 'Ví dụ: abc-defg-hij'}
                             className={`w-full border rounded-xl p-2.5 text-xs font-medium focus:outline-none focus:border-orange-500/50 ${
                               isDarkMode ? 'bg-[#18181b] border-white/10 text-white' : 'bg-white border-neutral-300 text-neutral-800'
@@ -2291,12 +2324,15 @@ export default function EventRequestCreate() {
                             isDarkMode ? 'text-neutral-400' : 'text-neutral-600'
                           }`}>
                             <Key className="w-3 h-3 text-orange-400" />
-                            Mật khẩu phòng (Passcode / Secret)
+                            Mật khẩu phòng (Passcode)
                           </label>
                           <input
                             type="text"
-                            value={meetingDetails.secret}
-                            onChange={(e) => setMeetingDetails(prev => ({ ...prev, secret: e.target.value }))}
+                            value={activeMeetingDetails.secret}
+                            onChange={(e) => setPlatformMeetingMap(prev => ({
+                              ...prev,
+                              [selectedOnlinePlatform]: { ...prev[selectedOnlinePlatform], secret: e.target.value }
+                            }))}
                             placeholder={selectedOnlinePlatform === 'GOOGLE' ? 'Không bắt buộc với Google Meet' : 'Ví dụ: k8X9mP'}
                             className={`w-full border rounded-xl p-2.5 text-xs font-medium focus:outline-none focus:border-orange-500/50 ${
                               isDarkMode ? 'bg-[#18181b] border-white/10 text-white' : 'bg-white border-neutral-300 text-neutral-800'
@@ -2306,30 +2342,28 @@ export default function EventRequestCreate() {
                       </div>
 
                       {/* Schedule Confirmation Card */}
-                      {meetingDetails.url && (
-                        <div className={`relative p-3.5 rounded-xl border transition ${
+                      {activeMeetingDetails.url && (
+                        <div className={`p-3.5 rounded-xl border transition ${
                           isDarkMode ? 'bg-orange-950/20 border-orange-500/20 text-orange-200' : 'bg-orange-50/80 border-orange-200 text-orange-900'
                         }`}>
-                          {/* Sát góc phải trên, nằm ngang không xuống dòng */}
-                          <div className="absolute top-3 right-3 shrink-0">
-                            <span className="inline-flex items-center whitespace-nowrap px-2 py-0.5 text-[9px] font-black rounded-full uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm">
-                              Đã book lịch
-                            </span>
-                          </div>
-
-                          <div className="flex items-start gap-2.5 pr-28">
+                          <div className="flex items-start gap-2.5">
                             <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500 mt-0.5 shrink-0">
                               <CalendarCheck className="w-4 h-4" />
                             </div>
-                            <div className="space-y-1.5 flex-1 min-w-0">
-                              {/* Tiêu đề ngắn gọn trên một hàng */}
-                              <div className="text-xs font-bold text-slate-800 dark:text-orange-200 whitespace-nowrap overflow-hidden text-ellipsis">
-                                Thời gian Phòng họp mong muốn
+                            <div className="space-y-2 flex-1 min-w-0">
+                              {/* Tiêu đề ngắn gọn kèm thời lượng phòng họp mong muốn */}
+                              <div className="text-xs font-bold text-slate-800 dark:text-orange-200 flex items-center gap-1.5 flex-wrap">
+                                <span>Thời gian Phòng họp mong muốn</span>
+                                {calcMeetingDuration(formData.preferredStart, formData.preferredEnd) && (
+                                  <span className="text-orange-600 dark:text-orange-400 font-extrabold">
+                                    ({calcMeetingDuration(formData.preferredStart, formData.preferredEnd)})
+                                  </span>
+                                )}
                               </div>
 
                               {/* Khung giờ format căn chuẩn hàng dọc */}
                               {formData.preferredStart && formData.preferredEnd ? (
-                                <div className="grid grid-cols-[auto_auto_1fr] items-center gap-x-1.5 text-[11px] leading-relaxed font-mono">
+                                <div className="grid grid-cols-[80px_12px_1fr] items-center text-[11px] leading-relaxed font-mono">
                                   <span className="text-slate-500 dark:text-orange-400/80 font-medium">Khung giờ</span>
                                   <span className="text-slate-400 dark:text-orange-400/60 font-semibold">:</span>
                                   <span className="font-bold text-slate-800 dark:text-orange-100">
@@ -2338,16 +2372,9 @@ export default function EventRequestCreate() {
 
                                   <span className="text-slate-500 dark:text-orange-400/80 font-medium">đến</span>
                                   <span className="text-slate-400 dark:text-orange-400/60 font-semibold">:</span>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="font-bold text-slate-800 dark:text-orange-100">
-                                      {formatMeetingSlot(formData.preferredEnd)}
-                                    </span>
-                                    {calcMeetingDuration(formData.preferredStart, formData.preferredEnd) && (
-                                      <span className="font-sans text-[10px] text-slate-500 dark:text-orange-300/70 font-normal">
-                                        ({calcMeetingDuration(formData.preferredStart, formData.preferredEnd)})
-                                      </span>
-                                    )}
-                                  </div>
+                                  <span className="font-bold text-slate-800 dark:text-orange-100">
+                                    {formatMeetingSlot(formData.preferredEnd)}
+                                  </span>
                                 </div>
                               ) : (
                                 <div className="text-amber-500 font-medium text-[11px]">
@@ -2358,10 +2385,6 @@ export default function EventRequestCreate() {
                           </div>
                         </div>
                       )}
-
-                      <p className={`text-[10px] leading-relaxed ${isDarkMode ? 'text-neutral-400/90' : 'text-neutral-500'}`}>
-                        💡 Người tham gia sẽ nhận được đường dẫn và thông tin phòng họp này trên vé điện tử và trang chi tiết sự kiện.
-                      </p>
                     </div>
                   </div>
                 )}
