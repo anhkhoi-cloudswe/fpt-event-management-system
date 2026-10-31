@@ -2328,14 +2328,19 @@ export default function EventRequestCreate() {
                           </label>
                           <input
                             type="text"
-                            value={activeMeetingDetails.secret}
+                            value={selectedOnlinePlatform === 'GOOGLE' ? '' : activeMeetingDetails.secret}
+                            disabled={selectedOnlinePlatform === 'GOOGLE'}
                             onChange={(e) => setPlatformMeetingMap(prev => ({
                               ...prev,
                               [selectedOnlinePlatform]: { ...prev[selectedOnlinePlatform], secret: e.target.value }
                             }))}
-                            placeholder={selectedOnlinePlatform === 'GOOGLE' ? 'Không bắt buộc với Google Meet' : 'Ví dụ: k8X9mP'}
+                            placeholder={selectedOnlinePlatform === 'GOOGLE' ? 'Không cần passcode' : 'Ví dụ: k8X9mP'}
                             className={`w-full border rounded-xl p-2.5 text-xs font-medium focus:outline-none focus:border-orange-500/50 ${
-                              isDarkMode ? 'bg-[#18181b] border-white/10 text-white' : 'bg-white border-neutral-300 text-neutral-800'
+                              selectedOnlinePlatform === 'GOOGLE'
+                                ? 'bg-black/5 dark:bg-white/[0.03] border-dashed border-neutral-300 dark:border-white/10 text-neutral-400 dark:text-neutral-500 cursor-not-allowed select-none'
+                                : isDarkMode
+                                ? 'bg-[#18181b] border-white/10 text-white'
+                                : 'bg-white border-neutral-300 text-neutral-800'
                             }`}
                           />
                         </div>
