@@ -288,7 +288,10 @@ const ERC_CSS = `
   html:not(.dark).erc-cinema aside a[class*="bg-orange"] *,
   html:not(.dark).erc-cinema aside a[class*="bg-gradient"] * { color: rgba(234,88,12,0.95) !important; }
 
-  html.erc-cinema main { overflow: hidden !important; }
+  html.erc-cinema main { overflow-y: auto !important; }
+  @media (min-width: 1024px) {
+    html.erc-cinema main { overflow: hidden !important; }
+  }
   html.erc-cinema main > div {
     background: transparent !important;
     padding: 0 !important;
@@ -489,7 +492,7 @@ function CalendarPopover({ value, onChange, onClose, minDate, isDark }: Calendar
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className={`absolute right-0 top-full mt-1.5 z-50 origin-top-right border rounded-2xl p-5 shadow-2xl w-[320px] select-none animate-fadeIn ${
+      <div className={`absolute right-0 sm:right-0 top-full mt-1.5 z-50 origin-top-right border rounded-2xl p-4 sm:p-5 shadow-2xl w-[290px] sm:w-[320px] max-w-[calc(100vw-32px)] select-none animate-fadeIn ${
         isDark ? 'bg-[#18181b] border-white/[0.08] text-white' : 'bg-white border-neutral-200 text-neutral-900'
       }`}>
         {/* Header matching Luma style */}
@@ -1746,16 +1749,16 @@ export default function EventRequestCreate() {
           ══════════════════════════════════════════════ */}
           <form
             onSubmit={handleSubmit}
-            className="relative z-10 h-full overflow-hidden flex items-start px-6 md:px-12 lg:px-16 max-w-[950px] mx-auto gap-10 w-full pt-10 pb-4"
+            className="relative z-10 min-h-full lg:h-full overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row items-center lg:items-start px-4 sm:px-6 md:px-12 lg:px-16 max-w-[950px] mx-auto gap-6 lg:gap-10 w-full pt-6 lg:pt-10 pb-16 lg:pb-4"
           >
 
             {/* ══════════════════════════════════════════
-                LEFT COLUMN — Square cover + controls
+                LEFT COLUMN / MOBILE TOP — Square cover + controls
             ══════════════════════════════════════════ */}
-            <div className="w-[300px] md:w-[340px] lg:w-[360px] shrink-0 flex flex-col gap-3 overflow-hidden mt-0 pt-0">
+            <div className="w-[220px] lg:w-[360px] shrink-0 flex flex-col gap-3 mx-auto lg:mx-0 mt-0 pt-0">
 
-              {/* ── Square cover image ── */}
-              <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-black/70 group">
+              {/* ── Square cover image (220x220 on mobile, responsive on lg) ── */}
+              <div className="relative w-[220px] h-[220px] lg:w-full lg:h-auto lg:aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-black/70 group mx-auto">
                 {bannerUrl ? (
                   <img src={bannerUrl} alt="Event banner" className="w-full h-full object-cover" />
                 ) : (
@@ -1819,9 +1822,9 @@ export default function EventRequestCreate() {
             </div>
 
             {/* ══════════════════════════════════════════
-                RIGHT COLUMN — Floating form canvas
+                RIGHT COLUMN / MOBILE MAIN — Floating form canvas
             ══════════════════════════════════════════ */}
-            <div className="flex-1 flex flex-col justify-between py-0 overflow-hidden h-full min-w-0 mt-0 pt-0">
+            <div className="w-full flex-1 flex flex-col justify-between py-0 lg:overflow-hidden lg:h-full min-w-0 mt-0 pt-0">
 
               {/* ── Header metadata row: flow label + visibility toggle ── */}
               <div className="flex items-center justify-between mb-2 flex-shrink-0">
