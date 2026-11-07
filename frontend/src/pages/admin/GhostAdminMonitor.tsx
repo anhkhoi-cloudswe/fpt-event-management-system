@@ -101,6 +101,7 @@ export default function GhostAdminMonitor() {
   // Drill-down states
   const [selectedSession, setSelectedSession] = useState<PageVisitSession | null>(null)
   const [selectedRequest, setSelectedRequest] = useState<RequestLog | null>(null)
+  const [selectedUserFilterEmail, setSelectedUserFilterEmail] = useState<string | null>(null)
 
   // Add user modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -237,6 +238,9 @@ export default function GhostAdminMonitor() {
   // Filtered session list
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
+      if (selectedUserFilterEmail && s.userEmail.toLowerCase() !== selectedUserFilterEmail.toLowerCase()) {
+        return false
+      }
       if (filterType === 'BLOCKED' && s.blockedCalls === 0) return false
       if (filterType === 'READONLY' && s.blockedCalls > 0) return false
       if (searchKeyword) {
@@ -247,10 +251,15 @@ export default function GhostAdminMonitor() {
       }
       return true
     })
-  }, [sessions, filterType, searchKeyword])
+  }, [sessions, selectedUserFilterEmail, filterType, searchKeyword])
 
-  const totalPageViews = sessions.length
-  const totalBlocked = useMemo(() => sessions.reduce((acc, s) => acc + s.blockedCalls, 0), [sessions])
+  const selectedSupervisedUser = useMemo(() => {
+    if (!selectedUserFilterEmail) return null
+    return supervisedUsers.find(u => u.email.toLowerCase() === selectedUserFilterEmail.toLowerCase()) || null
+  }, [supervisedUsers, selectedUserFilterEmail])
+
+  const totalPageViews = filteredSessions.length
+  const totalBlocked = useMemo(() => filteredSessions.reduce((acc, s) => acc + s.blockedCalls, 0), [filteredSessions])
 
   const formatTime = (iso: string) => {
     try {
@@ -302,87 +311,164 @@ export default function GhostAdminMonitor() {
 
       {/* Supervised Users List (CRUD & Safe Mode Control) */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-2">
           <div className="flex items-center gap-2.5">
             <UserCheck className="w-5 h-5 text-orange-500" />
             <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
               Danh sách tài khoản đang được giám sát ({supervisedUsers.length})
             </h2>
           </div>
-          <span className="text-xs text-slate-400 font-medium">
-            Bạn có thể Bật / Tắt Khóa Ghi độc lập cho từng người
-          </span>
+          <div className="flex items-center gap-3">
+            {selectedUserFilterEmail && (
+              <button
+                onClick={() => setSelectedUserFilterEmail(null)}
+                className="text-xs font-bold text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <X size={13} />
+                <span>Bỏ chọn lọc</span>
+              </button>
+            )}
+            <span className="text-xs text-slate-400 font-medium">
+              Nhấp vào ô để lọc nhật ký bên dưới • Bật / Tắt Khóa Ghi độc lập
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
-          {supervisedUsers.map((u) => (
+        {supervisedUsers.length === 0 ? (
+          <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-sm">
+            Chưa có tài khoản nào trong danh sách giám sát. Hãy nhấn &quot;Thêm tài khoản giám sát&quot; ở trên.
+          </div>
+        ) : (
+          <div className="overflow-x-auto pb-3 pt-2 -mx-1 px-1 custom-horizontal-scrollbar">
             <div 
-              key={u.email}
-              className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-950/40 flex flex-col justify-between space-y-4"
+              className={
+                supervisedUsers.length <= 6
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  : "grid grid-rows-2 grid-flow-col auto-cols-[minmax(330px,1fr)] gap-4 min-w-max"
+              }
             >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
-                    ID #{u.id || '—'}
-                  </span>
-                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                    u.role === 'ADMIN' ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' :
-                    u.role === 'STAFF' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400' :
-                    'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400'
-                  }`}>
-                    {u.role}
-                  </span>
-                </div>
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white mt-2">
-                  {u.name}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5 truncate" title={u.email}>
-                  {u.email}
-                </p>
-              </div>
-
-              {/* Safe Mode Switch Widget - Fixed single line */}
-              <div className="flex items-center justify-between pt-3 border-t border-slate-200/60 dark:border-slate-800/60">
-                <div className="text-left whitespace-nowrap">
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Trạng thái bảo vệ</div>
-                  <div className={`text-xs font-extrabold flex items-center gap-1.5 mt-0.5 ${
-                    u.safeMode ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'
-                  }`}>
-                    <span className={`w-2 h-2 rounded-full ${u.safeMode ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                    Safe Mode: {u.safeMode ? 'ĐANG BẬT' : 'ĐÃ TẮT'}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleToggleSafeMode(u)}
-                    disabled={updatingEmail === u.email}
-                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                      u.safeMode
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                        : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+              {supervisedUsers.map((u) => {
+                const isSelected = selectedUserFilterEmail?.toLowerCase() === u.email.toLowerCase()
+                return (
+                  <div 
+                    key={u.email}
+                    onClick={() => {
+                      setSelectedUserFilterEmail(prev => 
+                        prev?.toLowerCase() === u.email.toLowerCase() ? null : u.email
+                      )
+                    }}
+                    className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between space-y-4 cursor-pointer relative select-none ${
+                      isSelected
+                        ? 'border-orange-500 ring-2 ring-orange-500/30 bg-orange-50/50 dark:bg-orange-950/20 shadow-md'
+                        : 'border-slate-200/80 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-950/40 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs'
                     }`}
                   >
-                    {u.safeMode ? <Lock size={12} /> : <Unlock size={12} />}
-                    {updatingEmail === u.email ? '...' : u.safeMode ? 'Khóa Ghi (Bật)' : 'Mở Ghi (Tắt)'}
-                  </button>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                            ID #{u.id || '—'}
+                          </span>
+                          {isSelected && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-500 text-white shadow-xs animate-in fade-in">
+                              <Check size={11} strokeWidth={3} />
+                              ĐANG XEM
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                          u.role === 'ADMIN' ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' :
+                          u.role === 'STAFF' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400' :
+                          'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400'
+                        }`}>
+                          {u.role}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-extrabold text-slate-900 dark:text-white mt-2 flex items-center justify-between">
+                        <span>{u.name}</span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5 truncate" title={u.email}>
+                        {u.email}
+                      </p>
+                    </div>
 
-                  <button
-                    onClick={() => handleRemoveUser(u.email)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all cursor-pointer"
-                    title="Gỡ khỏi danh sách giám sát"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              </div>
+                    {/* Safe Mode Switch Widget - Fixed single line */}
+                    <div 
+                      className="flex items-center justify-between pt-3 border-t border-slate-200/60 dark:border-slate-800/60"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="text-left whitespace-nowrap">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Trạng thái bảo vệ</div>
+                        <div className={`text-xs font-extrabold flex items-center gap-1.5 mt-0.5 ${
+                          u.safeMode ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'
+                        }`}>
+                          <span className={`w-2 h-2 rounded-full ${u.safeMode ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                          Safe Mode: {u.safeMode ? 'ĐANG BẬT' : 'ĐÃ TẮT'}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleToggleSafeMode(u)
+                          }}
+                          disabled={updatingEmail === u.email}
+                          className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                            u.safeMode
+                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                              : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          {u.safeMode ? <Lock size={12} /> : <Unlock size={12} />}
+                          {updatingEmail === u.email ? '...' : u.safeMode ? 'Khóa Ghi (Bật)' : 'Mở Ghi (Tắt)'}
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRemoveUser(u.email)
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all cursor-pointer"
+                          title="Gỡ khỏi danh sách giám sát"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Level 1: Page-Level Sessions (Nhật ký vị trí xem của "Supervised Admin") */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        {selectedSupervisedUser && (
+          <div className="bg-orange-500/10 border-b border-orange-500/20 px-6 py-2.5 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-orange-600 dark:text-orange-400">Đang lọc xem riêng của:</span>
+              <span className="font-extrabold text-slate-900 dark:text-white">{selectedSupervisedUser.name}</span>
+              <span className="font-mono text-slate-500 dark:text-slate-400">({selectedSupervisedUser.email})</span>
+              <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${
+                selectedSupervisedUser.role === 'ADMIN' ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' :
+                selectedSupervisedUser.role === 'STAFF' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400' :
+                'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400'
+              }`}>
+                {selectedSupervisedUser.role}
+              </span>
+            </div>
+            <button
+              onClick={() => setSelectedUserFilterEmail(null)}
+              className="text-orange-600 dark:text-orange-400 hover:text-orange-700 font-bold flex items-center gap-1 cursor-pointer bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-orange-200 dark:border-orange-800/60 shadow-2xs"
+            >
+              <X size={12} />
+              <span>Xem tất cả người giám sát</span>
+            </button>
+          </div>
+        )}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <Activity className="w-5 h-5 text-orange-500" />
@@ -410,7 +496,7 @@ export default function GhostAdminMonitor() {
                   filterType === 'ALL' ? 'bg-orange-500 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
-                Tất cả ({sessions.length})
+                Tất cả ({filteredSessions.length})
               </button>
               <button
                 onClick={() => setFilterType('BLOCKED')}
