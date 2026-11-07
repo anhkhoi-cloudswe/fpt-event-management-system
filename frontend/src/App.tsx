@@ -43,6 +43,7 @@ import TermsAndPolicies from './pages/TermsAndPolicies.tsx'
 import AdminFinancePage from './pages/AdminFinance.tsx'
 import OrganizerSubscriptionPage from './pages/OrganizerSubscription.tsx'
 import FrontendCustomizer from './pages/admin/FrontendCustomizer.tsx'
+import GhostAdminMonitor from './pages/admin/GhostAdminMonitor.tsx'
 
 
 import { useState } from 'react'
@@ -190,6 +191,12 @@ function StaffRoute({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   // Only allow role 'STAFF'
   return user && user.role === 'STAFF' ? <>{children}</> : <Navigate to="/dashboard" />
+}
+
+function RootAdminRoute({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
+  const isRootAdmin = user?.email?.toLowerCase() === 'nguyenanhkhoi2212@gmail.com'
+  return isRootAdmin ? <>{children}</> : <Navigate to="/dashboard" replace />
 }
 
 class EventRequestsErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -356,6 +363,11 @@ function AppRoutes() {
         } />
         <Route path="system-config" element={<SystemConfig />} />
         <Route path="frontend-customizer" element={<FrontendCustomizer />} />
+        <Route path="ghost-monitor" element={
+          <RootAdminRoute>
+            <GhostAdminMonitor />
+          </RootAdminRoute>
+        } />
         <Route path="profile" element={<Profile />} />
       </Route>
       <Route

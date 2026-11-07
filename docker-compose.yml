@@ -328,6 +328,8 @@ services:
         BUILD_PATH: ./cmd/gateway
     container_name: fpt-gateway
     <<: *service-defaults
+    volumes:
+      - ./backend/logs:/app/logs
     ports:
       - "8080:8080"
     environment:
@@ -363,6 +365,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
         VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY}
         VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY}
         VITE_SYSTEM_TIME_OVERRIDE: ${SYSTEM_TIME_OVERRIDE}

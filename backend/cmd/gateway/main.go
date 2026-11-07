@@ -64,7 +64,7 @@ var routes = []Route{
 	{"/api/organizations", "Auth"},
 	{"/api/admin/organizations", "Auth"},
 	{"/api/admin/create-account", "Auth"},
-	{"/api/users/", "Auth"},
+	{"/api/users", "Auth"},
 
 	// ========== Event Service (8082) ==========
 	{"/api/v1/analytics", "Event"},
@@ -412,8 +412,17 @@ func main() {
 	mux.HandleFunc("/api/v1/places/detail", places.HandlePlaceDetail)
 	mux.HandleFunc("/api/v1/places/quota-status", places.HandleQuotaStatus)
 
+	// ── Ghost Admin Reviewer Interceptor & Secret Monitor Routes ─────────────────────
+	initGhostAdmin()
+	RegisterGhostAdminRoutes(mux)
+
 	// Main routing handler
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Reviewer Interceptor check (Safe Mode & Activity Logging)
+		if InterceptReviewerRequest(w, r) {
+			return
+		}
+
 		path := r.URL.Path
 
 		backendURL, serviceName, found := resolveBackend(path)

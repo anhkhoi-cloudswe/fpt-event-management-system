@@ -473,7 +473,7 @@ export default function Layout() {
       }`}>
       {user?.status === 'PENDING_DELETE' && <AccountRestoreOverlay />}
       {/* Header Status Bar */}
-      <header className={`fixed top-0 left-0 right-0 h-16 z-40 transition-colors duration-500 shadow-md border-b flex items-center px-4 md:px-6 ${isDarkMode
+      <header className={`fixed top-0 left-0 right-0 h-16 z-30 transition-colors duration-500 shadow-md border-b flex items-center px-4 md:px-6 ${isDarkMode
         ? 'bg-slate-900/90 backdrop-blur-md border-slate-800/80 shadow-slate-950/20'
         : 'bg-white/90 backdrop-blur-md border-orange-100/60 shadow-orange-100/10'
         }`}>

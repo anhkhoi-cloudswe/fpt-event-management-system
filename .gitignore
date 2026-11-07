@@ -11,6 +11,7 @@ backend/bin/
 backend/dist/
 backend/bootstrap
 backend/tests/logs/
+backend/logs/
 backend/test/
 backend/gateway*
 backend/auth-lambda*
