@@ -290,7 +290,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/guest" element={<PublicRoute><GuestLanding /></PublicRoute>} />
+      <Route path="/guest" element={<GuestLanding />} />
       <Route path="/policy" element={<SystemPolicy />} />
       <Route path="/terms-and-policies" element={<TermsAndPolicies />} />
       <Route path="/terms" element={<TermsAndPolicies />} />

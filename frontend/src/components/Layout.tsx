@@ -25,7 +25,8 @@ import {
   Undo2,
   DollarSign,
   Sparkles,
-  LayoutTemplate
+  LayoutTemplate,
+  ShieldCheck
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { useWallet } from '../hooks/useWallet'
@@ -235,6 +236,7 @@ export default function Layout() {
   const isOrganizer = user?.role === 'ORGANIZER'
   const isStaff = user?.role === 'STAFF'
   const isAdmin = user?.role === 'ADMIN'
+  const isRootAdmin = user?.email?.toLowerCase() === 'nguyenanhkhoi2212@gmail.com'
   const showWallet = user?.role !== 'STAFF' && user?.role !== 'ADMIN'
   const isRouteActive = (path: string) => {
     const targetPath = typeof path === 'string' && path.trim() ? path.trim() : '/dashboard'
@@ -367,6 +369,7 @@ export default function Layout() {
           {renderLink("/dashboard/venues", MapPin, currentLanguage === 'en' ? "Venues" : "Địa Điểm", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/admin/finance", DollarSign, currentLanguage === 'en' ? "Finance & Payouts" : "Tài chính & Quyết toán", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/manage", Users, currentLanguage === 'en' ? "System Management" : "Quản lý hệ thống", handleLinkClick, closeMobile)}
+          {isRootAdmin && renderLink("/dashboard/ghost-monitor", ShieldCheck, currentLanguage === 'en' ? "Ghost Admin" : "Giám sát ngầm", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/frontend-customizer", LayoutTemplate, currentLanguage === 'en' ? "Frontend Customizer" : "Giao diện Frontend", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/reports", FileBarChart, currentLanguage === 'en' ? "Reports" : "Báo cáo", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/system-config", Sliders, currentLanguage === 'en' ? "Configuration" : "Cấu hình", handleLinkClick, closeMobile)}

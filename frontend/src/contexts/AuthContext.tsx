@@ -329,8 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             })
             .catch((err) => {
-              console.warn('[Auth] AFK token recovery failed (session expired):', err)
-              handleSessionExpired()
+              console.warn('[Auth] AFK token recovery failed:', err)
             })
         } else {
           lastActiveAt = Date.now()
@@ -432,31 +431,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user])
 
   useEffect(() => {
-    const refreshOnFocus = () => {
-      if (!document.hidden && isAuthenticated && !isPublicRoutePath(window.location.pathname)) {
-        void refreshUser(true)
-      }
-    }
-
-    const refreshOnVisibility = () => {
-      if (document.visibilityState === 'visible' && isAuthenticated && !isPublicRoutePath(window.location.pathname)) {
-        void refreshUser(true)
-      }
-    }
-
+    // Background polling: periodic soft refresh of profile data every 2 minutes while active
     const intervalId = window.setInterval(() => {
-      if (isAuthenticated && !isPublicRoutePath(window.location.pathname)) {
+      if (!document.hidden && isAuthenticated && !isPurePublicLanding(window.location.pathname)) {
         void refreshUser(true)
       }
     }, 120000)
 
-    window.addEventListener('focus', refreshOnFocus)
-    document.addEventListener('visibilitychange', refreshOnVisibility)
-
     return () => {
       window.clearInterval(intervalId)
-      window.removeEventListener('focus', refreshOnFocus)
-      document.removeEventListener('visibilitychange', refreshOnVisibility)
     }
   }, [refreshUser, isAuthenticated])
 
