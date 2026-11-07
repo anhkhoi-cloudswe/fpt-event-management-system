@@ -36,6 +36,26 @@ import {
   type SystemUserOption
 } from '../../services/ghostAdminService'
 
+// Helper function to get unified role badge styling
+function getRoleBadgeClasses(role: string, isSelected: boolean = false) {
+  if (isSelected) {
+    return 'bg-white/20 text-white'
+  }
+  const upper = (role || '').toUpperCase()
+  switch (upper) {
+    case 'ADMIN':
+      return 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-400 border border-orange-200 dark:border-orange-800/60'
+    case 'ORGANIZER':
+      return 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400 border border-purple-200 dark:border-purple-800/60'
+    case 'STUDENT':
+      return 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
+    case 'STAFF':
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60'
+    default:
+      return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+  }
+}
+
 // Helper function to parse user agent into human-readable details
 function parseUserAgent(ua: string | undefined) {
   if (!ua) {
@@ -107,7 +127,7 @@ export default function GhostAdminMonitor() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [selectedUserEmail, setSelectedUserEmail] = useState('')
   const [userSearchTerm, setUserSearchTerm] = useState('')
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState<'ALL' | 'ADMIN' | 'STAFF' | 'ORGANIZER'>('ALL')
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<'ALL' | 'ADMIN' | 'STAFF' | 'ORGANIZER' | 'STUDENT'>('ALL')
 
   // Search & Filters
   const [searchKeyword, setSearchKeyword] = useState('')
@@ -376,11 +396,7 @@ export default function GhostAdminMonitor() {
                             </span>
                           )}
                         </div>
-                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                          u.role === 'ADMIN' ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' :
-                          u.role === 'STAFF' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400' :
-                          'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400'
-                        }`}>
+                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${getRoleBadgeClasses(u.role)}`}>
                           {u.role}
                         </span>
                       </div>
@@ -452,11 +468,7 @@ export default function GhostAdminMonitor() {
               <span className="font-bold text-orange-600 dark:text-orange-400">Đang lọc xem riêng của:</span>
               <span className="font-extrabold text-slate-900 dark:text-white">{selectedSupervisedUser.name}</span>
               <span className="font-mono text-slate-500 dark:text-slate-400">({selectedSupervisedUser.email})</span>
-              <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${
-                selectedSupervisedUser.role === 'ADMIN' ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' :
-                selectedSupervisedUser.role === 'STAFF' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400' :
-                'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400'
-              }`}>
+              <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${getRoleBadgeClasses(selectedSupervisedUser.role)}`}>
                 {selectedSupervisedUser.role}
               </span>
             </div>
@@ -915,6 +927,7 @@ export default function GhostAdminMonitor() {
                       <option value="ADMIN">ADMIN</option>
                       <option value="STAFF">STAFF</option>
                       <option value="ORGANIZER">ORGANIZER</option>
+                      <option value="STUDENT">STUDENT</option>
                     </select>
                   </div>
                 </div>
@@ -940,13 +953,7 @@ export default function GhostAdminMonitor() {
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                                isSelected
-                                  ? 'bg-white/20 text-white'
-                                  : u.role === 'ADMIN' ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' :
-                                    u.role === 'STAFF' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400' :
-                                    'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400'
-                              }`}>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${getRoleBadgeClasses(u.role, isSelected)}`}>
                                 {u.role}
                               </span>
                               <span className="font-extrabold text-xs truncate">
@@ -984,7 +991,7 @@ export default function GhostAdminMonitor() {
                       <span className="text-slate-900 dark:text-white font-extrabold">{chosenUser.fullName}</span>
                       <span className="text-slate-400 font-mono text-[11px] ml-1.5">({chosenUser.email})</span>
                     </div>
-                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300 font-bold">
+                    <span className={`text-[11px] font-mono px-2 py-0.5 rounded font-bold ${getRoleBadgeClasses(chosenUser.role)}`}>
                       {chosenUser.role} • #{chosenUser.userId}
                     </span>
                   </div>
