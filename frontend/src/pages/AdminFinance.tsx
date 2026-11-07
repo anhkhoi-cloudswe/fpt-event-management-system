@@ -780,13 +780,13 @@ export default function AdminFinancePage() {
               <div className="h-64 my-2 flex items-center justify-center">
                 {loadingSubAnalytics ? (
                   <div className="text-xs text-slate-400">Đang tải đồ thị...</div>
-                ) : !subAnalytics?.tierBreakdown || subAnalytics.tierBreakdown.length === 0 || subAnalytics.tierBreakdown.every(t => t.totalBought === 0) ? (
+                ) : !subAnalytics?.tierBreakdown || subAnalytics.tierBreakdown.filter(t => t.tierCode !== 'FREE').length === 0 || subAnalytics.tierBreakdown.filter(t => t.tierCode !== 'FREE').every(t => t.totalBought === 0) ? (
                   <div className="text-xs text-slate-400">Chưa có dữ liệu giao dịch mua gói</div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={subAnalytics.tierBreakdown.filter(t => t.totalBought > 0)}
+                        data={subAnalytics.tierBreakdown.filter(t => t.tierCode !== 'FREE' && t.totalBought > 0)}
                         dataKey="totalBought"
                         nameKey="tierName"
                         cx="50%"
@@ -795,9 +795,8 @@ export default function AdminFinancePage() {
                         outerRadius={85}
                         paddingAngle={4}
                       >
-                        {subAnalytics.tierBreakdown.filter(t => t.totalBought > 0).map((entry) => {
+                        {subAnalytics.tierBreakdown.filter(t => t.tierCode !== 'FREE' && t.totalBought > 0).map((entry) => {
                           const tierColors: Record<string, string> = {
-                            FREE: '#3b82f6',
                             PRO: '#f59e0b',
                             BUSINESS: '#10b981',
                             ENTERPRISE: '#8b5cf6',
@@ -843,10 +842,9 @@ export default function AdminFinancePage() {
 
               <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 {subAnalytics?.tierBreakdown
-                  .filter((t) => t.tierCode !== 'FREE' || t.totalBought > 0 || t.totalRevenue > 0)
+                  .filter((t) => t.tierCode !== 'FREE')
                   .map((t) => {
                   const borderColors: Record<string, string> = {
-                    FREE: 'border-l-blue-500',
                     PRO: 'border-l-amber-500',
                     BUSINESS: 'border-l-emerald-500',
                     ENTERPRISE: 'border-l-purple-500',
@@ -1318,7 +1316,6 @@ export default function AdminFinancePage() {
                   <option value="ALL">Tất cả gói</option>
                   <option value="PRO">Gói PRO</option>
                   <option value="BUSINESS">Gói BUSINESS</option>
-                  <option value="FREE">Gói FREE</option>
                 </select>
 
                 {/* Status Filter */}
@@ -1338,6 +1335,7 @@ export default function AdminFinancePage() {
                 Hiển thị:{' '}
                 <span className="text-slate-900 dark:text-white font-black">
                   {(subAnalytics?.subscribers || [])
+                    .filter((s) => s.tierCode !== 'FREE')
                     .filter((s) => {
                       const matchSearch =
                         !subSearch ||
@@ -1375,7 +1373,7 @@ export default function AdminFinancePage() {
                           Đang tải danh sách người mua gói...
                         </td>
                       </tr>
-                    ) : !subAnalytics?.subscribers || subAnalytics.subscribers.length === 0 ? (
+                    ) : !subAnalytics?.subscribers || subAnalytics.subscribers.filter((s) => s.tierCode !== 'FREE').length === 0 ? (
                       <tr>
                         <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
                           Chưa có dữ liệu người mua gói subscription nào.
@@ -1383,6 +1381,7 @@ export default function AdminFinancePage() {
                       </tr>
                     ) : (
                       subAnalytics.subscribers
+                        .filter((s) => s.tierCode !== 'FREE')
                         .filter((s) => {
                           const matchSearch =
                             !subSearch ||

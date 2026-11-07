@@ -1042,7 +1042,7 @@ func (r *TicketRepository) GetAdminSubscriptionAnalytics(ctx context.Context) (*
 		Subscribers:   make([]models.SubscriptionSubscriberItem, 0),
 	}
 
-	// 1. Lấy danh sách phân tích theo từng Tier (PRO, BUSINESS, FREE,...)
+	// 1. Lấy danh sách phân tích theo từng Tier trả phí đã mua (loại trừ gói FREE mặc định)
 	tierQuery := `
 		SELECT 
 			st.tier_code,
@@ -1052,6 +1052,7 @@ func (r *TicketRepository) GetAdminSubscriptionAnalytics(ctx context.Context) (*
 			COALESCE(SUM(us.amount_paid_vnd), 0) AS total_revenue
 		FROM subscription_tier st
 		LEFT JOIN user_subscription us ON st.tier_id = us.tier_id
+		WHERE st.tier_code != 'FREE'
 		GROUP BY st.tier_id, st.tier_code, st.name
 		ORDER BY st.price_vnd ASC, st.tier_id ASC
 	`
@@ -1101,7 +1102,7 @@ func (r *TicketRepository) GetAdminSubscriptionAnalytics(ctx context.Context) (*
 		}
 	}
 
-	// 4. Lấy danh sách chi tiết các subscribers (người mua / đang dùng gói)
+	// 4. Lấy danh sách chi tiết các subscribers (người mua / đang dùng gói trả phí, loại trừ gói FREE)
 	subsQuery := `
 		SELECT 
 			us.subscription_id,
@@ -1119,6 +1120,7 @@ func (r *TicketRepository) GetAdminSubscriptionAnalytics(ctx context.Context) (*
 		FROM user_subscription us
 		JOIN subscription_tier st ON us.tier_id = st.tier_id
 		LEFT JOIN users u ON us.user_id = u.user_id
+		WHERE st.tier_code != 'FREE'
 		ORDER BY COALESCE(us.start_date, us.created_at) DESC
 		LIMIT 100
 	`
