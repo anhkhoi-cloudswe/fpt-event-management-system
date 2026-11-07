@@ -89,6 +89,7 @@ const formatDateTimeWithParens = (dateStr?: string) => {
 
 const getTierDisplayName = (tierCode?: string, fallbackName?: string) => {
   const code = (tierCode || '').toUpperCase()
+  if (code === 'FREE') return 'Miễn Phí'
   if (code === 'PRO') return 'PRO'
   if (code === 'BUSINESS') return 'BUSINESS'
   if (fallbackName) {
@@ -363,10 +364,83 @@ export default function AdminFinancePage() {
     setShowCreateTierModal(true)
   }
 
+  // Helper sinh mã code chuẩn tự động từ tên gói
+  const generateTierCodeFromName = (name: string): string => {
+    // Chuyển tiếng Việt có dấu thành không dấu
+    const normalized = name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toUpperCase()
+      // Thay thế ký tự không phải chữ/số bằng dấu gạch dưới
+      .replace(/[^A-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+    return normalized
+  }
+
   // Create Tier Handler
   const handleCreateTier = async () => {
-    if (!newTierCode.trim() || !newTierName.trim()) {
-      showToast('error', 'Vui lòng nhập Mã gói và Tên gói dịch vụ')
+    const trimmedName = newTierName.trim()
+    if (!trimmedName) {
+      showToast('error', 'Vui lòng nhập Tên gói dịch vụ')
+      return
+    }
+
+    // Tự động sinh mã gói từ tên nếu người dùng không sửa hoặc hệ thống tự động gán
+    const autoCode = generateTierCodeFromName(trimmedName) || 'TIER_' + Date.now()
+    const finalCode = (newTierCode.trim() || autoCode).toUpperCase()
+
+    // 1. Kiểm tra các từ khóa tên cấm / trùng lặp với các gói mặc định và các biến thể viết hoa/thường/không dấu
+    const lowerName = trimmedName.toLowerCase()
+    const normalizedName = trimmedName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+
+    const reservedKeywords = [
+      'free',
+      'mien phi',
+      'miễn phí',
+      'pro',
+      'chuyen nghiep',
+      'chuyên nghiệp',
+      'business',
+      'doanh nghiep',
+      'doanh nghiệp'
+    ]
+
+    const isReserved = reservedKeywords.some(
+      (kw) =>
+        lowerName === kw ||
+        normalizedName === kw ||
+        lowerName === `gói ${kw}` ||
+        normalizedName === `goi ${kw}` ||
+        lowerName === `goi ${kw}`
+    )
+
+    if (isReserved || ['FREE', 'PRO', 'BUSINESS'].includes(finalCode)) {
+      showToast('error', `Tên gói "${trimmedName}" đã trùng hoặc xung đột với các gói mặc định của hệ thống (FREE, PRO, BUSINESS). Vui lòng chọn tên khác!`)
+      return
+    }
+
+    // 2. Kiểm tra trùng tên hoặc trùng mã code với các gói hiện có trong tiersList
+    const isDuplicate = tiersList.some((t) => {
+      const tName = (t.name || '').toLowerCase()
+      const tNormName = (t.name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      const tCode = (t.tierCode || '').toUpperCase()
+      return (
+        tCode === finalCode ||
+        tName === lowerName ||
+        tNormName === normalizedName ||
+        `gói ${tName}` === lowerName ||
+        tName === `gói ${lowerName}`
+      )
+    })
+
+    if (isDuplicate) {
+      showToast('error', `Gói dịch vụ "${trimmedName}" hoặc mã "${finalCode}" đã tồn tại trong danh sách!`)
       return
     }
 
@@ -374,8 +448,8 @@ export default function AdminFinancePage() {
       setCreatingTier(true)
       const commissionBps = Math.round(newTierCommissionPercent * 100)
       const res = await adminFinanceService.createSubscriptionTier({
-        tierCode: newTierCode.trim().toUpperCase(),
-        name: newTierName.trim(),
+        tierCode: finalCode,
+        name: trimmedName,
         description: newTierDescription.trim(),
         priceVnd: newTierPriceVnd,
         commissionBps,
@@ -384,7 +458,7 @@ export default function AdminFinancePage() {
         isActive: newTierIsActive,
         reason: newTierReason.trim() || 'Tạo gói mới từ Admin Dashboard'
       })
-      showToast('success', res.message || `Tạo gói dịch vụ ${newTierName} thành công!`)
+      showToast('success', res.message || `Tạo gói dịch vụ ${trimmedName} thành công!`)
       setShowCreateTierModal(false)
       void loadTiers()
       void loadSubscriptionAnalytics()
@@ -1172,7 +1246,7 @@ export default function AdminFinancePage() {
                   className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer"
                 >
                   <Plus size={14} />
-                  <span>+ Tạo Gói Dịch Vụ Mới</span>
+                  <span>Tạo Gói Dịch Vụ Mới</span>
                 </button>
 
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
@@ -1262,7 +1336,9 @@ export default function AdminFinancePage() {
                         </span>
                       </div>
 
-                      <h4 className="text-base font-black text-slate-900 dark:text-white mt-3 truncate">{tier.name}</h4>
+                      <h4 className="text-base font-black text-slate-900 dark:text-white mt-3 truncate">
+                        Gói {getTierDisplayName(tier.tierCode, tier.name)}
+                      </h4>
                       <div className="text-xl font-black text-orange-600 dark:text-orange-400 mt-1">
                         {isFree ? '0 đ / vĩnh viễn' : `${formatVND(tier.priceVnd)} / tháng`}
                       </div>
@@ -2122,32 +2198,26 @@ export default function AdminFinancePage() {
             </div>
 
             <div className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">
-                    Mã Gói (Code): <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="VD: ENTERPRISE, VIP..."
-                    value={newTierCode}
-                    onChange={(e) => setNewTierCode(e.target.value.toUpperCase())}
-                    className="w-full mt-1.5 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-black uppercase text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">
-                    Tên Gói Hiển Thị: <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="VD: Gói Doanh Nghiệp VIP"
-                    value={newTierName}
-                    onChange={(e) => setNewTierName(e.target.value)}
-                    className="w-full mt-1.5 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
-                  />
-                </div>
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">
+                  Tên Gói Hiển Thị: <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="VD: Gói Mở Rộng VIP, Gói Cao Cấp..."
+                  value={newTierName}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setNewTierName(val)
+                    setNewTierCode(generateTierCodeFromName(val))
+                  }}
+                  className="w-full mt-1.5 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
+                />
+                {newTierCode && (
+                  <p className="text-[11px] text-slate-400 mt-1 font-mono">
+                    Mã hệ thống tự sinh: <span className="font-black text-orange-600 dark:text-orange-400">{newTierCode}</span>
+                  </p>
+                )}
               </div>
 
               <div>
@@ -2239,7 +2309,7 @@ export default function AdminFinancePage() {
               </button>
               <button
                 onClick={handleCreateTier}
-                disabled={creatingTier || !newTierCode.trim() || !newTierName.trim()}
+                disabled={creatingTier || !newTierName.trim()}
                 className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-xs shadow-lg shadow-orange-950/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
               >
                 {creatingTier ? 'Đang tạo...' : 'Xác Nhận Tạo Gói'}
