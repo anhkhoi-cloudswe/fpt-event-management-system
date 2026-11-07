@@ -56,20 +56,31 @@ const formatVND = (val: number) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0)
 }
 
-const formatDate = (dateStr?: string) => {
+const formatDateTimeWithParens = (dateStr?: string) => {
   if (!dateStr) return '-'
   try {
     const d = new Date(dateStr)
-    return d.toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    const hours = String(d.getHours()).padStart(2, '0')
+    const minutes = String(d.getMinutes()).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const year = d.getFullYear()
+    return `${hours}:${minutes} (${day}/${month}/${year})`
   } catch {
     return dateStr
   }
+}
+
+const getTierDisplayName = (tierCode?: string, fallbackName?: string) => {
+  const code = (tierCode || '').toUpperCase()
+  if (code === 'PRO') return 'PRO'
+  if (code === 'BUSINESS') return 'BUSINESS'
+  if (fallbackName) {
+    if (fallbackName.toLowerCase().includes('chuyên nghiệp')) return 'PRO'
+    if (fallbackName.toLowerCase().includes('doanh nghiệp')) return 'BUSINESS'
+    return fallbackName
+  }
+  return code || '-'
 }
 
 export default function AdminFinancePage() {
@@ -786,9 +797,12 @@ export default function AdminFinancePage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={subAnalytics.tierBreakdown.filter(t => t.tierCode !== 'FREE' && t.totalBought > 0)}
+                        data={subAnalytics.tierBreakdown.filter(t => t.tierCode !== 'FREE' && t.totalBought > 0).map(t => ({
+                          ...t,
+                          displayName: getTierDisplayName(t.tierCode, t.tierName)
+                        }))}
                         dataKey="totalBought"
-                        nameKey="tierName"
+                        nameKey="displayName"
                         cx="50%"
                         cy="50%"
                         innerRadius={55}
@@ -798,7 +812,7 @@ export default function AdminFinancePage() {
                         {subAnalytics.tierBreakdown.filter(t => t.tierCode !== 'FREE' && t.totalBought > 0).map((entry) => {
                           const tierColors: Record<string, string> = {
                             PRO: '#f59e0b',
-                            BUSINESS: '#10b981',
+                            BUSINESS: '#a855f7',
                             ENTERPRISE: '#8b5cf6',
                             CUSTOM: '#ec4899'
                           }
@@ -816,7 +830,7 @@ export default function AdminFinancePage() {
                             return (
                               <div className="bg-slate-900/95 text-white p-3 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-md text-xs space-y-1">
                                 <div className="font-extrabold text-orange-400 flex items-center justify-between gap-3">
-                                  <span>{data.tierName}</span>
+                                  <span>Gói {getTierDisplayName(data.tierCode, data.tierName)}</span>
                                   <span className="text-white bg-slate-800 px-2 py-0.5 rounded-md text-[10px]">{data.tierCode}</span>
                                 </div>
                                 <div className="text-slate-300">
@@ -846,14 +860,14 @@ export default function AdminFinancePage() {
                   .map((t) => {
                   const borderColors: Record<string, string> = {
                     PRO: 'border-l-amber-500',
-                    BUSINESS: 'border-l-emerald-500',
+                    BUSINESS: 'border-l-purple-500',
                     ENTERPRISE: 'border-l-purple-500',
                     CUSTOM: 'border-l-pink-500'
                   }
                   return (
                     <div key={t.tierCode} className={`p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 text-xs border-l-4 ${borderColors[t.tierCode] || 'border-l-orange-500'}`}>
                       <div className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
-                        <span>{t.tierName}</span>
+                        <span>Gói {getTierDisplayName(t.tierCode, t.tierName)}</span>
                         <span className="text-orange-500 font-black">{t.totalBought}</span>
                       </div>
                       <div className="text-[11px] text-slate-400 mt-0.5">
@@ -1415,7 +1429,7 @@ export default function AdminFinancePage() {
                                   }`}
                                 >
                                   <Crown size={12} />
-                                  {s.tierName}
+                                  Gói {getTierDisplayName(s.tierCode, s.tierName)}
                                 </span>
                               </td>
                               <td className="py-3.5 px-4 text-right font-black text-slate-900 dark:text-white">
@@ -1436,12 +1450,9 @@ export default function AdminFinancePage() {
                                 <div className="text-xs text-slate-700 dark:text-slate-300 font-medium">
                                   {formatDate(s.startDate)} → {formatDate(s.endDate)}
                                 </div>
-                                {s.autoRenew && (
-                                  <div className="text-[10px] text-emerald-500 font-bold">Tự động gia hạn</div>
-                                )}
                               </td>
-                              <td className="py-3.5 px-4 text-slate-400 whitespace-nowrap">
-                                {formatDate(s.startDate || s.createdAt)}
+                              <td className="py-3.5 px-4 text-slate-400 whitespace-nowrap font-medium text-xs">
+                                {formatDateTimeWithParens(s.startDate || s.createdAt)}
                               </td>
                             </tr>
                           )
