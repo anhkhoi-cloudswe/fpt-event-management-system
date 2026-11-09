@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { BarChart3, RefreshCw, Info, TrendingUp, Globe, Smartphone, FileText, Sparkles, Layers, MapPin, Compass } from 'lucide-react'
+import React, { Component, type ReactNode, useState } from 'react'
+import { BarChart3, RefreshCw, Info, TrendingUp, Globe, Smartphone, FileText, Sparkles, Layers, MapPin, Compass, AlertCircle } from 'lucide-react'
 import GA4LockedOverlay from './GA4LockedOverlay'
 import GA4MetricCards from './GA4MetricCards'
 import GA4DateRangePicker, { buildPresetRange, type DateRange } from './GA4DateRangePicker'
@@ -15,6 +15,44 @@ import {
 } from './GA4Charts'
 import { useGA4EventAnalytics, useGA4SystemAnalytics, type GA4Tier } from '../../hooks/useGA4Analytics'
 import type { GA4SystemAnalytics } from '../../services/analyticsService'
+
+// ─── Local Error Boundary to Prevent White Screen ────────────────────────────
+class GA4DashboardErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+  state = { hasError: false, error: null }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, info: any) {
+    console.error('[GA4DashboardErrorBoundary]', error, info)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-3xl border border-red-200 dark:border-red-900/50 bg-red-50/60 dark:bg-red-950/30 p-8 text-center space-y-3">
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-red-500/10 text-red-600 flex items-center justify-center">
+            <AlertCircle size={24} />
+          </div>
+          <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">
+            Không thể tải giao diện phân tích GA4
+          </h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+            Hệ thống phát hiện lỗi khi đồng bộ số liệu sự kiện này. Bạn có thể nhấn thử lại hoặc chọn sự kiện khác.
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs cursor-pointer transition shadow-sm"
+          >
+            Thử tải lại
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 // ─── Modern Section Wrapper ───────────────────────────────────────────────────
 function AnalyticsSection({
@@ -317,7 +355,8 @@ export default function GA4AnalyticsDashboard({
     : 'FREE'
 
   return (
-    <div className="space-y-4">
+    <GA4DashboardErrorBoundary>
+      <div className="space-y-4">
       {/* Light / Dark Mode Adaptive Header Banner */}
       <div className="relative overflow-hidden rounded-3xl border border-orange-200/80 dark:border-slate-800 bg-gradient-to-r from-white via-orange-50/40 to-amber-50/50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 shadow-lg shadow-orange-500/5 transition-all">
         <div className="absolute top-0 right-0 w-64 h-64 bg-orange-400/10 dark:bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -381,5 +420,6 @@ export default function GA4AnalyticsDashboard({
         </div>
       )}
     </div>
+    </GA4DashboardErrorBoundary>
   )
 }

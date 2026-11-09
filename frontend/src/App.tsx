@@ -227,6 +227,49 @@ class EventRequestsErrorBoundary extends Component<{ children: ReactNode }, { ha
   }
 }
 
+class ReportsErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[ReportsErrorBoundary]', error, info)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-[60vh] bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center shadow-xl space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-orange-500/10 text-orange-600 flex items-center justify-center">
+              <span className="text-2xl">📊</span>
+            </div>
+            <div>
+              <p className="text-base font-black text-slate-900 dark:text-slate-100">Không thể tải báo cáo</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Đã xảy ra lỗi hiển thị giao diện báo cáo. Dữ liệu của bạn vẫn an toàn trên hệ thống.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false })
+                window.location.reload()
+              }}
+              className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs cursor-pointer transition shadow-md shadow-orange-500/20"
+            >
+              Tải lại trang
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
 function AppRoutes() {
   const DashboardEventPageRedirect = () => {
     const { id } = useParams()
@@ -350,7 +393,7 @@ function AppRoutes() {
         <Route path="manage" element={<AdminDashboard />} />
         <Route path="admin/finance" element={<AdminFinancePage />} />
         <Route path="finance" element={<AdminFinancePage />} />
-        <Route path="reports" element={<Reports />} />
+        <Route path="reports" element={<ReportsErrorBoundary><Reports /></ReportsErrorBoundary>} />
         <Route path="organizer/wallet" element={<OrganizerWalletPage />} />
         <Route path="organizer/subscription" element={<OrganizerSubscriptionPage />} />
         <Route path="subscription" element={<OrganizerSubscriptionPage />} />

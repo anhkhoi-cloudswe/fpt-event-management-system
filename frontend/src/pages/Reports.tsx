@@ -2078,19 +2078,19 @@ export default function Reports() {
                             <div className="flex justify-between items-center text-xs">
                               <span className="text-slate-400 font-medium">Tỷ lệ lấp đầy:</span>
                               <span className="text-slate-900 dark:text-white font-black text-sm">
-                                {cat.fillRatePercent.toFixed(1).replace('.', ',')}%
+                                {((cat.fillRatePercent ?? 0)).toFixed(1).replace('.', ',')}%
                               </span>
                             </div>
                             <div className="w-full bg-slate-200 dark:bg-slate-700/80 rounded-full h-2.5 overflow-hidden p-0.5 shadow-inner">
                               <div
                                 className={`h-full rounded-full transition-all duration-700 shadow-sm ${
-                                  cat.fillRatePercent >= 80
+                                  (cat.fillRatePercent ?? 0) >= 80
                                     ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
-                                    : cat.fillRatePercent >= 40
+                                    : (cat.fillRatePercent ?? 0) >= 40
                                     ? 'bg-gradient-to-r from-amber-500 to-orange-500'
                                     : 'bg-gradient-to-r from-orange-500 to-rose-500'
                                 }`}
-                                style={{ width: `${Math.min(100, Math.max(0, cat.fillRatePercent))}%` }}
+                                style={{ width: `${Math.min(100, Math.max(0, cat.fillRatePercent ?? 0))}%` }}
                               />
                             </div>
                           </div>

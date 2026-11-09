@@ -14,9 +14,18 @@ function fmt(n: number): string {
 }
 
 export default function GA4MetricCards({ summary, realtimeUsers, hasAdvanced }: GA4MetricCardsProps) {
-  const bouncePercent = ((summary.bounceRate ?? 0) * 100).toFixed(1)
-  const convRate = summary.sessions > 0
-    ? ((summary.conversions / summary.sessions) * 100).toFixed(1)
+  const safeSummary: GA4Summary = summary || {
+    pageViews: 0,
+    activeUsers: 0,
+    sessions: 0,
+    bounceRate: 0,
+    conversions: 0,
+    avgEngagementTime: 0,
+  }
+
+  const bouncePercent = ((safeSummary.bounceRate ?? 0) * 100).toFixed(1)
+  const convRate = safeSummary.sessions > 0
+    ? (((safeSummary.conversions || 0) / safeSummary.sessions) * 100).toFixed(1)
     : '0.0'
 
   return (
@@ -83,14 +92,14 @@ export default function GA4MetricCards({ summary, realtimeUsers, hasAdvanced }: 
 
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-              {fmt(summary.pageViews)}
+              {fmt(safeSummary.pageViews || 0)}
             </span>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">lượt hiển thị</span>
           </div>
 
           <div className="mt-3 pt-3 border-t border-orange-500/10 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
             <span>Phiên tương tác</span>
-            <span className="font-bold text-orange-600 dark:text-orange-400">{fmt(summary.sessions)} Sessions</span>
+            <span className="font-bold text-orange-600 dark:text-orange-400">{fmt(safeSummary.sessions || 0)} Sessions</span>
           </div>
         </div>
 
@@ -117,7 +126,7 @@ export default function GA4MetricCards({ summary, realtimeUsers, hasAdvanced }: 
 
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-              {fmt(summary.activeUsers)}
+              {fmt(safeSummary.activeUsers || 0)}
             </span>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">khách truy cập</span>
           </div>
@@ -140,7 +149,7 @@ export default function GA4MetricCards({ summary, realtimeUsers, hasAdvanced }: 
             <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Tổng phiên truy cập</span>
           </div>
           <div className="flex items-baseline justify-between mt-1">
-            <span className="text-xl font-black text-slate-900 dark:text-white">{fmt(summary.sessions)}</span>
+            <span className="text-xl font-black text-slate-900 dark:text-white">{fmt(safeSummary.sessions || 0)}</span>
             <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Sessions</span>
           </div>
         </div>
@@ -168,7 +177,7 @@ export default function GA4MetricCards({ summary, realtimeUsers, hasAdvanced }: 
             <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Chuyển đổi mua vé</span>
           </div>
           <div className="flex items-baseline justify-between mt-1">
-            <span className="text-xl font-black text-slate-900 dark:text-white">{summary.conversions}</span>
+            <span className="text-xl font-black text-slate-900 dark:text-white">{safeSummary.conversions || 0}</span>
             <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">({convRate}%)</span>
           </div>
         </div>
@@ -183,14 +192,14 @@ export default function GA4MetricCards({ summary, realtimeUsers, hasAdvanced }: 
           </div>
           <div className="flex items-baseline justify-between mt-1">
             <span className="text-xl font-black text-slate-900 dark:text-white">
-              {summary.sessions > 0 ? (summary.pageViews / summary.sessions).toFixed(1) : '1.0'}
+              {safeSummary.sessions > 0 ? ((safeSummary.pageViews || 0) / safeSummary.sessions).toFixed(1) : '1.0'}
             </span>
             <span className="text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">Trang / Phiên</span>
           </div>
         </div>
 
         {/* Average Engagement Time */}
-        {summary.avgEngagementTime !== undefined && summary.avgEngagementTime > 0 && (
+        {safeSummary.avgEngagementTime !== undefined && safeSummary.avgEngagementTime > 0 && (
           <div className="rounded-2xl border border-indigo-200/70 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-950/20 p-3.5 backdrop-blur-sm hover:border-indigo-400 transition-colors col-span-2 md:col-span-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -208,10 +217,10 @@ export default function GA4MetricCards({ summary, realtimeUsers, hasAdvanced }: 
               </div>
               <div className="text-right">
                 <span className="text-xl font-black text-slate-900 dark:text-white">
-                  {Math.floor(summary.avgEngagementTime / 60)}p {Math.round(summary.avgEngagementTime % 60)}s
+                  {Math.floor(safeSummary.avgEngagementTime / 60)}p {Math.round(safeSummary.avgEngagementTime % 60)}s
                 </span>
                 <span className="block text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
-                  {Math.round(summary.avgEngagementTime)} giây / phiên
+                  {Math.round(safeSummary.avgEngagementTime)} giây / phiên
                 </span>
               </div>
             </div>

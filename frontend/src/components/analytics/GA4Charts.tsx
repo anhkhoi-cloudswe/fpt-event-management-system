@@ -20,7 +20,7 @@ interface TimelineChartProps {
 }
 
 function formatDate(yyyymmdd: string): string {
-  if (!yyyymmdd || yyyymmdd.length !== 8) return yyyymmdd
+  if (!yyyymmdd || typeof yyyymmdd !== 'string' || yyyymmdd.length !== 8) return String(yyyymmdd || '')
   return `${yyyymmdd.slice(6)}/${yyyymmdd.slice(4, 6)}`
 }
 
@@ -29,7 +29,7 @@ export function GA4TimelineChart({ data }: TimelineChartProps) {
 
   const sortedData = useMemo(() => {
     if (!data?.length) return []
-    const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date))
+    const sorted = [...data].sort((a, b) => (a?.date || '').localeCompare(b?.date || ''))
     if (filterDays === '7') return sorted.slice(-7)
     if (filterDays === '14') return sorted.slice(-14)
     if (filterDays === '30') return sorted.slice(-30)
@@ -279,14 +279,16 @@ interface GeoTableProps {
 
 export function GA4GeoTable({ data }: GeoTableProps) {
   if (!data?.length) return <EmptyChart label="Chưa có dữ liệu địa lý" />
-  const total = data.reduce((s, d) => s + d.users, 0)
+  const total = data.reduce((s, d) => s + (d?.users || 0), 0)
 
   return (
     <div className="space-y-2 p-1">
       {data.slice(0, 6).map((d, i) => {
-        const pct = total > 0 ? Math.round((d.users / total) * 100) : 0
-        const countryName = d.country && d.country !== '(not set)' && d.country.trim() !== '' 
-          ? d.country 
+        const users = d?.users || 0
+        const pct = total > 0 ? Math.round((users / total) * 100) : 0
+        const countryRaw = typeof d?.country === 'string' ? d.country.trim() : ''
+        const countryName = countryRaw && countryRaw !== '(not set)'
+          ? countryRaw 
           : 'Chưa xác định (not set)'
 
         return (
@@ -300,7 +302,7 @@ export function GA4GeoTable({ data }: GeoTableProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between text-xs mb-1">
                 <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{countryName}</span>
-                <span className="font-extrabold text-slate-900 dark:text-white">{d.users} users</span>
+                <span className="font-extrabold text-slate-900 dark:text-white">{users} users</span>
               </div>
               <div className="h-1.5 bg-slate-200/60 dark:bg-slate-700/60 rounded-full overflow-hidden">
                 <div
@@ -418,14 +420,16 @@ interface CityTableProps {
 
 export function GA4CityTable({ data }: CityTableProps) {
   if (!data?.length) return <EmptyChart label="Chưa có dữ liệu thành phố" />
-  const total = data.reduce((s, d) => s + d.users, 0)
+  const total = data.reduce((s, d) => s + (d?.users || 0), 0)
 
   return (
     <div className="space-y-2 p-1">
       {data.slice(0, 6).map((d, i) => {
-        const pct = total > 0 ? Math.round((d.users / total) * 100) : 0
-        const cityName = d.city && d.city !== '(not set)' && d.city.trim() !== '' 
-          ? d.city 
+        const users = d?.users || 0
+        const pct = total > 0 ? Math.round((users / total) * 100) : 0
+        const cityRaw = typeof d?.city === 'string' ? d.city.trim() : ''
+        const cityName = cityRaw && cityRaw !== '(not set)'
+          ? cityRaw 
           : 'Chưa xác định'
 
         return (
@@ -439,7 +443,7 @@ export function GA4CityTable({ data }: CityTableProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between text-xs mb-1">
                 <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{cityName}</span>
-                <span className="font-extrabold text-slate-900 dark:text-white">{d.users} users</span>
+                <span className="font-extrabold text-slate-900 dark:text-white">{users} users</span>
               </div>
               <div className="h-1.5 bg-slate-200/60 dark:bg-slate-700/60 rounded-full overflow-hidden">
                 <div
