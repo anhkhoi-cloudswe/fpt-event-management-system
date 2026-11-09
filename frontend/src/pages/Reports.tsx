@@ -2023,7 +2023,7 @@ export default function Reports() {
                           className="relative overflow-hidden bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 rounded-3xl p-5 space-y-5 hover:border-orange-500/40 hover:shadow-lg hover:shadow-orange-500/5 transition-all group flex flex-col justify-between"
                         >
                           <div>
-                            {/* Card Top: Tên Hạng & Giá */}
+                            {/* Card Top: Tên Hạng */}
                             <div className="flex justify-between items-start">
                               <div>
                                 <span className="font-black text-base text-slate-900 dark:text-white uppercase tracking-wider block group-hover:text-orange-500 transition-colors">
@@ -2033,9 +2033,6 @@ export default function Reports() {
                                   Sức chứa: <strong className="text-slate-700 dark:text-slate-200 font-bold">{cat.totalCapacity} chỗ</strong>
                                 </span>
                               </div>
-                              <span className="text-xs font-black text-orange-600 dark:text-orange-400 px-3 py-1 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 shadow-xs">
-                                {formatVndShort(cat.price)}
-                              </span>
                             </div>
 
                             {/* Card Body: 4 Ô Chỉ Số Nhấn Mạnh Số To - Nhãn Gọn */}
