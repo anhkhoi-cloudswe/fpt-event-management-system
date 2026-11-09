@@ -1587,41 +1587,6 @@ export default function Reports() {
               </div>
             ) : (
               <>
-                {/* Header Action Bar: Xuất Báo Cáo Đối Soát Dữ Liệu (Excel & CSV) */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-sm">
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
-                      <span>Xuất Báo Cáo Đối Soát Dữ Liệu</span>
-                    </h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {selectedEventId === 'ALL'
-                        ? 'Tải file báo cáo tổng hợp toàn bộ sự kiện đã đối soát đa trang tính (.xlsx hoặc .csv).'
-                        : 'Tải file đối soát chi tiết chỉ số vận hành & tài chính sự kiện này.'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleExportExcel}
-                      disabled={exportingExcel || exportingCsv}
-                      className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-2xl shadow-md shadow-emerald-600/20 transition flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
-                      title="Xuất tệp Excel đa trang tính (.xlsx) chuẩn tài chính"
-                    >
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
-                      <span>{exportingExcel ? 'Đang tạo Excel...' : 'Xuất File Excel (.xlsx)'}</span>
-                    </button>
-                    <button
-                      onClick={handleExportCSV}
-                      disabled={exportingExcel || exportingCsv}
-                      className="px-3.5 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-2xl border border-slate-200 dark:border-slate-800 transition flex items-center gap-1.5 disabled:opacity-50 shadow-sm cursor-pointer active:scale-95"
-                      title="Xuất tệp CSV tiêu chuẩn"
-                    >
-                      <Download className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{exportingCsv ? 'Đang tạo...' : 'Xuất CSV'}</span>
-                    </button>
-                  </div>
-                </div>
-
                 {/* 3 Cột Tiền Tài Chính Sự Kiện: Gross, Phí, Thực Nhận Chuẩn Đồng Nhất 10/10 */}
                 {(() => {
                   const bGross = financialOverview?.totalGrossRevenue || 0
