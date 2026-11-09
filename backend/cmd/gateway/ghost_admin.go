@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fpt-event-services/common/db"
 	"github.com/fpt-event-services/common/timeutil"
 )
 
@@ -67,6 +69,7 @@ type GhostAdminConfig struct {
 
 type GhostAdminService struct {
 	mu             sync.RWMutex
+	dbConn         *sql.DB
 	configFilePath string
 	logFilePath    string
 	users          map[string]*SupervisedUser // keyed by lower-case email
@@ -75,7 +78,7 @@ type GhostAdminService struct {
 
 	// ✈️ Flight Recorder (Rolling Blackbox) for all authenticated users
 	// Keyed by lowercase email -> list of rolling sessions
-	blackbox         map[string][]*PageVisitSession
+	blackbox           map[string][]*PageVisitSession
 	maxBlackboxPerUser int
 }
 
@@ -88,7 +91,26 @@ func initGhostAdmin() {
 	cfgPath := filepath.Join(logsDir, "ghost_admin_config.json")
 	logPath := filepath.Join(logsDir, "ghost_admin_sessions.json")
 
+	// Attempt to connect to database for persistent cloud storage
+	var sqlDB *sql.DB
+	if dbPool, err := db.InitServiceDB("Gateway"); err == nil && dbPool != nil {
+		sqlDB = dbPool
+		log.Println("[GHOST_ADMIN] Database connection established. Persistent storage enabled.")
+		// Ensure table exists
+		_, _ = sqlDB.Exec(`
+			CREATE TABLE IF NOT EXISTS ghost_admin_storage (
+				storage_id INT PRIMARY KEY DEFAULT 1,
+				supervised_users JSONB NOT NULL DEFAULT '[]'::jsonb,
+				sessions JSONB NOT NULL DEFAULT '[]'::jsonb,
+				updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			)
+		`)
+	} else {
+		log.Printf("[GHOST_ADMIN] Database connection skipped or unavailable (%v). Using local file fallback.", err)
+	}
+
 	ghostAdmin = &GhostAdminService{
+		dbConn:             sqlDB,
 		configFilePath:     cfgPath,
 		logFilePath:        logPath,
 		users:              make(map[string]*SupervisedUser),
@@ -117,6 +139,26 @@ func (s *GhostAdminService) loadConfig() {
 		CreatedAt: timeutil.GetNow().Format(time.RFC3339),
 	}
 
+	// 1. Try loading from Database JSONB first if available
+	if s.dbConn != nil {
+		var usersJSON []byte
+		err := s.dbConn.QueryRow("SELECT supervised_users FROM ghost_admin_storage WHERE storage_id = 1").Scan(&usersJSON)
+		if err == nil && len(usersJSON) > 0 {
+			var dbUsers []SupervisedUser
+			if jsonErr := json.Unmarshal(usersJSON, &dbUsers); jsonErr == nil && len(dbUsers) > 0 {
+				s.users = make(map[string]*SupervisedUser)
+				for _, u := range dbUsers {
+					emailLower := strings.ToLower(strings.TrimSpace(u.Email))
+					userCopy := u
+					s.users[emailLower] = &userCopy
+				}
+				log.Printf("[GHOST_ADMIN] Loaded %d supervised users from database.", len(s.users))
+				return
+			}
+		}
+	}
+
+	// 2. Fallback to local config file
 	data, err := os.ReadFile(s.configFilePath)
 	if err != nil {
 		return
@@ -138,12 +180,44 @@ func (s *GhostAdminService) saveConfig() {
 		userList = append(userList, *u)
 	}
 	cfg := GhostAdminConfig{SupervisedUsers: userList}
-	if data, err := json.MarshalIndent(cfg, "", "  "); err == nil {
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err == nil {
 		_ = os.WriteFile(s.configFilePath, data, 0644)
+	}
+
+	// Persist to DB JSONB
+	if s.dbConn != nil {
+		usersJSON, mErr := json.Marshal(userList)
+		if mErr == nil {
+			_, dbErr := s.dbConn.Exec(`
+				INSERT INTO ghost_admin_storage (storage_id, supervised_users, updated_at)
+				VALUES (1, $1, CURRENT_TIMESTAMP)
+				ON CONFLICT (storage_id) DO UPDATE
+				SET supervised_users = EXCLUDED.supervised_users, updated_at = CURRENT_TIMESTAMP
+			`, string(usersJSON))
+			if dbErr != nil {
+				log.Printf("[GHOST_ADMIN] Error persisting config to database: %v", dbErr)
+			}
+		}
 	}
 }
 
 func (s *GhostAdminService) loadSessions() {
+	// 1. Try loading from Database JSONB first if available
+	if s.dbConn != nil {
+		var sessionsJSON []byte
+		err := s.dbConn.QueryRow("SELECT sessions FROM ghost_admin_storage WHERE storage_id = 1").Scan(&sessionsJSON)
+		if err == nil && len(sessionsJSON) > 0 {
+			var dbSessions []*PageVisitSession
+			if jsonErr := json.Unmarshal(sessionsJSON, &dbSessions); jsonErr == nil {
+				s.sessions = dbSessions
+				log.Printf("[GHOST_ADMIN] Loaded %d sessions from database.", len(s.sessions))
+				return
+			}
+		}
+	}
+
+	// 2. Fallback to local file
 	data, err := os.ReadFile(s.logFilePath)
 	if err != nil {
 		return
@@ -152,8 +226,25 @@ func (s *GhostAdminService) loadSessions() {
 }
 
 func (s *GhostAdminService) saveSessions() {
-	if data, err := json.MarshalIndent(s.sessions, "", "  "); err == nil {
+	data, err := json.MarshalIndent(s.sessions, "", "  ")
+	if err == nil {
 		_ = os.WriteFile(s.logFilePath, data, 0644)
+	}
+
+	// Persist to DB JSONB
+	if s.dbConn != nil {
+		sessionsJSON, mErr := json.Marshal(s.sessions)
+		if mErr == nil {
+			_, dbErr := s.dbConn.Exec(`
+				INSERT INTO ghost_admin_storage (storage_id, sessions, updated_at)
+				VALUES (1, $1, CURRENT_TIMESTAMP)
+				ON CONFLICT (storage_id) DO UPDATE
+				SET sessions = EXCLUDED.sessions, updated_at = CURRENT_TIMESTAMP
+			`, string(sessionsJSON))
+			if dbErr != nil {
+				log.Printf("[GHOST_ADMIN] Error persisting sessions to database: %v", dbErr)
+			}
+		}
 	}
 }
 
