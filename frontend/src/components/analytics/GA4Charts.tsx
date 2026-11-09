@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend, Area, AreaChart
@@ -9,7 +10,7 @@ import type {
   GA4Geography,
   GA4BrowserBreakdown,
 } from '../../services/analyticsService'
-import { Smartphone, Monitor, Tablet, Globe, ArrowUpRight, TrendingUp, Layers, MapPin, Compass } from 'lucide-react'
+import { Smartphone, Monitor, Tablet, Globe, ArrowUpRight, TrendingUp, Layers, MapPin, Compass, Calendar } from 'lucide-react'
 
 const PALETTE = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4']
 
@@ -24,15 +25,52 @@ function formatDate(yyyymmdd: string): string {
 }
 
 export function GA4TimelineChart({ data }: TimelineChartProps) {
+  const [filterDays, setFilterDays] = useState<'all' | '7' | '14' | '30'>('all')
+
+  const sortedData = useMemo(() => {
+    if (!data?.length) return []
+    const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date))
+    if (filterDays === '7') return sorted.slice(-7)
+    if (filterDays === '14') return sorted.slice(-14)
+    if (filterDays === '30') return sorted.slice(-30)
+    return sorted
+  }, [data, filterDays])
+
   if (!data?.length) return <EmptyChart label="Chưa có dữ liệu timeline" />
 
-  // Ensure chronological order (left to right)
-  const sortedData = [...data].sort((a, b) => a.date.localeCompare(b.date))
-
   return (
-    <div className="w-full pt-2">
+    <div className="w-full pt-1 space-y-3">
+      {/* Bộ lọc phạm vi thời gian nhanh cho Traffic */}
+      <div className="flex items-center justify-between flex-wrap gap-2 px-1">
+        <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+          <Calendar size={13} className="text-orange-500" />
+          Phạm vi hiển thị:
+        </span>
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+          {[
+            { key: 'all', label: 'Tất cả' },
+            { key: '30', label: '30 ngày' },
+            { key: '14', label: '14 ngày' },
+            { key: '7', label: '7 ngày' },
+          ].map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setFilterDays(item.key as any)}
+              className={`px-2.5 py-1 text-[11px] font-black rounded-lg transition-all cursor-pointer ${
+                filterDays === item.key
+                  ? 'bg-orange-500 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <ResponsiveContainer width="100%" height={260}>
-        <AreaChart data={sortedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+        <AreaChart data={sortedData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="pageViewsGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#f97316" stopOpacity={0.35} />
@@ -56,7 +94,8 @@ export function GA4TimelineChart({ data }: TimelineChartProps) {
             tickLine={false}
             axisLine={false}
             allowDecimals={false}
-            width={35}
+            width={45}
+            domain={[0, 'auto']}
           />
           <Tooltip
             contentStyle={{
