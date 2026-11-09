@@ -170,6 +170,15 @@ const MOCK_ADVANCED_DATA: EventAdvancedAnalyticsResponse = {
 // Bảng màu cho Chart
 const DONUT_COLORS = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#EC4899', '#EAB308']
 
+// Ánh xạ màu sắc cố định theo loại vé hoặc fallback index
+function getTicketCategoryColor(name: string, index: number): string {
+  const norm = (name || '').trim().toLowerCase()
+  if (norm.includes('online')) return '#F97316' // Cam cho Online Ticket
+  if (norm.includes('vip')) return '#3B82F6'    // Xanh dương cho VIP
+  if (norm.includes('standard') || norm.includes('tiêu chuẩn')) return '#10B981' // Xanh lá cho Standard
+  return DONUT_COLORS[index % DONUT_COLORS.length]
+}
+
 type EventOption = {
   id: number
   title: string
@@ -2762,47 +2771,55 @@ export default function Reports() {
                 </div>
 
                 {/* 4 KPI Cards Báo Cáo Nâng Cao */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent border border-emerald-500/30 p-5 shadow-lg">
-                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Doanh Thu Thực Nhận</p>
-                    <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
-                      {formatVndShort(advancedData?.totalNetProfit || 0)}
-                    </p>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-1">
-                      Chi tiết: {formatVndFull(advancedData?.totalNetProfit || 0)}
-                    </p>
-                  </div>
+                {(() => {
+                  const netProfitKPI = (financialOverview && financialOverview.totalNetProfit > 0)
+                    ? financialOverview.totalNetProfit
+                    : (advancedData?.totalNetProfit || 0)
 
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border border-blue-500/30 p-5 shadow-lg">
-                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Giá Trị Đơn Trung Bình (AOV)</p>
-                    <p className="text-2xl font-black text-slate-900 dark:text-white mt-2">
-                      {formatVndShort(advancedData?.averageOrderValue || 0)}
-                    </p>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-1">
-                      Trung bình mỗi lượt mua
-                    </p>
-                  </div>
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent border border-emerald-500/30 p-5 shadow-lg">
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Doanh Thu Thực Nhận</p>
+                        <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
+                          {formatVndShort(netProfitKPI)}
+                        </p>
+                        <p className="text-[11px] text-slate-400 font-semibold mt-1">
+                          Chi tiết: {formatVndFull(netProfitKPI)}
+                        </p>
+                      </div>
 
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500/15 via-indigo-500/5 to-transparent border border-indigo-500/30 p-5 shadow-lg">
-                    <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Tỷ Lệ Check-In</p>
-                    <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-2">
-                      {(advancedData?.checkInRatePercent || 0).toFixed(1).replace('.', ',')}%
-                    </p>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-1">
-                      {advancedData?.checkedInTickets || 0} / {advancedData?.totalTicketsSold || 0} vé đã vào cổng
-                    </p>
-                  </div>
+                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border border-blue-500/30 p-5 shadow-lg">
+                        <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Giá Trị Đơn Trung Bình (AOV)</p>
+                        <p className="text-2xl font-black text-slate-900 dark:text-white mt-2">
+                          {formatVndShort(advancedData?.averageOrderValue || 0)}
+                        </p>
+                        <p className="text-[11px] text-slate-400 font-semibold mt-1">
+                          Trung bình mỗi lượt mua
+                        </p>
+                      </div>
 
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500/15 via-orange-500/5 to-transparent border border-orange-500/30 p-5 shadow-lg">
-                    <p className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">Tỷ Lệ Lấp Đầy</p>
-                    <p className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-2">
-                      {(advancedData?.fillRatePercent || 0).toFixed(1).replace('.', ',')}%
-                    </p>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-1">
-                      {advancedData?.totalTicketsSold || 0} / {advancedData?.totalCapacity || 0} tổng ghế
-                    </p>
-                  </div>
-                </div>
+                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500/15 via-indigo-500/5 to-transparent border border-indigo-500/30 p-5 shadow-lg">
+                        <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Tỷ Lệ Check-In</p>
+                        <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-2">
+                          {(advancedData?.checkInRatePercent || 0).toFixed(1).replace('.', ',')}%
+                        </p>
+                        <p className="text-[11px] text-slate-400 font-semibold mt-1">
+                          {advancedData?.checkedInTickets || 0} / {advancedData?.totalTicketsSold || 0} vé đã vào cổng
+                        </p>
+                      </div>
+
+                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500/15 via-orange-500/5 to-transparent border border-orange-500/30 p-5 shadow-lg">
+                        <p className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">Tỷ Lệ Lấp Đầy</p>
+                        <p className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-2">
+                          {(advancedData?.fillRatePercent || 0).toFixed(1).replace('.', ',')}%
+                        </p>
+                        <p className="text-[11px] text-slate-400 font-semibold mt-1">
+                          {advancedData?.totalTicketsSold || 0} / {advancedData?.totalCapacity || 0} tổng ghế
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Charts Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -2836,8 +2853,8 @@ export default function Reports() {
                               outerRadius={95}
                               paddingAngle={4}
                             >
-                              {(advancedData?.categoryBreakdown || []).map((_, index) => (
-                                <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                              {(advancedData?.categoryBreakdown || []).map((cat, index) => (
+                                <Cell key={`cell-${index}`} fill={getTicketCategoryColor(cat.categoryName, index)} />
                               ))}
                             </Pie>
                             <Tooltip
@@ -2869,11 +2886,12 @@ export default function Reports() {
                       {(advancedData?.categoryBreakdown || []).map((cat, idx) => {
                         const total = (advancedData?.categoryBreakdown || []).reduce((acc, c) => acc + c.soldSeats, 0) || 1
                         const pct = total > 0 ? ((cat.soldSeats / total) * 100).toFixed(1) : '0.0'
+                        const catColor = getTicketCategoryColor(cat.categoryName, idx)
                         return (
                           <div
                             key={cat.categoryTicketId}
                             className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 text-xs border-l-4 shadow-sm"
-                            style={{ borderLeftColor: DONUT_COLORS[idx % DONUT_COLORS.length] }}
+                            style={{ borderLeftColor: catColor }}
                           >
                             <div className="font-bold text-slate-900 dark:text-white truncate">{cat.categoryName}</div>
                             <div className="text-[11px] text-slate-400 mt-0.5 flex items-center justify-between">
@@ -2925,25 +2943,32 @@ export default function Reports() {
                           <Bar
                             dataKey="grossRevenue"
                             name="Doanh thu"
-                            fill="#F97316"
                             radius={[8, 8, 0, 0]}
-                          />
+                          >
+                            {(advancedData?.categoryBreakdown || []).map((cat, index) => (
+                              <Cell key={`bar-cell-${index}`} fill={getTicketCategoryColor(cat.categoryName, index)} />
+                            ))}
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
-                      {(advancedData?.categoryBreakdown || []).map((cat) => (
-                        <div
-                          key={cat.categoryTicketId}
-                          className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 text-xs shadow-sm flex flex-col justify-between"
-                        >
-                          <div className="font-bold text-slate-900 dark:text-white truncate">{cat.categoryName}</div>
-                          <div className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                            {formatVndShort(cat.grossRevenue || 0)}
+                      {(advancedData?.categoryBreakdown || []).map((cat, idx) => {
+                        const catColor = getTicketCategoryColor(cat.categoryName, idx)
+                        return (
+                          <div
+                            key={cat.categoryTicketId}
+                            className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 text-xs shadow-sm flex flex-col justify-between border-l-4"
+                            style={{ borderLeftColor: catColor }}
+                          >
+                            <div className="font-bold text-slate-900 dark:text-white truncate">{cat.categoryName}</div>
+                            <div className="text-[11px] font-black text-slate-700 dark:text-slate-200 mt-1">
+                              {formatVndShort(cat.grossRevenue || 0)}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
 
