@@ -626,6 +626,11 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 			tierCode = pol.TierCode
 			commissionBps = pol.CommissionBps
 		}
+	} else if userID > 0 {
+		if polUser, errUser := policy.ResolveOrganizerPolicy(ctx, r.db, userID); errUser == nil && polUser != nil {
+			tierCode = polUser.TierCode
+			commissionBps = polUser.CommissionBps
+		}
 	}
 
 	// Đồng bộ chính xác theo bảng subscription_tier (cấu hình động của Admin Tier CRUD)
@@ -1030,10 +1035,16 @@ func (r *TicketRepository) GetEventAdvancedAnalytics(ctx context.Context, eventI
 		}
 	}
 
-	if tierCode == "BUSINESS" && commissionBps == 0 {
-		totalCommFee = 0
-		platformFee = totalFixedFee
-		net = gross - platformFee
+	if tierCode == "BUSINESS" {
+		businessRate := 0.0
+		if bps, ok := tierRates["BUSINESS"]; ok {
+			businessRate = float64(bps) / 100.0
+		}
+		if businessRate == 0 {
+			totalCommFee = 0
+			platformFee = totalFixedFee
+			net = gross - platformFee
+		}
 	}
 
 	var formula string
