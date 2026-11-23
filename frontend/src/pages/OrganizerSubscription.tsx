@@ -159,29 +159,38 @@ export default function OrganizerSubscriptionPage() {
         originalPrice: targetTier.priceVnd,
         proratedCredit: 0,
         netPay: targetTier.priceVnd,
+        daysRemaining: 0,
       }
     }
 
     const currentTierData = tiers.find((t) => t.tierCode === currentSub.tierCode)
     const currentPrice = currentTierData?.priceVnd || 0
 
-    let daysRemaining = currentSub.daysRemaining
+    let daysRemaining = currentSub.daysRemaining ?? 0
     if (currentSub.endDate) {
       const msDiff = new Date(currentSub.endDate).getTime() - Date.now()
       if (msDiff > 0) {
-        daysRemaining = Math.ceil(msDiff / (1000 * 60 * 60 * 24))
+        // Capped at 30 days to prevent sub-second rounding / clock skew from exceeding full cycle duration
+        daysRemaining = Math.min(30, Math.ceil(msDiff / (1000 * 60 * 60 * 24)))
       } else {
         daysRemaining = 0
       }
+    } else {
+      daysRemaining = Math.min(30, Math.max(0, daysRemaining))
     }
 
     if (daysRemaining > 0 && currentPrice > 0) {
-      const credit = Math.floor((currentPrice * daysRemaining) / 30)
+      // Nếu còn đủ 30 ngày (vừa mua ngay trong ngày đầu / chu kỳ mới): Khấu trừ trọn vẹn 100% gói cũ
+      let credit = daysRemaining >= 30 ? currentPrice : Math.floor((currentPrice * daysRemaining) / 30)
+      if (credit > currentPrice) {
+        credit = currentPrice
+      }
       const net = Math.max(0, targetTier.priceVnd - credit)
       return {
         originalPrice: targetTier.priceVnd,
         proratedCredit: credit,
         netPay: net,
+        daysRemaining,
       }
     }
 
@@ -189,6 +198,7 @@ export default function OrganizerSubscriptionPage() {
       originalPrice: targetTier.priceVnd,
       proratedCredit: 0,
       netPay: targetTier.priceVnd,
+      daysRemaining: 0,
     }
   }
 
@@ -814,6 +824,30 @@ export default function OrganizerSubscriptionPage() {
                     <ArrowUpRight size={14} />
                   </a>
                 )}
+
+                {/* Upgrade Breakdown Notice in Payment Modal */}
+                {(() => {
+                  const { originalPrice, proratedCredit, netPay, daysRemaining } = calculateUpgradeCost(paymentModalTier)
+                  if (proratedCredit > 0) {
+                    return (
+                      <div className="p-3 rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-800/60 text-xs space-y-1.5 text-left">
+                        <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                          <span>Giá niêm yết:</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{originalPrice.toLocaleString('vi-VN')} đ</span>
+                        </div>
+                        <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-bold">
+                          <span>Khấu trừ gói {currentSub?.tierName || currentSub?.tierCode} ({daysRemaining} ngày còn lại):</span>
+                          <span>-{proratedCredit.toLocaleString('vi-VN')} đ</span>
+                        </div>
+                        <div className="pt-1.5 border-t border-orange-200 dark:border-orange-800/60 flex items-center justify-between font-black text-slate-900 dark:text-white">
+                          <span>Thực trả sau khấu trừ:</span>
+                          <span className="text-orange-600 dark:text-orange-400">{netPay.toLocaleString('vi-VN')} đ</span>
+                        </div>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
 
                 {/* Account Details Box */}
                 <div className="space-y-2 text-left bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700/60 text-xs">

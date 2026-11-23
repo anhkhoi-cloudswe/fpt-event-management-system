@@ -134,6 +134,10 @@ func (r *TicketRepository) GetCurrentSubscription(ctx context.Context, userID in
 		res.StartDate = startDate
 		res.EndDate = endDate
 		res.DaysRemaining = int(math.Max(0, math.Ceil(endDate.Sub(now).Hours()/24.0)))
+		maxCycleDays := int(math.Max(30, math.Round(endDate.Sub(startDate).Hours()/24.0)))
+		if res.DaysRemaining > maxCycleDays {
+			res.DaysRemaining = maxCycleDays
+		}
 		res.AutoRenew = autoRenew
 		res.Status = "ACTIVE"
 		if schedDownCode.Valid {
@@ -343,8 +347,21 @@ func (r *TicketRepository) SubscribeOrUpgrade(ctx context.Context, userID int, r
 		// Nâng cấp giữa kỳ: Prorate theo quy tắc credit = oldPrice * D / 30 (int64, floor sau khi nhân)
 		actionType = "UPGRADE"
 		daysRemaining := int(math.Ceil(oldEndDate.Sub(now).Hours() / 24.0))
+		if daysRemaining > 30 {
+			daysRemaining = 30
+		}
+		if daysRemaining < 0 {
+			daysRemaining = 0
+		}
 		if daysRemaining > 0 && oldPrice > 0 {
-			unusedCredit = (oldPrice * int64(daysRemaining)) / 30
+			if daysRemaining >= 30 {
+				unusedCredit = oldPrice
+			} else {
+				unusedCredit = (oldPrice * int64(daysRemaining)) / 30
+			}
+			if unusedCredit > oldPrice {
+				unusedCredit = oldPrice
+			}
 		}
 		amountToPay = targetTier.PriceVND - unusedCredit
 		if amountToPay < 0 {
@@ -964,11 +981,21 @@ func (r *TicketRepository) PreviewUpgrade(ctx context.Context, userID int, targe
 
 	if hasActive && oldPrice > 0 && oldTierCode != targetTierCode {
 		daysRemaining = int(math.Ceil(oldEndDate.Sub(now).Hours() / 24.0))
+		if daysRemaining > 30 {
+			daysRemaining = 30
+		}
 		if daysRemaining < 0 {
 			daysRemaining = 0
 		}
 		if daysRemaining > 0 {
-			proratedCredit = (oldPrice * int64(daysRemaining)) / 30
+			if daysRemaining >= 30 {
+				proratedCredit = oldPrice
+			} else {
+				proratedCredit = (oldPrice * int64(daysRemaining)) / 30
+			}
+			if proratedCredit > oldPrice {
+				proratedCredit = oldPrice
+			}
 		}
 	}
 

@@ -1221,6 +1221,7 @@ func (r *TicketRepository) activateSubscriptionDirectlyTx(ctx context.Context, t
 
 	var finalSubID int
 	var finalStartDate, finalEndDate time.Time
+	var proratedCreditVnd int64 = 0
 	actionType := "INITIAL"
 
 	if isRenewSameTier {
@@ -1258,16 +1259,21 @@ func (r *TicketRepository) activateSubscriptionDirectlyTx(ctx context.Context, t
 		finalStartDate = now
 		finalEndDate = now.AddDate(0, 0, 30)
 
+		// Ghi nhận chính xác khoản khấu trừ prorated_credit_vnd khi nâng cấp gói trực tiếp
+		if hasCurrentActive && targetTier.PriceVND > amountPaid {
+			proratedCreditVnd = targetTier.PriceVND - amountPaid
+		}
+
 		reqID := fmt.Sprintf("BILL_%d", billID)
 		insertSubQuery := `
 			INSERT INTO user_subscription (
 				user_id, tier_id, status, start_date, end_date, auto_renew,
 				amount_paid_vnd, prorated_credit_vnd, request_id, created_at, updated_at
-			) VALUES ($1, $2, 'ACTIVE', $3, $4, false, $5, 0, $6, NOW(), NOW())
+			) VALUES ($1, $2, 'ACTIVE', $3, $4, false, $5, $6, $7, NOW(), NOW())
 			RETURNING subscription_id
 		`
 		err = tx.QueryRowContext(ctx, insertSubQuery,
-			userID, targetTier.TierID, finalStartDate, finalEndDate, amountPaid, reqID,
+			userID, targetTier.TierID, finalStartDate, finalEndDate, amountPaid, proratedCreditVnd, reqID,
 		).Scan(&finalSubID)
 		if err != nil {
 			return fmt.Errorf("lỗi kích hoạt gói dịch vụ mới: %w", err)
@@ -1280,8 +1286,8 @@ func (r *TicketRepository) activateSubscriptionDirectlyTx(ctx context.Context, t
 		INSERT INTO subscription_payment_log (
 			subscription_id, user_id, tier_id, action_type, amount_paid_vnd,
 			prorated_credit_vnd, request_id, start_date, end_date, created_at
-		) VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, NOW())
-	`, finalSubID, userID, targetTier.TierID, actionType, amountPaid, logReqID, finalStartDate, finalEndDate)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+	`, finalSubID, userID, targetTier.TierID, actionType, amountPaid, proratedCreditVnd, logReqID, finalStartDate, finalEndDate)
 	if err != nil {
 		log.Warn("Không thể ghi log subscription_payment_log (không chặn luồng kích hoạt)", "error", err)
 	}
