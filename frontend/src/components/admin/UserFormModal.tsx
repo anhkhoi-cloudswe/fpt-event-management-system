@@ -51,13 +51,13 @@ export default function UserFormModal({
     if (isOpen) {
       if (mode === 'edit' && user) {
         setFormData({
-          username: user.username,
+          username: user.username || '',
           password: '',
-          fullName: user.fullName,
-          email: user.email,
-          phone: user.phone,
-          role: user.role as 'ADMIN' | 'ORGANIZER' | 'STAFF',
-          status: user.status
+          fullName: user.fullName || '',
+          email: user.email || '',
+          phone: user.phone || '',
+          role: (user.role as 'ADMIN' | 'ORGANIZER' | 'STAFF') || 'STAFF',
+          status: user.status || 'ACTIVE'
         })
       } else {
         setFormData({
@@ -96,12 +96,15 @@ export default function UserFormModal({
 
   // Handle field change with real-time validation
   const handleFieldChange = (name: string, value: string) => {
-    // Update form data
-    setFormData({ ...formData, [name]: value })
+    // For phone number, filter out non-numeric characters except +, spaces, dashes
+    const processedValue = name === 'phone' ? value.replace(/[^\d+ \-]/g, '') : value
 
-    // Validate if field has been touched
-    if (touched[name]) {
-      const error = validateField(name, value)
+    // Update form data
+    setFormData(prev => ({ ...prev, [name]: processedValue }))
+
+    // Validate if field has been touched or has an existing error
+    if (touched[name] || errors[name]) {
+      const error = validateField(name, processedValue)
       setErrors(prev => {
         if (error) {
           return { ...prev, [name]: error }
@@ -116,10 +119,15 @@ export default function UserFormModal({
   // Handle field blur (mark as touched)
   const handleFieldBlur = (name: string) => {
     setTouched(prev => ({ ...prev, [name]: true }))
-    const error = validateField(name, formData[name as keyof typeof formData] as string)
-    if (error) {
-      setErrors(prev => ({ ...prev, [name]: error }))
-    }
+    const error = validateField(name, (formData[name as keyof typeof formData] as string) || '')
+    setErrors(prev => {
+      if (error) {
+        return { ...prev, [name]: error }
+      } else {
+        const { [name]: removed, ...rest } = prev
+        return rest
+      }
+    })
   }
 
   const validateForm = (): boolean => {
@@ -150,6 +158,14 @@ export default function UserFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Mark all fields as touched so errors are shown and real-time validation is active
+    setTouched({
+      fullName: true,
+      email: true,
+      phone: true,
+      password: true
+    })
+
     if (!validateForm()) {
       return
     }
@@ -158,9 +174,9 @@ export default function UserFormModal({
     try {
       if (mode === 'create') {
         const createData: CreateUserRequest = {
-          fullName: formData.fullName,
-          phone: formData.phone,
-          email: formData.email,
+          fullName: formData.fullName.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email.trim(),
           password: formData.password,
           role: formData.role
         }
@@ -168,9 +184,9 @@ export default function UserFormModal({
       } else if (user) {
         const updateData: UpdateUserRequest = {
           userId: user.userId,
-          fullName: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
+          fullName: formData.fullName.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
           role: formData.role,
           status: formData.status
         }
@@ -324,6 +340,9 @@ export default function UserFormModal({
               </label>
               <input
                 type="tel"
+                required
+                maxLength={15}
+                inputMode="tel"
                 value={formData.phone}
                 onChange={e => handleFieldChange('phone', e.target.value)}
                 onBlur={() => handleFieldBlur('phone')}
@@ -331,10 +350,12 @@ export default function UserFormModal({
                   errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'
                 }`}
                 disabled={loading}
-                placeholder="0912345678"
+                placeholder="0912345678 hoặc +84912345678"
               />
-              {errors.phone && (
+              {errors.phone ? (
                 <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+              ) : (
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Định dạng 10 chữ số (03x, 05x, 07x, 08x, 09x) hoặc +84</p>
               )}
             </div>
 

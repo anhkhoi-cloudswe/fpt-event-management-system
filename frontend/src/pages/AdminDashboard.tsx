@@ -9,6 +9,7 @@ import SpeakerFormModal from '../components/admin/SpeakerFormModal'
 import Pagination from '../components/common/Pagination'
 import type { CreateUserRequest, UpdateUserRequest } from '../types/user'
 import { uploadEventBanner } from '../utils/imageUpload'
+import { getPhoneError } from '../utils/validation'
 
 type ActiveTab = 'STUDENT' | 'SPEAKER' | 'INTERNAL' | 'BANNER' | 'ORGANIZATION' | 'ANALYTICS'
 
@@ -282,20 +283,29 @@ export default function AdminDashboard() {
   const handleUserFormSubmit = async (data: CreateUserRequest | UpdateUserRequest) => {
     try {
       const isCreate = userFormMode === 'create'
+      const trimmedPhone = (data.phone || '').trim()
+
+      // Ràng buộc kiểm tra số điện thoại hợp lệ
+      const phoneError = getPhoneError(trimmedPhone)
+      if (phoneError) {
+        showToast('error', phoneError)
+        return
+      }
+
       const url = '/api/admin/create-account'
       const method = isCreate ? 'POST' : 'PUT'
       
       const updateData = data as UpdateUserRequest
       const payload: any = isCreate ? {
-        fullName: data.fullName,
-        phone: data.phone,
-        email: data.email,
+        fullName: data.fullName?.trim(),
+        phone: trimmedPhone,
+        email: data.email?.trim(),
         password: (data as CreateUserRequest).password,
         role: data.role
       } : {
         id: updateData.userId,
-        fullName: data.fullName,
-        phone: data.phone,
+        fullName: data.fullName?.trim(),
+        phone: trimmedPhone,
         role: data.role,
         status: updateData.status
       }

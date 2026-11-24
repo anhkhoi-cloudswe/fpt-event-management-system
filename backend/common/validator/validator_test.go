@@ -171,3 +171,55 @@ func TestGetPasswordError(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRequiredPhoneError(t *testing.T) {
+	tests := []struct {
+		name  string
+		phone string
+		want  string
+	}{
+		{"Valid 09x", "0912345678", ""},
+		{"Valid +84", "+84912345678", ""},
+		{"Valid 84", "84912345678", ""},
+		{"Valid 03x", "0312345678", ""},
+		{"Valid 05x", "0512345678", ""},
+		{"Valid 07x", "0712345678", ""},
+		{"Valid 08x", "0812345678", ""},
+		{"Empty string", "", "Số điện thoại không được để trống"},
+		{"Whitespace only", "   ", "Số điện thoại không được để trống"},
+		{"Invalid prefix", "0112345678", "Số điện thoại không hợp lệ. Phải là số Việt Nam (03x, 05x, 07x, 08x, 09x)"},
+		{"Too short", "091234567", "Số điện thoại không hợp lệ. Phải là số Việt Nam (03x, 05x, 07x, 08x, 09x)"},
+		{"Letters", "abcdefghij", "Số điện thoại không hợp lệ. Phải là số Việt Nam (03x, 05x, 07x, 08x, 09x)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetRequiredPhoneError(tt.phone)
+			if got != tt.want {
+				t.Errorf("GetRequiredPhoneError(%q) = %q, want %q", tt.phone, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetPhoneError(t *testing.T) {
+	tests := []struct {
+		name  string
+		phone string
+		want  string
+	}{
+		{"Valid 09x", "0912345678", ""},
+		{"Empty string (optional)", "", ""},
+		{"Whitespace only (optional)", "   ", ""},
+		{"Invalid format", "0112345678", "Số điện thoại không hợp lệ. Phải là số Việt Nam (03x, 05x, 07x, 08x, 09x)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetPhoneError(tt.phone)
+			if got != tt.want {
+				t.Errorf("GetPhoneError(%q) = %q, want %q", tt.phone, got, tt.want)
+			}
+		})
+	}
+}

@@ -90,8 +90,8 @@ export const isValidRoleForCreation = (role: string | null | undefined): boolean
 /**
  * Get user-friendly error message for email
  */
-export const getEmailError = (email: string): string | null => {
-  if (!email.trim()) {
+export const getEmailError = (email: string | null | undefined): string | null => {
+  if (!email || !email.trim()) {
     return 'Email không được để trống'
   }
   if (!isValidEmail(email)) {
@@ -103,8 +103,8 @@ export const getEmailError = (email: string): string | null => {
 /**
  * Get user-friendly error message for phone
  */
-export const getPhoneError = (phone: string): string | null => {
-  if (!phone.trim()) {
+export const getPhoneError = (phone: string | null | undefined): string | null => {
+  if (!phone || !phone.trim()) {
     return 'Số điện thoại không được để trống'
   }
   if (!isValidVNPhone(phone)) {
@@ -116,17 +116,18 @@ export const getPhoneError = (phone: string): string | null => {
 /**
  * Get user-friendly error message for full name
  */
-export const getFullNameError = (name: string): string | null => {
-  if (!name.trim()) {
+export const getFullNameError = (name: string | null | undefined): string | null => {
+  if (!name || !name.trim()) {
     return 'Họ tên không được để trống'
   }
-  if (name.trim().length < 2) {
+  const trimmed = name.trim()
+  if (trimmed.length < 2) {
     return 'Họ tên phải có ít nhất 2 ký tự'
   }
-  if (name.trim().length > 100) {
+  if (trimmed.length > 100) {
     return 'Họ tên không được vượt quá 100 ký tự'
   }
-  if (!isValidFullName(name)) {
+  if (!isValidFullName(trimmed)) {
     return 'Họ tên chỉ được chứa chữ cái, khoảng trắng, dấu chấm, gạch ngang và dấu nháy đơn'
   }
   return null
@@ -135,8 +136,8 @@ export const getFullNameError = (name: string): string | null => {
 /**
  * Get user-friendly error message for password
  */
-export const getPasswordError = (password: string): string | null => {
-  if (!password.trim()) {
+export const getPasswordError = (password: string | null | undefined): string | null => {
+  if (!password || !password.trim()) {
     return 'Mật khẩu không được để trống'
   }
   if (password.length < 6) {

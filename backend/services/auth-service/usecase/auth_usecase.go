@@ -184,7 +184,7 @@ func (uc *AuthUseCase) AdminCreateAccount(ctx context.Context, req models.AdminC
 		log.Printf("[CREATE-ACCOUNT] Validation failed: full name - %s", err)
 		return nil, errors.New(err)
 	}
-	if err := validator.GetPhoneError(req.Phone); err != "" {
+	if err := validator.GetRequiredPhoneError(req.Phone); err != "" {
 		log.Printf("[CREATE-ACCOUNT] Validation failed: phone - %s", err)
 		return nil, errors.New(err)
 	}
@@ -469,6 +469,13 @@ func (uc *AuthUseCase) AdminUpdateUser(ctx context.Context, req models.AdminUpda
 	// Validate status if provided
 	if req.Status != "" && req.Status != "ACTIVE" && req.Status != "INACTIVE" {
 		return errors.New("Status không hợp lệ")
+	}
+
+	// Validate phone if provided
+	if strings.TrimSpace(req.Phone) != "" {
+		if err := validator.GetRequiredPhoneError(req.Phone); err != "" {
+			return errors.New(err)
+		}
 	}
 
 	return uc.userRepo.UpdateUser(ctx, req)

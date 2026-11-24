@@ -112,11 +112,23 @@ func GetEmailError(email string) string {
 	return ""
 }
 
-// GetPhoneError returns user-friendly error message for phone
+// GetPhoneError returns user-friendly error message for phone (optional phone field)
 func GetPhoneError(phone string) string {
 	trimmed := strings.TrimSpace(phone)
 	if trimmed == "" {
 		return ""
+	}
+	if !IsValidVNPhone(trimmed) {
+		return "Số điện thoại không hợp lệ. Phải là số Việt Nam (03x, 05x, 07x, 08x, 09x)"
+	}
+	return ""
+}
+
+// GetRequiredPhoneError returns user-friendly error message for required phone
+func GetRequiredPhoneError(phone string) string {
+	trimmed := strings.TrimSpace(phone)
+	if trimmed == "" {
+		return "Số điện thoại không được để trống"
 	}
 	if !IsValidVNPhone(trimmed) {
 		return "Số điện thoại không hợp lệ. Phải là số Việt Nam (03x, 05x, 07x, 08x, 09x)"
