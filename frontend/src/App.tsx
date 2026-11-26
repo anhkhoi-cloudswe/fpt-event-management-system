@@ -155,6 +155,11 @@ function LoadingScreen() {
   )
 }
 
+function RootLandingRoute() {
+  const { isAuthenticated } = useAuth()
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <GuestLanding />
+}
+
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
 
@@ -413,16 +418,7 @@ function AppRoutes() {
         } />
         <Route path="profile" element={<Profile />} />
       </Route>
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Dashboard />} />
-      </Route>
+      <Route path="/" element={<RootLandingRoute />} />
       <Route
         path="/my-tickets"
         element={

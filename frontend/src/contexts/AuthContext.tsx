@@ -5,7 +5,8 @@ import { getAccessToken, setAccessToken, setInMemoryToken, requestTokenRefresh }
 const AUTH_ME_ENDPOINTS = ['/api/auth/me'] as const
 
 const isPurePublicLanding = (pathname: string) => {
-  return pathname === '/guest' ||
+  return pathname === '/' ||
+    pathname === '/guest' ||
     pathname === '/login' ||
     pathname === '/signup' ||
     pathname === '/reset-password' ||
