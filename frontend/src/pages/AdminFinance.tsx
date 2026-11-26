@@ -125,6 +125,26 @@ const toLocalISODate = (d: Date): string => {
   return `${y}-${m}-${day}`
 }
 
+const formatDateInputDDMMYYYY = (rawValue: string, prevValue: string): string => {
+  const isDeleting = rawValue.length < prevValue.length
+  let digits = rawValue.replace(/\D/g, '').slice(0, 8)
+
+  // If user pressed backspace right after an auto-inserted '/', remove the preceding digit too
+  if (isDeleting && prevValue.endsWith('/') && !rawValue.endsWith('/') && digits.length > 0 && (digits.length === 2 || digits.length === 4)) {
+    digits = digits.slice(0, -1)
+  }
+
+  if (digits.length <= 2) {
+    if (!isDeleting && digits.length === 2) return `${digits}/`
+    return digits
+  }
+  if (digits.length <= 4) {
+    if (!isDeleting && digits.length === 4) return `${digits.slice(0, 2)}/${digits.slice(2)}/`
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`
+  }
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
+}
+
 export default function AdminFinancePage() {
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -1111,10 +1131,9 @@ export default function AdminFinancePage() {
                           placeholder="dd/mm/yyyy"
                           value={timelineStartInput}
                           onChange={(e) => {
-                            const val = e.target.value
-                            setTimelineStartInput(val)
-                            const parsed = parseDDMMYYYYToISO(val)
-                            setTimelineStartDate(parsed)
+                            const formatted = formatDateInputDDMMYYYY(e.target.value, timelineStartInput)
+                            setTimelineStartInput(formatted)
+                            setTimelineStartDate(parseDDMMYYYYToISO(formatted))
                           }}
                           className="w-28 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-orange-500"
                         />
@@ -1128,10 +1147,9 @@ export default function AdminFinancePage() {
                           placeholder="dd/mm/yyyy"
                           value={timelineEndInput}
                           onChange={(e) => {
-                            const val = e.target.value
-                            setTimelineEndInput(val)
-                            const parsed = parseDDMMYYYYToISO(val)
-                            setTimelineEndDate(parsed)
+                            const formatted = formatDateInputDDMMYYYY(e.target.value, timelineEndInput)
+                            setTimelineEndInput(formatted)
+                            setTimelineEndDate(parseDDMMYYYYToISO(formatted))
                           }}
                           className="w-28 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-orange-500"
                         />
