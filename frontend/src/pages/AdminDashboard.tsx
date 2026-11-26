@@ -1177,6 +1177,7 @@ export default function AdminDashboard() {
         user={selectedUser}
         mode={userFormMode}
         isCurrentUser={selectedUser?.userId === user?.id}
+        existingUsers={users}
       />
 
       {/* Speaker Form Modal */}

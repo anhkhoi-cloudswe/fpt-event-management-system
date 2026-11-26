@@ -17,6 +17,7 @@ interface UserFormModalProps {
   user?: User | null
   mode: 'create' | 'edit'
   isCurrentUser?: boolean
+  existingUsers?: User[]
 }
 
 /**
@@ -28,7 +29,8 @@ export default function UserFormModal({
   onSubmit,
   user,
   mode,
-  isCurrentUser = false
+  isCurrentUser = false,
+  existingUsers = []
 }: UserFormModalProps) {
   const { showToast } = useToast()
   const [formData, setFormData] = useState({
@@ -82,8 +84,18 @@ export default function UserFormModal({
         return getFullNameError(value)
       case 'email':
         return getEmailError(value)
-      case 'phone':
-        return getPhoneError(value)
+      case 'phone': {
+        const formatErr = getPhoneError(value)
+        if (formatErr) return formatErr
+        const trimmed = value.trim()
+        if (trimmed) {
+          const isDup = existingUsers.some(
+            u => (u.phone || '').trim() === trimmed && (mode !== 'edit' || u.userId !== user?.userId)
+          )
+          if (isDup) return 'Số điện thoại này đã được đăng ký bởi tài khoản khác'
+        }
+        return null
+      }
       case 'password':
         if (mode === 'create') {
           return getPasswordError(value)
@@ -102,9 +114,10 @@ export default function UserFormModal({
     // Update form data
     setFormData(prev => ({ ...prev, [name]: processedValue }))
 
-    // Validate if field has been touched or has an existing error
-    if (touched[name] || errors[name]) {
-      const error = validateField(name, processedValue)
+    // Validate if field has been touched, has an existing error, or is duplicate phone
+    const dupPhoneError = name === 'phone' ? validateField('phone', processedValue) : null
+    if (touched[name] || errors[name] || (name === 'phone' && dupPhoneError === 'Số điện thoại này đã được đăng ký bởi tài khoản khác')) {
+      const error = name === 'phone' ? dupPhoneError : validateField(name, processedValue)
       setErrors(prev => {
         if (error) {
           return { ...prev, [name]: error }
@@ -142,7 +155,7 @@ export default function UserFormModal({
     if (emailError) newErrors.email = emailError
 
     // Validate phone
-    const phoneError = getPhoneError(formData.phone)
+    const phoneError = validateField('phone', formData.phone)
     if (phoneError) newErrors.phone = phoneError
 
     // Validate password (only for create mode)
