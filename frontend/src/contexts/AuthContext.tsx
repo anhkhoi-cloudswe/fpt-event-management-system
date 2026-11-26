@@ -52,6 +52,7 @@ export interface User {
   theme?: 'light' | 'dark' | string
   language?: 'vi' | 'en' | string
   timezone_id?: string
+  isRootAdmin?: boolean
 }
 
 interface AuthContextType {

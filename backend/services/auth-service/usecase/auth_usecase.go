@@ -8,8 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
+	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/common/hash"
 	"github.com/fpt-event-services/common/jwt"
 	"github.com/fpt-event-services/common/validator"
@@ -62,6 +64,7 @@ func (uc *AuthUseCase) issueFreshSessionTokenPair(ctx context.Context, user *mod
 	if err != nil {
 		return nil, errors.New("failed to generate token")
 	}
+	user.IsRootAdmin = config.IsRootAdminEmail(user.Email)
 	return &models.AuthResponse{
 		Token:        token,
 		RefreshToken: refreshToken,
@@ -485,8 +488,27 @@ func (uc *AuthUseCase) ResendRegisterOTP(ctx context.Context, email string) (str
 // KHỚP VỚI Java AdminController
 // ============================================================
 
+// ErrRootAdminProtected is returned when a non-root admin attempts to modify or disable a root admin account
+var ErrRootAdminProtected = errors.New("Không có quyền chỉnh sửa hoặc vô hiệu hóa tài khoản Root Admin")
+
 // AdminUpdateUser updates user by admin
 func (uc *AuthUseCase) AdminUpdateUser(ctx context.Context, req models.AdminUpdateUserRequest) error {
+	return uc.AdminUpdateUserWithActor(ctx, "", req)
+}
+
+// AdminUpdateUserWithActor updates user by admin with Root Admin protection guard
+func (uc *AuthUseCase) AdminUpdateUserWithActor(ctx context.Context, actorEmail string, req models.AdminUpdateUserRequest) error {
+	targetUser, err := uc.userRepo.FindByID(ctx, req.ID)
+	if err == nil && targetUser != nil && config.IsRootAdminEmail(targetUser.Email) {
+		if !strings.EqualFold(strings.TrimSpace(actorEmail), strings.TrimSpace(targetUser.Email)) {
+			log.Printf("[SECURITY] Blocked non-root admin (%s) from modifying root admin (ID=%d)", actorEmail, req.ID)
+			return ErrRootAdminProtected
+		}
+		if (req.Role != "" && req.Role != "ADMIN") || (req.Status != "" && req.Status != "ACTIVE") {
+			return errors.New("Không thể hạ quyền hoặc vô hiệu hóa tài khoản Root Admin")
+		}
+	}
+
 	// Validate role if provided
 	if req.Role != "" && !validator.IsValidRoleForCreation(req.Role) {
 		return errors.New("Role không hợp lệ")
@@ -517,6 +539,18 @@ func (uc *AuthUseCase) AdminUpdateUser(ctx context.Context, req models.AdminUpda
 
 // AdminDeleteUser soft deletes user (sets status to INACTIVE)
 func (uc *AuthUseCase) AdminDeleteUser(ctx context.Context, userID string) error {
+	return uc.AdminDeleteUserWithActor(ctx, "", userID)
+}
+
+// AdminDeleteUserWithActor soft deletes user with Root Admin protection guard
+func (uc *AuthUseCase) AdminDeleteUserWithActor(ctx context.Context, actorEmail, userID string) error {
+	if uid, err := strconv.Atoi(strings.TrimSpace(userID)); err == nil && uid > 0 {
+		targetUser, findErr := uc.userRepo.FindByID(ctx, uid)
+		if findErr == nil && targetUser != nil && config.IsRootAdminEmail(targetUser.Email) {
+			log.Printf("[SECURITY] Blocked admin (%s) from deleting/disabling root admin (ID=%d)", actorEmail, uid)
+			return ErrRootAdminProtected
+		}
+	}
 	return uc.userRepo.SoftDeleteUser(ctx, userID)
 }
 

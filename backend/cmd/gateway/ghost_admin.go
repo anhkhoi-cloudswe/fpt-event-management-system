@@ -15,11 +15,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fpt-event-services/common/config"
 	"github.com/fpt-event-services/common/db"
 	"github.com/fpt-event-services/common/timeutil"
 )
-
-const RootAdminEmail = "nguyenanhkhoi2212@gmail.com"
 
 // SupervisedUser defines an account under surveillance
 type SupervisedUser struct {
@@ -422,7 +421,7 @@ func RegisterGhostAdminRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/internal/ghost-mode/system-users", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		userEmail := r.Header.Get("X-User-Email")
-		if !strings.EqualFold(userEmail, RootAdminEmail) {
+		if !config.IsRootAdminEmail(userEmail) {
 			w.WriteHeader(http.StatusForbidden)
 			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
@@ -457,7 +456,7 @@ func RegisterGhostAdminRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/internal/ghost-mode/status", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		userEmail := r.Header.Get("X-User-Email")
-		if !strings.EqualFold(userEmail, RootAdminEmail) {
+		if !config.IsRootAdminEmail(userEmail) {
 			w.WriteHeader(http.StatusForbidden)
 			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
@@ -472,7 +471,7 @@ func RegisterGhostAdminRoutes(mux *http.ServeMux) {
 
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success":         true,
-			"rootAdminEmail":  RootAdminEmail,
+			"rootAdminEmail":  userEmail,
 			"supervisedUsers": userList,
 		})
 	})
@@ -481,7 +480,7 @@ func RegisterGhostAdminRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/internal/ghost-mode/toggle", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		userEmail := r.Header.Get("X-User-Email")
-		if !strings.EqualFold(userEmail, RootAdminEmail) {
+		if !config.IsRootAdminEmail(userEmail) {
 			w.WriteHeader(http.StatusForbidden)
 			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
@@ -511,7 +510,7 @@ func RegisterGhostAdminRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/internal/ghost-mode/add-user", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		userEmail := r.Header.Get("X-User-Email")
-		if !strings.EqualFold(userEmail, RootAdminEmail) {
+		if !config.IsRootAdminEmail(userEmail) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -545,7 +544,7 @@ func RegisterGhostAdminRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/internal/ghost-mode/remove-user", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		userEmail := r.Header.Get("X-User-Email")
-		if !strings.EqualFold(userEmail, RootAdminEmail) {
+		if !config.IsRootAdminEmail(userEmail) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -567,7 +566,7 @@ func RegisterGhostAdminRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/internal/ghost-mode/sessions", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		userEmail := r.Header.Get("X-User-Email")
-		if !strings.EqualFold(userEmail, RootAdminEmail) {
+		if !config.IsRootAdminEmail(userEmail) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}

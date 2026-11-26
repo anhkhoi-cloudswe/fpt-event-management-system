@@ -236,7 +236,7 @@ export default function Layout() {
   const isOrganizer = user?.role === 'ORGANIZER'
   const isStaff = user?.role === 'STAFF'
   const isAdmin = user?.role === 'ADMIN'
-  const isRootAdmin = user?.email?.toLowerCase() === 'nguyenanhkhoi2212@gmail.com'
+  const isRootAdmin = Boolean(user?.isRootAdmin)
   const showWallet = user?.role !== 'STAFF' && user?.role !== 'ADMIN'
   const isRouteActive = (path: string) => {
     const targetPath = typeof path === 'string' && path.trim() ? path.trim() : '/dashboard'

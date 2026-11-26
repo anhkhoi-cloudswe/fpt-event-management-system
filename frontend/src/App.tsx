@@ -200,7 +200,7 @@ function StaffRoute({ children }: { children: ReactNode }) {
 
 function RootAdminRoute({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-  const isRootAdmin = user?.email?.toLowerCase() === 'nguyenanhkhoi2212@gmail.com'
+  const isRootAdmin = Boolean(user?.isRootAdmin)
   return isRootAdmin ? <>{children}</> : <Navigate to="/dashboard" replace />
 }
 

@@ -523,6 +523,7 @@ func (h *AuthHandler) HandleMe(ctx context.Context, request events.APIGatewayPro
 			"ssoProvider":    user.SSOProvider,
 			"theme":          user.Theme,
 			"language":       user.Language,
+			"isRootAdmin":    config.IsRootAdminEmail(user.Email),
 			"balance":        walletBalance,
 			"wallet_balance": walletBalance,
 			"wallet": map[string]interface{}{
@@ -1131,8 +1132,9 @@ func (h *AuthHandler) HandleAdminUpdateUser(ctx context.Context, request events.
 		return createErrorResponse(http.StatusUnauthorized, "Missing authorization token")
 	}
 
-	// Verify admin role
-	if !jwt.IsAdmin(token) {
+	// Verify admin role & extract actor claims
+	claims, err := jwt.ValidateToken(token)
+	if err != nil || claims.Role != "ADMIN" {
 		return createErrorResponse(http.StatusForbidden, "Admin access required")
 	}
 
@@ -1146,9 +1148,12 @@ func (h *AuthHandler) HandleAdminUpdateUser(ctx context.Context, request events.
 		return createErrorResponse(http.StatusBadRequest, "ID không hợp lệ")
 	}
 
-	// Update user
-	err := h.useCase.AdminUpdateUser(ctx, req)
+	// Update user with Root Admin protection guard
+	err = h.useCase.AdminUpdateUserWithActor(ctx, claims.Email, req)
 	if err != nil {
+		if errors.Is(err, usecase.ErrRootAdminProtected) {
+			return createErrorResponse(http.StatusForbidden, err.Error())
+		}
 		return createErrorResponse(http.StatusBadRequest, err.Error())
 	}
 
@@ -1167,8 +1172,9 @@ func (h *AuthHandler) HandleAdminDeleteUser(ctx context.Context, request events.
 		return createErrorResponse(http.StatusUnauthorized, "Missing authorization token")
 	}
 
-	// Verify admin role
-	if !jwt.IsAdmin(token) {
+	// Verify admin role & extract actor claims
+	claims, err := jwt.ValidateToken(token)
+	if err != nil || claims.Role != "ADMIN" {
 		return createErrorResponse(http.StatusForbidden, "Admin access required")
 	}
 
@@ -1178,9 +1184,12 @@ func (h *AuthHandler) HandleAdminDeleteUser(ctx context.Context, request events.
 		return createErrorResponse(http.StatusBadRequest, "Missing user ID")
 	}
 
-	// Soft delete user
-	err := h.useCase.AdminDeleteUser(ctx, userID)
+	// Soft delete user with Root Admin protection guard
+	err = h.useCase.AdminDeleteUserWithActor(ctx, claims.Email, userID)
 	if err != nil {
+		if errors.Is(err, usecase.ErrRootAdminProtected) {
+			return createErrorResponse(http.StatusForbidden, err.Error())
+		}
 		return createErrorResponse(http.StatusBadRequest, err.Error())
 	}
 
