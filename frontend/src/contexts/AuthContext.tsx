@@ -141,6 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const res = await axios.get(endpoint, {
           withCredentials: true,
+          timeout: 10000,
           ...({ isBackgroundRequest: isBackground } as any)
         })
         const data = res.data
@@ -234,6 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true
+    let safetyTimer: number | undefined
 
     const bootstrapAuth = async () => {
       const isPublic = isPurePublicLanding(window.location.pathname)
@@ -245,6 +247,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setIsRefreshing(true)
 
+      safetyTimer = window.setTimeout(() => {
+        if (isMounted) {
+          console.warn('[Auth] Bootstrap auth timed out; releasing loading state.')
+          setLoading(false)
+          setIsRefreshing(false)
+        }
+      }, 16000)
+
       try {
         let activeToken = getAccessToken()
         if (!activeToken) {
@@ -253,6 +263,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } catch (refreshErr) {
             console.warn('Silent refresh failed during bootstrap:', refreshErr)
           }
+        }
+
+        if (!activeToken) {
+          if (isMounted) {
+            setUser(null)
+            setIsAuthenticated(false)
+          }
+          return
         }
 
         const userObj = await fetchUserFromMe(false)
@@ -270,6 +288,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAuthenticated(false)
         }
       } finally {
+        if (safetyTimer !== undefined) {
+          window.clearTimeout(safetyTimer)
+        }
         if (isMounted) {
           setLoading(false)
           setIsRefreshing(false)
@@ -281,6 +302,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMounted = false
+      if (safetyTimer !== undefined) {
+        window.clearTimeout(safetyTimer)
+      }
     }
   }, [fetchUserFromMe])
 

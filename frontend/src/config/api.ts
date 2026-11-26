@@ -48,6 +48,7 @@ type RetriableRequestConfig = InternalAxiosRequestConfig & {
 const refreshClient = axios.create({
 	baseURL: API_BASE_URL,
 	withCredentials: true,
+	timeout: 15000,
 })
 
 interface FailedRequest {
