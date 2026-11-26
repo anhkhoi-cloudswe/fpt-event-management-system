@@ -48,7 +48,7 @@ type RetriableRequestConfig = InternalAxiosRequestConfig & {
 const refreshClient = axios.create({
 	baseURL: API_BASE_URL,
 	withCredentials: true,
-	timeout: 15000,
+	timeout: 45000,
 })
 
 interface FailedRequest {
@@ -112,9 +112,12 @@ export const requestTokenRefresh = (): Promise<string> => {
 			.catch((refreshError) => {
 				lastRefreshFailedAt = Date.now()
 				processQueue(refreshError, null)
-				setInMemoryToken(null)
-				// Broadcast session expired cleanly so UI logs out without infinite loops
-				window.dispatchEvent(new CustomEvent('auth:session-expired'))
+				const status = refreshError?.response?.status
+				if (status === 401 || status === 403) {
+					setInMemoryToken(null)
+					// Broadcast session expired only when refresh token is actually rejected/expired
+					window.dispatchEvent(new CustomEvent('auth:session-expired'))
+				}
 				reject(refreshError)
 			})
 			.finally(() => {
@@ -157,7 +160,8 @@ api.interceptors.response.use(
 					return api(originalRequest)
 				})
 				.catch((refreshError) => {
-					if (!isBackground) {
+					const status = refreshError?.response?.status
+					if (!isBackground && (status === 401 || status === 403)) {
 						window.dispatchEvent(new CustomEvent('auth:session-expired'))
 					}
 					return Promise.reject(refreshError)
@@ -223,9 +227,12 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Pr
 				// Seamlessly retry the request with the refreshed token
 				response = await originalFetch.call(this, input, modifiedInit)
 			}
-		} catch (refreshErr) {
+		} catch (refreshErr: any) {
 			console.warn('[Fetch Interceptor] Auto-refresh failed after 401:', refreshErr)
-			window.dispatchEvent(new CustomEvent('auth:session-expired'))
+			const status = refreshErr?.response?.status
+			if (status === 401 || status === 403) {
+				window.dispatchEvent(new CustomEvent('auth:session-expired'))
+			}
 		}
 	}
 
