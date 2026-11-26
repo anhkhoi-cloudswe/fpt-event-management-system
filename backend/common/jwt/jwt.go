@@ -55,13 +55,13 @@ func GetLifespans(role string) (time.Duration, time.Duration) {
 	case "STUDENT":
 		return 60 * time.Minute, 7 * 24 * time.Hour
 	case "ORGANIZER":
-		return 30 * time.Minute, 3 * 24 * time.Hour
+		return 60 * time.Minute, 3 * 24 * time.Hour
 	case "STAFF":
-		return 30 * time.Minute, 24 * time.Hour
+		return 60 * time.Minute, 24 * time.Hour
 	case "ADMIN":
-		return 15 * time.Minute, 8 * time.Hour
+		return 60 * time.Minute, 24 * time.Hour
 	default:
-		return 15 * time.Minute, 24 * time.Hour
+		return 60 * time.Minute, 24 * time.Hour
 	}
 }
 

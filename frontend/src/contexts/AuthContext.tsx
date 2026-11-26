@@ -312,15 +312,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // =========================================================================
   // Proactive Auto-Refresh:
-  //   1. Heartbeat timer: Refreshes token every 20 minutes while authenticated
-  //      to prevent token expiry during long active sessions.
-  //   2. AFK Recovery: When a Student/User leaves the tab idle or sleeps their
-  //      computer for > 15 minutes, silently refreshes the token on focus/visible.
+  //   1. Heartbeat timer: Refreshes token every 5 minutes while authenticated
+  //      to proactively prevent token expiry during active sessions.
+  //   2. AFK Recovery: When a User leaves the tab idle or sleeps their
+  //      computer for > 5 minutes, silently refreshes the token on focus/visible.
   // =========================================================================
   useEffect(() => {
     if (!isAuthenticated) return
 
-    // 1. Heartbeat timer every 20 minutes (Student token is 60m, Organizer 30m)
+    // 1. Proactive Heartbeat timer every 5 minutes (prevents token expiry during active usage)
     const heartbeatTimer = setInterval(() => {
       void requestTokenRefresh()
         .then((newToken) => {
@@ -331,7 +331,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .catch((err) => {
           console.warn('[Auth] Heartbeat token refresh skipped/failed:', err)
         })
-    }, 20 * 60 * 1000)
+    }, 5 * 60 * 1000)
 
     // 2. AFK / Sleep Wake-up recovery
     let lastActiveAt = Date.now()
@@ -343,10 +343,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkAfkRecovery = () => {
       if (document.visibilityState === 'visible') {
         const idleDuration = Date.now() - lastActiveAt
-        // If user was idle/AFK for more than 15 minutes, silently refresh token now
-        if (idleDuration > 15 * 60 * 1000) {
+        // If user was idle/AFK for more than 5 minutes, silently refresh token now
+        if (idleDuration > 5 * 60 * 1000) {
           lastActiveAt = Date.now()
-          console.log('[Auth] User returned from AFK (>15m). Silently refreshing token...')
+          console.log('[Auth] User returned from AFK (>5m). Silently refreshing token...')
           void requestTokenRefresh()
             .then((newToken) => {
               if (newToken) {
