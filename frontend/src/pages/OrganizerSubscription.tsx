@@ -268,7 +268,8 @@ export default function OrganizerSubscriptionPage() {
       // 1. Kiểm tra trạng thái hóa đơn thanh toán - Backend sẽ tự động kích hoạt gói khi xác nhận PAID
       const statusRes = await organizerWalletService.checkTopupStatus(paymentOrder.orderId)
       if (statusRes && statusRes.status === 'PAID') {
-        showToast('success', `Thanh toán thành công! Gói ${paymentModalTier.name} đã được kích hoạt trực tiếp.`)
+        const tierLabel = /^gói\s+/i.test(paymentModalTier.name.trim()) ? paymentModalTier.name.trim() : `Gói ${paymentModalTier.name}`
+        showToast('success', `Thanh toán thành công! ${tierLabel} đã được kích hoạt trực tiếp.`)
         emitWalletRefresh()
         setPaymentModalTier(null)
         setPaymentOrder(null)
@@ -291,7 +292,8 @@ export default function OrganizerSubscriptionPage() {
       try {
         const statusRes = await organizerWalletService.checkTopupStatus(paymentOrder.orderId)
         if (statusRes && statusRes.status === 'PAID') {
-          showToast('success', `Thanh toán thành công! Gói ${paymentModalTier.name} đã được kích hoạt trực tiếp.`)
+          const tierLabel = /^gói\s+/i.test(paymentModalTier.name.trim()) ? paymentModalTier.name.trim() : `Gói ${paymentModalTier.name}`
+          showToast('success', `Thanh toán thành công! ${tierLabel} đã được kích hoạt trực tiếp.`)
           emitWalletRefresh()
           setPaymentModalTier(null)
           setPaymentOrder(null)
