@@ -101,6 +101,30 @@ const getTierDisplayName = (tierCode?: string, fallbackName?: string) => {
   return code || '-'
 }
 
+const parseDDMMYYYYToISO = (input: string): string => {
+  const match = input.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (!match) return ''
+  const day = Number(match[1])
+  const month = Number(match[2])
+  const year = Number(match[3])
+  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1970 || year > 2100) return ''
+  const d = new Date(Date.UTC(year, month - 1, day))
+  if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) return ''
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+const formatISOToDDMMYYYY = (iso: string): string => {
+  const m = iso.slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso
+}
+
+const toLocalISODate = (d: Date): string => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 export default function AdminFinancePage() {
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -148,6 +172,8 @@ export default function AdminFinancePage() {
 
   // Timeline Filter & Custom Date Range State
   const [timelinePreset, setTimelinePreset] = useState<'ALL' | '7D' | '30D' | 'THIS_MONTH' | 'LAST_MONTH' | 'THIS_YEAR' | 'CUSTOM'>('ALL')
+  const [timelineStartInput, setTimelineStartInput] = useState<string>('')
+  const [timelineEndInput, setTimelineEndInput] = useState<string>('')
   const [timelineStartDate, setTimelineStartDate] = useState<string>('')
   const [timelineEndDate, setTimelineEndDate] = useState<string>('')
   const [timelineGroupBy, setTimelineGroupBy] = useState<'DAY' | 'MONTH' | 'YEAR'>('DAY')
@@ -1073,25 +1099,41 @@ export default function AdminFinancePage() {
                     </button>
                   ))}
 
-                  {/* Custom Date Inputs */}
+                  {/* Custom Date Inputs (dd/mm/yyyy) */}
                   {timelinePreset === 'CUSTOM' && (
                     <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 mt-1 sm:mt-0">
                       <div className="flex items-center gap-1">
                         <span className="text-[11px] text-slate-400">Từ:</span>
                         <input
-                          type="date"
-                          value={timelineStartDate}
-                          onChange={(e) => setTimelineStartDate(e.target.value)}
-                          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-orange-500"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={10}
+                          placeholder="dd/mm/yyyy"
+                          value={timelineStartInput}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setTimelineStartInput(val)
+                            const parsed = parseDDMMYYYYToISO(val)
+                            setTimelineStartDate(parsed)
+                          }}
+                          className="w-28 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-orange-500"
                         />
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="text-[11px] text-slate-400">Đến:</span>
                         <input
-                          type="date"
-                          value={timelineEndDate}
-                          onChange={(e) => setTimelineEndDate(e.target.value)}
-                          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-orange-500"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={10}
+                          placeholder="dd/mm/yyyy"
+                          value={timelineEndInput}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setTimelineEndInput(val)
+                            const parsed = parseDDMMYYYYToISO(val)
+                            setTimelineEndDate(parsed)
+                          }}
+                          className="w-28 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-orange-500"
                         />
                       </div>
                     </div>
@@ -1102,44 +1144,85 @@ export default function AdminFinancePage() {
               {/* Chart Rendering with dynamic dataset */}
               {(() => {
                 // Filter and aggregate timeline data based on selected preset & groupBy
-                const rawTimeline = subAnalytics?.timeline || []
+                const rawTimeline = (subAnalytics?.timeline || []).map((pt) => ({
+                  ...pt,
+                  date: pt.date.slice(0, 10),
+                }))
                 const now = new Date()
+                const todayISO = toLocalISODate(now)
+
+                let rangeStartISO = ''
+                let rangeEndISO = ''
+                if (timelinePreset === '7D') {
+                  rangeStartISO = toLocalISODate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6))
+                  rangeEndISO = todayISO
+                } else if (timelinePreset === '30D') {
+                  rangeStartISO = toLocalISODate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29))
+                  rangeEndISO = todayISO
+                } else if (timelinePreset === 'THIS_MONTH') {
+                  rangeStartISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+                  rangeEndISO = todayISO
+                } else if (timelinePreset === 'LAST_MONTH') {
+                  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+                  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+                  rangeStartISO = toLocalISODate(lastMonthStart)
+                  rangeEndISO = toLocalISODate(lastMonthEnd)
+                } else if (timelinePreset === 'THIS_YEAR') {
+                  rangeStartISO = `${now.getFullYear()}-01-01`
+                  rangeEndISO = todayISO
+                } else if (timelinePreset === 'CUSTOM') {
+                  rangeStartISO = timelineStartDate
+                  rangeEndISO = timelineEndDate
+                }
 
                 const filteredTimeline = rawTimeline.filter((pt) => {
                   if (timelinePreset === 'ALL') return true
-                  const ptDate = new Date(pt.date)
-
-                  if (timelinePreset === '7D') {
-                    const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-                    return ptDate >= d7
-                  }
-                  if (timelinePreset === '30D') {
-                    const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-                    return ptDate >= d30
-                  }
-                  if (timelinePreset === 'THIS_MONTH') {
-                    return ptDate.getFullYear() === now.getFullYear() && ptDate.getMonth() === now.getMonth()
-                  }
-                  if (timelinePreset === 'LAST_MONTH') {
-                    const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1
-                    const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()
-                    return ptDate.getFullYear() === lastMonthYear && ptDate.getMonth() === lastMonth
-                  }
-                  if (timelinePreset === 'THIS_YEAR') {
-                    return ptDate.getFullYear() === now.getFullYear()
-                  }
-                  if (timelinePreset === 'CUSTOM') {
-                    if (timelineStartDate && pt.date < timelineStartDate) return false
-                    if (timelineEndDate && pt.date > timelineEndDate) return false
-                    return true
-                  }
+                  if (rangeStartISO && pt.date < rangeStartISO) return false
+                  if (rangeEndISO && pt.date > rangeEndISO) return false
                   return true
                 })
 
-                // Aggregation by groupBy
+                // Aggregation by groupBy with continuous date axis when range is bounded
                 let displayTimeline: { date: string; totalRevenue: number; totalCount: number }[] = []
                 if (timelineGroupBy === 'DAY') {
-                  displayTimeline = filteredTimeline
+                  const mapByDay: Record<string, { totalRevenue: number; totalCount: number }> = {}
+                  filteredTimeline.forEach((pt) => {
+                    if (!mapByDay[pt.date]) {
+                      mapByDay[pt.date] = { totalRevenue: 0, totalCount: 0 }
+                    }
+                    mapByDay[pt.date].totalRevenue += pt.totalRevenue
+                    mapByDay[pt.date].totalCount += pt.totalCount
+                  })
+
+                  const effectiveStart =
+                    rangeStartISO || (filteredTimeline.length > 0 ? filteredTimeline[0].date : '')
+                  const effectiveEnd =
+                    rangeEndISO || (filteredTimeline.length > 0 ? filteredTimeline[filteredTimeline.length - 1].date : '')
+
+                  if (effectiveStart && effectiveEnd && effectiveStart <= effectiveEnd) {
+                    const startD = new Date(`${effectiveStart}T00:00:00Z`)
+                    const endD = new Date(`${effectiveEnd}T00:00:00Z`)
+                    const diffDays = Math.round((endD.getTime() - startD.getTime()) / (24 * 60 * 60 * 1000))
+                    if (diffDays >= 0 && diffDays <= 1825) {
+                      for (let i = 0; i <= diffDays; i++) {
+                        const cur = new Date(startD.getTime() + i * 24 * 60 * 60 * 1000)
+                        const iso = cur.toISOString().slice(0, 10)
+                        displayTimeline.push({
+                          date: iso,
+                          totalRevenue: mapByDay[iso]?.totalRevenue || 0,
+                          totalCount: mapByDay[iso]?.totalCount || 0,
+                        })
+                      }
+                    } else {
+                      displayTimeline = Object.keys(mapByDay)
+                        .sort()
+                        .map((d) => ({ date: d, ...mapByDay[d] }))
+                    }
+                  } else {
+                    displayTimeline = Object.keys(mapByDay)
+                      .sort()
+                      .map((d) => ({ date: d, ...mapByDay[d] }))
+                  }
                 } else if (timelineGroupBy === 'MONTH') {
                   const mapByMonth: Record<string, { totalRevenue: number; totalCount: number }> = {}
                   filteredTimeline.forEach((pt) => {
@@ -1150,9 +1233,29 @@ export default function AdminFinancePage() {
                     mapByMonth[monthKey].totalRevenue += pt.totalRevenue
                     mapByMonth[monthKey].totalCount += pt.totalCount
                   })
-                  displayTimeline = Object.keys(mapByMonth)
-                    .sort()
-                    .map((m) => ({ date: m, ...mapByMonth[m] }))
+                  if (rangeStartISO && rangeEndISO && rangeStartISO <= rangeEndISO) {
+                    let [y, m] = rangeStartISO.slice(0, 7).split('-').map(Number)
+                    const [endY, endM] = rangeEndISO.slice(0, 7).split('-').map(Number)
+                    let guard = 0
+                    while ((y < endY || (y === endY && m <= endM)) && guard < 120) {
+                      const monthKey = `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}`
+                      displayTimeline.push({
+                        date: monthKey,
+                        totalRevenue: mapByMonth[monthKey]?.totalRevenue || 0,
+                        totalCount: mapByMonth[monthKey]?.totalCount || 0,
+                      })
+                      m += 1
+                      if (m > 12) {
+                        m = 1
+                        y += 1
+                      }
+                      guard += 1
+                    }
+                  } else {
+                    displayTimeline = Object.keys(mapByMonth)
+                      .sort()
+                      .map((m) => ({ date: m, ...mapByMonth[m] }))
+                  }
                 } else if (timelineGroupBy === 'YEAR') {
                   const mapByYear: Record<string, { totalRevenue: number; totalCount: number }> = {}
                   filteredTimeline.forEach((pt) => {
@@ -1200,6 +1303,9 @@ export default function AdminFinancePage() {
                                   const [y, m] = val.split('-')
                                   return `T${m}/${y}`
                                 }
+                                if (timelineGroupBy === 'DAY') {
+                                  return formatISOToDDMMYYYY(val)
+                                }
                                 return val
                               }}
                             />
@@ -1212,7 +1318,7 @@ export default function AdminFinancePage() {
                                   return `Tháng ${m} / ${y}`
                                 }
                                 if (timelineGroupBy === 'YEAR') return `Năm ${label}`
-                                return `Ngày: ${label}`
+                                return `Ngày: ${formatISOToDDMMYYYY(String(label))}`
                               }}
                               contentStyle={{
                                 backgroundColor: '#0f172a',

@@ -152,6 +152,18 @@ func (uc *AuthUseCase) Register(ctx context.Context, req models.RegisterRequest)
 		return nil, errors.New("email already exists")
 	}
 
+	// Check if phone number already exists
+	req.Phone = strings.TrimSpace(req.Phone)
+	if req.Phone != "" {
+		phoneExists, err := uc.userRepo.ExistsByPhone(ctx, req.Phone, 0)
+		if err != nil {
+			return nil, errors.New("failed to check phone")
+		}
+		if phoneExists {
+			return nil, errors.New("Số điện thoại này đã được đăng ký bởi tài khoản khác")
+		}
+	}
+
 	// Create user
 	user := models.User{
 		FullName:     req.FullName,
@@ -486,9 +498,17 @@ func (uc *AuthUseCase) AdminUpdateUser(ctx context.Context, req models.AdminUpda
 	}
 
 	// Validate phone if provided
-	if strings.TrimSpace(req.Phone) != "" {
+	req.Phone = strings.TrimSpace(req.Phone)
+	if req.Phone != "" {
 		if err := validator.GetRequiredPhoneError(req.Phone); err != "" {
 			return errors.New(err)
+		}
+		phoneExists, err := uc.userRepo.ExistsByPhone(ctx, req.Phone, req.ID)
+		if err != nil {
+			return errors.New("failed to check phone")
+		}
+		if phoneExists {
+			return errors.New("Số điện thoại này đã được đăng ký bởi tài khoản khác")
 		}
 	}
 

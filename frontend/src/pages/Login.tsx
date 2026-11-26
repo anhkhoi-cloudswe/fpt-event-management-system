@@ -144,22 +144,18 @@ export default function Login() {
     setEmailCheckLoading(true)
     const timer = window.setTimeout(async () => {
       try {
-        const response = await axios.post(`${API_URL}/auth/check-email-exists`, { email })
-        if (!cancelled && response.status === 200 && response.data?.exists === true) {
-          setIsEmailValid(true)
-          setEmailError('')
-        }
+        await axios.post(`${API_URL}/auth/check-email-exists`, { email })
       } catch (err: any) {
         if (cancelled) return
-        if (err.response?.status === 404) {
-          setEmailError('Email not found')
-        } else if (err.response?.data?.code === 'EMAIL_DOMAIN_NOT_ALLOWED') {
+        if (err.response?.data?.code === 'EMAIL_DOMAIN_NOT_ALLOWED') {
           setEmailError('Only gmail.com, fpt.edu.vn, or edu.vn emails are allowed.')
-        } else {
-          setEmailError(err.response?.data?.message || 'Unable to verify email right now.')
+          setIsEmailValid(false)
+          return
         }
       } finally {
         if (!cancelled) {
+          // Silent check: do not reveal whether email exists or not to prevent account enumeration
+          setIsEmailValid(true)
           setEmailCheckLoading(false)
         }
       }
@@ -564,9 +560,6 @@ export default function Login() {
               <span className="text-[11px] text-red-500 block pl-1 mt-0.5 font-medium animate-shake">
                 {emailError}
               </span>
-            )}
-            {emailCheckLoading && (
-              <p className="text-slate-500 text-[11px] mt-0.5 pl-1 font-medium">Checking email...</p>
             )}
           </div>
 
