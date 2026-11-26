@@ -213,6 +213,20 @@ func (uc *AuthUseCase) AdminCreateAccount(ctx context.Context, req models.AdminC
 		return nil, errors.New("email already exists")
 	}
 
+	// Check if phone number already exists
+	phone := strings.TrimSpace(req.Phone)
+	if phone != "" {
+		phoneExists, err := uc.userRepo.ExistsByPhone(ctx, phone, 0)
+		if err != nil {
+			log.Printf("[CREATE-ACCOUNT] Failed to check phone existence: %v", err)
+			return nil, errors.New("failed to check phone")
+		}
+		if phoneExists {
+			log.Printf("[CREATE-ACCOUNT] Phone already exists (validation failed)")
+			return nil, errors.New("Số điện thoại này đã được đăng ký bởi tài khoản khác")
+		}
+	}
+
 	// Create account
 	// Security: Don't log email plaintext
 	log.Printf("[CREATE-ACCOUNT] Creating account with Role: %s", req.Role)

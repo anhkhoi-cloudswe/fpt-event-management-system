@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   DollarSign,
   TrendingUp,
@@ -103,9 +104,36 @@ const getTierDisplayName = (tierCode?: string, fallbackName?: string) => {
 export default function AdminFinancePage() {
   const { user } = useAuth()
   const { showToast } = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Tab State
   const [activeTab, setActiveTab] = useState<'PAYOUTS' | 'RECEIPTS' | 'SUBSCRIPTIONS'>('SUBSCRIPTIONS')
+
+  // Subscription pagination persisted in URL (?subPage=...) so page reload keeps the same page
+  const SUB_PAGE_SIZE = 10
+  const rawSubPage = Number(searchParams.get('subPage') || '1')
+  const subPage = Number.isFinite(rawSubPage) && rawSubPage >= 1 ? Math.floor(rawSubPage) : 1
+  const setSubPage = useCallback(
+    (nextPage: number | ((prev: number) => number)) => {
+      setSearchParams(
+        (prev) => {
+          const params = new URLSearchParams(prev)
+          const current = Number(params.get('subPage') || '1')
+          const safeCurrent = Number.isFinite(current) && current >= 1 ? Math.floor(current) : 1
+          const resolved = typeof nextPage === 'function' ? nextPage(safeCurrent) : nextPage
+          const clamped = Math.max(1, resolved)
+          if (clamped === 1) {
+            params.delete('subPage')
+          } else {
+            params.set('subPage', String(clamped))
+          }
+          return params
+        },
+        { replace: true }
+      )
+    },
+    [setSearchParams]
+  )
 
   // Overview State
   const [overview, setOverview] = useState<AdminFinanceOverview | null>(null)
@@ -1486,19 +1514,26 @@ export default function AdminFinancePage() {
                         </td>
                       </tr>
                     ) : (
-                      subAnalytics.subscribers
-                        .filter((s) => s.tierCode !== 'FREE')
-                        .filter((s) => {
-                          const matchSearch =
-                            !subSearch ||
-                            s.fullName.toLowerCase().includes(subSearch.toLowerCase()) ||
-                            s.email.toLowerCase().includes(subSearch.toLowerCase()) ||
-                            s.tierCode.toLowerCase().includes(subSearch.toLowerCase())
-                          const matchTier = subTierFilter === 'ALL' || s.tierCode === subTierFilter
-                          const matchStatus = subStatusFilter === 'ALL' || s.status === subStatusFilter
-                          return matchSearch && matchTier && matchStatus
-                        })
-                        .map((s) => {
+                      (() => {
+                        const filteredSubs = subAnalytics.subscribers
+                          .filter((s) => s.tierCode !== 'FREE')
+                          .filter((s) => {
+                            const matchSearch =
+                              !subSearch ||
+                              s.fullName.toLowerCase().includes(subSearch.toLowerCase()) ||
+                              s.email.toLowerCase().includes(subSearch.toLowerCase()) ||
+                              s.tierCode.toLowerCase().includes(subSearch.toLowerCase())
+                            const matchTier = subTierFilter === 'ALL' || s.tierCode === subTierFilter
+                            const matchStatus = subStatusFilter === 'ALL' || s.status === subStatusFilter
+                            return matchSearch && matchTier && matchStatus
+                          })
+                        const subTotalPages = Math.max(1, Math.ceil(filteredSubs.length / SUB_PAGE_SIZE))
+                        const safeSubPage = Math.min(subPage, subTotalPages)
+                        const paginatedSubs = filteredSubs.slice(
+                          (safeSubPage - 1) * SUB_PAGE_SIZE,
+                          safeSubPage * SUB_PAGE_SIZE
+                        )
+                        return paginatedSubs.map((s) => {
                           const isCurrentlyActive = s.status === 'ACTIVE' && new Date(s.endDate).getTime() > Date.now()
                           return (
                             <tr key={s.subscriptionId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
@@ -1549,10 +1584,55 @@ export default function AdminFinancePage() {
                             </tr>
                           )
                         })
+                      })()
                     )}
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination for Subscriptions */}
+              {(() => {
+                const filteredCount = (subAnalytics?.subscribers || [])
+                  .filter((s) => s.tierCode !== 'FREE')
+                  .filter((s) => {
+                    const matchSearch =
+                      !subSearch ||
+                      s.fullName.toLowerCase().includes(subSearch.toLowerCase()) ||
+                      s.email.toLowerCase().includes(subSearch.toLowerCase()) ||
+                      s.tierCode.toLowerCase().includes(subSearch.toLowerCase())
+                    const matchTier = subTierFilter === 'ALL' || s.tierCode === subTierFilter
+                    const matchStatus = subStatusFilter === 'ALL' || s.status === subStatusFilter
+                    return matchSearch && matchTier && matchStatus
+                  }).length
+                const subTotalPages = Math.max(1, Math.ceil(filteredCount / SUB_PAGE_SIZE))
+                const safeSubPage = Math.min(subPage, subTotalPages)
+                if (subTotalPages <= 1) return null
+                return (
+                  <div className="flex items-center justify-between p-4 border-t border-slate-100 dark:border-slate-800">
+                    <span className="text-xs text-slate-400">
+                      Trang {safeSubPage} / {subTotalPages} ({filteredCount} bản ghi)
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setSubPage((prev) => Math.max(prev - 1, 1))}
+                        disabled={safeSubPage === 1}
+                        className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-30 cursor-pointer"
+                        aria-label="Trang trước"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button
+                        onClick={() => setSubPage((prev) => Math.min(prev + 1, subTotalPages))}
+                        disabled={safeSubPage === subTotalPages}
+                        className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-30 cursor-pointer"
+                        aria-label="Trang sau"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           </div>
         </div>
