@@ -489,7 +489,7 @@ func (uc *AuthUseCase) ResendRegisterOTP(ctx context.Context, email string) (str
 // ============================================================
 
 // ErrRootAdminProtected is returned when a non-root admin attempts to modify or disable a root admin account
-var ErrRootAdminProtected = errors.New("Không có quyền chỉnh sửa hoặc vô hiệu hóa tài khoản Root Admin")
+var ErrRootAdminProtected = errors.New("Bạn không có quyền thực hiện thao tác này")
 
 // AdminUpdateUser updates user by admin
 func (uc *AuthUseCase) AdminUpdateUser(ctx context.Context, req models.AdminUpdateUserRequest) error {
@@ -505,7 +505,7 @@ func (uc *AuthUseCase) AdminUpdateUserWithActor(ctx context.Context, actorEmail 
 			return ErrRootAdminProtected
 		}
 		if (req.Role != "" && req.Role != "ADMIN") || (req.Status != "" && req.Status != "ACTIVE") {
-			return errors.New("Không thể hạ quyền hoặc vô hiệu hóa tài khoản Root Admin")
+			return errors.New("Không thể thực hiện thao tác này trên tài khoản quản trị hiện tại")
 		}
 	}
 
