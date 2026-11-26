@@ -157,9 +157,11 @@ func TestMatrixEdgeCases_RealDockerDB(t *testing.T) {
 
 	t.Run("Route3_UpdateEventRequest_CapacityGating", func(t *testing.T) {
 		var testEvtID, testReqID int
+		// area_id intentionally omitted (NULL) so UpdateEventRequest skips seat allocation
+		// and avoids FK violation on venue_area that aborts the transaction
 		err := db.QueryRowContext(ctx, `
-			INSERT INTO event (title, event_format, max_seats, area_id, status, created_by, start_time, end_time, created_at)
-			VALUES ('Event Route 3', 'ONLINE', 50, 1, 'OPEN', 100, NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', NOW()) RETURNING event_id
+			INSERT INTO event (title, event_format, max_seats, status, created_by, start_time, end_time, created_at)
+			VALUES ('Event Route 3', 'ONLINE', 50, 'OPEN', 100, NOW() + INTERVAL '1 day', NOW() + INTERVAL '2 days', NOW()) RETURNING event_id
 		`).Scan(&testEvtID)
 		if err != nil {
 			t.Fatalf("Lỗi tạo event: %v", err)
