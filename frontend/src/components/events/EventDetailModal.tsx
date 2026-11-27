@@ -721,7 +721,7 @@ export function EventDetailModal({
                       </div>
                     </div>
 
-                    {isOrganizerOfEvent || isRegistered || activeRole === 'ADMIN' ? (
+                    {!eventEnded && (isOrganizerOfEvent || isRegistered || activeRole === 'ADMIN') ? (
                       <>
                         {detail.onlineMeetingUrl && (
                           <div className="space-y-2 pt-2 border-t border-blue-200/50 dark:border-blue-500/20">
@@ -787,9 +787,13 @@ export function EventDetailModal({
                       <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2.5">
                         <Lock className="w-4 h-4 flex-shrink-0 text-amber-500" />
                         <span>
-                          {lang === 'en'
-                            ? 'Online meeting details (Join link, Meeting ID & Passcode) are protected and will be sent via confirmation email immediately upon registration.'
-                            : 'Thông tin phòng họp trực tuyến (Link tham gia, ID & Mật khẩu) được bảo mật và sẽ được tự động gửi qua email xác nhận ngay sau khi bạn đăng ký vé thành công.'}
+                          {eventEnded
+                            ? (lang === 'en'
+                                ? 'This event has ended. Online meeting details are no longer available.'
+                                : 'Sự kiện đã kết thúc. Thông tin phòng họp trực tuyến không còn khả dụng.')
+                            : (lang === 'en'
+                                ? 'Online meeting details (Join link, Meeting ID & Passcode) are protected and will be sent via confirmation email immediately upon registration.'
+                                : 'Thông tin phòng họp trực tuyến (Link tham gia, ID & Mật khẩu) được bảo mật và sẽ được tự động gửi qua email xác nhận ngay sau khi bạn đăng ký vé thành công.')}
                         </span>
                       </div>
                     )}
