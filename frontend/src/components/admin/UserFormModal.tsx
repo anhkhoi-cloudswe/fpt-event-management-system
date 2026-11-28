@@ -195,13 +195,14 @@ export default function UserFormModal({
         }
         await onSubmit(createData)
       } else if (user) {
-        const updateData: UpdateUserRequest = {
+        const updateData: UpdateUserRequest & { password?: string } = {
           userId: user.userId,
           fullName: formData.fullName.trim(),
           email: formData.email.trim(),
           phone: formData.phone.trim(),
           role: formData.role,
-          status: formData.status
+          status: formData.status,
+          ...(formData.password ? { password: formData.password } : {})
         }
         await onSubmit(updateData)
       }

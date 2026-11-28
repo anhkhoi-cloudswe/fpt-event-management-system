@@ -10,6 +10,7 @@ import Pagination from '../components/common/Pagination'
 import type { CreateUserRequest, UpdateUserRequest } from '../types/user'
 import { uploadEventBanner } from '../utils/imageUpload'
 import { getPhoneError } from '../utils/validation'
+import { maskEmail } from '../utils/maskEmail'
 
 type ActiveTab = 'STUDENT' | 'SPEAKER' | 'INTERNAL' | 'BANNER' | 'ORGANIZATION' | 'ANALYTICS'
 
@@ -376,7 +377,7 @@ export default function AdminDashboard() {
     
     setConfirmType('warning')
     setConfirmMessage(
-      `Bạn có chắc chắn muốn ${statusText} tài khoản của "${targetUser.fullName}" (${targetUser.email || targetUser.username})?`
+      `Bạn có chắc chắn muốn ${statusText} tài khoản của "${targetUser.fullName}" (${maskEmail(targetUser.email) || targetUser.username})?`
     )
     setConfirmAction(() => async () => {
       try {
@@ -918,7 +919,7 @@ export default function AdminDashboard() {
                 {activeTab === 'STUDENT' && paginatedItems.map((u) => (
                   <tr key={u.userId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white">{u.fullName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{u.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{maskEmail(u.email)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{u.phone || '—'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -962,7 +963,7 @@ export default function AdminDashboard() {
                       )}
                       <span>{sp.fullName}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{sp.email || '—'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{sp.email ? maskEmail(sp.email) : '—'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{sp.phone || '—'}</td>
                     <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 max-w-xs truncate" title={sp.bio}>
                       {sp.bio || '—'}
@@ -991,7 +992,7 @@ export default function AdminDashboard() {
                 {activeTab === 'INTERNAL' && paginatedItems.map((u) => (
                   <tr key={u.userId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800 dark:text-slate-200 font-bold">{u.fullName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{u.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{maskEmail(u.email)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 font-medium">{u.phone || '—'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
                       <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
