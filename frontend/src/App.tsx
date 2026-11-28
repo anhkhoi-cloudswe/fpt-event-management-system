@@ -410,7 +410,11 @@ function AppRoutes() {
           </StaffRoute>
         } />
         <Route path="system-config" element={<SystemConfig />} />
-        <Route path="frontend-customizer" element={<FrontendCustomizer />} />
+        <Route path="frontend-customizer" element={
+          <RootAdminRoute>
+            <FrontendCustomizer />
+          </RootAdminRoute>
+        } />
         <Route path="ghost-monitor" element={
           <RootAdminRoute>
             <GhostAdminMonitor />

@@ -1068,8 +1068,9 @@ func (h *EventHandler) HandleGetFrontendConfig(ctx context.Context, request even
 // ============================================================
 func (h *EventHandler) HandleUpdateFrontendConfig(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	role := request.Headers["X-User-Role"]
-	if role != "ADMIN" {
-		return createMessageResponse(http.StatusForbidden, "Only Admin can update frontend config")
+	userEmail := request.Headers["X-User-Email"]
+	if role != "ADMIN" || !config.IsRootAdminEmail(userEmail) {
+		return createMessageResponse(http.StatusForbidden, "Only Root Admin can update frontend config")
 	}
 
 	userIDStr := request.Headers["X-User-Id"]

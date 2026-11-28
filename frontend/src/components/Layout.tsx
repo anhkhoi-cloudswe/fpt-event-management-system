@@ -370,7 +370,7 @@ export default function Layout() {
           {renderLink("/dashboard/admin/finance", DollarSign, currentLanguage === 'en' ? "Finance & Payouts" : "Tài chính & Quyết toán", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/manage", Users, currentLanguage === 'en' ? "System Management" : "Quản lý hệ thống", handleLinkClick, closeMobile)}
           {isRootAdmin && renderLink("/dashboard/ghost-monitor", ShieldCheck, currentLanguage === 'en' ? "Ghost Admin" : "Giám sát ngầm", handleLinkClick, closeMobile)}
-          {renderLink("/dashboard/frontend-customizer", LayoutTemplate, currentLanguage === 'en' ? "Frontend Customizer" : "Giao diện Frontend", handleLinkClick, closeMobile)}
+          {isRootAdmin && renderLink("/dashboard/frontend-customizer", LayoutTemplate, currentLanguage === 'en' ? "Frontend Customizer" : "Giao diện Frontend", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/reports", FileBarChart, currentLanguage === 'en' ? "Reports" : "Báo cáo", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/system-config", Sliders, currentLanguage === 'en' ? "Configuration" : "Cấu hình", handleLinkClick, closeMobile)}
           {renderLink("/dashboard/profile", User, currentLanguage === 'en' ? "Profile" : "Hồ sơ cá nhân", handleLinkClick, closeMobile)}
