@@ -29,6 +29,8 @@ import {
   BarChart3,
   Plus,
   Trash2,
+  Users,
+  UserCheck,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -890,13 +892,21 @@ export default function AdminFinancePage() {
                 </div>
               </div>
               <div className="mt-3">
-                <div className="text-2xl font-black text-slate-900 dark:text-white">
-                  {loadingSubAnalytics ? '...' : `${subAnalytics?.totalActivePackages || 0} gói`}
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <div className="text-2xl font-black text-slate-900 dark:text-white">
+                    {loadingSubAnalytics ? '...' : `${subAnalytics?.totalActivePackages || 0} gói`}
+                  </div>
+                  {!loadingSubAnalytics && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                      <UserCheck size={12} />
+                      {subAnalytics?.activePaidUsers ?? 0} paid users
+                    </span>
+                  )}
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-slate-400 mt-1.5">
                   {loadingSubAnalytics
                     ? 'Đang tải...'
-                    : `${subAnalytics?.activePaidUsers ?? 0} paid users đang hoạt động.`}
+                    : `Số gói bản quyền có hiệu lực (thuộc ${subAnalytics?.activePaidUsers ?? 0} tài khoản BTC).`}
                 </p>
               </div>
             </div>
@@ -911,13 +921,21 @@ export default function AdminFinancePage() {
                 </div>
               </div>
               <div className="mt-3">
-                <div className="text-2xl font-black text-slate-900 dark:text-white">
-                  {loadingSubAnalytics ? '...' : `${subAnalytics?.totalSubscribers || 0} lượt`}
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <div className="text-2xl font-black text-slate-900 dark:text-white">
+                    {loadingSubAnalytics ? '...' : `${subAnalytics?.totalSubscribers || 0} lượt`}
+                  </div>
+                  {!loadingSubAnalytics && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                      <Users size={12} />
+                      {subAnalytics?.totalPaidUsers ?? 0} tài khoản
+                    </span>
+                  )}
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-slate-400 mt-1.5">
                   {loadingSubAnalytics
                     ? 'Đang tải...'
-                    : `${subAnalytics?.totalPaidUsers ?? 0} tài khoản đã mua (gồm đăng ký & nâng cấp).`}
+                    : `Tổng các giao dịch từ ${subAnalytics?.totalPaidUsers ?? 0} người dùng duy nhất.`}
                 </p>
               </div>
             </div>
