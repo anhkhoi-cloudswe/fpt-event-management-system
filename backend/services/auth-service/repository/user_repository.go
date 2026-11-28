@@ -452,6 +452,7 @@ func (r *UserRepository) UpdateUser(ctx context.Context, req models.AdminUpdateU
 		}
 		updates = append(updates, fmt.Sprintf("password_hash = $%d", n))
 		args = append(args, hashedPwd)
+		n++
 	}
 
 	if len(updates) == 0 {
