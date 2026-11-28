@@ -35,11 +35,11 @@ export function maskEmail(email?: string | null): string {
 
 /**
  * Masks a phone number for privacy in admin/list views while preserving
- * the leading prefix and last 3 digits for recognition.
+ * only the last 3 digits.
  *
  * Examples:
- * - "0963852741" -> "096****741"
- * - "+84963852741" -> "+849****741"
+ * - "0963852741" -> "*******741"
+ * - "+84963852741" -> "*********741"
  */
 export function maskPhone(phone?: string | null): string {
   if (!phone) return ''
@@ -47,15 +47,9 @@ export function maskPhone(phone?: string | null): string {
   if (!trimmed) return ''
 
   const len = trimmed.length
-  if (len <= 4) {
-    return `${trimmed[0]}${'*'.repeat(Math.max(1, len - 1))}`
-  }
-  if (len <= 7) {
-    return `${trimmed.slice(0, 2)}${'*'.repeat(len - 4)}${trimmed.slice(-2)}`
+  if (len <= 3) {
+    return '*'.repeat(len)
   }
 
-  const prefixLen = trimmed.startsWith('+') ? 4 : 3
-  const suffixLen = 3
-  const maskLen = Math.max(3, len - prefixLen - suffixLen)
-  return `${trimmed.slice(0, prefixLen)}${'*'.repeat(maskLen)}${trimmed.slice(-suffixLen)}`
+  return `${'*'.repeat(len - 3)}${trimmed.slice(-3)}`
 }
