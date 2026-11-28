@@ -95,7 +95,14 @@ export default function Login() {
   const { showToast } = useToast()
   const [emailError, setEmailError] = useState('')
   const [passwordError, setPasswordError] = useState('')
-  const [lockoutCountdown, setLockoutCountdown] = useState(0)
+  const [lockoutUntil, setLockoutUntil] = useState<number>(() => {
+    const saved = Number(localStorage.getItem('fems_login_lockout_until') || '0')
+    return saved > Date.now() ? saved : 0
+  })
+  const [lockoutCountdown, setLockoutCountdown] = useState<number>(() => {
+    const saved = Number(localStorage.getItem('fems_login_lockout_until') || '0')
+    return saved > Date.now() ? Math.ceil((saved - Date.now()) / 1000) : 0
+  })
   const [isEmailValid, setIsEmailValid] = useState(false)
   const [emailCheckLoading, setEmailCheckLoading] = useState(false)
 
@@ -115,13 +122,49 @@ export default function Login() {
     document.documentElement.classList.remove('dark')
   }, [])
 
-  useEffect(() => {
-    let timer: number
-    if (lockoutCountdown > 0) {
-      timer = window.setTimeout(() => setLockoutCountdown(lockoutCountdown - 1), 1000)
+  const applyLockoutSeconds = (seconds: number) => {
+    const until = Date.now() + Math.max(0, seconds) * 1000
+    if (seconds > 0) {
+      localStorage.setItem('fems_login_lockout_until', String(until))
+      setLockoutUntil(until)
+      setLockoutCountdown(seconds)
+    } else {
+      localStorage.removeItem('fems_login_lockout_until')
+      setLockoutUntil(0)
+      setLockoutCountdown(0)
     }
-    return () => clearTimeout(timer)
-  }, [lockoutCountdown])
+  }
+
+  useEffect(() => {
+    const syncCountdown = () => {
+      if (!lockoutUntil) {
+        setLockoutCountdown(0)
+        return
+      }
+      const remaining = Math.max(0, Math.ceil((lockoutUntil - Date.now()) / 1000))
+      setLockoutCountdown(remaining)
+      if (remaining === 0) {
+        localStorage.removeItem('fems_login_lockout_until')
+        setLockoutUntil(0)
+      }
+    }
+
+    syncCountdown()
+    const timer = lockoutUntil > 0 ? window.setInterval(syncCountdown, 1000) : undefined
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'fems_login_lockout_until') {
+        const next = Number(e.newValue || '0')
+        setLockoutUntil(next > Date.now() ? next : 0)
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    document.addEventListener('visibilitychange', syncCountdown)
+    return () => {
+      if (timer !== undefined) window.clearInterval(timer)
+      window.removeEventListener('storage', handleStorage)
+      document.removeEventListener('visibilitychange', syncCountdown)
+    }
+  }, [lockoutUntil])
 
   useEffect(() => {
     recaptchaRef.current?.reset()
@@ -365,8 +408,8 @@ export default function Login() {
 
         if (err.response.status === 423 && err.response.data?.code === 'ACCOUNT_BRUTEFORCE_LOCKED') {
           const retryAfter = typeof err.response.data?.retry_after === 'number' ? err.response.data.retry_after : 300
-          setLockoutCountdown(retryAfter)
-          showToast('warning', 'Tai khoan dang bi khoa tam thoi. Vui long doi het dem nguoc roi thu lai.')
+          applyLockoutSeconds(retryAfter)
+          showToast('warning', 'Tài khoản đang bị khóa tạm thời. Vui lòng đợi hết đếm ngược rồi thử lại.')
           throw new Error('ACCOUNT_BRUTEFORCE_LOCKED')
         }
         if (err.response.data?.code === 'RECAPTCHA_EXHAUSTED_USE_SSO') {
@@ -440,7 +483,9 @@ export default function Login() {
       setPasswordError('')
 
       if (err.message === 'ACCOUNT_BRUTEFORCE_LOCKED') {
-        setPasswordError(`Dang khoa dang nhap tam thoi. Thu lai sau ${formatCountdown(lockoutCountdown)}.`)
+        const savedUntil = Number(localStorage.getItem('fems_login_lockout_until') || '0')
+        const remaining = savedUntil > Date.now() ? Math.ceil((savedUntil - Date.now()) / 1000) : lockoutCountdown
+        setPasswordError(`Đang khóa đăng nhập tạm thời. Thử lại sau ${formatCountdown(remaining)}.`)
       } else if (err.response && err.response.status === 401) {
         setEmailError('Email không chính xác hoặc chưa đăng ký.')
         setPasswordError('Mật khẩu không chính xác. Vui lòng kiểm tra lại.')
