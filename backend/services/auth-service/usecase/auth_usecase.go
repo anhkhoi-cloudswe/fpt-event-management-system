@@ -73,6 +73,9 @@ func (uc *AuthUseCase) issueFreshSessionTokenPair(ctx context.Context, user *mod
 	}, nil
 }
 
+// ErrSessionSuperseded indicates the session was replaced by a newer login elsewhere.
+var ErrSessionSuperseded = errors.New("session superseded")
+
 func (uc *AuthUseCase) ValidateActiveSessionToken(ctx context.Context, userID int, sessionTokenID string) error {
 	if strings.TrimSpace(sessionTokenID) == "" {
 		return errors.New("missing session token")
@@ -82,7 +85,7 @@ func (uc *AuthUseCase) ValidateActiveSessionToken(ctx context.Context, userID in
 		return err
 	}
 	if activeSessionTokenID != sessionTokenID {
-		return errors.New("session superseded")
+		return ErrSessionSuperseded
 	}
 	return nil
 }
@@ -658,6 +661,48 @@ func (uc *AuthUseCase) IssueTokenPair(ctx context.Context, userID int) (*models.
 		return nil, errors.New("inactive user")
 	}
 	return uc.issueFreshSessionTokenPair(ctx, user, false)
+}
+
+// RefreshSessionTokenPair issues a new access/refresh token pair while preserving
+// the active sessionTokenID so concurrent tabs or in-flight requests are not invalidated.
+func (uc *AuthUseCase) RefreshSessionTokenPair(ctx context.Context, userID int, sessionTokenID string) (*models.AuthResponse, error) {
+	user, err := uc.userRepo.FindByID(ctx, userID)
+	if err != nil || user == nil {
+		return nil, errors.New("user not found")
+	}
+	if user.Status == "BLOCKED" || user.Status == "PENDING_DELETE" {
+		return nil, errors.New("inactive user")
+	}
+
+	sessionID := strings.TrimSpace(sessionTokenID)
+	if sessionID != "" {
+		if err := uc.ValidateActiveSessionToken(ctx, user.ID, sessionID); err != nil {
+			return nil, err
+		}
+	} else {
+		// Legacy refresh token without sessionTokenID: reuse existing active ID if present, otherwise create one.
+		activeID, err := uc.userRepo.GetActiveSessionTokenID(ctx, user.ID)
+		if err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(activeID) != "" {
+			sessionID = activeID
+		} else {
+			return uc.issueFreshSessionTokenPair(ctx, user, false)
+		}
+	}
+
+	token, refreshToken, err := jwt.GenerateTokenPairWithSessionID(user.ID, user.Email, user.FullName, user.Role, sessionID)
+	if err != nil {
+		return nil, errors.New("failed to generate token")
+	}
+	user.IsRootAdmin = config.IsRootAdminEmail(user.Email)
+	return &models.AuthResponse{
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         *user,
+		IsNewUser:    false,
+	}, nil
 }
 
 // DirectUpdatePhone updates the user's phone number directly

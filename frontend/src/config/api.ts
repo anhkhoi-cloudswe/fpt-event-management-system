@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { AxiosHeaders } from 'axios'
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
 // =============================================================================
@@ -17,6 +17,26 @@ export const api = axios
 
 // In-memory access token storage
 let accessToken: string | null = null
+
+const authChannel = typeof BroadcastChannel !== 'undefined'
+	? new BroadcastChannel('fems_auth_sync')
+	: null
+
+if (authChannel) {
+	authChannel.onmessage = (event) => {
+		const msg = event.data
+		if (!msg || typeof msg !== 'object') return
+		if (msg.type === 'token-refreshed' && typeof msg.token === 'string') {
+			accessToken = msg.token
+			window.dispatchEvent(new CustomEvent('auth:token-refreshed', {
+				detail: { token: msg.token, user: msg.user ?? null },
+			}))
+		} else if (msg.type === 'session-expired') {
+			accessToken = null
+			window.dispatchEvent(new CustomEvent('auth:session-expired'))
+		}
+	}
+}
 
 export const getAccessToken = () => accessToken
 export const setInMemoryToken = (token: string | null) => {
@@ -100,6 +120,11 @@ export const requestTokenRefresh = (): Promise<string> => {
 				if (token) {
 					lastRefreshFailedAt = 0
 					setInMemoryToken(token)
+					const refreshedUser = res.data?.user ?? null
+					window.dispatchEvent(new CustomEvent('auth:token-refreshed', {
+						detail: { token, user: refreshedUser },
+					}))
+					authChannel?.postMessage({ type: 'token-refreshed', token, user: refreshedUser })
 					processQueue(null, token)
 					resolve(token)
 				} else {
@@ -144,6 +169,14 @@ api.interceptors.response.use(
 			originalRequest &&
 			!requestUrl.includes('/login')
 		) {
+			if (error.response?.data?.code === 'SESSION_SUPERSEDED') {
+				accessToken = null
+				if (!isBackground) {
+					window.dispatchEvent(new CustomEvent('auth:session-expired'))
+				}
+				return Promise.reject(error)
+			}
+
 			if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/api/auth/refresh') || originalRequest._retry) {
 				accessToken = null
 				if (!isBackground) {
@@ -156,7 +189,9 @@ api.interceptors.response.use(
 
 			return requestTokenRefresh()
 				.then((token) => {
-					originalRequest.headers.Authorization = `Bearer ${token}`
+					const headers = AxiosHeaders.from(originalRequest.headers)
+					headers.set('Authorization', `Bearer ${token}`)
+					originalRequest.headers = headers
 					return api(originalRequest)
 				})
 				.catch((refreshError) => {
@@ -215,9 +250,17 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Pr
 
 	let response = await originalFetch.call(this, input, modifiedInit)
 
-	// If 401 on an API request (and not a refresh/login call), refresh token and retry!
+	// If 401 on an API request (and not a refresh/login call), refresh token and retry once!
 	if (response.status === 401 && isApiRequest && !isRefreshRequest && !isLoginRequest) {
 		try {
+			const cloned = response.clone()
+			const errBody = await cloned.json().catch(() => null)
+			if (errBody?.code === 'SESSION_SUPERSEDED') {
+				setInMemoryToken(null)
+				window.dispatchEvent(new CustomEvent('auth:session-expired'))
+				return response
+			}
+
 			const newToken = await requestTokenRefresh()
 			if (newToken) {
 				const retryHeaders = new Headers(modifiedInit.headers || {})

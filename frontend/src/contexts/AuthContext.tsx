@@ -85,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isLoadingRef = useRef(true)
   const isRefreshingRef = useRef(false)
   const lastBackgroundRefreshRef = useRef(0)
+  const lastRefreshedUserRef = useRef<User | null>(null)
 
   const setUser = useCallback((val: React.SetStateAction<User | null>) => {
     setUserInternal(prev => {
@@ -122,15 +123,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Compatibility no-op. Actual login is handled in Login.tsx.
   }
 
-  // Listen to session refresh events from api.ts Axios interceptor
+  // Listen to session refresh events from api.ts Axios interceptor / BroadcastChannel
   useEffect(() => {
     const handleStart = () => setIsRefreshing(true)
     const handleEnd = () => setIsRefreshing(false)
+    const handleTokenRefreshed = (e: Event) => {
+      const detail = (e as CustomEvent<{ token?: string; user?: User | null }>).detail
+      if (detail?.token) {
+        setTokenState(detail.token)
+      }
+      if (detail?.user) {
+        lastRefreshedUserRef.current = detail.user
+      }
+    }
     window.addEventListener('auth:refresh-start', handleStart)
     window.addEventListener('auth:refresh-end', handleEnd)
+    window.addEventListener('auth:token-refreshed', handleTokenRefreshed)
     return () => {
       window.removeEventListener('auth:refresh-start', handleStart)
       window.removeEventListener('auth:refresh-end', handleEnd)
+      window.removeEventListener('auth:token-refreshed', handleTokenRefreshed)
     }
   }, [])
 
@@ -138,12 +150,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isRefreshingRef.current = isRefreshing
   }, [isRefreshing])
 
-  const fetchUserFromMe = useCallback(async (isBackground = false): Promise<User | null> => {
+  const fetchUserFromMeStatus = useCallback(async (isBackground = false): Promise<{ user: User | null; unauthorized: boolean }> => {
     for (const endpoint of AUTH_ME_ENDPOINTS) {
       try {
         const res = await axios.get(endpoint, {
           withCredentials: true,
-          timeout: 10000,
+          timeout: 25000,
           ...({ isBackgroundRequest: isBackground } as any)
         })
         const data = res.data
@@ -154,20 +166,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem('language', normalized)
           localStorage.setItem('user_locale', normalized)
         }
-        return userObj ?? null
+        return { user: userObj ?? null, unauthorized: false }
       } catch (err: any) {
         if (err.response?.status === 401) {
-          return null
+          return { user: null, unauthorized: true }
         }
         if (err.response?.status === 404) {
           continue
         }
-        return null
+        return { user: null, unauthorized: false }
       }
     }
 
-    return null
+    return { user: null, unauthorized: false }
   }, [])
+
+  const fetchUserFromMe = useCallback(async (isBackground = false): Promise<User | null> => {
+    const result = await fetchUserFromMeStatus(isBackground)
+    return result.user
+  }, [fetchUserFromMeStatus])
 
   const refreshUser = useCallback(async (isBackground = false) => {
     if (isRefreshingRef.current) return
@@ -183,29 +200,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isBackground) {
         setIsRefreshing(true)
       }
-      const userObj = await fetchUserFromMe(isBackground)
+      const { user: userObj, unauthorized } = await fetchUserFromMeStatus(isBackground)
       if (userObj) {
         setUser(userObj)
         setIsAuthenticated(true)
-      } else {
-        if (!isBackground) {
-          setUser(null)
-          setIsAuthenticated(false)
-        }
-      }
-    } catch (err) {
-      console.error('refreshUser error:', err)
-      if (!isBackground) {
+      } else if (unauthorized && !isBackground) {
         setUser(null)
         setIsAuthenticated(false)
       }
+    } catch (err) {
+      console.error('refreshUser error:', err)
     } finally {
       isRefreshingRef.current = false
       if (!isBackground) {
         setIsRefreshing(false)
       }
     }
-  }, [fetchUserFromMe])
+  }, [fetchUserFromMeStatus, setUser])
 
   const logout = useCallback(() => {
     void axios.post('/auth/logout', null, { withCredentials: true }).catch(() => undefined)
@@ -275,14 +286,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        const userObj = await fetchUserFromMe(false)
+        const { user: fetchedUser, unauthorized } = await fetchUserFromMeStatus(false)
 
         if (!isMounted) {
           return
         }
 
-        setUser(userObj)
-        setIsAuthenticated(Boolean(userObj))
+        const resolvedUser = fetchedUser ?? (!unauthorized ? lastRefreshedUserRef.current : null)
+        setUser(resolvedUser)
+        setIsAuthenticated(Boolean(resolvedUser))
       } catch (err) {
         if (isMounted) {
           console.error('bootstrapAuth error:', err)
@@ -308,7 +320,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.clearTimeout(safetyTimer)
       }
     }
-  }, [fetchUserFromMe])
+  }, [fetchUserFromMeStatus, setUser])
 
   // =========================================================================
   // Proactive Auto-Refresh:

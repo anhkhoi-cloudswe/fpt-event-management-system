@@ -133,7 +133,7 @@ func ValidateToken(tokenString string) (*Claims, error) {
 			return nil, errors.New("invalid signing method")
 		}
 		return key, nil
-	}, jwtlib.WithValidMethods([]string{jwtlib.SigningMethodHS256.Alg()}))
+	}, jwtlib.WithValidMethods([]string{jwtlib.SigningMethodHS256.Alg()}), jwtlib.WithTimeFunc(timeutil.GetNow))
 	if err != nil {
 		return nil, err
 	}

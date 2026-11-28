@@ -702,8 +702,11 @@ func (h *AuthHandler) HandleRefresh(ctx context.Context, request events.APIGatew
 		return responseWithCookies(http.StatusUnauthorized, map[string]string{"error": "Invalid refresh token"}, clearAuthCookies())
 	}
 
-	authResponse, err := h.useCase.IssueTokenPair(ctx, claims.UserID)
+	authResponse, err := h.useCase.RefreshSessionTokenPair(ctx, claims.UserID, claims.SessionTokenID)
 	if err != nil {
+		if errors.Is(err, usecase.ErrSessionSuperseded) {
+			return codedJSONResponse(http.StatusUnauthorized, "SESSION_SUPERSEDED", 0, clearAuthCookies())
+		}
 		return responseWithCookies(http.StatusUnauthorized, map[string]string{"error": "Unable to refresh session"}, clearAuthCookies())
 	}
 
