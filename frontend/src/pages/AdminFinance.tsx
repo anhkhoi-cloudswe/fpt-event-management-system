@@ -876,8 +876,8 @@ export default function AdminFinancePage() {
                 <div className="text-2xl font-black text-slate-900 dark:text-white">
                   {loadingSubAnalytics ? '...' : formatVND(subAnalytics?.totalRevenueVnd || 0)}
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Doanh thu thu trực tiếp từ các gói Pro, Business,...
+                <p className="text-[11px] text-slate-400 mt-1 truncate" title="Doanh thu trực tiếp từ các gói bản quyền">
+                  Doanh thu trực tiếp từ các gói bản quyền.
                 </p>
               </div>
             </div>
@@ -903,10 +903,10 @@ export default function AdminFinancePage() {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1.5">
+                <p className="text-[11px] text-slate-400 mt-1.5 truncate" title={loadingSubAnalytics ? '' : `Gói bản quyền còn hạn (${subAnalytics?.activePaidUsers ?? 0} tài khoản BTC).`}>
                   {loadingSubAnalytics
                     ? 'Đang tải...'
-                    : `Số gói bản quyền có hiệu lực (thuộc ${subAnalytics?.activePaidUsers ?? 0} tài khoản BTC).`}
+                    : `Gói còn hạn (${subAnalytics?.activePaidUsers ?? 0} tài khoản BTC).`}
                 </p>
               </div>
             </div>
@@ -932,10 +932,10 @@ export default function AdminFinancePage() {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1.5">
+                <p className="text-[11px] text-slate-400 mt-1.5 truncate" title={loadingSubAnalytics ? '' : `Giao dịch từ ${subAnalytics?.totalPaidUsers ?? 0} người dùng duy nhất.`}>
                   {loadingSubAnalytics
                     ? 'Đang tải...'
-                    : `Tổng các giao dịch từ ${subAnalytics?.totalPaidUsers ?? 0} người dùng duy nhất.`}
+                    : `Từ ${subAnalytics?.totalPaidUsers ?? 0} người dùng duy nhất.`}
                 </p>
               </div>
             </div>
@@ -953,8 +953,8 @@ export default function AdminFinancePage() {
                 <div className="text-2xl font-black text-slate-900 dark:text-white">
                   {loadingSubAnalytics ? '...' : `${subAnalytics?.totalExpiredPackages || 0} gói`}
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Đã tự động quay về gói FREE khi hết hạn.
+                <p className="text-[11px] text-slate-400 mt-1 truncate" title="Tự động quay về gói FREE khi hết hạn">
+                  Tự động về gói FREE khi hết hạn.
                 </p>
               </div>
             </div>
