@@ -551,6 +551,8 @@ type SubscriptionTrendPoint struct {
 // AdminSubscriptionAnalyticsResponse - Báo cáo số liệu người mua gói và gói dịch vụ dành riêng cho Admin
 type AdminSubscriptionAnalyticsResponse struct {
 	TotalSubscribers     int                          `json:"totalSubscribers"`
+	TotalPaidUsers       int                          `json:"totalPaidUsers"`
+	ActivePaidUsers      int                          `json:"activePaidUsers"`
 	TotalRevenueVND      int64                        `json:"totalRevenueVnd"`
 	TotalActivePackages  int                          `json:"totalActivePackages"`
 	TotalExpiredPackages int                          `json:"totalExpiredPackages"`

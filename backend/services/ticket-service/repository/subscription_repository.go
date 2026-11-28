@@ -1099,13 +1099,27 @@ func (r *TicketRepository) GetAdminSubscriptionAnalytics(ctx context.Context) (*
 		}
 	}
 
-	// 2. Tính số lượng gói hết hạn/huỷ
+	// 2. Tính số lượng gói hết hạn/huỷ và số lượng người dùng trả phí duy nhất (distinct paid users)
 	var expiredCount int
 	errExp := r.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM user_subscription WHERE status = 'EXPIRED' OR (status = 'ACTIVE' AND end_date <= NOW())
 	`).Scan(&expiredCount)
 	if errExp == nil {
 		resp.TotalExpiredPackages = expiredCount
+	}
+
+	var totalPaidUsers, activePaidUsers int
+	errUsers := r.db.QueryRowContext(ctx, `
+		SELECT
+			COUNT(DISTINCT us.user_id),
+			COUNT(DISTINCT CASE WHEN us.status = 'ACTIVE' AND us.end_date > NOW() THEN us.user_id END)
+		FROM user_subscription us
+		JOIN subscription_tier st ON st.tier_id = us.tier_id
+		WHERE st.tier_code != 'FREE'
+	`).Scan(&totalPaidUsers, &activePaidUsers)
+	if errUsers == nil {
+		resp.TotalPaidUsers = totalPaidUsers
+		resp.ActivePaidUsers = activePaidUsers
 	}
 
 	// 3. Lấy chuỗi thời gian xu hướng mua gói (toàn bộ lịch sử hoặc theo ngày đăng ký/kích hoạt)

@@ -894,7 +894,9 @@ export default function AdminFinancePage() {
                   {loadingSubAnalytics ? '...' : `${subAnalytics?.totalActivePackages || 0} gói`}
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Số lượng BTC đang có gói bản quyền hợp lệ.
+                  {loadingSubAnalytics
+                    ? 'Đang tải...'
+                    : `${subAnalytics?.activePaidUsers ?? 0} paid users đang hoạt động.`}
                 </p>
               </div>
             </div>
@@ -913,7 +915,9 @@ export default function AdminFinancePage() {
                   {loadingSubAnalytics ? '...' : `${subAnalytics?.totalSubscribers || 0} lượt`}
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Bao gồm tất cả các giao dịch đăng ký & nâng cấp.
+                  {loadingSubAnalytics
+                    ? 'Đang tải...'
+                    : `${subAnalytics?.totalPaidUsers ?? 0} tài khoản đã mua (gồm đăng ký & nâng cấp).`}
                 </p>
               </div>
             </div>
