@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { maskEmail } from '../utils/maskEmail'
 import {
   DollarSign,
   TrendingUp,
@@ -1667,7 +1668,7 @@ export default function AdminFinancePage() {
                               </td>
                               <td className="py-3.5 px-4">
                                 <div className="font-bold text-slate-900 dark:text-white">{s.fullName}</div>
-                                <div className="text-[11px] text-slate-400">{s.email}</div>
+                                <div className="text-[11px] text-slate-400">{maskEmail(s.email)}</div>
                               </td>
                               <td className="py-3.5 px-4">
                                 <span
@@ -1839,7 +1840,7 @@ export default function AdminFinancePage() {
                           </td>
                           <td className="py-3.5 px-4">
                             <div className="font-bold text-slate-900 dark:text-white">{p.organizerName}</div>
-                            <div className="text-[11px] text-slate-400">{p.organizerEmail}</div>
+                            <div className="text-[11px] text-slate-400">{maskEmail(p.organizerEmail)}</div>
                           </td>
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
